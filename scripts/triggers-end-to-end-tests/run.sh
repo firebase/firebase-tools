@@ -1,18 +1,19 @@
 #!/bin/bash
 
 function cleanup() {
-  if ! command -v lsof &> /dev/null
-  then
-      echo "lsof could not be found"
-      exit
-  fi
-  # Kill all emulator processes
-  for PORT in 4000 9000 9001 9002 8085 9099 9199
-  do
-    PID=$(lsof -t -i:$PORT || true)
-    if [ -n "$PID" ]
-    then
-      kill -9 $PID
+  for PORT in 4000 9000 9001 9002 8085 9099 9199; do
+    if command -v lsof &> /dev/null; then
+      PID=$(lsof -t -i:$PORT 2>/dev/null || true)
+      if [ -n "$PID" ]; then
+        kill -9 $PID 2>/dev/null || true
+      fi
+    elif command -v netstat &> /dev/null; then
+      PIDS=$(netstat -ano | grep ":$PORT " | awk '{print $5}' | sort -u || true)
+      for P in $PIDS; do
+        if [ "$P" != "0" ] && [ -n "$P" ]; then
+          taskkill //pid "$P" //T //F 2>/dev/null || true
+        fi
+      done
     fi
   done
 }

@@ -56,8 +56,10 @@ PID="$!"
 sleep 5
 VALUE="$(curl localhost:${PORT}/${TARGET_FILE})"
 test "${DATE}" = "${VALUE}" || (echo "Expected ${VALUE} to equal ${DATE}." && false)
-kill "$PID"
-wait
+kill "$PID" 2>/dev/null || true
+if command -v taskkill &> /dev/null; then
+  taskkill //pid "$PID" //T //F 2>/dev/null || true
+fi
 echo "Tested local serve."
 
 echo "Testing local hosting emulator..."
@@ -75,8 +77,10 @@ INIT_JS_FALSE="$(curl localhost:${PORT}/__/firebase/init.js\?useEmulator=false)"
 INIT_JS_TRUE="$(curl localhost:${PORT}/__/firebase/init.js\?useEmulator=true)"
 [[ "${INIT_JS_TRUE}" =~ "firebaseEmulators = {" ]] || (echo "Expected firebaseEmulators to be defined" && false)
 
-kill "$PID"
-wait
+kill "$PID" 2>/dev/null || true
+if command -v taskkill &> /dev/null; then
+  taskkill //pid "$PID" //T //F 2>/dev/null || true
+fi
 echo "Tested local hosting emulator."
 
 echo "Testing hosting deployment..."
