@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import * as path from "path";
 import { BackendInfo, EmulatableBackend } from "./functionsEmulator";
 import * as functionsEmulatorShared from "./functionsEmulatorShared";
 import {
@@ -294,5 +295,48 @@ describe("FunctionsEmulatorShared", () => {
         );
       });
     }
+  });
+
+  describe(`${functionsEmulatorShared.shouldIgnoreWatchPath.name}`, () => {
+    const functionsDir = path.join("/", "home", "user", ".worktrees", "project", "functions");
+
+    it("ignores hidden files inside the functions directory", () => {
+      const target = path.join(functionsDir, ".git", "HEAD");
+      expect(functionsEmulatorShared.shouldIgnoreWatchPath(functionsDir, target)).to.be.true;
+    });
+
+    it("ignores a hidden segment nested within the functions directory", () => {
+      const target = path.join(functionsDir, "src", ".cache", "module.js");
+      expect(functionsEmulatorShared.shouldIgnoreWatchPath(functionsDir, target)).to.be.true;
+    });
+
+    it("does not ignore a regular source file even when the functions directory is nested under a dot-prefixed ancestor", () => {
+      const target = path.join(functionsDir, "src", "index.ts");
+      expect(functionsEmulatorShared.shouldIgnoreWatchPath(functionsDir, target)).to.be.false;
+    });
+
+    it("does not ignore a nested source file without any hidden segment", () => {
+      const target = path.join(functionsDir, "lib", "handlers", "index.js");
+      expect(functionsEmulatorShared.shouldIgnoreWatchPath(functionsDir, target)).to.be.false;
+    });
+
+    it("does not ignore the functions directory itself", () => {
+      expect(functionsEmulatorShared.shouldIgnoreWatchPath(functionsDir, functionsDir)).to.be.false;
+    });
+
+    describe("when the functions directory has no dot-prefixed ancestor", () => {
+      const plainFunctionsDir = path.join("/", "home", "user", "project", "functions");
+
+      it("still ignores hidden files inside the functions directory", () => {
+        const target = path.join(plainFunctionsDir, ".git", "HEAD");
+        expect(functionsEmulatorShared.shouldIgnoreWatchPath(plainFunctionsDir, target)).to.be.true;
+      });
+
+      it("does not ignore a regular source file", () => {
+        const target = path.join(plainFunctionsDir, "src", "index.ts");
+        expect(functionsEmulatorShared.shouldIgnoreWatchPath(plainFunctionsDir, target)).to.be
+          .false;
+      });
+    });
   });
 });

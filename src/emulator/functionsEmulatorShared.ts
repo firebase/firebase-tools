@@ -546,3 +546,24 @@ export function toBackendInfo(
     }),
   );
 }
+
+// Matches paths whose last segment starts with a dot (e.g. ".git", ".cache").
+const HIDDEN_SEGMENT_REGEX = /(^|[\/\\])\../;
+
+/**
+ * Whether the functions emulator file watcher should ignore `filePath`.
+ *
+ * The hidden-segment check is applied against the path relative to
+ * `functionsDir`. chokidar invokes the ignore matcher with the absolute path,
+ * so matching the pattern against that path would also match dot-prefixed
+ * ancestor directories (e.g. `.worktrees/`, `.cache/`) in the containing
+ * project path and cause every file change to be ignored. See
+ * https://github.com/firebase/firebase-tools/issues/10187.
+ */
+export function shouldIgnoreWatchPath(functionsDir: string, filePath: string): boolean {
+  const rel = path.relative(functionsDir, filePath);
+  if (!rel) {
+    return false;
+  }
+  return HIDDEN_SEGMENT_REGEX.test(rel);
+}
