@@ -122,7 +122,7 @@ describe("prepare", () => {
         const config: ValidatedConfig = [
           {
             kit: "my-kit",
-            sourcePackage: { id: "@firebase-functions-kits/my-kit" },
+            sourcePackage: { name: "@firebase-functions-kits/my-kit" },
             source: "source",
             instances: {
               "inst-alpha": "config/inst-alpha",
@@ -144,6 +144,54 @@ describe("prepare", () => {
 
         expect(Object.keys(builds["inst-alpha"].endpoints)).to.deep.equal(["kit-inst-alpha-test"]);
         expect(Object.keys(builds["inst-beta"].endpoints)).to.deep.equal(["kit-inst-beta-test"]);
+      } finally {
+        experiments.setEnabled("kits", null);
+      }
+    });
+
+    it("should provide FIREBASE_KIT_INSTANCE_ID to discovery envs only for kit instances", async () => {
+      experiments.setEnabled("kits", true);
+      try {
+        const config: ValidatedConfig = [
+          {
+            kit: "my-kit",
+            sourcePackage: { name: "@firebase-functions-kits/my-kit" },
+            source: "source",
+            instances: {
+              "inst-alpha": "config/inst-alpha",
+              "inst-beta": "config/inst-beta",
+            },
+            runtime: "nodejs22",
+          },
+          { source: "source-default", codebase: "default", runtime: "nodejs22" },
+        ];
+        const options = {
+          config: {
+            path: (p: string) => p,
+          },
+          projectId: "project",
+        } as unknown as Options;
+        const firebaseConfig = { projectId: "project" };
+        const runtimeConfig = {};
+
+        await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
+
+        expect(discoverBuildStub).to.have.been.calledThrice;
+
+        // Match discovery envs for the first kit instance
+        expect(discoverBuildStub.firstCall.args[1]).to.deep.include({
+          FIREBASE_KIT_INSTANCE_ID: "inst-alpha",
+        });
+
+        // Match discovery envs for the second kit instance
+        expect(discoverBuildStub.secondCall.args[1]).to.deep.include({
+          FIREBASE_KIT_INSTANCE_ID: "inst-beta",
+        });
+
+        // Match discovery envs for the default codebase (should NOT include FIREBASE_KIT_INSTANCE_ID)
+        expect(discoverBuildStub.thirdCall.args[1]).to.not.have.property(
+          "FIREBASE_KIT_INSTANCE_ID",
+        );
       } finally {
         experiments.setEnabled("kits", null);
       }
@@ -663,6 +711,62 @@ describe("prepare", () => {
 
       expect(want.endpoints["firestoreTrigger"].region).to.deep.equal(["us-central1"]);
       expect(want.endpoints["storageTrigger"].region).to.deep.equal(["us-central1"]);
+    });
+  });
+
+  describe("checkKitForGen1", () => {
+    it("should do nothing for regular codebases with gen1 functions", () => {
+      const localCfg = { source: "src", codebase: "default" };
+      const wantBuild = build.of({
+        test: {
+          platform: "gcfv1",
+          entryPoint: "test",
+          project: "project",
+          runtime: latest("nodejs"),
+          httpsTrigger: {},
+        },
+      });
+
+      expect(() => prepare.checkKitForGen1(localCfg, wantBuild)).to.not.throw();
+    });
+
+    it("should do nothing for kit instances with only gen2 functions", () => {
+      const localCfg = { source: "src", kit: "my-kit", instances: { "my-kit-instance": "dir" } };
+      const wantBuild = build.of({
+        test: {
+          platform: "gcfv2",
+          entryPoint: "test",
+          project: "project",
+          runtime: latest("nodejs"),
+          httpsTrigger: {},
+        },
+      });
+
+      expect(() => prepare.checkKitForGen1(localCfg, wantBuild)).to.not.throw();
+    });
+
+    it("should throw a FirebaseError if a kit instance contains a gen1 function", () => {
+      const localCfg = { source: "src", kit: "my-kit", instances: { "my-kit-instance": "dir" } };
+      const wantBuild = build.of({
+        validFunc: {
+          platform: "gcfv2",
+          entryPoint: "validFunc",
+          project: "project",
+          runtime: latest("nodejs"),
+          httpsTrigger: {},
+        },
+        invalidFunc: {
+          platform: "gcfv1",
+          entryPoint: "invalidFunc",
+          project: "project",
+          runtime: latest("nodejs"),
+          httpsTrigger: {},
+        },
+      });
+
+      expect(() => prepare.checkKitForGen1(localCfg, wantBuild)).to.throw(
+        'Function kit "my-kit" contains gen1 functions, which are not supported in kits. Please remove this kit or upgrade these functions to gen2.',
+      );
     });
   });
 
@@ -1296,6 +1400,37 @@ describe("prepare", () => {
       expect(result.haveRolesEtag).to.equal("salt-etag");
       expect(e.serviceAccount).to.be.null;
       expect(e.labels?.["firebase-declarative-security-etag"]).to.be.undefined;
+    });
+
+    it("should return existingManagedSA without checking permissions when wantBackend is empty", async () => {
+      testIamPermissionsStub.rejects(new Error("Should not be called"));
+      const want = backend.empty();
+      want.requiredRoles = ["roles/viewer"];
+      const have = backend.of({
+        ...ENDPOINT,
+        serviceAccount: "firebase-fn-123@project.iam.gserviceaccount.com",
+        labels: {
+          "firebase-declarative-security-etag": "salt-etag",
+        },
+      });
+
+      const result = await prepare.discoverSecurityDetails("default", want, have, "project");
+
+      expect(result.existingManagedSA).to.equal("firebase-fn-123@project.iam.gserviceaccount.com");
+      expect(result.haveRolesEtag).to.equal("salt-etag");
+      expect(testIamPermissionsStub).to.not.have.been.called;
+    });
+
+    it("should return empty security object and not create SA when both want and have backends are empty", async () => {
+      testIamPermissionsStub.rejects(new Error("Should not be called"));
+      const want = backend.empty();
+      want.requiredRoles = ["roles/viewer"];
+      const have = backend.empty();
+
+      const result = await prepare.discoverSecurityDetails("default", want, have, "project");
+
+      expect(result).to.deep.equal({});
+      expect(testIamPermissionsStub).to.not.have.been.called;
     });
 
     it("should keep explicit custom service accounts and not reset to default when unenrolling from declarative security", async () => {

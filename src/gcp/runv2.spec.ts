@@ -251,6 +251,7 @@ describe("runv2", () => {
         ingressSettings: "ALLOW_ALL",
         serviceAccount: null,
         timeoutSeconds: 60,
+        runServiceId: SERVICE_ID,
       };
 
       expect(runv2.endpointFromService(service)).to.deep.equal(expectedEndpoint);
@@ -306,6 +307,7 @@ describe("runv2", () => {
         ingressSettings: "ALLOW_ALL",
         serviceAccount: null,
         timeoutSeconds: 60,
+        runServiceId: SERVICE_ID,
       };
 
       expect(runv2.endpointFromService(service)).to.deep.equal(expectedEndpoint);
@@ -465,6 +467,7 @@ describe("runv2", () => {
         ingressSettings: "ALLOW_ALL",
         serviceAccount: null,
         timeoutSeconds: 60,
+        runServiceId: SERVICE_ID,
         // concurrency, minInstances, maxInstances will be undefined
       };
 

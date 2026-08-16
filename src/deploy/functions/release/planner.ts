@@ -24,6 +24,7 @@ export interface Changeset {
 
 export interface BaseCodebasePlan {
   regionalChangesets: Record<string, Changeset>;
+  plannedBackend: backend.Backend;
 }
 
 export interface ActiveSecurityPlan {
@@ -180,7 +181,9 @@ export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan
     !deleteAll
   );
 
-  if (requiredRoles) {
+  const hasWantEndpoints = backend.someEndpoint(wantBackend, () => true);
+
+  if (requiredRoles && hasWantEndpoints) {
     rolesToAdd = requiredRoles.filter((r) => !roles.includes(r));
     rolesToRemove = roles.filter((r) => !requiredRoles.includes(r));
     if (!existingManagedSA && managedSA) {
@@ -222,7 +225,7 @@ export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan
         "old default of 1. You can change this with the 'concurrency' option.",
     );
   }
-  if (requiredRoles) {
+  if (requiredRoles && hasWantEndpoints) {
     if (!managedSA) {
       throw new FirebaseError("managedServiceAccount is required when requiredRoles is defined.", {
         exit: 1,
@@ -230,6 +233,7 @@ export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan
     }
     return {
       regionalChangesets,
+      plannedBackend: wantBackend,
       rolesToAdd,
       rolesToRemove,
       serviceAccountToCreate,
@@ -238,6 +242,7 @@ export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan
   } else {
     return {
       regionalChangesets,
+      plannedBackend: wantBackend,
       serviceAccountToDelete,
     };
   }
