@@ -112,17 +112,14 @@ describe("Flutter", () => {
     });
 
     it("should pass --wasm when the wasm context is set", async () => {
-      const process = new EventEmitter() as any;
-      process.stdin = new Writable();
-      process.stdout = new EventEmitter();
-      process.stderr = new EventEmitter();
-      process.status = 0;
-
       sandbox.stub(flutterUtils, "assertFlutterCliExists").returns(undefined);
 
       const cwd = ".";
 
-      const stub = sandbox.stub(crossSpawn, "sync").returns(process as any);
+      const mockResult: Partial<ReturnType<typeof crossSpawn.sync>> = { status: 0 };
+      const stub = sandbox
+        .stub(crossSpawn, "sync")
+        .returns(mockResult as ReturnType<typeof crossSpawn.sync>);
 
       const result = build(cwd, undefined, { wasm: true });
 
