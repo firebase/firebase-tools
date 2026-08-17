@@ -17,7 +17,7 @@ Resolves service directories defined in the project's \`firebase.json\` under \`
 * Note: These files are ideally generated using the \`firebase_init\` MCP tool, or must follow the standard structure described in the \`firebase-data-connect-basics\` skill.
 
 **When to use it:**
-* Use this tool to compile schemas and operations, and check for syntax or type errors in your Data Connect files.
+* Use this tool to compile schemas and operations, and check for syntax or type errors in your SQL Connect files.
 
 **How to use it:**
 * Call the tool to compile all services, or filter results by \`service_id\`, \`location_id\`, or \`error_filter\`.
