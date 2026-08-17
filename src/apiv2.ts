@@ -39,7 +39,15 @@ export const GOOG_USER_PROJECT_HEADER = "x-goog-user-project";
 export const CLI_OAUTH_PROJECT_NUMBER = "563584335869";
 
 export type HttpMethod =
-  "GET" | "PUT" | "POST" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD" | "CONNECT" | "TRACE";
+  | "GET"
+  | "PUT"
+  | "POST"
+  | "DELETE"
+  | "PATCH"
+  | "OPTIONS"
+  | "HEAD"
+  | "CONNECT"
+  | "TRACE";
 
 interface BaseRequestOptions<T> extends VerbOptions {
   method: HttpMethod;

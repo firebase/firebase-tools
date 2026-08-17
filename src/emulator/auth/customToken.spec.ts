@@ -119,7 +119,9 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken")
       .query({ key: "fake-api-key" })
-      .send({/* no token */})
+      .send({
+        /* no token */
+      })
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error.message).to.equal("MISSING_CUSTOM_TOKEN");
@@ -167,14 +169,20 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
   });
 
   it("should error if custom token contains no uid", async () => {
-    const token = signJwt({/* no uid */}, "fake-secret", {
-      algorithm: "none",
-      expiresIn: 3600,
+    const token = signJwt(
+      {
+        /* no uid */
+      },
+      "fake-secret",
+      {
+        algorithm: "none",
+        expiresIn: 3600,
 
-      subject: "fake-service-account@example.com",
-      issuer: "fake-service-account@example.com",
-      audience: CUSTOM_TOKEN_AUDIENCE,
-    });
+        subject: "fake-service-account@example.com",
+        issuer: "fake-service-account@example.com",
+        audience: CUSTOM_TOKEN_AUDIENCE,
+      },
+    );
 
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken")

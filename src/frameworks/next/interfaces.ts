@@ -84,7 +84,9 @@ export interface ExportMarker {
 }
 
 export type MiddlewareManifest =
-  MiddlewareManifestV1 | MiddlewareManifestV2FromNext | MiddlewareManifestV3;
+  | MiddlewareManifestV1
+  | MiddlewareManifestV2FromNext
+  | MiddlewareManifestV3;
 
 /**
  * Middleware manifest type used between Next.js 12.2.0 - 14.1.4

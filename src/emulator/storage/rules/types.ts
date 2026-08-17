@@ -42,7 +42,8 @@ export interface RuntimeActionLoadRulesetResponse extends RuntimeActionResponse 
 }
 
 export type RuntimeActionVerifyResponse =
-  RuntimeActionVerifyCompleteResponse | RuntimeActionFirestoreDataRequest;
+  | RuntimeActionVerifyCompleteResponse
+  | RuntimeActionFirestoreDataRequest;
 
 export interface RuntimeActionVerifyCompleteResponse extends RuntimeActionResponse {
   result: { permit: boolean };
@@ -54,7 +55,8 @@ export interface RuntimeActionFirestoreDataRequest extends RuntimeActionResponse
 }
 
 export interface RuntimeActionFirestoreDataResponse
-  extends RuntimeActionResponse, RuntimeActionBundle {
+  extends RuntimeActionResponse,
+    RuntimeActionBundle {
   result?: unknown;
 }
 

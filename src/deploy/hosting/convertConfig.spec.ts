@@ -27,14 +27,16 @@ function endpoint(opts?: Partial<backend.Endpoint>): backend.Endpoint {
     platform: "gcfv1",
     ...opts,
   };
-  if (!(
-    "httpsTrigger" in ret ||
-    "eventTrigger" in ret ||
-    "callableTrigger" in ret ||
-    "scheduledTrigger" in ret ||
-    "taskQueueTrigger" in ret ||
-    "blockingTrigger" in ret
-  )) {
+  if (
+    !(
+      "httpsTrigger" in ret ||
+      "eventTrigger" in ret ||
+      "callableTrigger" in ret ||
+      "scheduledTrigger" in ret ||
+      "taskQueueTrigger" in ret ||
+      "blockingTrigger" in ret
+    )
+  ) {
     ret.httpsTrigger = {};
   }
   if (opts?.platform === "gcfv2") {

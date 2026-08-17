@@ -43,7 +43,9 @@ export type EventFilterOperator = "match-path-pattern";
 
 // Values allowed for the event trigger retry policy in case of a function's execution failure.
 export type RetryPolicy =
-  "RETRY_POLICY_UNSPECIFIED" | "RETRY_POLICY_DO_NOT_RETRY" | "RETRY_POLICY_RETRY";
+  | "RETRY_POLICY_UNSPECIFIED"
+  | "RETRY_POLICY_DO_NOT_RETRY"
+  | "RETRY_POLICY_RETRY";
 
 /** Settings for building a container out of the customer source. */
 export interface BuildConfig {

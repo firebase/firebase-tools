@@ -85,7 +85,12 @@ export interface Connection {
 }
 
 type ConnectionOutputOnlyFields =
-  "createTime" | "updateTime" | "deleteTime" | "installationState" | "reconciling" | "uid";
+  | "createTime"
+  | "updateTime"
+  | "deleteTime"
+  | "installationState"
+  | "reconciling"
+  | "uid";
 
 export interface GitRepositoryLink {
   name: string;
@@ -105,7 +110,11 @@ export interface GitRepositoryLink {
 }
 
 type GitRepositoryLinkOutputOnlyFields =
-  "createTime" | "updateTime" | "deleteTime" | "reconciling" | "uid";
+  | "createTime"
+  | "updateTime"
+  | "deleteTime"
+  | "reconciling"
+  | "uid";
 
 export interface LinkableGitRepositories {
   linkableGitRepositories: LinkableGitRepository[];

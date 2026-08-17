@@ -17,10 +17,11 @@ export type RecursiveKeyOf<T> = T extends Primitive
   ? never
   : T extends (infer Elem)[]
     ? RecursiveSubKeys<Elem, keyof Elem & string>
-    : | (keyof T & string)
-      | {
-          [P in keyof Required<T> & string]: RecursiveSubKeys<Required<T>, P>;
-        }[keyof T & string];
+    :
+        | (keyof T & string)
+        | {
+            [P in keyof Required<T> & string]: RecursiveSubKeys<Required<T>, P>;
+          }[keyof T & string];
 
 type RecursiveSubKeys<T, P extends keyof T & string> = T[P] extends (infer Elem)[]
   ? `${P}.${RecursiveKeyOf<Elem>}`

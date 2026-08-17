@@ -375,7 +375,7 @@ describe("Angular utils", () => {
       const build = (json as any).projects.app.architect.build;
       return {
         ...build.options,
-        ...(configuration ? (build.configurations?.[configuration] ?? {}) : {}),
+        ...(configuration ? build.configurations?.[configuration] ?? {} : {}),
       } as JsonObject;
     };
 
