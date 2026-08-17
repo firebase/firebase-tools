@@ -70,7 +70,6 @@ export function getCodebasesFromConfig(config: ValidatedSingle[] = []): string[]
 export function parseFunctionSelector(
   selector: string,
   config: ValidatedSingle[] = [],
-  defaultCodebase?: string,
 ): EndpointFilter[] {
   const fragments = selector.split(":");
   const target = fragments[0];
@@ -88,14 +87,8 @@ export function parseFunctionSelector(
   }
 
   if (fragments.length < 2) {
-    // If not a known codebase name and no codebase prefix provided,
-    // apply defaultCodebase if specified (e.g. for deploy --only).
-    return [
-      {
-        ...(defaultCodebase ? { codebase: defaultCodebase } : {}),
-        idChunks: fragments[0].split(/[-.]/),
-      },
-    ];
+    // It's not a codebase or kit instance name, assume it is a function id in default codebase
+    return [{ codebase: DEFAULT_CODEBASE, idChunks: fragments[0].split(/[-.]/) }];
   }
   return [
     {
@@ -142,7 +135,7 @@ export function getEndpointFilters(
     if (selector.startsWith("functions:")) {
       selector = selector.replace("functions:", "");
       if (selector.length > 0) {
-        filters.push(...parseFunctionSelector(selector, config, DEFAULT_CODEBASE));
+        filters.push(...parseFunctionSelector(selector, config));
       }
     }
   }

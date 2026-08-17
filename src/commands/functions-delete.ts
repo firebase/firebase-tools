@@ -39,25 +39,46 @@ export const command = new Command("functions:delete [filters...]")
     const config = options.config?.src?.functions
       ? projectConfig.normalizeAndValidate(options.config.src.functions)
       : [];
-    const parsedFilters = filters.flatMap((f) =>
-      helper.parseFunctionSelector(f, config, /* defaultCodebase= */ undefined),
-    );
-
     const context: args.Context = {
       projectId: needProjectId(options),
-      filters: parsedFilters,
+      filters: [],
     };
-
-    const [firebaseConfig, existingBackend] = await Promise.all([
+    const [firebaseConfig, letExistingBackend] = await Promise.all([
       functionsConfig.getFirebaseConfig(options),
       backend.existingBackend(context),
     ]);
+    let existingBackend = letExistingBackend;
     await backend.checkAvailability(context, /* want=*/ backend.empty());
     const appEngineLocation = functionsConfig.getAppEngineLocation(firebaseConfig);
 
     if (options.region) {
-      existingBackend.endpoints = { [options.region]: existingBackend.endpoints[options.region] };
+      existingBackend = backend.matchingBackend(
+        existingBackend,
+        (ep) => ep.region === options.region,
+      );
     }
+
+    // Discover all codebases defined in configuration OR active in existing prod backend.
+    const activeCodebases = [
+      ...new Set([
+        ...helper.getCodebasesFromConfig(config),
+        ...backend
+          .allEndpoints(existingBackend)
+          .map((ep) => ep.codebase || projectConfig.DEFAULT_CODEBASE),
+      ]),
+    ];
+
+    const parsedFilters = filters.flatMap((f) => {
+      const parsed = helper.parseFunctionSelector(f, config);
+      return parsed.map((filter) =>
+        !f.includes(":") && filter.codebase === projectConfig.DEFAULT_CODEBASE && filter.idChunks
+          ? { idChunks: filter.idChunks }
+          : filter,
+      );
+    });
+
+    context.filters = parsedFilters;
+
     const plan = await planner.createDeploymentPlan({
       wantBackend: backend.empty(),
       haveBackend: existingBackend,
@@ -78,27 +99,28 @@ export const command = new Command("functions:delete [filters...]")
       );
     }
 
-    // Inform the user when a name collision exists between a codebase name and a function name in default.
-    // Codebase deletion takes precedence by design, but we provide the explicit 'default:<name>' workaround.
-    const codebaseNames = helper.getCodebasesFromConfig(config);
-    const defaultEndpoints = backend
-      .allEndpoints(existingBackend)
-      .filter((ep) => !ep.codebase || ep.codebase === projectConfig.DEFAULT_CODEBASE);
-
+    // Inform the user when a name collision exists between a codebase name and a function name.
+    // Codebase deletion takes precedence by design, but we provide the explicit '<codebase>:<name>' workaround.
+    const allEndpoints = backend.allEndpoints(existingBackend);
     for (const f of filters) {
-      if (!f.includes(":") && codebaseNames.includes(f)) {
-        const hasDefaultCollision = defaultEndpoints.some(
-          (ep) => ep.id === f || ep.id.startsWith(`${f}-`),
+      if (f.includes(":") || !activeCodebases.includes(f)) {
+        continue;
+      }
+      const matchingEndpoints = allEndpoints.filter(
+        (ep) => ep.id === f || ep.id.startsWith(`${f}-`),
+      );
+      if (matchingEndpoints.length > 0) {
+        const ep = matchingEndpoints[0];
+        const prefix = ep.codebase || projectConfig.DEFAULT_CODEBASE;
+        utils.logLabeledBullet(
+          "functions",
+          `Target '${clc.bold(f)}' matches both a codebase and a function (${helper.getFunctionLabel(
+            ep,
+          )}). Codebase deletion takes precedence. ` +
+            `(To delete the function instead, run: ${clc.bold(
+              `firebase functions:delete ${prefix}:${f}`,
+            )})`,
         );
-        if (hasDefaultCollision) {
-          utils.logLabeledBullet(
-            "functions",
-            `Target '${clc.bold(f)}' matches both a codebase and a function. Codebase deletion takes precedence. ` +
-              `(To delete the function in the default codebase instead, run: ${clc.bold(
-                `firebase functions:delete default:${f}`,
-              )})`,
-          );
-        }
       }
     }
 
