@@ -44,6 +44,7 @@ service firebase.storage {
     }
   }
 }
+EOM
 echo "Initialized temp directory."
 
 echo "Testing storage deployment..."
