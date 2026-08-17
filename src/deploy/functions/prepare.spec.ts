@@ -22,6 +22,7 @@ import { Options } from "../../options";
 import { ValidatedConfig } from "../../functions/projectConfig";
 import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1";
 import { latest } from "./runtimes/supported";
+import * as functionsEnv from "../../functions/env";
 
 describe("partition env helper", () => {
   it("splits a Record into two based on which keys begin with FIREBASE_SECRET_REF", () => {
@@ -195,6 +196,27 @@ describe("prepare", () => {
       } finally {
         experiments.setEnabled("kits", null);
       }
+    });
+
+    it("should load user envs and pass them to discoverBuild", async () => {
+      sandbox.stub(functionsEnv, "loadUserEnvs").returns({ MY_ENV_VAR: "my_val" });
+      const config: ValidatedConfig = [
+        { source: "source", codebase: "codebase", runtime: "nodejs22" },
+      ];
+      const options = {
+        config: {
+          path: (p: string) => p,
+        },
+        projectId: "project",
+      } as unknown as Options;
+      const firebaseConfig = { projectId: "project" };
+      const runtimeConfig = {};
+
+      await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
+
+      expect(discoverBuildStub.firstCall.args[1]).to.deep.include({
+        MY_ENV_VAR: "my_val",
+      });
     });
 
     it("should preserve runtime from codebase config", async () => {
