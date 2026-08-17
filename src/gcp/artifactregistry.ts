@@ -154,11 +154,13 @@ export async function ensureRepositoryExists(
       try {
         await createRepository(projectId, location, repositoryId, format);
       } catch (createErr: any) {
+        // 409 Already Exists: repository was created concurrently or already exists, safe to ignore.
         if (createErr.status === 409) {
           return;
         }
         throw createErr;
       }
+    // 409 Already Exists from getRepository (e.g. repository state conflict), safe to ignore.
     } else if (err.status === 409) {
       return;
     } else {

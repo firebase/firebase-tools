@@ -60,7 +60,7 @@ function getChildEnvironment(target: string, overallOptions: any, config: any) {
       resourceDir = overallOptions.config.path(config.source);
       break;
     case "run":
-      resourceDir = overallOptions.config.path(config.source || config.rootDir || ".");
+      resourceDir = overallOptions.config.path(config.rootDir || ".");
       break;
     default:
       resourceDir = overallOptions.config.path(overallOptions.config.projectDir);

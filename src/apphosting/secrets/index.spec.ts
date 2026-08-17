@@ -642,4 +642,63 @@ describe("secrets", () => {
       );
     });
   });
+
+  describe("toCanonicalSecretResourcePath", () => {
+    it("should format short secret name with latest version", () => {
+      expect(secrets.toCanonicalSecretResourcePath("mySecret", "my-project")).to.deep.equal({
+        secretPath: "projects/my-project/secrets/mySecret",
+        version: "latest",
+      });
+    });
+
+    it("should format secret with pinned version using @ notation", () => {
+      expect(secrets.toCanonicalSecretResourcePath("mySecret@5", "my-project")).to.deep.equal({
+        secretPath: "projects/my-project/secrets/mySecret",
+        version: "5",
+      });
+    });
+
+    it("should format secret with @latest version", () => {
+      expect(secrets.toCanonicalSecretResourcePath("mySecret@latest", "my-project")).to.deep.equal({
+        secretPath: "projects/my-project/secrets/mySecret",
+        version: "latest",
+      });
+    });
+
+    it("should handle fully qualified resource path without version", () => {
+      expect(
+        secrets.toCanonicalSecretResourcePath(
+          "projects/custom-project/secrets/mySecret",
+          "my-project",
+        ),
+      ).to.deep.equal({
+        secretPath: "projects/custom-project/secrets/mySecret",
+        version: "latest",
+      });
+    });
+
+    it("should handle fully qualified resource path with @ version", () => {
+      expect(
+        secrets.toCanonicalSecretResourcePath(
+          "projects/custom-project/secrets/mySecret@3",
+          "my-project",
+        ),
+      ).to.deep.equal({
+        secretPath: "projects/custom-project/secrets/mySecret",
+        version: "3",
+      });
+    });
+
+    it("should handle fully qualified resource path with /versions/ suffix", () => {
+      expect(
+        secrets.toCanonicalSecretResourcePath(
+          "projects/custom-project/secrets/mySecret/versions/7",
+          "my-project",
+        ),
+      ).to.deep.equal({
+        secretPath: "projects/custom-project/secrets/mySecret",
+        version: "7",
+      });
+    });
+  });
 });
