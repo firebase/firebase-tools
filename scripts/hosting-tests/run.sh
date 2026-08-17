@@ -148,22 +148,8 @@ mkdir "public"
 touch "public/${TARGET_FILE}"
 echo "${DATE}" > "public/${TARGET_FILE}"
 echo "Setting targets..."
-cat > ".firebaserc" <<- EOM
-{
-  "projects": {
-    "default": "${FBTOOLS_TARGET_PROJECT}"
-  },
-  "targets": {
-    "${FBTOOLS_TARGET_PROJECT}": {
-      "hosting": {
-        "customtarget": [
-          "${FBTOOLS_TARGET_PROJECT}"
-        ]
-      }
-    }
-  }
-}
-EOM
+firebase use "${FBTOOLS_TARGET_PROJECT}"
+firebase target:apply hosting customtarget "${FBTOOLS_TARGET_PROJECT}"
 echo "Set targets."
 echo "Initialized second temp directory."
 

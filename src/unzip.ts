@@ -128,6 +128,11 @@ function isChildDir(parentDir: string, potentialChild: string): boolean {
     // 1. Resolve and normalize both paths to absolute paths
     const resolvedParent = path.resolve(parentDir);
     const resolvedChild = path.resolve(potentialChild);
+    // On Windows, file systems are case-insensitive (e.g. drive letters C: vs c:,
+    // or system paths like TEMP vs Temp). Comparing resolved paths directly with startsWith
+    // can fail when casing diverges between process.cwd() and archive entries, causing
+    // valid extraction paths to be falsely flagged as Zip Slip violations.
+    // Converting both paths to lowercase on win32 ensures robust prefix checking.
     if (process.platform === "win32") {
       const lowerParent = resolvedParent.toLowerCase();
       const lowerChild = resolvedChild.toLowerCase();

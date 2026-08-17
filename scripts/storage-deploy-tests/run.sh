@@ -44,23 +44,6 @@ service firebase.storage {
     }
   }
 }
-EOM
-cat > ".firebaserc" <<- EOM
-{
-  "projects": {
-    "default": "${FBTOOLS_TARGET_PROJECT}"
-  },
-  "targets": {
-    "${FBTOOLS_TARGET_PROJECT}": {
-      "storage": {
-        "storage-target": [
-          "${FBTOOLS_TARGET_PROJECT}.appspot.com"
-        ]
-      }
-    }
-  }
-}
-EOM
 echo "Initialized temp directory."
 
 echo "Testing storage deployment..."
@@ -80,22 +63,8 @@ cat > "firebase.json" <<- EOM
   ]
 }
 EOM
-cat > ".firebaserc" <<- EOM
-{
-  "projects": {
-    "default": "${FBTOOLS_TARGET_PROJECT}"
-  },
-  "targets": {
-    "${FBTOOLS_TARGET_PROJECT}": {
-      "storage": {
-        "storage-target": [
-          "${FBTOOLS_TARGET_PROJECT}.appspot.com"
-        ]
-      }
-    }
-  }
-}
-EOM
+firebase use "${FBTOOLS_TARGET_PROJECT}"
+firebase target:apply storage storage-target "${FBTOOLS_TARGET_PROJECT}.appspot.com"
 echo "Updated config for targets."
 
 echo "Testing storage deployment with invalid target..."
