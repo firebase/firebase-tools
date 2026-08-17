@@ -1411,10 +1411,16 @@ describe("functions:kits:install", () => {
           project: "prod-project",
         });
 
+        expect(selectStub).to.have.been.calledTwice;
         expect(selectStub.firstCall).to.have.been.calledWith(
           sinon.match({
             message:
               "The following instances already exist, but are not configured for this project: inst-1, inst-2. What would you like to do?",
+          }),
+        );
+        expect(selectStub.secondCall).to.have.been.calledWith(
+          sinon.match({
+            message: "Which instance would you like to configure for this project?",
           }),
         );
         expect(loggerInfoStub).to.have.been.calledWith(
