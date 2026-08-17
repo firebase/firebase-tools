@@ -1,7 +1,6 @@
 import * as clc from "colorette";
 
 import * as args from "./args";
-import * as proto from "../../gcp/proto";
 import * as backend from "./backend";
 import * as build from "./build";
 import * as experiments from "../../experiments";
@@ -49,6 +48,7 @@ import {
   shouldUseRuntimeConfig,
   isKitConfig,
   addKitPrefix,
+  resolveConfigDir,
   ValidatedLocalSingle,
   ValidatedKitSingle,
 } from "../../functions/projectConfig";
@@ -65,11 +65,17 @@ import * as iam from "../../gcp/iam";
 import * as resourcemanager from "../../gcp/resourceManager";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
+export const DECLARATIVE_SECURITY_ETAG_LABEL = "firebase-declarative-security-etag";
 
 /**
  * Discovers and coordinates declarative security details for a codebase.
- * Mutates want Backend to populate managed service account and etag labels.
- * Returns existing discovered roles, or undefined if no security changes needed.
+ * Mutates `want` Backend to populate managed service account and etag labels.
+ *
+ * Returns security metadata based on deployment state:
+ * - **Enrolling / Active**: Returns `{ haveRoles, haveRolesEtag, existingManagedSA, managedSA, newEtag }`.
+ * - **Unenrolling (Opting Out)**: Returns `{ existingManagedSA, haveRolesEtag }` so planner can schedule role revocation.
+ * - **Deleting All Functions**: Returns `{ existingManagedSA, ...(haveRolesEtag ? { haveRolesEtag } : {}) }` so planner can delete the SA.
+ * - **Inactive**: Returns `{}` when declarative security is not used in `want` or `have`.
  */
 export async function discoverSecurityDetails(
   codebase: string,
@@ -89,15 +95,15 @@ export async function discoverSecurityDetails(
   // haveBackend contains all active endpoints in GCP from list calls. firstHave.serviceAccount
   // will identify existingManagedSA on subsequent deploys. On 100% deployment failures,
   // fabricator cleans up the unreferenced service account so no orphaned SA remains.
-  const firstHave = backend.allEndpoints(have)[0];
-  let existingManagedSA: string | undefined;
-  let haveRolesEtag: string | undefined;
-  if (firstHave) {
-    haveRolesEtag = firstHave.labels?.["firebase-declarative-security-etag"];
-    existingManagedSA = firstHave.serviceAccount?.startsWith("firebase-fn-")
-      ? firstHave.serviceAccount
-      : undefined;
-  }
+  const existingManagedSA =
+    backend.findEndpoint(
+      have,
+      (e) => typeof e.serviceAccount === "string" && e.serviceAccount.startsWith("firebase-fn-"),
+    )?.serviceAccount ?? undefined;
+  const haveRolesEtag = backend.findEndpoint(
+    have,
+    (e) => !!e.labels?.[DECLARATIVE_SECURITY_ETAG_LABEL],
+  )?.labels?.[DECLARATIVE_SECURITY_ETAG_LABEL];
 
   const isPartiallyFiltered = !!(
     filters &&
@@ -113,6 +119,16 @@ export async function discoverSecurityDetails(
       "To ensure a whole codebase is migrated cleanly, you may not deploy only part of a " +
         "codebase when opting into or out of declarative security (starting or no longer using `requireRoles`)",
     );
+  }
+
+  if (!backend.someEndpoint(want, () => true)) {
+    if (existingManagedSA) {
+      return {
+        existingManagedSA,
+        ...(haveRolesEtag ? { haveRolesEtag } : {}),
+      };
+    }
+    return {};
   }
 
   if (!requiredRoles && (!existingManagedSA || !haveRolesEtag)) {
@@ -158,7 +174,7 @@ export async function discoverSecurityDetails(
   for (const endpoint of backend.allEndpoints(want)) {
     endpoint.serviceAccount = managedSA;
     endpoint.labels = endpoint.labels || {};
-    endpoint.labels["firebase-declarative-security-etag"] = newEtag;
+    endpoint.labels[DECLARATIVE_SECURITY_ETAG_LABEL] = newEtag;
   }
 
   if (haveRolesEtag && haveRolesEtag === newEtag) {
@@ -303,10 +319,9 @@ export async function prepare(
       projectAlias: options.projectAlias,
       projectDir: options.config.projectDir,
     };
-    if (isKitConfig(localCfg) && codebase in localCfg.instances) {
-      userEnvOpt.configDir = options.config.path(localCfg.instances[codebase]);
-    } else {
-      proto.convertIfPresent(userEnvOpt, localCfg, "configDir", (cd) => options.config.path(cd));
+    const configDir = resolveConfigDir(localCfg, codebase);
+    if (configDir) {
+      userEnvOpt.configDir = options.config.path(configDir);
     }
 
     const rawUserEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
@@ -788,6 +803,18 @@ export async function loadCodebases(
     logger.debug(`Building ${runtimeDelegate.language} source`);
     await runtimeDelegate.build();
 
+    const userEnvOpt: functionsEnv.UserEnvsOpts = {
+      functionsSource: sourceDir,
+      projectId: projectId,
+      projectAlias: options.projectAlias,
+      projectDir: options.config.projectDir,
+    };
+    const configDir = resolveConfigDir(codebaseConfig, codebase);
+    if (configDir) {
+      userEnvOpt.configDir = options.config.path(configDir);
+    }
+    const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
+
     const firebaseEnvs = functionsEnv.loadFirebaseEnvs(
       firebaseConfig,
       projectId,
@@ -803,6 +830,7 @@ export async function loadCodebases(
       : { firebase: firebaseConfig };
 
     const discoveredBuild = await runtimeDelegate.discoverBuild(codebaseRuntimeConfig, {
+      ...userEnvs,
       ...firebaseEnvs,
       // Quota project is required when using GCP's Client-based APIs
       // Some GCP client SDKs, like Vertex AI, requires appropriate quota project setup

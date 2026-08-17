@@ -22,6 +22,7 @@ import { Options } from "../../options";
 import { ValidatedConfig } from "../../functions/projectConfig";
 import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1";
 import { latest } from "./runtimes/supported";
+import * as functionsEnv from "../../functions/env";
 
 describe("partition env helper", () => {
   it("splits a Record into two based on which keys begin with FIREBASE_SECRET_REF", () => {
@@ -195,6 +196,27 @@ describe("prepare", () => {
       } finally {
         experiments.setEnabled("kits", null);
       }
+    });
+
+    it("should load user envs and pass them to discoverBuild", async () => {
+      sandbox.stub(functionsEnv, "loadUserEnvs").returns({ MY_ENV_VAR: "my_val" });
+      const config: ValidatedConfig = [
+        { source: "source", codebase: "codebase", runtime: "nodejs22" },
+      ];
+      const options = {
+        config: {
+          path: (p: string) => p,
+        },
+        projectId: "project",
+      } as unknown as Options;
+      const firebaseConfig = { projectId: "project" };
+      const runtimeConfig = {};
+
+      await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
+
+      expect(discoverBuildStub.firstCall.args[1]).to.deep.include({
+        MY_ENV_VAR: "my_val",
+      });
     });
 
     it("should preserve runtime from codebase config", async () => {
@@ -1400,6 +1422,37 @@ describe("prepare", () => {
       expect(result.haveRolesEtag).to.equal("salt-etag");
       expect(e.serviceAccount).to.be.null;
       expect(e.labels?.["firebase-declarative-security-etag"]).to.be.undefined;
+    });
+
+    it("should return existingManagedSA without checking permissions when wantBackend is empty", async () => {
+      testIamPermissionsStub.rejects(new Error("Should not be called"));
+      const want = backend.empty();
+      want.requiredRoles = ["roles/viewer"];
+      const have = backend.of({
+        ...ENDPOINT,
+        serviceAccount: "firebase-fn-123@project.iam.gserviceaccount.com",
+        labels: {
+          "firebase-declarative-security-etag": "salt-etag",
+        },
+      });
+
+      const result = await prepare.discoverSecurityDetails("default", want, have, "project");
+
+      expect(result.existingManagedSA).to.equal("firebase-fn-123@project.iam.gserviceaccount.com");
+      expect(result.haveRolesEtag).to.equal("salt-etag");
+      expect(testIamPermissionsStub).to.not.have.been.called;
+    });
+
+    it("should return empty security object and not create SA when both want and have backends are empty", async () => {
+      testIamPermissionsStub.rejects(new Error("Should not be called"));
+      const want = backend.empty();
+      want.requiredRoles = ["roles/viewer"];
+      const have = backend.empty();
+
+      const result = await prepare.discoverSecurityDetails("default", want, have, "project");
+
+      expect(result).to.deep.equal({});
+      expect(testIamPermissionsStub).to.not.have.been.called;
     });
 
     it("should keep explicit custom service accounts and not reset to default when unenrolling from declarative security", async () => {

@@ -350,6 +350,8 @@ export class Delegate implements runtimes.RuntimeDelegate {
       const buildRunnerProcess = spawn(this.bin, ["run", "build_runner", "build"], {
         cwd: this.sourceDir,
         stdio: ["ignore", "pipe", "pipe"],
+        // TODO: Including process.env was a mistake; only known envs should be included after a breaking change.
+        env: { ...process.env, ...envs },
       });
 
       buildRunnerProcess.stdout?.on("data", (chunk: Buffer) => {
