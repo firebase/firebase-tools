@@ -31,6 +31,7 @@ describe("functions:kits:install", () => {
   let wrapSpawnStub: sinon.SinonStub;
   let spawnWithOutputStub: sinon.SinonStub;
   let loggerInfoStub: sinon.SinonStub;
+  let loggerWarnStub: sinon.SinonStub;
 
   beforeEach(() => {
     (command as unknown as { befores: unknown[] }).befores = [];
@@ -46,7 +47,7 @@ describe("functions:kits:install", () => {
     sinon.stub(fs, "writeJson").resolves();
     sinon.stub(fs, "writeFile").resolves();
     loggerInfoStub = sinon.stub(logger, "info");
-    sinon.stub(logger, "warn");
+    loggerWarnStub = sinon.stub(logger, "warn");
   });
 
   afterEach(() => {
@@ -436,6 +437,14 @@ describe("functions:kits:install", () => {
         ["run", "build"],
         "/abs/path",
       );
+      expect(loggerInfoStub).to.have.been.calledWith(
+        sinon.match(/functions:/),
+        sinon.match(/Running npm install\.\.\./),
+      );
+      expect(loggerInfoStub).to.have.been.calledWith(
+        sinon.match(/functions:/),
+        sinon.match(/Building TypeScript source\.\.\./),
+      );
     });
 
     it("should run npm install with --ignore-scripts for third-party kit", async () => {
@@ -451,6 +460,14 @@ describe("functions:kits:install", () => {
         "npm",
         ["run", "build"],
         "/abs/path",
+      );
+      expect(loggerInfoStub).to.have.been.calledWith(
+        sinon.match(/functions:/),
+        sinon.match(/Running npm install --ignore-scripts\.\.\./),
+      );
+      expect(loggerInfoStub).to.have.been.calledWith(
+        sinon.match(/functions:/),
+        sinon.match(/Building TypeScript source\.\.\./),
       );
     });
 
@@ -788,6 +805,11 @@ describe("functions:kits:install", () => {
           },
         ],
       });
+
+      expect(loggerInfoStub).to.have.been.calledWith(
+        sinon.match(/functions:/),
+        sinon.match(/Function kit firestore-bigquery-export successfully installed\./),
+      );
     });
 
     it("should prompt and allow custom kit ID and instance ID", async () => {
@@ -1038,6 +1060,10 @@ describe("functions:kits:install", () => {
         default: false,
         nonInteractive: true,
       });
+      expect(loggerWarnStub).to.have.been.calledWith(
+        sinon.match(/functions:/),
+        sinon.match(/does not have an npm-shrinkwrap\.json file/),
+      );
     });
 
     it("should prompt confirmation when a third-party kit has npm-shrinkwrap.json", async () => {
@@ -1064,6 +1090,10 @@ describe("functions:kits:install", () => {
         default: false,
         nonInteractive: true,
       });
+      expect(loggerWarnStub).to.have.been.calledWith(
+        sinon.match(/functions:/),
+        sinon.match(/is a third-party kit/),
+      );
     });
 
     it("should prompt confirmation when a third-party kit lacks npm-shrinkwrap.json", async () => {
@@ -1091,6 +1121,14 @@ describe("functions:kits:install", () => {
         default: false,
         nonInteractive: true,
       });
+      expect(loggerWarnStub).to.have.been.calledWith(
+        sinon.match(/functions:/),
+        sinon.match(/is a third-party kit/),
+      );
+      expect(loggerWarnStub).to.have.been.calledWith(
+        sinon.match(/functions:/),
+        sinon.match(/does not have an npm-shrinkwrap\.json file/),
+      );
     });
 
     it("should cancel installation if user declines confirmation for first-party kit without shrinkwrap", async () => {
