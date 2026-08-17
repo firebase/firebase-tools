@@ -707,6 +707,25 @@ describe("apiv2", () => {
         });
         await expect(res2).to.eventually.be.rejected;
       });
+
+      it("should NOT redirect requests if skipConnectTo is set or hostname is localhost", async () => {
+        process.env.GFE_CONNECT_TO = `127.0.0.1:${targetPort}`;
+        const c1 = new Client({ urlPrefix: "http://example.com", skipConnectTo: true });
+        const r1 = c1.request({
+          method: "GET",
+          path: "/foo",
+          timeout: 100,
+        });
+        await expect(r1).to.eventually.be.rejected;
+
+        const c2 = new Client({ urlPrefix: "http://localhost:12345" });
+        const r2 = c2.request({
+          method: "GET",
+          path: "/foo",
+          timeout: 100,
+        });
+        await expect(r2).to.eventually.be.rejected;
+      });
     });
   });
 

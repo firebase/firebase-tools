@@ -201,6 +201,7 @@ export class EmulatorRegistry {
     return new Client({
       urlPrefix: EmulatorRegistry.url(emulator).toString(),
       auth: false,
+      skipConnectTo: true,
       ...options,
     });
   }

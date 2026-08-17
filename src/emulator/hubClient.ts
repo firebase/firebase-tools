@@ -29,7 +29,7 @@ export class EmulatorHubClient {
     let err: any = undefined;
     for (const origin of origins) {
       try {
-        const apiClient = new Client({ urlPrefix: origin, auth: false });
+        const apiClient = new Client({ urlPrefix: origin, auth: false, skipConnectTo: true });
         return await task(apiClient, origin);
       } catch (e) {
         if (!err) {
@@ -51,7 +51,7 @@ export class EmulatorHubClient {
     // This is a POST operation that should not be retried / multicast, so we
     // will try to find the right origin first via GET.
     const origin = await this.getStatus();
-    const apiClient = new Client({ urlPrefix: origin, auth: false });
+    const apiClient = new Client({ urlPrefix: origin, auth: false, skipConnectTo: true });
     await apiClient.post(EmulatorHub.PATH_CLEAR_DATA_CONNECT);
   }
 
@@ -59,7 +59,7 @@ export class EmulatorHubClient {
     // This is a POST operation that should not be retried / multicast, so we
     // will try to find the right origin first via GET.
     const origin = await this.getStatus();
-    const apiClient = new Client({ urlPrefix: origin, auth: false });
+    const apiClient = new Client({ urlPrefix: origin, auth: false, skipConnectTo: true });
     await apiClient.post(EmulatorHub.PATH_EXPORT, options);
   }
 

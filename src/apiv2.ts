@@ -345,6 +345,7 @@ export type ClientOptions = {
   urlPrefix: string;
   apiVersion?: string;
   auth?: boolean;
+  skipConnectTo?: boolean;
 };
 
 interface FetchOptions extends RequestInit {
@@ -574,18 +575,25 @@ export class Client {
     if (proxyURI) {
       fetchOptions.dispatcher = new ProxyAgent({ uri: proxyURI });
     } else {
-      const connectToAgent = getCustomConnectToAgent();
-      if (connectToAgent) {
-        logger.debug(`[apiv2] Assigning fetchOptions.dispatcher = customConnectToAgent`);
-        fetchOptions.dispatcher = connectToAgent;
-      }
       const parsedURL = new URL(fetchURL);
-      const nodeAgent = getCustomConnectToNodeAgent(parsedURL);
-      if (nodeAgent) {
-        logger.debug(
-          `[apiv2] Assigning fetchOptions.agent = nodeAgent (protocol: ${parsedURL.protocol})`,
-        );
-        fetchOptions.agent = nodeAgent;
+      const isLocalHost =
+        parsedURL.hostname === "localhost" ||
+        parsedURL.hostname === "127.0.0.1" ||
+        parsedURL.hostname === "[::1]" ||
+        parsedURL.hostname === "::1";
+      if (!this.opts.skipConnectTo && !isLocalHost) {
+        const connectToAgent = getCustomConnectToAgent();
+        if (connectToAgent) {
+          logger.debug(`[apiv2] Assigning fetchOptions.dispatcher = customConnectToAgent`);
+          fetchOptions.dispatcher = connectToAgent;
+        }
+        const nodeAgent = getCustomConnectToNodeAgent(parsedURL);
+        if (nodeAgent) {
+          logger.debug(
+            `[apiv2] Assigning fetchOptions.agent = nodeAgent (protocol: ${parsedURL.protocol})`,
+          );
+          fetchOptions.agent = nodeAgent;
+        }
       }
     }
 
