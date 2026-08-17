@@ -12,7 +12,7 @@ export const command = new Command("functions:kits:list")
     const firebaseConfig = options.config;
     if (!firebaseConfig) {
       throw new FirebaseError(
-        "No firebase.json found. Please run this command from within a Firebase project directory."
+        "No firebase.json found. Please run this command from within a Firebase project directory.",
       );
     }
     const validatedConfig = firebaseConfig.src;
