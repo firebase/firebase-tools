@@ -52,6 +52,39 @@ describe("getExecutablePaths", () => {
   });
 });
 
+describe("stripStaleDartBuildIgnore", () => {
+  it("strips a stale 'build' entry from a dart codebase's ignore list", () => {
+    const localCfg = { source: "functions", ignore: [".dart_tool", "build"] };
+    expect(prepare.stripStaleDartBuildIgnore(latest("dart"), localCfg)).to.deep.equal({
+      source: "functions",
+      ignore: [".dart_tool"],
+    });
+  });
+
+  it("strips a stale 'build/' entry from a dart codebase's ignore list", () => {
+    const localCfg = { source: "functions", ignore: [".dart_tool", "build/"] };
+    expect(prepare.stripStaleDartBuildIgnore(latest("dart"), localCfg)).to.deep.equal({
+      source: "functions",
+      ignore: [".dart_tool"],
+    });
+  });
+
+  it("leaves a dart codebase's ignore list untouched when it has no stale 'build' entry", () => {
+    const localCfg = { source: "functions", ignore: [".dart_tool"] };
+    expect(prepare.stripStaleDartBuildIgnore(latest("dart"), localCfg)).to.deep.equal(localCfg);
+  });
+
+  it("leaves a non-dart codebase's ignore list untouched", () => {
+    const localCfg = { source: "functions", ignore: ["node_modules", "build"] };
+    expect(prepare.stripStaleDartBuildIgnore(latest("nodejs"), localCfg)).to.deep.equal(localCfg);
+  });
+
+  it("leaves a codebase with no ignore list untouched", () => {
+    const localCfg: { source: string; ignore?: string[] } = { source: "functions" };
+    expect(prepare.stripStaleDartBuildIgnore(latest("dart"), localCfg)).to.deep.equal(localCfg);
+  });
+});
+
 describe("prepare", () => {
   const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
     platform: "gcfv2",
