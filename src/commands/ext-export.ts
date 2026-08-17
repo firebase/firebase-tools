@@ -26,6 +26,7 @@ import { mkdirSync } from "fs";
 import { join } from "path";
 import { logBullet } from "../utils";
 import { Config } from "../config";
+import { normalizeAndValidate, isKitConfig } from "../functions/projectConfig";
 import { FirebaseError } from "../error";
 import * as clc from "colorette";
 import * as experiments from "../experiments";
@@ -197,23 +198,24 @@ async function fnHandler(options: Options): Promise<void> {
     writeUserEnvs(convertedEnv, writeLocation);
   }
 
-  if (secretCount > 0) {
-    if (
-      !(await confirm({
-        message: `${secretCount} Cloud Secret Manager resources found in export. Remove from Extensions lifecycle management?\nThis is necessary to prevent extension uninstall from deleting potentially migrated secrets.`,
-        nonInteractive: options.nonInteractive,
-        force: options.force,
-        default: true,
-      }))
-    ) {
-      return;
-    }
-    const secretsChanged = await ejectSecretsFromInstance(instance);
-    logBullet(
-      clc.cyan(clc.bold("functions: ")) +
-        `Added functions-managed label to secrets: ${secretsChanged}`,
-    );
+  if (secretCount === 0) {
+    return;
   }
+  if (
+    !(await confirm({
+      message: `${secretCount} Cloud Secret Manager resources found in export. Remove from Extensions lifecycle management?\nThis is necessary to prevent extension uninstall from deleting potentially migrated secrets.`,
+      nonInteractive: options.nonInteractive,
+      force: options.force,
+      default: true,
+    }))
+  ) {
+    return;
+  }
+  const secretsChanged = await ejectSecretsFromInstance(instance);
+  logBullet(
+    clc.cyan(clc.bold("functions: ")) +
+      `Added functions-managed label to secrets: ${secretsChanged}`,
+  );
 }
 
 /**
@@ -241,10 +243,11 @@ function kitExportTarget(instanceId: string, projectId: string, options: Options
         "--kit-instance option was provided but no firebase.json available to look in for kit definitions.",
       );
     }
-    const functionsConfig = firebaseConfig.get("functions");
-    const functions = Array.isArray(functionsConfig) ? functionsConfig : [functionsConfig];
-    for (const fn of functions) {
-      if (typeof fn.kit === "undefined" || typeof fn.instances === "undefined") {
+    const functionsConfig = firebaseConfig.src.functions ?? [];
+    const validatedFunctions = normalizeAndValidate(functionsConfig);
+
+    for (const fn of validatedFunctions) {
+      if (!isKitConfig(fn)) {
         continue;
       }
       for (const [kitId, kitPath] of Object.entries(fn.instances)) {
