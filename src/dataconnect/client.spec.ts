@@ -165,6 +165,24 @@ describe("client", () => {
       );
     });
 
+    it("executeSchemaMigration", async () => {
+      postStub.resolves({ body: { name: "op-name" } });
+      pollOperationStub.resolves();
+      await client.executeSchemaMigration("projects/p/locations/l/services/s", [
+        { sql: "ALTER TABLE..." } as any,
+      ]);
+
+      expect(postStub).to.be.calledWith("projects/p/locations/l/services/s/schemas/main:migrate", {
+        diffs: [{ sql: "ALTER TABLE..." }],
+      });
+      expect(pollOperationStub).to.be.calledWith({
+        apiOrigin: "https://firebasedataconnect.googleapis.com",
+        apiVersion: "v1",
+        operationResourceName: "op-name",
+        masterTimeout: 300000,
+      });
+    });
+
     it("deleteSchema", async () => {
       deleteStub.resolves({ body: { name: "op-name" } });
       pollOperationStub.resolves();
