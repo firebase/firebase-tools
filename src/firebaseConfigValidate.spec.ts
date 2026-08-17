@@ -30,7 +30,7 @@ describe("firebaseConfigValidate", () => {
         {
           serviceId: "my-service",
           region: "us-central1",
-          source: ".",
+          rootDir: ".",
         },
       ],
     };

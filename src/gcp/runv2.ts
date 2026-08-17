@@ -69,11 +69,6 @@ export interface RevisionTemplate {
       subnetwork?: string;
       tags?: string[];
     }>;
-    networkinterfaces?: Array<{
-      network?: string;
-      subnetwork?: string;
-      tags?: string[];
-    }>;
   };
   timeout?: proto.Duration;
   serviceAccount?: string;
@@ -169,11 +164,19 @@ export interface Build {
   buildpackBuild: BuildpacksBuild;
 }
 
+/**
+ * Represents the LRO or Operation object returned by Cloud Run submitBuild endpoint.
+ */
 export interface BuildOperationObject {
+  /** The fully qualified operation resource name (e.g. projects/{p}/locations/{l}/operations/{opId}). */
   name?: string;
+  /** Operation metadata containing the build details. */
   metadata?: {
     build?: {
       id?: string;
+      status?: string;
+      statusDetail?: string;
+      logUrl?: string;
     };
   };
 }
@@ -203,29 +206,22 @@ export async function submitBuild(
     });
   }
   const op = res.body.buildOperation;
-  const buildId =
-    (typeof op === "object" && op?.metadata?.build?.id) ||
-    (typeof op === "string"
-      ? op
-          .split("/")
-          .pop()
-          ?.replace(/^build-/, "")
-      : "");
-  if (buildId) {
+  const operationResourceName = typeof op === "string" ? op : op?.name;
+  if (operationResourceName) {
     let latestBuild: { status?: string; statusDetail?: string; logUrl?: string } | undefined;
     await pollOperation<any>({
       pollerName: "Cloud Build Poller",
       apiOrigin: cloudbuildOrigin(),
       apiVersion: "v1",
-      operationResourceName: `projects/${projectId}/locations/${location}/builds/${buildId}`,
+      operationResourceName,
       masterTimeout: 15 * 60 * 1000,
       backoff: 2000,
       maxBackoff: 10000,
-      onPoll: (res: any) => {
-        latestBuild = res;
+      onPoll: (opRes: any) => {
+        latestBuild = opRes?.metadata?.build;
       },
-      doneFn: (buildRes: any) => {
-        const status = buildRes?.status;
+      doneFn: (opRes: any) => {
+        const status = opRes?.metadata?.build?.status;
         return (
           status === "SUCCESS" ||
           status === "FAILURE" ||
@@ -240,7 +236,7 @@ export async function submitBuild(
       const detail = latestBuild.statusDetail ? `: ${latestBuild.statusDetail}` : "";
       const consoleLink =
         latestBuild.logUrl ||
-        `https://console.cloud.google.com/cloud-build/builds;region=${location}/${buildId}?project=${projectId}`;
+        `https://console.cloud.google.com/cloud-build/builds?project=${projectId}`;
       throw new FirebaseError(
         `Cloud Build failed with status ${latestBuild.status}${detail}\nView Cloud Build logs at: ${consoleLink}`,
       );

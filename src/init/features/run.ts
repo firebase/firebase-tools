@@ -13,11 +13,10 @@ export interface RunInfo {
   serviceId: string;
   region: string;
   rootDir: string;
-  outputDir: string;
 }
 
 /**
- * Prompts the user for Cloud Run service ID, deployment region, source root, and output directory.
+ * Prompts the user for Cloud Run service ID, deployment region, and source root.
  */
 export async function askQuestions(setup: Setup, config?: Config, options?: any): Promise<void> {
   const projectId = setup.projectId;
@@ -69,20 +68,11 @@ export async function askQuestions(setup: Setup, config?: Config, options?: any)
       default: ".",
     }));
 
-  const outputDir =
-    options?.outputDir ||
-    options?.output ||
-    (await input({
-      message: "Where should the built artifacts be output? (e.g. for --prebuilt)",
-      default: ".run",
-    }));
-
   setup.featureInfo = setup.featureInfo || {};
   setup.featureInfo.run = {
     serviceId,
     region,
     rootDir,
-    outputDir,
   };
 }
 
@@ -103,7 +93,7 @@ export async function actuate(setup: Setup, config: Config): Promise<void> {
     throw new FirebaseError("Project ID must be set before initializing Cloud Run.", { exit: 1 });
   }
 
-  const { serviceId, region, rootDir, outputDir } = runInfo;
+  const { serviceId, region, rootDir } = runInfo;
 
   logBullet("Setting up Cloud Run configuration...");
 
@@ -151,8 +141,7 @@ export async function actuate(setup: Setup, config: Config): Promise<void> {
   const runConfig: RunSingle = {
     serviceId,
     region,
-    source: rootDir,
-    output: outputDir,
+    rootDir,
     ignore: DEFAULT_RUN_IGNORE,
   };
 

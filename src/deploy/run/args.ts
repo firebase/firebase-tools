@@ -6,13 +6,8 @@ import { Options } from "../../options";
 export const DEFAULT_RUN_IGNORE = [
   "node_modules",
   ".git",
-  ".next",
-  ".run",
   "firebase-debug.log",
   "firebase-debug.*.log",
-  ".env*.local",
-  "apphosting.local.yaml",
-  "**/*.secret.local",
 ];
 
 export interface RunDeployOptions extends Options {
@@ -25,14 +20,7 @@ export interface RunDeployOptions extends Options {
   serviceAccount?: string;
 }
 
-export interface RunServiceConfig extends RunSingle {
-  "primary-region"?: string;
-  rootDir?: string;
-  outputDir?: string;
-  serviceAccount?: string;
-}
-
-export type RunConfig = RunServiceConfig;
+export type RunConfig = RunSingle;
 
 export interface RunServiceSpec {
   serviceId: string;

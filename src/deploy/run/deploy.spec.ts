@@ -20,7 +20,7 @@ describe("run deploy", () => {
 
   beforeEach(() => {
     upsertBucketStub = sinon.stub(gcs, "upsertBucket").resolves("my-bucket");
-    ensureRepoStub = sinon.stub(artifactRegistry, "ensureRepository").resolves();
+    ensureRepoStub = sinon.stub(artifactRegistry, "ensureRepositoryExists").resolves();
     sinon.stub(getProjectNumberModule, "getProjectNumber").resolves("12345");
     sinon.stub(runv2, "getService").resolves();
     sinon.stub(archiveDirectory, "archiveDirectory").resolves({

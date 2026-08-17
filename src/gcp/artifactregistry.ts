@@ -140,7 +140,7 @@ export async function createRepository(
 /**
  * Ensures an Artifact Registry repository exists, creating it if not.
  */
-export async function ensureRepository(
+export async function ensureRepositoryExists(
   projectId: string,
   location: string,
   repositoryId: string,

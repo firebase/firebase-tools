@@ -134,7 +134,6 @@ export async function prepare(
       options.region ||
       process.env.FIREBASE_RUN_REGION ||
       config.region ||
-      config["primary-region"] ||
       "us-central1";
 
     let existingService: runv2.Service | undefined;
@@ -152,7 +151,7 @@ export async function prepare(
       clearOpt,
     );
 
-    const sourceDir = options.config.path(config.source || config.rootDir || ".");
+    const sourceDir = options.config.path(config.rootDir || ".");
     const yamlPath = path.join(sourceDir, "apphosting.yaml");
     let appHostingConfig: AppHostingYamlConfig | undefined;
     if (fileExistsSync(yamlPath)) {

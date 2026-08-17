@@ -368,7 +368,7 @@ async function deployService(
 
   try {
     // 1. Ensure Artifact Registry repository exists
-    await artifactregistry.ensureRepository(projectId, region, "cloud-run-source-deploy");
+    await artifactregistry.ensureRepositoryExists(projectId, region, "cloud-run-source-deploy");
 
     // 2. Package source & upload to GCS staging bucket
     service.storageSource = await packageAndUploadSource(projectId, region, service, options);

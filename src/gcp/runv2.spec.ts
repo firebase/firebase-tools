@@ -593,9 +593,17 @@ describe("runv2", () => {
       postStub = sandbox.stub(Client.prototype, "post");
       pollStub = sandbox.stub(operationPoller, "pollOperation").callsFake(async (opts: any) => {
         if (opts.onPoll) {
-          opts.onPoll({ status: "SUCCESS" });
+          opts.onPoll({
+            metadata: {
+              build: { status: "SUCCESS" },
+            },
+          });
         }
-        return { status: "SUCCESS" };
+        return {
+          metadata: {
+            build: { status: "SUCCESS" },
+          },
+        };
       });
     });
 
@@ -674,6 +682,7 @@ describe("runv2", () => {
         status: 200,
         body: {
           buildOperation: {
+            name: "projects/proj/locations/loc/operations/op123",
             metadata: {
               build: { id: "build-123" },
             },
@@ -682,9 +691,17 @@ describe("runv2", () => {
       });
       pollStub.callsFake(async (opts: any) => {
         if (opts.onPoll) {
-          opts.onPoll({ status: "FAILURE", statusDetail: "Buildpack compile error" });
+          opts.onPoll({
+            metadata: {
+              build: { status: "FAILURE", statusDetail: "Buildpack compile error" },
+            },
+          });
         }
-        return { status: "FAILURE", statusDetail: "Buildpack compile error" };
+        return {
+          metadata: {
+            build: { status: "FAILURE", statusDetail: "Buildpack compile error" },
+          },
+        };
       });
 
       const build: runv2.Build = {

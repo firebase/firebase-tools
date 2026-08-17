@@ -44,15 +44,11 @@ async function readdirRecursiveHelper(options: {
   const dirContents = readdirSync(options.path, { withFileTypes: true });
 
   let currentGitIgnoreStack = options.gitIgnoreStack || [];
-  // Load and stack directory-specific .gcloudignore or .gitignore rules if supportGitIgnore is enabled
+  // Load and stack directory-specific .gitignore rules if supportGitIgnore is enabled
   if (options.supportGitIgnore) {
-    const ignoreFileName = dirContents.find((n) => n.name === ".gcloudignore")?.isFile()
-      ? ".gcloudignore"
-      : dirContents.find((n) => n.name === ".gitignore")?.isFile()
-        ? ".gitignore"
-        : undefined;
-    if (ignoreFileName) {
-      const localIgnorePath = join(options.path, ignoreFileName);
+    const hasGitIgnore = dirContents.find((n) => n.name === ".gitignore")?.isFile();
+    if (hasGitIgnore) {
+      const localIgnorePath = join(options.path, ".gitignore");
       try {
         const lines = readFileSync(localIgnorePath)
           .toString()
@@ -68,7 +64,7 @@ async function readdirRecursiveHelper(options: {
           },
         ];
       } catch (e: unknown) {
-        logger.debug(`Error reading ${ignoreFileName} file at ${localIgnorePath}:`, e);
+        logger.debug(`Error reading .gitignore file at ${localIgnorePath}:`, e);
       }
     }
   }

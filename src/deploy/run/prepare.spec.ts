@@ -43,7 +43,7 @@ describe("run prepare", () => {
     const options = {
       project: "project",
       config: {
-        get: () => ({ serviceId: "my-service", region: "us-central1", source: "." }),
+        get: () => ({ serviceId: "my-service", region: "us-central1", rootDir: "." }),
         path: (p: string) => p,
       },
     } as unknown as Options;
@@ -66,7 +66,7 @@ describe("run prepare", () => {
     const options = {
       project: "project",
       config: {
-        get: () => ({ serviceId: "my-service", source: "." }),
+        get: () => ({ serviceId: "my-service", rootDir: "." }),
         path: (p: string) => p,
       },
     } as unknown as Options;
@@ -84,7 +84,7 @@ describe("run prepare", () => {
     const options = {
       project: "project",
       config: {
-        get: () => ({ serviceId: "mysvc", region: "us-central1", source: "." }),
+        get: () => ({ serviceId: "mysvc", region: "us-central1", rootDir: "." }),
         path: (p: string) => p,
       },
     } as unknown as Options;
@@ -112,7 +112,7 @@ describe("run prepare", () => {
         get: () => ({
           serviceId: "mysvc",
           region: "us-central1",
-          source: ".",
+          rootDir: ".",
         }),
         path: (p: string) => p,
       },
@@ -136,7 +136,7 @@ describe("run prepare", () => {
       project: "project",
       runtime: "nodejs22",
       config: {
-        get: () => ({ serviceId: "mysvc", region: "us-central1", source: "." }),
+        get: () => ({ serviceId: "mysvc", region: "us-central1", rootDir: "." }),
         path: (p: string) => p,
       },
     } as unknown as Options;
@@ -160,7 +160,7 @@ describe("run prepare", () => {
       project: "project",
       clearRuntime: true,
       config: {
-        get: () => ({ serviceId: "mysvc", region: "us-central1", source: "." }),
+        get: () => ({ serviceId: "mysvc", region: "us-central1", rootDir: "." }),
         path: (p: string) => p,
       },
     } as unknown as Options;
@@ -185,7 +185,7 @@ describe("run prepare", () => {
       runtime: "nodejs22",
       clearRuntime: true,
       config: {
-        get: () => ({ serviceId: "mysvc", region: "us-central1", source: "." }),
+        get: () => ({ serviceId: "mysvc", region: "us-central1", rootDir: "." }),
         path: (p: string) => p,
       },
     } as unknown as Options;
@@ -204,8 +204,8 @@ describe("run prepare", () => {
       only: "run:svc-2",
       config: {
         get: () => [
-          { serviceId: "svc-1", region: "us-central1", source: "." },
-          { serviceId: "svc-2", region: "us-east1", source: "." },
+          { serviceId: "svc-1", region: "us-central1", rootDir: "." },
+          { serviceId: "svc-2", region: "us-east1", rootDir: "." },
         ],
         path: (p: string) => p,
       },
@@ -227,8 +227,8 @@ describe("run prepare", () => {
       only: "run:non-existent",
       config: {
         get: () => [
-          { serviceId: "svc-1", region: "us-central1", source: "." },
-          { serviceId: "svc-2", region: "us-east1", source: "." },
+          { serviceId: "svc-1", region: "us-central1", rootDir: "." },
+          { serviceId: "svc-2", region: "us-east1", rootDir: "." },
         ],
         path: (p: string) => p,
       },
@@ -246,7 +246,7 @@ describe("run prepare", () => {
     const options = {
       project: "project",
       config: {
-        get: () => ({ serviceId: "", region: "us-central1", source: "." }),
+        get: () => ({ serviceId: "", region: "us-central1", rootDir: "." }),
         path: (p: string) => p,
       },
     } as unknown as Options;
@@ -263,7 +263,7 @@ describe("run prepare", () => {
     const options = {
       project: "project",
       config: {
-        get: () => ({ serviceId: "new-svc", region: "us-central1", source: "." }),
+        get: () => ({ serviceId: "new-svc", region: "us-central1", rootDir: "." }),
         path: (p: string) => p,
       },
     } as unknown as Options;
@@ -281,7 +281,7 @@ describe("run prepare", () => {
     const options = {
       project: "project",
       config: {
-        get: () => ({ serviceId: "new-svc", region: "us-central1", source: "." }),
+        get: () => ({ serviceId: "new-svc", region: "us-central1", rootDir: "." }),
         path: (p: string) => p,
       },
     } as unknown as Options;
@@ -298,8 +298,8 @@ describe("run prepare", () => {
       project: "project",
       config: {
         get: () => [
-          { serviceId: "svc-1", region: "us-central1", source: "." },
-          { serviceId: "svc-2", region: "us-east1", source: "." },
+          { serviceId: "svc-1", region: "us-central1", rootDir: "." },
+          { serviceId: "svc-2", region: "us-east1", rootDir: "." },
         ],
         path: (p: string) => p,
       },

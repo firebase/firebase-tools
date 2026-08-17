@@ -29,12 +29,11 @@ describe("init features run", () => {
   });
 
   describe("askQuestions", () => {
-    it("should prompt for serviceId, region, rootDir, and outputDir", async () => {
+    it("should prompt for serviceId, region, and rootDir", async () => {
       const inputStub = sandbox.stub(prompt, "input");
       inputStub.onFirstCall().resolves("custom-service");
       inputStub.onSecondCall().resolves("us-central1");
       inputStub.onThirdCall().resolves("./src");
-      inputStub.onCall(3).resolves("./dist");
 
       const setup = createMockSetup({ projectId: "test-project" });
       await runFeature.askQuestions(setup);
@@ -43,7 +42,6 @@ describe("init features run", () => {
         serviceId: "custom-service",
         region: "us-central1",
         rootDir: "./src",
-        outputDir: "./dist",
       });
     });
 
@@ -88,7 +86,6 @@ describe("init features run", () => {
             serviceId: "my-svc",
             region: "us-central1",
             rootDir: ".",
-            outputDir: ".run",
           },
         },
       });
@@ -112,7 +109,6 @@ describe("init features run", () => {
             serviceId: "my-svc",
             region: "us-central1",
             rootDir: ".",
-            outputDir: ".run",
           },
         },
       });
@@ -152,7 +148,6 @@ describe("init features run", () => {
             serviceId: "my-svc",
             region: "us-central1",
             rootDir: ".",
-            outputDir: ".run",
           },
         },
       });
@@ -177,13 +172,12 @@ describe("init features run", () => {
             serviceId: "second-svc",
             region: "us-central1",
             rootDir: "./app2",
-            outputDir: ".run",
           },
         },
       });
       const config = new Config(
         {
-          run: [{ serviceId: "first-svc", region: "us-central1", source: "./app1" }],
+          run: [{ serviceId: "first-svc", region: "us-central1", rootDir: "./app1" }],
         },
         {},
       );

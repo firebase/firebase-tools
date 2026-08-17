@@ -161,12 +161,12 @@ describe("artifactRegistry", () => {
     });
   });
 
-  describe("ensureRepository", () => {
+  describe("ensureRepositoryExists", () => {
     it("should return when repository already exists", async () => {
       const repo = { name: REPO_NAME, format: "DOCKER" };
       nock(artifactRegistryDomain()).get(`/${API_VERSION}/${REPO_NAME}`).reply(200, repo);
 
-      await artifactRegistry.ensureRepository(PROJECT_ID, REGION, REPO);
+      await artifactRegistry.ensureRepositoryExists(PROJECT_ID, REGION, REPO);
       expect(nock.isDone()).to.be.true;
     });
 
@@ -180,7 +180,7 @@ describe("artifactRegistry", () => {
         )
         .reply(200, { name: REPO_NAME, format: "DOCKER", done: true });
 
-      await artifactRegistry.ensureRepository(PROJECT_ID, REGION, REPO);
+      await artifactRegistry.ensureRepositoryExists(PROJECT_ID, REGION, REPO);
       expect(nock.isDone()).to.be.true;
     });
 
@@ -189,7 +189,8 @@ describe("artifactRegistry", () => {
         .get(`/${API_VERSION}/${REPO_NAME}`)
         .reply(403, { error: { message: "Permission Denied", status: 403 } });
 
-      await expect(artifactRegistry.ensureRepository(PROJECT_ID, REGION, REPO)).to.be.rejected;
+      await expect(artifactRegistry.ensureRepositoryExists(PROJECT_ID, REGION, REPO)).to.be
+        .rejected;
       expect(nock.isDone()).to.be.true;
     });
   });

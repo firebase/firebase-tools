@@ -1230,12 +1230,6 @@
                     },
                     "type": "array"
                 },
-                "output": {
-                    "type": "string"
-                },
-                "outputDir": {
-                    "type": "string"
-                },
                 "postdeploy": {
                     "anyOf": [
                         {
@@ -1262,9 +1256,6 @@
                         }
                     ]
                 },
-                "primary-region": {
-                    "type": "string"
-                },
                 "region": {
                     "type": "string"
                 },
@@ -1275,9 +1266,6 @@
                     "type": "string"
                 },
                 "serviceId": {
-                    "type": "string"
-                },
-                "source": {
                     "type": "string"
                 }
             },
