@@ -1,2 +1,1 @@
-- Fixed issues in the default TypeScript functions template.
-- Fix compilation error reporting in `dataconnect_build` MCP tool to filter out empty error strings and update the tool description to provide a structured format outlining prerequisites, usage, and examples.
+- Audited dependencies, remediated CVEs, and updated legacy URL parsing (DEP0169).

@@ -189,7 +189,8 @@ export function useFileLogger(logFile?: string): string {
       level: "debug",
       filename: logFileName,
       format: winston.format.printf((info) => {
-        const segments = [info.message, ...(info[SPLAT] || [])].map(tryStringify);
+        const splat = Array.isArray(info[SPLAT]) ? info[SPLAT] : [];
+        const segments = [info.message, ...splat].map(tryStringify);
         return `[${info.level}] ${stripVTControlCharacters(segments.join(" "))}`;
       }),
     }),
@@ -206,7 +207,8 @@ export function useConsoleLoggers(): void {
       new winston.transports.Console({
         level: "debug",
         format: winston.format.printf((info) => {
-          const segments = [info.message, ...(info[SPLAT] || [])].map(tryStringify);
+          const splat = Array.isArray(info[SPLAT]) ? info[SPLAT] : [];
+          const segments = [info.message, ...splat].map(tryStringify);
           return `${stripVTControlCharacters(segments.join(" "))}`;
         }),
       }),
@@ -215,11 +217,10 @@ export function useConsoleLoggers(): void {
     logger.add(
       new winston.transports.Console({
         level: "info",
-        format: winston.format.printf((info) =>
-          [info.message, ...(info[SPLAT] || [])]
-            .filter((chunk) => typeof chunk === "string")
-            .join(" "),
-        ),
+        format: winston.format.printf((info) => {
+          const splat = Array.isArray(info[SPLAT]) ? info[SPLAT] : [];
+          return [info.message, ...splat].filter((chunk) => typeof chunk === "string").join(" ");
+        }),
       }),
     );
   }

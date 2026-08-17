@@ -34,9 +34,9 @@ const PUBSUB_TOPIC = "test-topic";
 
 admin.initializeApp();
 
-exports.firestoreReaction = functions.firestore
-  .document(START_DOCUMENT_NAME)
-  .onWrite(async (/* change, ctx */) => {
+exports.firestoreReaction = functions.firestore.document(START_DOCUMENT_NAME).onWrite(async () =>
+  /* change, ctx */
+  {
     console.log(FIRESTORE_FUNCTION_LOG);
     /*
      * Write back a completion timestamp to the firestore emulator. The test
@@ -54,11 +54,12 @@ exports.firestoreReaction = functions.firestore
     await dbref.set({ done: new Date().toISOString() });
 
     return true;
-  });
+  },
+);
 
-exports.rtdbReaction = functions.database
-  .ref(START_DOCUMENT_NAME)
-  .onWrite(async (/* change, ctx */) => {
+exports.rtdbReaction = functions.database.ref(START_DOCUMENT_NAME).onWrite(async () =>
+  /* change, ctx */
+  {
     console.log(RTDB_FUNCTION_LOG);
 
     const ref = admin.database().ref(END_DOCUMENT_NAME + "_from_database");
@@ -68,7 +69,8 @@ exports.rtdbReaction = functions.database
     await firestoreref.set({ done: new Date().toISOString() });
 
     return true;
-  });
+  },
+);
 
 exports.pubsubReaction = functions.pubsub.topic(PUBSUB_TOPIC).onPublish((msg /* , ctx */) => {
   console.log(PUBSUB_FUNCTION_LOG);
