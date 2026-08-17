@@ -1,14 +1,12 @@
-import * as experiments from "../experiments";
 import * as sinon from "sinon";
-import * as client from "./client";
-import * as connect from "../gcp/cloudsql/connect";
 import * as cloudsqladmin from "../gcp/cloudsql/cloudsqladmin";
 import * as permissionsSetup from "../gcp/cloudsql/permissionsSetup";
 import { SchemaSetupStatus } from "../gcp/cloudsql/permissionsSetup";
-import { handleIncompatibleSchemaError } from "./schemaMigration";
+import * as experiments from "../experiments";
 import { expect } from "chai";
 import { serviceNameFromSchema, getIdentifiers } from "./schemaMigration";
-import { Schema } from "./types";
+import { Schema, Diff, IncompatibleSqlSchemaError } from "./types";
+import { Options } from "../options";
 
 describe("serviceNameFromSchema", () => {
   it("main schema", () => {
@@ -135,12 +133,97 @@ describe("getIdentifiers", () => {
 });
 
 import { performClientSidePreflightValidation } from "./schemaMigration";
-import * as sinon from "sinon";
+
 import * as logger from "../logger";
 
-import * as cloudsqladmin from "../gcp/cloudsql/cloudsqladmin";
-import * as permissionsSetup from "../gcp/cloudsql/permissionsSetup";
-import { SchemaSetupStatus } from "../gcp/cloudsql/permissionsSetup";
+describe("performClientSidePreflightValidation", () => {
+  let warnStub: sinon.SinonStub;
+
+  beforeEach(() => {
+    warnStub = sinon.stub(logger.logger, "warn");
+  });
+
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it("should not log warnings if there is no RISK_TAG_NEW_CONSTRAINT and no NOT NULL addition", async () => {
+    const diffs = [
+      {
+        sql: 'ALTER TABLE "public"."user" ADD COLUMN "age" INT',
+        description: "",
+        destructive: false,
+      },
+    ];
+    await performClientSidePreflightValidation(diffs as Diff[]);
+    expect(warnStub.called).to.be.false;
+  });
+
+  it("should warn if RISK_TAG_NEW_CONSTRAINT is present in diffs", async () => {
+    const diffs = [
+      {
+        sql: 'ALTER TABLE "public"."user" ADD COLUMN "name" TEXT NOT NULL',
+        description: "",
+        destructive: false,
+        riskTags: ["RISK_TAG_NEW_CONSTRAINT"],
+      },
+    ];
+    await performClientSidePreflightValidation(diffs as Diff[]);
+    expect(warnStub.called).to.be.true;
+    expect(warnStub.firstCall.args[1]).to.include(
+      "Detected new NOT NULL constraints on tables: user",
+    );
+  });
+
+  it("should warn if NOT NULL is detected via regex fallback even without risk tag", async () => {
+    const diffs = [
+      {
+        sql: 'ALTER TABLE "public"."post" ADD COLUMN "title" TEXT NOT NULL',
+        description: "",
+        destructive: false,
+      },
+    ];
+    await performClientSidePreflightValidation(diffs as Diff[]);
+    expect(warnStub.called).to.be.true;
+    expect(warnStub.firstCall.args[1]).to.include(
+      "Detected new NOT NULL constraints on tables: post",
+    );
+  });
+
+  it("should warn if ALTER COLUMN SET NOT NULL is detected", async () => {
+    const diffs = [
+      {
+        sql: 'ALTER TABLE "public"."post" ALTER COLUMN "title" SET NOT NULL',
+        description: "",
+        destructive: false,
+      },
+    ];
+    await performClientSidePreflightValidation(diffs as Diff[]);
+    expect(warnStub.called).to.be.true;
+    expect(warnStub.firstCall.args[1]).to.include(
+      "Detected new NOT NULL constraints on tables: post",
+    );
+  });
+
+  it("should NOT warn if a DEFAULT value is provided with NOT NULL", async () => {
+    const diffs = [
+      {
+        sql: 'ALTER TABLE "public"."post" ADD COLUMN "title" TEXT NOT NULL DEFAULT \'UNTITLED\'',
+        description: "",
+        destructive: false,
+      },
+    ];
+    await performClientSidePreflightValidation(diffs as Diff[]);
+    expect(warnStub.called).to.be.false;
+  });
+});
+
+import { handleIncompatibleSchemaError } from "./schemaMigration";
+import * as client from "./client";
+import * as connect from "../gcp/cloudsql/connect";
+
+
+
 
 describe("handleIncompatibleSchemaError", () => {
   let executeSchemaMigrationStub: sinon.SinonStub;
@@ -164,23 +247,23 @@ describe("handleIncompatibleSchemaError", () => {
     
   });
 
-  const schema: any = {
+  const schema = {
     name: "projects/p/locations/l/services/s/schemas/main",
-  };
+  } as Schema;
 
-  const incompatibleSchemaError: any = {
+  const incompatibleSchemaError = {
     diffs: [
       { sql: "CREATE TABLE a", destructive: false },
       { sql: "DROP TABLE b", destructive: true },
     ],
-  };
+  } as IncompatibleSqlSchemaError;
 
   it("should execute all commands via IAM user when fdcapimigration experiment is not enabled", async () => {
     isEnabledStub.withArgs("fdcapimigration").returns(false);
     await handleIncompatibleSchemaError({
       schema,
       incompatibleSchemaError,
-      options: {} as any,
+      options: {} as Options,
       instanceId: "instance",
       databaseId: "db",
       schemaName: "public",
@@ -203,7 +286,7 @@ describe("handleIncompatibleSchemaError", () => {
     await handleIncompatibleSchemaError({
       schema,
       incompatibleSchemaError,
-      options: {} as any,
+      options: {} as Options,
       instanceId: "instance",
       databaseId: "db",
       schemaName: "public",
@@ -222,7 +305,7 @@ describe("handleIncompatibleSchemaError", () => {
     await handleIncompatibleSchemaError({
       schema,
       incompatibleSchemaError,
-      options: {} as any,
+      options: {} as Options,
       instanceId: "instance",
       databaseId: "db",
       schemaName: "public",

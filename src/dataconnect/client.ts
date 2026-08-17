@@ -210,14 +210,14 @@ export async function upsertConnector(connector: types.Connector) {
 
 export async function executeSchemaMigration(
   serviceName: string,
-  diffs: types.Diff[]
+  diffs: types.Diff[],
 ): Promise<void> {
   const client = dataconnectClient();
   const op = await client.post<{ diffs: types.Diff[] }, { name: string }>(
     `${serviceName}/schemas/main:migrate`,
-    { diffs }
+    { diffs },
   );
-  
+
   await operationPoller.pollOperation<void>({
     apiOrigin: dataconnectOrigin(),
     apiVersion: DATACONNECT_API_VERSION,

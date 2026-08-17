@@ -303,7 +303,7 @@ export async function migrateSchema(args: {
           instanceId,
           schemaName,
           schema,
-        incompatibleSchemaError: incompatible,
+          incompatibleSchemaError: incompatible,
           choice: migrationMode,
         });
         diffs = diffs.concat(maybeDiffs);
@@ -454,6 +454,38 @@ function suggestedCommand(serviceName: string, invalidConnectorNames: string[]):
   return `firebase deploy --only ${onlys}`;
 }
 
+export async function performClientSidePreflightValidation(diffs: Diff[]) {
+  const hasNewConstraint = diffs.some(
+    (d) =>
+      d.riskTags?.includes("RISK_TAG_NEW_CONSTRAINT") ||
+      ((d.sql.includes("ADD COLUMN") || d.sql.includes("ALTER COLUMN")) &&
+        d.sql.includes("NOT NULL") &&
+        !d.sql.includes("DEFAULT")),
+  );
+
+  if (!hasNewConstraint) return;
+
+  logLabeledBullet("dataconnect", `Performing client-side pre-flight data validation...`);
+  const tableNames = new Set<string>();
+  for (const diff of diffs) {
+    const match = /ALTER TABLE "?([^"\\s]+)"?\.{1}"?([^"\\s]+)"? (ADD|ALTER) COLUMN/i.exec(diff.sql);
+    if (match) {
+      tableNames.add(match[2]);
+    }
+  }
+
+  if (tableNames.size === 0) return;
+
+  logLabeledWarning(
+    "dataconnect",
+    `Detected new NOT NULL constraints on tables: ${Array.from(tableNames).join(", ")}.`,
+  );
+  logLabeledWarning(
+    "dataconnect",
+    `If these tables contain data, the migration will crash during execution. Please ensure you have added a @default directive to your GraphQL schema.`,
+  );
+}
+
 export async function handleIncompatibleSchemaError(args: {
   schema: Schema;
   incompatibleSchemaError: IncompatibleSqlSchemaError;
@@ -463,7 +495,8 @@ export async function handleIncompatibleSchemaError(args: {
   schemaName: string;
   choice: "all" | "safe" | "none";
 }): Promise<Diff[]> {
-  const { schema, incompatibleSchemaError, options, instanceId, databaseId, schemaName, choice } = args;
+  const { schema, incompatibleSchemaError, options, instanceId, databaseId, schemaName, choice } =
+    args;
   const commandsToExecute = incompatibleSchemaError.diffs.filter((d) => {
     switch (choice) {
       case "all":
@@ -527,10 +560,13 @@ export async function handleIncompatibleSchemaError(args: {
     }
 
     if (commandsToExecuteByOwner.length) {
+      await performClientSidePreflightValidation(commandsToExecuteByOwner);
       if (experiments.isEnabled("fdcapimigration")) {
-        logLabeledBullet("dataconnect", `[EXPERIMENTAL] Delegating SQL execution to FDC Backend...`);
-        
-         
+        logLabeledBullet(
+          "dataconnect",
+          `[EXPERIMENTAL] Delegating SQL execution to FDC Backend...`,
+        );
+
         const serviceName = serviceNameFromSchema(schema);
         await executeSchemaMigration(serviceName, commandsToExecuteByOwner);
       } else {

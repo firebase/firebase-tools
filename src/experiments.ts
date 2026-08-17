@@ -60,7 +60,7 @@ export const ALL_EXPERIMENTS = experiments({
     fullDescription:
       "The Cloud Runtime Config API is deprecated. Enable this experiment to continue using the " +
       "`functions:config:*` commands while you migrate to the Firebase Functions params APIs.",
-    default: false,
+    default: true,
     public: true,
   },
   runfunctions: {
@@ -83,18 +83,18 @@ export const ALL_EXPERIMENTS = experiments({
       "decommissioned. This does not, by itself, allow you to deploy a function with a " +
       "decommissioned runtime, as there are server-side checks as well.",
     public: false,
-    default: false,
+    default: true,
   },
   dartfunctions: {
     shortDescription: "Enable Dart Functions.",
     public: true,
-    default: false,
+    default: true,
   },
   kits: {
     shortDescription: "Enable Functions Kits.",
     fullDescription: "Adds support for Function Kits.",
     public: false,
-    default: false,
+    default: true,
   },
 
   // Emulator experiments
@@ -168,7 +168,7 @@ export const ALL_EXPERIMENTS = experiments({
 
   apphostinglocalbuilds: {
     shortDescription: "Enable App Hosting local builds",
-    default: false,
+    default: true,
     public: false,
   },
 
@@ -196,7 +196,7 @@ export const ALL_EXPERIMENTS = experiments({
     shortDescription: "Adds experimental `apps:init` command.",
     fullDescription:
       "Adds experimental `apps:init` command. When run from an app directory, this command detects the app's platform and configures required files.",
-    default: false,
+    default: true,
     public: true,
   },
   mcp: {
@@ -206,7 +206,7 @@ export const ALL_EXPERIMENTS = experiments({
   },
   mcpalpha: {
     shortDescription: "Opt-in to early MCP features before they're widely released.",
-    default: false,
+    default: true,
     public: true,
   },
   mcpapps: {
@@ -235,13 +235,13 @@ export const ALL_EXPERIMENTS = experiments({
   },
   crashlyticsWeb: {
     shortDescription: "Enable the ability to upload source maps for web apps to Crashlytics.",
-    default: false,
+    default: true,
     public: true,
   },
   secretEnvParams: {
     shortDescription:
       "Enable writing the backing resource binding for a Functions secret param to .env",
-    default: false,
+    default: true,
     public: false,
   },
   extdeprecationwarnings: {
@@ -252,13 +252,13 @@ export const ALL_EXPERIMENTS = experiments({
   extMigrationFeatures: {
     shortDescription:
       "Enable features intended to assist with the migration of Extension instances to Kits.",
-    default: false,
+    default: true,
     public: false,
   },
   fdcapimigration: {
     shortDescription: "Enable the FDC API schema migration path.",
     fullDescription: "API based Schema Migration behind experimental flag.",
-    default: false,
+    default: true,
     public: false,
   },
 });
