@@ -1,2 +1,1 @@
-- Fixed issues in the default TypeScript functions template.
-- Fix compilation error reporting in `dataconnect_build` MCP tool to filter out empty error strings and update the tool description to provide a structured format outlining prerequisites, usage, and examples.
+- [Added] Loads existing `.env` files and passes environment variables to functions discovery in `runtimeDelegate`.
