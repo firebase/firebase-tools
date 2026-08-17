@@ -375,7 +375,7 @@ async function addInstanceToExistingKit(
 /**
  * Guides the user on configuring an existing instance for the active project.
  */
-async function promptExistingInstanceForProject(
+export async function promptExistingInstanceForProject(
   options: FunctionsKitsInstallOptions,
   existingKit: ValidatedKitSingle,
 ): Promise<void> {
@@ -384,8 +384,10 @@ async function promptExistingInstanceForProject(
     throw new FirebaseError(`Kit '${existingKit.kit}' has no instances configured.`);
   }
 
-  let selectedInstanceId = instanceIds[0];
-  if (instanceIds.length > 1 && !options.nonInteractive) {
+  let selectedInstanceId = "<instance-name>";
+  if (instanceIds.length === 1) {
+    selectedInstanceId = instanceIds[0];
+  } else if (!options.nonInteractive) {
     selectedInstanceId = await select<string>({
       message: "Which instance would you like to configure for this project?",
       choices: instanceIds.map((id) => ({ name: id, value: id })),

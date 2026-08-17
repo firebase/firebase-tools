@@ -15,6 +15,7 @@ import {
   extractExistingFunctionsInfo,
   addKitToConfig,
   buildAndInstallKit,
+  promptExistingInstanceForProject,
 } from "./functions-kits-install";
 import * as experiments from "../experiments";
 import * as initSpawn from "../init/spawn";
@@ -469,6 +470,89 @@ describe("functions:kits:install", () => {
       await expect(buildAndInstallKit("/abs/path", false)).to.be.rejectedWith(
         FirebaseError,
         /TypeScript build failed: tsc build error/,
+      );
+    });
+  });
+
+  describe("promptExistingInstanceForProject", () => {
+    it("should throw if kit has no instances configured", async () => {
+      const mockOptions = { project: "my-project" } as any;
+      const kit = {
+        kit: "my-kit",
+        instances: {},
+      } as unknown as ValidatedKitSingle;
+
+      await expect(promptExistingInstanceForProject(mockOptions, kit)).to.be.rejectedWith(
+        FirebaseError,
+        /Kit 'my-kit' has no instances configured\./,
+      );
+    });
+
+    it("should suggest deploy command directly when only one instance exists", async () => {
+      const selectStub = sinon.stub(prompt, "select");
+      const mockOptions = { project: "my-project" } as any;
+      const kit = {
+        kit: "my-kit",
+        instances: {
+          "inst-1": "function-kits/my-kit/config-inst-1",
+        },
+      } as unknown as ValidatedKitSingle;
+
+      await promptExistingInstanceForProject(mockOptions, kit);
+
+      expect(selectStub).to.not.have.been.called;
+      expect(loggerInfoStub).to.have.been.calledWith(
+        sinon.match(/functions:/),
+        sinon.match(/firebase deploy --only functions:inst-1 --project my-project/),
+      );
+    });
+
+    it("should prompt to select instance when multiple instances exist and nonInteractive is false", async () => {
+      const selectStub = sinon.stub(prompt, "select").resolves("inst-2");
+      const mockOptions = { project: "my-project", nonInteractive: false } as any;
+      const kit = {
+        kit: "my-kit",
+        instances: {
+          "inst-1": "function-kits/my-kit/config-inst-1",
+          "inst-2": "function-kits/my-kit/config-inst-2",
+        },
+      } as unknown as ValidatedKitSingle;
+
+      await promptExistingInstanceForProject(mockOptions, kit);
+
+      expect(selectStub).to.have.been.calledOnce;
+      expect(selectStub).to.have.been.calledWith(
+        sinon.match({
+          message: "Which instance would you like to configure for this project?",
+          choices: [
+            { name: "inst-1", value: "inst-1" },
+            { name: "inst-2", value: "inst-2" },
+          ],
+        }),
+      );
+      expect(loggerInfoStub).to.have.been.calledWith(
+        sinon.match(/functions:/),
+        sinon.match(/firebase deploy --only functions:inst-2 --project my-project/),
+      );
+    });
+
+    it("should suggest deploy command with instance placeholder when multiple instances exist and nonInteractive is true", async () => {
+      const selectStub = sinon.stub(prompt, "select");
+      const mockOptions = { project: "my-project", nonInteractive: true } as any;
+      const kit = {
+        kit: "my-kit",
+        instances: {
+          "inst-1": "function-kits/my-kit/config-inst-1",
+          "inst-2": "function-kits/my-kit/config-inst-2",
+        },
+      } as unknown as ValidatedKitSingle;
+
+      await promptExistingInstanceForProject(mockOptions, kit);
+
+      expect(selectStub).to.not.have.been.called;
+      expect(loggerInfoStub).to.have.been.calledWith(
+        sinon.match(/functions:/),
+        sinon.match(/firebase deploy --only functions:<instance-name> --project my-project/),
       );
     });
   });
