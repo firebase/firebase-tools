@@ -99,7 +99,7 @@ if [[ $VERSION == "preview" ]]; then
   INITIAL_VERSION=$(jq -r ".version" package.json)
   PREFIX=${INITIAL_VERSION%.*}
   echo "Checking registry for existing preview versions with prefix ${PREFIX}..."
-  MATCHING_VERSIONS=$(npm view firebase-tools versions --registry https://wombat-dressing-room.appspot.com --json | jq -r 'if type == "array" then .[] else . end | select(startswith("'"$PREFIX"'."))' || true)
+  MATCHING_VERSIONS=$(npm view firebase-tools versions --registry https://wombat-dressing-room.appspot.com --json | jq -r --arg prefix "$PREFIX" 'if type == "array" then .[] else . end | select(startswith($prefix + "."))' || true)
   if [[ -n "$MATCHING_VERSIONS" ]]; then
     MAX_SUFFIX=$(echo "$MATCHING_VERSIONS" | sed 's/^.*\.//' | grep -E '^[0-9]+$' | sort -n | tail -n 1)
     MAX_SUFFIX=${MAX_SUFFIX:-0}
