@@ -115,14 +115,14 @@ describe("validate", () => {
   });
 
   describe("taskQueueFunctionNamesAreValid", () => {
-    const ENDPOINT_BASE = {
+    const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
       platform: "gcfv2",
       id: "id",
       region: "us-east1",
       project: "project",
       entryPoint: "id",
       runtime: "nodejs16",
-    } as const;
+    };
 
     it("should not throw on hyphenated task queue function names", () => {
       const endpoints: backend.Endpoint[] = [
