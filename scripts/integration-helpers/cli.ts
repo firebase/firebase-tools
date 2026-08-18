@@ -86,7 +86,10 @@ export class CLIProcess {
         p.once("exit", () => resolve());
       });
 
-      const timeoutPromise = new Promise<void>((resolve) => setTimeout(resolve, 2000));
+      let timeoutId: NodeJS.Timeout;
+      const timeoutPromise = new Promise<void>((resolve) => {
+        timeoutId = setTimeout(resolve, 2000);
+      });
 
       try {
         execSync(`taskkill /pid ${p.pid} /T /F`);
@@ -95,6 +98,7 @@ export class CLIProcess {
       }
 
       return Promise.race([exitPromise, timeoutPromise]).then(() => {
+        clearTimeout(timeoutId);
         this.process = undefined;
       });
     }

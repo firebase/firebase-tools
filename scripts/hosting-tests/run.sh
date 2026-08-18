@@ -53,13 +53,13 @@ echo "Initialized temp directory."
 function kill_port() {
   local PORT_NUM="$1"
   if command -v lsof &> /dev/null; then
-    local pids=$(lsof -t -i:"$PORT_NUM" 2>/dev/null || true)
+    local pids=$(lsof -t -sTCP:LISTEN -i:"$PORT_NUM" 2>/dev/null || true)
     if [ -n "$pids" ]; then
       kill -9 $pids 2>/dev/null || true
     fi
   fi
   if command -v netstat &> /dev/null; then
-    local pids=$(netstat -ano | grep ":$PORT_NUM " | awk '{print $5}' | sort -u || true)
+    local pids=$(netstat -ano | awk -v port=":$PORT_NUM" '$2 ~ port"$" && $4 == "LISTENING" {print $5}' | sort -u || true)
     for p in $pids; do
       if [ "$p" != "0" ] && [ -n "$p" ]; then
         taskkill //pid "$p" //T //F 2>/dev/null || true

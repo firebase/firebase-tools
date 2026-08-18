@@ -123,7 +123,11 @@ const extractEntriesFromBuffer = async (data: Buffer, outputDir: string): Promis
   }
 };
 
-function isChildDir(parentDir: string, potentialChild: string): boolean {
+/**
+ * Validates whether potentialChild is a strict subdirectory or descendant file of parentDir.
+ * Protects against Zip Slip directory traversal vulnerabilities.
+ */
+export function isChildDir(parentDir: string, potentialChild: string): boolean {
   try {
     // 1. Resolve and normalize both paths to absolute paths
     const resolvedParent = path.resolve(parentDir);
@@ -136,17 +140,14 @@ function isChildDir(parentDir: string, potentialChild: string): boolean {
     if (process.platform === "win32") {
       const lowerParent = resolvedParent.toLowerCase();
       const lowerChild = resolvedChild.toLowerCase();
-      return (
-        (lowerChild.startsWith(lowerParent + path.sep) || lowerChild.startsWith(lowerParent)) &&
-        lowerChild !== lowerParent
-      );
+      const parentWithSep = lowerParent.endsWith(path.sep) ? lowerParent : lowerParent + path.sep;
+      return lowerChild.startsWith(parentWithSep) && lowerChild !== lowerParent;
     }
-    // The child path must start with the parent path and not be the same path.
-    return (
-      (resolvedChild.startsWith(resolvedParent + path.sep) ||
-        resolvedChild.startsWith(resolvedParent)) &&
-      resolvedChild !== resolvedParent
-    );
+    // The child path must start with the parent path with separator and not be the same path.
+    const parentWithSep = resolvedParent.endsWith(path.sep)
+      ? resolvedParent
+      : resolvedParent + path.sep;
+    return resolvedChild.startsWith(parentWithSep) && resolvedChild !== resolvedParent;
   } catch (error) {
     // If either path does not exist, an error will be thrown.
     // In this case, the potential child cannot be a subdirectory.

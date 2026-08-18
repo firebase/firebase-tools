@@ -299,6 +299,9 @@ jobs:
           - node-version: "24.18"
             script: "npm run test:functions-discover"
     steps:
+      # Exclude workspace and npm caches from Windows Defender real-time scanning.
+      # Windows Defender locks files during rapid disk operations (npm ci, binary/emulator extraction),
+      # which causes intermittent EPERM errors and test runner deadlocks on Windows runners.
       - name: Disable Windows Defender for workspace
         run: Set-MpPreference -ExclusionPath @("${{ github.workspace }}", "$env:LocalAppData\npm-cache", "$env:AppData\npm")
         shell: powershell
