@@ -101,7 +101,8 @@ if [[ $VERSION == "preview" ]]; then
   echo "Checking registry for existing preview versions with prefix ${PREFIX}..."
   MATCHING_VERSIONS=$(npm view firebase-tools versions --registry https://wombat-dressing-room.appspot.com --json | jq -r 'if type == "array" then .[] else . end | select(startswith("'"$PREFIX"'."))' || true)
   if [[ -n "$MATCHING_VERSIONS" ]]; then
-    MAX_SUFFIX=$(echo "$MATCHING_VERSIONS" | sed "s/^${PREFIX}\.//" | sort -n | tail -n 1)
+    MAX_SUFFIX=$(echo "$MATCHING_VERSIONS" | sed 's/^.*\.//' | grep -E '^[0-9]+$' | sort -n | tail -n 1)
+    MAX_SUFFIX=${MAX_SUFFIX:-0}
     NEXT_SUFFIX=$((MAX_SUFFIX + 1))
     NEW_VERSION="${PREFIX}.${NEXT_SUFFIX}"
     echo "Found existing preview versions. Bumping to ${NEW_VERSION}..."
