@@ -148,7 +148,7 @@ describe("handleIncompatibleSchemaError", () => {
       .stub(permissionsSetup, "getSchemaMetadata")
       .resolves({ setupStatus: SchemaSetupStatus.GreenField } as permissionsSetup.SchemaMetadata);
     sinon.stub(permissionsSetup, "checkSQLRoleIsGranted").resolves(true);
-    sinon.stub(connect, "getIAMUser").resolves({ user: "test-user", mode: "IAM" });
+    sinon.stub(connect, "getIAMUser").resolves({ user: "test-user", mode: "CLOUD_IAM_USER" });
     isEnabledStub = sinon.stub(experiments, "isEnabled").returns(false);
   });
 
