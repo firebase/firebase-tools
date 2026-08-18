@@ -599,7 +599,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       emulatableBackend.runtime = runtimeDelegate.runtime;
       emulatableBackend.bin = runtimeDelegate.bin;
 
-      // Don't include user envs when parsing triggers. Do include user envs when resolving parameter values
       const firebaseConfig = this.getFirebaseConfig();
       const environment = {
         ...this.getSystemEnvs(),
@@ -616,7 +615,10 @@ export class FunctionsEmulator implements EmulatorInstance {
         projectDir: this.args.projectDir,
       };
       const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
-      const discoveredBuild = await runtimeDelegate.discoverBuild(runtimeConfig, environment);
+      const discoveredBuild = await runtimeDelegate.discoverBuild(runtimeConfig, {
+        ...userEnvs,
+        ...environment,
+      });
       if (discoveredBuild.extensions && this.args.extensionsEmulator) {
         await this.args.extensionsEmulator.addDynamicExtensions(
           emulatableBackend.codebase,
