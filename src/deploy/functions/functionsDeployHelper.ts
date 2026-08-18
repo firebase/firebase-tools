@@ -248,3 +248,70 @@ export function isCodebaseFiltered(codebase: string, filters: EndpointFilter[]):
 export function isEndpointFiltered(endpoint: backend.Endpoint, filters: EndpointFilter[]): boolean {
   return filters.some((filter) => endpointMatchesFilter(endpoint, filter));
 }
+
+/**
+ * Parses raw CLI filter strings for functions:delete into EndpointFilter objects.
+ *
+ * When a user passes an unqualified target (e.g. 'myFunc' without a ':' prefix),
+ * parseFunctionSelector defaults the codebase to 'default' unless it matches an active
+ * codebase name. For functions:delete, an unqualified function name should match that
+ * function ID across ANY active codebase rather than restricting to 'default'.
+ * Therefore, when a filter has no ':' prefix and is scoped to 'default' by default,
+ * we remove the codebase restriction so it matches globally by ID.
+ */
+export function parseDeleteFilters(filters: string[], activeCodebases: string[]): EndpointFilter[] {
+  const liveCodebasesConfig = activeCodebases.map((codebase) => ({ source: "", codebase }));
+  return filters.flatMap((f) => {
+    const parsed = parseFunctionSelector(f, liveCodebasesConfig);
+    return parsed.map((filter) =>
+      !f.includes(":") && filter.codebase === DEFAULT_CODEBASE && filter.idChunks
+        ? { idChunks: filter.idChunks }
+        : filter,
+    );
+  });
+}
+
+export interface CodebaseCollision {
+  filter: string;
+  codebase: string;
+  functionLabel: string;
+  workaroundCommand: string;
+}
+
+/**
+ * Detects name collisions between active codebase names and existing function IDs or groups.
+ *
+ * When a user targets a name (e.g. 'api'), if that name matches BOTH an active codebase
+ * and a live function ID or function group prefix ('api-func'), codebase deletion takes
+ * precedence by design. We warn the user about the collision and provide the explicit
+ * '<codebase>:<name>' workaround syntax to delete the function instead.
+ */
+export function detectCodebaseAndIdCollisions(
+  filters: string[],
+  activeCodebases: string[],
+  allEndpoints: backend.Endpoint[],
+  defaultCodebase = DEFAULT_CODEBASE,
+): CodebaseCollision[] {
+  const collisions: CodebaseCollision[] = [];
+  for (const f of filters) {
+    // If the filter is explicitly codebase-scoped ('codebase:func') or doesn't match an active
+    // codebase name, there can be no codebase vs function ID name collision.
+    if (f.includes(":") || !activeCodebases.includes(f)) {
+      continue;
+    }
+    // This filter DOES match an active codebase name. If it ALSO matches an existing function ID
+    // or function group prefix (e.g. 'group-func'), a name collision exists.
+    const matchingEndpoints = allEndpoints.filter((ep) => ep.id === f || ep.id.startsWith(`${f}-`));
+    if (matchingEndpoints.length > 0) {
+      const ep = matchingEndpoints[0];
+      const prefix = ep.codebase || defaultCodebase;
+      collisions.push({
+        filter: f,
+        codebase: prefix,
+        functionLabel: getFunctionLabel(ep),
+        workaroundCommand: `firebase functions:delete ${prefix}:${f}`,
+      });
+    }
+  }
+  return collisions;
+}

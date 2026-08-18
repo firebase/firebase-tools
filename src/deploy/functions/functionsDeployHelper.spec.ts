@@ -574,4 +574,72 @@ describe("functionsDeployHelper", () => {
       }
     });
   });
+
+  describe("parseDeleteFilters", () => {
+    it("should return codebase filter when target matches an active codebase", () => {
+      const result = helper.parseDeleteFilters(["myCodebase"], ["default", "myCodebase"]);
+      expect(result).to.deep.equal([{ codebase: "myCodebase" }]);
+    });
+
+    it("should strip default codebase restriction for unqualified function name so it matches globally", () => {
+      const result = helper.parseDeleteFilters(["myFunc"], ["default", "myCodebase"]);
+      expect(result).to.deep.equal([{ idChunks: ["myFunc"] }]);
+    });
+
+    it("should retain codebase restriction when explicitly qualified with colon", () => {
+      const result = helper.parseDeleteFilters(["default:myFunc"], ["default", "myCodebase"]);
+      expect(result).to.deep.equal([{ codebase: "default", idChunks: ["myFunc"] }]);
+    });
+  });
+
+  describe("detectCodebaseAndIdCollisions", () => {
+    const ep1: backend.Endpoint = {
+      ...ENDPOINT,
+      id: "api",
+      codebase: "default",
+    };
+    const ep2: backend.Endpoint = {
+      ...ENDPOINT,
+      id: "api-func",
+      codebase: "python-cb",
+    };
+
+    it("should detect exact ID collision between codebase name and endpoint id", () => {
+      const collisions = helper.detectCodebaseAndIdCollisions(["api"], ["default", "api"], [ep1]);
+      expect(collisions).to.have.lengthOf(1);
+      expect(collisions[0]).to.deep.include({
+        filter: "api",
+        codebase: "default",
+        workaroundCommand: "firebase functions:delete default:api",
+      });
+    });
+
+    it("should detect group prefix collision between codebase name and endpoint id", () => {
+      const collisions = helper.detectCodebaseAndIdCollisions(
+        ["api"],
+        ["default", "api", "python-cb"],
+        [ep2],
+      );
+      expect(collisions).to.have.lengthOf(1);
+      expect(collisions[0]).to.deep.include({
+        filter: "api",
+        codebase: "python-cb",
+        workaroundCommand: "firebase functions:delete python-cb:api",
+      });
+    });
+
+    it("should return empty when filter is qualified with colon", () => {
+      const collisions = helper.detectCodebaseAndIdCollisions(
+        ["default:api"],
+        ["default", "api"],
+        [ep1],
+      );
+      expect(collisions).to.be.empty;
+    });
+
+    it("should return empty when filter is not an active codebase", () => {
+      const collisions = helper.detectCodebaseAndIdCollisions(["nonCodebase"], ["default"], [ep1]);
+      expect(collisions).to.be.empty;
+    });
+  });
 });

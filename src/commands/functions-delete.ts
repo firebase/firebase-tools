@@ -61,18 +61,7 @@ export const command = new Command("functions:delete [filters...]")
           .map((ep) => ep.codebase || projectConfig.DEFAULT_CODEBASE),
       ),
     ];
-    const liveCodebasesConfig = activeCodebases.map((codebase) => ({ source: "", codebase }));
-
-    const parsedFilters = filters.flatMap((f) => {
-      const parsed = helper.parseFunctionSelector(f, liveCodebasesConfig);
-      return parsed.map((filter) =>
-        !f.includes(":") && filter.codebase === projectConfig.DEFAULT_CODEBASE && filter.idChunks
-          ? { idChunks: filter.idChunks }
-          : filter,
-      );
-    });
-
-    context.filters = parsedFilters;
+    context.filters = helper.parseDeleteFilters(filters, activeCodebases);
 
     const plan = await planner.createDeploymentPlan({
       wantBackend: backend.empty(),
@@ -97,26 +86,20 @@ export const command = new Command("functions:delete [filters...]")
     // Inform the user when a name collision exists between a codebase name and a function name.
     // Codebase deletion takes precedence by design, but we provide the explicit '<codebase>:<name>' workaround.
     const allEndpoints = backend.allEndpoints(existingBackend);
-    for (const f of filters) {
-      if (f.includes(":") || !activeCodebases.includes(f)) {
-        continue;
-      }
-      const matchingEndpoints = allEndpoints.filter(
-        (ep) => ep.id === f || ep.id.startsWith(`${f}-`),
+    const collisions = helper.detectCodebaseAndIdCollisions(
+      filters,
+      activeCodebases,
+      allEndpoints,
+      projectConfig.DEFAULT_CODEBASE,
+    );
+    for (const c of collisions) {
+      utils.logLabeledBullet(
+        "functions",
+        `Target '${clc.bold(c.filter)}' matches both a codebase and a function (${
+          c.functionLabel
+        }). Codebase deletion takes precedence. ` +
+          `(To delete the function instead, run: ${clc.bold(c.workaroundCommand)})`,
       );
-      if (matchingEndpoints.length > 0) {
-        const ep = matchingEndpoints[0];
-        const prefix = ep.codebase || projectConfig.DEFAULT_CODEBASE;
-        utils.logLabeledBullet(
-          "functions",
-          `Target '${clc.bold(f)}' matches both a codebase and a function (${helper.getFunctionLabel(
-            ep,
-          )}). Codebase deletion takes precedence. ` +
-            `(To delete the function instead, run: ${clc.bold(
-              `firebase functions:delete ${prefix}:${f}`,
-            )})`,
-        );
-      }
     }
 
     const deleteList = allEpToDelete.map((func) => `\t${helper.getFunctionLabel(func)}`).join("\n");
