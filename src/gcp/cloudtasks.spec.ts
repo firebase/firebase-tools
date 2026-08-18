@@ -45,7 +45,7 @@ describe("CloudTasks", () => {
       expect(cloudtasks.isValidQueueId("MyQueue")).to.be.true;
     });
 
-    it("rejects empty and over-long ids", () => {
+    it("rejects ids that are empty or too long", () => {
       expect(cloudtasks.isValidQueueId("")).to.be.false;
       expect(cloudtasks.isValidQueueId("a".repeat(100))).to.be.true;
       expect(cloudtasks.isValidQueueId("a".repeat(101))).to.be.false;
