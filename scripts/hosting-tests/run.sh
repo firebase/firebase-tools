@@ -148,8 +148,8 @@ mkdir "public"
 touch "public/${TARGET_FILE}"
 echo "${DATE}" > "public/${TARGET_FILE}"
 echo "Setting targets..."
-firebase use "${FBTOOLS_TARGET_PROJECT}"
-firebase target:apply hosting customtarget "${FBTOOLS_TARGET_PROJECT}"
+firebase use "${FBTOOLS_TARGET_PROJECT}" --alias default
+firebase target:apply hosting customtarget "${FBTOOLS_TARGET_PROJECT}" --project "${FBTOOLS_TARGET_PROJECT}"
 echo "Set targets."
 echo "Initialized second temp directory."
 

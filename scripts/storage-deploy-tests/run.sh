@@ -64,8 +64,8 @@ cat > "firebase.json" <<- EOM
   ]
 }
 EOM
-firebase use "${FBTOOLS_TARGET_PROJECT}"
-firebase target:apply storage storage-target "${FBTOOLS_TARGET_PROJECT}.appspot.com"
+firebase use "${FBTOOLS_TARGET_PROJECT}" --alias default
+firebase target:apply storage storage-target "${FBTOOLS_TARGET_PROJECT}.appspot.com" --project "${FBTOOLS_TARGET_PROJECT}"
 echo "Updated config for targets."
 
 echo "Testing storage deployment with invalid target..."
