@@ -95,8 +95,13 @@ echo "Ran tests."
 if [[ $VERSION == "preview" ]]; then
   echo "Making a preview version..."
   sanitized_branch=$(echo "$BRANCH" | sed 's/[^a-zA-Z0-9]/-/g')
-  npm version prerelease --preid=${sanitized_branch}
-  NEW_VERSION=$(jq -r ".version" package.json)
+  npm version prerelease --preid=${sanitized_branch} --no-git-tag-version
+  INITIAL_VERSION=$(jq -r ".version" package.json)
+  PREFIX=${INITIAL_VERSION%.*}
+  COMMIT_SHA=$(git rev-parse --short=6 HEAD)
+  NEW_VERSION="${PREFIX}-${COMMIT_SHA}"
+  echo "Setting preview version to ${NEW_VERSION}..."
+  npm version "${NEW_VERSION}" --no-git-tag-version --allow-same-version
   echo "Made a preview version."
 else
   echo "Making a $VERSION version..."
