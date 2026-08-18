@@ -33,12 +33,6 @@ export const command = new Command("functions:delete [filters...]")
       return utils.reject("Must supply at least function or group name.");
     }
 
-    // Normalize project configuration to discover all registered codebases.
-    // Gracefully fall back to an empty configuration if running outside a Firebase directory or without functions.
-    // Parse filters using parseFunctionSelector for 1:1 syntax parity with `firebase deploy --only functions:...`.
-    const config = options.config?.src?.functions
-      ? projectConfig.normalizeAndValidate(options.config.src.functions)
-      : [];
     const context: args.Context = {
       projectId: needProjectId(options),
       filters: [],
@@ -58,18 +52,19 @@ export const command = new Command("functions:delete [filters...]")
       );
     }
 
-    // Discover all codebases defined in configuration OR active in existing prod backend.
+    // Discover all active codebases directly from live endpoints in prod backend.
+    // If a codebase is not live in prod, there is nothing to delete.
     const activeCodebases = [
-      ...new Set([
-        ...helper.getCodebasesFromConfig(config),
-        ...backend
+      ...new Set(
+        backend
           .allEndpoints(existingBackend)
           .map((ep) => ep.codebase || projectConfig.DEFAULT_CODEBASE),
-      ]),
+      ),
     ];
+    const liveCodebasesConfig = activeCodebases.map((codebase) => ({ source: "", codebase }));
 
     const parsedFilters = filters.flatMap((f) => {
-      const parsed = helper.parseFunctionSelector(f, config);
+      const parsed = helper.parseFunctionSelector(f, liveCodebasesConfig);
       return parsed.map((filter) =>
         !f.includes(":") && filter.codebase === projectConfig.DEFAULT_CODEBASE && filter.idChunks
           ? { idChunks: filter.idChunks }
