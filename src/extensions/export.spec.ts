@@ -1,8 +1,9 @@
 import { expect } from "chai";
 
-import { parameterizeProject, setSecretParamsToLatest } from "./export";
+import { functionsEnvFromInstance, parameterizeProject, setSecretParamsToLatest } from "./export";
 import { DeploymentInstanceSpec } from "../deploy/extensions/planner";
 import { ParamType } from "./types";
+import { ExtensionInstance } from "./types";
 
 describe("ext:export helpers", () => {
   describe("parameterizeProject", () => {
@@ -116,5 +117,218 @@ describe("ext:export helpers", () => {
         expect(res.params["notSecret"]).to.equal(t.params["notSecret"]);
       });
     }
+  });
+});
+
+describe("functionsEnvFromInstance", () => {
+  it("empty baseline", () => {
+    const instance: ExtensionInstance = {
+      name: "",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      config: {
+        name: "",
+        createTime: "",
+        params: {},
+        systemParams: {},
+        source: {
+          name: "",
+          state: "ACTIVE",
+          packageUri: "",
+          hash: "",
+          spec: {
+            name: "",
+            version: "1",
+            resources: [],
+            params: [],
+            systemParams: [],
+          },
+        },
+      },
+    };
+    const output = functionsEnvFromInstance(instance);
+    expect(output).to.deep.equal({});
+  });
+
+  it("user-defined params", () => {
+    const instance: ExtensionInstance = {
+      name: "",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      config: {
+        name: "",
+        createTime: "",
+        params: {
+          foo: "foo",
+          PASSWORD: "projects/1234/secrets/PASSWORD/versions/latest",
+        },
+        systemParams: {},
+        source: {
+          name: "",
+          state: "ACTIVE",
+          packageUri: "",
+          hash: "",
+          spec: {
+            name: "",
+            version: "1",
+            resources: [],
+            params: [
+              {
+                param: "foo",
+                label: "present in live params",
+              },
+              {
+                param: "bar",
+                label: "absent, has default",
+                default: "bar",
+              },
+              {
+                param: "baz",
+                label: "absent, no default",
+              },
+              {
+                type: ParamType.SECRET,
+                param: "PASSWORD",
+                label: "gcp secret binding",
+              },
+            ],
+            systemParams: [],
+          },
+        },
+      },
+    };
+    const output = functionsEnvFromInstance(instance);
+    expect(output).to.deep.equal({
+      foo: "foo",
+      bar: "bar",
+      baz: "",
+      FIREBASE_SECRET_REF_PASSWORD: "projects/1234/secrets/PASSWORD/versions/latest",
+    });
+  });
+
+  it("system params", () => {
+    const instance: ExtensionInstance = {
+      name: "",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      config: {
+        name: "",
+        createTime: "",
+        params: {},
+        systemParams: {
+          "firebaseextensions.v1beta.function/memory": "256",
+        },
+        source: {
+          name: "",
+          state: "ACTIVE",
+          packageUri: "",
+          hash: "",
+          spec: {
+            name: "",
+            version: "1",
+            resources: [],
+            params: [],
+            systemParams: [
+              // memory doesn't have to be in the source's system params to be written
+              {
+                param: "firebaseextensions.v1beta.function/minInstances",
+                label: "not in live, but has default",
+                default: "10",
+              },
+            ],
+          },
+        },
+      },
+    };
+    const output = functionsEnvFromInstance(instance);
+    expect(output).to.deep.equal({
+      EXT_MIGRATED_SYSTEM_MEMORY: "256",
+      EXT_MIGRATED_SYSTEM_MININSTANCES: "10",
+    });
+  });
+
+  it("system params (v2 functions)", () => {
+    const instance: ExtensionInstance = {
+      name: "",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      config: {
+        name: "",
+        createTime: "",
+        params: {},
+        systemParams: {
+          "firebaseextensions.v1beta.v2function/memory": "256",
+        },
+        source: {
+          name: "",
+          state: "ACTIVE",
+          packageUri: "",
+          hash: "",
+          spec: {
+            name: "",
+            version: "1",
+            resources: [],
+            params: [],
+            systemParams: [
+              // memory doesn't have to be in the source's system params to be written
+              {
+                param: "firebaseextensions.v1beta.v2function/minInstances",
+                label: "not in live, but has default",
+                default: "10",
+              },
+            ],
+          },
+        },
+      },
+    };
+    const output = functionsEnvFromInstance(instance);
+    expect(output).to.deep.equal({
+      EXT_MIGRATED_SYSTEM_MEMORY: "256",
+      EXT_MIGRATED_SYSTEM_MININSTANCES: "10",
+    });
+  });
+
+  it("eventarc special cases", () => {
+    const instance: ExtensionInstance = {
+      name: "",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      config: {
+        name: "",
+        createTime: "",
+        params: {},
+        systemParams: {},
+        allowedEventTypes: ["firebase.extensions.storage-resize-images.v1.complete"],
+        eventarcChannel: "projects/1234/locations/us-west1/channels/firebase",
+        source: {
+          name: "",
+          state: "ACTIVE",
+          packageUri: "",
+          hash: "",
+          spec: {
+            name: "",
+            version: "1",
+            resources: [],
+            params: [],
+            systemParams: [],
+          },
+        },
+      },
+    };
+    const output = functionsEnvFromInstance(instance);
+    expect(output).to.deep.equal({
+      EXT_SELECTED_EVENTS: "firebase.extensions.storage-resize-images.v1.complete",
+      EVENTARC_CHANNEL: "projects/1234/locations/us-west1/channels/firebase",
+    });
   });
 });
