@@ -1019,4 +1019,40 @@ FOO=foo
       });
     });
   });
+
+  describe("hasProjectEnv", () => {
+    let tmpDir: string;
+
+    beforeEach(() => {
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "firebase-env-test-"));
+    });
+
+    afterEach(() => {
+      rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    it("should return false if neither projectId nor projectAlias is provided", () => {
+      expect(env.hasProjectEnv(tmpDir)).to.be.false;
+    });
+
+    it("should return false if directory does not exist", () => {
+      expect(env.hasProjectEnv(path.join(tmpDir, "nonexistent"), "my-project")).to.be.false;
+    });
+
+    it("should return true when .env.<projectId> exists", () => {
+      fs.writeFileSync(path.join(tmpDir, ".env.my-project"), "FOO=bar");
+      expect(env.hasProjectEnv(tmpDir, "my-project")).to.be.true;
+    });
+
+    it("should return true when .env.<projectAlias> exists", () => {
+      fs.writeFileSync(path.join(tmpDir, ".env.staging"), "FOO=bar");
+      expect(env.hasProjectEnv(tmpDir, "my-project", "staging")).to.be.true;
+    });
+
+    it("should return false when only other dotenv files exist", () => {
+      fs.writeFileSync(path.join(tmpDir, ".env"), "FOO=bar");
+      fs.writeFileSync(path.join(tmpDir, ".env.other"), "FOO=bar");
+      expect(env.hasProjectEnv(tmpDir, "my-project", "staging")).to.be.false;
+    });
+  });
 });
