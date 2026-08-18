@@ -4,9 +4,6 @@ FROM node:20
 RUN apt-get update && \
     apt-get install -y wget tar curl
 
-# Install apple-codesign (rcodesign) for signing and stitching macOS binaries on Linux
-RUN curl -fsSL https://github.com/indygreg/apple-platform-rs/releases/download/apple-codesign%2F0.29.0/apple-codesign-0.29.0-x86_64-unknown-linux-musl.tar.gz | tar -xz --strip-components=1 -C /usr/local/bin apple-codesign-0.29.0-x86_64-unknown-linux-musl/rcodesign
-
 # Install hub
 RUN curl -fsSL --output hub.tgz https://github.com/github/hub/releases/download/v2.11.2/hub-linux-amd64-2.11.2.tgz
 RUN tar --strip-components=2 -C /usr/bin -xf hub.tgz hub-linux-amd64-2.11.2/bin/hub

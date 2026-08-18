@@ -123,39 +123,6 @@ function extractZip(zipPath, destDir) {
   }
 }
 
-const RCODESIGN_VERSION = "0.29.0";
-
-async function ensureRcodesignTool(tempDir) {
-  // Check if rcodesign is in PATH
-  try {
-    execSync("rcodesign --version", { stdio: "ignore" });
-    return "rcodesign";
-  } catch (e) {}
-
-  const localRcodesign = path.join(tempDir, "rcodesign");
-  if (fs.existsSync(localRcodesign)) {
-    return localRcodesign;
-  }
-
-  // Download rcodesign binary for Linux or macOS
-  const platform = process.platform === "darwin" ? "apple-darwin" : "unknown-linux-musl";
-  const arch = process.arch === "arm64" ? "aarch64" : "x86_64";
-  const archiveName = `apple-codesign-${RCODESIGN_VERSION}-${arch}-${platform}.tar.gz`;
-  const url = `https://github.com/indygreg/apple-platform-rs/releases/download/apple-codesign%2F${RCODESIGN_VERSION}/${archiveName}`;
-  const destTar = path.join(tempDir, archiveName);
-
-  console.log(`[build-sea] Downloading rcodesign tool from ${url}...`);
-  try {
-    await downloadFile(url, destTar);
-    execSync(`tar -xzf "${destTar}" -C "${tempDir}" --strip-components=1`, { stdio: "ignore" });
-    fs.chmodSync(localRcodesign, 0o755);
-    return localRcodesign;
-  } catch (err) {
-    console.warn(`[build-sea] Warning: Could not download rcodesign: ${err.message}`);
-    return undefined;
-  }
-}
-
 async function main() {
   const args = process.argv.slice(2);
   const currentOnly = args.includes("--current-only");
@@ -382,29 +349,15 @@ async function main() {
       fs.chmodSync(outputBinaryPath, 0o755);
     } catch (e) {}
 
-    // Sign macOS binaries
-    if (target.platform === "darwin") {
-      if (process.platform === "darwin") {
-        try {
-          console.log(`[build-sea] Signing ${outputBinaryName} with codesign...`);
-          execSync(`codesign --sign - --force "${outputBinaryPath}"`, { stdio: "inherit" });
-        } catch (err) {
-          console.warn(
-            `[build-sea] Warning: codesign failed for ${outputBinaryName}: ${err.message}`
-          );
-        }
-      } else {
-        const rcodesignTool = await ensureRcodesignTool(tempDownloadsDir);
-        if (rcodesignTool) {
-          try {
-            console.log(`[build-sea] Signing ${outputBinaryName} with rcodesign...`);
-            execSync(`"${rcodesignTool}" sign "${outputBinaryPath}"`, { stdio: "inherit" });
-          } catch (err) {
-            console.warn(
-              `[build-sea] Warning: rcodesign failed for ${outputBinaryName}: ${err.message}`
-            );
-          }
-        }
+    // Sign macOS binaries (native codesign on macOS only)
+    if (target.platform === "darwin" && process.platform === "darwin") {
+      try {
+        console.log(`[build-sea] Signing ${outputBinaryName} with codesign...`);
+        execSync(`codesign --sign - --force "${outputBinaryPath}"`, { stdio: "inherit" });
+      } catch (err) {
+        console.warn(
+          `[build-sea] Warning: codesign failed for ${outputBinaryName}: ${err.message}`
+        );
       }
     }
   }
@@ -426,27 +379,12 @@ async function main() {
         console.log(`[build-sea] Created and signed Universal binary: ${macUniversalBin}`);
       } catch (err) {
         console.warn(`[build-sea] Warning: Failed to create lipo universal binary: ${err.message}`);
-      }
-    } else {
-      const rcodesignTool = await ensureRcodesignTool(tempDownloadsDir);
-      if (rcodesignTool) {
-        try {
-          execSync(
-            `"${rcodesignTool}" macho-universal-create --output "${macUniversalBin}" "${macArm64Bin}" "${macX64Bin}"`,
-            { stdio: "inherit" }
-          );
-          execSync(`"${rcodesignTool}" sign "${macUniversalBin}"`, { stdio: "inherit" });
-          fs.chmodSync(macUniversalBin, 0o755);
-          console.log(`[build-sea] Created and signed Universal binary with rcodesign: ${macUniversalBin}`);
-        } catch (err) {
-          console.warn(`[build-sea] Warning: rcodesign macho-universal-create failed: ${err.message}`);
-          fs.copyFileSync(macArm64Bin, macUniversalBin);
-          fs.chmodSync(macUniversalBin, 0o755);
-        }
-      } else {
         fs.copyFileSync(macArm64Bin, macUniversalBin);
         fs.chmodSync(macUniversalBin, 0o755);
       }
+    } else {
+      fs.copyFileSync(macArm64Bin, macUniversalBin);
+      fs.chmodSync(macUniversalBin, 0o755);
     }
   } else if (fs.existsSync(macArm64Bin) && !fs.existsSync(macUniversalBin)) {
     fs.copyFileSync(macArm64Bin, macUniversalBin);
