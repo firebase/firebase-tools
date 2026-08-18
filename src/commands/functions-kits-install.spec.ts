@@ -689,7 +689,7 @@ describe("functions:kits:install", () => {
       });
 
       const indexContent = writtenFiles[
-        "function-kits/firestore-bigquery-export/src/index.ts"
+        "function-kits/firestore-bigquery-export/source/src/index.ts"
       ] as string;
       expect(indexContent).to.be.a("string");
       expect(indexContent).to.include("EXT_MIGRATED_SYSTEM_MEMORY");
@@ -726,7 +726,7 @@ describe("functions:kits:install", () => {
       });
 
       const indexContent = writtenFiles[
-        "function-kits/firestore-bigquery-export/src/index.ts"
+        "function-kits/firestore-bigquery-export/source/src/index.ts"
       ] as string;
       expect(indexContent).to.be.a("string");
       expect(indexContent).to.include("maxInstances: 10");
@@ -765,16 +765,16 @@ describe("functions:kits:install", () => {
       expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
         "npm",
         ["install"],
-        "/mock/project/function-kits/firestore-bigquery-export",
+        "/mock/project/function-kits/firestore-bigquery-export/source",
       );
       expect(wrapSpawnStub.secondCall).to.have.been.calledWith(
         "npm",
         ["run", "build"],
-        "/mock/project/function-kits/firestore-bigquery-export",
+        "/mock/project/function-kits/firestore-bigquery-export/source",
       );
 
       const pkgJsonResult = writtenFiles[
-        "function-kits/firestore-bigquery-export/package.json"
+        "function-kits/firestore-bigquery-export/source/package.json"
       ] as { name?: string; dependencies?: Record<string, string> };
       expect(pkgJsonResult.name).to.equal("firestore-bigquery-export-wrapper");
       expect(pkgJsonResult.dependencies).to.have.property(
@@ -782,11 +782,11 @@ describe("functions:kits:install", () => {
         "1.0.0",
       );
 
-      expect(writtenFiles["function-kits/firestore-bigquery-export/src/index.ts"]).to.be.a(
+      expect(writtenFiles["function-kits/firestore-bigquery-export/source/src/index.ts"]).to.be.a(
         "string",
       );
       expect(
-        writtenFiles["function-kits/firestore-bigquery-export/src/index.ts"] as string,
+        writtenFiles["function-kits/firestore-bigquery-export/source/src/index.ts"] as string,
       ).to.include('export * from "@firebase-functions-kits/firestore-bigquery-export";');
 
       expect(writtenFiles["firebase.json"]).to.deep.equal({
@@ -796,7 +796,7 @@ describe("functions:kits:install", () => {
             sourcePackage: {
               name: "@firebase-functions-kits/firestore-bigquery-export",
             },
-            source: "function-kits/firestore-bigquery-export",
+            source: "function-kits/firestore-bigquery-export/source",
             instances: {
               "firestore-bigquery-export":
                 "function-kits/firestore-bigquery-export/config-firestore-bigquery-export",
@@ -808,7 +808,7 @@ describe("functions:kits:install", () => {
 
       expect(loggerInfoStub).to.have.been.calledWith(
         sinon.match(/functions:/),
-        sinon.match(/Function kit firestore-bigquery-export successfully installed\./),
+        sinon.match(/Function kit .*firestore-bigquery-export.* successfully installed\./),
       );
     });
 
@@ -844,7 +844,7 @@ describe("functions:kits:install", () => {
       expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
         "npm",
         ["install"],
-        "/mock/project/function-kits/my-custom-kit",
+        "/mock/project/function-kits/my-custom-kit/source",
       );
 
       expect(writtenFiles["firebase.json"]).to.deep.equal({
@@ -854,7 +854,7 @@ describe("functions:kits:install", () => {
             sourcePackage: {
               name: "@firebase-functions-kits/firestore-bigquery-export",
             },
-            source: "function-kits/my-custom-kit",
+            source: "function-kits/my-custom-kit/source",
             instances: {
               "my-instance": "function-kits/my-custom-kit/config-my-instance",
             },
@@ -886,12 +886,12 @@ describe("functions:kits:install", () => {
       expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
         "npm",
         ["install", "--ignore-scripts"],
-        "/mock/project/function-kits/custom-kit",
+        "/mock/project/function-kits/custom-kit/source",
       );
       expect(wrapSpawnStub.secondCall).to.have.been.calledWith(
         "npm",
         ["run", "build"],
-        "/mock/project/function-kits/custom-kit",
+        "/mock/project/function-kits/custom-kit/source",
       );
     });
 
