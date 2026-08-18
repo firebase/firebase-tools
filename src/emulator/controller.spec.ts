@@ -1,3 +1,5 @@
+import * as fs from "fs";
+import * as sinon from "sinon";
 import { Emulators } from "./types";
 import { EmulatorRegistry } from "./registry";
 import { expect } from "chai";
@@ -10,6 +12,7 @@ function createMockOptions(
   configValues: { [key: string]: any },
 ): Options {
   const config = {
+    projectDir: ".",
     get: (key: string) => configValues[key],
     has: (key: string) => !!configValues[key],
     src: {
@@ -20,6 +23,7 @@ function createMockOptions(
   return {
     only,
     config,
+    cwd: process.cwd(),
     project: "test-project",
   } as any;
 }
@@ -102,6 +106,33 @@ describe("EmulatorController", () => {
         functions: {}, // Config is present, but no source
       });
       expect(shouldStart(options, Emulators.FUNCTIONS)).to.be.false;
+    });
+
+    it("should not start apphosting emulator if start command is not set and no lockfile exists", () => {
+      const options = createMockOptions("apphosting", {
+        apphosting: { rootDirectory: "./nonexistent-dir" },
+      });
+      expect(shouldStart(options, Emulators.APPHOSTING)).to.be.false;
+    });
+
+    it("should start apphosting emulator if startCommand is configured", () => {
+      const options = createMockOptions("apphosting", {
+        apphosting: { startCommand: "npm run dev" },
+      });
+      expect(shouldStart(options, Emulators.APPHOSTING)).to.be.true;
+    });
+
+    it("should start apphosting emulator if start command is not set but lockfile is present", () => {
+      const existsStub = sinon.stub(fs, "existsSync");
+      existsStub.withArgs(sinon.match(/package-lock\.json/)).returns(true);
+      try {
+        const options = createMockOptions("apphosting", {
+          apphosting: { rootDirectory: "./my-app" },
+        });
+        expect(shouldStart(options, Emulators.APPHOSTING)).to.be.true;
+      } finally {
+        existsStub.restore();
+      }
     });
   });
 }).timeout(2000);
