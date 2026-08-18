@@ -99,4 +99,32 @@ describe("deploy tool", () => {
 
     expect(updateJobSpy.calledWith(jobId, { status: "failed", error: "Deploy error" })).to.be.true;
   });
+
+  it("should not create a job if resolveOptions fails", async () => {
+    const createJobSpy = sandbox.spy(jobTracker, "createJob");
+    const rc = new RC(undefined, { projects: { default: "test-project" } });
+    const config = new Config({}, { cwd: "/test-dir" });
+    sandbox.stub(server, "resolveOptions").rejects(new Error("Config resolution error"));
+
+    const ctx: McpContext = {
+      projectId: "test-project",
+      host: server,
+      accountEmail: "test@example.com",
+      rc,
+      config,
+      firebaseCliCommand: "firebase",
+      isBillingEnabled: true,
+    };
+
+    let err: Error | undefined;
+    try {
+      await deploy.fn({ only: "hosting" }, ctx);
+    } catch (e: unknown) {
+      err = e instanceof Error ? e : new Error(String(e));
+    }
+
+    expect(err).to.exist;
+    expect(err?.message).to.equal("Config resolution error");
+    expect(createJobSpy.called).to.be.false;
+  });
 });
