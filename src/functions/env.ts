@@ -275,6 +275,22 @@ export function hasUserEnvs(opts: UserEnvsOpts): boolean {
 }
 
 /**
+ * Checks if a directory contains a project-specific dotenv file (.env.<projectId> or .env.<projectAlias>).
+ */
+export function hasProjectEnv(dir: string, projectId?: string, projectAlias?: string): boolean {
+  if (!projectId && !projectAlias) {
+    return false;
+  }
+  if (!fs.existsSync(dir)) {
+    return false;
+  }
+  return (
+    (!!projectId && fs.existsSync(path.join(dir, `.env.${projectId}`))) ||
+    (!!projectAlias && fs.existsSync(path.join(dir, `.env.${projectAlias}`)))
+  );
+}
+
+/**
  * Write new environment variables into a dotenv file.
  *
  * Identifies one and only one dotenv file to touch using the same rules as loadUserEnvs().
