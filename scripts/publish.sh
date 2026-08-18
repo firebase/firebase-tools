@@ -16,8 +16,8 @@ BRANCH=$2
 if [[ $VERSION == "" ]]; then
   printusage
   exit 1
-elif [[ $VERSION == "artifactsOnly" ]]; then
-  echo "Skipping npm package publish since VERSION is artifactsOnly."
+elif [[ $VERSION == "artifactsOnly" || $VERSION == "firepitOnly" || $VERSION == "dockerOnly" ]]; then
+  echo "Skipping npm package publish since VERSION is $VERSION."
   exit 0
 elif [[ $VERSION == "preview" ]]; then
   if [[ $BRANCH == "" ]]; then

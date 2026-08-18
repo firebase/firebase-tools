@@ -95,6 +95,32 @@ steps:
     entrypoint: "bash"
     args: ["-c", "mkdir -vp ~/.config && cp -v hub ~/.config/hub"]
 
+  # Determine version number for artifactsOnly, firepitOnly, or dockerOnly modes.
+  - name: "gcr.io/$PROJECT_ID/package-builder"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        if [[ "${_VERSION}" == "artifactsOnly" || "${_VERSION}" == "firepitOnly" || "${_VERSION}" == "dockerOnly" ]]; then
+          if [[ -n "${_VERSION_NUMBER}" ]]; then
+            echo "${_VERSION_NUMBER}" > /workspace/version_number.txt
+          else
+            npm view firebase-tools version > /workspace/version_number.txt
+          fi
+          VERSION_NUM=$(cat /workspace/version_number.txt)
+          echo "Using version number: $VERSION_NUM"
+
+          # Update the package-lock.json for the docker image to use the target version
+          DOCKER_DIR="./firebase-docker-image"
+          if [[ ! -d "$DOCKER_DIR" ]]; then
+            DOCKER_DIR="./scripts/publish/firebase-docker-image"
+          fi
+          if [[ ! -d "$DOCKER_DIR" ]]; then
+            DOCKER_DIR="./firebase-tools/scripts/publish/firebase-docker-image"
+          fi
+          npm --prefix "$DOCKER_DIR" install firebase-tools@$VERSION_NUM
+        fi
+
   # Publish the package.
   - name: "gcr.io/$PROJECT_ID/package-builder"
     dir: "${_REPOSITORY_NAME}"
@@ -102,10 +128,14 @@ steps:
     args:
       - -c
       - |
-        if [ "${_VERSION}" == "preview" ]; then
-          ./scripts/publish.sh "${_VERSION}" "${_BRANCH}"
+        if [[ "${_VERSION}" == "patch" || "${_VERSION}" == "minor" || "${_VERSION}" == "major" || "${_VERSION}" == "preview" ]]; then
+          if [ "${_VERSION}" == "preview" ]; then
+            ./scripts/publish.sh "${_VERSION}" "${_BRANCH}"
+          else
+            GITHUB_TOKEN=$(cat ~/.config/hub) ./scripts/publish.sh "${_VERSION}"
+          fi
         else
-          GITHUB_TOKEN=$(cat ~/.config/hub) ./scripts/publish.sh "${_VERSION}"
+          echo "Skipping package publish step for ${_VERSION} mode."
         fi
     env:
       - "REPOSITORY_ORG=${_REPOSITORY_ORG}"
@@ -117,22 +147,26 @@ steps:
     args:
       - "-c"
       - |
-        echo "Waiting for firebase-tools@$(cat /workspace/version_number.txt) to be available on npm..."
-        timeout=300
-        elapsed=0
-        interval=15
-        until npm install --dry-run "firebase-tools@$(cat /workspace/version_number.txt)" > /dev/null 2>&1; do
-          if [ $$elapsed -ge $$timeout ]; then
-            echo "Timeout waiting for package."
-            exit 1
-          fi
-          echo "Still waiting..."
-          sleep $$interval
-          elapsed=$$((elapsed + interval))
-        done
-        echo "Sleeping for 60 seconds to ensure propagation..." 
-        sleep 60
-        echo "Package firebase-tools@$(cat /workspace/version_number.txt) is now available on npm."
+        if [[ "${_VERSION}" == "patch" || "${_VERSION}" == "minor" || "${_VERSION}" == "major" || "${_VERSION}" == "preview" ]]; then
+          echo "Waiting for firebase-tools@$(cat /workspace/version_number.txt) to be available on npm..."
+          timeout=300
+          elapsed=0
+          interval=15
+          until npm install --dry-run "firebase-tools@$(cat /workspace/version_number.txt)" > /dev/null 2>&1; do
+            if [ $$elapsed -ge $$timeout ]; then
+              echo "Timeout waiting for package."
+              exit 1
+            fi
+            echo "Still waiting..."
+            sleep $$interval
+            elapsed=$$((elapsed + interval))
+          done
+          echo "Sleeping for 60 seconds to ensure propagation..." 
+          sleep 60
+          echo "Package firebase-tools@$(cat /workspace/version_number.txt) is now available on npm."
+        else
+          echo "Skipping wait for npm package step for ${_VERSION} mode."
+        fi
 
   # Set up the hub and npm credentials for firepit-builder.
   - name: "gcr.io/$PROJECT_ID/firepit-builder"
@@ -140,11 +174,11 @@ steps:
     args:
       - "-c"
       - |
-        if [ "${_VERSION}" != "preview" ]; then
+        if [[ "${_VERSION}" == "patch" || "${_VERSION}" == "minor" || "${_VERSION}" == "major" || "${_VERSION}" == "artifactsOnly" || "${_VERSION}" == "firepitOnly" ]]; then
           mkdir -vp ~/.config && cp -v hub ~/.config/hub
           cp -v npmrc ~/.npmrc
         else
-          echo "Skipping credentials for firepit-builder for preview."
+          echo "Skipping credentials for firepit-builder for ${_VERSION} mode."
         fi
 
   # Publish the firepit builds.
@@ -153,11 +187,11 @@ steps:
     args:
       - "-c"
       - |
-        if [ "${_VERSION}" != "preview" ]; then
+        if [[ "${_VERSION}" == "patch" || "${_VERSION}" == "minor" || "${_VERSION}" == "major" || "${_VERSION}" == "artifactsOnly" || "${_VERSION}" == "firepitOnly" ]]; then
           GITHUB_TOKEN=$(cat ~/.config/hub) node /usr/src/app/pipeline.js --package=firebase-tools@$(cat /workspace/version_number.txt) --publish
           echo "Please review the draft release notes at https://github.com/${_REPOSITORY_ORG}/${_REPOSITORY_NAME}/releases. If it looks good, publish it"
         else
-          echo "Skipping firepit build for preview version."
+          echo "Skipping firepit build for ${_VERSION} mode."
         fi
 
   # Tag the previous version of the docker image
@@ -166,7 +200,7 @@ steps:
     args:
       - "-c"
       - |
-        if [ "${_VERSION}" != "preview" ]; then
+        if [[ "${_VERSION}" == "patch" || "${_VERSION}" == "minor" || "${_VERSION}" == "major" || "${_VERSION}" == "artifactsOnly" || "${_VERSION}" == "dockerOnly" ]]; then
           IMAGE_NAME="us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase"
           TAGS=$(gcloud container images list-tags $${IMAGE_NAME} --filter="tags:latest" --format="value(tags)")
           echo "Tags for latest: $${TAGS}"
@@ -178,7 +212,7 @@ steps:
             echo "Could not detect previous version tag. Skipping tagging."
           fi
         else
-          echo "Skipping for preview version."
+          echo "Skipping docker tagging step for ${_VERSION} mode."
         fi
 
   # Publish the Firebase docker image
@@ -187,20 +221,20 @@ steps:
     args:
       - "-c"
       - |
-        if [ "${_VERSION}" != "preview" ]; then
+        if [[ "${_VERSION}" == "patch" || "${_VERSION}" == "minor" || "${_VERSION}" == "major" || "${_VERSION}" == "artifactsOnly" || "${_VERSION}" == "dockerOnly" ]]; then
           set -e
           VERSION_NUM="$$(cat /workspace/version_number.txt)"
           REPO="us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase"
           docker build -t "$${REPO}:$${VERSION_NUM}" -t "$${REPO}:latest" -f ./firebase-docker-image/Dockerfile ./firebase-docker-image
           docker push "$${REPO}:$${VERSION_NUM}"
         else
-          echo "Skipping docker build for preview version."
+          echo "Skipping docker build step for ${_VERSION} mode."
         fi
 
 images:
   - "us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase"
 
-timeout: 1200s # 20 minutes
+timeout: 3600s # 60 minutes
 
 options:
   volumes:
@@ -210,6 +244,7 @@ options:
 substitutions:
   _VERSION: ""
   _BRANCH: ""
+  _VERSION_NUMBER: ""
   _KEY_RING: "cloud-build-ring"
   _KEY_NAME: "publish"
   _REPOSITORY_ORG: "firebase"
