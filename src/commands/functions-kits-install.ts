@@ -7,7 +7,7 @@ import { Command } from "../command";
 import { FirebaseError, getErrMsg } from "../error";
 import { KitFunctionConfig, FunctionsConfig } from "../firebaseConfig";
 import { getProjectId } from "../projectUtils";
-import { logLabeledBullet, logLabeledSuccess } from "../utils";
+import { logLabeledBullet, logLabeledSuccess, logLabeledWarning } from "../utils";
 
 import {
   isKitConfig,
@@ -306,19 +306,17 @@ export async function promptSecurityConfirmation(
 ): Promise<boolean> {
   const isThirdParty = isThirdPartyPackage(packageName);
   if (isThirdParty) {
-    logger.warn(
-      clc.yellow(
-        `Warning: Package ${clc.bold(packageName)} is a third-party kit (outside the @firebase-functions-kits scope).`,
-      ),
+    logLabeledWarning(
+      "functions",
+      `Package ${clc.bold(packageName)} is a third-party kit (outside the @firebase-functions-kits scope).`,
     );
   }
 
   const hasShrinkwrap = await self.checkPackageHasShrinkwrap(rawPkgName);
   if (!hasShrinkwrap) {
-    logger.warn(
-      clc.yellow(
-        `Warning: Package ${clc.bold(packageName)} does not have an npm-shrinkwrap.json file. npm-shrinkwrap guarantees that you deploy the same version of dependencies that the publisher tested against. Since this kit does not have an npm-shrinkwrap, it is possible that deploys or updates may introduce bugs or vulnerabilities in newer dependency versions that the publisher did not test against.`,
-      ),
+    logLabeledWarning(
+      "functions",
+      `Package ${clc.bold(packageName)} does not have an npm-shrinkwrap.json file. npm-shrinkwrap guarantees that you deploy the same version of dependencies that the publisher tested against. Since this kit does not have an npm-shrinkwrap, it is possible that deploys or updates may introduce bugs or vulnerabilities in newer dependency versions that the publisher did not test against.`,
     );
   }
 
@@ -535,7 +533,7 @@ export async function scaffoldKitFiles(
   version?: string,
   templateType: TemplateType = DEFAULT_TEMPLATE,
 ): Promise<ScaffoldedKitPaths> {
-  const sourcePath = path.join(FUNCTION_KITS_DIR, kitId);
+  const sourcePath = path.join(FUNCTION_KITS_DIR, kitId, "source");
   const configDirPath = path.join(FUNCTION_KITS_DIR, kitId, `config-${instanceId}`);
 
   const absSourcePath = config.path(sourcePath);
@@ -560,14 +558,14 @@ export async function buildAndInstallKit(
   isThirdParty: boolean,
 ): Promise<void> {
   const installArgs = isThirdParty ? ["install", "--ignore-scripts"] : ["install"];
-  logger.info(clc.bold(`Running npm ${installArgs.join(" ")}...`));
+  logLabeledBullet("functions", `Running npm ${installArgs.join(" ")}...`);
   try {
     await wrapSpawn("npm", installArgs, absSourcePath);
   } catch (err: unknown) {
     throw new FirebaseError(`NPM install failed: ${getErrMsg(err)}`);
   }
 
-  logger.info(clc.bold("Building TypeScript source..."));
+  logLabeledBullet("functions", "Building TypeScript source...");
   try {
     await wrapSpawn("npm", ["run", "build"], absSourcePath);
   } catch (err: unknown) {
@@ -686,5 +684,5 @@ export const command = new Command("functions:kits:install")
 
     addKitToConfig(options.config, kitId, instanceId, packageName, sourcePath, configDirPath);
 
-    logger.info(clc.green(`✔ Function kit ${clc.bold(kitId)} successfully installed.`));
+    logLabeledSuccess("functions", `Function kit ${clc.bold(kitId)} successfully installed.`);
   });
