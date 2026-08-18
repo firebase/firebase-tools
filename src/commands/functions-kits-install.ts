@@ -533,7 +533,7 @@ export async function scaffoldKitFiles(
   version?: string,
   templateType: TemplateType = DEFAULT_TEMPLATE,
 ): Promise<ScaffoldedKitPaths> {
-  const sourcePath = path.join(FUNCTION_KITS_DIR, kitId);
+  const sourcePath = path.join(FUNCTION_KITS_DIR, kitId, "source");
   const configDirPath = path.join(FUNCTION_KITS_DIR, kitId, `config-${instanceId}`);
 
   const absSourcePath = config.path(sourcePath);
