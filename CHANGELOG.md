@@ -4,3 +4,5 @@
 - Added extensions replacement registry and scraper tool to track migrations for deprecated extensions ahead of the March 2027 decommission date.
 - Load existing `.env` files and passes environment variables to functions discovery in `runtimeDelegate`.
 - Adds --immediate flag to ext:uninstall (#10921)
+- Updated the Firebase SQL Connect local toolkit to v3.4.18, which includes the following changes:
+  - Updated the Golang dependency version to 1.25.13.
