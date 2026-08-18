@@ -4,7 +4,8 @@ CWD="$(pwd)"
 
 source scripts/set-default-credentials.sh
 
-TARGET_FILE="${COMMIT_SHA}-${CI_JOB_ID}.txt"
+RUN_SUFFIX="${GITHUB_RUN_NUMBER:-$RANDOM}-${RUNNER_OS:-linux}-${RANDOM}"
+TARGET_FILE="${COMMIT_SHA}-${RUN_SUFFIX}.txt"
 
 echo "Running in ${CWD}"
 echo "Running with node: $(which node)"
@@ -105,7 +106,7 @@ kill_port "5000"
 echo "Tested local hosting emulator."
 
 echo "Testing hosting deployment..."
-firebase hosting:channel:deploy --non-interactive --expires 1h --project "${FBTOOLS_TARGET_PROJECT}" --json "${GITHUB_RUN_NUMBER}" | tee channeldeploy.json
+firebase hosting:channel:deploy --non-interactive --expires 1h --project "${FBTOOLS_TARGET_PROJECT}" --json "channel-${RUN_SUFFIX}" | tee channeldeploy.json
 URL=$(cat channeldeploy.json | jq -r ".result.\"${FBTOOLS_TARGET_PROJECT}\".url")
 sleep 12
 VALUE="$(curl $URL/${TARGET_FILE})"
@@ -161,7 +162,7 @@ echo "Initialized second temp directory."
 # echo "Tested hosting deployment by target."
 
 echo "Testing hosting channel deployment by target..."
-firebase hosting:channel:deploy "targetchannel-${GITHUB_RUN_NUMBER}" --only customtarget --project "${FBTOOLS_TARGET_PROJECT}" --non-interactive --json | tee output.json
+firebase hosting:channel:deploy "targetchannel-${RUN_SUFFIX}" --only customtarget --project "${FBTOOLS_TARGET_PROJECT}" --non-interactive --json | tee output.json
 CHANNEL_URL=$(cat output.json | jq -r ".result.customtarget.url")
 sleep 12
 VALUE="$(curl ${CHANNEL_URL}/${TARGET_FILE})"

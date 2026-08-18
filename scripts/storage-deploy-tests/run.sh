@@ -4,7 +4,8 @@ CWD="$(pwd)"
 
 source scripts/set-default-credentials.sh
 
-TARGET_FILE="${COMMIT_SHA}-${CI_JOB_ID}.txt"
+RUN_SUFFIX="${GITHUB_RUN_NUMBER:-$RANDOM}-${RUNNER_OS:-linux}-${RANDOM}"
+TARGET_FILE="${COMMIT_SHA}-${RUN_SUFFIX}.txt"
 
 echo "Running in ${CWD}"
 echo "Running with node: $(which node)"
