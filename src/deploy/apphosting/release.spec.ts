@@ -20,8 +20,6 @@ const BASE_OPTS = {
 };
 
 describe("apphosting", () => {
-  let orchestrateRolloutStub: sinon.SinonStub;
-
   afterEach(() => {
     sinon.verifyAndRestore();
   });
@@ -62,7 +60,7 @@ describe("apphosting", () => {
         backendLocalBuilds: {},
       };
 
-      orchestrateRolloutStub = sinon
+      const orchestrateRolloutStub = sinon
         .stub(rollout, "orchestrateRollout")
         .throws("Unexpected orchestrateRollout call");
 

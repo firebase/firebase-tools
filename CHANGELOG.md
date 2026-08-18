@@ -2,4 +2,3 @@
 - [Added] Loads existing `.env` files and passes environment variables to functions discovery in `runtimeDelegate`.
 - Adds --immediate flag to ext:uninstall (#10921)
 - [Fixed] Increases default polling timeout for App Hosting operations and rollouts to 60 minutes.
-
