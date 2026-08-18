@@ -26,25 +26,15 @@ export function getStorageRulesConfig(
   const storageConfig = options.config.data.storage;
   const storageLogger = EmulatorLogger.forEmulator(Emulators.STORAGE);
   if (!storageConfig) {
-    if (Constants.isDemoProject(projectId)) {
-      storageLogger.logLabeled(
-        "BULLET",
-        "storage",
-        `Detected demo project ID "${projectId}", using a default (open) rules configuration.`,
-      );
-      return defaultStorageRules();
-    }
-    throw new FirebaseError(
-      "Cannot start the Storage emulator without rules file specified in firebase.json: run 'firebase init' and set up your Storage configuration",
-    );
+    logDefaultRulesWarning(projectId, storageLogger);
+    return defaultStorageRules();
   }
 
   // No target specified
   if (!Array.isArray(storageConfig)) {
     if (!storageConfig.rules) {
-      throw new FirebaseError(
-        "Cannot start the Storage emulator without rules file specified in firebase.json: run 'firebase init' and set up your Storage configuration",
-      );
+      logDefaultRulesWarning(projectId, storageLogger);
+      return defaultStorageRules();
     }
 
     return getSourceFile(storageConfig.rules, options);
@@ -58,17 +48,21 @@ export function getStorageRulesConfig(
     }
     const targets = rc.target(projectId, "storage", targetConfig.target);
     if (targets.length === 0) {
-      // Fall back to open if this is a demo project
+      // Fall back to open if this is a demo project or targets are missing
       if (Constants.isDemoProject(projectId)) {
         storageLogger.logLabeled(
           "BULLET",
           "storage",
           `Detected demo project ID "${projectId}", using a default (open) rules configuration. Storage targets in firebase.json will be ignored.`,
         );
-        return defaultStorageRules();
+      } else {
+        storageLogger.logLabeled(
+          "WARN",
+          "storage",
+          `Storage target '${targetConfig.target}' in firebase.json is not configured in .firebaserc. The emulator will default to allowing all reads and writes.`,
+        );
       }
-      // Otherwise, requireTarget will error out
-      rc.requireTarget(projectId, "storage", targetConfig.target);
+      return defaultStorageRules();
     }
     results.push(
       ...rc.target(projectId, "storage", targetConfig.target).map((resource: string) => {
@@ -77,6 +71,22 @@ export function getStorageRulesConfig(
     );
   }
   return results;
+}
+
+function logDefaultRulesWarning(projectId: string, storageLogger: EmulatorLogger): void {
+  if (Constants.isDemoProject(projectId)) {
+    storageLogger.logLabeled(
+      "BULLET",
+      "storage",
+      `Detected demo project ID "${projectId}", using a default (open) rules configuration.`,
+    );
+  } else {
+    storageLogger.logLabeled(
+      "WARN",
+      "storage",
+      "Did not find a Storage rules file specified in a firebase.json config file. The emulator will default to allowing all reads and writes. Learn more about this option: https://firebase.google.com/docs/emulator-suite/install_and_configure#security_rules_configuration.",
+    );
+  }
 }
 
 function defaultStorageRules(): SourceFile {
