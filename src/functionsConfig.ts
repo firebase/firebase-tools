@@ -1,7 +1,7 @@
 import * as _ from "lodash";
 import * as clc from "colorette";
 
-import { consoleOrigin, firebaseApiOrigin } from "./api";
+import { firebaseApiOrigin } from "./api";
 import { Client } from "./apiv2";
 import { ensure as ensureApiEnabled } from "./ensureApiEnabled";
 import { FirebaseError } from "./error";
@@ -120,11 +120,14 @@ export async function getFirebaseConfig(options: any): Promise<args.FirebaseConf
     );
     return response.body;
   } catch (err: unknown) {
+    // adminSdkConfig 404s for any project this account can't see, so don't
+    // assert a cause. The addfirebase hint covers the Cloud-project case.
     if (err instanceof FirebaseError && err.status === 404) {
       throw new FirebaseError(
-        `Cannot deploy to project ${clc.bold(projectId)} because it doesn't have Firebase enabled. ` +
-          `Add Firebase to this Google Cloud project in the Firebase console, then try again:\n\n` +
-          `${consoleOrigin()}/project/${projectId}/settings/general`,
+        `Firebase project ${clc.bold(projectId)} was not found. ` +
+          `Make sure the project exists and that your account has access to it.\n\n` +
+          `If ${clc.bold(projectId)} is a Google Cloud project without Firebase, add Firebase to it:\n\n` +
+          `  firebase projects:addfirebase ${projectId}`,
         { original: err, exit: 1, status: 404 },
       );
     }

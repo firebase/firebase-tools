@@ -1,4 +1,4 @@
-- Show a friendly error when deploying functions to a Google Cloud project that doesn't have Firebase enabled, instead of a raw 404 (#10379)
+- Replaced the raw 404 from `adminSdkConfig` with a message naming the project and pointing at `firebase projects:addfirebase` (#10379)
 - Configured OneMCP server tools to require a Firebase project by default, with options to opt-out specific tools (such as Developer Knowledge document search).
 - Fixed a bug where deploying functions with the `dartfunctions` experiment enabled could incorrectly prompt to delete existing GCF v2 functions.
 - Added `outputSchema` support for local MCP tools.
