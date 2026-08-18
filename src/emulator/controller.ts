@@ -200,6 +200,19 @@ export function shouldStart(options: Options, name: Emulators): boolean {
     return false;
   }
 
+  if (
+    name === Emulators.DATACONNECT &&
+    emulatorInTargets &&
+    !readFirebaseJson(options.config).length
+  ) {
+    EmulatorLogger.forEmulator(Emulators.DATACONNECT).logLabeled(
+      "ERROR",
+      "dataconnect",
+      `Failed to start Data Connect emulator: No valid Data Connect configuration detected in firebase.json. Run ${clc.bold("firebase init dataconnect")} to configure it.`,
+    );
+    return false;
+  }
+
   return emulatorInTargets;
 }
 
@@ -893,70 +906,90 @@ export async function startAll(
   }
 
   if (listenForEmulator.dataconnect) {
+    const dataconnectLogger = EmulatorLogger.forEmulator(Emulators.DATACONNECT);
     const config = readFirebaseJson(options.config);
     if (!config.length) {
-      throw new FirebaseError("No SQL Connect service found in firebase.json");
-    } else if (config.length > 1) {
-      logger.warn(
-        `TODO: Add support for multiple services in the SQL Connect emulator. Currently emulating first service ${config[0].source}`,
+      dataconnectLogger.logLabeled(
+        "ERROR",
+        "dataconnect",
+        `Failed to start Data Connect emulator: No valid Data Connect configuration detected in firebase.json. Run ${clc.bold("firebase init dataconnect")} to configure it.`,
       );
-    }
-
-    const args: DataConnectEmulatorArgs = {
-      listen: listenForEmulator.dataconnect,
-      projectId,
-      auto_download: true,
-      configDir: config[0].source,
-      config: options.config,
-      autoconnectToPostgres: true,
-      postgresListen: listenForEmulator["dataconnect.postgres"],
-      enable_output_generated_sdk: true, // TODO: source from arguments
-      enable_output_schema_extensions: true,
-      debug: options.debug,
-      account,
-    };
-
-    if (exportMetadata.dataconnect) {
-      utils.assertIsString(options.import);
-      const importDirAbsPath = path.resolve(options.import);
-      const exportMetadataFilePath = path.resolve(
-        importDirAbsPath,
-        exportMetadata.dataconnect.path,
-      );
-      const dataDirectory = options.config.get("emulators.dataconnect.dataDir");
-      if (exportMetadataFilePath && dataDirectory) {
-        EmulatorLogger.forEmulator(Emulators.DATACONNECT).logLabeled(
-          "WARN",
-          "dataconnect",
-          "'firebase.json#emulators.dataconnect.dataDir' is set and `--import` flag was passed. " +
-            "This will overwrite any data saved from previous runs.",
+    } else {
+      if (config.length > 1) {
+        logger.warn(
+          `TODO: Add support for multiple services in the SQL Connect emulator. Currently emulating first service ${config[0].source}`,
         );
-        if (
-          !options.nonInteractive &&
-          !(await confirm({
-            message: `Do you wish to continue and overwrite data in ${dataDirectory}?`,
-            default: false,
-          }))
-        ) {
-          await cleanShutdown();
-          throw new FirebaseError("Command aborted");
-        }
       }
 
-      EmulatorLogger.forEmulator(Emulators.DATACONNECT).logLabeled(
-        "BULLET",
-        "dataconnect",
-        `Importing data from ${exportMetadataFilePath}`,
-      );
-      args.importPath = exportMetadataFilePath;
-      void trackEmulator("emulator_import", {
-        initiated_by: "start",
-        emulator_name: Emulators.DATACONNECT,
-      });
-    }
+      const args: DataConnectEmulatorArgs = {
+        listen: listenForEmulator.dataconnect,
+        projectId,
+        auto_download: true,
+        configDir: config[0].source,
+        config: options.config,
+        autoconnectToPostgres: true,
+        postgresListen: listenForEmulator["dataconnect.postgres"],
+        enable_output_generated_sdk: true, // TODO: source from arguments
+        enable_output_schema_extensions: true,
+        debug: options.debug,
+        account,
+      };
 
-    const dataConnectEmulator = new DataConnectEmulator(args);
-    await startEmulator(dataConnectEmulator);
+      if (exportMetadata.dataconnect) {
+        utils.assertIsString(options.import);
+        const importDirAbsPath = path.resolve(options.import);
+        const exportMetadataFilePath = path.resolve(
+          importDirAbsPath,
+          exportMetadata.dataconnect.path,
+        );
+        const dataDirectory = options.config.get("emulators.dataconnect.dataDir");
+        if (exportMetadataFilePath && dataDirectory) {
+          dataconnectLogger.logLabeled(
+            "WARN",
+            "dataconnect",
+            "'firebase.json#emulators.dataconnect.dataDir' is set and `--import` flag was passed. " +
+              "This will overwrite any data saved from previous runs.",
+          );
+          if (
+            !options.nonInteractive &&
+            !(await confirm({
+              message: `Do you wish to continue and overwrite data in ${dataDirectory}?`,
+              default: false,
+            }))
+          ) {
+            await cleanShutdown();
+            throw new FirebaseError("Command aborted");
+          }
+        }
+
+        dataconnectLogger.logLabeled(
+          "BULLET",
+          "dataconnect",
+          `Importing data from ${exportMetadataFilePath}`,
+        );
+        args.importPath = exportMetadataFilePath;
+        void trackEmulator("emulator_import", {
+          initiated_by: "start",
+          emulator_name: Emulators.DATACONNECT,
+        });
+      }
+
+      try {
+        const dataConnectEmulator = new DataConnectEmulator(args);
+        await startEmulator(dataConnectEmulator);
+      } catch (err: unknown) {
+        try {
+          await EmulatorRegistry.stop(Emulators.DATACONNECT);
+        } catch {
+          // Ignore errors stopping failed instance
+        }
+        dataconnectLogger.logLabeled(
+          "ERROR",
+          "dataconnect",
+          `Failed to start Data Connect emulator: ${getErrMsg(err)}`,
+        );
+      }
+    }
   }
 
   if (listenForEmulator.storage) {

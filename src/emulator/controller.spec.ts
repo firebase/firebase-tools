@@ -103,5 +103,19 @@ describe("EmulatorController", () => {
       });
       expect(shouldStart(options, Emulators.FUNCTIONS)).to.be.false;
     });
+
+    it("should not start dataconnect emulator if there is no dataconnect service configured", () => {
+      const options = createMockOptions("dataconnect", {
+        dataconnect: undefined,
+      });
+      expect(shouldStart(options, Emulators.DATACONNECT)).to.be.false;
+    });
+
+    it("should start dataconnect emulator if dataconnect service is configured", () => {
+      const options = createMockOptions("dataconnect", {
+        dataconnect: [{ source: "dataconnect" }],
+      });
+      expect(shouldStart(options, Emulators.DATACONNECT)).to.be.true;
+    });
   });
 }).timeout(2000);
