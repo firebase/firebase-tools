@@ -98,10 +98,18 @@ if [[ $VERSION == "preview" ]]; then
   npm version prerelease --preid=${sanitized_branch} --no-git-tag-version
   INITIAL_VERSION=$(jq -r ".version" package.json)
   PREFIX=${INITIAL_VERSION%.*}
-  COMMIT_SHA=$(git rev-parse --short=6 HEAD)
-  NEW_VERSION="${PREFIX}-${COMMIT_SHA}"
-  echo "Setting preview version to ${NEW_VERSION}..."
-  npm version "${NEW_VERSION}" --no-git-tag-version --allow-same-version
+  echo "Checking registry for existing preview versions with prefix ${PREFIX}..."
+  MATCHING_VERSIONS=$(npm view firebase-tools versions --registry https://wombat-dressing-room.appspot.com --json | jq -r 'if type == "array" then .[] else . end | select(startswith("'"$PREFIX"'."))' || true)
+  if [[ -n "$MATCHING_VERSIONS" ]]; then
+    MAX_SUFFIX=$(echo "$MATCHING_VERSIONS" | sed "s/^${PREFIX}\.//" | sort -n | tail -n 1)
+    NEXT_SUFFIX=$((MAX_SUFFIX + 1))
+    NEW_VERSION="${PREFIX}.${NEXT_SUFFIX}"
+    echo "Found existing preview versions. Bumping to ${NEW_VERSION}..."
+    npm version "${NEW_VERSION}" --no-git-tag-version --allow-same-version
+  else
+    NEW_VERSION=$INITIAL_VERSION
+    echo "No existing preview versions found. Using ${NEW_VERSION}."
+  fi
   echo "Made a preview version."
 else
   echo "Making a $VERSION version..."
