@@ -1,3 +1,4 @@
+- Gracefully handle Data Connect emulator startup failures and unconfigured services without blocking other emulators.
 - Added extensions replacement registry and scraper tool to track migrations for deprecated extensions ahead of the March 2027 decommission date.
 - [Added] Loads existing `.env` files and passes environment variables to functions discovery in `runtimeDelegate`.
 - Adds --immediate flag to ext:uninstall (#10921)
