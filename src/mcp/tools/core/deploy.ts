@@ -54,7 +54,10 @@ export const deploy = tool(
     const jobId = Date.now().toString();
     jobTracker.createJob(jobId);
 
+    const baseOptions = await ctx.host.resolveOptions();
+
     const options = {
+      ...baseOptions,
       only: only || "",
       except: "",
       filteredTargets: targets,
