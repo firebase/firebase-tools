@@ -46,16 +46,6 @@ export async function tryCreateDelegate(
   return Promise.resolve(new Delegate(context.projectId, context.sourceDir, runtime));
 }
 
-/** Minimum Dart SDK version required when building with `dart compile exe`. */
-const MIN_DART_SDK_VERSION = "3.9.0";
-
-/**
- * Minimum Dart SDK version required when building with `dart build cli`, used for
- * projects whose declared language version supports native build hooks while
- * cross-compiling (see DartVersionFeatures.isNativeAssetsAvailable).
- */
-const MIN_DART_SDK_VERSION_NATIVE_ASSETS = "3.13.0";
-
 /** Default entry point for Dart functions projects. */
 export const DART_ENTRY_POINT = "bin/server.dart";
 
@@ -151,9 +141,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
     if (match) {
       const installedVersion = match[1];
       const features = await DartVersionFeatures.detect(this.sourceDir);
-      const minVersion = features.isNativeAssetsAvailable
-        ? MIN_DART_SDK_VERSION_NATIVE_ASSETS
-        : MIN_DART_SDK_VERSION;
+      const minVersion = features.minDartSdkVersion;
       if (installedVersion.localeCompare(minVersion, undefined, { numeric: true }) < 0) {
         throw new FirebaseError(
           `Dart SDK version ${installedVersion} is not supported. ` +

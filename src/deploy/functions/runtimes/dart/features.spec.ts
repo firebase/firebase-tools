@@ -78,4 +78,16 @@ describe("DartVersionFeatures", () => {
     const features = await DartVersionFeatures.detect(tmpDir);
     expect(features.isNativeAssetsAvailable).to.equal(true);
   });
+
+  it("requires Dart 3.9.0 when native assets are unavailable", async () => {
+    const features = await DartVersionFeatures.detect(tmpDir);
+    expect(features.minDartSdkVersion).to.equal("3.9.0");
+  });
+
+  it("requires Dart 3.13.0 when native assets are available", async () => {
+    writePackageConfig(tmpDir, "3.13");
+
+    const features = await DartVersionFeatures.detect(tmpDir);
+    expect(features.minDartSdkVersion).to.equal("3.13.0");
+  });
 });

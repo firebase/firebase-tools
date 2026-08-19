@@ -11,6 +11,12 @@ interface PackageConfig {
   packages?: PackageConfigEntry[];
 }
 
+/** Minimum Dart SDK version required when building with `dart compile exe`. */
+const MIN_DART_SDK_VERSION = "3.9.0";
+
+/** Minimum Dart SDK version required when building with `dart build cli` (native build hooks). */
+const MIN_DART_SDK_VERSION_NATIVE_ASSETS = "3.13.0";
+
 /** Detects Dart language-version-gated features for a project, from its declared pubspec.yaml SDK constraint rather than the installed toolchain. */
 export class DartVersionFeatures {
   private constructor(private readonly languageVersion: [number, number] | undefined) {}
@@ -23,6 +29,11 @@ export class DartVersionFeatures {
   /** `dart build cli` supports native build hooks (e.g. `sqlite3`) while cross-compiling, as of Dart 3.13. */
   get isNativeAssetsAvailable(): boolean {
     return this.atLeast(3, 13);
+  }
+
+  /** Minimum installed Dart SDK version required to build this project, given its declared language version. */
+  get minDartSdkVersion(): string {
+    return this.isNativeAssetsAvailable ? MIN_DART_SDK_VERSION_NATIVE_ASSETS : MIN_DART_SDK_VERSION;
   }
 
   private atLeast(major: number, minor: number): boolean {
