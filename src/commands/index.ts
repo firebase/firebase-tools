@@ -201,6 +201,7 @@ export function load(client: CLIClient): CLIClient {
   if (experiments.isEnabled("kits")) {
     client.functions.kits = {};
     client.functions.kits.install = loadCommand("functions-kits-install");
+    client.functions.kits.list = loadCommand("functions-kits-list");
   }
   client.help = loadCommand("help");
   client.hosting = {};
