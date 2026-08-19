@@ -1,3 +1,4 @@
+- Fixed an issue where the `deploy` MCP tool failed with authentication errors during Data Connect deployment.
 - Refined the \`login\` MCP tool description and security verification instructions to enforce Session ID output for agents and prevent phishing attacks (#10942).
 - Added \`reauth\` option to \`login\` MCP tool and aligned behavior to skip login and display account email if already authenticated.
 - Updated Pub/Sub emulator to version 0.8.35.
