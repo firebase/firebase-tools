@@ -6,3 +6,13 @@
 - Load existing `.env` files and passes environment variables to functions discovery in `runtimeDelegate`.
 - Adds --immediate flag to ext:uninstall (#10921)
 - Updated dataconnect emulator version to v3.4.18.
+- Configured OneMCP server tools to require a Firebase project by default, with options to opt-out specific tools (such as Developer Knowledge document search).
+- Fixed a bug where deploying Dart functions with dependencies that use native build hooks (e.g. `sqlite3`) failed to compile. Note: Dart functions now require Dart SDK 3.13.0 or later.
+- Fixed a bug where deploying functions with the `dartfunctions` experiment enabled could incorrectly prompt to delete existing GCF v2 functions.
+- Added `outputSchema` support for local MCP tools.
+- Skip functions lifecycle hooks during partial (filtered) deployments, and print instructions for running them manually.
+- Added `appcheck:providers:list`, `appcheck:providers:get` and `appcheck:providers:set` to configure App Check attestation providers for an app.
+- Added `appcheck:apps:list` to show every app with its configured App Check providers.
+- Added web app support for Crashlytics MCP tools and prompts.
+- Added support for forwarding custom HTTP headers (`Mcp-Param-*`) to remote MCP tools when defined in tool parameter input schemas (`x-mcp-header`), per [SEP-2243](https://modelcontextprotocol.io/seps/2243-http-standardization).
+- Improved function parameter prompting clarity for multi-codebase deploys (#10897)

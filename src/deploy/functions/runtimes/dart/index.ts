@@ -47,12 +47,16 @@ export async function tryCreateDelegate(
 
 /**
  * Minimum Dart SDK version required.
- * Dart 3.8+ is needed for cross-compilation flags (--target-os, --target-arch).
+ * Dart 3.13+ is needed for `dart build cli` to support cross-compilation flags
+ * (--target-os, --target-arch).
  */
-const MIN_DART_SDK_VERSION = "3.9.0";
+const MIN_DART_SDK_VERSION = "3.13.0";
 
 /** Default entry point for Dart functions projects. */
 export const DART_ENTRY_POINT = "bin/server.dart";
+
+/** Path to the executable produced by `dart build cli` for a linux-x64 target. */
+export const DART_BUNDLE_EXECUTABLE_PATH = "build/cli/linux_x64/bundle/bin/server";
 
 export class Delegate implements runtimes.RuntimeDelegate {
   public readonly language = "dart";
@@ -200,53 +204,42 @@ export class Delegate implements runtimes.RuntimeDelegate {
       return;
     }
 
-    const binDir = path.join(this.sourceDir, "bin");
-    await fs.promises.mkdir(binDir, { recursive: true });
+    logLabeledBullet("functions", "building Dart linux-x64 bundle...");
 
-    logLabeledBullet("functions", "compiling Dart to linux-x64 executable...");
-
-    const compileProcess = spawn(
+    const buildProcess = spawn(
       this.bin,
-      [
-        "compile",
-        "exe",
-        this.entryPoint,
-        "-o",
-        "bin/server",
-        "--target-os=linux",
-        "--target-arch=x64",
-      ],
+      ["build", "cli", "--target", this.entryPoint, "--target-os", "linux", "--target-arch", "x64"],
       {
         cwd: this.sourceDir,
         stdio: ["ignore", "pipe", "pipe"],
       },
     );
 
-    compileProcess.stdout?.on("data", (chunk: Buffer) => {
-      logger.debug(`[dart compile] ${chunk.toString("utf8").trim()}`);
+    buildProcess.stdout?.on("data", (chunk: Buffer) => {
+      logger.debug(`[dart build cli] ${chunk.toString("utf8").trim()}`);
     });
-    compileProcess.stderr?.on("data", (chunk: Buffer) => {
-      logger.debug(`[dart compile] ${chunk.toString("utf8").trim()}`);
+    buildProcess.stderr?.on("data", (chunk: Buffer) => {
+      logger.debug(`[dart build cli] ${chunk.toString("utf8").trim()}`);
     });
 
     await new Promise<void>((resolve, reject) => {
-      compileProcess.on("exit", (code) => {
+      buildProcess.on("exit", (code) => {
         if (code === 0 || code === null) {
           resolve();
         } else {
           reject(
             new FirebaseError(
-              `Dart compilation failed with exit code ${code}. ` +
-                `Make sure your Dart project compiles successfully with: ` +
-                `dart compile exe ${this.entryPoint} --target-os=linux --target-arch=x64`,
+              `Dart build failed with exit code ${code}. ` +
+                `Make sure your Dart project builds successfully with: ` +
+                `dart build cli --target ${this.entryPoint} --target-os linux --target-arch x64`,
             ),
           );
         }
       });
-      compileProcess.on("error", reject);
+      buildProcess.on("error", reject);
     });
 
-    logLabeledBullet("functions", "Dart compilation complete.");
+    logLabeledBullet("functions", "Dart build complete.");
   }
 
   /**
