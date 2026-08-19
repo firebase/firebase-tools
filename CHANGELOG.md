@@ -1,1 +1,0 @@
-- Fixed an issue where Dart functions incorrectly required Dart 3.13.0 or later.
