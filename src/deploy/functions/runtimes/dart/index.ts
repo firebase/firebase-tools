@@ -49,10 +49,10 @@ export async function tryCreateDelegate(
 /** Default entry point for Dart functions projects. */
 export const DART_ENTRY_POINT = "bin/server.dart";
 
-/** Path to the executable produced by `dart compile exe` for a linux-x64 target. */
-export const DART_LEGACY_EXECUTABLE_PATH = "bin/server";
+/** Path to the executable produced by `dart compile exe`, used below the native-assets language version threshold. */
+export const DART_COMPILE_EXE_PATH = "bin/server";
 
-/** Path to the executable produced by `dart build cli` for a linux-x64 target. */
+/** Path to the bundle (executable, shared libraries, and metadata) produced by `dart build cli` for native-build-hook projects. */
 export const DART_BUNDLE_EXECUTABLE_PATH = "build/cli/linux_x64/bundle/bin/server";
 
 export class Delegate implements runtimes.RuntimeDelegate {
@@ -226,7 +226,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
         "exe",
         this.entryPoint,
         "-o",
-        "bin/server",
+        DART_COMPILE_EXE_PATH,
         "--target-os=linux",
         "--target-arch=x64",
       ],

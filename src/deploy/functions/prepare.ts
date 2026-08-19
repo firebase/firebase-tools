@@ -32,7 +32,7 @@ import {
 } from "./functionsDeployHelper";
 import { logLabeledBullet, logLabeledWarning } from "../../utils";
 import { isDartEndpoint, classifyNonProductionEndpoints } from "./runtimes/dart/triggerSupport";
-import { DART_BUNDLE_EXECUTABLE_PATH, DART_LEGACY_EXECUTABLE_PATH } from "./runtimes/dart";
+import { DART_BUNDLE_EXECUTABLE_PATH, DART_COMPILE_EXE_PATH } from "./runtimes/dart";
 import { DartVersionFeatures } from "./runtimes/dart/features";
 import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
@@ -881,7 +881,7 @@ function warnIfDartBackendHasUnsupportedTriggers(want: backend.Backend): void {
  * relative to the runtime in use. Dart codebases produce their executable at
  * DART_BUNDLE_EXECUTABLE_PATH when their declared language version supports native
  * build hooks while cross-compiling (see DartVersionFeatures.isNativeAssetsAvailable),
- * or DART_LEGACY_EXECUTABLE_PATH otherwise.
+ * or DART_COMPILE_EXE_PATH otherwise.
  */
 export async function getExecutablePaths(
   runtime: supported.Runtime | undefined,
@@ -891,9 +891,7 @@ export async function getExecutablePaths(
     return [];
   }
   const features = await DartVersionFeatures.detect(sourceDir);
-  return features.isNativeAssetsAvailable
-    ? [DART_BUNDLE_EXECUTABLE_PATH]
-    : [DART_LEGACY_EXECUTABLE_PATH];
+  return features.isNativeAssetsAvailable ? [DART_BUNDLE_EXECUTABLE_PATH] : [DART_COMPILE_EXE_PATH];
 }
 
 /**
