@@ -1,9 +1,0 @@
-- Fixed an issue where the `deploy` MCP tool failed with authentication errors during Data Connect deployment.
-- Refined the \`login\` MCP tool description and security verification instructions to enforce Session ID output for agents and prevent phishing attacks (#10942).
-- Added \`reauth\` option to \`login\` MCP tool and aligned behavior to skip login and display account email if already authenticated.
-- Updated Pub/Sub emulator to version 0.8.35.
-- Added extensions replacement registry and scraper tool to track migrations for deprecated extensions ahead of the March 2027 decommission date.
-- Load existing `.env` files and passes environment variables to functions discovery in `runtimeDelegate`.
-- Adds --immediate flag to ext:uninstall (#10921)
-- Updated dataconnect emulator version to v3.4.18.
-- Fixed a bug where deploying Dart functions with dependencies that use native build hooks (e.g. `sqlite3`) failed to compile. Note: Dart functions now require Dart SDK 3.13.0 or later.
