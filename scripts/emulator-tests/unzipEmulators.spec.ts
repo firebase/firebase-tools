@@ -40,7 +40,7 @@ describe("unzipEmulators", () => {
 
     const serverFiles = await fs.promises.readdir(path.join(tempDir, "ui", "server"));
     expect(serverFiles).to.include("server.mjs");
-  }).timeout(60000);
+  }).timeout(process.platform === "win32" ? 120000 : 60000);
 
   it("should unzip a pubsub emulator zip file", async () => {
     const downloadDetails = getDownloadDetails(Emulators.PUBSUB);
@@ -73,7 +73,7 @@ describe("unzipEmulators", () => {
       path.join(tempDir, "pubsub", "pubsub-emulator", "bin"),
     );
     expect(binFiles).to.include("cloud-pubsub-emulator");
-  }).timeout(60000);
+  }).timeout(process.platform === "win32" ? 120000 : 60000);
 });
 
 async function downloadFile(url: string, targetPath: string): Promise<string> {
