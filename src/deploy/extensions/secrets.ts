@@ -15,6 +15,7 @@ import { ExtensionSpec, Param, ParamType } from "../../extensions/types";
 import { FirebaseError } from "../../error";
 import { logger } from "../../logger";
 import { logLabeledBullet } from "../../utils";
+import { FIREBASE_MANAGED } from "../../gcp/secretManager";
 
 /**
  * handleSecretParams checks each spec for secret params, and validates that the secrets in the configuration exist.
@@ -45,6 +46,9 @@ export async function handleSecretParams(
   }
 }
 
+/**
+ * @returns true if the InstanceSpec defines any Secret params
+ */
 export async function checkSpecForSecrets(i: InstanceSpec): Promise<boolean> {
   const extensionSpec = await getExtensionSpec(i);
   return secretUtils.usesSecrets(extensionSpec);
@@ -223,6 +227,32 @@ async function getSecretInfo(
     }
   }
   return secretInfo;
+}
+
+/**
+ * PATCHes a Secret resource by removing any "firebase-extensions-managed" labels
+ * and replacing them with "firebase-managed": "functions"
+ */
+export async function transferSecretToKits(
+  projectId: string,
+  secretName: string,
+): Promise<secretManager.Secret> {
+  const newLabels: Record<string, string> = {};
+  try {
+    const have = await secretManager.getSecret(projectId, secretName);
+    for (const [labelKey, labelValue] of Object.entries(have.labels)) {
+      if (labelKey !== secretUtils.SECRET_LABEL) {
+        newLabels[labelKey] = labelValue;
+      }
+    }
+  } catch (err: any) {
+    throw new FirebaseError(
+      `Error when retrieving current state of migrating secret ${projectId}/${secretName}: ${err instanceof Error ? err.message : String(err)}`,
+      { original: err instanceof Error ? err : undefined },
+    );
+  }
+  newLabels[FIREBASE_MANAGED] = "functions";
+  return secretManager.patchSecret(projectId, secretName, newLabels);
 }
 
 async function promptForCreateSecret(args: {
