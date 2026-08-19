@@ -22,6 +22,7 @@ import { Options } from "../../options";
 import { ValidatedConfig } from "../../functions/projectConfig";
 import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1";
 import { latest } from "./runtimes/supported";
+import * as functionsEnv from "../../functions/env";
 
 describe("partition env helper", () => {
   it("splits a Record into two based on which keys begin with FIREBASE_SECRET_REF", () => {
@@ -32,6 +33,55 @@ describe("partition env helper", () => {
     const { userEnvs: userEnvs, secretRefs: secretRefs } = prepare.partitionUserEnvs(input);
     expect(userEnvs).to.deep.equal({ foo: "bar" });
     expect(secretRefs).to.deep.equal({ baz: "quux" });
+  });
+});
+
+describe("getExecutablePaths", () => {
+  it("returns the dart bundle executable path for a dart runtime", () => {
+    expect(prepare.getExecutablePaths(latest("dart"))).to.deep.equal([
+      "build/cli/linux_x64/bundle/bin/server",
+    ]);
+  });
+
+  it("returns no executable paths for a non-dart runtime", () => {
+    expect(prepare.getExecutablePaths(latest("nodejs"))).to.deep.equal([]);
+  });
+
+  it("returns no executable paths when the runtime is undefined", () => {
+    expect(prepare.getExecutablePaths(undefined)).to.deep.equal([]);
+  });
+});
+
+describe("stripStaleDartBuildIgnore", () => {
+  it("strips a stale 'build' entry from a dart codebase's ignore list", () => {
+    const localCfg = { source: "functions", ignore: [".dart_tool", "build"] };
+    expect(prepare.stripStaleDartBuildIgnore(latest("dart"), localCfg)).to.deep.equal({
+      source: "functions",
+      ignore: [".dart_tool"],
+    });
+  });
+
+  it("strips a stale 'build/' entry from a dart codebase's ignore list", () => {
+    const localCfg = { source: "functions", ignore: [".dart_tool", "build/"] };
+    expect(prepare.stripStaleDartBuildIgnore(latest("dart"), localCfg)).to.deep.equal({
+      source: "functions",
+      ignore: [".dart_tool"],
+    });
+  });
+
+  it("leaves a dart codebase's ignore list untouched when it has no stale 'build' entry", () => {
+    const localCfg = { source: "functions", ignore: [".dart_tool"] };
+    expect(prepare.stripStaleDartBuildIgnore(latest("dart"), localCfg)).to.deep.equal(localCfg);
+  });
+
+  it("leaves a non-dart codebase's ignore list untouched", () => {
+    const localCfg = { source: "functions", ignore: ["node_modules", "build"] };
+    expect(prepare.stripStaleDartBuildIgnore(latest("nodejs"), localCfg)).to.deep.equal(localCfg);
+  });
+
+  it("leaves a codebase with no ignore list untouched", () => {
+    const localCfg: { source: string; ignore?: string[] } = { source: "functions" };
+    expect(prepare.stripStaleDartBuildIgnore(latest("dart"), localCfg)).to.deep.equal(localCfg);
   });
 });
 
@@ -195,6 +245,27 @@ describe("prepare", () => {
       } finally {
         experiments.setEnabled("kits", null);
       }
+    });
+
+    it("should load user envs and pass them to discoverBuild", async () => {
+      sandbox.stub(functionsEnv, "loadUserEnvs").returns({ MY_ENV_VAR: "my_val" });
+      const config: ValidatedConfig = [
+        { source: "source", codebase: "codebase", runtime: "nodejs22" },
+      ];
+      const options = {
+        config: {
+          path: (p: string) => p,
+        },
+        projectId: "project",
+      } as unknown as Options;
+      const firebaseConfig = { projectId: "project" };
+      const runtimeConfig = {};
+
+      await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
+
+      expect(discoverBuildStub.firstCall.args[1]).to.deep.include({
+        MY_ENV_VAR: "my_val",
+      });
     });
 
     it("should preserve runtime from codebase config", async () => {

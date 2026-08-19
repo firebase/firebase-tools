@@ -255,6 +255,12 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: false,
   },
+  fdcapimigration: {
+    shortDescription: "Enable the FDC API schema migration path.",
+    fullDescription: "API based Schema Migration behind experimental flag.",
+    default: true,
+    public: false,
+  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;
