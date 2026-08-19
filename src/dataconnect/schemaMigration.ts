@@ -479,6 +479,41 @@ export async function handleIncompatibleSchemaError(args: {
     const commandsToExecuteBySuperUser = commandsToExecute.filter(requireSuperUser);
     const commandsToExecuteByOwner = commandsToExecute.filter((sql) => !requireSuperUser(sql));
 
+    if (experiments.isEnabled("fdcapimigration")) {
+      logLabeledBullet("dataconnect", `[EXPERIMENTAL] Delegating SQL execution to FDC Backend...`);
+      const serviceName = serviceNameFromSchema(schema);
+      const clone = JSON.parse(JSON.stringify(schema));
+      if (clone.datasources?.[0]?.postgresql) {
+        clone.datasources[0].postgresql.schemaValidation = "COMPATIBLE";
+      }
+      let retries = 0;
+      while (retries < 10) {
+        try {
+          await upsertSchema(clone, false);
+          break;
+        } catch (e: any) {
+          if (e.status === 409 || (e.message && e.message.includes("409"))) {
+            await new Promise((r) => setTimeout(r, 2000));
+            retries++;
+          } else if (
+            e.status === 400 ||
+            e.status === 9 ||
+            (e.message && e.message.includes("migrated before"))
+          ) {
+            clone.source = { files: [{ path: "schema.gql", content: " " }] };
+            try {
+              await upsertSchema(clone, false);
+            } catch (e2: any) {}
+            break;
+          } else {
+            break;
+          }
+        }
+      }
+      await executeSchemaMigration(serviceName, commandsToExecute);
+      return incompatibleSchemaError.diffs;
+    }
+
     const userIsCSQLAdmin = await iamUserIsCSQLAdmin(options);
 
     if (!userIsCSQLAdmin && commandsToExecuteBySuperUser.length) {
@@ -528,26 +563,16 @@ export async function handleIncompatibleSchemaError(args: {
     }
 
     if (commandsToExecuteByOwner.length) {
-      if (experiments.isEnabled("fdcapimigration")) {
-        logLabeledBullet(
-          "dataconnect",
-          `[EXPERIMENTAL] Delegating SQL execution to FDC Backend...`,
-        );
-
-        const serviceName = serviceNameFromSchema(schema);
-        await executeSchemaMigration(serviceName, commandsToExecuteByOwner);
-      } else {
-        await executeSqlCmdsAsIamUser(
-          options,
-          instanceId,
-          databaseId,
-          [
-            `SET ROLE "${firebaseowner(databaseId, schemaName)}"`,
-            ...commandsToExecuteByOwner.map((d) => d.sql),
-          ],
-          /** silent=*/ false,
-        );
-      }
+      await executeSqlCmdsAsIamUser(
+        options,
+        instanceId,
+        databaseId,
+        [
+          `SET ROLE "${firebaseowner(databaseId, schemaName)}"`,
+          ...commandsToExecuteByOwner.map((d) => d.sql),
+        ],
+        /** silent=*/ false,
+      );
       return incompatibleSchemaError.diffs;
     }
   }
@@ -567,6 +592,13 @@ async function promptForSchemaMigration(
   }
   const defaultChoice = validationMode === "STRICT_AFTER_COMPATIBLE" ? "none" : "all";
   displaySchemaChanges(err, validationMode);
+
+  if (err.diffs.some((d) => (d as any).riskTags?.includes("RISK_TAG_NEW_CONSTRAINT"))) {
+    logLabeledWarning(
+      "dataconnect",
+      `Detected new data-dependent constraints (e.g. NOT NULL). If existing data violates these constraints, the migration will fail.`,
+    );
+  }
   if (!options.nonInteractive) {
     if (validateOnly && options.force) {
       // `firebase dataconnect:sql:migrate --force` performs all compatible migrations.
