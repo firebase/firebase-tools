@@ -15,6 +15,9 @@ const ONE_DAY_MS = 1000 * 60 * 60 * 24;
  * Fetches the message of the day.
  */
 export function fetchMOTD(): void {
+  if (process.env.CI) {
+    return;
+  }
   let motd = configstore.get("motd");
   const motdFetched = configstore.get("motd.fetched") || 0;
 
