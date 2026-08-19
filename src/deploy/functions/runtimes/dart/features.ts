@@ -11,16 +11,7 @@ interface PackageConfig {
   packages?: PackageConfigEntry[];
 }
 
-/**
- * Detects Dart language-version-gated features for a project.
- *
- * The version used is the language version declared in the project's own pubspec.yaml
- * (`environment: sdk:`), surfaced via `.dart_tool/package_config.json` once dependencies
- * are resolved — not whichever Dart toolchain happens to be installed on the machine
- * running the build. This keeps behavior reproducible for a given project across
- * machines (a dev laptop and a CI runner build it the same way), and keeps future
- * version-gated capabilities to a single place instead of scattered comparisons.
- */
+/** Detects Dart language-version-gated features for a project, from its declared pubspec.yaml SDK constraint rather than the installed toolchain. */
 export class DartVersionFeatures {
   private constructor(private readonly languageVersion: [number, number] | undefined) {}
 
@@ -29,12 +20,7 @@ export class DartVersionFeatures {
     return new DartVersionFeatures(await readRootLanguageVersion(sourceDir));
   }
 
-  /**
-   * `dart build cli` supports native build hooks (native assets, e.g. packages like
-   * `sqlite3`) while cross-compiling (--target-os/--target-arch) as of Dart 3.13.
-   * `dart compile exe` already supports cross-compilation, but never supports native
-   * build hooks at all, at any version.
-   */
+  /** `dart build cli` supports native build hooks (e.g. `sqlite3`) while cross-compiling, as of Dart 3.13. */
   get isNativeAssetsAvailable(): boolean {
     return this.atLeast(3, 13);
   }

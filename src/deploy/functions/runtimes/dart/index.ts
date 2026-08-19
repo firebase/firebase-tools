@@ -146,9 +146,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
       });
     }
 
-    // Verify the installed Dart SDK meets the minimum version required for this project's
-    // declared language version. Feature detection happens after `pub get` above, since it
-    // reads the resolved .dart_tool/package_config.json.
+    // Verify the installed Dart SDK meets the minimum version required.
     const match = /Dart SDK version:\s*(\d+\.\d+\.\d+)/.exec(versionOutput);
     if (match) {
       const installedVersion = match[1];
@@ -226,10 +224,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
     }
   }
 
-  /**
-   * Cross-compiles the entry point to a linux-x64 executable via `dart compile exe`.
-   * Does not support native build hooks; see `buildCli` for that.
-   */
+  /** Cross-compiles the entry point to a linux-x64 executable via `dart compile exe`. */
   private async compileExe(): Promise<void> {
     const binDir = path.join(this.sourceDir, "bin");
     await fs.promises.mkdir(binDir, { recursive: true });
@@ -283,12 +278,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
     logLabeledBullet("functions", "Dart compilation complete.");
   }
 
-  /**
-   * Cross-compiles the entry point to a linux-x64 bundle via `dart build cli`, which
-   * supports native build hooks (e.g. packages like `sqlite3`). Used for projects whose
-   * declared language version supports native build hooks while cross-compiling; see
-   * DartVersionFeatures.isNativeAssetsAvailable and MIN_DART_SDK_VERSION_NATIVE_ASSETS.
-   */
+  /** Cross-compiles the entry point to a linux-x64 bundle via `dart build cli`. */
   private async buildCli(): Promise<void> {
     logLabeledBullet("functions", "building Dart linux-x64 bundle...");
 
