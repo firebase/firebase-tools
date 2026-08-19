@@ -160,7 +160,7 @@ export async function ensureRepositoryExists(
         }
         throw createErr;
       }
-    // 409 Already Exists from getRepository (e.g. repository state conflict), safe to ignore.
+      // 409 Already Exists from getRepository (e.g. repository state conflict), safe to ignore.
     } else if (err.status === 409) {
       return;
     } else {

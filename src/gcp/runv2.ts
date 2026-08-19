@@ -174,6 +174,7 @@ export interface BuildOperationObject {
   metadata?: {
     build?: {
       id?: string;
+      name?: string;
       status?: string;
       statusDetail?: string;
       logUrl?: string;
@@ -206,7 +207,15 @@ export async function submitBuild(
     });
   }
   const op = res.body.buildOperation;
-  const operationResourceName = typeof op === "string" ? op : op?.name;
+  const buildName = typeof op !== "string" ? op?.metadata?.build?.name : undefined;
+  const buildId = typeof op !== "string" ? op?.metadata?.build?.id : undefined;
+  const operationResourceName =
+    buildName ||
+    (buildId
+      ? `projects/${projectId}/locations/${location}/builds/${buildId}`
+      : typeof op === "string"
+        ? op
+        : op?.name);
   if (operationResourceName) {
     let latestBuild: { status?: string; statusDetail?: string; logUrl?: string } | undefined;
     await pollOperation<any>({
@@ -218,10 +227,10 @@ export async function submitBuild(
       backoff: 2000,
       maxBackoff: 10000,
       onPoll: (opRes: any) => {
-        latestBuild = opRes?.metadata?.build;
+        latestBuild = opRes?.metadata?.build || opRes;
       },
       doneFn: (opRes: any) => {
-        const status = opRes?.metadata?.build?.status;
+        const status = opRes?.status || opRes?.metadata?.build?.status;
         return (
           status === "SUCCESS" ||
           status === "FAILURE" ||
