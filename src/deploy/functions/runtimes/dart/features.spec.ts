@@ -42,6 +42,14 @@ describe("DartVersionFeatures", () => {
     expect(features.isNativeAssetsAvailable).to.equal(false);
   });
 
+  it("reports native assets unavailable when package_config.json is valid JSON but not an object", async () => {
+    fs.mkdirSync(path.join(tmpDir, ".dart_tool"), { recursive: true });
+    fs.writeFileSync(path.join(tmpDir, ".dart_tool", "package_config.json"), "null");
+
+    const features = await DartVersionFeatures.detect(tmpDir);
+    expect(features.isNativeAssetsAvailable).to.equal(false);
+  });
+
   it("reports native assets unavailable below the declared language version 3.13", async () => {
     writePackageConfig(tmpDir, "3.9");
 

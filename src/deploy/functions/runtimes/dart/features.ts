@@ -43,17 +43,15 @@ async function readRootLanguageVersion(sourceDir: string): Promise<[number, numb
     return undefined;
   }
 
-  let parsed: PackageConfig;
   try {
-    parsed = JSON.parse(raw) as PackageConfig;
+    const parsed = JSON.parse(raw) as PackageConfig;
+    const root = parsed?.packages?.find((p) => p.rootUri === "../");
+    const match = root?.languageVersion ? /^(\d+)\.(\d+)$/.exec(root.languageVersion) : null;
+    if (!match) {
+      return undefined;
+    }
+    return [Number(match[1]), Number(match[2])];
   } catch {
     return undefined;
   }
-
-  const root = parsed.packages?.find((p) => p.rootUri === "../");
-  const match = root?.languageVersion ? /^(\d+)\.(\d+)$/.exec(root.languageVersion) : null;
-  if (!match) {
-    return undefined;
-  }
-  return [Number(match[1]), Number(match[2])];
 }
