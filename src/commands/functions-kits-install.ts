@@ -703,7 +703,7 @@ export const command = new Command("functions:kits:install")
 
     const rawPkgName = options.package;
     if (!rawPkgName) {
-      throw new FirebaseError("set the --package option to a valid NPM package and try again.");
+      throw new FirebaseError("Set the --package option to a valid NPM package and try again.");
     }
 
     const { packageName, version } = parseNpmPackageSpecifier(rawPkgName);

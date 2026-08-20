@@ -620,7 +620,7 @@ describe("functions:kits:install", () => {
         }),
       ).to.be.rejectedWith(
         FirebaseError,
-        /set the --package option to a valid NPM package and try again\./,
+        /Set the --package option to a valid NPM package and try again\./,
       );
     });
 
