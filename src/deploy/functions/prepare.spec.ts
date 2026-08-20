@@ -1,5 +1,8 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
 import * as build from "./build";
 import * as prepare from "./prepare";
 import * as experiments from "../../experiments";
@@ -22,6 +25,7 @@ import { Options } from "../../options";
 import { ValidatedConfig } from "../../functions/projectConfig";
 import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1";
 import { latest } from "./runtimes/supported";
+import * as functionsEnv from "../../functions/env";
 
 describe("partition env helper", () => {
   it("splits a Record into two based on which keys begin with FIREBASE_SECRET_REF", () => {
@@ -32,6 +36,113 @@ describe("partition env helper", () => {
     const { userEnvs: userEnvs, secretRefs: secretRefs } = prepare.partitionUserEnvs(input);
     expect(userEnvs).to.deep.equal({ foo: "bar" });
     expect(secretRefs).to.deep.equal({ baz: "quux" });
+  });
+});
+
+function writePackageConfig(sourceDir: string, languageVersion: string): void {
+  fs.mkdirSync(path.join(sourceDir, ".dart_tool"), { recursive: true });
+  fs.writeFileSync(
+    path.join(sourceDir, ".dart_tool", "package_config.json"),
+    JSON.stringify({
+      configVersion: 2,
+      packages: [{ name: "my_function", rootUri: "../", packageUri: "lib/", languageVersion }],
+    }),
+  );
+}
+
+describe("getExecutablePaths", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "prepare-executable-paths-"));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("returns the dart legacy executable path by default", async () => {
+    expect(await prepare.getExecutablePaths(latest("dart"), tmpDir)).to.deep.equal(["bin/server"]);
+  });
+
+  it("returns the dart bundle executable path when the project declares native assets support", async () => {
+    writePackageConfig(tmpDir, "3.13");
+    expect(await prepare.getExecutablePaths(latest("dart"), tmpDir)).to.deep.equal([
+      "build/cli/linux_x64/bundle/bin/server",
+    ]);
+  });
+
+  it("returns no executable paths for a non-dart runtime", async () => {
+    expect(await prepare.getExecutablePaths(latest("nodejs"), tmpDir)).to.deep.equal([]);
+  });
+
+  it("returns no executable paths when the runtime is undefined", async () => {
+    expect(await prepare.getExecutablePaths(undefined, tmpDir)).to.deep.equal([]);
+  });
+});
+
+describe("stripStaleDartBuildIgnore", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "prepare-strip-ignore-"));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("leaves a dart codebase's ignore list untouched by default (no native assets support declared)", async () => {
+    const localCfg = { source: "functions", ignore: [".dart_tool", "build"] };
+    expect(await prepare.stripStaleDartBuildIgnore(latest("dart"), tmpDir, localCfg)).to.deep.equal(
+      localCfg,
+    );
+  });
+
+  it("strips a stale 'build' entry when the project declares native assets support", async () => {
+    writePackageConfig(tmpDir, "3.13");
+    const localCfg = { source: "functions", ignore: [".dart_tool", "build"] };
+    expect(await prepare.stripStaleDartBuildIgnore(latest("dart"), tmpDir, localCfg)).to.deep.equal(
+      {
+        source: "functions",
+        ignore: [".dart_tool"],
+      },
+    );
+  });
+
+  it("strips a stale 'build/' entry when the project declares native assets support", async () => {
+    writePackageConfig(tmpDir, "3.13");
+    const localCfg = { source: "functions", ignore: [".dart_tool", "build/"] };
+    expect(await prepare.stripStaleDartBuildIgnore(latest("dart"), tmpDir, localCfg)).to.deep.equal(
+      {
+        source: "functions",
+        ignore: [".dart_tool"],
+      },
+    );
+  });
+
+  it("leaves a dart codebase's ignore list untouched when it has no stale 'build' entry", async () => {
+    writePackageConfig(tmpDir, "3.13");
+    const localCfg = { source: "functions", ignore: [".dart_tool"] };
+    expect(await prepare.stripStaleDartBuildIgnore(latest("dart"), tmpDir, localCfg)).to.deep.equal(
+      localCfg,
+    );
+  });
+
+  it("leaves a non-dart codebase's ignore list untouched", async () => {
+    writePackageConfig(tmpDir, "3.13");
+    const localCfg = { source: "functions", ignore: ["node_modules", "build"] };
+    expect(
+      await prepare.stripStaleDartBuildIgnore(latest("nodejs"), tmpDir, localCfg),
+    ).to.deep.equal(localCfg);
+  });
+
+  it("leaves a codebase with no ignore list untouched", async () => {
+    writePackageConfig(tmpDir, "3.13");
+    const localCfg: { source: string; ignore?: string[] } = { source: "functions" };
+    expect(await prepare.stripStaleDartBuildIgnore(latest("dart"), tmpDir, localCfg)).to.deep.equal(
+      localCfg,
+    );
   });
 });
 
@@ -195,6 +306,27 @@ describe("prepare", () => {
       } finally {
         experiments.setEnabled("kits", null);
       }
+    });
+
+    it("should load user envs and pass them to discoverBuild", async () => {
+      sandbox.stub(functionsEnv, "loadUserEnvs").returns({ MY_ENV_VAR: "my_val" });
+      const config: ValidatedConfig = [
+        { source: "source", codebase: "codebase", runtime: "nodejs22" },
+      ];
+      const options = {
+        config: {
+          path: (p: string) => p,
+        },
+        projectId: "project",
+      } as unknown as Options;
+      const firebaseConfig = { projectId: "project" };
+      const runtimeConfig = {};
+
+      await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
+
+      expect(discoverBuildStub.firstCall.args[1]).to.deep.include({
+        MY_ENV_VAR: "my_val",
+      });
     });
 
     it("should preserve runtime from codebase config", async () => {
