@@ -167,4 +167,260 @@ describe("cloudlogging", () => {
       ).to.eventually.deep.equal(sink);
     });
   });
+
+  describe("getLogViewIamPolicy", () => {
+    it("should resolve with policy on success", async () => {
+      const policy = {
+        bindings: [{ role: "roles/logging.viewAccessor", members: ["projectViewer:project"] }],
+        etag: "etag123",
+        version: 3,
+      };
+      nock(cloudloggingOrigin())
+        .post(
+          "/v2/projects/project/locations/global/buckets/firebase-telemetry/views/_AllLogs:getIamPolicy",
+        )
+        .reply(200, policy);
+
+      await expect(
+        cloudlogging.getLogViewIamPolicy("project", "firebase-telemetry", "_AllLogs", "global"),
+      ).to.eventually.deep.equal(policy);
+    });
+
+    it("should reject if API call fails", async () => {
+      nock(cloudloggingOrigin())
+        .post(
+          "/v2/projects/project/locations/global/buckets/firebase-telemetry/views/_AllLogs:getIamPolicy",
+        )
+        .reply(403, { error: "forbidden" });
+
+      await expect(
+        cloudlogging.getLogViewIamPolicy("project", "firebase-telemetry", "_AllLogs", "global"),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        "Failed to get IAM policy for log view _AllLogs on bucket firebase-telemetry (status 403):",
+      );
+    });
+  });
+
+  describe("setLogViewIamPolicy", () => {
+    it("should resolve with policy on success", async () => {
+      const policy = {
+        bindings: [{ role: "roles/logging.viewAccessor", members: ["projectViewer:project"] }],
+        etag: "etag123",
+        version: 3,
+      };
+      nock(cloudloggingOrigin())
+        .post(
+          "/v2/projects/project/locations/global/buckets/firebase-telemetry/views/_AllLogs:setIamPolicy",
+          { policy },
+        )
+        .reply(200, policy);
+
+      await expect(
+        cloudlogging.setLogViewIamPolicy(
+          "project",
+          "firebase-telemetry",
+          "_AllLogs",
+          policy,
+          "global",
+        ),
+      ).to.eventually.deep.equal(policy);
+    });
+
+    it("should reject if API call fails", async () => {
+      const policy = {
+        bindings: [],
+        etag: "etag123",
+        version: 3,
+      };
+      nock(cloudloggingOrigin())
+        .post(
+          "/v2/projects/project/locations/global/buckets/firebase-telemetry/views/_AllLogs:setIamPolicy",
+          { policy },
+        )
+        .reply(500, { error: "internal error" });
+
+      await expect(
+        cloudlogging.setLogViewIamPolicy(
+          "project",
+          "firebase-telemetry",
+          "_AllLogs",
+          policy,
+          "global",
+        ),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        "Failed to set IAM policy for log view _AllLogs on bucket firebase-telemetry (status 500):",
+      );
+    });
+  });
+
+  describe("grantLogViewAccess", () => {
+    it("should add binding when role does not exist in policy", async () => {
+      const existingPolicy = {
+        bindings: [{ role: "roles/logging.viewer", members: ["user:admin@example.com"] }],
+        etag: "etag123",
+        version: 3,
+      };
+      const updatedPolicy = {
+        bindings: [
+          { role: "roles/logging.viewer", members: ["user:admin@example.com"] },
+          { role: "roles/logging.viewAccessor", members: ["projectViewer:project"] },
+        ],
+        etag: "etag123",
+        version: 3,
+      };
+      nock(cloudloggingOrigin())
+        .post(
+          "/v2/projects/project/locations/global/buckets/firebase-telemetry/views/_AllLogs:getIamPolicy",
+        )
+        .reply(200, existingPolicy);
+      nock(cloudloggingOrigin())
+        .post(
+          "/v2/projects/project/locations/global/buckets/firebase-telemetry/views/_AllLogs:setIamPolicy",
+          { policy: updatedPolicy },
+        )
+        .reply(200, updatedPolicy);
+
+      const result = await cloudlogging.grantLogViewAccess(
+        "project",
+        "firebase-telemetry",
+        "_AllLogs",
+        "projectViewer:project",
+        "roles/logging.viewAccessor",
+        "global",
+      );
+      expect(result).to.deep.equal(updatedPolicy);
+    });
+
+    it("should add member to existing role binding", async () => {
+      const existingPolicy = {
+        bindings: [{ role: "roles/logging.viewAccessor", members: ["user:existing@example.com"] }],
+        etag: "etag123",
+        version: 3,
+      };
+      const updatedPolicy = {
+        bindings: [
+          {
+            role: "roles/logging.viewAccessor",
+            members: ["user:existing@example.com", "projectViewer:project"],
+          },
+        ],
+        etag: "etag123",
+        version: 3,
+      };
+      nock(cloudloggingOrigin())
+        .post(
+          "/v2/projects/project/locations/global/buckets/firebase-telemetry/views/_AllLogs:getIamPolicy",
+        )
+        .reply(200, existingPolicy);
+      nock(cloudloggingOrigin())
+        .post(
+          "/v2/projects/project/locations/global/buckets/firebase-telemetry/views/_AllLogs:setIamPolicy",
+          { policy: updatedPolicy },
+        )
+        .reply(200, updatedPolicy);
+
+      const result = await cloudlogging.grantLogViewAccess(
+        "project",
+        "firebase-telemetry",
+        "_AllLogs",
+        "projectViewer:project",
+        "roles/logging.viewAccessor",
+        "global",
+      );
+      expect(result).to.deep.equal(updatedPolicy);
+    });
+
+    it("should return existing policy without calling setIamPolicy if member already has role", async () => {
+      const existingPolicy = {
+        bindings: [{ role: "roles/logging.viewAccessor", members: ["projectViewer:project"] }],
+        etag: "etag123",
+        version: 3,
+      };
+      nock(cloudloggingOrigin())
+        .post(
+          "/v2/projects/project/locations/global/buckets/firebase-telemetry/views/_AllLogs:getIamPolicy",
+        )
+        .reply(200, existingPolicy);
+
+      const result = await cloudlogging.grantLogViewAccess(
+        "project",
+        "firebase-telemetry",
+        "_AllLogs",
+        "projectViewer:project",
+        "roles/logging.viewAccessor",
+        "global",
+      );
+      expect(result).to.deep.equal(existingPolicy);
+    });
+
+    it("should create new policy if getLogViewIamPolicy returns 404", async () => {
+      const expectedPolicy = {
+        bindings: [{ role: "roles/logging.viewAccessor", members: ["projectViewer:project"] }],
+        etag: "",
+        version: 3,
+      };
+      nock(cloudloggingOrigin())
+        .post(
+          "/v2/projects/project/locations/global/buckets/firebase-telemetry/views/_AllLogs:getIamPolicy",
+        )
+        .reply(404, { error: "not found" });
+      nock(cloudloggingOrigin())
+        .post(
+          "/v2/projects/project/locations/global/buckets/firebase-telemetry/views/_AllLogs:setIamPolicy",
+          { policy: expectedPolicy },
+        )
+        .reply(200, expectedPolicy);
+
+      const result = await cloudlogging.grantLogViewAccess(
+        "project",
+        "firebase-telemetry",
+        "_AllLogs",
+        "projectViewer:project",
+        "roles/logging.viewAccessor",
+        "global",
+      );
+      expect(result).to.deep.equal(expectedPolicy);
+    });
+
+    it("should add multiple members to the role binding", async () => {
+      const existingPolicy = {
+        bindings: [],
+        etag: "etag123",
+        version: 3,
+      };
+      const updatedPolicy = {
+        bindings: [
+          {
+            role: "roles/logging.viewAccessor",
+            members: ["projectViewer:project", "projectEditor:project", "projectOwner:project"],
+          },
+        ],
+        etag: "etag123",
+        version: 3,
+      };
+      nock(cloudloggingOrigin())
+        .post(
+          "/v2/projects/project/locations/global/buckets/firebase-telemetry/views/_AllLogs:getIamPolicy",
+        )
+        .reply(200, existingPolicy);
+      nock(cloudloggingOrigin())
+        .post(
+          "/v2/projects/project/locations/global/buckets/firebase-telemetry/views/_AllLogs:setIamPolicy",
+          { policy: updatedPolicy },
+        )
+        .reply(200, updatedPolicy);
+
+      const result = await cloudlogging.grantLogViewAccess(
+        "project",
+        "firebase-telemetry",
+        "_AllLogs",
+        ["projectViewer:project", "projectEditor:project", "projectOwner:project"],
+        "roles/logging.viewAccessor",
+        "global",
+      );
+      expect(result).to.deep.equal(updatedPolicy);
+    });
+  });
 });
