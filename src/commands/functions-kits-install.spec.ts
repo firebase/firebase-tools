@@ -16,7 +16,11 @@ import {
   addKitToConfig,
   buildAndInstallKit,
   promptExistingInstanceForProject,
+  printKitFirstDeployReport,
+  FunctionsKitsInstallOptions,
 } from "./functions-kits-install";
+import * as kitsInstall from "./functions-kits-install";
+import * as build from "../deploy/functions/build";
 import * as experiments from "../experiments";
 import * as initSpawn from "../init/spawn";
 import { Config } from "../config";
@@ -1550,6 +1554,101 @@ describe("functions:kits:install", () => {
           sinon.match(/firebase deploy --only functions:inst-2 --project prod-project/),
         );
       });
+    });
+  });
+
+  describe("printKitFirstDeployReport", () => {
+    const mockOptions = {} as unknown as FunctionsKitsInstallOptions;
+
+    it("should print bulleted lists of functions, required APIs, and required roles", async () => {
+      sinon.stub(kitsInstall, "discoverKitBuild").resolves({
+        requiredAPIs: [
+          { api: "firestore.googleapis.com", reason: "Firestore access" },
+          { api: "bigquery.googleapis.com", reason: "BigQuery export" },
+        ],
+        endpoints: {
+          syncData: { entryPoint: "syncData" } as unknown as build.Endpoint,
+          cleanUp: { entryPoint: "cleanUp" } as unknown as build.Endpoint,
+        },
+        params: [],
+        requiredRoles: ["roles/datastore.user", "roles/bigquery.dataEditor"],
+      });
+
+      await printKitFirstDeployReport(mockOptions, "my-inst", "/mock/source");
+
+      expect(loggerInfoStub).to.have.been.calledWith(
+        sinon.match(/functions:/),
+        sinon.match(
+          "At the first deploy, the following functions will be created in your project:\n" +
+            "- kit-my-inst-cleanUp\n" +
+            "- kit-my-inst-syncData",
+        ),
+      );
+      expect(loggerInfoStub).to.have.been.calledWith(
+        sinon.match(/functions:/),
+        sinon.match(
+          "At the first deploy, the following APIs will be enabled in your project:\n" +
+            "- bigquery.googleapis.com\n" +
+            "- firestore.googleapis.com",
+        ),
+      );
+      expect(loggerInfoStub).to.have.been.calledWith(
+        sinon.match(/functions:/),
+        sinon.match(
+          "At the first deploy, the following roles will be granted to the kit service account:\n" +
+            "- BigQuery Data Editor\n" +
+            "- Cloud Datastore User",
+        ),
+      );
+    });
+
+    it("should not print anything when there are no functions, APIs, or roles", async () => {
+      sinon.stub(kitsInstall, "discoverKitBuild").resolves({
+        requiredAPIs: [],
+        endpoints: {},
+        params: [],
+        requiredRoles: [],
+      });
+
+      await printKitFirstDeployReport(mockOptions, "my-inst", "/mock/source");
+
+      expect(loggerInfoStub).to.not.have.been.called;
+    });
+
+    it("should only print sections for non-empty lists", async () => {
+      sinon.stub(kitsInstall, "discoverKitBuild").resolves({
+        requiredAPIs: [],
+        endpoints: {
+          syncData: { entryPoint: "syncData" } as unknown as build.Endpoint,
+        },
+        params: [],
+        requiredRoles: [],
+      });
+
+      await printKitFirstDeployReport(mockOptions, "my-inst", "/mock/source");
+
+      expect(loggerInfoStub).to.have.been.calledWith(
+        sinon.match(/functions:/),
+        sinon.match(
+          "At the first deploy, the following functions will be created in your project:\n" +
+            "- kit-my-inst-syncData",
+        ),
+      );
+      expect(loggerInfoStub).to.not.have.been.calledWith(
+        sinon.match("At the first deploy, the following APIs will be enabled in your project"),
+      );
+      expect(loggerInfoStub).to.not.have.been.calledWith(
+        sinon.match(
+          "At the first deploy, the following roles will be granted to the kit service account",
+        ),
+      );
+    });
+
+    it("should handle discovery errors gracefully without throwing", async () => {
+      sinon.stub(kitsInstall, "discoverKitBuild").rejects(new Error("Discovery failed"));
+
+      await expect(printKitFirstDeployReport(mockOptions, "my-inst", "/mock/source")).to.not.be
+        .rejected;
     });
   });
 });
