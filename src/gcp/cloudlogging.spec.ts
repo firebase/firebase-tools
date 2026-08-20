@@ -193,12 +193,17 @@ describe("cloudlogging", () => {
         )
         .reply(403, { error: "forbidden" });
 
-      await expect(
-        cloudlogging.getLogViewIamPolicy("project", "firebase-telemetry", "_AllLogs", "global"),
-      ).to.be.rejectedWith(
+      const promise = cloudlogging.getLogViewIamPolicy(
+        "project",
+        "firebase-telemetry",
+        "_AllLogs",
+        "global",
+      );
+      await expect(promise).to.be.rejectedWith(
         FirebaseError,
         "Failed to get IAM policy for log view _AllLogs on bucket firebase-telemetry (status 403):",
       );
+      await expect(promise).to.be.rejected.and.eventually.have.property("status", 403);
     });
   });
 
@@ -240,18 +245,18 @@ describe("cloudlogging", () => {
         )
         .reply(500, { error: "internal error" });
 
-      await expect(
-        cloudlogging.setLogViewIamPolicy(
-          "project",
-          "firebase-telemetry",
-          "_AllLogs",
-          policy,
-          "global",
-        ),
-      ).to.be.rejectedWith(
+      const promise = cloudlogging.setLogViewIamPolicy(
+        "project",
+        "firebase-telemetry",
+        "_AllLogs",
+        policy,
+        "global",
+      );
+      await expect(promise).to.be.rejectedWith(
         FirebaseError,
         "Failed to set IAM policy for log view _AllLogs on bucket firebase-telemetry (status 500):",
       );
+      await expect(promise).to.be.rejected.and.eventually.have.property("status", 500);
     });
   });
 

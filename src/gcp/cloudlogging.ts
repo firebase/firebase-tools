@@ -203,7 +203,7 @@ export async function getLogViewIamPolicy(
     const msg = err.message || JSON.stringify(err.body) || err;
     throw new FirebaseError(
       `Failed to get IAM policy for log view ${viewId} on bucket ${bucketId} (status ${err.status}): ${msg}`,
-      { original: err },
+      { original: err, status: err.status },
     );
   }
 }
@@ -228,7 +228,7 @@ export async function setLogViewIamPolicy(
     const msg = err.message || JSON.stringify(err.body) || err;
     throw new FirebaseError(
       `Failed to set IAM policy for log view ${viewId} on bucket ${bucketId} (status ${err.status}): ${msg}`,
-      { original: err },
+      { original: err, status: err.status },
     );
   }
 }
