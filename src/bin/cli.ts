@@ -57,6 +57,9 @@ export function loadAllCommands(client: Record<string, unknown>): void {
   loadAll(client);
 }
 
+/**
+ *
+ */
 export function cli(pkg: any) {
   const updateNotifier = updateNotifierPkg({ pkg });
 
@@ -69,7 +72,7 @@ export function cli(pkg: any) {
 
   process.env.IS_FIREBASE_CLI = "true";
 
-  const logFilename = useFileLogger();
+  const logFilename = useFileLogger(process.env.FIREBASE_DEBUG_FILE || undefined);
 
   // Console loggers are initialized early here so that:
   // 1. Any errors during startup (loading commands, etc.) are printed to the console.
@@ -98,7 +101,12 @@ export function cli(pkg: any) {
 
   process.on("exit", (code) => {
     code = typeof process.exitCode === "number" ? process.exitCode : code;
-    if (!process.env.DEBUG && code < 2 && fsutils.fileExistsSync(logFilename)) {
+    if (
+      !process.env.DEBUG &&
+      code < 2 &&
+      logFilename !== "/dev/null" &&
+      fsutils.fileExistsSync(logFilename)
+    ) {
       fs.unlinkSync(logFilename);
     }
 
