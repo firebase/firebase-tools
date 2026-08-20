@@ -644,15 +644,14 @@ export async function printKitFirstDeployReport(
   absSourcePath: string,
 ): Promise<void> {
   let discoveredBuild: build.Build;
+  const prefix = addKitPrefix(instanceId);
   try {
     discoveredBuild = await self.discoverKitBuild(options, absSourcePath);
+    build.applyPrefix(discoveredBuild, prefix);
   } catch (err: unknown) {
     logger.debug(`Could not discover kit build for reporting: ${getErrMsg(err)}`);
     return;
   }
-
-  const prefix = addKitPrefix(instanceId);
-  build.applyPrefix(discoveredBuild, prefix);
 
   const functions = Object.keys(discoveredBuild.endpoints).sort();
   const apis = Array.from(new Set((discoveredBuild.requiredAPIs || []).map((a) => a.api))).sort();
