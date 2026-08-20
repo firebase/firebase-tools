@@ -1565,18 +1565,13 @@ describe("functions:kits:install", () => {
         requiredAPIs: [
           { api: "firestore.googleapis.com", reason: "Firestore access" },
           { api: "bigquery.googleapis.com", reason: "BigQuery export" },
-          { api: "firestore.googleapis.com", reason: "Duplicate entry" },
         ],
         endpoints: {
           syncData: { entryPoint: "syncData" } as unknown as build.Endpoint,
           cleanUp: { entryPoint: "cleanUp" } as unknown as build.Endpoint,
         },
         params: [],
-        requiredRoles: [
-          "roles/datastore.user",
-          "roles/bigquery.dataEditor",
-          "roles/datastore.user",
-        ],
+        requiredRoles: ["roles/datastore.user", "roles/bigquery.dataEditor"],
       });
 
       await printKitFirstDeployReport(mockOptions, "my-inst", "/mock/source");
@@ -1601,8 +1596,8 @@ describe("functions:kits:install", () => {
         sinon.match(/functions:/),
         sinon.match(
           "At the first deploy, the following roles will be granted to the kit service account:\n" +
-            "- roles/bigquery.dataEditor\n" +
-            "- roles/datastore.user",
+            "- BigQuery Data Editor\n" +
+            "- Cloud Datastore User",
         ),
       );
     });

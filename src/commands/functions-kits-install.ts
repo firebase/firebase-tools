@@ -27,6 +27,7 @@ import { readTemplateSync } from "../templates";
 import * as supported from "../deploy/functions/runtimes/supported";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as build from "../deploy/functions/build";
+import * as iam from "../gcp/iam";
 import { hasProjectEnv } from "../functions/env";
 import * as self from "./functions-kits-install";
 import { Config } from "../config";
@@ -654,8 +655,9 @@ export async function printKitFirstDeployReport(
   }
 
   const functions = Object.keys(discoveredBuild.endpoints).sort();
-  const apis = Array.from(new Set((discoveredBuild.requiredAPIs || []).map((a) => a.api))).sort();
-  const roles = Array.from(new Set(discoveredBuild.requiredRoles || [])).sort();
+  const apis = (discoveredBuild.requiredAPIs || []).map((a) => a.api).sort();
+  const rawRoles = discoveredBuild.requiredRoles || [];
+  const roles = (await Promise.all(rawRoles.map((r) => iam.getRoleName(r)))).sort();
 
   const printSection = (heading: string, items: string[]): void => {
     if (items.length > 0) {
