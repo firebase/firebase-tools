@@ -299,6 +299,13 @@ jobs:
           - node-version: "24.18"
             script: "npm run test:functions-discover"
     steps:
+      # Exclude workspace and npm caches from Windows Defender real-time scanning.
+      # Windows Defender locks files during rapid disk operations (npm ci, binary/emulator extraction),
+      # which causes intermittent EPERM errors and test runner deadlocks on Windows runners.
+      - name: Disable Windows Defender for workspace
+        run: Set-MpPreference -ExclusionPath @("${{ github.workspace }}", "$env:LocalAppData\npm-cache", "$env:AppData\npm")
+        shell: powershell
+
       - name: Setup Java JDK
         uses: actions/setup-java@860f60056505705214d223b91ed7a30f173f6142 # ratchet:actions/setup-java@v3.3.0
         with:
@@ -324,12 +331,11 @@ jobs:
 
       - run: echo ${{ secrets.service_account_json_base64 }} > tmp.txt
       - run: certutil -decode tmp.txt scripts/service-account.json
-      - run: npm i -g npm@9.5
-      - run: npm ci
+      - run: npm ci --prefer-offline --no-audit
       - run: ${{ matrix.script }}
       - name: Print debug logs
         if: failure()
-        run: dir "*.log" /s/b | type
+        run: Get-ChildItem -Path . -Filter "*debug.log" -Recurse | ForEach-Object { Get-Content $_.FullName }
 
   check-package-lock:
     runs-on: ubuntu-latest

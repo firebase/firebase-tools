@@ -200,7 +200,7 @@ steps:
 images:
   - "us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase"
 
-timeout: 1200s # 20 minutes
+timeout: 2400s # 40 minutes
 
 options:
   volumes:

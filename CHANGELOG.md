@@ -1,4 +1,1 @@
-- Added extensions replacement registry and scraper tool to track migrations for deprecated extensions ahead of the March 2027 decommission date.
-- [Added] Loads existing `.env` files and passes environment variables to functions discovery in `runtimeDelegate`.
-- Adds --immediate flag to ext:uninstall (#10921)
 - Replaced the raw 404 from `adminSdkConfig` with a message naming the project and pointing at `firebase projects:addfirebase` (#10379)
