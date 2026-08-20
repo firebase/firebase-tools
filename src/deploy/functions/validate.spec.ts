@@ -143,6 +143,19 @@ describe("validate", () => {
       );
     });
 
+    it("reports the downgrade rather than the inherited timeout", () => {
+      // inferDetailsFromExisting copies timeoutSeconds regardless of platform, so want
+      // reaches here carrying a timeout that is legal on gcfv2 and not on gcfv1. The
+      // downgrade check has to run before validateTimeoutConfig or that 540s limit is
+      // reported instead of the real reason.
+      const want = backend.of({ ...ENDPOINT_BASE, platform: "gcfv1", timeoutSeconds: 3600 });
+      const have = backend.of({ ...ENDPOINT_BASE, platform: "gcfv2", timeoutSeconds: 3600 });
+
+      expect(() => validate.endpointsAreValid(want, have)).to.throw(
+        /cannot be downgraded from GCFv2 to GCFv1/,
+      );
+    });
+
     it("allows a gcfv1 function that does not exist yet", () => {
       const want = backend.of({ ...ENDPOINT_BASE, platform: "gcfv1" });
 
