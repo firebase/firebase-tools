@@ -1,0 +1,1 @@
+- Replaced the raw 404 from `adminSdkConfig` with a message naming the project and pointing at `firebase projects:addfirebase` (#10379)
