@@ -424,7 +424,6 @@ async function provisionDefaultComputeServiceAccount(projectId: string): Promise
       logWarning(
         "Unable to verify or create default compute service account due to missing IAM permissions. Continuing deploy...",
       );
-      return;
     } else if (getErrStatus(err) !== 409) {
       // 409 Already Exists errors can safely be ignored.
       throw err;
