@@ -24,6 +24,23 @@ describe("firebaseConfigValidate", () => {
     expect(isValid).to.be.true;
   });
 
+  it("should accept a valid run config", () => {
+    const config: FirebaseConfig = {
+      run: [
+        {
+          serviceId: "my-service",
+          region: "us-central1",
+          rootDir: ".",
+        },
+      ],
+    };
+
+    const validator = getValidator();
+    const isValid = validator(config);
+
+    expect(isValid).to.be.true;
+  });
+
   it("should report an extra top-level field", () => {
     // This config has an extra 'bananas' top-level property
     const config = {

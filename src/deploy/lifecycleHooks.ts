@@ -59,6 +59,9 @@ function getChildEnvironment(target: string, overallOptions: any, config: any) {
     case "functions":
       resourceDir = overallOptions.config.path(config.source);
       break;
+    case "run":
+      resourceDir = overallOptions.config.path(config.rootDir || ".");
+      break;
     default:
       resourceDir = overallOptions.config.path(overallOptions.config.projectDir);
   }
@@ -102,6 +105,8 @@ function runTargetCommands(
   let logIdentifier = target;
   if (config.target) {
     logIdentifier += `[${config.target}]`;
+  } else if (config.serviceId) {
+    logIdentifier += `[${config.serviceId}]`;
   }
 
   return runAllCommands
@@ -173,6 +178,10 @@ function getReleventConfigs(target: string, options: Options) {
       onlyConfigs = targetConfigs;
     }
     return onlyConfigs;
+  } else if (target === "run") {
+    return targetConfigs.filter((config: any) => {
+      return !config.serviceId || onlyTargets.includes(config.serviceId);
+    });
   } else {
     return targetConfigs.filter((config: any) => {
       return !config.target || onlyTargets.includes(config.target);
@@ -180,6 +189,13 @@ function getReleventConfigs(target: string, options: Options) {
   }
 }
 
+/**
+ * Returns a deployment lifecycle hook function for the specified target and hook phase (e.g. predeploy, postdeploy).
+ *
+ * @param target The deployment target name (e.g. hosting, functions, run).
+ * @param hook The lifecycle hook name (e.g. predeploy, postdeploy).
+ * @return An async function that executes all configured lifecycle commands for matching targets.
+ */
 export function lifecycleHooks(
   target: string,
   hook: string,

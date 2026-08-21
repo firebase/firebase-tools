@@ -1221,6 +1221,59 @@
             ],
             "type": "object"
         },
+        "RunSingle": {
+            "additionalProperties": false,
+            "properties": {
+                "ignore": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "postdeploy": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "predeploy": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "region": {
+                    "type": "string"
+                },
+                "rootDir": {
+                    "type": "string"
+                },
+                "serviceAccount": {
+                    "type": "string"
+                },
+                "serviceId": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "serviceId"
+            ],
+            "type": "object"
+        },
         "StorageSingle": {
             "additionalProperties": false,
             "properties": {
@@ -2007,6 +2060,19 @@
         },
         "remoteconfig": {
             "$ref": "#/definitions/RemoteConfigConfig"
+        },
+        "run": {
+            "anyOf": [
+                {
+                    "$ref": "#/definitions/RunSingle"
+                },
+                {
+                    "items": {
+                        "$ref": "#/definitions/RunSingle"
+                    },
+                    "type": "array"
+                }
+            ]
         },
         "storage": {
             "anyOf": [

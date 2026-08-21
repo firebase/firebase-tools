@@ -44,6 +44,7 @@ export interface SetupInfo {
   ailogic?: features.AiLogicInfo;
   hosting?: features.HostingInfo;
   auth?: features.AuthInfo;
+  run?: features.RunInfo;
   agentSkills?: features.AgentSkillsInfo;
 }
 
@@ -134,10 +135,23 @@ const featuresList: Feature[] = [
     askQuestions: features.agentSkillsAskQuestions,
     actuate: features.agentSkillsActuate,
   },
+  {
+    name: "run",
+    displayName: "Cloud Run",
+    askQuestions: features.runAskQuestions,
+    actuate: features.runActuate,
+  },
 ];
 
 const featureMap = new Map(featuresList.map((feature) => [feature.name, feature]));
 
+/**
+ * Recursively runs question and actuate phases for each selected feature during project setup.
+ * @param setup The initialization setup state holding the feature queue and config.
+ * @param config The project configuration.
+ * @param options Command-line options and flags.
+ * @return The final setup result.
+ */
 export async function init(setup: Setup, config: Config, options: any): Promise<any> {
   const nextFeature = setup.features?.shift();
   if (nextFeature) {
