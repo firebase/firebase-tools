@@ -231,8 +231,11 @@ export async function localBuild(
   }
 
   const addedEnv = await toProcessEnv(projectId, env);
-  if (options?.rootDir && options.rootDir !== "." && options.rootDir !== "") {
-    addedEnv.GOOGLE_BUILDABLE = options.rootDir;
+  if (options?.rootDir) {
+    const normalizedRootDir = options.rootDir.replace(/\\/g, "/");
+    if (normalizedRootDir !== "." && normalizedRootDir !== "") {
+      addedEnv.GOOGLE_BUILDABLE = normalizedRootDir;
+    }
   }
   const apphostingBuildOutput = await runUniversalMaker(projectRoot, addedEnv);
 
