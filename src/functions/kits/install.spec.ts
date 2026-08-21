@@ -18,6 +18,7 @@ import {
 import * as env from "./env";
 import { Config } from "../../config";
 import { FirebaseError } from "../../error";
+import { KitFunctionConfig } from "../../firebaseConfig";
 
 describe("functions/kits/install", () => {
   let seedKitInstanceEnvStub: sinon.SinonStub;
@@ -185,7 +186,7 @@ describe("functions/kits/install", () => {
   describe("addInstanceToKitConfig", () => {
     it("should add instance to existing kit in config and save", () => {
       const writtenFiles: Record<string, unknown> = {};
-      const originalEntryInConfig = {
+      const originalEntryInConfig: KitFunctionConfig = {
         kit: "my-kit",
         sourcePackage: { name: "@scope/pkg" },
         source: "function-kits/my-kit/source",
@@ -298,7 +299,7 @@ describe("functions/kits/install", () => {
   describe("addInstanceToKit", () => {
     it("should ensure config dir and update config without seedEnv", async () => {
       const writtenFiles: Record<string, unknown> = {};
-      const existingEntry = {
+      const existingEntry: KitFunctionConfig = {
         kit: "my-kit",
         sourcePackage: { name: "@scope/pkg" },
         source: "function-kits/my-kit/source",
@@ -330,7 +331,7 @@ describe("functions/kits/install", () => {
 
     it("should ensure config dir, seed .env.<project-id>, and update config when seedEnv is provided", async () => {
       const writtenFiles: Record<string, unknown> = {};
-      const existingEntry = {
+      const existingEntry: KitFunctionConfig = {
         kit: "my-kit",
         sourcePackage: { name: "@scope/pkg" },
         source: "function-kits/my-kit/source",
