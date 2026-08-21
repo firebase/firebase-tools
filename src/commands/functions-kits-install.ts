@@ -18,71 +18,8 @@ import { Options } from "../options";
 import { confirm, input, select } from "../prompt";
 import * as build from "../deploy/functions/build";
 import * as iam from "../gcp/iam";
+import * as kits from "../functions/kits/install";
 import * as self from "./functions-kits-install";
-import {
-  DEFAULT_TEMPLATE,
-  ExistingFunctionsInfo,
-  TEMPLATES,
-  TemplateType,
-  addInstanceToKit,
-  addKitToConfig,
-  buildAndInstallKit,
-  checkPackageHasShrinkwrap,
-  extractExistingFunctionsInfo,
-  generateUniqueId,
-  isKitConfiguredForProject,
-  isThirdPartyPackage,
-  parseNpmPackageSpecifier,
-  sanitizePackageNameToKitName,
-  scaffoldKitFiles,
-  validateNpmPackageName,
-} from "../functions/kits/install";
-
-import * as kitsInstallCore from "../functions/kits/install";
-
-export {
-  FUNCTION_KITS_DIR,
-  TEMPLATES,
-  TemplateType,
-  DEFAULT_TEMPLATE,
-  ExistingFunctionsInfo,
-  ScaffoldedKitPaths,
-  ScaffoldKitOptions,
-  AddKitInstanceOptions,
-  AddKitInstanceResult,
-  generateUniqueId,
-  parseNpmPackageSpecifier,
-  validateNpmPackageName,
-  sanitizePackageNameToKitName,
-  isThirdPartyPackage,
-  checkPackageHasShrinkwrap,
-  isKitConfiguredForProject,
-  extractExistingFunctionsInfo,
-  writeKitPackageJson,
-  writeKitIndexTs,
-  scaffoldKitFiles,
-  buildAndInstallKit,
-  addKitToConfig,
-  addInstanceToKitConfig,
-  scaffoldKit,
-  addInstanceToKit,
-} from "../functions/kits/install";
-export {
-  KitEnvValue,
-  KitInstanceEnvSeed,
-  SeedKitEnvOptions,
-  seedKitInstanceEnv,
-} from "../functions/kits/env";
-
-/**
- * Discovers the build manifest from the compiled kit source directory.
- */
-export async function discoverKitBuild(
-  options: FunctionsKitsInstallOptions,
-  absSourcePath: string,
-): Promise<build.Build> {
-  return kitsInstallCore.discoverKitBuild(options, absSourcePath);
-}
 
 export interface FunctionsKitsInstallOptions extends Options {
   package?: string;
@@ -99,7 +36,7 @@ export async function promptKitInstanceId(
   nonInteractive?: boolean,
 ): Promise<string> {
   const instanceCollisions = new Set([...existingInstanceIds, ...existingCodebases]);
-  const defaultInstanceId = generateUniqueId(baseKitId, instanceCollisions);
+  const defaultInstanceId = kits.generateUniqueId(baseKitId, instanceCollisions);
 
   const instanceId = await input({
     message: "What would you like to name this instance?",
@@ -144,8 +81,8 @@ export async function promptKitId(
   existingKitIds: Set<string>,
   nonInteractive?: boolean,
 ): Promise<string> {
-  const baseKitId = sanitizePackageNameToKitName(packageName);
-  const defaultKitId = generateUniqueId(baseKitId, existingKitIds);
+  const baseKitId = kits.sanitizePackageNameToKitName(packageName);
+  const defaultKitId = kits.generateUniqueId(baseKitId, existingKitIds);
 
   const kitId = await input({
     message: "What would you like to name this kit?",
@@ -180,7 +117,7 @@ export async function promptSecurityConfirmation(
   packageName: string,
   nonInteractive?: boolean,
 ): Promise<boolean> {
-  const isThirdParty = isThirdPartyPackage(packageName);
+  const isThirdParty = kits.isThirdPartyPackage(packageName);
   if (isThirdParty) {
     logLabeledWarning(
       "functions",
@@ -188,7 +125,7 @@ export async function promptSecurityConfirmation(
     );
   }
 
-  const hasShrinkwrap = await checkPackageHasShrinkwrap(rawPkgName);
+  const hasShrinkwrap = await kits.checkPackageHasShrinkwrap(rawPkgName);
   if (!hasShrinkwrap) {
     logLabeledWarning(
       "functions",
@@ -224,7 +161,7 @@ export async function promptSecurityConfirmation(
 async function addInstanceToExistingKit(
   options: FunctionsKitsInstallOptions,
   existingKit: ValidatedKitSingle,
-  existingFunctionsInfo: ExistingFunctionsInfo,
+  existingFunctionsInfo: kits.ExistingFunctionsInfo,
 ): Promise<void> {
   const instanceId = await promptKitInstanceId(
     existingKit.kit,
@@ -233,7 +170,7 @@ async function addInstanceToExistingKit(
     options.nonInteractive,
   );
 
-  await addInstanceToKit({
+  await kits.addInstanceToKit({
     config: options.config,
     kitId: existingKit.kit,
     instanceId,
@@ -286,14 +223,14 @@ export async function promptExistingInstanceForProject(
 export async function addKitInstanceOrConfigureProject(
   options: FunctionsKitsInstallOptions,
   existingKit: ValidatedKitSingle,
-  existingFunctionsInfo: ExistingFunctionsInfo,
+  existingFunctionsInfo: kits.ExistingFunctionsInfo,
 ): Promise<void> {
   const projectId = getProjectId(options);
   const projectAlias =
     options.rc?.hasProjects && options.project && options.rc.hasProjectAlias(options.project)
       ? options.project
       : undefined;
-  const isConfiguredForProject = isKitConfiguredForProject(
+  const isConfiguredForProject = kits.isKitConfiguredForProject(
     options.config,
     existingKit,
     projectId,
@@ -348,7 +285,7 @@ export async function printKitFirstDeployReport(
   let discoveredBuild: build.Build;
   const prefix = addKitPrefix(instanceId);
   try {
-    discoveredBuild = await self.discoverKitBuild(options, absSourcePath);
+    discoveredBuild = await kits.discoverKitBuild(options, absSourcePath);
     build.applyPrefix(discoveredBuild, prefix);
   } catch (err: unknown) {
     logger.debug(`Could not discover kit build for reporting: ${getErrMsg(err)}`);
@@ -381,9 +318,9 @@ export const command = new Command("functions:kits:install")
   .description("install a function kit into your project")
   .option("--package <package>", "NPM package name or specifier to install as a function kit")
   .option(
-    `--template [${Object.keys(TEMPLATES).join("|")}]`,
+    `--template [${Object.keys(kits.TEMPLATES).join("|")}]`,
     "template to use for the kit index file",
-    DEFAULT_TEMPLATE,
+    kits.DEFAULT_TEMPLATE,
   )
   .action(async (options: FunctionsKitsInstallOptions): Promise<void> => {
     experiments.assertEnabled("kits", "install a function kit");
@@ -392,9 +329,9 @@ export const command = new Command("functions:kits:install")
       throw new FirebaseError("Not in a Firebase project directory (firebase.json not found).");
     }
 
-    const templateType = (options.template || DEFAULT_TEMPLATE) as TemplateType;
-    if (!(templateType in TEMPLATES)) {
-      const validTemplates = Object.keys(TEMPLATES)
+    const templateType = (options.template || kits.DEFAULT_TEMPLATE) as kits.TemplateType;
+    if (!(templateType in kits.TEMPLATES)) {
+      const validTemplates = Object.keys(kits.TEMPLATES)
         .map((t) => `'${t}'`)
         .join(" or ");
       throw new FirebaseError(
@@ -407,10 +344,10 @@ export const command = new Command("functions:kits:install")
       throw new FirebaseError("Set the --package option to a valid NPM package and try again.");
     }
 
-    const { packageName, version } = parseNpmPackageSpecifier(rawPkgName);
-    validateNpmPackageName(packageName);
+    const { packageName, version } = kits.parseNpmPackageSpecifier(rawPkgName);
+    kits.validateNpmPackageName(packageName);
 
-    const existingFunctionsInfo = extractExistingFunctionsInfo(options.config.src.functions);
+    const existingFunctionsInfo = kits.extractExistingFunctionsInfo(options.config.src.functions);
     const existingKit = existingFunctionsInfo.existingFunctions.find(
       (c): c is ValidatedKitSingle => isKitConfig(c) && c.sourcePackage?.name === packageName,
     );
@@ -439,7 +376,7 @@ export const command = new Command("functions:kits:install")
       options.nonInteractive,
     );
 
-    const { sourcePath, configDirPath, absSourcePath } = await scaffoldKitFiles(
+    const { sourcePath, configDirPath, absSourcePath } = await kits.scaffoldKitFiles(
       options.config,
       kitId,
       instanceId,
@@ -448,9 +385,9 @@ export const command = new Command("functions:kits:install")
       templateType,
     );
 
-    await buildAndInstallKit(absSourcePath, isThirdParty);
+    await kits.buildAndInstallKit(absSourcePath, isThirdParty);
 
-    addKitToConfig(options.config, kitId, instanceId, packageName, sourcePath, configDirPath);
+    kits.addKitToConfig(options.config, kitId, instanceId, packageName, sourcePath, configDirPath);
 
     logLabeledSuccess("functions", `Function kit ${clc.bold(kitId)} successfully installed.`);
     await self.printKitFirstDeployReport(options, instanceId, absSourcePath);
