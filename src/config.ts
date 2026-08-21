@@ -252,7 +252,7 @@ export class Config {
   }
 
   projectDirExists(p: string): boolean {
-    return this.projectFileExists(p) && fs.statSync(this.path(p)).isDirectory()
+    return this.projectFileExists(p) && fs.statSync(this.path(p)).isDirectory();
   }
 
   deleteProjectFile(p: string) {
@@ -263,11 +263,11 @@ export class Config {
     if (p.includes("/..")) {
       throw new FirebaseError("sanity: refusing to delete project-relative dir containing '/..'");
     }
-    fs.rmSync(this.path(p), {recursive: true})
+    fs.rmSync(this.path(p), { recursive: true });
   }
 
   lsProjectDir(p: string): fs.Dirent<string>[] {
-    return fs.readdirSync(p, {withFileTypes: true})
+    return fs.readdirSync(p, { withFileTypes: true });
   }
 
   async confirmWriteProjectFile(
