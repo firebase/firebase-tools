@@ -420,8 +420,13 @@ async function provisionDefaultComputeServiceAccount(projectId: string): Promise
       "Firebase App Hosting compute service account",
     );
   } catch (err: unknown) {
-    // 409 Already Exists errors can safely be ignored.
-    if (getErrStatus(err) !== 409) {
+    if (getErrStatus(err) === 403) {
+      logWarning(
+        "Unable to verify or create default compute service account due to missing IAM permissions. Continuing deploy...",
+      );
+      return;
+    } else if (getErrStatus(err) !== 409) {
+      // 409 Already Exists errors can safely be ignored.
       throw err;
     }
   }
@@ -441,6 +446,10 @@ async function provisionDefaultComputeServiceAccount(projectId: string): Promise
     if (getErrStatus(err) === 400) {
       logWarning(
         "Your App Hosting compute service account is still being provisioned in the background. If you encounter an error, please try again after a few moments.",
+      );
+    } else if (getErrStatus(err) === 403) {
+      logWarning(
+        "Unable to set IAM roles on default compute service account due to missing permissions. Continuing deploy...",
       );
     } else {
       throw err;
