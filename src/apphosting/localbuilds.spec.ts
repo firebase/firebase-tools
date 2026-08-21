@@ -258,6 +258,23 @@ describe("localBuild", () => {
       await localBuild("test-project", "./", envMap, { nonInteractive: false });
       expect(confirmStub).to.have.been.calledOnce;
     });
+
+    it("injects GOOGLE_BUILDABLE when rootDir option is provided", async () => {
+      const spawnStub = sinon.stub(childProcess, "spawnSync").returns({
+        status: 0,
+        output: ["", "mock output", ""],
+        pid: 12345,
+        stdout: "mock stdout",
+        stderr: "mock stderr",
+        signal: null,
+      });
+
+      await localBuild("test-project", "./", {}, { rootDir: "apps/web" });
+
+      expect(spawnStub).to.have.been.calledOnce;
+      const env = spawnStub.firstCall.args[2]?.env;
+      expect(env?.GOOGLE_BUILDABLE).to.equal("apps/web");
+    });
   });
 
   describe("runUniversalMaker", () => {
