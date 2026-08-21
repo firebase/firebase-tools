@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import { AppHostingYamlConfig, toEnvMap, toEnvList } from "./yaml";
+import { AppHostingYamlConfig, toEnvMap, toEnvList, toApiRunConfig } from "./yaml";
 import * as configModule from "./config";
 import * as utils from "../utils";
 import * as fsutils from "../fsutils";
@@ -97,6 +97,30 @@ describe("apphosting/yaml", () => {
       const map = { FOO: { value: "bar" } };
       const list = toEnvList(map);
       expect(list).to.deep.equal([{ variable: "FOO", value: "bar" }]);
+    });
+
+    describe("toApiRunConfig", () => {
+      it("should return undefined for undefined or empty runConfig", () => {
+        expect(toApiRunConfig(undefined)).to.be.undefined;
+        expect(toApiRunConfig({})).to.be.undefined;
+      });
+
+      it("should map memoryMiB to memoryMib and preserve other fields", () => {
+        const input = {
+          cpu: 2,
+          memoryMiB: 3072,
+          concurrency: 8,
+          minInstances: 1,
+          maxInstances: 10,
+        };
+        expect(toApiRunConfig(input)).to.deep.equal({
+          cpu: 2,
+          memoryMib: 3072,
+          concurrency: 8,
+          minInstances: 1,
+          maxInstances: 10,
+        });
+      });
     });
   });
 

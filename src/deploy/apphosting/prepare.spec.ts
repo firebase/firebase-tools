@@ -171,6 +171,62 @@ describe("apphosting", () => {
       );
     });
 
+    it("correctly includes runConfig from apphosting.yaml in localBuild buildConfig", async () => {
+      const optsWithLocalBuild = {
+        ...opts,
+        config: new Config({
+          apphosting: {
+            backendId: "foo",
+            rootDir: "/",
+            ignore: [],
+            localBuild: true,
+          },
+        }),
+      };
+      const context = initializeContext();
+
+      const yamlConfig = AppHostingYamlConfig.empty();
+      yamlConfig.runConfig = {
+        cpu: 2,
+        memoryMiB: 3072,
+        concurrency: 8,
+        minInstances: 1,
+        maxInstances: 10,
+      };
+      sinon.stub(apphostingConfig, "getAppHostingConfiguration").resolves(yamlConfig);
+
+      const buildConfig = {
+        runCommand: "npm run build:prod",
+        env: [],
+      };
+      sinon.stub(localbuilds, "localBuild").resolves({
+        outputFiles: ["./next/standalone"],
+        buildConfig,
+      });
+      listBackendsStub.onFirstCall().resolves({
+        backends: [
+          {
+            name: "projects/my-project/locations/us-central1/backends/foo",
+            runtime: { value: "nodejs22" },
+          },
+        ],
+      });
+
+      await prepare(context, optsWithLocalBuild);
+
+      expect(context.backendLocalBuilds["foo"].buildConfig).to.deep.equal({
+        runCommand: "npm run build:prod",
+        env: [],
+        runConfig: {
+          cpu: 2,
+          memoryMib: 3072,
+          concurrency: 8,
+          minInstances: 1,
+          maxInstances: 10,
+        },
+      });
+    });
+
     it("supports multiple parallel local builds without directory clobbering", async () => {
       const optsWithMultipleLocalBuilds = {
         ...opts,
@@ -829,6 +885,41 @@ describe("apphosting", () => {
         VAR1: { value: "val1" },
         VAR2: { value: "override" },
         VAR3: { value: "val3" },
+      });
+    });
+
+    it("extracts and merges runConfigs from apphosting.yaml", async () => {
+      const configs = [{ backendId: "foo", rootDir: "/dir1", ignore: [] }];
+
+      const yamlConfig = AppHostingYamlConfig.empty();
+      yamlConfig.runConfig = {
+        cpu: 2,
+        memoryMiB: 3072,
+        concurrency: 8,
+        minInstances: 1,
+        maxInstances: 10,
+      };
+
+      getAppHostingConfigurationStub.withArgs(sinon.match("/dir1")).resolves(yamlConfig);
+
+      const buildEnv: Record<string, EnvMap> = {};
+      const runtimeEnv: Record<string, EnvMap> = {};
+      const runConfigs: Record<string, apphosting.ApiRunConfig> = {};
+
+      await injectEnvVarsFromApphostingConfig(
+        configs as unknown as AppHostingSingle[],
+        opts as unknown as Options,
+        buildEnv,
+        runtimeEnv,
+        runConfigs,
+      );
+
+      expect(runConfigs["foo"]).to.deep.equal({
+        cpu: 2,
+        memoryMib: 3072,
+        concurrency: 8,
+        minInstances: 1,
+        maxInstances: 10,
       });
     });
   });
