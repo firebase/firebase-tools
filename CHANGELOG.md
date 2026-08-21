@@ -1,5 +1,1 @@
-- Updated Pub/Sub emulator to version 0.8.35.
-- Added extensions replacement registry and scraper tool to track migrations for deprecated extensions ahead of the March 2027 decommission date.
-- Load existing `.env` files and passes environment variables to functions discovery in `runtimeDelegate`.
-- Adds --immediate flag to ext:uninstall (#10921)
 - [Fixed] Increases default polling timeout for App Hosting operations and rollouts to 60 minutes.
