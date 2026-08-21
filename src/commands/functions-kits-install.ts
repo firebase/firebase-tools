@@ -85,7 +85,7 @@ export async function discoverKitBuild(
 }
 
 export interface FunctionsKitsInstallOptions extends Options {
-  npm_package?: string;
+  package?: string;
   template?: string;
 }
 
@@ -379,7 +379,7 @@ export async function printKitFirstDeployReport(
 
 export const command = new Command("functions:kits:install")
   .description("install a function kit into your project")
-  .option("--npm_package <package>", "NPM package name or specifier to install as a function kit")
+  .option("--package <package>", "NPM package name or specifier to install as a function kit")
   .option(
     `--template [${Object.keys(TEMPLATES).join("|")}]`,
     "template to use for the kit index file",
@@ -402,9 +402,9 @@ export const command = new Command("functions:kits:install")
       );
     }
 
-    const rawPkgName = options.npm_package;
+    const rawPkgName = options.package;
     if (!rawPkgName) {
-      throw new FirebaseError("set the --npm_package option to a valid NPM package and try again.");
+      throw new FirebaseError("Set the --package option to a valid NPM package and try again.");
     }
 
     const { packageName, version } = parseNpmPackageSpecifier(rawPkgName);

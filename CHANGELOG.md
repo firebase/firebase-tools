@@ -1,0 +1,1 @@
+- [Fixed] Increases default polling timeout for App Hosting operations and rollouts to 60 minutes.
