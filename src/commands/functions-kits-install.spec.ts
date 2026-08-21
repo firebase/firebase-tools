@@ -5,6 +5,12 @@ import * as fs from "fs-extra";
 
 import {
   command,
+  promptExistingInstanceForProject,
+  printKitFirstDeployReport,
+  FunctionsKitsInstallOptions,
+} from "./functions-kits-install";
+import * as kits from "../functions/kits/install";
+import {
   generateUniqueId,
   parseNpmPackageSpecifier,
   validateNpmPackageName,
@@ -15,11 +21,7 @@ import {
   extractExistingFunctionsInfo,
   addKitToConfig,
   buildAndInstallKit,
-  promptExistingInstanceForProject,
-  printKitFirstDeployReport,
-  FunctionsKitsInstallOptions,
-} from "./functions-kits-install";
-import * as kitsInstall from "./functions-kits-install";
+} from "../functions/kits/install";
 import * as build from "../deploy/functions/build";
 import * as experiments from "../experiments";
 import * as initSpawn from "../init/spawn";
@@ -1561,7 +1563,7 @@ describe("functions:kits:install", () => {
     const mockOptions = {} as unknown as FunctionsKitsInstallOptions;
 
     it("should print bulleted lists of functions, required APIs, and required roles", async () => {
-      sinon.stub(kitsInstall, "discoverKitBuild").resolves({
+      sinon.stub(kits, "discoverKitBuild").resolves({
         requiredAPIs: [
           { api: "firestore.googleapis.com", reason: "Firestore access" },
           { api: "bigquery.googleapis.com", reason: "BigQuery export" },
@@ -1603,7 +1605,7 @@ describe("functions:kits:install", () => {
     });
 
     it("should not print anything when there are no functions, APIs, or roles", async () => {
-      sinon.stub(kitsInstall, "discoverKitBuild").resolves({
+      sinon.stub(kits, "discoverKitBuild").resolves({
         requiredAPIs: [],
         endpoints: {},
         params: [],
@@ -1616,7 +1618,7 @@ describe("functions:kits:install", () => {
     });
 
     it("should only print sections for non-empty lists", async () => {
-      sinon.stub(kitsInstall, "discoverKitBuild").resolves({
+      sinon.stub(kits, "discoverKitBuild").resolves({
         requiredAPIs: [],
         endpoints: {
           syncData: { entryPoint: "syncData" } as unknown as build.Endpoint,
@@ -1645,7 +1647,7 @@ describe("functions:kits:install", () => {
     });
 
     it("should handle discovery errors gracefully without throwing", async () => {
-      sinon.stub(kitsInstall, "discoverKitBuild").rejects(new Error("Discovery failed"));
+      sinon.stub(kits, "discoverKitBuild").rejects(new Error("Discovery failed"));
 
       await expect(printKitFirstDeployReport(mockOptions, "my-inst", "/mock/source")).to.not.be
         .rejected;
