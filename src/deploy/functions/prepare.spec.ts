@@ -1018,6 +1018,58 @@ describe("prepare", () => {
       expect(want.timeoutSeconds).to.equal(120);
     });
 
+    it("does not inherit cpu onto a gcfv1 endpoint", () => {
+      // Redeploying an existing gcfv2 function as gcfv1 (e.g. as a v1 blocking auth
+      // trigger). Inheriting cpu here fails CPU validation and masks the real
+      // "cannot be downgraded" error. Memory and timeout exist on both generations.
+      const have: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        platform: "gcfv2",
+        httpsTrigger: {},
+        cpu: 1,
+        availableMemoryMb: 512,
+        timeoutSeconds: 120,
+      };
+      const want: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        platform: "gcfv1",
+        httpsTrigger: {},
+      };
+
+      prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* usedDotEnv= */ false);
+
+      expect(want.cpu).to.be.undefined;
+      expect(want.availableMemoryMb).to.equal(512);
+      expect(want.timeoutSeconds).to.equal(120);
+    });
+
+    for (const [havePlatform, wantPlatform] of [
+      ["run", "gcfv2"],
+      ["gcfv2", "run"],
+    ] as const) {
+      it(`inherits cpu from ${havePlatform} onto ${wantPlatform}`, () => {
+        const have: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          platform: havePlatform,
+          httpsTrigger: {},
+          cpu: 2,
+        };
+        const want: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          platform: wantPlatform,
+          httpsTrigger: {},
+        };
+
+        prepare.inferDetailsFromExisting(
+          backend.of(want),
+          backend.of(have),
+          /* usedDotEnv= */ false,
+        );
+
+        expect(want.cpu).to.equal(2);
+      });
+    }
+
     it("downgrades concurrency if necessary (explicit)", () => {
       const have: backend.Endpoint = {
         ...ENDPOINT_BASE,

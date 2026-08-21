@@ -125,6 +125,43 @@ describe("validate", () => {
       httpsTrigger: {},
     };
 
+    it("rejects downgrading an existing gcfv2 function to gcfv1", () => {
+      const want = backend.of({ ...ENDPOINT_BASE, platform: "gcfv1" });
+      const have = backend.of({ ...ENDPOINT_BASE, platform: "gcfv2", cpu: 1 });
+
+      expect(() => validate.endpointsAreValid(want, have)).to.throw(
+        /cannot be downgraded from GCFv2 to GCFv1/,
+      );
+    });
+
+    it("rejects redeploying an existing Cloud Run service as gcfv1", () => {
+      const want = backend.of({ ...ENDPOINT_BASE, platform: "gcfv1" });
+      const have = backend.of({ ...ENDPOINT_BASE, platform: "run", cpu: 1 });
+
+      expect(() => validate.endpointsAreValid(want, have)).to.throw(
+        /cannot be downgraded from Cloud Run to GCFv1/,
+      );
+    });
+
+    it("reports the downgrade rather than the inherited timeout", () => {
+      // inferDetailsFromExisting copies timeoutSeconds regardless of platform, so want
+      // reaches here carrying a timeout that is legal on gcfv2 and not on gcfv1. The
+      // downgrade check has to run before validateTimeoutConfig or that 540s limit is
+      // reported instead of the real reason.
+      const want = backend.of({ ...ENDPOINT_BASE, platform: "gcfv1", timeoutSeconds: 3600 });
+      const have = backend.of({ ...ENDPOINT_BASE, platform: "gcfv2", timeoutSeconds: 3600 });
+
+      expect(() => validate.endpointsAreValid(want, have)).to.throw(
+        /cannot be downgraded from GCFv2 to GCFv1/,
+      );
+    });
+
+    it("allows a gcfv1 function that does not exist yet", () => {
+      const want = backend.of({ ...ENDPOINT_BASE, platform: "gcfv1" });
+
+      expect(() => validate.endpointsAreValid(want, backend.empty())).to.not.throw();
+    });
+
     it("disallows concurrency for GCF gen 1", () => {
       const ep: backend.Endpoint = {
         ...ENDPOINT_BASE,
