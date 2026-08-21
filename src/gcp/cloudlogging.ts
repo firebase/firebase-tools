@@ -1,6 +1,7 @@
 import { cloudloggingOrigin } from "../api";
 import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
+import { Policy } from "./iam";
 
 const API_VERSION = "v2";
 
@@ -181,4 +182,106 @@ export async function createOrUpdateLogSink(
       { original: err },
     );
   }
+}
+
+/**
+ * Retrieves the IAM policy for a Cloud Logging Log View.
+ * Ref: https://cloud.google.com/logging/docs/reference/v2/rest/v2/projects.locations.buckets.views/getIamPolicy
+ */
+export async function getLogViewIamPolicy(
+  projectId: string,
+  bucketId: string,
+  viewId: string,
+  location = "global",
+): Promise<Policy> {
+  const client = new Client({ urlPrefix: cloudloggingOrigin(), apiVersion: API_VERSION });
+  const path = `/projects/${projectId}/locations/${location}/buckets/${bucketId}/views/${viewId}:getIamPolicy`;
+  try {
+    const res = await client.post<void, Policy>(path);
+    return res.body;
+  } catch (err: any) {
+    const msg = err.message || JSON.stringify(err.body) || err;
+    throw new FirebaseError(
+      `Failed to get IAM policy for log view ${viewId} on bucket ${bucketId} (status ${err.status}): ${msg}`,
+      { original: err, status: err.status },
+    );
+  }
+}
+
+/**
+ * Sets the IAM policy for a Cloud Logging Log View.
+ * Ref: https://cloud.google.com/logging/docs/reference/v2/rest/v2/projects.locations.buckets.views/setIamPolicy
+ */
+export async function setLogViewIamPolicy(
+  projectId: string,
+  bucketId: string,
+  viewId: string,
+  policy: Policy,
+  location = "global",
+): Promise<Policy> {
+  const client = new Client({ urlPrefix: cloudloggingOrigin(), apiVersion: API_VERSION });
+  const path = `/projects/${projectId}/locations/${location}/buckets/${bucketId}/views/${viewId}:setIamPolicy`;
+  try {
+    const res = await client.post<{ policy: Policy }, Policy>(path, { policy });
+    return res.body;
+  } catch (err: any) {
+    const msg = err.message || JSON.stringify(err.body) || err;
+    throw new FirebaseError(
+      `Failed to set IAM policy for log view ${viewId} on bucket ${bucketId} (status ${err.status}): ${msg}`,
+      { original: err, status: err.status },
+    );
+  }
+}
+
+/**
+ * Grants an IAM role to one or more members on a Cloud Logging Log View if not already present.
+ */
+export async function grantLogViewAccess(
+  projectId: string,
+  bucketId: string,
+  viewId: string,
+  members: string | string[],
+  role = "roles/logging.viewAccessor",
+  location = "global",
+): Promise<Policy> {
+  const memberList = Array.isArray(members) ? members : [members];
+  let policy: Policy;
+  try {
+    policy = await getLogViewIamPolicy(projectId, bucketId, viewId, location);
+  } catch (err: any) {
+    if (err?.original?.status === 404 || err?.status === 404) {
+      policy = {
+        bindings: [],
+        etag: "",
+        version: 3,
+      };
+    } else {
+      throw err;
+    }
+  }
+
+  policy.bindings = policy.bindings || [];
+  let existingBinding = policy.bindings.find((b) => b.role === role);
+
+  if (!existingBinding) {
+    existingBinding = {
+      role,
+      members: [],
+    };
+    policy.bindings.push(existingBinding);
+  }
+
+  let updated = false;
+  for (const m of memberList) {
+    if (!existingBinding.members.includes(m)) {
+      existingBinding.members.push(m);
+      updated = true;
+    }
+  }
+
+  if (!updated) {
+    return policy;
+  }
+
+  return await setLogViewIamPolicy(projectId, bucketId, viewId, policy, location);
 }
