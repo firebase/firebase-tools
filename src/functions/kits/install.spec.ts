@@ -9,33 +9,20 @@ import {
   validateNpmPackageName,
   sanitizePackageNameToKitName,
   isThirdPartyPackage,
-  checkPackageHasShrinkwrap,
-  isKitConfiguredForProject,
-  extractExistingFunctionsInfo,
   addKitToConfig,
+  findKitConfig,
   addInstanceToKitConfig,
-  buildAndInstallKit,
   scaffoldKit,
   addInstanceToKit,
-  scaffoldKitFiles,
-  FUNCTION_KITS_DIR,
 } from "./install";
 import * as env from "./env";
-import * as initSpawn from "../../init/spawn";
 import { Config } from "../../config";
 import { FirebaseError } from "../../error";
-import { ValidatedKitSingle } from "../projectConfig";
 
 describe("functions/kits/install", () => {
-  let wrapSpawnStub: sinon.SinonStub;
-  let spawnWithOutputStub: sinon.SinonStub;
   let seedKitInstanceEnvStub: sinon.SinonStub;
 
   beforeEach(() => {
-    wrapSpawnStub = sinon.stub(initSpawn, "wrapSpawn").resolves();
-    spawnWithOutputStub = sinon
-      .stub(initSpawn, "spawnWithOutput")
-      .resolves(JSON.stringify([{ hasShrinkwrap: true }]));
     sinon.stub(fs, "ensureDir").resolves();
     sinon.stub(fs, "pathExists").resolves(false);
     sinon.stub(fs, "readJson").resolves({});
@@ -99,9 +86,7 @@ describe("functions/kits/install", () => {
 
   describe("isThirdPartyPackage", () => {
     it("should return false for official firebase kit packages", () => {
-      expect(
-        isThirdPartyPackage("@firebase-functions-kits/firestore-bigquery-export"),
-      ).to.be.false;
+      expect(isThirdPartyPackage("@firebase-functions-kits/firestore-bigquery-export")).to.be.false;
     });
 
     it("should return true for external packages", () => {
@@ -144,10 +129,63 @@ describe("functions/kits/install", () => {
     });
   });
 
+  describe("findKitConfig", () => {
+    it("should find kit config when functions is an array", () => {
+      const mockConfig = {
+        src: {
+          functions: [
+            { codebase: "default", source: "functions" },
+            {
+              kit: "my-kit",
+              source: "function-kits/my-kit/source",
+              instances: {},
+            },
+          ],
+        },
+      } as unknown as Config;
+
+      const found = findKitConfig(mockConfig, "my-kit");
+      expect(found).to.deep.equal({
+        kit: "my-kit",
+        source: "function-kits/my-kit/source",
+        instances: {},
+      });
+    });
+
+    it("should find kit config when functions is a single object", () => {
+      const mockConfig = {
+        src: {
+          functions: {
+            kit: "single-kit",
+            source: "function-kits/single-kit/source",
+            instances: {},
+          },
+        },
+      } as unknown as Config;
+
+      const found = findKitConfig(mockConfig, "single-kit");
+      expect(found).to.deep.equal({
+        kit: "single-kit",
+        source: "function-kits/single-kit/source",
+        instances: {},
+      });
+    });
+
+    it("should return undefined if kit is not found", () => {
+      const mockConfig = {
+        src: {
+          functions: [],
+        },
+      } as unknown as Config;
+
+      expect(findKitConfig(mockConfig, "nonexistent-kit")).to.be.undefined;
+    });
+  });
+
   describe("addInstanceToKitConfig", () => {
     it("should add instance to existing kit in config and save", () => {
       const writtenFiles: Record<string, unknown> = {};
-      const existingKit: ValidatedKitSingle = {
+      const originalEntryInConfig = {
         kit: "my-kit",
         sourcePackage: { name: "@scope/pkg" },
         source: "function-kits/my-kit/source",
@@ -157,22 +195,34 @@ describe("functions/kits/install", () => {
       };
       const mockConfig = {
         src: {
-          functions: [existingKit],
+          functions: [originalEntryInConfig],
         },
         writeProjectFile: (file: string, content: unknown) => {
           writtenFiles[file] = content;
         },
       } as unknown as Config;
 
-      addInstanceToKitConfig(mockConfig, existingKit, "inst2", "function-kits/my-kit/config-inst2");
+      addInstanceToKitConfig(mockConfig, "my-kit", "inst2", "function-kits/my-kit/config-inst2");
 
-      expect(existingKit.instances).to.deep.equal({
+      expect(originalEntryInConfig.instances).to.deep.equal({
         inst1: "function-kits/my-kit/config-inst1",
         inst2: "function-kits/my-kit/config-inst2",
       });
       expect(writtenFiles["firebase.json"]).to.deep.equal({
-        functions: [existingKit],
+        functions: [originalEntryInConfig],
       });
+    });
+
+    it("should throw FirebaseError if kit is not found in config", () => {
+      const mockConfig = {
+        src: {
+          functions: [],
+        },
+      } as unknown as Config;
+
+      expect(() =>
+        addInstanceToKitConfig(mockConfig, "missing-kit", "inst1", "config-inst1"),
+      ).to.throw(FirebaseError, "Kit 'missing-kit' not found in firebase.json.");
     });
   });
 
@@ -248,7 +298,7 @@ describe("functions/kits/install", () => {
   describe("addInstanceToKit", () => {
     it("should ensure config dir and update config without seedEnv", async () => {
       const writtenFiles: Record<string, unknown> = {};
-      const existingKit: ValidatedKitSingle = {
+      const existingEntry = {
         kit: "my-kit",
         sourcePackage: { name: "@scope/pkg" },
         source: "function-kits/my-kit/source",
@@ -259,7 +309,7 @@ describe("functions/kits/install", () => {
       const mockConfig = {
         projectDir: "/mock/project",
         src: {
-          functions: [existingKit],
+          functions: [existingEntry],
         },
         path: (rel: string) => path.join("/mock/project", rel),
         writeProjectFile: (file: string, content: unknown) => {
@@ -269,18 +319,18 @@ describe("functions/kits/install", () => {
 
       const result = await addInstanceToKit({
         config: mockConfig,
-        kit: existingKit,
+        kitId: "my-kit",
         instanceId: "inst2",
       });
 
       expect(result.configDirPath).to.equal("function-kits/my-kit/config-inst2");
       expect(seedKitInstanceEnvStub).to.not.have.been.called;
-      expect(existingKit.instances["inst2"]).to.equal("function-kits/my-kit/config-inst2");
+      expect(existingEntry.instances["inst2"]).to.equal("function-kits/my-kit/config-inst2");
     });
 
     it("should ensure config dir, seed .env.<project-id>, and update config when seedEnv is provided", async () => {
       const writtenFiles: Record<string, unknown> = {};
-      const existingKit: ValidatedKitSingle = {
+      const existingEntry = {
         kit: "my-kit",
         sourcePackage: { name: "@scope/pkg" },
         source: "function-kits/my-kit/source",
@@ -291,7 +341,7 @@ describe("functions/kits/install", () => {
       const mockConfig = {
         projectDir: "/mock/project",
         src: {
-          functions: [existingKit],
+          functions: [existingEntry],
         },
         path: (rel: string) => path.join("/mock/project", rel),
         writeProjectFile: (file: string, content: unknown) => {
@@ -301,7 +351,7 @@ describe("functions/kits/install", () => {
 
       await addInstanceToKit({
         config: mockConfig,
-        kit: existingKit,
+        kitId: "my-kit",
         instanceId: "inst2",
         seedEnv: {
           projectId: "my-project",
@@ -321,7 +371,25 @@ describe("functions/kits/install", () => {
           SETTING: "value",
         },
       });
-      expect(existingKit.instances["inst2"]).to.equal("function-kits/my-kit/config-inst2");
+      expect(existingEntry.instances["inst2"]).to.equal("function-kits/my-kit/config-inst2");
+    });
+
+    it("should throw FirebaseError if kit does not exist in config", async () => {
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: {
+          functions: [],
+        },
+        path: (rel: string) => path.join("/mock/project", rel),
+      } as unknown as Config;
+
+      await expect(
+        addInstanceToKit({
+          config: mockConfig,
+          kitId: "nonexistent-kit",
+          instanceId: "inst1",
+        }),
+      ).to.be.rejectedWith(FirebaseError, "Kit 'nonexistent-kit' not found in firebase.json.");
     });
   });
 });

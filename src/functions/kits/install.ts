@@ -68,7 +68,7 @@ export interface ScaffoldKitOptions {
 
 export interface AddKitInstanceOptions {
   config: Config;
-  kit: ValidatedKitSingle;
+  kitId: string;
   instanceId: string;
   seedEnv?: KitInstanceEnvSeed;
 }
@@ -377,16 +377,45 @@ export function addKitToConfig(
 }
 
 /**
+ * Finds a kit configuration entry in firebase.json (config.src.functions) by its kit ID.
+ */
+export function findKitConfig(config: Config, kitId: string): KitFunctionConfig | undefined {
+  const functions = config.src.functions;
+  if (!functions) {
+    return undefined;
+  }
+  if (Array.isArray(functions)) {
+    return functions.find(
+      (f): f is KitFunctionConfig =>
+        typeof f === "object" && f !== null && "kit" in f && f.kit === kitId,
+    );
+  }
+  if (
+    typeof functions === "object" &&
+    "kit" in functions &&
+    (functions as KitFunctionConfig).kit === kitId
+  ) {
+    return functions as KitFunctionConfig;
+  }
+  return undefined;
+}
+
+/**
  * Adds a new instance configuration to an existing kit in firebase.json and saves the file.
  */
 export function addInstanceToKitConfig(
   config: Config,
-  existingKit: ValidatedKitSingle,
+  kitId: string,
   instanceId: string,
   configDirPath: string,
 ): void {
-  existingKit.instances = existingKit.instances || {};
-  existingKit.instances[instanceId] = configDirPath;
+  const target = findKitConfig(config, kitId);
+  if (!target) {
+    throw new FirebaseError(`Kit '${kitId}' not found in firebase.json.`);
+  }
+
+  target.instances = target.instances || {};
+  target.instances[instanceId] = configDirPath;
   config.writeProjectFile("firebase.json", config.src);
 }
 
@@ -409,7 +438,7 @@ export async function scaffoldKit(options: ScaffoldKitOptions): Promise<Scaffold
       configDir: paths.absConfigDirPath,
       functionsSource: paths.absSourcePath,
       projectDir: options.config.projectDir,
-      projectId: options.seedEnv.projectId || "",
+      projectId: options.seedEnv.projectId,
       projectAlias: options.seedEnv.projectAlias,
       envs: options.seedEnv.envs,
     });
@@ -434,22 +463,27 @@ export async function scaffoldKit(options: ScaffoldKitOptions): Promise<Scaffold
 export async function addInstanceToKit(
   options: AddKitInstanceOptions,
 ): Promise<AddKitInstanceResult> {
-  const configDirPath = path.join(FUNCTION_KITS_DIR, options.kit.kit, `config-${options.instanceId}`);
+  const target = findKitConfig(options.config, options.kitId);
+  if (!target) {
+    throw new FirebaseError(`Kit '${options.kitId}' not found in firebase.json.`);
+  }
+
+  const configDirPath = path.join(FUNCTION_KITS_DIR, options.kitId, `config-${options.instanceId}`);
   const absConfigDirPath = options.config.path(configDirPath);
   await fs.ensureDir(absConfigDirPath);
 
   if (options.seedEnv?.envs && Object.keys(options.seedEnv.envs).length > 0) {
     seedKitInstanceEnv({
       configDir: absConfigDirPath,
-      functionsSource: options.config.path(options.kit.source),
+      functionsSource: options.config.path(target.source),
       projectDir: options.config.projectDir,
-      projectId: options.seedEnv.projectId || "",
+      projectId: options.seedEnv.projectId,
       projectAlias: options.seedEnv.projectAlias,
       envs: options.seedEnv.envs,
     });
   }
 
-  addInstanceToKitConfig(options.config, options.kit, options.instanceId, configDirPath);
+  addInstanceToKitConfig(options.config, options.kitId, options.instanceId, configDirPath);
 
   return { configDirPath, absConfigDirPath };
 }

@@ -235,7 +235,7 @@ async function addInstanceToExistingKit(
 
   await addInstanceToKit({
     config: options.config,
-    kit: existingKit,
+    kitId: existingKit.kit,
     instanceId,
   });
 

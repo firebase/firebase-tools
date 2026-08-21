@@ -4,9 +4,9 @@ import { writeUserEnvs } from "../env";
 export type KitEnvValue = string | number | boolean | string[];
 
 export interface KitInstanceEnvSeed {
-  projectId?: string;
+  projectId: string;
   projectAlias?: string;
-  envs?: Record<string, KitEnvValue>;
+  envs: Record<string, KitEnvValue>;
 }
 
 export interface SeedKitEnvOptions {
