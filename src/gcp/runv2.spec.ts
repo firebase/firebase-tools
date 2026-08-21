@@ -473,6 +473,87 @@ describe("runv2", () => {
 
       expect(runv2.endpointFromService(service)).to.deep.equal(expectedEndpoint);
     });
+
+    it("should normalize ID for GCF v2 services to use dashes", () => {
+      const service: Omit<runv2.Service, runv2.ServiceOutputFields> = {
+        ...BASE_RUN_SERVICE,
+        name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}`,
+        labels: {
+          [runv2.RUNTIME_LABEL]: latest("nodejs"),
+          [runv2.CLIENT_NAME_LABEL]: "cloud-functions",
+        },
+        annotations: {
+          [runv2.FUNCTION_ID_ANNOTATION]: "v2.helloWorldNode",
+        },
+        template: {
+          containers: [
+            {
+              name: "worker",
+              image: IMAGE_URI,
+              resources: { limits: { cpu: "1", memory: "256Mi" } },
+            },
+          ],
+        },
+      };
+
+      const result = runv2.endpointFromService(service);
+      expect(result.platform).to.equal("gcfv2");
+      expect(result.id).to.equal("v2-helloWorldNode");
+    });
+
+    it("should NOT normalize underscores in ID for GCF v2 services", () => {
+      const service: Omit<runv2.Service, runv2.ServiceOutputFields> = {
+        ...BASE_RUN_SERVICE,
+        name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}`,
+        labels: {
+          [runv2.RUNTIME_LABEL]: latest("nodejs"),
+          [runv2.CLIENT_NAME_LABEL]: "cloud-functions",
+        },
+        annotations: {
+          [runv2.FUNCTION_ID_ANNOTATION]: "v2_helloWorldNode",
+        },
+        template: {
+          containers: [
+            {
+              name: "worker",
+              image: IMAGE_URI,
+              resources: { limits: { cpu: "1", memory: "256Mi" } },
+            },
+          ],
+        },
+      };
+
+      const result = runv2.endpointFromService(service);
+      expect(result.platform).to.equal("gcfv2");
+      expect(result.id).to.equal("v2_helloWorldNode");
+    });
+
+    it("should NOT normalize ID for non-GCF services", () => {
+      const service: Omit<runv2.Service, runv2.ServiceOutputFields> = {
+        ...BASE_RUN_SERVICE,
+        name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}`,
+        labels: {
+          [runv2.RUNTIME_LABEL]: latest("nodejs"),
+          [runv2.CLIENT_NAME_LABEL]: "firebase-functions",
+        },
+        annotations: {
+          [runv2.FUNCTION_ID_ANNOTATION]: "v2.helloWorldNode",
+        },
+        template: {
+          containers: [
+            {
+              name: "worker",
+              image: IMAGE_URI,
+              resources: { limits: { cpu: "1", memory: "256Mi" } },
+            },
+          ],
+        },
+      };
+
+      const result = runv2.endpointFromService(service);
+      expect(result.platform).to.equal("run");
+      expect(result.id).to.equal("v2.helloWorldNode");
+    });
   });
 
   describe("listServices", () => {
