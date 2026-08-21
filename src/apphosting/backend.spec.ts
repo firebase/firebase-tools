@@ -268,13 +268,14 @@ describe("apphosting setup functions", () => {
     it("should log a warning and continue if user lacks permission to create service account (403)", async () => {
       testResourceIamPermissionsStub.resolves();
       createServiceAccountStub.rejects(new FirebaseError("Permission denied", { status: 403 }));
+      addServiceAccountToRolesStub.resolves();
 
       await expect(ensureAppHostingComputeServiceAccount(projectId, serviceAccount)).to.be
         .fulfilled;
 
       expect(testResourceIamPermissionsStub).to.be.calledOnce;
       expect(createServiceAccountStub).to.be.calledOnce;
-      expect(addServiceAccountToRolesStub).to.not.be.called;
+      expect(addServiceAccountToRolesStub).to.be.calledOnce;
     });
 
     it("should log a warning and continue if user lacks permission to set IAM roles (403)", async () => {
