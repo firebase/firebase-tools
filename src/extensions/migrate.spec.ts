@@ -231,6 +231,26 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       );
     });
 
+    it("should throw error if third-party extension matching shortName has no kit package for its actual ref", async () => {
+      const mockThirdPartyInstance: ExtensionInstance = {
+        ...mockInstance1,
+        config: {
+          ...mockInstance1.config,
+          extensionRef: "otherpublisher/firestore-send-email",
+        },
+      };
+      sandbox.stub(extensionsApi, "listInstances").resolves([mockThirdPartyInstance]);
+
+      await expect(
+        migrateModule.createMigrationPlan("test-project", {
+          extension: "firestore-send-email",
+        }),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        /This extension does not have an associated function kit/,
+      );
+    });
+
     it("should allow migration when --package override is passed for extension with no counterpart", async () => {
       sandbox.stub(extensionsApi, "listInstances").resolves([mockUnknownInstance]);
 

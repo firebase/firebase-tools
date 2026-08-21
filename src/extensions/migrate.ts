@@ -218,27 +218,37 @@ export async function createMigrationPlan(
       );
     }
 
-    const kitPkg = getKitPackage(options.extension, options.package);
-    if (!kitPkg) {
+    const matchingInstancesWithKit = matchingInstances
+      .map((inst) => {
+        const ref = getExtensionRef(inst);
+        const kitPkg = getKitPackage(ref, options.package);
+        return { inst, ref, kitPkg };
+      })
+      .filter(
+        (item): item is { inst: ExtensionInstance; ref: string; kitPkg: string } =>
+          item.kitPkg !== undefined,
+      );
+
+    if (matchingInstancesWithKit.length === 0) {
       throw new FirebaseError(
         "This extension does not have an associated function kit. Please reach out to the extension author to request one",
       );
     }
 
-    if (matchingInstances.length === 1) {
-      const inst = matchingInstances[0];
+    if (matchingInstancesWithKit.length === 1) {
+      const { inst, ref, kitPkg } = matchingInstancesWithKit[0];
       return {
         instance: inst,
         instanceId: getInstanceId(inst),
-        extensionRef: getExtensionRef(inst),
+        extensionRef: ref,
         kitPackage: kitPkg,
       };
     }
 
-    const migratableChoices = matchingInstances.map((inst) => ({
+    const migratableChoices = matchingInstancesWithKit.map(({ inst, ref, kitPkg }) => ({
       instance: inst,
       instanceId: getInstanceId(inst),
-      extensionRef: getExtensionRef(inst),
+      extensionRef: ref,
       kitPackage: kitPkg,
     }));
     return promptInstanceSelection(migratableChoices, options.nonInteractive);
