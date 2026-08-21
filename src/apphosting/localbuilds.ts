@@ -204,7 +204,7 @@ export async function localBuild(
   projectId: string,
   projectRoot: string,
   env: EnvMap = {},
-  options?: { nonInteractive?: boolean; allowLocalBuildSecrets?: boolean },
+  options?: { nonInteractive?: boolean; allowLocalBuildSecrets?: boolean; rootDir?: string },
 ): Promise<{
   outputFiles: string[];
   buildConfig: BuildConfig;
@@ -231,6 +231,12 @@ export async function localBuild(
   }
 
   const addedEnv = await toProcessEnv(projectId, env);
+  if (options?.rootDir) {
+    const normalizedRootDir = options.rootDir.replace(/\\/g, "/");
+    if (normalizedRootDir !== "." && normalizedRootDir !== "") {
+      addedEnv.GOOGLE_BUILDABLE = normalizedRootDir;
+    }
+  }
   const apphostingBuildOutput = await runUniversalMaker(projectRoot, addedEnv);
 
   const discoveredEnv: Env[] | undefined =
