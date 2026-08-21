@@ -194,13 +194,6 @@ export async function migrate(projectId: string, options: MigrateOptions): Promi
 
     selectedInstanceInfo = await promptInstanceSelection(migratable, options.nonInteractive);
   } else if (options.extension) {
-    const kitPkg = getKitPackage(options.extension, options.package);
-    if (!kitPkg) {
-      throw new FirebaseError(
-        "This extension does not have an associated function kit. Please reach out to the extension author to request one",
-      );
-    }
-
     const matchingInstances = instances.filter((inst) => {
       const ref = getExtensionRef(inst);
       return (
@@ -213,6 +206,13 @@ export async function migrate(projectId: string, options: MigrateOptions): Promi
     if (matchingInstances.length === 0) {
       throw new FirebaseError(
         `Extension ${options.extension} is not installed on project ${projectId}.`,
+      );
+    }
+
+    const kitPkg = getKitPackage(options.extension, options.package);
+    if (!kitPkg) {
+      throw new FirebaseError(
+        "This extension does not have an associated function kit. Please reach out to the extension author to request one",
       );
     }
 

@@ -189,18 +189,30 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       );
     });
 
+    it("should allow migration when --package override is passed for extension with no counterpart", async () => {
+      sandbox.stub(extensionsApi, "listInstances").resolves([mockUnknownInstance]);
+
+      await migrateModule.migrate("test-project", {
+        extension: "my-publisher/unknown-extension",
+        package: "@custom/override-package",
+      });
+
+      expect((logger.info as sinon.SinonSpy).calledWith("TODO: Draw the rest of the owl")).to.be
+        .true;
+    });
+
     it("should throw error if specified extension is not installed", async () => {
       sandbox.stub(extensionsApi, "listInstances").resolves([mockInstance1]);
 
       await expect(
-        migrateModule.migrate("test-project", { extension: "firestore-send-email" }),
-      ).to.be.rejectedWith(FirebaseError, /Extension firestore-send-email is not installed/);
+        migrateModule.migrate("test-project", { extension: "non-existent-extension" }),
+      ).to.be.rejectedWith(FirebaseError, /Extension non-existent-extension is not installed/);
     });
 
     it("should auto-select single matching instance and output TODO", async () => {
       sandbox.stub(extensionsApi, "listInstances").resolves([mockInstance1]);
 
-      await migrateModule.migrate("test-project", { extension: "storage-resize-images" });
+      await migrateModule.migrate("test-project", { extension: "firestore-send-email" });
 
       expect((logger.info as sinon.SinonSpy).calledWith("TODO: Draw the rest of the owl")).to.be
         .true;
@@ -210,12 +222,12 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       sandbox.stub(extensionsApi, "listInstances").resolves([mockInstance1, mockInstance2]);
       const promptStub = sandbox.stub(migrateModule, "promptInstanceSelection").resolves({
         instance: mockInstance1,
-        instanceId: "resize-1",
-        extensionRef: "firebase/storage-resize-images",
-        kitPackage: "@firebase-function-kits/storage-resize-images",
+        instanceId: "email-1",
+        extensionRef: "firebase/firestore-send-email",
+        kitPackage: "@firebase/firestore-send-email",
       });
 
-      await migrateModule.migrate("test-project", { extension: "storage-resize-images" });
+      await migrateModule.migrate("test-project", { extension: "firestore-send-email" });
 
       expect(promptStub.calledOnce).to.be.true;
       expect((logger.info as sinon.SinonSpy).calledWith("TODO: Draw the rest of the owl")).to.be
@@ -246,7 +258,7 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
     it("should select specified instance and output TODO", async () => {
       sandbox.stub(extensionsApi, "listInstances").resolves([mockInstance1]);
 
-      await migrateModule.migrate("test-project", { extInstance: "resize-1" });
+      await migrateModule.migrate("test-project", { extInstance: "email-1" });
 
       expect((logger.info as sinon.SinonSpy).calledWith("TODO: Draw the rest of the owl")).to.be
         .true;
