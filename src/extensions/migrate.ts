@@ -24,12 +24,14 @@ export interface ExtensionTableRow {
   kitPackage: string;
 }
 
-export interface MigratableInstanceInfo {
+export interface ExtensionMigrationPlan {
   instance: ExtensionInstance;
   instanceId: string;
   extensionRef: string;
   kitPackage: string;
 }
+
+export type MigratableInstanceInfo = ExtensionMigrationPlan;
 
 interface ReplacementEntry {
   status?: string;
@@ -99,10 +101,12 @@ export function formatExtensionsTable(
     }
     const kitPkg = getKitPackage(ref, packageOverride) ?? "N/A";
 
-    if (!grouped.has(ref)) {
-      grouped.set(ref, { publisher, instances: [], kitPackage: kitPkg });
+    const groupEntry = grouped.get(ref);
+    if (!groupEntry) {
+      grouped.set(ref, { publisher, instances: [instanceId], kitPackage: kitPkg });
+    } else {
+      groupEntry.instances.push(instanceId);
     }
-    grouped.get(ref)!.instances.push(instanceId);
   });
 
   const rows: ExtensionTableRow[] = [];
@@ -165,41 +169,46 @@ export async function promptInstanceSelection(
 }
 
 /**
- * Unique veneer entrypoint for ext:migrate logic.
+ * Creates an extension migration plan for ext:migrate logic (Unique veneer).
  */
-export async function migrate(projectId: string, options: MigrateOptions): Promise<void> {
+export async function createMigrationPlan(
+  projectId: string,
+  options: MigrateOptions,
+): Promise<ExtensionMigrationPlan> {
   const instances = await listInstances(projectId);
 
-  let selectedInstanceInfo: MigratableInstanceInfo | undefined;
-
-  if (!options.extInstance && !options.extension) {
-    if (instances.length === 0) {
-      logLabeledBullet(
-        logPrefix,
-        `All extensions in project ${clc.bold(projectId)} have already been migrated.`,
-      );
-      return;
-    }
-
-    const { tableString } = formatExtensionsTable(instances, options.package);
-    logLabeledBullet(logPrefix, `list of extensions installed in ${clc.bold(projectId)}:`);
-    logger.info(tableString);
-
-    const migratable = getMigratableInstances(instances, options.package);
-    if (migratable.length === 0) {
+  if (options.extInstance) {
+    const foundInstance = instances.find((inst) => getInstanceId(inst) === options.extInstance);
+    if (!foundInstance) {
       throw new FirebaseError(
-        "No remaining Extensions have an associated function kit. Please reach out to the extension author to request one",
+        `Extension instance ${options.extInstance} was not found on project ${projectId}.`,
       );
     }
 
-    selectedInstanceInfo = await promptInstanceSelection(migratable, options.nonInteractive);
-  } else if (options.extension) {
+    const ref = getExtensionRef(foundInstance);
+    const kitPkg = getKitPackage(ref, options.package);
+    if (!kitPkg) {
+      throw new FirebaseError(
+        "This extension does not have an associated function kit. Please reach out to the extension author to request one",
+      );
+    }
+
+    return {
+      instance: foundInstance,
+      instanceId: getInstanceId(foundInstance),
+      extensionRef: ref,
+      kitPackage: kitPkg,
+    };
+  }
+
+  if (options.extension) {
+    const targetExt = options.extension;
     const matchingInstances = instances.filter((inst) => {
       const ref = getExtensionRef(inst);
       return (
-        ref === options.extension ||
-        (ref.includes("/") && ref.split("/")[1] === options.extension) ||
-        (options.extension!.includes("/") && ref === options.extension!.split("/")[1])
+        ref === targetExt ||
+        (ref.includes("/") && ref.split("/")[1] === targetExt) ||
+        (targetExt.includes("/") && ref === targetExt.split("/")[1])
       );
     });
 
@@ -218,53 +227,39 @@ export async function migrate(projectId: string, options: MigrateOptions): Promi
 
     if (matchingInstances.length === 1) {
       const inst = matchingInstances[0];
-      selectedInstanceInfo = {
+      return {
         instance: inst,
         instanceId: getInstanceId(inst),
         extensionRef: getExtensionRef(inst),
         kitPackage: kitPkg,
       };
-    } else {
-      const migratableChoices = matchingInstances.map((inst) => ({
-        instance: inst,
-        instanceId: getInstanceId(inst),
-        extensionRef: getExtensionRef(inst),
-        kitPackage: kitPkg,
-      }));
-      selectedInstanceInfo = await promptInstanceSelection(
-        migratableChoices,
-        options.nonInteractive,
-      );
-    }
-  } else if (options.extInstance) {
-    const foundInstance = instances.find((inst) => getInstanceId(inst) === options.extInstance);
-    if (!foundInstance) {
-      throw new FirebaseError(
-        `Extension instance ${options.extInstance} was not found on project ${projectId}.`,
-      );
     }
 
-    const ref = getExtensionRef(foundInstance);
-    const kitPkg = getKitPackage(ref, options.package);
-    if (!kitPkg) {
-      throw new FirebaseError(
-        "This extension does not have an associated function kit. Please reach out to the extension author to request one",
-      );
-    }
-
-    selectedInstanceInfo = {
-      instance: foundInstance,
-      instanceId: getInstanceId(foundInstance),
-      extensionRef: ref,
+    const migratableChoices = matchingInstances.map((inst) => ({
+      instance: inst,
+      instanceId: getInstanceId(inst),
+      extensionRef: getExtensionRef(inst),
       kitPackage: kitPkg,
-    };
+    }));
+    return promptInstanceSelection(migratableChoices, options.nonInteractive);
   }
 
-  if (selectedInstanceInfo) {
-    logLabeledBullet(
-      logPrefix,
-      `Selected instance ${clc.bold(selectedInstanceInfo.instanceId)} (${selectedInstanceInfo.kitPackage}) for migration.`,
+  if (instances.length === 0) {
+    throw new FirebaseError(
+      `All extensions in project ${clc.bold(projectId)} have already been migrated.`,
     );
-    logger.info("TODO: Draw the rest of the owl");
   }
+
+  const { tableString } = formatExtensionsTable(instances, options.package);
+  logLabeledBullet(logPrefix, `list of extensions installed in ${clc.bold(projectId)}:`);
+  logger.info(tableString);
+
+  const migratable = getMigratableInstances(instances, options.package);
+  if (migratable.length === 0) {
+    throw new FirebaseError(
+      "No remaining Extensions have an associated function kit. Please reach out to the extension author to request one",
+    );
+  }
+
+  return promptInstanceSelection(migratable, options.nonInteractive);
 }

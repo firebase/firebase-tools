@@ -3,12 +3,14 @@ import * as sinon from "sinon";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
+import * as prompt from "../prompt";
 import * as extensionsApi from "./extensionsApi";
 import * as migrateModule from "./migrate";
 import { ExtensionInstance } from "./types";
 
 describe("ext:migrate core logic (Unique Veneer)", () => {
   let sandbox: sinon.SinonSandbox;
+  let selectStub: sinon.SinonStub;
 
   const mockInstance1: ExtensionInstance = {
     name: "projects/test-project/instances/email-1",
@@ -97,6 +99,7 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
   beforeEach(() => {
     sandbox = sinon.createSandbox();
     sandbox.stub(logger, "info");
+    selectStub = sandbox.stub(prompt, "select");
   });
 
   afterEach(() => {
@@ -142,47 +145,86 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
     });
   });
 
-  describe("migrate flow (no flags)", () => {
-    it("should notify when all extensions have already been migrated (0 instances)", async () => {
+  describe("promptInstanceSelection", () => {
+    it("should format choices and call prompt.select with correct values", async () => {
+      const migratable = migrateModule.getMigratableInstances([mockInstance1, mockInstance2]);
+      selectStub.resolves(migratable[1]);
+
+      const selected = await migrateModule.promptInstanceSelection(migratable);
+
+      expect(selected).to.equal(migratable[1]);
+      expect(selectStub).to.be.calledOnce;
+      const opts = selectStub.firstCall
+        .args[0] as prompt.SelectOptions<migrateModule.ExtensionMigrationPlan>;
+      const choices = opts.choices as prompt.Choice<migrateModule.ExtensionMigrationPlan>[];
+      expect(opts.message).to.equal("Which extension instance would you like to migrate?");
+      expect(choices).to.have.lengthOf(2);
+      expect(choices[0].name).to.equal("email-1 (firebase/firestore-send-email)");
+      expect(choices[0].value).to.equal(migratable[0]);
+      expect(choices[1].name).to.equal("email-2 (firebase/firestore-send-email)");
+      expect(choices[1].value).to.equal(migratable[1]);
+    });
+  });
+
+  describe("createMigrationPlan (no flags)", () => {
+    it("should throw error when all extensions have already been migrated (0 instances)", async () => {
       sandbox.stub(extensionsApi, "listInstances").resolves([]);
 
-      await migrateModule.migrate("test-project", {});
-
-      expect((logger.info as sinon.SinonSpy).calledWith("TODO: Draw the rest of the owl")).to.be
-        .false;
+      await expect(migrateModule.createMigrationPlan("test-project", {})).to.be.rejectedWith(
+        FirebaseError,
+        /All extensions in project .* have already been migrated/,
+      );
     });
 
     it("should throw error if no installed extensions can be migrated", async () => {
       sandbox.stub(extensionsApi, "listInstances").resolves([mockUnknownInstance]);
 
-      await expect(migrateModule.migrate("test-project", {})).to.be.rejectedWith(
+      await expect(migrateModule.createMigrationPlan("test-project", {})).to.be.rejectedWith(
         FirebaseError,
         /No remaining Extensions have an associated function kit/,
       );
     });
 
-    it("should prompt selection and output TODO when instances can be migrated", async () => {
+    it("should prompt selection and return plan when instances can be migrated", async () => {
       sandbox.stub(extensionsApi, "listInstances").resolves([mockInstance1, mockInstance2]);
-      sandbox.stub(migrateModule, "promptInstanceSelection").resolves({
+      selectStub.callsFake(
+        async (opts: prompt.SelectOptions<migrateModule.ExtensionMigrationPlan>) => {
+          const choices = opts.choices as prompt.Choice<migrateModule.ExtensionMigrationPlan>[];
+          return choices[0].value;
+        },
+      );
+
+      const plan = await migrateModule.createMigrationPlan("test-project", {});
+
+      expect(selectStub).to.be.calledOnce;
+      const opts = selectStub.firstCall
+        .args[0] as prompt.SelectOptions<migrateModule.ExtensionMigrationPlan>;
+      expect(opts.choices).to.have.lengthOf(2);
+      expect(plan).to.deep.equal({
         instance: mockInstance1,
-        instanceId: "resize-1",
-        extensionRef: "firebase/storage-resize-images",
-        kitPackage: "@firebase-function-kits/storage-resize-images",
+        instanceId: "email-1",
+        extensionRef: "firebase/firestore-send-email",
+        kitPackage: "@firebase/firestore-send-email",
       });
-
-      await migrateModule.migrate("test-project", {});
-
-      expect((logger.info as sinon.SinonSpy).calledWith("TODO: Draw the rest of the owl")).to.be
-        .true;
     });
   });
 
-  describe("migrate flow (--extension flag)", () => {
+  describe("createMigrationPlan (--extension flag)", () => {
+    it("should throw error if specified extension is not installed", async () => {
+      sandbox.stub(extensionsApi, "listInstances").resolves([mockInstance1]);
+
+      await expect(
+        migrateModule.createMigrationPlan("test-project", { extension: "non-existent-extension" }),
+      ).to.be.rejectedWith(FirebaseError, /Extension non-existent-extension is not installed/);
+    });
+
     it("should throw error if specified extension cannot be migrated", async () => {
       sandbox.stub(extensionsApi, "listInstances").resolves([mockUnknownInstance]);
 
       await expect(
-        migrateModule.migrate("test-project", { extension: "my-publisher/unknown-extension" }),
+        migrateModule.createMigrationPlan("test-project", {
+          extension: "my-publisher/unknown-extension",
+        }),
       ).to.be.rejectedWith(
         FirebaseError,
         /This extension does not have an associated function kit/,
@@ -192,55 +234,64 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
     it("should allow migration when --package override is passed for extension with no counterpart", async () => {
       sandbox.stub(extensionsApi, "listInstances").resolves([mockUnknownInstance]);
 
-      await migrateModule.migrate("test-project", {
+      const plan = await migrateModule.createMigrationPlan("test-project", {
         extension: "my-publisher/unknown-extension",
         package: "@custom/override-package",
       });
 
-      expect((logger.info as sinon.SinonSpy).calledWith("TODO: Draw the rest of the owl")).to.be
-        .true;
+      expect(plan).to.deep.equal({
+        instance: mockUnknownInstance,
+        instanceId: "custom-ext",
+        extensionRef: "my-publisher/unknown-extension",
+        kitPackage: "@custom/override-package",
+      });
     });
 
-    it("should throw error if specified extension is not installed", async () => {
+    it("should auto-select single matching instance and return plan", async () => {
       sandbox.stub(extensionsApi, "listInstances").resolves([mockInstance1]);
 
-      await expect(
-        migrateModule.migrate("test-project", { extension: "non-existent-extension" }),
-      ).to.be.rejectedWith(FirebaseError, /Extension non-existent-extension is not installed/);
-    });
+      const plan = await migrateModule.createMigrationPlan("test-project", {
+        extension: "firestore-send-email",
+      });
 
-    it("should auto-select single matching instance and output TODO", async () => {
-      sandbox.stub(extensionsApi, "listInstances").resolves([mockInstance1]);
-
-      await migrateModule.migrate("test-project", { extension: "firestore-send-email" });
-
-      expect((logger.info as sinon.SinonSpy).calledWith("TODO: Draw the rest of the owl")).to.be
-        .true;
-    });
-
-    it("should prompt selection when multiple instances exist for specified extension", async () => {
-      sandbox.stub(extensionsApi, "listInstances").resolves([mockInstance1, mockInstance2]);
-      const promptStub = sandbox.stub(migrateModule, "promptInstanceSelection").resolves({
+      expect(plan).to.deep.equal({
         instance: mockInstance1,
         instanceId: "email-1",
         extensionRef: "firebase/firestore-send-email",
         kitPackage: "@firebase/firestore-send-email",
       });
+    });
 
-      await migrateModule.migrate("test-project", { extension: "firestore-send-email" });
+    it("should prompt selection when multiple instances exist for specified extension", async () => {
+      sandbox.stub(extensionsApi, "listInstances").resolves([mockInstance1, mockInstance2]);
+      selectStub.callsFake(
+        async (opts: prompt.SelectOptions<migrateModule.ExtensionMigrationPlan>) => {
+          const choices = opts.choices as prompt.Choice<migrateModule.ExtensionMigrationPlan>[];
+          return choices[1].value;
+        },
+      );
 
-      expect(promptStub.calledOnce).to.be.true;
-      expect((logger.info as sinon.SinonSpy).calledWith("TODO: Draw the rest of the owl")).to.be
-        .true;
+      const plan = await migrateModule.createMigrationPlan("test-project", {
+        extension: "firestore-send-email",
+      });
+
+      expect(selectStub).to.be.calledOnce;
+      const opts = selectStub.firstCall
+        .args[0] as prompt.SelectOptions<migrateModule.ExtensionMigrationPlan>;
+      const choices = opts.choices as prompt.Choice<migrateModule.ExtensionMigrationPlan>[];
+      expect(choices).to.have.lengthOf(2);
+      expect(choices[0].name).to.equal("email-1 (firebase/firestore-send-email)");
+      expect(choices[1].name).to.equal("email-2 (firebase/firestore-send-email)");
+      expect(plan?.instanceId).to.equal("email-2");
     });
   });
 
-  describe("migrate flow (--ext-instance flag)", () => {
+  describe("createMigrationPlan (--ext-instance flag)", () => {
     it("should throw error if specified instance is not found", async () => {
       sandbox.stub(extensionsApi, "listInstances").resolves([mockInstance1]);
 
       await expect(
-        migrateModule.migrate("test-project", { extInstance: "non-existent" }),
+        migrateModule.createMigrationPlan("test-project", { extInstance: "non-existent" }),
       ).to.be.rejectedWith(FirebaseError, /Extension instance non-existent was not found/);
     });
 
@@ -248,20 +299,26 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       sandbox.stub(extensionsApi, "listInstances").resolves([mockUnknownInstance]);
 
       await expect(
-        migrateModule.migrate("test-project", { extInstance: "custom-ext" }),
+        migrateModule.createMigrationPlan("test-project", { extInstance: "custom-ext" }),
       ).to.be.rejectedWith(
         FirebaseError,
         /This extension does not have an associated function kit/,
       );
     });
 
-    it("should select specified instance and output TODO", async () => {
+    it("should select specified instance and return plan", async () => {
       sandbox.stub(extensionsApi, "listInstances").resolves([mockInstance1]);
 
-      await migrateModule.migrate("test-project", { extInstance: "email-1" });
+      const plan = await migrateModule.createMigrationPlan("test-project", {
+        extInstance: "email-1",
+      });
 
-      expect((logger.info as sinon.SinonSpy).calledWith("TODO: Draw the rest of the owl")).to.be
-        .true;
+      expect(plan).to.deep.equal({
+        instance: mockInstance1,
+        instanceId: "email-1",
+        extensionRef: "firebase/firestore-send-email",
+        kitPackage: "@firebase/firestore-send-email",
+      });
     });
   });
 });
