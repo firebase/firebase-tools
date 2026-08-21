@@ -59,6 +59,7 @@ describe("Fabricator", () => {
     scheduler.jobFromEndpoint.restore();
     tasks.queueFromEndpoint.restore();
     tasks.queueNameForEndpoint.restore();
+    tasks.isValidQueueId.restore();
     runv2.serviceFromEndpoint.restore();
     gcf.createFunction.rejects(new Error("unexpected gcf.createFunction"));
     gcf.updateFunction.rejects(new Error("unexpected gcf.updateFunction"));
@@ -1222,6 +1223,13 @@ describe("Fabricator", () => {
         name: tasks.queueNameForEndpoint(ep),
         state: "DISABLED",
       });
+    });
+
+    it("skips ids that cannot be queue ids", async () => {
+      const ep = endpoint({ taskQueueTrigger: {} }, { id: "dummy_function" }) as backend.Endpoint &
+        backend.TaskQueueTriggered;
+      await fab.disableTaskQueue(ep);
+      expect(tasks.updateQueue).to.not.have.been.called;
     });
 
     it("wraps errors", async () => {

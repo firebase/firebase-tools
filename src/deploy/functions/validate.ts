@@ -3,6 +3,7 @@ import * as clc from "colorette";
 
 import { FirebaseError } from "../../error";
 import { getSecretVersion, SecretVersion } from "../../gcp/secretManager";
+import * as cloudtasks from "../../gcp/cloudtasks";
 import { logger } from "../../logger";
 import { EndpointFilter, endpointMatchesFilter, getFunctionLabel } from "./functionsDeployHelper";
 import { serviceForEndpoint } from "./services";
@@ -91,6 +92,7 @@ export function endpointsAreValid(
   validateLifecycleHooks(wantBackend, existingBackend);
   const endpoints = backend.allEndpoints(wantBackend);
   functionIdsAreValid(endpoints);
+  taskQueueFunctionNamesAreValid(endpoints);
   validateTimeoutConfig(endpoints);
   for (const ep of endpoints) {
     validateScheduledTimeout(ep);
@@ -325,6 +327,27 @@ export function functionIdsAreValid(functions: { id: string; platform: string }[
     const msg =
       `${invalidIds.map((f) => f.id).join(", ")} function name(s) can only contain letters, ` +
       `numbers, hyphens, and not exceed 62 characters in length`;
+    throw new FirebaseError(msg);
+  }
+}
+
+/**
+ * Validate that task queue function names conform to Cloud Tasks queue ID naming rules.
+ * Unlike Cloud Functions, Cloud Tasks queue IDs (which we derive from the function name)
+ * cannot contain underscores. See
+ * https://cloud.google.com/tasks/docs/reference/rest/v2/projects.locations.queues#Queue
+ * @throws { FirebaseError } Task queue function names must be valid Cloud Tasks queue IDs.
+ */
+export function taskQueueFunctionNamesAreValid(endpoints: backend.Endpoint[]): void {
+  const invalidIds = endpoints
+    .filter(backend.isTaskQueueTriggered)
+    .filter((ep) => !cloudtasks.isValidQueueId(ep.id));
+  if (invalidIds.length !== 0) {
+    const msg =
+      `Task queue function name(s) ${invalidIds.map((ep) => ep.id).join(", ")} cannot be used as ` +
+      `Cloud Tasks queue IDs, so their queues were never created. Rename each function to use ` +
+      `only letters, numbers, and hyphens. Python function names cannot contain hyphens, so use ` +
+      `a name with no separator at all.`;
     throw new FirebaseError(msg);
   }
 }

@@ -114,6 +114,44 @@ describe("validate", () => {
     });
   });
 
+  describe("taskQueueFunctionNamesAreValid", () => {
+    const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
+      platform: "gcfv2",
+      id: "id",
+      region: "us-east1",
+      project: "project",
+      entryPoint: "id",
+      runtime: "nodejs16",
+    };
+
+    it("should not throw on hyphenated task queue function names", () => {
+      const endpoints: backend.Endpoint[] = [
+        { ...ENDPOINT_BASE, id: "my-task-function", taskQueueTrigger: {} },
+      ];
+      expect(() => {
+        validate.taskQueueFunctionNamesAreValid(endpoints);
+      }).to.not.throw();
+    });
+
+    it("should throw on underscores in task queue function names", () => {
+      const endpoints: backend.Endpoint[] = [
+        { ...ENDPOINT_BASE, id: "dummy_function", taskQueueTrigger: {} },
+      ];
+      expect(() => {
+        validate.taskQueueFunctionNamesAreValid(endpoints);
+      }).to.throw(FirebaseError, /dummy_function/);
+    });
+
+    it("should ignore underscores in non-task-queue function names", () => {
+      const endpoints: backend.Endpoint[] = [
+        { ...ENDPOINT_BASE, id: "dummy_function", httpsTrigger: {} },
+      ];
+      expect(() => {
+        validate.taskQueueFunctionNamesAreValid(endpoints);
+      }).to.not.throw();
+    });
+  });
+
   describe("endpointsAreValid", () => {
     const ENDPOINT_BASE: backend.Endpoint = {
       platform: "gcfv2",
@@ -133,6 +171,18 @@ describe("validate", () => {
         concurrency: 2,
       };
       expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(/GCF gen 1/);
+    });
+
+    it("rejects task queue function names that are not legal queue ids", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        id: "dummy_function",
+        taskQueueTrigger: {},
+      };
+      expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
+        FirebaseError,
+        /dummy_function/,
+      );
     });
 
     it("Disallows concurrency for low-CPU gen 2", () => {

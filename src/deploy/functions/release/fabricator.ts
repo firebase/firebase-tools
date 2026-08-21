@@ -1098,6 +1098,16 @@ export class Fabricator {
   }
 
   async disableTaskQueue(endpoint: backend.Endpoint & backend.TaskQueueTriggered): Promise<void> {
+    // The queue name is derived from the function id, so a function whose id is not a legal
+    // queue ID cannot have a queue to disable. Older CLI versions let such functions deploy,
+    // and Cloud Tasks rejects the name outright, which would otherwise block their deletion.
+    if (!cloudtasks.isValidQueueId(endpoint.id)) {
+      logger.debug(
+        `Skipping disable of task queue for ${endpoint.id}: not a legal Cloud Tasks queue ID, ` +
+          `so no queue can exist.`,
+      );
+      return;
+    }
     const update = {
       name: cloudtasks.queueNameForEndpoint(endpoint),
       state: "DISABLED" as cloudtasks.State,

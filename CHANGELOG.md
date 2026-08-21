@@ -1,0 +1,1 @@
+- Deploying a task queue function whose name is not a legal Cloud Tasks queue ID (for example one containing an underscore) now fails validation instead of silently leaving the function without a queue, and such functions can now be deleted (#10834).
