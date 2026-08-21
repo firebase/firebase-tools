@@ -5,6 +5,7 @@ import * as runv2 from "../../gcp/runv2";
 import { fileExistsSync } from "../../fsutils";
 import { AppHostingYamlConfig } from "../../apphosting/yaml";
 import { FirebaseError } from "../../error";
+import { logLabeledWarning } from "../../utils";
 import {
   Context,
   DEFAULT_RUN_IGNORE,
@@ -27,6 +28,19 @@ function validateCliFlags(options: RunDeployOptions): {
   if (runtimeOpt !== undefined && runtimeOpt !== "" && clearOpt) {
     throw new FirebaseError(
       "Cannot specify both --runtime/--base-image and --clear-runtime/--clear-base-image.",
+    );
+  }
+
+  if (options.allowLocalBuildSecrets) {
+    logLabeledWarning(
+      "run",
+      "The '--allow-local-build-secrets' flag is only supported for App Hosting local builds and is not applicable to Cloud Run.",
+    );
+  }
+
+  if (options.localBuild) {
+    throw new FirebaseError(
+      "Cloud Run does not support local builds. Local builds are only supported for Firebase App Hosting backends ('apphosting').",
     );
   }
 
@@ -127,6 +141,12 @@ export async function prepare(
     const serviceId = config.serviceId;
     if (!serviceId) {
       throw new FirebaseError("Cloud Run serviceId must be specified in firebase.json.");
+    }
+
+    if (config.localBuild) {
+      throw new FirebaseError(
+        `Cloud Run does not support local builds ('localBuild: true' configured for service '${serviceId}'). Local builds are only supported for Firebase App Hosting backends ('apphosting').`,
+      );
     }
 
     const region =

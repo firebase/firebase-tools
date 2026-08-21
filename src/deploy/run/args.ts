@@ -18,6 +18,8 @@ export interface RunDeployOptions extends Options {
   primaryRegion?: string;
   region?: string;
   serviceAccount?: string;
+  allowLocalBuildSecrets?: boolean;
+  localBuild?: boolean;
 }
 
 export type RunConfig = RunSingle;

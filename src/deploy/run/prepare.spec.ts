@@ -4,18 +4,21 @@ import { prepare } from "./prepare";
 import * as runv2 from "../../gcp/runv2";
 import * as prereqs from "./prereqs";
 import { Options } from "../../options";
-import { Context, Payload } from "./args";
+import { Context, Payload, RunDeployOptions } from "./args";
 import { FirebaseError } from "../../error";
+import * as utils from "../../utils";
 
 describe("run prepare", () => {
   let prereqsStub: sinon.SinonStub;
   let getServiceStub: sinon.SinonStub;
+  let logWarningStub: sinon.SinonStub;
   const originalEnv = process.env;
 
   beforeEach(() => {
     process.env = { ...originalEnv };
     prereqsStub = sinon.stub(prereqs, "prereqs").resolves();
     getServiceStub = sinon.stub(runv2, "getService");
+    logWarningStub = sinon.stub(utils, "logLabeledWarning");
   });
 
   afterEach(() => {
@@ -312,5 +315,66 @@ describe("run prepare", () => {
     expect(payload.run?.services).to.have.length(2);
     expect(payload.run?.services?.[0].serviceId).to.equal("svc-1");
     expect(payload.run?.services?.[1].serviceId).to.equal("svc-2");
+  });
+
+  it("should log a warning if --allow-local-build-secrets flag is passed", async () => {
+    const payload: Payload = {};
+    const context: Context = {};
+    const options = {
+      project: "project",
+      allowLocalBuildSecrets: true,
+      config: {
+        get: () => ({ serviceId: "my-service", region: "us-central1", rootDir: "." }),
+        path: (p: string) => p,
+      },
+    } as unknown as RunDeployOptions;
+
+    getServiceStub.resolves(undefined);
+
+    await prepare(context, options, payload);
+
+    expect(logWarningStub.calledOnce).to.be.true;
+    expect(logWarningStub.firstCall.args[0]).to.equal("run");
+    expect(logWarningStub.firstCall.args[1]).to.include("--allow-local-build-secrets");
+  });
+
+  it("should throw FirebaseError if localBuild option is passed", async () => {
+    const payload: Payload = {};
+    const context: Context = {};
+    const options = {
+      project: "project",
+      localBuild: true,
+      config: {
+        get: () => ({ serviceId: "my-service", region: "us-central1", rootDir: "." }),
+        path: (p: string) => p,
+      },
+    } as unknown as RunDeployOptions;
+
+    await expect(prepare(context, options, payload)).to.be.rejectedWith(
+      FirebaseError,
+      "Cloud Run does not support local builds",
+    );
+  });
+
+  it("should throw FirebaseError if a service has localBuild: true in firebase.json", async () => {
+    const payload: Payload = {};
+    const context: Context = {};
+    const options = {
+      project: "project",
+      config: {
+        get: () => ({
+          serviceId: "my-service",
+          region: "us-central1",
+          rootDir: ".",
+          localBuild: true,
+        }),
+        path: (p: string) => p,
+      },
+    } as unknown as RunDeployOptions;
+
+    await expect(prepare(context, options, payload)).to.be.rejectedWith(
+      FirebaseError,
+      "Cloud Run does not support local builds ('localBuild: true' configured for service 'my-service')",
+    );
   });
 });
