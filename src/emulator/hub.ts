@@ -109,6 +109,7 @@ export class EmulatorHub extends ExpressBasedEmulator {
         res.status(403).json({
           message: `Export cannot be triggered by external callers.`,
         });
+        return;
       }
       const path: string = req.body.path;
       const initiatedBy: string = req.body.initiatedBy || "unknown";
@@ -134,6 +135,12 @@ export class EmulatorHub extends ExpressBasedEmulator {
     });
 
     app.put(EmulatorHub.PATH_DISABLE_FUNCTIONS, async (req, res) => {
+      if (req.headers.origin) {
+        res.status(403).json({
+          message: `Cloud Functions triggers cannot be toggled by external callers.`,
+        });
+        return;
+      }
       utils.logLabeledBullet(
         "emulators",
         `Disabling Cloud Functions triggers, non-HTTP functions will not execute.`,
@@ -151,6 +158,12 @@ export class EmulatorHub extends ExpressBasedEmulator {
     });
 
     app.put(EmulatorHub.PATH_ENABLE_FUNCTIONS, async (req, res) => {
+      if (req.headers.origin) {
+        res.status(403).json({
+          message: `Cloud Functions triggers cannot be toggled by external callers.`,
+        });
+        return;
+      }
       utils.logLabeledBullet(
         "emulators",
         `Enabling Cloud Functions triggers, non-HTTP functions will execute.`,
@@ -172,6 +185,7 @@ export class EmulatorHub extends ExpressBasedEmulator {
         res.status(403).json({
           message: `Clear SQL Connect cannot be triggered by external callers.`,
         });
+        return;
       }
       utils.logLabeledBullet("emulators", `Clearing data from SQL Connect data sources.`);
 
