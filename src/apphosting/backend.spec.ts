@@ -18,7 +18,6 @@ import {
 } from "./backend";
 import * as deploymentTool from "../deploymentTool";
 import { FirebaseError } from "../error";
-import * as experiments from "../experiments";
 
 describe("apphosting setup functions", () => {
   const projectId = "projectId";
@@ -67,7 +66,6 @@ describe("apphosting setup functions", () => {
     testResourceIamPermissionsStub = sinon
       .stub(iam, "testResourceIamPermissions")
       .throws("Unexpected testResourceIamPermissions call");
-    sinon.stub(experiments, "isEnabled").returns(false).withArgs("abiu").returns(true);
   });
 
   afterEach(() => {
