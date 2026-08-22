@@ -1,0 +1,56 @@
+{
+  "endpoints": {
+    "processFirestoreWrite": {
+      "entryPoint": "processFirestoreWrite",
+      "platform": "gcfv2",
+      "project": "test-project",
+      "runtime": "nodejs20",
+      "region": ["{{ params.LOCATION }}"],
+      "eventTrigger": {
+        "eventType": "google.cloud.firestore.document.v1.written",
+        "retry": true,
+        "region": "us-central1",
+        "eventFilters": {
+          "database": "(default)",
+          "namespace": "(default)"
+        },
+        "eventFilterPathPatterns": {
+          "document": "users/{userId}"
+        }
+      },
+      "availableMemoryMb": 1024,
+      "timeoutSeconds": 120,
+      "minInstances": 1,
+      "maxInstances": 10
+    }
+  },
+  "params": [
+    {
+      "type": "string",
+      "name": "LOCATION",
+      "label": "Cloud Functions location",
+      "description": "Where do you want to deploy the functions?",
+      "default": "us-central1",
+      "immutable": true,
+      "input": {
+        "select": {
+          "options": [
+            {
+              "label": "Iowa (us-central1)",
+              "value": "us-central1"
+            },
+            {
+              "label": "South Carolina (us-east1)",
+              "value": "us-east1"
+            },
+            {
+              "label": "Belgium (europe-west1)",
+              "value": "europe-west1"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "requiredAPIs": []
+}

@@ -1,0 +1,43 @@
+name: v2-function
+version: 1.0.0
+specVersion: v1beta
+
+resources:
+  - name: processFirestoreWrite
+    type: firebaseextensions.v1beta.v2function
+    description: V2 function with Firestore trigger
+    properties:
+      location: ${param:LOCATION}
+      buildConfig:
+        runtime: nodejs20
+      serviceConfig:
+        availableMemory: 1GiB
+        timeoutSeconds: 120
+        minInstanceCount: 1
+        maxInstanceCount: 10
+      eventTrigger:
+        eventType: google.cloud.firestore.document.v1.written
+        triggerRegion: us-central1
+        eventFilters:
+          - attribute: database
+            value: "(default)"
+          - attribute: document
+            value: "users/{userId}"
+            operator: match-path-pattern
+        retryPolicy: RETRY_POLICY_RETRY
+
+params:
+  - param: LOCATION
+    label: Cloud Functions location
+    description: Where do you want to deploy the functions?
+    type: select
+    options:
+      - label: Iowa (us-central1)
+        value: us-central1
+      - label: South Carolina (us-east1)
+        value: us-east1
+      - label: Belgium (europe-west1)
+        value: europe-west1
+    default: us-central1
+    required: true
+    immutable: true
