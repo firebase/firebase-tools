@@ -89,7 +89,7 @@ async function deprecate(
   } else {
     throw new FirebaseError("No extension versions matched the version predicate.");
   }
-  await utils.allSettled(
+  await Promise.allSettled(
     filteredExtensionVersions.map(async (extensionVersion) => {
       await deprecateExtensionVersion(extensionVersion.ref, options.message);
     }),
