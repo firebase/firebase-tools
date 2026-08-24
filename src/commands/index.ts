@@ -202,6 +202,7 @@ export function load(client: CLIClient): CLIClient {
     client.functions.kits = {};
     client.functions.kits.install = loadCommand("functions-kits-install");
     client.functions.kits.uninstall = loadCommand("functions-kits-uninstall");
+    client.functions.kits.list = loadCommand("functions-kits-list");
   }
   client.help = loadCommand("help");
   client.hosting = {};
