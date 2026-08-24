@@ -123,6 +123,11 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
     it("should return undefined for unknown extension ref", () => {
       expect(migrateModule.getKitPackage("custom/unknown")).to.be.undefined;
     });
+
+    it("should return undefined for a known extension ref with no replacement", () => {
+      expect(migrateModule.getKitPackage("moralis/moralis-streams")).to.be.undefined;
+      expect(migrateModule.getKitPackage("firebase/firestore-bundle-builder")).to.be.undefined;
+    });
   });
 
   describe("formatExtensionsTable", () => {

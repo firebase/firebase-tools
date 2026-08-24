@@ -53,10 +53,6 @@ export function getKitPackage(extensionRef: string, packageOverride?: string): s
   if (!entry && !extensionRef.includes("/")) {
     entry = map[`firebase/${extensionRef}`];
   }
-  if (!entry && extensionRef.includes("/")) {
-    const shortName = extensionRef.split("/")[1];
-    entry = map[shortName];
-  }
 
   if (entry && entry.npmPackage && entry.status === "REPLACEMENT_AVAILABLE") {
     return entry.npmPackage;
@@ -188,8 +184,9 @@ export async function createMigrationPlan(
     const ref = getExtensionRef(foundInstance);
     const kitPkg = getKitPackage(ref, options.package);
     if (!kitPkg) {
+      // TODO: Consider including references to a skill once considered production ready.
       throw new FirebaseError(
-        "This extension does not have an associated function kit. Please reach out to the extension author to request one",
+        "This extension does not have an associated function kit. You can create your own function kit by forking the extension.",
       );
     }
 
@@ -230,8 +227,9 @@ export async function createMigrationPlan(
       );
 
     if (matchingInstancesWithKit.length === 0) {
+      // TODO: Consider including references to a skill once considered production ready.
       throw new FirebaseError(
-        "This extension does not have an associated function kit. Please reach out to the extension author to request one",
+        "This extension does not have an associated function kit. You can create your own function kit by forking the extension.",
       );
     }
 
@@ -266,8 +264,9 @@ export async function createMigrationPlan(
 
   const migratable = getMigratableInstances(instances, options.package);
   if (migratable.length === 0) {
+    // TODO: Consider including references to a skill once considered production ready.
     throw new FirebaseError(
-      "No remaining Extensions have an associated function kit. Please reach out to the extension author to request one",
+      "No remaining Extensions have an associated function kit. You can create your own function kit by forking the extension.",
     );
   }
 
