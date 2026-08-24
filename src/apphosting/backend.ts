@@ -35,7 +35,7 @@ const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: apphostingOrigin(),
   apiVersion: API_VERSION,
-  masterTimeout: 25 * 60 * 1_000,
+  masterTimeout: 60 * 60 * 1_000,
   maxBackoff: 10_000,
 };
 

@@ -10,6 +10,7 @@ import {
 } from "./gcp/firedata";
 import { consoleOrigin } from "./api";
 import { loggedIn } from "./auth";
+import { hasDefaultCredentials } from "./defaultCredentials";
 
 const consoleLandingPage = new Map<TosId, string>([
   [APPHOSTING_TOS_ID, `${consoleOrigin()}/project/_/apphosting`],
@@ -32,9 +33,11 @@ export function requireTosAcceptance(tosId: TosId): (options: Options) => Promis
 }
 
 async function requireTos(tosId: TosId): Promise<void> {
-  // If they are not logged in, they either cannot make calls, or are using a service account.
-  // Either way, no need to check TOS.
-  if (!loggedIn()) {
+  // If they are not logged in, or they are using ADC, they either cannot make calls,
+  // or are using a service account. Either way, no need to check TOS.
+  // TODO(joehanley): On the next major version, we should swap to prefer login creds over ADC. When we do so,
+  // we can remove `hasDefaultCredentials()` from this check.
+  if (!loggedIn() || (await hasDefaultCredentials())) {
     return;
   }
   const res = await getTosStatus();

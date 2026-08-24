@@ -32,6 +32,8 @@ import {
 } from "./functionsDeployHelper";
 import { logLabeledBullet, logLabeledWarning } from "../../utils";
 import { isDartEndpoint, classifyNonProductionEndpoints } from "./runtimes/dart/triggerSupport";
+import { DART_BUNDLE_EXECUTABLE_PATH, DART_COMPILE_EXE_PATH } from "./runtimes/dart";
+import { DartVersionFeatures } from "./runtimes/dart/features";
 import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import { needProjectId, needProjectNumber } from "../../projectUtils";
@@ -445,13 +447,17 @@ export async function prepare(
         ? "tar.gz"
         : "zip";
 
-      const isDart = supported.runtimeIsLanguage(wantBuilds[codebase].runtime, "dart");
-      const executablePaths = isDart ? ["bin/server"] : [];
+      const executablePaths = await getExecutablePaths(wantBuilds[codebase].runtime, sourceDir);
+      const uploadCfg = await stripStaleDartBuildIgnore(
+        wantBuilds[codebase].runtime,
+        sourceDir,
+        localCfg,
+      );
 
       const packagedSource = await prepareFunctionsUpload(
         options.config.projectDir,
         sourceDir,
-        localCfg,
+        uploadCfg,
         [...schPathSet],
         undefined,
         { exportType, executablePaths },
@@ -868,6 +874,55 @@ function warnIfDartBackendHasUnsupportedTriggers(want: backend.Backend): void {
         "See https://github.com/firebase/firebase-functions-dart for current trigger support.",
     );
   }
+}
+
+/**
+ * Returns the executable paths to mark as executable when packaging a codebase's source,
+ * relative to the runtime in use. Dart codebases produce their executable at
+ * DART_BUNDLE_EXECUTABLE_PATH when their declared language version supports native
+ * build hooks while cross-compiling (see DartVersionFeatures.isNativeAssetsAvailable),
+ * or DART_COMPILE_EXE_PATH otherwise.
+ */
+export async function getExecutablePaths(
+  runtime: supported.Runtime | undefined,
+  sourceDir: string,
+): Promise<string[]> {
+  if (!supported.runtimeIsLanguage(runtime, "dart")) {
+    return [];
+  }
+  const features = await DartVersionFeatures.detect(sourceDir);
+  return features.isNativeAssetsAvailable ? [DART_BUNDLE_EXECUTABLE_PATH] : [DART_COMPILE_EXE_PATH];
+}
+
+/**
+ * Strips a stale "build" ignore entry from a Dart codebase's local config.
+ *
+ * Before the switch to `dart build cli`, `firebase init` seeded Dart codebases with
+ * `functions.ignore` including "build", which was harmless since the compiled executable
+ * lived at `bin/server`. For projects whose declared language version supports native
+ * build hooks while cross-compiling, the bundle now lives under `build/` (see
+ * DART_BUNDLE_EXECUTABLE_PATH), so honoring that stale entry for codebases configured
+ * before this fix would silently strip the executable from the deploy archive.
+ */
+export async function stripStaleDartBuildIgnore<T extends { ignore?: string[] }>(
+  runtime: supported.Runtime | undefined,
+  sourceDir: string,
+  localCfg: T,
+): Promise<T> {
+  if (
+    !supported.runtimeIsLanguage(runtime, "dart") ||
+    !localCfg.ignore?.some((i) => i === "build" || i === "build/")
+  ) {
+    return localCfg;
+  }
+  const features = await DartVersionFeatures.detect(sourceDir);
+  if (!features.isNativeAssetsAvailable) {
+    return localCfg;
+  }
+  return {
+    ...localCfg,
+    ignore: localCfg.ignore.filter((i) => i !== "build" && i !== "build/"),
+  };
 }
 
 /**
