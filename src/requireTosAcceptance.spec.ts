@@ -6,6 +6,7 @@ import { Options } from "./options";
 import { RC } from "./rc";
 import { expect } from "chai";
 import * as auth from "./auth";
+import * as defaultCredentials from "./defaultCredentials";
 
 const SAMPLE_OPTIONS: Options = {
   cwd: "/",
@@ -48,13 +49,19 @@ const SAMPLE_RESPONSE = {
 
 describe("requireTosAcceptance", () => {
   let loggedInStub: sinon.SinonStub;
+  let hasDefaultCredentialsStub: sinon.SinonStub;
+
   beforeEach(() => {
     nock.disableNetConnect();
     loggedInStub = sinon.stub(auth, "loggedIn");
+    hasDefaultCredentialsStub = sinon
+      .stub(defaultCredentials, "hasDefaultCredentials")
+      .resolves(false);
   });
   afterEach(() => {
     nock.enableNetConnect();
     loggedInStub.restore();
+    hasDefaultCredentialsStub.restore();
   });
 
   it("should resolve for accepted terms of service", async () => {
@@ -81,8 +88,17 @@ describe("requireTosAcceptance", () => {
     expect(nock.isDone()).to.be.true;
   });
 
-  it("should resolve to if not a human", async () => {
+  it("should resolve if not a human", async () => {
     loggedInStub.returns(false);
+
+    await requireTosAcceptance(APPHOSTING_TOS_ID)(SAMPLE_OPTIONS);
+
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should resolve if using ADC", async () => {
+    loggedInStub.returns(true);
+    hasDefaultCredentialsStub.resolves(true);
 
     await requireTosAcceptance(APPHOSTING_TOS_ID)(SAMPLE_OPTIONS);
 
