@@ -432,10 +432,14 @@ describe("functions:kits:install", () => {
 
   describe("buildAndInstallKit", () => {
     it("should run npm install and npm run build without --ignore-scripts for first-party kit", async () => {
-      await buildAndInstallKit("/abs/path", false);
+      await buildAndInstallKit("/abs/path", "@firebase-functions-kits/my-kit", false);
 
       expect(wrapSpawnStub).to.have.been.calledTwice;
-      expect(wrapSpawnStub.firstCall).to.have.been.calledWith("npm", ["install"], "/abs/path");
+      expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
+        "npm",
+        ["install", "@firebase-functions-kits/my-kit", "--save-prefix=^"],
+        "/abs/path",
+      );
       expect(wrapSpawnStub.secondCall).to.have.been.calledWith(
         "npm",
         ["run", "build"],
@@ -443,7 +447,7 @@ describe("functions:kits:install", () => {
       );
       expect(loggerInfoStub).to.have.been.calledWith(
         sinon.match(/functions:/),
-        sinon.match(/Running npm install\.\.\./),
+        sinon.match(/Running npm install @firebase-functions-kits\/my-kit --save-prefix=\^\.\.\./),
       );
       expect(loggerInfoStub).to.have.been.calledWith(
         sinon.match(/functions:/),
@@ -452,12 +456,12 @@ describe("functions:kits:install", () => {
     });
 
     it("should run npm install with --ignore-scripts for third-party kit", async () => {
-      await buildAndInstallKit("/abs/path", true);
+      await buildAndInstallKit("/abs/path", "third-party-kit", true);
 
       expect(wrapSpawnStub).to.have.been.calledTwice;
       expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
         "npm",
-        ["install", "--ignore-scripts"],
+        ["install", "third-party-kit", "--save-prefix=^", "--ignore-scripts"],
         "/abs/path",
       );
       expect(wrapSpawnStub.secondCall).to.have.been.calledWith(
@@ -467,7 +471,7 @@ describe("functions:kits:install", () => {
       );
       expect(loggerInfoStub).to.have.been.calledWith(
         sinon.match(/functions:/),
-        sinon.match(/Running npm install --ignore-scripts\.\.\./),
+        sinon.match(/Running npm install third-party-kit --save-prefix=\^ --ignore-scripts\.\.\./),
       );
       expect(loggerInfoStub).to.have.been.calledWith(
         sinon.match(/functions:/),
@@ -478,7 +482,7 @@ describe("functions:kits:install", () => {
     it("should throw FirebaseError if npm install fails", async () => {
       wrapSpawnStub.onFirstCall().rejects(new Error("npm install error"));
 
-      await expect(buildAndInstallKit("/abs/path", false)).to.be.rejectedWith(
+      await expect(buildAndInstallKit("/abs/path", "my-kit", false)).to.be.rejectedWith(
         FirebaseError,
         /NPM install failed: npm install error/,
       );
@@ -488,7 +492,7 @@ describe("functions:kits:install", () => {
       wrapSpawnStub.onFirstCall().resolves();
       wrapSpawnStub.onSecondCall().rejects(new Error("tsc build error"));
 
-      await expect(buildAndInstallKit("/abs/path", false)).to.be.rejectedWith(
+      await expect(buildAndInstallKit("/abs/path", "my-kit", false)).to.be.rejectedWith(
         FirebaseError,
         /TypeScript build failed: tsc build error/,
       );
@@ -768,7 +772,7 @@ describe("functions:kits:install", () => {
       expect(wrapSpawnStub).to.have.been.calledTwice;
       expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
         "npm",
-        ["install"],
+        ["install", "@firebase-functions-kits/firestore-bigquery-export@1.0.0", "--save-prefix=^"],
         "/mock/project/function-kits/firestore-bigquery-export/source",
       );
       expect(wrapSpawnStub.secondCall).to.have.been.calledWith(
@@ -781,10 +785,6 @@ describe("functions:kits:install", () => {
         "function-kits/firestore-bigquery-export/source/package.json"
       ] as { name?: string; dependencies?: Record<string, string> };
       expect(pkgJsonResult.name).to.equal("firestore-bigquery-export-wrapper");
-      expect(pkgJsonResult.dependencies).to.have.property(
-        "@firebase-functions-kits/firestore-bigquery-export",
-        "1.0.0",
-      );
 
       expect(writtenFiles["function-kits/firestore-bigquery-export/source/src/index.ts"]).to.be.a(
         "string",
@@ -847,7 +847,7 @@ describe("functions:kits:install", () => {
       expect(wrapSpawnStub).to.have.been.calledTwice;
       expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
         "npm",
-        ["install"],
+        ["install", "@firebase-functions-kits/firestore-bigquery-export@1.0.0", "--save-prefix=^"],
         "/mock/project/function-kits/my-custom-kit/source",
       );
 
@@ -889,7 +889,7 @@ describe("functions:kits:install", () => {
       expect(wrapSpawnStub).to.have.been.calledTwice;
       expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
         "npm",
-        ["install", "--ignore-scripts"],
+        ["install", "@third-party/custom-kit", "--save-prefix=^", "--ignore-scripts"],
         "/mock/project/function-kits/custom-kit/source",
       );
       expect(wrapSpawnStub.secondCall).to.have.been.calledWith(
