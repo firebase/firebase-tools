@@ -267,7 +267,7 @@ export class Config {
   }
 
   lsProjectDir(p: string): fs.Dirent<string>[] {
-    return fs.readdirSync(p, { withFileTypes: true });
+    return fs.readdirSync(this.path(p), { withFileTypes: true });
   }
 
   async confirmWriteProjectFile(

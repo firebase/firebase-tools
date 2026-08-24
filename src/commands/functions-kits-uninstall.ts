@@ -12,6 +12,7 @@ import { confirm, checkbox, Choice } from "../prompt";
 import { pollOperation } from "../operation-poller";
 import { functionsV2Origin } from "../api";
 import { API_VERSION } from "../gcp/cloudfunctionsv2";
+import { dirname } from "path/posix";
 
 export const command = new Command("functions:kits:uninstall")
   .description("uninstall a function kit or kit instance from your project")
@@ -45,7 +46,7 @@ async function handleKit(options: Options, config: Config) {
           return;
         }
       }
-      uninstallKit(config, kitConfig);
+      await uninstallKit(config, kitConfig);
       return;
     }
   }
@@ -61,9 +62,10 @@ async function handleInstance(options: Options, config: Config) {
   let instanceConfigDirPath = "";
   let kitForInstance: ValidatedKitSingle;
   for (const kitConfig of kits) {
-    for (const instanceId of Object.keys(kitConfig.instances)) {
+    if (kitConfig.instances[instanceId]) {
       kitForInstance = kitConfig;
       instanceConfigDirPath = kitConfig.instances[instanceId];
+      break;
     }
   }
   if (instanceConfigDirPath === "") {
@@ -91,7 +93,7 @@ async function handleInstance(options: Options, config: Config) {
     projectsToRemove = projectsWithConfigs;
   } else {
     projectsToRemove = await checkbox<string>({
-      message: ``,
+      message: `Instance has multiple project-specific environments defined. Please select the ones to delete:`,
       choices: projectsWithConfigs.map((projectId): Choice<string> => {
         return {
           checked: false,
@@ -125,7 +127,7 @@ async function handleInstance(options: Options, config: Config) {
     uninstallKit(config, kitForInstance);
   }
   for (const projectToRemove of projectsToRemove) {
-    uninstallProjectInstance(config, projectToRemove, instanceId, instanceConfigDirPath);
+    await uninstallProjectInstance(config, projectToRemove, instanceId, instanceConfigDirPath);
   }
 }
 
@@ -153,7 +155,7 @@ async function uninstallInstance(
   }
   config.deleteProjectDir(kitInstancePath);
   // remove a functions.instances record with the id from firebase.json; kit instance IDs are unique
-  let functionsConfig = config.get("functions", []);
+  let functionsConfig = config.src.functions! //config.get("functions", []);
   if (!Array.isArray(functionsConfig)) {
     functionsConfig = [functionsConfig];
   }
@@ -164,7 +166,7 @@ async function uninstallInstance(
     const instances = (stanza.instances as Record<string, string>) ?? {};
     for (const configInstanceId of Object.keys(instances)) {
       if (configInstanceId === instanceId) {
-        stanza.instances.set(instanceId, undefined);
+        delete stanza.instances[instanceId];
       }
     }
   }
@@ -202,7 +204,7 @@ async function uninstallProjectInstance(
   }
   if (functionMightExist) {
     try {
-      getFunction(projectId, discoveredRegion, instanceId);
+      await getFunction(projectId, discoveredRegion, instanceId);
       functionExists = true;
     } catch (err: unknown) {
       // swallow, any error here means we shouldn't issue a delete op
@@ -234,8 +236,8 @@ async function uninstallKit(config: Config, kit: ValidatedKitSingle): Promise<vo
   // sanity check: all instances and the source directory share the same parent,
   // otherwise we could be very sad when we rm -rf it
   const kitRootDirs = [
-    parentPath(kit.source),
-    ...Object.values(kit.instances).map((p) => parentPath(p)),
+    dirname(kit.source),
+    ...Object.values(kit.instances).map((p) => dirname(p)),
   ];
   if (!kitRootDirs.every((p) => p === kitRootDirs[0])) {
     throw new FirebaseError(
@@ -243,7 +245,7 @@ async function uninstallKit(config: Config, kit: ValidatedKitSingle): Promise<vo
     );
   }
   for (const [instanceId, instanceConfigDir] of Object.entries(kit.instances)) {
-    uninstallInstance(config, instanceId, instanceConfigDir);
+    await uninstallInstance(config, instanceId, instanceConfigDir);
   }
   config.deleteProjectDir(kitRootDirs[0]);
   // remove the top-level record from the functions stanza of firebase.json
@@ -254,8 +256,4 @@ async function uninstallKit(config: Config, kit: ValidatedKitSingle): Promise<vo
   functionsConfig = functionsConfig.filter((fc: any) => fc.kit !== kit.kit);
   config.set("functions", functionsConfig);
   config.writeProjectFile("firebase.json", config.src);
-}
-
-function parentPath(path: string) {
-  return path.includes("/") ? path.split("/").slice(0, -1).join("/") : path;
 }
