@@ -10,6 +10,7 @@ import { getProjectId } from "../projectUtils";
 import { logLabeledBullet, logLabeledSuccess, logLabeledWarning } from "../utils";
 
 import {
+  addKitPrefix,
   isKitConfig,
   normalizeAndValidate,
   validateKit,
@@ -24,6 +25,9 @@ import { confirm, input, select } from "../prompt";
 import { spawnWithOutput, wrapSpawn } from "../init/spawn";
 import { readTemplateSync } from "../templates";
 import * as supported from "../deploy/functions/runtimes/supported";
+import * as runtimes from "../deploy/functions/runtimes";
+import * as build from "../deploy/functions/build";
+import * as iam from "../gcp/iam";
 import { hasProjectEnv } from "../functions/env";
 import * as self from "./functions-kits-install";
 import { Config } from "../config";
@@ -49,7 +53,7 @@ export const DEFAULT_TEMPLATE: TemplateType = "installation";
 export const FUNCTION_KITS_DIR = "function-kits";
 
 export interface FunctionsKitsInstallOptions extends Options {
-  npm_package?: string;
+  package?: string;
   template?: string;
 }
 
@@ -368,6 +372,11 @@ async function addInstanceToExistingKit(
     "functions",
     `Function kit instance ${clc.bold(instanceId)} successfully added to kit ${clc.bold(existingKit.kit)}.`,
   );
+  await self.printKitFirstDeployReport(
+    options,
+    instanceId,
+    options.config.path(existingKit.source),
+  );
 }
 
 /**
@@ -609,9 +618,67 @@ export function addKitToConfig(
   config.writeProjectFile("firebase.json", configSrc);
 }
 
+/**
+ * Discovers the build manifest from the compiled kit source directory.
+ */
+export async function discoverKitBuild(
+  options: FunctionsKitsInstallOptions,
+  absSourcePath: string,
+): Promise<build.Build> {
+  const projectId = getProjectId(options) || "";
+  const delegateContext: runtimes.DelegateContext = {
+    projectId,
+    sourceDir: absSourcePath,
+    projectDir: options.config?.projectDir || "",
+    runtime: supported.latest("nodejs"),
+  };
+  const runtimeDelegate = await runtimes.getRuntimeDelegate(delegateContext);
+  return runtimeDelegate.discoverBuild({}, {});
+}
+
+/**
+ * Discovers kit endpoints, required APIs, and required roles, and logs a formatted report.
+ */
+export async function printKitFirstDeployReport(
+  options: FunctionsKitsInstallOptions,
+  instanceId: string,
+  absSourcePath: string,
+): Promise<void> {
+  let discoveredBuild: build.Build;
+  const prefix = addKitPrefix(instanceId);
+  try {
+    discoveredBuild = await self.discoverKitBuild(options, absSourcePath);
+    build.applyPrefix(discoveredBuild, prefix);
+  } catch (err: unknown) {
+    logger.debug(`Could not discover kit build for reporting: ${getErrMsg(err)}`);
+    return;
+  }
+
+  const functions = Object.keys(discoveredBuild.endpoints).sort();
+  const apis = (discoveredBuild.requiredAPIs || []).map((a) => a.api).sort();
+  const rawRoles = discoveredBuild.requiredRoles || [];
+  const roles = (await Promise.all(rawRoles.map((r) => iam.getRoleName(r)))).sort();
+
+  const printSection = (heading: string, items: string[]): void => {
+    if (items.length > 0) {
+      logLabeledBullet("functions", `${heading}\n` + items.map((item) => `- ${item}`).join("\n"));
+    }
+  };
+
+  printSection(
+    "At the first deploy, the following functions will be created in your project:",
+    functions,
+  );
+  printSection("At the first deploy, the following APIs will be enabled in your project:", apis);
+  printSection(
+    "At the first deploy, the following roles will be granted to the kit service account:",
+    roles,
+  );
+}
+
 export const command = new Command("functions:kits:install")
   .description("install a function kit into your project")
-  .option("--npm_package <package>", "NPM package name or specifier to install as a function kit")
+  .option("--package <package>", "NPM package name or specifier to install as a function kit")
   .option(
     `--template [${Object.keys(TEMPLATES).join("|")}]`,
     "template to use for the kit index file",
@@ -634,9 +701,9 @@ export const command = new Command("functions:kits:install")
       );
     }
 
-    const rawPkgName = options.npm_package;
+    const rawPkgName = options.package;
     if (!rawPkgName) {
-      throw new FirebaseError("set the --npm_package option to a valid NPM package and try again.");
+      throw new FirebaseError("Set the --package option to a valid NPM package and try again.");
     }
 
     const { packageName, version } = parseNpmPackageSpecifier(rawPkgName);
@@ -685,4 +752,5 @@ export const command = new Command("functions:kits:install")
     addKitToConfig(options.config, kitId, instanceId, packageName, sourcePath, configDirPath);
 
     logLabeledSuccess("functions", `Function kit ${clc.bold(kitId)} successfully installed.`);
+    await self.printKitFirstDeployReport(options, instanceId, absSourcePath);
   });

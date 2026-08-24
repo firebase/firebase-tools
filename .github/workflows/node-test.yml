@@ -242,6 +242,7 @@ jobs:
           java-version: 21
           distribution: temurin
       - name: Setup Chrome
+        if: matrix.script == 'npm run test:storage-emulator-integration'
         uses: browser-actions/setup-chrome@facf10a55b9caf92e0cc749b4f82bf8220989148 # ratchet:browser-actions/setup-chrome@v1.7.2
         with:
           install-dependencies: true
