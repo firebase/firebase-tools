@@ -3,16 +3,21 @@ import { Command } from "../command";
 import { Config } from "../config";
 import { listKitConfigs } from "../functions/kits/config";
 import { Options } from "../options";
-import { deleteFunction, getFunction } from "../gcp/cloudfunctionsv2";
 import { join } from "path";
-import { parseStrict } from "../functions/env";
 import { ValidatedKitSingle } from "../functions/projectConfig";
 import { FirebaseError } from "../error";
 import { confirm, checkbox, Choice } from "../prompt";
-import { pollOperation } from "../operation-poller";
-import { functionsV2Origin } from "../api";
-import { API_VERSION } from "../gcp/cloudfunctionsv2";
+import { reduceFlat } from "../functional";
 import { dirname } from "path/posix";
+import { Context } from "../deploy/functions/args";
+import * as backend from "../deploy/functions/backend";
+import * as planner from "../deploy/functions/release/planner";
+import * as executor from "../deploy/functions/release/executor";
+import * as fabricator from "../deploy/functions/release/fabricator";
+import { EndpointFilter, getFunctionLabel } from "../deploy/functions/functionsDeployHelper";
+import * as functionsConfig from "../functionsConfig";
+import { getProjectNumber } from "../getProjectNumber";
+import * as reporter from "../deploy/functions/release/reporter";
 import { logger } from "../logger";
 
 export const command = new Command("functions:kits:uninstall")
@@ -47,7 +52,7 @@ async function handleKit(options: Options, config: Config) {
           return;
         }
       }
-      await uninstallKit(config, kitConfig);
+      await uninstallKit(options, config, kitConfig);
       return;
     }
   }
@@ -110,7 +115,8 @@ async function handleInstance(options: Options, config: Config) {
   }
   if (projectsToRemove.length === projectsWithConfigs.length) {
     if (Object.keys(kitForInstance.instances).length > 1) {
-      uninstallInstance(config, instanceId, instanceConfigDirPath);
+      await uninstallInstance(options, config, instanceId, instanceConfigDirPath);
+      return;
     }
     const confirmMsg =
       projectsToRemove.length === 1
@@ -125,10 +131,17 @@ async function handleInstance(options: Options, config: Config) {
     ) {
       return;
     }
-    uninstallKit(config, kitForInstance);
+    await uninstallKit(options, config, kitForInstance);
+    return;
   }
   for (const projectToRemove of projectsToRemove) {
-    await uninstallProjectInstance(config, projectToRemove, instanceId, instanceConfigDirPath);
+    await uninstallProjectInstance(
+      options,
+      config,
+      projectToRemove,
+      instanceId,
+      instanceConfigDirPath,
+    );
   }
 }
 
@@ -141,6 +154,7 @@ async function handleInstance(options: Options, config: Config) {
  * @param instanceId: must be specified, since configPath is user-overridable
  */
 async function uninstallInstance(
+  options: Options,
   config: Config,
   instanceId: string,
   kitInstancePath: string,
@@ -152,11 +166,11 @@ async function uninstallInstance(
       continue;
     }
     const projectId = fileName.replace(new RegExp("^.env."), "");
-    await uninstallProjectInstance(config, projectId, instanceId, kitInstancePath);
+    await uninstallProjectInstance(options, config, projectId, instanceId, kitInstancePath);
   }
   config.deleteProjectDir(kitInstancePath);
   // remove a functions.instances record with the id from firebase.json; kit instance IDs are unique
-  let functionsConfig = config.src.functions! //config.get("functions", []);
+  let functionsConfig = config.src.functions!;
   if (!Array.isArray(functionsConfig)) {
     functionsConfig = [functionsConfig];
   }
@@ -183,47 +197,76 @@ async function uninstallInstance(
  * @param instanceId: must be specified, since configPath is user-overridable
  */
 async function uninstallProjectInstance(
+  options: Options,
   config: Config,
   projectId: string,
   instanceId: string,
   kitInstancePath: string,
 ): Promise<void> {
   const envFilePath = join(kitInstancePath, `.env.${projectId}`);
-  let functionMightExist;
-  let functionExists = false;
-  let discoveredRegion = "";
-  if (!config.projectFileExists(envFilePath)) {
-    throw new FirebaseError(
-      `project-specific kit instance configuration not found at ${envFilePath}`,
-    );
-  }
-  const envContents = config.readProjectFile(envFilePath) as string;
-  const parsedEnv = parseStrict(envContents);
-  if (parsedEnv["FIREBASE_FUNCTION_KIT_REGION"]) {
-    functionMightExist = true;
-    discoveredRegion = parsedEnv["FIREBASE_FUNCTION_KIT_REGION"];
-  }
-  if (functionMightExist) {
-    try {
-      await getFunction(projectId, discoveredRegion, instanceId);
-      functionExists = true;
-    } catch (err: unknown) {
-      logger.warn(`Couldn't confirm Function to tear down exists: ${err}`);
-      // swallow, any error here means we shouldn't issue a delete op
+  const context: Context = {
+    projectId: projectId,
+    filters: [{ codebase: instanceId } as EndpointFilter],
+  };
+  const haveBackend = await backend.existingBackend(context);
+  const plan = await planner.createDeploymentPlan({
+    wantBackend: backend.empty(),
+    haveBackend: haveBackend,
+    codebase: "",
+    projectId: context.projectId,
+    filters: context.filters,
+    deleteAll: true,
+  });
+  const allEpToDelete = Object.values(plan.regionalChangesets)
+    .map((changes) => changes.endpointsToDelete)
+    .reduce(reduceFlat, [])
+    .sort(backend.compareFunctions);
+  if (allEpToDelete.length > 0) {
+    const deleteList = allEpToDelete.map((func) => `\t${getFunctionLabel(func)}`).join("\n");
+    const confirmDeletion = await confirm({
+      message:
+        "You are about to delete the following Cloud Functions:\n" +
+        deleteList +
+        "\n  Are you sure?",
+      default: false,
+      force: options.force,
+      nonInteractive: options.nonInteractive,
+    });
+    if (!confirmDeletion) {
+      throw new FirebaseError("Command aborted.");
     }
-  }
-  if (functionExists) {
-    const inferredFunctionPath = `projects/${projectId}/locations/${discoveredRegion}/functions/${instanceId}`;
-    const deleteOp: { name: string } = await deleteFunction(inferredFunctionPath);
-    const pollerOptions = {
-      apiOrigin: functionsV2Origin(),
-      apiVersion: API_VERSION,
-      masterTimeout: 60 * 1_000,
-      maxBackoff: 10_000,
-      pollerName: `kits-uninstall-${discoveredRegion}-${instanceId}`,
-      operationResourceName: deleteOp.name,
-    };
-    await pollOperation<void>(pollerOptions);
+
+    const functionExecutor: executor.QueueExecutor = new executor.QueueExecutor({
+      retries: 30,
+      backoff: 20000,
+      concurrency: 40,
+      maxBackoff: 40000,
+    });
+    const appEngineLocation = functionsConfig.getAppEngineLocation(config);
+    try {
+      const fab = new fabricator.Fabricator({
+        functionExecutor,
+        runFunctionExecutor: functionExecutor,
+        appEngineLocation,
+        executor: new executor.QueueExecutor({}),
+        sources: {},
+        projectNumber: await getProjectNumber({ projectId: context.projectId }),
+        projectId: context.projectId,
+      });
+      const summary = await fab.applyPlan({ default: plan });
+
+      await reporter.logAndTrackDeployStats(summary);
+      reporter.printErrors(summary);
+    } catch (err: unknown) {
+      throw new FirebaseError("Failed to delete functions", {
+        original: err as Error,
+        exit: 1,
+      });
+    }
+  } else {
+    logger.info(
+      `No deployed functions found for instance ${instanceId}. This is normal if firebase deploy was never run.`,
+    );
   }
   config.deleteProjectFile(envFilePath);
 }
@@ -234,20 +277,21 @@ async function uninstallProjectInstance(
  *
  * @param kit: a parsed ValidatedKitSingle from firebase.json
  */
-async function uninstallKit(config: Config, kit: ValidatedKitSingle): Promise<void> {
+async function uninstallKit(
+  options: Options,
+  config: Config,
+  kit: ValidatedKitSingle,
+): Promise<void> {
   // sanity check: all instances and the source directory share the same parent,
   // otherwise we could be very sad when we rm -rf it
-  const kitRootDirs = [
-    dirname(kit.source),
-    ...Object.values(kit.instances).map((p) => dirname(p)),
-  ];
+  const kitRootDirs = [dirname(kit.source), ...Object.values(kit.instances).map((p) => dirname(p))];
   if (!kitRootDirs.every((p) => p === kitRootDirs[0])) {
     throw new FirebaseError(
       `aborting kit uninstall: couldn't infer one kit root directory (${[...new Set(kitRootDirs)].join(", ")} in firebase.json)`,
     );
   }
   for (const [instanceId, instanceConfigDir] of Object.entries(kit.instances)) {
-    await uninstallInstance(config, instanceId, instanceConfigDir);
+    await uninstallInstance(options, config, instanceId, instanceConfigDir);
   }
   config.deleteProjectDir(kitRootDirs[0]);
   // remove the top-level record from the functions stanza of firebase.json
