@@ -51,9 +51,12 @@ describe("killProcessTree", () => {
 });
 
 describe("virtual env child tracking", () => {
+  const CLEANUP_SIGNALS: NodeJS.Signals[] = ["SIGINT", "SIGTERM", "SIGHUP", "SIGQUIT"];
+
   let sandbox: sinon.SinonSandbox;
   let killStub: sinon.SinonStub;
   let child: ChildProcess;
+  let foreignListeners: Map<NodeJS.Signals, NodeJS.SignalsListener[]>;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
@@ -61,11 +64,27 @@ describe("virtual env child tracking", () => {
     child = new EventEmitter() as ChildProcess;
     // A live ChildProcess reports null for both, not undefined.
     Object.assign(child, { pid: 4242, exitCode: null, signalCode: null });
+
+    // The re-raise is gated on nothing else listening for the signal, and the
+    // test runner brings its own listeners: nyc registers one per signal to
+    // flush coverage. Detach them so these tests see a bare process, and so a
+    // synthetic process.emit does not reach them.
+    foreignListeners = new Map();
+    for (const signal of CLEANUP_SIGNALS) {
+      foreignListeners.set(signal, process.listeners(signal) as NodeJS.SignalsListener[]);
+      process.removeAllListeners(signal);
+    }
   });
 
   afterEach(() => {
     untrackVirtualEnvChild(child);
     sandbox.restore();
+    for (const [signal, listeners] of foreignListeners) {
+      process.removeAllListeners(signal);
+      for (const listener of listeners) {
+        process.on(signal, listener);
+      }
+    }
   });
 
   itPosix("force-kills tracked children on SIGTERM, the signal CI sends on cancellation", () => {
