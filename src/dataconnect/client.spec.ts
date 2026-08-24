@@ -164,6 +164,12 @@ describe("client", () => {
         schemaToUpsert,
         { queryParams: { allowMissing: "true", validateOnly: "false" } },
       );
+      expect(pollOperationStub).to.be.calledWith({
+        apiOrigin: "https://firebasedataconnect.googleapis.com",
+        apiVersion: "v1",
+        operationResourceName: "op-name",
+        masterTimeout: 300000,
+      });
     });
 
     it("executeSchemaMigration", async () => {
@@ -223,6 +229,12 @@ describe("client", () => {
         "projects/p/locations/l/services/s/connectors/c?allow_missing=true",
         connectorToUpsert,
       );
+      expect(pollOperationStub).to.be.calledWith({
+        apiOrigin: "https://firebasedataconnect.googleapis.com",
+        apiVersion: "v1",
+        operationResourceName: "op-name",
+        masterTimeout: 300000,
+      });
     });
 
     it("deleteConnector", async () => {
