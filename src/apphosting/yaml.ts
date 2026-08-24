@@ -1,6 +1,6 @@
 import { basename, dirname } from "path";
 import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
-import { Config, Env, store } from "./config";
+import { Config, Env, store, RunConfig, ScriptsConfig, BuildConfig } from "./config";
 import * as yaml from "yaml";
 import * as jsYaml from "js-yaml";
 import * as path from "path";
@@ -18,6 +18,9 @@ export class AppHostingYamlConfig {
   // Holds the basename of the file (e.g. apphosting.yaml vs apphosting.staging.yaml)
   public filename: string | undefined;
   public env: EnvMap = {};
+  public runConfig?: RunConfig;
+  public scripts?: ScriptsConfig;
+  public buildConfig?: BuildConfig;
 
   /**
    * Reads in the App Hosting yaml file found in filePath, parses the secrets and
@@ -37,6 +40,15 @@ export class AppHostingYamlConfig {
     if (loadedAppHostingYaml.env) {
       config.env = toEnvMap(loadedAppHostingYaml.env);
     }
+    if (loadedAppHostingYaml.runConfig) {
+      config.runConfig = loadedAppHostingYaml.runConfig;
+    }
+    if (loadedAppHostingYaml.scripts) {
+      config.scripts = loadedAppHostingYaml.scripts;
+    }
+    if (loadedAppHostingYaml.buildConfig) {
+      config.buildConfig = loadedAppHostingYaml.buildConfig;
+    }
 
     return config;
   }
@@ -52,8 +64,8 @@ export class AppHostingYamlConfig {
   /**
    * Merges this AppHostingYamlConfig with another config, the incoming config
    * has precedence if there are any conflicting configurations.
-   * */
-  merge(other: AppHostingYamlConfig, allowSecretsToBecomePlaintext: boolean = true) {
+   */
+  merge(other: AppHostingYamlConfig, allowSecretsToBecomePlaintext = true) {
     if (!allowSecretsToBecomePlaintext) {
       const wereSecrets = Object.entries(this.env)
         .filter(([, env]) => env.secret)
@@ -69,6 +81,27 @@ export class AppHostingYamlConfig {
       ...this.env,
       ...other.env,
     };
+
+    if (other.runConfig) {
+      this.runConfig = {
+        ...this.runConfig,
+        ...other.runConfig,
+      };
+    }
+
+    if (other.scripts) {
+      this.scripts = {
+        ...this.scripts,
+        ...other.scripts,
+      };
+    }
+
+    if (other.buildConfig) {
+      this.buildConfig = {
+        ...this.buildConfig,
+        ...other.buildConfig,
+      };
+    }
   }
 
   /**
@@ -84,12 +117,27 @@ export class AppHostingYamlConfig {
     }
 
     yamlConfigToWrite.env = toEnvList(this.env);
+    if (this.runConfig) {
+      yamlConfigToWrite.runConfig = this.runConfig;
+    }
+    if (this.scripts) {
+      yamlConfigToWrite.scripts = this.scripts;
+    }
+    if (this.buildConfig) {
+      yamlConfigToWrite.buildConfig = this.buildConfig;
+    }
 
     store(filePath, yaml.parseDocument(jsYaml.dump(yamlConfigToWrite)));
   }
 }
 
 // TODO: generalize into a utility function and remove the key from the array type.
+/**
+ * Converts a list of environment variable objects into an environment variable map keyed by variable name.
+ *
+ * @param envs List of environment variables.
+ * @return Map of environment variables keyed by variable name.
+ */
 export function toEnvMap(envs: Env[]): EnvMap {
   return Object.fromEntries(
     envs.map((env) => {
@@ -99,6 +147,12 @@ export function toEnvMap(envs: Env[]): EnvMap {
   );
 }
 
+/**
+ * Converts an environment variable map keyed by variable name into an array of environment variable objects.
+ *
+ * @param envs Map of environment variables.
+ * @return Array of environment variable objects with variable property.
+ */
 export function toEnvList(envs: EnvMap): Env[] {
   return Object.entries(envs).map(([variable, env]) => {
     return { ...env, variable };

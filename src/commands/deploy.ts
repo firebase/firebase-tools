@@ -70,6 +70,23 @@ export const command = new Command("deploy")
     "--dry-run",
     "perform a dry run of your deployment. Validates your changes and builds your code without deploying any changes to your project. " +
       "In order to provide better validation, this may still enable APIs on the target project",
+  )
+  // TODO: Consolidate ABIU flags. '--runtime' and '--clear-runtime' are being deprecated in favor of '--base-image' and '--clear-base-image'.
+  .option(
+    "--runtime <runtime>",
+    "specify the runtime for Cloud Run Automatic Base Image Updates (ABIU) (e.g. nodejs22, python311)",
+  )
+  .option(
+    "--clear-runtime",
+    "clear the runtime and disable Automatic Base Image Updates (ABIU) for Cloud Run",
+  )
+  .option(
+    "--base-image <baseImage>",
+    "specify the base image URI or runtime for Cloud Run Automatic Base Image Updates (ABIU)",
+  )
+  .option(
+    "--clear-base-image",
+    "clear the base image and disable Automatic Base Image Updates (ABIU) for Cloud Run",
   );
 
 if (experiments.isEnabled("apphostinglocalbuilds")) {

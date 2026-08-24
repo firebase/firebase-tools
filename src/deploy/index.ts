@@ -20,6 +20,7 @@ import * as DataConnectTarget from "./dataconnect";
 import * as AppHostingTarget from "./apphosting";
 import * as AuthTarget from "./auth";
 import * as AiLogicTarget from "./ailogic";
+import * as RunTarget from "./run";
 import { prepareFrameworks } from "../frameworks";
 import { Context as HostingContext } from "./hosting/context";
 import { addPinnedFunctionsToOnlyString, hasPinnedFunctions } from "./hosting/prepare";
@@ -44,6 +45,7 @@ export const VALID_DEPLOY_TARGETS = [
   "apphosting",
   "auth",
   "ailogic",
+  "run",
 ] as const;
 
 export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], string[]> = {
@@ -105,6 +107,24 @@ export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], s
     // ensureAILogicApiEnabled reads API enablement state via Service Usage.
     "serviceusage.services.get",
   ],
+  run: [
+    "run.services.get",
+    "run.services.create",
+    "run.services.update",
+    "run.operations.get",
+    "cloudbuild.builds.create",
+    "cloudbuild.builds.get",
+    "storage.buckets.get",
+    "storage.buckets.list",
+    "storage.buckets.create",
+    "storage.buckets.update",
+    "storage.objects.create",
+    "storage.objects.delete",
+    "artifactregistry.repositories.get",
+    "artifactregistry.repositories.create",
+    "artifactregistry.repositories.downloadArtifacts",
+    "artifactregistry.repositories.uploadArtifacts",
+  ],
 };
 
 export const TARGETS = {
@@ -119,6 +139,7 @@ export const TARGETS = {
   apphosting: AppHostingTarget,
   auth: AuthTarget,
   ailogic: AiLogicTarget,
+  run: RunTarget,
 };
 
 export type DeployOptions = Options & { dryRun?: boolean };
