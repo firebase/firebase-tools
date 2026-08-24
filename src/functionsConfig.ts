@@ -39,6 +39,17 @@ To run this legacy command temporarily, run the following command and try again:
   firebase experiments:enable ${LEGACY_RUNTIME_CONFIG_EXPERIMENT}
 `;
 
+// adminSdkConfig 404s for any project this account can't see, so the message
+// must not assert a cause. The addfirebase hint covers the Cloud-project case.
+const projectNotFoundMessage = (projectId: string): string =>
+  `Firebase project ${clc.bold(projectId)} was not found.
+Make sure the project exists and that your account has access to it.
+
+If ${clc.bold(projectId)} is a Google Cloud project without Firebase, add Firebase to it:
+
+  firebase projects:addfirebase ${projectId}
+`;
+
 export function getFunctionsConfigDeprecationMessage(): string {
   return FUNCTIONS_CONFIG_DEPRECATION_MESSAGE;
 }
@@ -120,16 +131,12 @@ export async function getFirebaseConfig(options: any): Promise<args.FirebaseConf
     );
     return response.body;
   } catch (err: unknown) {
-    // adminSdkConfig 404s for any project this account can't see, so don't
-    // assert a cause. The addfirebase hint covers the Cloud-project case.
     if (err instanceof FirebaseError && err.status === 404) {
-      throw new FirebaseError(
-        `Firebase project ${clc.bold(projectId)} was not found. ` +
-          `Make sure the project exists and that your account has access to it.\n\n` +
-          `If ${clc.bold(projectId)} is a Google Cloud project without Firebase, add Firebase to it:\n\n` +
-          `  firebase projects:addfirebase ${projectId}`,
-        { original: err, exit: 1, status: 404 },
-      );
+      throw new FirebaseError(projectNotFoundMessage(projectId), {
+        original: err,
+        exit: 1,
+        status: 404,
+      });
     }
     throw err;
   }

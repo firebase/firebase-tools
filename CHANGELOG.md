@@ -1,1 +1,1 @@
-- Replaced the raw 404 from `adminSdkConfig` with a message naming the project and pointing at `firebase projects:addfirebase` (#10379)
+- Improved the error shown when deploying to a Google Cloud project that does not have Firebase enabled (#10379)
