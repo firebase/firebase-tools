@@ -13,6 +13,7 @@ import { pollOperation } from "../operation-poller";
 import { functionsV2Origin } from "../api";
 import { API_VERSION } from "../gcp/cloudfunctionsv2";
 import { dirname } from "path/posix";
+import { logger } from "../logger";
 
 export const command = new Command("functions:kits:uninstall")
   .description("uninstall a function kit or kit instance from your project")
@@ -207,6 +208,7 @@ async function uninstallProjectInstance(
       await getFunction(projectId, discoveredRegion, instanceId);
       functionExists = true;
     } catch (err: unknown) {
+      logger.warn(`Couldn't confirm Function to tear down exists: ${err}`);
       // swallow, any error here means we shouldn't issue a delete op
     }
   }
