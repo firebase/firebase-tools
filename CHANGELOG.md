@@ -1,3 +1,4 @@
+- Fixed parsing and path resolution bugs in `ext:export` options, and reverted `--extension-instance` option back to `--instance`.
 - [Fixed] Increases default polling timeout for App Hosting operations and rollouts to 60 minutes.
 - Fixed an issue where App Hosting deploys failed when the deploying account lacked permission to create or grant roles to the default compute service account, even when that service account already existed. (#10806)
 - Surface official Firebase Function Kit replacements in `ext:list` table and `--json` output.
