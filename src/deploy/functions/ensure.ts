@@ -185,24 +185,4 @@ export async function grantSecretAccess(
   );
 }
 
-/**
- * Ensures that runtime service account has access to the secrets.
- *
- * To avoid making more than one simultaneous call to setIamPolicy calls per secret, the function batches all
- * service account that requires access to it.
- */
-export async function secretAccess(
-  projectId: string,
-  wantBackend: backend.Backend,
-  haveBackend: backend.Backend,
-  dryRun?: boolean,
-) {
-  const delta = await secretsAccessDelta(projectId, wantBackend, haveBackend);
-  if (dryRun) {
-    await checkSecretAccess(projectId, delta);
-  } else {
-    for (const [secret, serviceAccounts] of Object.entries(delta)) {
-      await grantSecretAccess(projectId, secret, serviceAccounts);
-    }
-  }
-}
+
