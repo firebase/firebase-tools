@@ -1,7 +1,69 @@
 import { expect } from "chai";
-import { getExtensionReplacement, getDeprecationWarningMessage } from "./replacementRegistry";
+import * as sinon from "sinon";
+
+import {
+  getExtensionReplacement,
+  getDeprecationWarningMessage,
+  getReplacementsRegistry,
+  getReplacementPackageName,
+  ReplacementRegistrySchema,
+} from "./replacementRegistry";
+import * as defaultReplacements from "./replacements.json";
 
 describe("replacementRegistry", () => {
+  let sandbox: sinon.SinonSandbox;
+
+  beforeEach(() => {
+    sandbox = sinon.createSandbox();
+  });
+
+  afterEach(() => {
+    sandbox.restore();
+  });
+
+  describe("getReplacementsRegistry", () => {
+    it("should return remote catalog when fetch succeeds", async () => {
+      const mockData: ReplacementRegistrySchema = {
+        replacements: {
+          "firebase/storage-resize-images": {
+            status: "REPLACEMENT_AVAILABLE",
+            npmPackage: "@firebase-function-kits/storage-resize-images",
+            extensionRepositoryUrl: "https://github.com/firebase/extensions",
+          },
+        },
+      };
+
+      const mockResponse = {
+        ok: true,
+        json: async () => mockData,
+      } as unknown as Response;
+
+      sandbox.stub(globalThis, "fetch").resolves(mockResponse);
+
+      const registry = await getReplacementsRegistry();
+      expect(registry).to.eql(mockData);
+    });
+
+    it("should fall back to bundled catalog when fetch throws a network error", async () => {
+      sandbox.stub(globalThis, "fetch").rejects(new Error("Network error"));
+
+      const registry = await getReplacementsRegistry();
+      expect(registry).to.eql(defaultReplacements);
+    });
+
+    it("should fall back to bundled catalog when fetch returns non-200 status", async () => {
+      const mockResponse = {
+        ok: false,
+        status: 404,
+      } as unknown as Response;
+
+      sandbox.stub(globalThis, "fetch").resolves(mockResponse);
+
+      const registry = await getReplacementsRegistry();
+      expect(registry).to.eql(defaultReplacements);
+    });
+  });
+
   describe("getExtensionReplacement", () => {
     it("should return replacement info for a known 1P extension", () => {
       const rep = getExtensionReplacement("firebase/firestore-send-email");
@@ -16,9 +78,31 @@ describe("replacementRegistry", () => {
       expect(rep?.npmPackage).to.be.undefined;
     });
 
+    it("should return undefined for empty extensionRef", () => {
+      const rep = getExtensionReplacement("");
+      expect(rep).to.be.undefined;
+    });
+
     it("should return undefined for unknown extension", () => {
       const rep = getExtensionReplacement("unknown/random-extension");
       expect(rep).to.be.undefined;
+    });
+  });
+
+  describe("getReplacementPackageName", () => {
+    it("should return npmPackage when replacement is available for extensionRef", () => {
+      const pkg = getReplacementPackageName("firebase/storage-resize-images");
+      expect(pkg).to.equal("@firebase-function-kits/storage-resize-images");
+    });
+
+    it("should return undefined when extension has no replacement", () => {
+      const pkg = getReplacementPackageName("moralis/moralis-streams");
+      expect(pkg).to.be.undefined;
+    });
+
+    it("should return undefined for empty or unknown extension", () => {
+      expect(getReplacementPackageName("")).to.be.undefined;
+      expect(getReplacementPackageName("unknown/random-extension")).to.be.undefined;
     });
   });
 
