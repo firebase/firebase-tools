@@ -10,6 +10,7 @@ import { confirm, checkbox, Choice } from "../prompt";
 import { reduceFlat } from "../functional";
 import { dirname } from "path/posix";
 import { Context } from "../deploy/functions/args";
+import { FunctionConfig } from "../firebaseConfig";
 import * as backend from "../deploy/functions/backend";
 import * as planner from "../deploy/functions/release/planner";
 import * as executor from "../deploy/functions/release/executor";
@@ -100,6 +101,8 @@ async function handleInstance(options: Options, config: Config) {
   } else {
     projectsToRemove = await checkbox<string>({
       message: `Instance has multiple project-specific environments defined. Please select the ones to delete:`,
+      nonInteractive: options.nonInteractive,
+      force: options.force,
       choices: projectsWithConfigs.map((projectId): Choice<string> => {
         return {
           checked: false,
@@ -257,6 +260,9 @@ async function uninstallProjectInstance(
 
       await reporter.logAndTrackDeployStats(summary);
       reporter.printErrors(summary);
+      if (summary.results.some((r) => r.error)) {
+        throw new FirebaseError("Some functions deletions failed. Not modifying firebase.json.");
+      }
     } catch (err: unknown) {
       throw new FirebaseError("Failed to delete functions", {
         original: err as Error,
@@ -295,11 +301,11 @@ async function uninstallKit(
   }
   config.deleteProjectDir(kitRootDirs[0]);
   // remove the top-level record from the functions stanza of firebase.json
-  let functionsConfig = config.get("functions", []);
+  let functionsConfig = config.src.functions ?? [];
   if (!Array.isArray(functionsConfig)) {
     functionsConfig = [functionsConfig];
   }
-  functionsConfig = functionsConfig.filter((fc: any) => fc.kit !== kit.kit);
+  functionsConfig = functionsConfig.filter((fc: FunctionConfig) => fc.kit !== kit.kit);
   config.set("functions", functionsConfig);
   config.writeProjectFile("firebase.json", config.src);
 }

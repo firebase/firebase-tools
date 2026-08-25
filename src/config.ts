@@ -263,10 +263,24 @@ export class Config {
     if (p.includes("/..")) {
       throw new FirebaseError("sanity: refusing to delete project-relative dir containing '/..'");
     }
+    try {
+      if (!fs.existsSync(this.path(p))) {
+        throw new FirebaseError(`Failed to delete project directory ${p}: directory doesn't exist.`);
+      }
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to delete project directory ${p}: ${err}`, {original: err instanceof Error ? err : undefined })
+    }
     fs.rmSync(this.path(p), { recursive: true });
   }
 
   lsProjectDir(p: string): fs.Dirent<string>[] {
+    try {
+      if (!fs.existsSync(this.path(p))) {
+        throw new FirebaseError(`Failed to list files in project directory ${p}: directory doesn't exist.`);
+      }
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to list files in project directory ${p}: ${err}`, {original: err instanceof Error ? err : undefined })
+    }
     return fs.readdirSync(this.path(p), { withFileTypes: true });
   }
 
