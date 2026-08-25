@@ -83,6 +83,11 @@ command
   .before(requireConfig)
   .before((options: Options) => {
     options.filteredTargets = filterTargets(options, [...VALID_DEPLOY_TARGETS]);
+    // Gate AI Logic deploys up front, before any target does prepare work or
+    // permissions are checked, so the error is immediate and clearly worded.
+    if (options.filteredTargets.includes("ailogic")) {
+      experiments.assertEnabled("ailogic", "deploy AI Logic resources");
+    }
     const permissions = options.filteredTargets.reduce((perms: string[], target: string) => {
       return perms.concat(TARGET_PERMISSIONS[target as (typeof VALID_DEPLOY_TARGETS)[number]]);
     }, []);

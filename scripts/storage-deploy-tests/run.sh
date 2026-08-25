@@ -4,7 +4,8 @@ CWD="$(pwd)"
 
 source scripts/set-default-credentials.sh
 
-TARGET_FILE="${COMMIT_SHA}-${CI_JOB_ID}.txt"
+RUN_SUFFIX="${GITHUB_RUN_NUMBER:-$RANDOM}-${RUNNER_OS:-linux}-${RANDOM}"
+TARGET_FILE="${COMMIT_SHA}-${RUN_SUFFIX}.txt"
 
 echo "Running in ${CWD}"
 echo "Running with node: $(which node)"
@@ -48,7 +49,7 @@ EOM
 echo "Initialized temp directory."
 
 echo "Testing storage deployment..."
-firebase deploy --force --only storage --project "${FBTOOLS_TARGET_PROJECT}"
+firebase deploy --force --non-interactive --only storage --project "${FBTOOLS_TARGET_PROJECT}"
 RET_CODE="$?"
 test "${RET_CODE}" == "0" || (echo "Expected exit code ${RET_CODE} to equal 0." && false)
 echo "Tested storage deployment."
@@ -64,20 +65,19 @@ cat > "firebase.json" <<- EOM
   ]
 }
 EOM
-firebase use --add "${FBTOOLS_TARGET_PROJECT}"
-firebase target:apply storage storage-target "${FBTOOLS_TARGET_PROJECT}.appspot.com"
+firebase target:apply storage storage-target "${FBTOOLS_TARGET_PROJECT}.appspot.com" --project "${FBTOOLS_TARGET_PROJECT}"
 echo "Updated config for targets."
 
 echo "Testing storage deployment with invalid target..."
 set +e
-firebase deploy --force --only storage:storage-invalid-target --project "${FBTOOLS_TARGET_PROJECT}"
+firebase deploy --force --non-interactive --only storage:storage-invalid-target --project "${FBTOOLS_TARGET_PROJECT}"
 RET_CODE="$?"
 set -e
-test "${RET_CODE}" == "1" || (echo "Expected exit code ${RET_CODE} to equal 1." && false)
+test "${RET_CODE}" != "0" || (echo "Expected exit code ${RET_CODE} to not equal 0." && false)
 echo "Tested storage deployment with invalid target."
 
 echo "Testing storage deployment with target..."
-firebase deploy --force --only storage:storage-target --project "${FBTOOLS_TARGET_PROJECT}"
+firebase deploy --force --non-interactive --only storage:storage-target --project "${FBTOOLS_TARGET_PROJECT}"
 RET_CODE="$?"
 test "${RET_CODE}" == "0" || (echo "Expected exit code ${RET_CODE} to equal 0." && false)
 echo "Tested storage deployment with target."

@@ -1,3 +1,4 @@
+import * as clc from "colorette";
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { checkbox, input, password, select } from "../../prompt";
@@ -397,6 +398,7 @@ export async function resolveParams(
   params: Param[],
   firebaseConfig: FirebaseConfig,
   userEnvs: Record<string, ParamValue>,
+  codebase: string,
   nonInteractive?: boolean,
   force?: boolean,
   isEmulator = false,
@@ -433,6 +435,9 @@ export async function resolveParams(
         "To continue, either run `firebase deploy` with an interactive terminal, or add values to a dotenv file. " +
         "For information regarding how to use dotenv files, see https://firebase.google.com/docs/functions/config-env",
     );
+  }
+  if (needPrompt.length > 0) {
+    logger.info(`Prompting for parameters for codebase ${clc.bold(codebase)}:`);
   }
   for (const param of needPrompt) {
     const promptable = param as Exclude<Param, SecretParam>;

@@ -1,5 +1,10 @@
 import * as backend from "./backend";
-import { DEFAULT_CODEBASE, ValidatedConfig } from "../../functions/projectConfig";
+import {
+  DEFAULT_CODEBASE,
+  ValidatedConfig,
+  ValidatedSingle,
+  isKitConfig,
+} from "../../functions/projectConfig";
 import { assertExhaustive } from "../../functional";
 
 export interface EndpointFilter {
@@ -27,50 +32,62 @@ export function endpointMatchesAnyFilter(
 
 /**
  * Returns true if endpoint matches the given filter.
+ * Supports filtering by codebase, exact function name, or hierarchical function group.
  */
 export function endpointMatchesFilter(endpoint: backend.Endpoint, filter: EndpointFilter): boolean {
-  // Only enforce codebase-based filtering when both the endpoint and filter provides them.
-  // This allows us to filter using idChunks across all codebases.
-  if (endpoint.codebase && filter.codebase) {
-    if (endpoint.codebase !== filter.codebase) {
+  // If the filter targets a specific codebase, verify that the endpoint belongs to it.
+  // Endpoints without an explicit codebase label default to the default codebase.
+  if (filter.codebase) {
+    const endpointCodebase = endpoint.codebase || DEFAULT_CODEBASE;
+    if (endpointCodebase !== filter.codebase) {
       return false;
     }
   }
 
-  if (!filter.idChunks) {
-    // If idChunks is not provided, we match all functions.
+  // If idChunks is not provided or empty, the filter matches all functions within the targeted codebase.
+  if (!filter.idChunks || filter.idChunks.length === 0) {
     return true;
   }
 
-  const idChunks = endpoint.id.split("-");
-  if (idChunks.length < filter.idChunks.length) {
-    return false;
-  }
-  for (let i = 0; i < filter.idChunks.length; i += 1) {
-    if (idChunks[i] !== filter.idChunks[i]) {
-      return false;
-    }
-  }
-  return true;
+  // Exact function match (e.g. 'myFunc') or hierarchical group match (e.g. 'groupA' matches 'groupA-func1').
+  // Enforces a strict hyphen boundary so 'app' does not match 'apple-pay'.
+  const filterPrefix = filter.idChunks.join("-");
+  return endpoint.id === filterPrefix || endpoint.id.startsWith(`${filterPrefix}-`);
+}
+
+/**
+ * Returns all codebase names and kit instance IDs defined in the configuration.
+ */
+export function getCodebasesFromConfig(config: ValidatedSingle[] = []): string[] {
+  return [
+    ...new Set(config.flatMap((c) => (isKitConfig(c) ? Object.keys(c.instances) : [c.codebase]))),
+  ];
 }
 
 /**
  * Returns list of filters after parsing selector.
  */
-export function parseFunctionSelector(selector: string, config: ValidatedConfig): EndpointFilter[] {
+export function parseFunctionSelector(
+  selector: string,
+  config: ValidatedSingle[] = [],
+): EndpointFilter[] {
   const fragments = selector.split(":");
+  const target = fragments[0];
+
+  // Check if target matches a known codebase name or kit instance ID
+  const codebaseNames = getCodebasesFromConfig(config);
+
+  if (codebaseNames.includes(target)) {
+    return [
+      {
+        codebase: target,
+        ...(fragments.length > 1 ? { idChunks: fragments[1].split(/[-.]/) } : {}),
+      },
+    ];
+  }
+
   if (fragments.length < 2) {
-    // This is a plain selector w/o codebase prefix (e.g. "abc" not "abc:efg") .
-    // This could mean 2 things:
-    //
-    //   1. Codebase selector (i.e. "abc" refers to a codebase).
-    //   2. Id filter for the DEFAULT codebase (i.e. "abc" refers to a function in the default codebase).
-    const codebaseNames = config.map((c) => c.codebase);
-    if (codebaseNames.includes(fragments[0])) {
-      // It's a known codebase name
-      return [{ codebase: fragments[0] }];
-    }
-    // It's not a codebase name, assume it is a function id in default codebase
+    // It's not a codebase or kit instance name, assume it is a function id in default codebase
     return [{ codebase: DEFAULT_CODEBASE, idChunks: fragments[0].split(/[-.]/) }];
   }
   return [
@@ -158,26 +175,20 @@ export function getFunctionLabel(fn: backend.TargetIds & { codebase?: string }):
  * Returns list of codebases specified in firebase.json filtered by --only filters if present.
  */
 export function targetCodebases(config: ValidatedConfig, filters?: EndpointFilter[]): string[] {
-  const codebasesFromConfig = [...new Set(Object.values(config).map((c) => c.codebase))];
+  const codebasesFromConfig = getCodebasesFromConfig(config);
   if (!filters) {
     return [...codebasesFromConfig];
   }
 
   const codebasesFromFilters = [
-    ...new Set(filters.map((f) => f.codebase).filter((c) => c !== undefined)),
+    ...new Set(filters.map((f) => f.codebase).filter((c): c is string => c !== undefined)),
   ];
 
   if (codebasesFromFilters.length === 0) {
     return [...codebasesFromConfig];
   }
 
-  const intersections: string[] = [];
-  for (const codebase of codebasesFromConfig) {
-    if (codebasesFromFilters.includes(codebase)) {
-      intersections.push(codebase);
-    }
-  }
-  return intersections;
+  return codebasesFromConfig.filter((codebase) => codebasesFromFilters.includes(codebase));
 }
 
 /**
@@ -234,6 +245,73 @@ export function isCodebaseFiltered(codebase: string, filters: EndpointFilter[]):
 }
 
 /** Checks if a function should be filtered given a list of endpoints. */
-export function isEndpointFiltered(endpoint: backend.Endpoint, filters: EndpointFilter[]) {
+export function isEndpointFiltered(endpoint: backend.Endpoint, filters: EndpointFilter[]): boolean {
   return filters.some((filter) => endpointMatchesFilter(endpoint, filter));
+}
+
+/**
+ * Parses raw CLI filter strings for functions:delete into EndpointFilter objects.
+ *
+ * When a user passes an unqualified target (e.g. 'myFunc' without a ':' prefix),
+ * parseFunctionSelector defaults the codebase to 'default' unless it matches an active
+ * codebase name. For functions:delete, an unqualified function name should match that
+ * function ID across ANY active codebase rather than restricting to 'default'.
+ * Therefore, when a filter has no ':' prefix and is scoped to 'default' by default,
+ * we remove the codebase restriction so it matches globally by ID.
+ */
+export function parseDeleteFilters(filters: string[], activeCodebases: string[]): EndpointFilter[] {
+  const liveCodebasesConfig = activeCodebases.map((codebase) => ({ source: "", codebase }));
+  return filters.flatMap((f) => {
+    const parsed = parseFunctionSelector(f, liveCodebasesConfig);
+    return parsed.map((filter) =>
+      !f.includes(":") && filter.codebase === DEFAULT_CODEBASE && filter.idChunks
+        ? { idChunks: filter.idChunks }
+        : filter,
+    );
+  });
+}
+
+export interface CodebaseCollision {
+  filter: string;
+  codebase: string;
+  functionLabel: string;
+  workaroundCommand: string;
+}
+
+/**
+ * Detects name collisions between active codebase names and existing function IDs or groups.
+ *
+ * When a user targets a name (e.g. 'api'), if that name matches BOTH an active codebase
+ * and a live function ID or function group prefix ('api-func'), codebase deletion takes
+ * precedence by design. We warn the user about the collision and provide the explicit
+ * '<codebase>:<name>' workaround syntax to delete the function instead.
+ */
+export function detectCodebaseAndIdCollisions(
+  filters: string[],
+  activeCodebases: string[],
+  allEndpoints: backend.Endpoint[],
+  defaultCodebase = DEFAULT_CODEBASE,
+): CodebaseCollision[] {
+  const collisions: CodebaseCollision[] = [];
+  for (const f of filters) {
+    // If the filter is explicitly codebase-scoped ('codebase:func') or doesn't match an active
+    // codebase name, there can be no codebase vs function ID name collision.
+    if (f.includes(":") || !activeCodebases.includes(f)) {
+      continue;
+    }
+    // This filter DOES match an active codebase name. If it ALSO matches an existing function ID
+    // or function group prefix (e.g. 'group-func'), a name collision exists.
+    const matchingEndpoints = allEndpoints.filter((ep) => ep.id === f || ep.id.startsWith(`${f}-`));
+    if (matchingEndpoints.length > 0) {
+      const ep = matchingEndpoints[0];
+      const prefix = ep.codebase || defaultCodebase;
+      collisions.push({
+        filter: f,
+        codebase: prefix,
+        functionLabel: getFunctionLabel(ep),
+        workaroundCommand: `firebase functions:delete ${prefix}:${f}`,
+      });
+    }
+  }
+  return collisions;
 }
