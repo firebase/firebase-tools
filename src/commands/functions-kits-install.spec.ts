@@ -503,7 +503,7 @@ describe("functions:kits:install", () => {
 
   describe("promptExistingInstanceForProject", () => {
     it("should throw if kit has no instances configured", async () => {
-      const mockOptions = { project: "my-project" } as any;
+      const mockOptions = { project: "my-project" } as unknown as FunctionsKitsInstallOptions;
       const kit = {
         kit: "my-kit",
         instances: {},
@@ -517,7 +517,7 @@ describe("functions:kits:install", () => {
 
     it("should suggest deploy command directly when only one instance exists", async () => {
       const selectStub = sinon.stub(prompt, "select");
-      const mockOptions = { project: "my-project" } as any;
+      const mockOptions = { project: "my-project" } as unknown as FunctionsKitsInstallOptions;
       const kit = {
         kit: "my-kit",
         instances: {
@@ -536,7 +536,10 @@ describe("functions:kits:install", () => {
 
     it("should prompt to select instance when multiple instances exist and nonInteractive is false", async () => {
       const selectStub = sinon.stub(prompt, "select").resolves("inst-2");
-      const mockOptions = { project: "my-project", nonInteractive: false } as any;
+      const mockOptions = {
+        project: "my-project",
+        nonInteractive: false,
+      } as unknown as FunctionsKitsInstallOptions;
       const kit = {
         kit: "my-kit",
         instances: {
@@ -565,7 +568,10 @@ describe("functions:kits:install", () => {
 
     it("should suggest deploy command with instance placeholder when multiple instances exist and nonInteractive is true", async () => {
       const selectStub = sinon.stub(prompt, "select");
-      const mockOptions = { project: "my-project", nonInteractive: true } as any;
+      const mockOptions = {
+        project: "my-project",
+        nonInteractive: true,
+      } as unknown as FunctionsKitsInstallOptions;
       const kit = {
         kit: "my-kit",
         instances: {
