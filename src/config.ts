@@ -278,7 +278,7 @@ export class Config {
     }
   }
 
-  lsProjectDir(p: string): fs.Dirent<string>[] {
+  lsProjectDir(p: string): fs.Dirent[] {
     const resolvedPath = this.path(p);
     if (!fs.existsSync(resolvedPath)) {
       throw new FirebaseError(
