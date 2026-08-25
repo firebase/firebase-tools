@@ -78,7 +78,7 @@ describe("functions/kits/install", () => {
 
     it("should accept valid scoped package names with exactly one slash", () => {
       expect(() =>
-        validateNpmPackageName("@firebase-functions-kits/firestore-bigquery-export"),
+        validateNpmPackageName("@firebase-function-kits/firestore-bigquery-export"),
       ).to.not.throw();
       expect(() => validateNpmPackageName("@invertase/example-kit")).to.not.throw();
     });
@@ -139,38 +139,38 @@ describe("functions/kits/install", () => {
   describe("parseNpmPackageSpecifier", () => {
     it("should parse scoped package with version", () => {
       const res = parseNpmPackageSpecifier(
-        "@firebase-functions-kits/firestore-bigquery-export@1.0.0",
+        "@firebase-function-kits/firestore-bigquery-export@1.0.0",
       );
       expect(res).to.deep.equal({
-        packageName: "@firebase-functions-kits/firestore-bigquery-export",
+        packageName: "@firebase-function-kits/firestore-bigquery-export",
         version: "1.0.0",
       });
     });
 
     it("should parse scoped package with release candidate version", () => {
       const res = parseNpmPackageSpecifier(
-        "@firebase-functions-kits/firestore-bigquery-export@1.0.0-rc.1",
+        "@firebase-function-kits/firestore-bigquery-export@1.0.0-rc.1",
       );
       expect(res).to.deep.equal({
-        packageName: "@firebase-functions-kits/firestore-bigquery-export",
+        packageName: "@firebase-function-kits/firestore-bigquery-export",
         version: "1.0.0-rc.1",
       });
     });
 
     it("should parse scoped package with tag", () => {
       const res = parseNpmPackageSpecifier(
-        "@firebase-functions-kits/firestore-bigquery-export@latest",
+        "@firebase-function-kits/firestore-bigquery-export@latest",
       );
       expect(res).to.deep.equal({
-        packageName: "@firebase-functions-kits/firestore-bigquery-export",
+        packageName: "@firebase-function-kits/firestore-bigquery-export",
         version: "latest",
       });
     });
 
     it("should parse scoped package without version", () => {
-      const res = parseNpmPackageSpecifier("@firebase-functions-kits/firestore-bigquery-export");
+      const res = parseNpmPackageSpecifier("@firebase-function-kits/firestore-bigquery-export");
       expect(res).to.deep.equal({
-        packageName: "@firebase-functions-kits/firestore-bigquery-export",
+        packageName: "@firebase-function-kits/firestore-bigquery-export",
       });
     });
 
@@ -201,7 +201,7 @@ describe("functions/kits/install", () => {
   describe("sanitizePackageNameToKitName", () => {
     it("should extract kit name from scoped package name", () => {
       expect(
-        sanitizePackageNameToKitName("@firebase-functions-kits/firestore-bigquery-export"),
+        sanitizePackageNameToKitName("@firebase-function-kits/firestore-bigquery-export"),
       ).to.equal("firestore-bigquery-export");
       expect(sanitizePackageNameToKitName("@foo/bar")).to.equal("bar");
     });
@@ -218,13 +218,13 @@ describe("functions/kits/install", () => {
   });
 
   describe("isThirdPartyPackage", () => {
-    it("should return false for packages under @firebase-functions-kits scope", () => {
-      expect(isThirdPartyPackage("@firebase-functions-kits/firestore-bigquery-export")).to.be.false;
+    it("should return false for packages under @firebase-function-kits scope", () => {
+      expect(isThirdPartyPackage("@firebase-function-kits/firestore-bigquery-export")).to.be.false;
     });
 
-    it("should return true for packages outside @firebase-functions-kits scope", () => {
+    it("should return true for packages outside @firebase-function-kits scope", () => {
       expect(isThirdPartyPackage("firebase-functions-kits")).to.be.true;
-      expect(isThirdPartyPackage("@firebase-functions-kits-fake/foo")).to.be.true;
+      expect(isThirdPartyPackage("@firebase-function-kits-fake/foo")).to.be.true;
       expect(isThirdPartyPackage("@other-scope/my-kit")).to.be.true;
       expect(isThirdPartyPackage("third-party-kit")).to.be.true;
     });
@@ -233,25 +233,25 @@ describe("functions/kits/install", () => {
   describe("checkPackageHasShrinkwrap", () => {
     it("should return true when npm pack output includes hasShrinkwrap", async () => {
       spawnWithOutputStub.resolves(JSON.stringify([{ hasShrinkwrap: true }]));
-      const res = await checkPackageHasShrinkwrap("@firebase-functions-kits/my-kit");
+      const res = await checkPackageHasShrinkwrap("@firebase-function-kits/my-kit");
       expect(res).to.be.true;
     });
 
     it("should return true when npm pack files list includes npm-shrinkwrap.json", async () => {
       spawnWithOutputStub.resolves(JSON.stringify([{ files: [{ path: "npm-shrinkwrap.json" }] }]));
-      const res = await checkPackageHasShrinkwrap("@firebase-functions-kits/my-kit");
+      const res = await checkPackageHasShrinkwrap("@firebase-function-kits/my-kit");
       expect(res).to.be.true;
     });
 
     it("should return false when npm-shrinkwrap.json is not in package", async () => {
       spawnWithOutputStub.resolves(JSON.stringify([{ files: [{ path: "package.json" }] }]));
-      const res = await checkPackageHasShrinkwrap("@firebase-functions-kits/my-kit");
+      const res = await checkPackageHasShrinkwrap("@firebase-function-kits/my-kit");
       expect(res).to.be.false;
     });
 
     it("should return false when npm pack fails", async () => {
       spawnWithOutputStub.rejects(new Error("npm pack error"));
-      const res = await checkPackageHasShrinkwrap("@firebase-functions-kits/my-kit");
+      const res = await checkPackageHasShrinkwrap("@firebase-function-kits/my-kit");
       expect(res).to.be.false;
     });
   });
@@ -772,8 +772,8 @@ describe("functions/kits/install", () => {
       const confirmStub = sinon.stub(prompt, "confirm");
 
       const res = await promptSecurityConfirmation(
-        "@firebase-functions-kits/my-kit",
-        "@firebase-functions-kits/my-kit",
+        "@firebase-function-kits/my-kit",
+        "@firebase-function-kits/my-kit",
       );
 
       expect(res).to.be.false;
@@ -785,14 +785,14 @@ describe("functions/kits/install", () => {
       const confirmStub = sinon.stub(prompt, "confirm").resolves(true);
 
       const res = await promptSecurityConfirmation(
-        "@firebase-functions-kits/my-kit",
-        "@firebase-functions-kits/my-kit",
+        "@firebase-function-kits/my-kit",
+        "@firebase-function-kits/my-kit",
       );
 
       expect(res).to.be.false;
       expect(confirmStub).to.have.been.calledOnceWith({
         message:
-          "Are you sure you want to install @firebase-functions-kits/my-kit without locked dependencies?",
+          "Are you sure you want to install @firebase-function-kits/my-kit without locked dependencies?",
         default: false,
         nonInteractive: undefined,
       });
@@ -829,8 +829,8 @@ describe("functions/kits/install", () => {
 
       await expect(
         promptSecurityConfirmation(
-          "@firebase-functions-kits/my-kit",
-          "@firebase-functions-kits/my-kit",
+          "@firebase-function-kits/my-kit",
+          "@firebase-function-kits/my-kit",
         ),
       ).to.be.rejectedWith(FirebaseError, "Installation cancelled.");
     });
@@ -894,12 +894,12 @@ describe("functions/kits/install", () => {
 
   describe("buildAndInstallKit", () => {
     it("should run npm install and npm run build without --ignore-scripts for first-party kit", async () => {
-      await buildAndInstallKit("/abs/path", "@firebase-functions-kits/my-kit", false);
+      await buildAndInstallKit("/abs/path", "@firebase-function-kits/my-kit", false);
 
       expect(wrapSpawnStub).to.have.been.calledTwice;
       expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
         "npm",
-        ["install", "@firebase-functions-kits/my-kit", "--save-prefix=^"],
+        ["install", "@firebase-function-kits/my-kit", "--save-prefix=^"],
         "/abs/path",
       );
       expect(wrapSpawnStub.secondCall).to.have.been.calledWith(
@@ -1068,7 +1068,7 @@ describe("functions/kits/install", () => {
       const writtenFiles: Record<string, unknown> = {};
       const existingKit: ValidatedKitSingle = {
         kit: "firestore-bigquery-export",
-        sourcePackage: { name: "@firebase-functions-kits/firestore-bigquery-export" },
+        sourcePackage: { name: "@firebase-function-kits/firestore-bigquery-export" },
         source: "function-kits/firestore-bigquery-export/source",
         instances: {
           inst1: "function-kits/firestore-bigquery-export/config-inst1",
@@ -1117,7 +1117,7 @@ describe("functions/kits/install", () => {
     it("should configure env for existing instance when selected", async () => {
       const existingKit: ValidatedKitSingle = {
         kit: "firestore-bigquery-export",
-        sourcePackage: { name: "@firebase-functions-kits/firestore-bigquery-export" },
+        sourcePackage: { name: "@firebase-function-kits/firestore-bigquery-export" },
         source: "function-kits/firestore-bigquery-export/source",
         instances: {
           inst1: "function-kits/firestore-bigquery-export/config-inst1",
@@ -1197,7 +1197,7 @@ describe("functions/kits/install", () => {
       await expect(
         installKitOrInstance({
           config: mockConfig,
-          package: "@firebase-functions-kits/firestore-bigquery-export",
+          package: "@firebase-function-kits/firestore-bigquery-export",
           template: "invalid-template" as unknown as TemplateType,
         }),
       ).to.be.rejectedWith(
@@ -1223,7 +1223,7 @@ describe("functions/kits/install", () => {
 
       const res = await installKitOrInstance({
         config: mockConfig,
-        package: "@firebase-functions-kits/firestore-bigquery-export@1.0.0",
+        package: "@firebase-function-kits/firestore-bigquery-export@1.0.0",
         nonInteractive: true,
       });
 
@@ -1238,7 +1238,7 @@ describe("functions/kits/install", () => {
       expect(wrapSpawnStub).to.have.been.calledTwice;
       expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
         "npm",
-        ["install", "@firebase-functions-kits/firestore-bigquery-export@1.0.0", "--save-prefix=^"],
+        ["install", "@firebase-function-kits/firestore-bigquery-export@1.0.0", "--save-prefix=^"],
         "/mock/project/function-kits/firestore-bigquery-export/source",
       );
       expect(wrapSpawnStub.secondCall).to.have.been.calledWith(
@@ -1252,7 +1252,7 @@ describe("functions/kits/install", () => {
           {
             kit: "firestore-bigquery-export",
             sourcePackage: {
-              name: "@firebase-functions-kits/firestore-bigquery-export",
+              name: "@firebase-function-kits/firestore-bigquery-export",
             },
             source: "function-kits/firestore-bigquery-export/source",
             instances: {
@@ -1282,7 +1282,7 @@ describe("functions/kits/install", () => {
 
       const res = await installKitOrInstance({
         config: mockConfig,
-        package: "@firebase-functions-kits/firestore-bigquery-export@1.0.0",
+        package: "@firebase-function-kits/firestore-bigquery-export@1.0.0",
         kitId: "custom-kit",
         instanceId: "custom-instance",
         nonInteractive: true,
@@ -1314,7 +1314,7 @@ describe("functions/kits/install", () => {
 
       await installKitOrInstance({
         config: mockConfig,
-        package: "@firebase-functions-kits/firestore-bigquery-export@1.0.0",
+        package: "@firebase-function-kits/firestore-bigquery-export@1.0.0",
         nonInteractive: true,
         seedEnv: {
           projectId: "target-proj",
@@ -1345,7 +1345,7 @@ describe("functions/kits/install", () => {
     it("should handle existing kit when package is already in firebase.json", async () => {
       const existingKit: ValidatedKitSingle = {
         kit: "firestore-bigquery-export",
-        sourcePackage: { name: "@firebase-functions-kits/firestore-bigquery-export" },
+        sourcePackage: { name: "@firebase-function-kits/firestore-bigquery-export" },
         source: "function-kits/firestore-bigquery-export/source",
         instances: {
           inst1: "function-kits/firestore-bigquery-export/config-inst1",
@@ -1361,7 +1361,7 @@ describe("functions/kits/install", () => {
 
       const res = await installKitOrInstance({
         config: mockConfig,
-        package: "@firebase-functions-kits/firestore-bigquery-export",
+        package: "@firebase-function-kits/firestore-bigquery-export",
         instanceId: "inst2",
         nonInteractive: true,
         project: "target-proj",

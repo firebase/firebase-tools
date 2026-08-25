@@ -130,8 +130,8 @@ export function generateUniqueId(baseId: string, existingIds: Set<string>): stri
 
 /**
  * Parses an npm package specifier string into package name and version/tag.
- * e.g., "@firebase-functions-kits/firestore-bigquery-export@1.0.0" ->
- * { packageName: "@firebase-functions-kits/firestore-bigquery-export", version: "1.0.0" }
+ * e.g., "@firebase-function-kits/firestore-bigquery-export@1.0.0" ->
+ * { packageName: "@firebase-function-kits/firestore-bigquery-export", version: "1.0.0" }
  */
 export function parseNpmPackageSpecifier(rawPkg: string): {
   packageName: string;
@@ -163,7 +163,7 @@ export function validateNpmPackageName(packageName: string): void {
 
 /**
  * Sanitizes an npm package name into a valid kit identifier.
- * e.g., "@firebase-functions-kits/firestore-bigquery-export" -> "firestore-bigquery-export"
+ * e.g., "@firebase-function-kits/firestore-bigquery-export" -> "firestore-bigquery-export"
  */
 export function sanitizePackageNameToKitName(packageName: string): string {
   const parts = packageName.split("/");
@@ -173,10 +173,10 @@ export function sanitizePackageNameToKitName(packageName: string): string {
 }
 
 /**
- * Checks if a package name is third-party (outside the @firebase-functions-kits scope).
+ * Checks if a package name is third-party (outside the @firebase-function-kits scope).
  */
 export function isThirdPartyPackage(packageName: string): boolean {
-  return !packageName.startsWith("@firebase-functions-kits/");
+  return !packageName.startsWith("@firebase-function-kits/");
 }
 
 /**
@@ -380,7 +380,7 @@ export async function promptSecurityConfirmation(
   if (isThirdParty) {
     logLabeledWarning(
       "functions",
-      `Package ${clc.bold(packageName)} is a third-party kit (outside the @firebase-functions-kits scope).`,
+      `Package ${clc.bold(packageName)} is a third-party kit (outside the @firebase-function-kits scope).`,
     );
   }
 

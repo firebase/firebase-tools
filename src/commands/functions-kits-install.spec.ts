@@ -33,7 +33,7 @@ describe("functions:kits:install", () => {
 
       await expect(
         command.runner()({
-          package: "@firebase-functions-kits/firestore-bigquery-export",
+          package: "@firebase-function-kits/firestore-bigquery-export",
           cwd: "/mock/project",
           nonInteractive: true,
         }),
@@ -45,7 +45,7 @@ describe("functions:kits:install", () => {
     it("should throw an error if not in a Firebase project directory", async () => {
       await expect(
         command.runner()({
-          package: "@firebase-functions-kits/firestore-bigquery-export",
+          package: "@firebase-function-kits/firestore-bigquery-export",
           cwd: "/mock/project",
           nonInteractive: true,
         }),
@@ -87,7 +87,7 @@ describe("functions:kits:install", () => {
       };
 
       await command.runner()({
-        package: "@firebase-functions-kits/firestore-bigquery-export@1.0.0",
+        package: "@firebase-function-kits/firestore-bigquery-export@1.0.0",
         template: "migration",
         cwd: "/mock/project",
         config: mockConfig,
@@ -99,7 +99,7 @@ describe("functions:kits:install", () => {
 
       expect(installKitOrInstanceStub).to.have.been.calledOnceWith({
         config: mockConfig,
-        package: "@firebase-functions-kits/firestore-bigquery-export@1.0.0",
+        package: "@firebase-function-kits/firestore-bigquery-export@1.0.0",
         template: "migration",
         nonInteractive: true,
         project: "my-project",
