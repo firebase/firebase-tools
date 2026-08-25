@@ -44,12 +44,12 @@ export const NETWORK_TIMEOUT_MS = 2000;
  * and silent fallback to the local bundled replacements.json file.
  */
 export async function getReplacementsRegistry(): Promise<ReplacementRegistrySchema> {
+  // AbortController cancels the outbound socket if the remote server hangs.
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), NETWORK_TIMEOUT_MS);
+
   try {
-    // AbortController cancels the outbound socket if the remote server hangs.
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), NETWORK_TIMEOUT_MS);
     const res = await fetch(REPLACEMENTS_GITHUB_RAW_URL, { signal: controller.signal });
-    clearTimeout(timeoutId);
 
     if (res.ok) {
       const data = (await res.json()) as ReplacementRegistrySchema;
@@ -61,6 +61,8 @@ export async function getReplacementsRegistry(): Promise<ReplacementRegistrySche
   } catch (err) {
     // Failures (offline, DNS, timeout) are non-fatal; log to debug and proceed to fallback.
     logger.debug(`Failed to fetch fresh replacements catalog from GitHub: ${String(err)}`);
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   // Gracefully fallback to the bundled static snapshot shipped inside the CLI.
