@@ -113,10 +113,10 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
 
     it("should return mapped kit package for known extension ref", () => {
       expect(migrateModule.getKitPackage("firestore-send-email")).to.equal(
-        "@firebase/firestore-send-email",
+        "@firebase-function-kits/firestore-send-email",
       );
       expect(migrateModule.getKitPackage("firebase/firestore-send-email")).to.equal(
-        "@firebase/firestore-send-email",
+        "@firebase-function-kits/firestore-send-email",
       );
     });
 
@@ -137,7 +137,7 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       expect(rows[0].extension).to.equal("firebase/firestore-send-email");
       expect(rows[0].publisher).to.equal("firebase");
       expect(rows[0].instances).to.deep.equal(["email-1", "email-2"]);
-      expect(rows[0].kitPackage).to.equal("@firebase/firestore-send-email");
+      expect(rows[0].kitPackage).to.equal("@firebase-function-kits/firestore-send-email");
     });
   });
 
@@ -146,7 +146,7 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       const migratable = migrateModule.getMigratableInstances([mockInstance1, mockUnknownInstance]);
       expect(migratable).to.have.lengthOf(1);
       expect(migratable[0].instanceId).to.equal("email-1");
-      expect(migratable[0].kitPackage).to.equal("@firebase/firestore-send-email");
+      expect(migratable[0].kitPackage).to.equal("@firebase-function-kits/firestore-send-email");
     });
   });
 
@@ -209,7 +209,7 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
         instance: mockInstance1,
         instanceId: "email-1",
         extensionRef: "firebase/firestore-send-email",
-        kitPackage: "@firebase/firestore-send-email",
+        kitPackage: "@firebase-function-kits/firestore-send-email",
       });
     });
   });
@@ -283,7 +283,7 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
         instance: mockInstance1,
         instanceId: "email-1",
         extensionRef: "firebase/firestore-send-email",
-        kitPackage: "@firebase/firestore-send-email",
+        kitPackage: "@firebase-function-kits/firestore-send-email",
       });
     });
 
@@ -342,7 +342,7 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
         instance: mockInstance1,
         instanceId: "email-1",
         extensionRef: "firebase/firestore-send-email",
-        kitPackage: "@firebase/firestore-send-email",
+        kitPackage: "@firebase-function-kits/firestore-send-email",
       });
     });
   });
