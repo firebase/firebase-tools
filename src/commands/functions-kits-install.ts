@@ -473,8 +473,6 @@ async function writeKitPackageJson(
   config: Config,
   sourcePath: string,
   kitId: string,
-  packageName: string,
-  version?: string,
 ): Promise<void> {
   const relPackageJsonPath = path.join(sourcePath, "package.json");
   const absPackageJsonPath = config.path(relPackageJsonPath);
@@ -505,10 +503,8 @@ async function writeKitPackageJson(
     }
   }
 
-  // Ensure the wrapper package has a unique name and depends on the specified kit package and version.
+  // Ensure the wrapper package has a unique name.
   pkgJson.name = `${kitId}-wrapper`;
-  pkgJson.dependencies = pkgJson.dependencies || {};
-  pkgJson.dependencies[packageName] = version || "latest";
 
   await config.askWriteProjectFile(relPackageJsonPath, pkgJson);
 }
@@ -539,7 +535,6 @@ export async function scaffoldKitFiles(
   kitId: string,
   instanceId: string,
   packageName: string,
-  version?: string,
   templateType: TemplateType = DEFAULT_TEMPLATE,
 ): Promise<ScaffoldedKitPaths> {
   const sourcePath = path.join(FUNCTION_KITS_DIR, kitId, "source");
@@ -551,7 +546,7 @@ export async function scaffoldKitFiles(
   await fs.ensureDir(absSourcePath);
   await fs.ensureDir(absConfigDirPath);
 
-  await writeKitPackageJson(config, sourcePath, kitId, packageName, version);
+  await writeKitPackageJson(config, sourcePath, kitId);
   await config.askWriteProjectFile(path.join(sourcePath, "tsconfig.json"), TSCONFIG_TEMPLATE);
   await config.askWriteProjectFile(path.join(sourcePath, ".gitignore"), GITIGNORE_TEMPLATE);
   await writeKitIndexTs(config, sourcePath, packageName, templateType);
@@ -564,9 +559,13 @@ export async function scaffoldKitFiles(
  */
 export async function buildAndInstallKit(
   absSourcePath: string,
+  rawPkgName: string,
   isThirdParty: boolean,
 ): Promise<void> {
-  const installArgs = isThirdParty ? ["install", "--ignore-scripts"] : ["install"];
+  const installArgs = ["install", rawPkgName, "--save-prefix=^"];
+  if (isThirdParty) {
+    installArgs.push("--ignore-scripts");
+  }
   logLabeledBullet("functions", `Running npm ${installArgs.join(" ")}...`);
   try {
     await wrapSpawn("npm", installArgs, absSourcePath);
@@ -706,7 +705,7 @@ export const command = new Command("functions:kits:install")
       throw new FirebaseError("Set the --package option to a valid NPM package and try again.");
     }
 
-    const { packageName, version } = parseNpmPackageSpecifier(rawPkgName);
+    const { packageName } = parseNpmPackageSpecifier(rawPkgName);
     validateNpmPackageName(packageName);
 
     const existingFunctionsInfo = extractExistingFunctionsInfo(options.config.src.functions);
@@ -743,11 +742,10 @@ export const command = new Command("functions:kits:install")
       kitId,
       instanceId,
       packageName,
-      version,
       templateType,
     );
 
-    await buildAndInstallKit(absSourcePath, isThirdParty);
+    await buildAndInstallKit(absSourcePath, rawPkgName, isThirdParty);
 
     addKitToConfig(options.config, kitId, instanceId, packageName, sourcePath, configDirPath);
 
