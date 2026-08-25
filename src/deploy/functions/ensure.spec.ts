@@ -157,12 +157,6 @@ describe("ensureSecretAccess", () => {
     secret: "MY_SECRET_0",
     version: "2",
   };
-  const secret1: backend.SecretEnvVar = {
-    projectId: "project",
-    key: "ANOTHER_SECRET",
-    secret: "ANOTHER_SECRET",
-    version: "1",
-  };
   const e: backend.Endpoint = {
     ...ENDPOINT,
     project: projectId,

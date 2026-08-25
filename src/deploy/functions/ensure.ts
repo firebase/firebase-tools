@@ -184,5 +184,3 @@ export async function grantSecretAccess(
     `ensured ${clc.bold(serviceAccounts.join(", "))} access to ${clc.bold(secret)}.`,
   );
 }
-
-
