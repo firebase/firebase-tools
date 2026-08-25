@@ -499,7 +499,15 @@ export async function prepare(
     haveBackend,
     options.dryRun,
   );
-  await ensure.secretAccess(projectId, matchingBackend, haveBackend, options.dryRun);
+  // Actual granting of secret access permissions has been moved to the fabricator in release because declarative security may mean that the desired service account hasn't been created
+  if (options.dryRun) {
+    const secretAccessDelta = await ensure.secretsAccessDelta(
+      projectId,
+      matchingBackend,
+      haveBackend,
+    );
+    await ensure.checkSecretAccess(projectId, secretAccessDelta);
+  }
   /**
    * ===Phase 8 Generates the hashes for each of the functions now that secret versions have been resolved.
    * This must be called after `await validate.secretsAreValid`.

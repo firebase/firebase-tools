@@ -1,3 +1,4 @@
+- Fixes secret access permission race condition during Cloud Functions deployment by deferring secret grants to release phase after service accounts are created.
 - Update Firestore emulator to v1.22.0, adding support for DML
 - Add `appcheck:debugtokens:create`, `appcheck:debugtokens:list`, and `appcheck:debugtokens:delete` CLI commands for managing App Check debug tokens (#10801).
 - Add `MCP-Protocol-Version`, `Mcp-Method`, and `Mcp-Name` HTTP headers to `OneMcpServer` requests per the MCP 0728 standard release candidate (https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/ and https://modelcontextprotocol.io/seps/2243-http-standardization).

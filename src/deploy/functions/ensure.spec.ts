@@ -264,4 +264,27 @@ describe("ensureSecretAccess", () => {
       );
     await ensure.secretAccess(projectId, wantBackend, haveBackend);
   });
+
+  it("grants secret access to specified service accounts", async () => {
+    secretManagerMock
+      .expects("ensureServiceAgentRole")
+      .once()
+      .withExactArgs(
+        { name: secret0.secret, projectId },
+        ["foo@bar.com"],
+        "roles/secretmanager.secretAccessor",
+      );
+    await ensure.grantSecretAccess(projectId, secret0.secret, ["foo@bar.com"]);
+  });
+
+  it("calculates secretsAccessDelta correctly", async () => {
+    const b = backend.of({
+      ...e,
+      secretEnvironmentVariables: [secret0],
+    });
+    const delta = await ensure.secretsAccessDelta(projectId, b, backend.empty());
+    expect(delta).to.deep.equal({
+      [secret0.secret]: [DEFAULT_SA],
+    });
+  });
 });

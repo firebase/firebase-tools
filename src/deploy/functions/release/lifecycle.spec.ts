@@ -364,6 +364,7 @@ describe("lifecycle", () => {
               endpointsToSkip: [wantBackend.endpoints["us-east1"]["updateHookTask"]],
             },
           },
+          plannedBackend: wantBackend,
         },
       };
 
