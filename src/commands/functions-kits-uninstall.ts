@@ -28,6 +28,12 @@ export const command = new Command("functions:kits:uninstall")
   .option("--instance <instanceId>", "")
   .action(async (options: Options): Promise<void> => {
     const firebaseConfig = options.config;
+    if (options.instance && options.kit) {
+      throw new FirebaseError("Cannot specify both --kit and --instance. Please specify only one.");
+    }
+    if (!options.instance && !options.kit) {
+      throw new FirebaseError("Must specify either --kit or --instance.");
+    }
     if (typeof options.instance === "string") {
       await handleInstance(options, firebaseConfig);
     }
@@ -39,46 +45,39 @@ export const command = new Command("functions:kits:uninstall")
 async function handleKit(options: Options, config: Config) {
   const kitId = options.kit as string;
   const kits = listKitConfigs(config.src);
+  const kitConfig = kits.find((k) => k.kit === kitId);
+  if (!kitConfig) {
+    throw new FirebaseError(
+      `Kit ${kitId} not found in firebase.json. Use functions:kits:list to get all existing kit IDs.`,
+    );
+  }
 
-  for (const kitConfig of kits) {
-    if (kitConfig.kit === kitId) {
-      if (Object.keys(kitConfig.instances).length > 0) {
-        if (
-          !(await confirm({
-            message: `There are active instances in the kit (${Object.keys(kitConfig.instances).join(", ")}). Confirm full uninstall? (y/N)`,
-            default: false,
-            nonInteractive: options.nonInteractive,
-          }))
-        ) {
-          return;
-        }
-      }
-      await uninstallKit(options, config, kitConfig);
+  if (Object.keys(kitConfig.instances).length > 0) {
+    if (
+      !(await confirm({
+        message: `Uninstall will delete all active instances of this kit and permanently remove their source code and configuration. You have the following active instances that will be deleted:
+${Object.keys(kitConfig.instances).join(",")}
+Do you want to continue with uninstall (y/N)?`,
+        default: false,
+        nonInteractive: options.nonInteractive,
+        force: options.force,
+      }))
+    ) {
       return;
     }
   }
-  throw new FirebaseError(
-    `Kit ${kitId} not found in firebase.json. Use functions:kits:list to get all existing kit IDs.`,
-  );
+  await uninstallKit(options, config, kitConfig);
+  return;
 }
 
 async function handleInstance(options: Options, config: Config) {
   const instanceId = options.instance as string;
   const kits = listKitConfigs(config.src);
-
-  let instanceConfigDirPath = "";
-  let kitForInstance: ValidatedKitSingle;
-  for (const kitConfig of kits) {
-    if (kitConfig.instances[instanceId]) {
-      kitForInstance = kitConfig;
-      instanceConfigDirPath = kitConfig.instances[instanceId];
-      break;
-    }
-  }
-  if (instanceConfigDirPath === "") {
+  const kitForInstance = kits.find((k) => instanceId in k.instances);
+  if (typeof kitForInstance === "undefined") {
     throw new FirebaseError(`Instance ID ${instanceId} not found in firebase.json`);
   }
-  kitForInstance = kitForInstance!;
+  const instanceConfigDirPath = kitForInstance.instances[instanceId];
 
   const projectsWithConfigs: string[] = [];
   const configDirContents = config.lsProjectDir(instanceConfigDirPath);
@@ -87,7 +86,7 @@ async function handleInstance(options: Options, config: Config) {
     if (!fileName.startsWith(".env.")) {
       continue;
     }
-    projectsWithConfigs.push(fileName.replace(new RegExp("^.env."), ""));
+    projectsWithConfigs.push(fileName.slice(5));
   }
 
   let projectsToRemove: string[] = [];
@@ -149,31 +148,31 @@ async function handleInstance(options: Options, config: Config) {
 }
 
 /*
- * For each .env.<projectId> file present in a Kit instance config folder, destroy the
- * Function (project = input, region = env.FIREBASE_FUNCTION_KIT_REGION, id = kitInstanceId)
- * if present, then remove the instance config directory and scrub it from firebase.json
+ * For each .env.<projectId> file present in a Kit instance config folder, call
+ * uninstallProjectInstance() helper to tear down the .env file and Functions
+ * resources, then remove the instance itself from firebase.json.
  *
- * @param configPath: project replative function-kits/<kitId>/config-<instanceId>
  * @param instanceId: must be specified, since configPath is user-overridable
+ * @param instanceConfigDirPath: project relative function-kits/<kitId>/config-<instanceId>
  */
 async function uninstallInstance(
   options: Options,
   config: Config,
   instanceId: string,
-  kitInstancePath: string,
+  instanceConfigDirPath: string,
 ): Promise<void> {
-  const configDirContents = config.lsProjectDir(kitInstancePath);
+  const configDirContents = config.lsProjectDir(instanceConfigDirPath);
   const fileNames = configDirContents.filter((f) => f.isFile()).map((f) => f.name);
   for (const fileName of fileNames) {
     if (!fileName.startsWith(".env.")) {
       continue;
     }
     const projectId = fileName.replace(new RegExp("^.env."), "");
-    await uninstallProjectInstance(options, config, projectId, instanceId, kitInstancePath);
+    await uninstallProjectInstance(options, config, projectId, instanceId, instanceConfigDirPath);
   }
-  config.deleteProjectDir(kitInstancePath);
+  config.deleteProjectDir(instanceConfigDirPath);
   // remove a functions.instances record with the id from firebase.json; kit instance IDs are unique
-  let functionsConfig = config.src.functions!;
+  let functionsConfig = config.src.functions ?? [];
   if (!Array.isArray(functionsConfig)) {
     functionsConfig = [functionsConfig];
   }

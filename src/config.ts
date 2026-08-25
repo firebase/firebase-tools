@@ -260,28 +260,38 @@ export class Config {
   }
 
   deleteProjectDir(p: string) {
-    if (p.includes("/..")) {
-      throw new FirebaseError("sanity: refusing to delete project-relative dir containing '/..'");
+    if (path.isAbsolute(p)) {
+      throw new FirebaseError(
+        `Sanity: deleteProjectDir() should not be called with an absolute path.`,
+      );
+    }
+    const resolvedPath = this.path(p);
+    if (!fs.existsSync(resolvedPath)) {
+      throw new FirebaseError(`Failed to delete project directory ${p}: directory doesn't exist.`);
     }
     try {
-      if (!fs.existsSync(this.path(p))) {
-        throw new FirebaseError(`Failed to delete project directory ${p}: directory doesn't exist.`);
-      }
+      fs.rmSync(resolvedPath, { recursive: true });
     } catch (err: unknown) {
-      throw new FirebaseError(`Failed to delete project directory ${p}: ${err}`, {original: err instanceof Error ? err : undefined })
+      throw new FirebaseError(`Failed to delete project directory ${p}: ${err}`, {
+        original: err instanceof Error ? err : undefined,
+      });
     }
-    fs.rmSync(this.path(p), { recursive: true });
   }
 
   lsProjectDir(p: string): fs.Dirent<string>[] {
-    try {
-      if (!fs.existsSync(this.path(p))) {
-        throw new FirebaseError(`Failed to list files in project directory ${p}: directory doesn't exist.`);
-      }
-    } catch (err: unknown) {
-      throw new FirebaseError(`Failed to list files in project directory ${p}: ${err}`, {original: err instanceof Error ? err : undefined })
+    const resolvedPath = this.path(p);
+    if (!fs.existsSync(resolvedPath)) {
+      throw new FirebaseError(
+        `Failed to list files in project directory ${p}: directory doesn't exist.`,
+      );
     }
-    return fs.readdirSync(this.path(p), { withFileTypes: true });
+    try {
+      return fs.readdirSync(resolvedPath, { withFileTypes: true });
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to list files in project directory ${p}: ${err}`, {
+        original: err instanceof Error ? err : undefined,
+      });
+    }
   }
 
   async confirmWriteProjectFile(
