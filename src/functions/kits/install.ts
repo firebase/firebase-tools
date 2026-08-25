@@ -22,20 +22,10 @@ import * as build from "../../deploy/functions/build";
 import { hasProjectEnv } from "../env";
 import { KitInstanceEnvSeed, seedKitInstanceEnv } from "./env";
 
-const PACKAGE_NO_LINTING_TEMPLATE = readTemplateSync(
-  "init/functions/typescript/package.nolint.json",
-);
-const TSCONFIG_TEMPLATE = readTemplateSync("init/functions/typescript/tsconfig.json");
-const GITIGNORE_TEMPLATE = readTemplateSync("init/functions/typescript/_gitignore");
-const INDEX_KIT_TEMPLATE = readTemplateSync("init/functions/typescript/index-kit.ts");
-const INDEX_KIT_MIGRATION_TEMPLATE = readTemplateSync(
-  "init/functions/typescript/index-kit-migration.ts",
-);
-
 export const TEMPLATES = {
-  installation: INDEX_KIT_TEMPLATE,
-  migration: INDEX_KIT_MIGRATION_TEMPLATE,
-};
+  installation: "init/functions/typescript/index-kit.ts",
+  migration: "init/functions/typescript/index-kit-migration.ts",
+} as const;
 
 export type TemplateType = keyof typeof TEMPLATES;
 export const DEFAULT_TEMPLATE: TemplateType = "installation";
@@ -253,7 +243,10 @@ export async function writeKitPackageJson(
     }
   } else {
     const latestNodeVersion = supported.latest("nodejs").replace("nodejs", "");
-    const subbedTemplate = PACKAGE_NO_LINTING_TEMPLATE.replace(/{{RUNTIME}}/g, latestNodeVersion);
+    const packageNoLintingTemplate = readTemplateSync(
+      "init/functions/typescript/package.nolint.json",
+    );
+    const subbedTemplate = packageNoLintingTemplate.replace(/{{RUNTIME}}/g, latestNodeVersion);
     try {
       pkgJson = JSON.parse(subbedTemplate) as typeof pkgJson;
     } catch (err: unknown) {
@@ -278,7 +271,7 @@ export async function writeKitIndexTs(
   const relIndexTsPath = path.join(sourcePath, "src", "index.ts");
   const absIndexTsPath = config.path(relIndexTsPath);
   if (!(await fs.pathExists(absIndexTsPath))) {
-    const template = TEMPLATES[templateType];
+    const template = readTemplateSync(TEMPLATES[templateType]);
     const indexContent = template.replace(/{{PACKAGE_NAME}}/g, packageName);
     await config.askWriteProjectFile(relIndexTsPath, indexContent);
   }
@@ -304,8 +297,14 @@ export async function scaffoldKitFiles(
   await fs.ensureDir(absConfigDirPath);
 
   await writeKitPackageJson(config, sourcePath, kitId);
-  await config.askWriteProjectFile(path.join(sourcePath, "tsconfig.json"), TSCONFIG_TEMPLATE);
-  await config.askWriteProjectFile(path.join(sourcePath, ".gitignore"), GITIGNORE_TEMPLATE);
+  await config.askWriteProjectFile(
+    path.join(sourcePath, "tsconfig.json"),
+    readTemplateSync("init/functions/typescript/tsconfig.json"),
+  );
+  await config.askWriteProjectFile(
+    path.join(sourcePath, ".gitignore"),
+    readTemplateSync("init/functions/typescript/_gitignore"),
+  );
   await writeKitIndexTs(config, sourcePath, packageName, templateType);
 
   return { sourcePath, configDirPath, absSourcePath, absConfigDirPath };
