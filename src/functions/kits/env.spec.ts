@@ -56,7 +56,7 @@ describe("functions/kits/env", () => {
       expect(writeUserEnvsStub).to.not.have.been.called;
     });
 
-    it("should normalize string, number, boolean, and array values and call writeUserEnvs", () => {
+    it("should normalize string, number, boolean, array, and map/object values and call writeUserEnvs", () => {
       seedKitInstanceEnv({
         configDir: "/path/to/config",
         functionsSource: "/path/to/source",
@@ -70,6 +70,7 @@ describe("functions/kits/env", () => {
           BOOL_TRUE: true,
           BOOL_FALSE: false,
           LIST_VAL: ["a", "b", "c"],
+          OBJECT_VAL: { key: "value", nested: { a: 1 } },
         },
       });
 
@@ -81,6 +82,7 @@ describe("functions/kits/env", () => {
           BOOL_TRUE: "true",
           BOOL_FALSE: "false",
           LIST_VAL: "a,b,c",
+          OBJECT_VAL: JSON.stringify({ key: "value", nested: { a: 1 } }),
         },
         {
           configDir: "/path/to/config",

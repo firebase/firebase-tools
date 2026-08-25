@@ -1,7 +1,7 @@
-import { FirebaseError } from "../../error";
+import { FirebaseError, isObject } from "../../error";
 import { writeUserEnvs } from "../env";
 
-export type KitEnvValue = string | number | boolean | string[];
+export type KitEnvValue = string | number | boolean | string[] | Record<string, unknown>;
 
 export interface KitInstanceEnvSeed {
   projectId: string;
@@ -38,6 +38,8 @@ export function seedKitInstanceEnv(opts: SeedKitEnvOptions): void {
     }
     if (Array.isArray(value)) {
       normalizedEnvs[key] = value.join(",");
+    } else if (isObject(value)) {
+      normalizedEnvs[key] = JSON.stringify(value);
     } else {
       normalizedEnvs[key] = String(value);
     }
