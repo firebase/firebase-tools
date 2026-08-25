@@ -141,7 +141,7 @@ export async function upsertSchema(
     apiOrigin: dataconnectOrigin(),
     apiVersion: DATACONNECT_API_VERSION,
     operationResourceName: op.body.name,
-    masterTimeout: 60000,
+    masterTimeout: 300000,
   });
 }
 
@@ -203,7 +203,7 @@ export async function upsertConnector(connector: types.Connector) {
     apiOrigin: dataconnectOrigin(),
     apiVersion: DATACONNECT_API_VERSION,
     operationResourceName: op.body.name,
-    masterTimeout: 60000,
+    masterTimeout: 300000,
   });
   return pollRes;
 }
