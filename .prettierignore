@@ -9,6 +9,7 @@
 /src/frameworks/docs/**
 /prompts
 /.agent
+/standalone/dist/**
 
 # Intentionally invalid YAML file:
 /src/test/fixtures/extension-yamls/invalid/extension.yaml
