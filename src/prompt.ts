@@ -172,7 +172,9 @@ export async function checkbox<Value>(opts: CheckboxOptions<Value>): Promise<Val
     const checkedValues = (opts.choices as Choice<Value>[])
       .filter((c) => c && typeof c === "object" && "checked" in c && c.checked)
       .map((c) => c.value);
-    optsWithDefault = { ...opts, default: checkedValues };
+    if (checkedValues.length > 0) {
+      optsWithDefault = { ...opts, default: checkedValues };
+    }
   }
   const { shouldReturn, value } = guard(optsWithDefault);
   if (shouldReturn) {
