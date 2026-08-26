@@ -355,12 +355,7 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
         spec: { name: "firestore-send-email", version: "0.1.14" },
       } as any);
 
-      const updated = await migrateModule.tryUpdateInstance(
-        "test-project",
-        mockInstance1,
-        "0.1.14",
-        "firebase/firestore-send-email",
-      );
+      const updated = await migrateModule.tryUpdateInstance("test-project", mockInstance1, {});
 
       expect(updated).to.equal(mockInstance1);
     });
@@ -373,12 +368,7 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
         spec: { name: "firestore-send-email", version: "0.1.15" },
       } as any);
 
-      const updated = await migrateModule.tryUpdateInstance(
-        "test-project",
-        mockInstance1,
-        "0.1.15",
-        "firebase/firestore-send-email",
-      );
+      const updated = await migrateModule.tryUpdateInstance("test-project", mockInstance1, {});
 
       expect(updated).to.equal(mockInstance1);
     });

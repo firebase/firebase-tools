@@ -188,16 +188,12 @@ export async function askForParam(args: {
         valid = checkResponse(response, paramSpec);
         break;
       case ParamType.MULTISELECT: {
-        const defaultValues = paramSpec.default ? paramSpec.default.split(",") : undefined;
         response = (
           await checkbox<string>({
             message:
               "Which options do you want enabled for this parameter? " +
               "Press Space to select, then Enter to confirm your choices. ",
-            choices: convertExtensionOptionToLabeledList(
-              paramSpec.options as ParamOption[],
-              defaultValues,
-            ),
+            choices: convertExtensionOptionToLabeledList(paramSpec.options as ParamOption[]),
           })
         ).join(",");
         valid = checkResponse(response, paramSpec);
