@@ -371,7 +371,7 @@ export async function tryUpdateInstance(
     const paramBindings = await paramHelper.promptForNewParams({
       spec: oldSpec,
       newSpec: newExtensionVersion.spec,
-      currentParams: instance.config.params,
+      currentParams: finalParams ?? {},
       projectId,
       instanceId,
     });
