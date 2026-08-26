@@ -53,11 +53,12 @@ async function handleKit(options: Options, config: Config): Promise<void> {
       `Kit ${kitId} not found in firebase.json. Use functions:kits:list to get all existing kit IDs.`,
     );
   }
-  const isNonstandardKitLayout = nonstandardKitLayout(kitConfig);
+  const conservativeDeletion = nonstandardKitLayout(kitConfig);
+  logger.debug(`Kit ${kitConfig.kit} uninstall mode: conservativeDeletion=${conservativeDeletion}`);
   if (Object.keys(kitConfig.instances).length > 0) {
-    const willBlindDeleteMsg = isNonstandardKitLayout
+    const willBlindDeleteMsg = conservativeDeletion
       ? ""
-      : "and permanently remove their source code and configuration";
+      : " and permanently remove their source code and configuration";
     if (
       !(await confirm({
         message: `Uninstall will delete all active instances of this kit${willBlindDeleteMsg}. You have the following active instances that will be deleted:
@@ -71,7 +72,7 @@ Do you want to continue with uninstall (y/N)?`,
       return;
     }
   }
-  await uninstallKit(options, config, kitConfig, isNonstandardKitLayout);
+  await uninstallKit(options, config, kitConfig);
   return;
 }
 
@@ -84,6 +85,10 @@ async function handleInstance(options: Options, config: Config): Promise<void> {
     throw new FirebaseError(`Instance ID ${instanceId} not found in firebase.json`);
   }
   const instanceConfigDirPath = kitForInstance.instances[instanceId];
+  const conservativeDeletion = nonstandardKitLayout(kitForInstance);
+  logger.debug(
+    `Kit ${kitForInstance.kit} uninstall mode: conservativeDeletion=${conservativeDeletion}`,
+  );
 
   const projectsWithConfigs: string[] = [];
   const configDirContents = config.lsProjectDir(instanceConfigDirPath);
@@ -92,33 +97,29 @@ async function handleInstance(options: Options, config: Config): Promise<void> {
     if (!fileName.startsWith(".env.")) {
       continue;
     }
-    projectsWithConfigs.push(fileName.slice(5));
+    projectsWithConfigs.push(fileName.slice(".env.".length));
   }
 
   // Cases:
-  // - instance config dir has no projects
-  // - instance config dir doesn't contain current project
+  // - error if instance config dir contains projects but doesn't contain current project
+  //   (if instance config dir contains no projects, deploy never happened and it's okay to go straight to teardown)
   // - current project is only project for only instance, so prompt and trigger kit teardown
   // - current project is only project for an instance, so just tear down the instance
   // - only remove .env and function
-  if (projectsWithConfigs.length === 0) {
-    throw new FirebaseError(
-      `Instance at ${instanceConfigDirPath} has no projects with defined environments`,
-    );
-  }
-  if (!projectsWithConfigs.includes(projectId)) {
+
+  if (projectsWithConfigs.length > 0 && !projectsWithConfigs.includes(projectId)) {
     throw new FirebaseError(
       `Instance at ${instanceConfigDirPath} contains no .env file for current project`,
     );
   }
-  if (projectsWithConfigs.length === 1) {
+  if (projectsWithConfigs.length === 0 || projectsWithConfigs.length === 1) {
     if (Object.keys(kitForInstance.instances).length > 1) {
       await uninstallInstance(
         options,
         config,
         instanceId,
         instanceConfigDirPath,
-        nonstandardKitLayout(kitForInstance),
+        conservativeDeletion,
       );
       return;
     }
@@ -128,11 +129,12 @@ async function handleInstance(options: Options, config: Config): Promise<void> {
         message: confirmMsg,
         default: false,
         nonInteractive: options.nonInteractive,
+        force: options.force,
       }))
     ) {
       return;
     }
-    await uninstallKit(options, config, kitForInstance, nonstandardKitLayout(kitForInstance));
+    await uninstallKit(options, config, kitForInstance);
     return;
   }
   await uninstallProjectInstance(options, config, projectId, instanceId, instanceConfigDirPath);
@@ -276,21 +278,22 @@ async function uninstallProjectInstance(
  * and its stanza from firebase.json.
  *
  * @param kit: a parsed ValidatedKitSingle from firebase.json
- * @param isDirectoryKit: whether the kit may have a nonstandard layout, triggering conservative behavior in filesystem deletions
  */
 async function uninstallKit(
   options: Options,
   config: Config,
   kit: ValidatedKitSingle,
-  isDirectoryKit: boolean,
 ): Promise<void> {
+  const conservativeDeletion = nonstandardKitLayout(kit);
   // instance and .env teardowns
   for (const [instanceId, instanceConfigDir] of Object.entries(kit.instances)) {
-    await uninstallInstance(options, config, instanceId, instanceConfigDir, isDirectoryKit);
+    await uninstallInstance(options, config, instanceId, instanceConfigDir, conservativeDeletion);
   }
 
-  // filesystem deletions
-  if (isDirectoryKit) {
+  // filesystem deletions:
+  // conservative mode (directory kits, edited json): delete only config dir if empty and common parent to all instances
+  // standard mode (package source installs w/ unedited config): delete entire kit dir
+  if (conservativeDeletion) {
     const instanceConfigDirParents = Object.values(kit.instances).map((p) => dirname(p));
     if (
       instanceConfigDirParents.length > 0 &&
@@ -328,16 +331,16 @@ async function uninstallKit(
 function nonstandardKitLayout(kitConfig: ValidatedKitSingle): boolean {
   if (kitConfig.sourcePackage) {
     if (kitConfig.source !== `function-kits/${kitConfig.kit}/source`) {
-      return false;
+      return true;
     }
     for (const [instanceId, instanceConfigDirPath] of Object.entries(kitConfig.instances)) {
-      if (instanceConfigDirPath !== `function-kits/${kitConfig.kit}/${instanceId}`) {
-        return false;
+      if (instanceConfigDirPath !== `function-kits/${kitConfig.kit}/config-${instanceId}`) {
+        return true;
       }
     }
-    return true;
+    return false;
   }
-  return false;
+  return true;
 }
 
 function configDirEmpty(config: Config, projectRelativePath: string): boolean {
