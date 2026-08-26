@@ -5,8 +5,13 @@ import { listInstances } from "./extensionsApi";
 import { logger } from "../logger";
 import { last, logLabeledBullet } from "../utils";
 import { logPrefix } from "./extensionsHelper";
+import * as experiments from "../experiments";
 import * as extensionsUtils from "./utils";
-import { getReplacementsRegistry, getReplacementPackageName } from "./replacementRegistry";
+import {
+  getReplacementsRegistry,
+  getReplacementPackageName,
+  ReplacementRegistrySchema,
+} from "./replacementRegistry";
 
 /**
  * Lists the extensions installed under a project
@@ -14,13 +19,21 @@ import { getReplacementsRegistry, getReplacementPackageName } from "./replacemen
  * @return mapping that contains a list of instances under the "instances" key
  */
 export async function listExtensions(projectId: string): Promise<Record<string, any>[]> {
-  // Fetch installed extensions from GCP and the Function Kit replacements catalog
-  // concurrently. The lightweight GitHub raw fetch (~300ms) finishes in parallel
-  // with the GCP API call (~500ms), introducing 0ms perceived latency overhead.
-  const [instances, registry] = await Promise.all([
-    listInstances(projectId),
-    getReplacementsRegistry(),
-  ]);
+  const showReplacements = experiments.isEnabled("extMigrationFeatures");
+
+  let instances: any[];
+  let registry: ReplacementRegistrySchema | undefined;
+
+  if (showReplacements) {
+    // Fetch installed extensions from GCP and the Function Kit replacements catalog
+    // concurrently to minimize latency overhead by running the network calls in parallel.
+    [instances, registry] = await Promise.all([
+      listInstances(projectId),
+      getReplacementsRegistry(),
+    ]);
+  } else {
+    instances = await listInstances(projectId);
+  }
 
   if (instances.length < 1) {
     logLabeledBullet(
@@ -30,17 +43,13 @@ export async function listExtensions(projectId: string): Promise<Record<string, 
     return [];
   }
 
-  // 7-column table surfacing official Function Kit replacements to developers.
+  const head = ["Extension", "Publisher", "Instance ID", "State", "Version", "Your last update"];
+  if (showReplacements) {
+    head.push("Replacement Kit");
+  }
+
   const table = new Table({
-    head: [
-      "Extension",
-      "Publisher",
-      "Instance ID",
-      "State",
-      "Version",
-      "Your last update",
-      "Replacement Kit",
-    ],
+    head,
     style: { head: ["yellow"] },
   });
   // Order instances newest to oldest.
@@ -64,19 +73,17 @@ export async function listExtensions(projectId: string): Promise<Record<string, 
     const version = instance?.config?.source?.spec?.version;
     const updateTime = extensionsUtils.formatTimestamp(instance.updateTime);
 
-    // Resolve replacement package from the catalog (in-memory, fetched once per command).
-    const replacementPackage = getReplacementPackageName(extension, registry);
+    const row = [extension, publisher, instanceId, state, version, updateTime];
 
-    table.push([
-      extension,
-      publisher,
-      instanceId,
-      state,
-      version,
-      updateTime,
+    let replacementPackage: string | undefined;
+    if (showReplacements && registry) {
+      // Resolve replacement package from the catalog (in-memory, fetched once per command).
+      replacementPackage = getReplacementPackageName(extension, registry);
       // Highlight available replacements in green; keep unmapped entries blank.
-      replacementPackage ? clc.green(replacementPackage) : "",
-    ]);
+      row.push(replacementPackage ? clc.green(replacementPackage) : "");
+    }
+
+    table.push(row);
     formatted.push({
       extension,
       publisher,
@@ -84,9 +91,8 @@ export async function listExtensions(projectId: string): Promise<Record<string, 
       state,
       version,
       updateTime,
-      // In --json output, omit replacementKit when unmapped (via conditional spread)
-      // to adhere to standard API conventions and prevent truthy "None" string checks.
-      ...(replacementPackage ? { replacementKit: replacementPackage } : {}),
+      // In --json output, omit replacementKit when unmapped or when experiment is disabled
+      ...(showReplacements && replacementPackage ? { replacementKit: replacementPackage } : {}),
       params: instance.config.params,
       systemParams: instance.config.systemParams,
     });

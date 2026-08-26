@@ -28,7 +28,8 @@ describe("replacementRegistry", () => {
           "firebase/storage-resize-images": {
             status: "REPLACEMENT_AVAILABLE",
             npmPackage: "@firebase-function-kits/storage-resize-images",
-            extensionRepositoryUrl: "https://github.com/firebase/extensions",
+            extensionRepositoryUrl:
+              "https://github.com/firebase/extensions/tree/kits/storage-resize-images/README.md",
           },
         },
       };
@@ -62,12 +63,33 @@ describe("replacementRegistry", () => {
       const registry = await getReplacementsRegistry();
       expect(registry).to.eql(defaultReplacements);
     });
+
+    it("should fall back to bundled catalog when network request times out", async () => {
+      const clock = sandbox.useFakeTimers();
+      sandbox.stub(globalThis, "fetch").callsFake((_, init) => {
+        return new Promise((_, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            const err = new Error("The operation was aborted");
+            err.name = "AbortError";
+            reject(err);
+          });
+        });
+      });
+
+      const promise = getReplacementsRegistry();
+      clock.tick(2005);
+      const registry = await promise;
+      expect(registry).to.eql(defaultReplacements);
+      clock.restore();
+    });
   });
 
   describe("getExtensionReplacement", () => {
     it("should return replacement info for a known 1P extension", () => {
-      const rep = getExtensionReplacement("firebase/firestore-send-email");
+      const rep = getExtensionReplacement("firebase/storage-resize-images");
       expect(rep).to.not.be.undefined;
+      expect(rep?.status).to.equal("REPLACEMENT_AVAILABLE");
+      expect(rep?.npmPackage).to.equal("@firebase-function-kits/storage-resize-images");
       expect(rep?.extensionRepositoryUrl).to.be.a("string").that.is.not.empty;
     });
 
