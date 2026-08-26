@@ -5,9 +5,12 @@ import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { last, logLabeledBullet } from "../utils";
 import { logPrefix } from "./extensionsHelper";
-import { listInstances } from "./extensionsApi";
+import { confirm, select } from "../prompt";
+import * as extensionsApi from "./extensionsApi";
+import * as refs from "./refs";
+import * as paramHelper from "./paramHelper";
+import * as updateHelper from "./updateHelper";
 import { ExtensionInstance } from "./types";
-import { select } from "../prompt";
 import * as replacements from "./replacements.json";
 
 export interface MigrateOptions {
@@ -15,6 +18,7 @@ export interface MigrateOptions {
   extInstance?: string;
   extension?: string;
   nonInteractive?: boolean;
+  force?: boolean;
 }
 
 export interface ExtensionTableRow {
@@ -52,6 +56,10 @@ export function getKitPackage(extensionRef: string, packageOverride?: string): s
   let entry = map[extensionRef];
   if (!entry && !extensionRef.includes("/")) {
     entry = map[`firebase/${extensionRef}`];
+  }
+  if (!entry && extensionRef.includes("/")) {
+    const shortName = extensionRef.split("/")[1];
+    entry = map[shortName];
   }
 
   if (entry && entry.npmPackage && entry.status === "REPLACEMENT_AVAILABLE") {
@@ -171,7 +179,7 @@ export async function createMigrationPlan(
   projectId: string,
   options: MigrateOptions,
 ): Promise<ExtensionMigrationPlan> {
-  const instances = await listInstances(projectId);
+  const instances = await extensionsApi.listInstances(projectId);
 
   if (options.extInstance) {
     const foundInstance = instances.find((inst) => getInstanceId(inst) === options.extInstance);
@@ -184,9 +192,8 @@ export async function createMigrationPlan(
     const ref = getExtensionRef(foundInstance);
     const kitPkg = getKitPackage(ref, options.package);
     if (!kitPkg) {
-      // TODO: Consider including references to a skill once considered production ready.
       throw new FirebaseError(
-        "This extension does not have an associated function kit. You can create your own function kit by forking the extension.",
+        "This extension does not have an associated function kit. Please reach out to the extension author to request one",
       );
     }
 
@@ -227,9 +234,8 @@ export async function createMigrationPlan(
       );
 
     if (matchingInstancesWithKit.length === 0) {
-      // TODO: Consider including references to a skill once considered production ready.
       throw new FirebaseError(
-        "This extension does not have an associated function kit. You can create your own function kit by forking the extension.",
+        "This extension does not have an associated function kit. Please reach out to the extension author to request one",
       );
     }
 
@@ -264,11 +270,142 @@ export async function createMigrationPlan(
 
   const migratable = getMigratableInstances(instances, options.package);
   if (migratable.length === 0) {
-    // TODO: Consider including references to a skill once considered production ready.
     throw new FirebaseError(
-      "No remaining Extensions have an associated function kit. You can create your own function kit by forking the extension.",
+      "No remaining Extensions have an associated function kit. Please reach out to the extension author to request one",
     );
   }
 
   return promptInstanceSelection(migratable, options.nonInteractive);
+}
+
+/**
+ * Attempts to check if an extension instance is up to date and prompts the user to update if a newer version exists.
+ */
+export async function tryUpdateInstance(
+  projectId: string,
+  instance: ExtensionInstance,
+  options: MigrateOptions,
+): Promise<ExtensionInstance> {
+  const instanceId = getInstanceId(instance);
+  logLabeledBullet(
+    logPrefix,
+    `Checking whether extension instance ${clc.bold(instanceId)} is up to date...`,
+  );
+
+  const rawRef = getExtensionRef(instance);
+  if (!rawRef) {
+    return instance;
+  }
+
+  let baseRef: string;
+  let currentVersion: string | undefined;
+
+  try {
+    const parsed = refs.parse(rawRef);
+    baseRef = refs.toExtensionRef(parsed);
+    currentVersion = parsed.version || instance.config.source?.spec?.version;
+  } catch {
+    return instance;
+  }
+
+  if (!currentVersion) {
+    return instance;
+  }
+
+  let latestVersion: string | undefined;
+  try {
+    const extInfo = await extensionsApi.getExtension(baseRef);
+    latestVersion = extInfo.latestVersion || extInfo.latestApprovedVersion;
+  } catch (err: unknown) {
+    logger.debug(`Could not fetch extension details for ${baseRef}:`, err);
+    return instance;
+  }
+
+  if (!latestVersion || currentVersion === latestVersion) {
+    return instance;
+  }
+
+  const shouldUpdate = await confirm({
+    message: `This extension is version ${currentVersion}, the latest is version ${latestVersion}. Updating may help ensure the migration does not encounter errors. Update now?`,
+    default: true,
+    nonInteractive: options.nonInteractive,
+    force: options.force,
+  });
+
+  if (!shouldUpdate) {
+    return instance;
+  }
+
+  logLabeledBullet(
+    logPrefix,
+    `Updating ${clc.bold(instanceId)} to version ${clc.bold(latestVersion)}...`,
+  );
+
+  const targetRef = `${baseRef}@${latestVersion}`;
+  let finalParams = instance.config.params;
+
+  const newExtensionVersion = await extensionsApi.getExtensionVersion(targetRef);
+  let oldSpec = instance.config.source?.spec;
+  if (!oldSpec && rawRef) {
+    try {
+      const oldVersion = instance.config.extensionVersion;
+      const oldVersionRef = rawRef.includes("@")
+        ? rawRef
+        : oldVersion
+          ? `${rawRef}@${oldVersion}`
+          : rawRef;
+      logger.debug(`[tryUpdateInstance] Fetching oldSpec for ${oldVersionRef}...`);
+      const oldExtVersion = await extensionsApi.getExtensionVersion(oldVersionRef);
+      oldSpec = oldExtVersion.spec;
+      logger.debug(
+        `[tryUpdateInstance] Fetched oldSpec version=${oldSpec?.version}, paramsCount=${oldSpec?.params?.length}`,
+      );
+    } catch (err: unknown) {
+      logger.debug(`Could not fetch old spec for ${rawRef}:`, err);
+    }
+  }
+
+  if (oldSpec) {
+    logger.debug(
+      `[tryUpdateInstance] Comparing oldSpec (${oldSpec.version}) with newSpec (${newExtensionVersion.spec.version})...`,
+    );
+    const paramBindings = await paramHelper.promptForNewParams({
+      spec: oldSpec,
+      newSpec: newExtensionVersion.spec,
+      currentParams: instance.config.params,
+      projectId,
+      instanceId,
+    });
+    finalParams = paramHelper.getBaseParamBindings(paramBindings);
+    logger.debug(
+      `[tryUpdateInstance] Resulting finalParams:`,
+      JSON.stringify(finalParams, null, 2),
+    );
+  } else {
+    logger.debug(
+      `[tryUpdateInstance] WARNING: Could not resolve oldSpec for instance ${instanceId}`,
+    );
+  }
+
+  if (finalParams["LOCATION"] && !finalParams["firebaseextensions.v1beta.function/location"]) {
+    finalParams["firebaseextensions.v1beta.function/location"] = finalParams["LOCATION"];
+  }
+
+  const { params, systemParams } = paramHelper.partitionParams(finalParams);
+
+  logLabeledBullet(logPrefix, `Updating instance ${clc.bold(instanceId)}...`);
+
+  await updateHelper.update({
+    projectId,
+    instanceId,
+    extRef: targetRef,
+    canEmitEvents: Boolean(instance.config.allowedEventTypes?.length),
+    allowedEventTypes: instance.config.allowedEventTypes,
+    eventarcChannel: instance.config.eventarcChannel,
+    params,
+    systemParams,
+  });
+
+  const updatedInstance = await extensionsApi.getInstance(projectId, instanceId);
+  return updatedInstance ?? instance;
 }

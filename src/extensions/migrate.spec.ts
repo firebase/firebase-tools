@@ -346,4 +346,41 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       });
     });
   });
+
+  describe("tryUpdateInstance", () => {
+    it("should return original instance when instance is already up to date", async () => {
+      sandbox.stub(extensionsApi, "getExtensionVersion").resolves({
+        name: "firebase/firestore-send-email@0.1.14",
+        ref: "firebase/firestore-send-email@0.1.14",
+        spec: { name: "firestore-send-email", version: "0.1.14" },
+      } as any);
+
+      const updated = await migrateModule.tryUpdateInstance(
+        "test-project",
+        mockInstance1,
+        "0.1.14",
+        "firebase/firestore-send-email",
+      );
+
+      expect(updated).to.equal(mockInstance1);
+    });
+
+    it("should prompt update notice and return original instance if user declines update", async () => {
+      sandbox.stub(prompt, "confirm").resolves(false);
+      sandbox.stub(extensionsApi, "getExtensionVersion").resolves({
+        name: "firebase/firestore-send-email@0.1.15",
+        ref: "firebase/firestore-send-email@0.1.15",
+        spec: { name: "firestore-send-email", version: "0.1.15" },
+      } as any);
+
+      const updated = await migrateModule.tryUpdateInstance(
+        "test-project",
+        mockInstance1,
+        "0.1.15",
+        "firebase/firestore-send-email",
+      );
+
+      expect(updated).to.equal(mockInstance1);
+    });
+  });
 });

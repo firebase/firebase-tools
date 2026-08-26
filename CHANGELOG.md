@@ -1,2 +1,3 @@
+- [Added] Add -f, --force option to `firebase ext:migrate`.
+- [Fixed] Fix parameter type preservation and optional system parameter handling during extension updates in `firebase ext:migrate`.
 - [Fixed] Increases default polling timeout for App Hosting operations and rollouts to 60 minutes.
-- Fixed an issue where App Hosting deploys failed when the deploying account lacked permission to create or grant roles to the default compute service account, even when that service account already existed. (#10806)
