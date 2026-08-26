@@ -133,6 +133,9 @@ export function load(client: CLIClient): CLIClient {
   client.ext.list = loadCommand("ext-list");
   client.ext.uninstall = loadCommand("ext-uninstall");
   client.ext.update = loadCommand("ext-update");
+  if (experiments.isEnabled("extMigrationFeatures")) {
+    client.ext.migrate = loadCommand("ext-migrate");
+  }
   client.ext.sdk = {};
   client.ext.sdk.install = loadCommand("ext-sdk-install");
   client.ext.dev = {};
