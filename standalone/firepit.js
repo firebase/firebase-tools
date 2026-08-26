@@ -306,28 +306,46 @@ debug(`Welcome to firepit v${version}!`);
       });
     }
 
-    function isJsScript(filePath) {
-      if (!filePath) return false;
+    function resolveScript(filePath) {
+      if (!filePath) return null;
       try {
         const resolved = path.resolve(filePath);
-        if (resolved === path.resolve(process.execPath)) return false;
-        if (!fs.existsSync(resolved)) return false;
-        const stat = fs.statSync(resolved);
-        if (!stat.isFile()) return false;
+        if (resolved === path.resolve(process.execPath)) return null;
 
-        const ext = path.extname(resolved).toLowerCase();
-        const base = path.basename(resolved).toLowerCase();
-        if (base === "firebase" || base === "firebase.exe") return false;
-        if ([".js", ".cjs", ".mjs"].includes(ext)) return true;
+        let candidate = resolved;
+        if (!fs.existsSync(candidate)) {
+          if (fs.existsSync(candidate + ".js")) {
+            candidate = candidate + ".js";
+          } else if (fs.existsSync(candidate + ".cjs")) {
+            candidate = candidate + ".cjs";
+          } else if (fs.existsSync(candidate + ".mjs")) {
+            candidate = candidate + ".mjs";
+          } else {
+            try {
+              candidate = fsRequire.resolve(candidate);
+            } catch (e) {
+              return null;
+            }
+          }
+        }
+
+        if (!fs.existsSync(candidate)) return null;
+        const stat = fs.statSync(candidate);
+        if (!stat.isFile()) return null;
+
+        const ext = path.extname(candidate).toLowerCase();
+        const base = path.basename(candidate).toLowerCase();
+        if (base === "firebase" || base === "firebase.exe") return null;
+        if ([".js", ".cjs", ".mjs"].includes(ext)) return candidate;
 
         // Check for binary headers (ELF, Mach-O, Windows PE)
-        const fd = fs.openSync(resolved, "r");
+        const fd = fs.openSync(candidate, "r");
         const buf = Buffer.alloc(4);
         fs.readSync(fd, buf, 0, 4, 0);
         fs.closeSync(fd);
 
-        if (buf[0] === 0x7f && buf.toString("ascii", 1, 4) === "ELF") return false;
-        if (buf.toString("ascii", 0, 2) === "MZ") return false;
+        if (buf[0] === 0x7f && buf.toString("ascii", 1, 4) === "ELF") return null;
+        if (buf.toString("ascii", 0, 2) === "MZ") return null;
         const magic32 = buf.readUInt32BE(0);
         if (
           magic32 === 0xfeedface ||
@@ -336,11 +354,11 @@ debug(`Welcome to firepit v${version}!`);
           magic32 === 0xcefaedfe ||
           magic32 === 0xcffaedfe
         ) {
-          return false;
+          return null;
         }
-        return true;
+        return candidate;
       } catch (err) {
-        return false;
+        return null;
       }
     }
 
@@ -349,17 +367,17 @@ debug(`Welcome to firepit v${version}!`);
     const { createRequire } = require("module");
     const fsRequire = createRequire(process.execPath);
 
-    if (process.argv[1] && isJsScript(process.argv[1])) {
-      try {
-        resolvedScriptPath = fsRequire.resolve(path.resolve(process.argv[1]));
+    if (process.argv[1]) {
+      resolvedScriptPath = resolveScript(process.argv[1]);
+      if (resolvedScriptPath) {
         spliceIndex = 1;
-      } catch (err) {}
+      }
     }
-    if (!resolvedScriptPath && process.argv[2] && isJsScript(process.argv[2])) {
-      try {
-        resolvedScriptPath = fsRequire.resolve(path.resolve(process.argv[2]));
+    if (!resolvedScriptPath && process.argv[2]) {
+      resolvedScriptPath = resolveScript(process.argv[2]);
+      if (resolvedScriptPath) {
         spliceIndex = 2;
-      } catch (err) {}
+      }
     }
 
     if (resolvedScriptPath) {

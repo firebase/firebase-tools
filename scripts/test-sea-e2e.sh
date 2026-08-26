@@ -285,6 +285,18 @@ EOF
     assert_contains "$build_out" "BUILD_SUCCESS"
 '
 
+# Test 3.19: Extensionless Script Resolution (Functions Emulator Worker Simulation)
+run_test "Extensionless JavaScript File Resolution (Functions Emulator Runtime)" '
+    tmp_extless=$(mktemp /tmp/test-extless-XXXXXX.js)
+    tmp_extless_no_ext="${tmp_extless%.js}"
+    cat << "EOF" > "$tmp_extless"
+console.log("EXTLESS_RUNTIME_SUCCESS");
+EOF
+    out=$("$FIREBASE_BINARY" "$tmp_extless_no_ext")
+    rm -f "$tmp_extless"
+    assert_contains "$out" "EXTLESS_RUNTIME_SUCCESS"
+'
+
 # ==============================================================================
 # Summary
 # ==============================================================================
