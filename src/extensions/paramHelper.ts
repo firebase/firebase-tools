@@ -204,40 +204,49 @@ export async function promptForNewParams(args: {
 
   const triggerAdvancedSystemParams = unassignedOldParams.length > 0 || locationNotSet;
 
-  // Collect parameters to prompt based strictly on the 4 rules
+  // Collect parameters to prompt based on specified rules
   const paramsToPrompt: Param[] = [];
 
   for (const newP of allNewParams) {
     const oldP = allOldParams.find((p) => p.param === newP.param);
     const currentVal = newParamBindingOptions[newP.param]?.baseValue;
 
-    // Rule 1: Changed type
+    const isSystem =
+      isSystemParam(newP.param) ||
+      (args.newSpec.systemParams ?? []).some((p) => p.param === newP.param);
+
+    // Rule 1: New (non-system) parameters in newSpec that were not in oldSpec
+    if (!oldP && !isSystem) {
+      paramsToPrompt.push(newP);
+      continue;
+    }
+
+    // Rule 2: Changed type
     if (oldP && oldP.type !== newP.type) {
       paramsToPrompt.push(newP);
       continue;
     }
 
-    // Rule 2: Changed validators and the current new rejects the old value
+    // Rule 3: Changed validators and the current new rejects the old value
     if (currentVal !== undefined && currentVal !== "" && !checkResponse(currentVal, newP)) {
       paramsToPrompt.push(newP);
       continue;
     }
 
-    // Rule 3: Are newly required and not currently set
+    // Rule 4: Are newly required and not currently set
     if (newP.required && (currentVal === undefined || currentVal === "")) {
       paramsToPrompt.push(newP);
       continue;
     }
 
-    // Rule 4: All advanced/system parameters IF trigger condition met
-    if (triggerAdvancedSystemParams) {
-      const isSystem =
-        isSystemParam(newP.param) ||
-        (args.newSpec.systemParams ?? []).some((p) => p.param === newP.param);
-      if (isSystem || newP.advanced) {
-        paramsToPrompt.push(newP);
-        continue;
-      }
+    // Rule 5: System and advanced parameters IF trigger condition met.
+    // If the old extension spec has parameters that were dropped in the new spec (unassignedOldParams),
+    // they may have been custom/legacy parameter names for features (such as $TIMEOUT or $LOCATION)
+    // created before official system parameters existed. Prompting for system and advanced parameters
+    // ensures those settings are transferred to system parameters rather than being silently dropped.
+    if (triggerAdvancedSystemParams && (isSystem || newP.advanced)) {
+      paramsToPrompt.push(newP);
+      continue;
     }
   }
 

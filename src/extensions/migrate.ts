@@ -5,7 +5,7 @@ import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { last, logLabeledBullet } from "../utils";
 import { logPrefix } from "./extensionsHelper";
-import { confirm, select } from "../prompt";
+import { select } from "../prompt";
 import * as extensionsApi from "./extensionsApi";
 import * as refs from "./refs";
 import * as paramHelper from "./paramHelper";
@@ -283,7 +283,6 @@ export async function createMigrationPlan(
 export async function tryUpdateInstance(
   projectId: string,
   instance: ExtensionInstance,
-  options: MigrateOptions,
 ): Promise<ExtensionInstance> {
   const instanceId = getInstanceId(instance);
   logLabeledBullet(
@@ -324,20 +323,9 @@ export async function tryUpdateInstance(
     return instance;
   }
 
-  const shouldUpdate = await confirm({
-    message: `This extension is version ${currentVersion}, the latest is version ${latestVersion}. Updating may help ensure the migration does not encounter errors. Update now?`,
-    default: true,
-    nonInteractive: options.nonInteractive,
-    force: options.force,
-  });
-
-  if (!shouldUpdate) {
-    return instance;
-  }
-
   logLabeledBullet(
     logPrefix,
-    `Updating ${clc.bold(instanceId)} to version ${clc.bold(latestVersion)}...`,
+    `Upgrading extension instance ${clc.bold(instanceId)} from version ${clc.bold(currentVersion)} to ${clc.bold(latestVersion)} to derisk migration...`,
   );
 
   const targetRef = `${baseRef}@${latestVersion}`;

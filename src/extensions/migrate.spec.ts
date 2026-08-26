@@ -6,6 +6,7 @@ import { logger } from "../logger";
 import * as prompt from "../prompt";
 import * as extensionsApi from "./extensionsApi";
 import * as migrateModule from "./migrate";
+import * as updateHelper from "./updateHelper";
 import { ExtensionInstance } from "./types";
 
 describe("ext:migrate core logic (Unique Veneer)", () => {
@@ -354,22 +355,26 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
         spec: { name: "firestore-send-email", version: "0.1.14" },
       } as any);
 
-      const updated = await migrateModule.tryUpdateInstance("test-project", mockInstance1, {});
+      const updated = await migrateModule.tryUpdateInstance("test-project", mockInstance1);
 
       expect(updated).to.equal(mockInstance1);
     });
 
-    it("should prompt update notice and return original instance if user declines update", async () => {
-      sandbox.stub(prompt, "confirm").resolves(false);
-      sandbox.stub(extensionsApi, "getExtensionVersion").resolves({
+    it("should automatically attempt upgrade when a newer version exists", async () => {
+      sandbox.stub(extensionsApi, "getExtension").resolves({
+        latestVersion: "0.1.15",
+      } as any);
+      const getExtVersionStub = sandbox.stub(extensionsApi, "getExtensionVersion").resolves({
         name: "firebase/firestore-send-email@0.1.15",
         ref: "firebase/firestore-send-email@0.1.15",
-        spec: { name: "firestore-send-email", version: "0.1.15" },
+        spec: { name: "firestore-send-email", version: "0.1.15", params: [] },
       } as any);
+      sandbox.stub(updateHelper, "update").resolves({} as any);
+      sandbox.stub(extensionsApi, "getInstance").resolves(mockInstance1);
 
-      const updated = await migrateModule.tryUpdateInstance("test-project", mockInstance1, {});
+      await migrateModule.tryUpdateInstance("test-project", mockInstance1);
 
-      expect(updated).to.equal(mockInstance1);
+      expect(getExtVersionStub).to.have.been.called;
     });
   });
 });
