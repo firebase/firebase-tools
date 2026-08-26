@@ -811,7 +811,7 @@ export async function printKitFirstDeployReport(
   if (hasItems) {
     logLabeledWarning(
       "functions",
-      "Please review the resources and IAM roles above. If you do not want them created or granted in your project, uninstall this kit before running firebase deploy.",
+      `${clc.bold("Please review the changes above. If you do not want them applied to your project, uninstall this kit before running firebase deploy.")}`,
     );
   }
 }
