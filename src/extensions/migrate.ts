@@ -10,7 +10,7 @@ import * as extensionsApi from "./extensionsApi";
 import * as refs from "./refs";
 import * as paramHelper from "./paramHelper";
 import * as updateHelper from "./updateHelper";
-import { ExtensionInstance } from "./types";
+import { ExtensionInstance, ExtensionSpec } from "./types";
 import * as replacements from "./replacements.json";
 
 export interface MigrateOptions {
@@ -277,10 +277,46 @@ export async function createMigrationPlan(
   return promptInstanceSelection(migratable, options.nonInteractive);
 }
 
+async function fetchOldSpec(
+  instance: ExtensionInstance,
+  rawRef: string,
+): Promise<ExtensionSpec | undefined> {
+  if (instance.config.source?.spec) {
+    return instance.config.source.spec;
+  }
+  if (!rawRef) {
+    return undefined;
+  }
+  try {
+    const oldVersion = instance.config.extensionVersion;
+    const oldVersionRef = rawRef.includes("@")
+      ? rawRef
+      : oldVersion
+        ? `${rawRef}@${oldVersion}`
+        : rawRef;
+    logger.debug(`[ensureInstanceUpToDate] Fetching oldSpec for ${oldVersionRef}...`);
+    const oldExtVersion = await extensionsApi.getExtensionVersion(oldVersionRef);
+    return oldExtVersion.spec;
+  } catch (err: unknown) {
+    logger.debug(`Could not fetch old spec for ${rawRef}:`, err);
+    return undefined;
+  }
+}
+
+async function getLatestExtensionVersion(baseRef: string): Promise<string | undefined> {
+  try {
+    const extInfo = await extensionsApi.getExtension(baseRef);
+    return extInfo.latestVersion || extInfo.latestApprovedVersion;
+  } catch (err: unknown) {
+    logger.debug(`Could not fetch extension details for ${baseRef}:`, err);
+    return undefined;
+  }
+}
+
 /**
- * Attempts to check if an extension instance is up to date and prompts the user to update if a newer version exists.
+ * Ensures an extension instance is up to date by automatically upgrading it if a newer version exists.
  */
-export async function tryUpdateInstance(
+export async function ensureInstanceUpToDate(
   projectId: string,
   instance: ExtensionInstance,
 ): Promise<ExtensionInstance> {
@@ -310,15 +346,7 @@ export async function tryUpdateInstance(
     return instance;
   }
 
-  let latestVersion: string | undefined;
-  try {
-    const extInfo = await extensionsApi.getExtension(baseRef);
-    latestVersion = extInfo.latestVersion || extInfo.latestApprovedVersion;
-  } catch (err: unknown) {
-    logger.debug(`Could not fetch extension details for ${baseRef}:`, err);
-    return instance;
-  }
-
+  const latestVersion = await getLatestExtensionVersion(baseRef);
   if (!latestVersion || currentVersion === latestVersion) {
     return instance;
   }
@@ -332,29 +360,11 @@ export async function tryUpdateInstance(
   let finalParams = instance.config.params;
 
   const newExtensionVersion = await extensionsApi.getExtensionVersion(targetRef);
-  let oldSpec = instance.config.source?.spec;
-  if (!oldSpec && rawRef) {
-    try {
-      const oldVersion = instance.config.extensionVersion;
-      const oldVersionRef = rawRef.includes("@")
-        ? rawRef
-        : oldVersion
-          ? `${rawRef}@${oldVersion}`
-          : rawRef;
-      logger.debug(`[tryUpdateInstance] Fetching oldSpec for ${oldVersionRef}...`);
-      const oldExtVersion = await extensionsApi.getExtensionVersion(oldVersionRef);
-      oldSpec = oldExtVersion.spec;
-      logger.debug(
-        `[tryUpdateInstance] Fetched oldSpec version=${oldSpec?.version}, paramsCount=${oldSpec?.params?.length}`,
-      );
-    } catch (err: unknown) {
-      logger.debug(`Could not fetch old spec for ${rawRef}:`, err);
-    }
-  }
+  const oldSpec = await fetchOldSpec(instance, rawRef);
 
   if (oldSpec) {
     logger.debug(
-      `[tryUpdateInstance] Comparing oldSpec (${oldSpec.version}) with newSpec (${newExtensionVersion.spec.version})...`,
+      `[ensureInstanceUpToDate] Comparing oldSpec (${oldSpec.version}) with newSpec (${newExtensionVersion.spec.version})...`,
     );
     const paramBindings = await paramHelper.promptForNewParams({
       spec: oldSpec,
@@ -365,12 +375,12 @@ export async function tryUpdateInstance(
     });
     finalParams = paramHelper.getBaseParamBindings(paramBindings);
     logger.debug(
-      `[tryUpdateInstance] Resulting finalParams:`,
+      `[ensureInstanceUpToDate] Resulting finalParams:`,
       JSON.stringify(finalParams, null, 2),
     );
   } else {
     logger.debug(
-      `[tryUpdateInstance] WARNING: Could not resolve oldSpec for instance ${instanceId}`,
+      `[ensureInstanceUpToDate] WARNING: Could not resolve oldSpec for instance ${instanceId}`,
     );
   }
 

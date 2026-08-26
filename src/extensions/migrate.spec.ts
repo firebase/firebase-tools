@@ -347,7 +347,7 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       });
     });
   });
-  describe("tryUpdateInstance", () => {
+  describe("ensureInstanceUpToDate", () => {
     it("should return original instance when instance is already up to date", async () => {
       sandbox.stub(extensionsApi, "getExtensionVersion").resolves({
         name: "firebase/firestore-send-email@0.1.14",
@@ -355,7 +355,7 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
         spec: { name: "firestore-send-email", version: "0.1.14" },
       } as any);
 
-      const updated = await migrateModule.tryUpdateInstance("test-project", mockInstance1);
+      const updated = await migrateModule.ensureInstanceUpToDate("test-project", mockInstance1);
 
       expect(updated).to.equal(mockInstance1);
     });
@@ -372,7 +372,7 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       sandbox.stub(updateHelper, "update").resolves({} as any);
       sandbox.stub(extensionsApi, "getInstance").resolves(mockInstance1);
 
-      await migrateModule.tryUpdateInstance("test-project", mockInstance1);
+      await migrateModule.ensureInstanceUpToDate("test-project", mockInstance1);
 
       expect(getExtVersionStub).to.have.been.called;
     });
