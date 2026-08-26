@@ -109,11 +109,12 @@ async function secretsToServiceAccounts(b: backend.Backend): Promise<Record<stri
 /**
  * Returns a mapping of secret names to service account emails that require access to them.
  */
-export async function secretsAccessDelta(
-  projectId: string,
-  wantBackend: backend.Backend,
-  haveBackend: backend.Backend,
-): Promise<Record<string, string[]>> {
+export async function secretsAccessDelta(args: {
+  projectId: string;
+  wantBackend: backend.Backend;
+  haveBackend: backend.Backend;
+}): Promise<Record<string, string[]>> {
+  const { wantBackend, haveBackend } = args;
   const wantSecrets = await secretsToServiceAccounts(wantBackend);
   const haveSecrets = await secretsToServiceAccounts(haveBackend);
 
@@ -165,11 +166,12 @@ export async function checkSecretAccess(
 /**
  * Grants secret access for a single secret to specified service accounts.
  */
-export async function grantSecretAccess(
-  projectId: string,
-  secret: string,
-  serviceAccounts: string[],
-): Promise<void> {
+export async function grantSecretAccess(args: {
+  projectId: string;
+  secret: string;
+  serviceAccounts: string[];
+}): Promise<void> {
+  const { projectId, secret, serviceAccounts } = args;
   logLabeledBullet(
     "functions",
     `ensuring ${clc.bold(serviceAccounts.join(", "))} access to secret ${clc.bold(secret)}.`,

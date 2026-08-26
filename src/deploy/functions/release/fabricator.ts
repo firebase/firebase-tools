@@ -245,9 +245,17 @@ export class Fabricator {
 
     const secretAccessPromises = Object.values(plan).flatMap((codebasePlan) =>
       Object.entries(codebasePlan.secretAccessPlan || {}).map(([secret, serviceAccounts]) =>
-        this.executor.run(() => ensure.grantSecretAccess(this.projectId, secret, serviceAccounts), {
-          retryPredicates: [isTransientError, isServiceAccount404],
-        }),
+        this.executor.run(
+          () =>
+            ensure.grantSecretAccess({
+              projectId: this.projectId,
+              secret,
+              serviceAccounts,
+            }),
+          {
+            retryPredicates: [isTransientError, isServiceAccount404],
+          },
+        ),
       ),
     );
     await Promise.all(secretAccessPromises);

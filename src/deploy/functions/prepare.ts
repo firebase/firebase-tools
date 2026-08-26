@@ -548,11 +548,11 @@ export async function prepare(
   );
   // Actual granting of secret access permissions has been moved to the fabricator in release because declarative security may mean that the desired service account hasn't been created
   if (options.dryRun) {
-    const secretAccessDelta = await ensure.secretsAccessDelta(
+    const secretAccessDelta = await ensure.secretsAccessDelta({
       projectId,
-      matchingBackend,
+      wantBackend: matchingBackend,
       haveBackend,
-    );
+    });
     await ensure.checkSecretAccess(projectId, secretAccessDelta);
   }
   /**

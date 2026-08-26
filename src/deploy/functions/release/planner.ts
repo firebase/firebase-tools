@@ -227,11 +227,11 @@ export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan
         "old default of 1. You can change this with the 'concurrency' option.",
     );
   }
-  const secretAccessPlan = await ensure.secretsAccessDelta(
-    args.projectId,
+  const secretAccessPlan = await ensure.secretsAccessDelta({
+    projectId: args.projectId,
     wantBackend,
     haveBackend,
-  );
+  });
 
   if (requiredRoles && hasWantEndpoints) {
     if (!managedSA) {

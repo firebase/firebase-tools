@@ -1,12 +1,3 @@
-- Fixes secret access permission race condition during Cloud Functions deployment by deferring secret grants to release phase after service accounts are created.
+- [Fixed] Defer secret access permission granting to release phase to prevent service account 404 race conditions.
 - [Fixed] Increases default polling timeout for App Hosting operations and rollouts to 60 minutes.
 - Fixed an issue where App Hosting deploys failed when the deploying account lacked permission to create or grant roles to the default compute service account, even when that service account already existed. (#10806)
-- Update Firestore emulator to v1.22.0, adding support for DML
-- Add `appcheck:debugtokens:create`, `appcheck:debugtokens:list`, and `appcheck:debugtokens:delete` CLI commands for managing App Check debug tokens (#10801).
-- Add `MCP-Protocol-Version`, `Mcp-Method`, and `Mcp-Name` HTTP headers to `OneMcpServer` requests per the MCP 0728 standard release candidate (https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/ and https://modelcontextprotocol.io/seps/2243-http-standardization).
-- Fixes Storage Emulator to support JSON uploads larger than 100KB without hanging or throwing 413 error (#8355)
-- Add `extdeprecationwarnings` experiment to display phased deprecation notices and guidance across `ext:*` CLI commands.
-- Fixes Data Connect emulator crash when in-flight GraphQL requests are cancelled (#10821)
-- Fixed a Cloud Storage emulator hang under concurrent requests, caused by the rules runtime's stdout being parsed per-chunk instead of per-line so batched responses were dropped (#6194, #6865).
-- Support for specifying that the input for a string or string[] param in Functions must be non-empty (#10678)
-- Removed the warning that Dart functions may not yet be visible in the Firebase Console, since they are now shown.

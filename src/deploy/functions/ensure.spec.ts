@@ -187,7 +187,11 @@ describe("ensureSecretAccess", () => {
         ["foo@bar.com"],
         "roles/secretmanager.secretAccessor",
       );
-    await ensure.grantSecretAccess(projectId, secret0.secret, ["foo@bar.com"]);
+    await ensure.grantSecretAccess({
+      projectId,
+      secret: secret0.secret,
+      serviceAccounts: ["foo@bar.com"],
+    });
   });
 
   it("calculates secretsAccessDelta correctly", async () => {
@@ -195,7 +199,11 @@ describe("ensureSecretAccess", () => {
       ...e,
       secretEnvironmentVariables: [secret0],
     });
-    const delta = await ensure.secretsAccessDelta(projectId, b, backend.empty());
+    const delta = await ensure.secretsAccessDelta({
+      projectId,
+      wantBackend: b,
+      haveBackend: backend.empty(),
+    });
     expect(delta).to.deep.equal({
       [secret0.secret]: [DEFAULT_SA],
     });
