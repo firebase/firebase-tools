@@ -23,6 +23,11 @@ import {
   promptSecurityConfirmation,
   promptExistingInstanceForProject,
   buildAndInstallKit,
+  buildAndInstallDirectoryKit,
+  validateAndResolveDirectoryKit,
+  findExistingKit,
+  resolvePackageSource,
+  resolveDirectorySource,
   printKitFirstDeployReport,
   addKitInstanceOrConfigureProject,
   installKitOrInstance,
@@ -48,6 +53,7 @@ describe("functions/kits/install", () => {
   let seedKitInstanceEnvStub: sinon.SinonStub;
   let loggerInfoStub: sinon.SinonStub;
   let loggerWarnStub: sinon.SinonStub;
+  let statStub: sinon.SinonStub;
 
   beforeEach(() => {
     sinon.stub(experiments, "assertEnabled");
@@ -58,6 +64,7 @@ describe("functions/kits/install", () => {
       .resolves(JSON.stringify([{ hasShrinkwrap: true }]));
     sinon.stub(fs, "ensureDir").resolves();
     sinon.stub(fs, "pathExists").resolves(false);
+    statStub = sinon.stub(fs, "stat").resolves({ isDirectory: () => true } as fs.Stats);
     sinon.stub(fs, "readJson").resolves({});
     sinon.stub(fs, "writeJson").resolves();
     sinon.stub(fs, "writeFile").resolves();
@@ -439,6 +446,351 @@ describe("functions/kits/install", () => {
       const functions = (writtenFiles["firebase.json"] as { functions: unknown[] }).functions;
       expect(functions).to.have.length(2);
       expect(functions[0]).to.deep.equal(existingEntry);
+    });
+
+    it("should add directory kit without sourcePackage and with predeploy when hasBuildScript is true", () => {
+      const writtenFiles: Record<string, unknown> = {};
+      const mockConfig = {
+        src: {},
+        writeProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+        },
+      } as unknown as Config;
+
+      addKitToConfig(
+        mockConfig,
+        "local-kit",
+        "inst1",
+        undefined,
+        "my-local-functions",
+        "function-kits/local-kit/config-inst1",
+        true,
+      );
+
+      expect(writtenFiles["firebase.json"]).to.deep.equal({
+        functions: [
+          {
+            kit: "local-kit",
+            source: "my-local-functions",
+            instances: {
+              inst1: "function-kits/local-kit/config-inst1",
+            },
+            predeploy: ['npm --prefix "$RESOURCE_DIR" run build'],
+          },
+        ],
+      });
+    });
+
+    it("should add directory kit without predeploy when hasBuildScript is false", () => {
+      const writtenFiles: Record<string, unknown> = {};
+      const mockConfig = {
+        src: {},
+        writeProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+        },
+      } as unknown as Config;
+
+      addKitToConfig(
+        mockConfig,
+        "local-kit",
+        "inst1",
+        undefined,
+        "my-local-functions",
+        "function-kits/local-kit/config-inst1",
+        false,
+      );
+
+      expect(writtenFiles["firebase.json"]).to.deep.equal({
+        functions: [
+          {
+            kit: "local-kit",
+            source: "my-local-functions",
+            instances: {
+              inst1: "function-kits/local-kit/config-inst1",
+            },
+          },
+        ],
+      });
+    });
+  });
+
+  describe("validateAndResolveDirectoryKit", () => {
+    it("should throw if directory is outside of project directory", async () => {
+      await expect(
+        validateAndResolveDirectoryKit("/mock/project", "../outside-project"),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        "Directory '../outside-project' is outside of project directory. Function kit directory must be inside the project directory.",
+      );
+
+      await expect(
+        validateAndResolveDirectoryKit("/mock/project", "/other/path/outside"),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        "Directory '/other/path/outside' is outside of project directory. Function kit directory must be inside the project directory.",
+      );
+    });
+
+    it("should throw if directory does not exist", async () => {
+      (fs.pathExists as sinon.SinonStub).withArgs("/mock/project/nonexistent").resolves(false);
+
+      await expect(
+        validateAndResolveDirectoryKit("/mock/project", "nonexistent"),
+      ).to.be.rejectedWith(FirebaseError, "Directory 'nonexistent' does not exist.");
+    });
+
+    it("should throw if path is not a directory", async () => {
+      (fs.pathExists as sinon.SinonStub).withArgs("/mock/project/file.txt").resolves(true);
+      statStub
+        .withArgs("/mock/project/file.txt")
+        .resolves({ isDirectory: () => false } as fs.Stats);
+
+      await expect(validateAndResolveDirectoryKit("/mock/project", "file.txt")).to.be.rejectedWith(
+        FirebaseError,
+        "Directory 'file.txt' is not a directory.",
+      );
+    });
+
+    it("should throw if directory does not contain a package.json", async () => {
+      (fs.pathExists as sinon.SinonStub).withArgs("/mock/project/my-kit").resolves(true);
+      (fs.pathExists as sinon.SinonStub)
+        .withArgs(path.join("/mock/project/my-kit", "package.json"))
+        .resolves(false);
+
+      await expect(validateAndResolveDirectoryKit("/mock/project", "my-kit")).to.be.rejectedWith(
+        FirebaseError,
+        "Directory 'my-kit' must contain a package.json file to be installed as a function kit.",
+      );
+    });
+
+    it("should throw if package.json cannot be parsed", async () => {
+      (fs.pathExists as sinon.SinonStub).withArgs("/mock/project/my-kit").resolves(true);
+      (fs.pathExists as sinon.SinonStub)
+        .withArgs(path.join("/mock/project/my-kit", "package.json"))
+        .resolves(true);
+      (fs.readJson as sinon.SinonStub)
+        .withArgs(path.join("/mock/project/my-kit", "package.json"))
+        .rejects(new Error("Unexpected token"));
+
+      await expect(validateAndResolveDirectoryKit("/mock/project", "my-kit")).to.be.rejectedWith(
+        FirebaseError,
+        /Failed to parse package\.json in 'my-kit': Unexpected token/,
+      );
+    });
+
+    it("should return ValidatedDirectoryKit with hasBuildScript: true when build script exists", async () => {
+      (fs.pathExists as sinon.SinonStub).withArgs("/mock/project/my-kit").resolves(true);
+      (fs.pathExists as sinon.SinonStub)
+        .withArgs(path.join("/mock/project/my-kit", "package.json"))
+        .resolves(true);
+      (fs.readJson as sinon.SinonStub)
+        .withArgs(path.join("/mock/project/my-kit", "package.json"))
+        .resolves({
+          scripts: {
+            build: "tsc",
+          },
+        });
+
+      const res = await validateAndResolveDirectoryKit("/mock/project", "my-kit");
+      expect(res).to.deep.equal({
+        absDirectoryPath: "/mock/project/my-kit",
+        relSourcePath: "my-kit",
+        hasBuildScript: true,
+      });
+    });
+
+    it("should return ValidatedDirectoryKit with hasBuildScript: false when build script is absent", async () => {
+      (fs.pathExists as sinon.SinonStub).withArgs("/mock/project/my-kit").resolves(true);
+      (fs.pathExists as sinon.SinonStub)
+        .withArgs(path.join("/mock/project/my-kit", "package.json"))
+        .resolves(true);
+      (fs.readJson as sinon.SinonStub)
+        .withArgs(path.join("/mock/project/my-kit", "package.json"))
+        .resolves({
+          scripts: {
+            start: "node index.js",
+          },
+        });
+
+      const res = await validateAndResolveDirectoryKit("/mock/project", "my-kit");
+      expect(res).to.deep.equal({
+        absDirectoryPath: "/mock/project/my-kit",
+        relSourcePath: "my-kit",
+        hasBuildScript: false,
+      });
+    });
+
+    it("should handle current directory relative path", async () => {
+      (fs.pathExists as sinon.SinonStub).withArgs("/mock/project").resolves(true);
+      (fs.pathExists as sinon.SinonStub)
+        .withArgs(path.join("/mock/project", "package.json"))
+        .resolves(true);
+      (fs.readJson as sinon.SinonStub)
+        .withArgs(path.join("/mock/project", "package.json"))
+        .resolves({});
+
+      const res = await validateAndResolveDirectoryKit("/mock/project", ".");
+      expect(res).to.deep.equal({
+        absDirectoryPath: "/mock/project",
+        relSourcePath: ".",
+        hasBuildScript: false,
+      });
+    });
+  });
+
+  describe("buildAndInstallDirectoryKit", () => {
+    it("should run npm install and npm run build when hasBuildScript is true", async () => {
+      await buildAndInstallDirectoryKit("/mock/project/my-kit", true);
+
+      expect(wrapSpawnStub).to.have.been.calledTwice;
+      expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
+        "npm",
+        ["install"],
+        "/mock/project/my-kit",
+      );
+      expect(wrapSpawnStub.secondCall).to.have.been.calledWith(
+        "npm",
+        ["run", "build"],
+        "/mock/project/my-kit",
+      );
+    });
+
+    it("should run only npm install when hasBuildScript is false", async () => {
+      await buildAndInstallDirectoryKit("/mock/project/my-kit", false);
+
+      expect(wrapSpawnStub).to.have.been.calledOnce;
+      expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
+        "npm",
+        ["install"],
+        "/mock/project/my-kit",
+      );
+    });
+
+    it("should throw FirebaseError if npm install fails", async () => {
+      wrapSpawnStub.withArgs("npm", ["install"]).rejects(new Error("npm install error"));
+
+      await expect(buildAndInstallDirectoryKit("/mock/project/my-kit", true)).to.be.rejectedWith(
+        FirebaseError,
+        /NPM install failed: npm install error/,
+      );
+    });
+
+    it("should throw FirebaseError if typescript build fails", async () => {
+      wrapSpawnStub.withArgs("npm", ["run", "build"]).rejects(new Error("tsc error"));
+
+      await expect(buildAndInstallDirectoryKit("/mock/project/my-kit", true)).to.be.rejectedWith(
+        FirebaseError,
+        /TypeScript build failed: tsc error/,
+      );
+    });
+  });
+
+  describe("findExistingKit", () => {
+    const mockFunctions: ValidatedKitSingle[] = [
+      {
+        kit: "pkg-kit",
+        sourcePackage: { name: "@scope/my-pkg" },
+        source: "function-kits/pkg-kit/source",
+        instances: { inst1: "function-kits/pkg-kit/config-inst1" },
+      },
+      {
+        kit: "dir-kit",
+        source: "my-local-kit",
+        instances: { inst1: "function-kits/dir-kit/config-inst1" },
+      },
+    ];
+    const mockConfig = { projectDir: "/mock/project" } as Config;
+
+    it("should find existing kit by package name", () => {
+      const found = findExistingKit(mockFunctions, {
+        package: "@scope/my-pkg@1.0.0",
+        config: mockConfig,
+      });
+      expect(found).to.equal(mockFunctions[0]);
+    });
+
+    it("should find existing kit by local directory path", () => {
+      const found = findExistingKit(mockFunctions, {
+        directory: "my-local-kit",
+        config: mockConfig,
+      });
+      expect(found).to.equal(mockFunctions[1]);
+    });
+
+    it("should return undefined if kit is not found", () => {
+      const found = findExistingKit(mockFunctions, {
+        package: "other-pkg",
+        config: mockConfig,
+      });
+      expect(found).to.be.undefined;
+    });
+  });
+
+  describe("resolvePackageSource", () => {
+    it("should reject invalid template", async () => {
+      await expect(
+        resolvePackageSource({
+          config: { projectDir: "/mock/project" } as Config,
+          package: "my-pkg",
+          template: "invalid" as TemplateType,
+        }),
+      ).to.be.rejectedWith(FirebaseError, /Invalid template 'invalid'/);
+    });
+
+    it("should resolve valid package source", async () => {
+      wrapSpawnStub
+        .withArgs("npm", ["pack", "@firebase-function-kits/firestore-export", "--json"])
+        .resolves(
+          JSON.stringify([
+            {
+              name: "@firebase-function-kits/firestore-export",
+              hasShrinkwrap: true,
+            },
+          ]),
+        );
+
+      const source = await resolvePackageSource({
+        config: { projectDir: "/mock/project" } as Config,
+        package: "@firebase-function-kits/firestore-export",
+        template: "installation",
+        nonInteractive: true,
+      });
+
+      expect(source.defaultKitName).to.equal("@firebase-function-kits/firestore-export");
+      expect(source.sourcePackageName).to.equal("@firebase-function-kits/firestore-export");
+      expect(source.hasBuildScript).to.be.true;
+    });
+  });
+
+  describe("resolveDirectorySource", () => {
+    it("should throw if directory option is missing", async () => {
+      await expect(
+        resolveDirectorySource({
+          config: { projectDir: "/mock/project" } as Config,
+        }),
+      ).to.be.rejectedWith(FirebaseError, "Must specify --directory.");
+    });
+
+    it("should resolve valid directory source", async () => {
+      (fs.pathExists as sinon.SinonStub).withArgs("/mock/project/my-kit").resolves(true);
+      (fs.pathExists as sinon.SinonStub)
+        .withArgs(path.join("/mock/project/my-kit", "package.json"))
+        .resolves(true);
+      (fs.readJson as sinon.SinonStub)
+        .withArgs(path.join("/mock/project/my-kit", "package.json"))
+        .resolves({ scripts: { build: "tsc" } });
+
+      const source = await resolveDirectorySource({
+        config: {
+          projectDir: "/mock/project",
+          path: (p: string) => path.join("/mock/project", p),
+        } as Config,
+        directory: "my-kit",
+      });
+
+      expect(source.defaultKitName).to.equal("my-kit");
+      expect(source.sourcePackageName).to.be.undefined;
+      expect(source.hasBuildScript).to.be.true;
     });
   });
 
@@ -1297,7 +1649,7 @@ describe("functions/kits/install", () => {
   });
 
   describe("installKitOrInstance", () => {
-    it("should throw an error if package is not provided", async () => {
+    it("should throw an error if neither package nor directory is provided", async () => {
       const mockConfig = {
         projectDir: "/mock/project",
         src: { functions: [] },
@@ -1307,11 +1659,26 @@ describe("functions/kits/install", () => {
       await expect(
         installKitOrInstance({
           config: mockConfig,
-          package: "",
+        }),
+      ).to.be.rejectedWith(FirebaseError, "Must specify either --package or --directory.");
+    });
+
+    it("should throw an error if both package and directory are provided", async () => {
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+        path: (p: string) => path.join("/mock/project", p),
+      } as unknown as Config;
+
+      await expect(
+        installKitOrInstance({
+          config: mockConfig,
+          package: "@firebase-function-kits/firestore-bigquery-export",
+          directory: "./my-kit",
         }),
       ).to.be.rejectedWith(
         FirebaseError,
-        /Set the --package option to a valid NPM package and try again\./,
+        "Cannot specify both --package and --directory. Please choose one.",
       );
     });
 
@@ -1349,7 +1716,7 @@ describe("functions/kits/install", () => {
       );
     });
 
-    it("should successfully install a first-party kit", async () => {
+    it("should successfully install a first-party package kit", async () => {
       const writtenFiles: Record<string, unknown> = {};
       const mockConfig = {
         projectDir: "/mock/project",
@@ -1408,7 +1775,7 @@ describe("functions/kits/install", () => {
       });
     });
 
-    it("should accept custom kitId and instanceId", async () => {
+    it("should accept custom kitId and instanceId for package kit", async () => {
       const writtenFiles: Record<string, unknown> = {};
       const mockConfig = {
         projectDir: "/mock/project",
@@ -1440,7 +1807,7 @@ describe("functions/kits/install", () => {
       });
     });
 
-    it("should seed environment variables when seedEnv is provided", async () => {
+    it("should seed environment variables when seedEnv is provided for package kit", async () => {
       const writtenFiles: Record<string, unknown> = {};
       const mockConfig = {
         projectDir: "/mock/project",
@@ -1512,6 +1879,273 @@ describe("functions/kits/install", () => {
 
       expect(res.action).to.equal("addedInstance");
       expect(res.kitId).to.equal("firestore-bigquery-export");
+      expect(res.instanceId).to.equal("inst2");
+    });
+
+    it("should successfully install a directory kit with build script", async () => {
+      const writtenFiles: Record<string, unknown> = {};
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+        },
+        askWriteProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+          return Promise.resolve();
+        },
+      } as unknown as Config;
+
+      (fs.pathExists as sinon.SinonStub).withArgs("/mock/project/my-functions").resolves(true);
+      (fs.pathExists as sinon.SinonStub)
+        .withArgs(path.join("/mock/project/my-functions", "package.json"))
+        .resolves(true);
+      (fs.stat as sinon.SinonStub)
+        .withArgs("/mock/project/my-functions")
+        .resolves({ isDirectory: () => true } as fs.Stats);
+      (fs.readJson as sinon.SinonStub)
+        .withArgs(path.join("/mock/project/my-functions", "package.json"))
+        .resolves({
+          scripts: {
+            build: "tsc",
+          },
+        });
+
+      const res = await installKitOrInstance({
+        config: mockConfig,
+        directory: "./my-functions",
+        nonInteractive: true,
+      });
+
+      expect(res).to.deep.equal({
+        action: "installedKit",
+        kitId: "my-functions",
+        instanceId: "my-functions",
+        sourcePath: "my-functions",
+        configDirPath: "function-kits/my-functions/config-my-functions",
+      });
+
+      expect(wrapSpawnStub).to.have.been.calledTwice;
+      expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
+        "npm",
+        ["install"],
+        "/mock/project/my-functions",
+      );
+      expect(wrapSpawnStub.secondCall).to.have.been.calledWith(
+        "npm",
+        ["run", "build"],
+        "/mock/project/my-functions",
+      );
+
+      expect(writtenFiles["firebase.json"]).to.deep.equal({
+        functions: [
+          {
+            kit: "my-functions",
+            source: "my-functions",
+            instances: {
+              "my-functions": "function-kits/my-functions/config-my-functions",
+            },
+            predeploy: ['npm --prefix "$RESOURCE_DIR" run build'],
+          },
+        ],
+      });
+    });
+
+    it("should successfully install a directory kit without build script", async () => {
+      const writtenFiles: Record<string, unknown> = {};
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+        },
+        askWriteProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+          return Promise.resolve();
+        },
+      } as unknown as Config;
+
+      (fs.pathExists as sinon.SinonStub).withArgs("/mock/project/my-functions").resolves(true);
+      (fs.pathExists as sinon.SinonStub)
+        .withArgs(path.join("/mock/project/my-functions", "package.json"))
+        .resolves(true);
+      (fs.stat as sinon.SinonStub)
+        .withArgs("/mock/project/my-functions")
+        .resolves({ isDirectory: () => true } as fs.Stats);
+      (fs.readJson as sinon.SinonStub)
+        .withArgs(path.join("/mock/project/my-functions", "package.json"))
+        .resolves({
+          scripts: {
+            start: "node index.js",
+          },
+        });
+
+      const res = await installKitOrInstance({
+        config: mockConfig,
+        directory: "./my-functions",
+        nonInteractive: true,
+      });
+
+      expect(res).to.deep.equal({
+        action: "installedKit",
+        kitId: "my-functions",
+        instanceId: "my-functions",
+        sourcePath: "my-functions",
+        configDirPath: "function-kits/my-functions/config-my-functions",
+      });
+
+      expect(wrapSpawnStub).to.have.been.calledOnce;
+      expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
+        "npm",
+        ["install"],
+        "/mock/project/my-functions",
+      );
+
+      expect(writtenFiles["firebase.json"]).to.deep.equal({
+        functions: [
+          {
+            kit: "my-functions",
+            source: "my-functions",
+            instances: {
+              "my-functions": "function-kits/my-functions/config-my-functions",
+            },
+          },
+        ],
+      });
+    });
+
+    it("should accept custom kitId and instanceId for directory kit", async () => {
+      const writtenFiles: Record<string, unknown> = {};
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+        },
+        askWriteProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+          return Promise.resolve();
+        },
+      } as unknown as Config;
+
+      (fs.pathExists as sinon.SinonStub).withArgs("/mock/project/my-functions").resolves(true);
+      (fs.pathExists as sinon.SinonStub)
+        .withArgs(path.join("/mock/project/my-functions", "package.json"))
+        .resolves(true);
+      (fs.stat as sinon.SinonStub)
+        .withArgs("/mock/project/my-functions")
+        .resolves({ isDirectory: () => true } as fs.Stats);
+      (fs.readJson as sinon.SinonStub)
+        .withArgs(path.join("/mock/project/my-functions", "package.json"))
+        .resolves({});
+
+      const res = await installKitOrInstance({
+        config: mockConfig,
+        directory: "./my-functions",
+        kitId: "custom-local-kit",
+        instanceId: "custom-local-instance",
+        nonInteractive: true,
+      });
+
+      expect(res).to.deep.equal({
+        action: "installedKit",
+        kitId: "custom-local-kit",
+        instanceId: "custom-local-instance",
+        sourcePath: "my-functions",
+        configDirPath: "function-kits/custom-local-kit/config-custom-local-instance",
+      });
+    });
+
+    it("should seed environment variables when seedEnv is provided for directory kit", async () => {
+      const writtenFiles: Record<string, unknown> = {};
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+        },
+        askWriteProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+          return Promise.resolve();
+        },
+      } as unknown as Config;
+
+      (fs.pathExists as sinon.SinonStub).withArgs("/mock/project/my-functions").resolves(true);
+      (fs.pathExists as sinon.SinonStub)
+        .withArgs(path.join("/mock/project/my-functions", "package.json"))
+        .resolves(true);
+      (fs.stat as sinon.SinonStub)
+        .withArgs("/mock/project/my-functions")
+        .resolves({ isDirectory: () => true } as fs.Stats);
+      (fs.readJson as sinon.SinonStub)
+        .withArgs(path.join("/mock/project/my-functions", "package.json"))
+        .resolves({});
+
+      await installKitOrInstance({
+        config: mockConfig,
+        directory: "./my-functions",
+        nonInteractive: true,
+        seedEnv: {
+          projectId: "target-proj",
+          envs: {
+            PARAM_ONE: "value1",
+          },
+        },
+      });
+
+      expect(seedKitInstanceEnvStub).to.have.been.calledOnceWith({
+        configDir: path.join("/mock/project", "function-kits/my-functions/config-my-functions"),
+        functionsSource: "/mock/project/my-functions",
+        projectDir: "/mock/project",
+        projectId: "target-proj",
+        projectAlias: undefined,
+        envs: {
+          PARAM_ONE: "value1",
+        },
+      });
+    });
+
+    it("should handle existing kit when directory is already in firebase.json", async () => {
+      const existingKit: ValidatedKitSingle = {
+        kit: "my-functions",
+        source: "my-functions",
+        instances: {
+          inst1: "function-kits/my-functions/config-inst1",
+        },
+      };
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [existingKit] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: sinon.stub(),
+        askWriteProjectFile: sinon.stub().resolves(),
+      } as unknown as Config;
+
+      (fs.pathExists as sinon.SinonStub).withArgs("/mock/project/my-functions").resolves(true);
+      (fs.pathExists as sinon.SinonStub)
+        .withArgs(path.join("/mock/project/my-functions", "package.json"))
+        .resolves(true);
+      (fs.stat as sinon.SinonStub)
+        .withArgs("/mock/project/my-functions")
+        .resolves({ isDirectory: () => true } as fs.Stats);
+      (fs.readJson as sinon.SinonStub)
+        .withArgs(path.join("/mock/project/my-functions", "package.json"))
+        .resolves({});
+
+      const res = await installKitOrInstance({
+        config: mockConfig,
+        directory: "./my-functions",
+        instanceId: "inst2",
+        nonInteractive: true,
+        project: "target-proj",
+      });
+
+      expect(res.action).to.equal("addedInstance");
+      expect(res.kitId).to.equal("my-functions");
       expect(res.instanceId).to.equal("inst2");
     });
   });

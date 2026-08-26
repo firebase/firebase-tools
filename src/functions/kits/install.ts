@@ -7,7 +7,7 @@ import { Config } from "../../config";
 import { FirebaseError, getErrMsg } from "../../error";
 import { KitFunctionConfig, FunctionsConfig } from "../../firebaseConfig";
 import { getProjectId } from "../../projectUtils";
-import { logLabeledBullet, logLabeledSuccess, logLabeledWarning } from "../../utils";
+import { logLabeledBullet, logLabeledSuccess, logLabeledWarning, resolveWithin } from "../../utils";
 import {
   addKitPrefix,
   isKitConfig,
@@ -74,9 +74,24 @@ export interface AddKitInstanceResult {
   absConfigDirPath: string;
 }
 
+export interface ValidatedDirectoryKit {
+  absDirectoryPath: string;
+  relSourcePath: string;
+  hasBuildScript: boolean;
+}
+
+export interface KitSource {
+  defaultKitName: string;
+  sourcePackageName?: string;
+  hasBuildScript: boolean;
+  setup: (kitId: string, instanceId: string) => Promise<ScaffoldedKitPaths>;
+  buildAndInstall: (absSourcePath: string) => Promise<void>;
+}
+
 export interface InstallKitOrInstanceOptions {
   config: Config;
-  package: string;
+  package?: string;
+  directory?: string;
   template?: TemplateType;
   kitId?: string;
   instanceId?: string;
@@ -330,7 +345,7 @@ export async function promptKitId(
   nonInteractive?: boolean,
   customKitId?: string,
 ): Promise<string> {
-  const baseKitId = sanitizePackageNameToKitName(packageName);
+  const baseKitId = sanitizePackageNameToKitName(packageName) || "kit";
   const defaultKitId = generateUniqueId(baseKitId, existingKitIds);
 
   if (customKitId) {
@@ -576,21 +591,20 @@ export function addKitToConfig(
   config: Config,
   kitId: string,
   instanceId: string,
-  packageName: string,
+  packageName: string | undefined,
   sourcePath: string,
   configDirPath: string,
+  hasBuildScript = true,
 ): void {
   const configSrc = config.src;
   const newKitConfig: KitFunctionConfig = {
     kit: kitId,
-    sourcePackage: {
-      name: packageName,
-    },
+    ...(packageName ? { sourcePackage: { name: packageName } } : {}),
     source: sourcePath,
     instances: {
       [instanceId]: configDirPath,
     },
-    predeploy: ['npm --prefix "$RESOURCE_DIR" run build'],
+    ...(hasBuildScript ? { predeploy: ['npm --prefix "$RESOURCE_DIR" run build'] } : {}),
   };
 
   const functionsRaw = configSrc.functions as KitFunctionConfig | KitFunctionConfig[] | undefined;
@@ -603,6 +617,82 @@ export function addKitToConfig(
   }
 
   config.writeProjectFile("firebase.json", configSrc);
+}
+
+/**
+ * Validates a local directory for use as a functions kit.
+ * Checks that the directory exists, is a directory, and contains a valid package.json.
+ */
+export async function validateAndResolveDirectoryKit(
+  projectDir: string,
+  rawDir: string,
+): Promise<ValidatedDirectoryKit> {
+  const absDirectoryPath = resolveWithin(
+    projectDir,
+    rawDir,
+    `Directory '${rawDir}' is outside of project directory. Function kit directory must be inside the project directory.`,
+  );
+
+  if (!(await fs.pathExists(absDirectoryPath))) {
+    throw new FirebaseError(`Directory '${rawDir}' does not exist.`);
+  }
+
+  const stat = await fs.stat(absDirectoryPath);
+  if (!stat.isDirectory()) {
+    throw new FirebaseError(`Directory '${rawDir}' is not a directory.`);
+  }
+
+  const packageJsonPath = path.join(absDirectoryPath, "package.json");
+  if (!(await fs.pathExists(packageJsonPath))) {
+    throw new FirebaseError(
+      `Directory '${rawDir}' must contain a package.json file to be installed as a function kit.`,
+    );
+  }
+
+  let packageJson: { scripts?: Record<string, string> } = {};
+  try {
+    packageJson = (await fs.readJson(packageJsonPath)) as typeof packageJson;
+  } catch (err: unknown) {
+    throw new FirebaseError(`Failed to parse package.json in '${rawDir}': ${getErrMsg(err)}`);
+  }
+
+  const hasBuildScript = Boolean(packageJson.scripts && packageJson.scripts.build);
+
+  let relSourcePath = path.relative(projectDir, absDirectoryPath);
+  if (!relSourcePath) {
+    relSourcePath = ".";
+  }
+  relSourcePath = relSourcePath.split(path.sep).join("/");
+
+  return {
+    absDirectoryPath,
+    relSourcePath,
+    hasBuildScript,
+  };
+}
+
+/**
+ * Installs dependencies and optionally compiles TypeScript source for a local directory kit.
+ */
+export async function buildAndInstallDirectoryKit(
+  absSourcePath: string,
+  hasBuildScript: boolean,
+): Promise<void> {
+  logLabeledBullet("functions", "Running npm install...");
+  try {
+    await wrapSpawn("npm", ["install"], absSourcePath);
+  } catch (err: unknown) {
+    throw new FirebaseError(`NPM install failed: ${getErrMsg(err)}`);
+  }
+
+  if (hasBuildScript) {
+    logLabeledBullet("functions", "Building TypeScript source...");
+    try {
+      await wrapSpawn("npm", ["run", "build"], absSourcePath);
+    } catch (err: unknown) {
+      throw new FirebaseError(`TypeScript build failed: ${getErrMsg(err)}`);
+    }
+  }
 }
 
 /**
@@ -902,12 +992,38 @@ export async function addKitInstanceOrConfigureProject(
 }
 
 /**
- * Orchestrates the complete kit installation flow.
- * Installs a brand new kit (if not present) or adds a new instance to an existing kit.
+ * Looks for an existing kit in the configuration matching either the npm package name or local directory source path.
  */
-export async function installKitOrInstance(
+export function findExistingKit(
+  existingFunctions: ValidatedSingle[],
+  options: { package?: string; directory?: string; config: Config },
+): ValidatedKitSingle | undefined {
+  if (options.package) {
+    const { packageName } = parseNpmPackageSpecifier(options.package);
+    return existingFunctions.find(
+      (c): c is ValidatedKitSingle => isKitConfig(c) && c.sourcePackage?.name === packageName,
+    );
+  }
+  if (options.directory) {
+    const absDir = path.isAbsolute(options.directory)
+      ? options.directory
+      : path.resolve(options.config.projectDir, options.directory);
+    return existingFunctions.find(
+      (c): c is ValidatedKitSingle =>
+        isKitConfig(c) &&
+        !c.sourcePackage &&
+        path.resolve(options.config.projectDir, c.source) === absDir,
+    );
+  }
+  return undefined;
+}
+
+/**
+ * Resolves and validates an npm package kit source.
+ */
+export async function resolvePackageSource(
   options: InstallKitOrInstanceOptions,
-): Promise<InstallKitOrInstanceResult> {
+): Promise<KitSource> {
   const templateType = options.template || DEFAULT_TEMPLATE;
   if (!(templateType in TEMPLATES)) {
     const validTemplates = Object.keys(TEMPLATES)
@@ -926,23 +1042,84 @@ export async function installKitOrInstance(
   const { packageName } = parseNpmPackageSpecifier(rawPkgName);
   validateNpmPackageName(packageName);
 
-  const existingFunctionsInfo = extractExistingFunctionsInfo(options.config.src.functions);
-  const existingKit = existingFunctionsInfo.existingFunctions.find(
-    (c): c is ValidatedKitSingle => isKitConfig(c) && c.sourcePackage?.name === packageName,
-  );
-
-  if (existingKit) {
-    return addKitInstanceOrConfigureProject(options, existingKit, existingFunctionsInfo);
-  }
-
   const isThirdParty = await promptSecurityConfirmation(
     rawPkgName,
     packageName,
     options.nonInteractive,
   );
 
+  return {
+    defaultKitName: packageName,
+    sourcePackageName: packageName,
+    hasBuildScript: true,
+    setup: (kitId: string, instanceId: string) =>
+      scaffoldKitFiles(options.config, kitId, instanceId, packageName, templateType),
+    buildAndInstall: (absSourcePath: string) =>
+      buildAndInstallKit(absSourcePath, rawPkgName, isThirdParty),
+  };
+}
+
+/**
+ * Resolves and validates a local directory kit source.
+ */
+export async function resolveDirectorySource(
+  options: InstallKitOrInstanceOptions,
+): Promise<KitSource> {
+  if (!options.directory) {
+    throw new FirebaseError("Must specify --directory.");
+  }
+
+  const { absDirectoryPath, relSourcePath, hasBuildScript } = await validateAndResolveDirectoryKit(
+    options.config.projectDir,
+    options.directory,
+  );
+
+  return {
+    defaultKitName: path.basename(absDirectoryPath),
+    sourcePackageName: undefined,
+    hasBuildScript,
+    setup: async (kitId: string, instanceId: string) => {
+      const configDirPath = path.join(FUNCTION_KITS_DIR, kitId, `config-${instanceId}`);
+      const absConfigDirPath = options.config.path(configDirPath);
+      await fs.ensureDir(absConfigDirPath);
+      return {
+        sourcePath: relSourcePath,
+        configDirPath,
+        absSourcePath: absDirectoryPath,
+        absConfigDirPath,
+      };
+    },
+    buildAndInstall: (absSourcePath: string) =>
+      buildAndInstallDirectoryKit(absSourcePath, hasBuildScript),
+  };
+}
+
+/**
+ * Orchestrates the complete kit installation flow.
+ * Installs a brand new kit (from package or directory) or adds a new instance to an existing kit.
+ */
+export async function installKitOrInstance(
+  options: InstallKitOrInstanceOptions,
+): Promise<InstallKitOrInstanceResult> {
+  if (options.package && options.directory) {
+    throw new FirebaseError("Cannot specify both --package and --directory. Please choose one.");
+  }
+  if (!options.package && !options.directory) {
+    throw new FirebaseError("Must specify either --package or --directory.");
+  }
+
+  const existingFunctionsInfo = extractExistingFunctionsInfo(options.config.src.functions);
+  const existingKit = findExistingKit(existingFunctionsInfo.existingFunctions, options);
+  if (existingKit) {
+    return addKitInstanceOrConfigureProject(options, existingKit, existingFunctionsInfo);
+  }
+
+  const source = options.directory
+    ? await resolveDirectorySource(options)
+    : await resolvePackageSource(options);
+
   const kitId = await promptKitId(
-    packageName,
+    source.defaultKitName,
     existingFunctionsInfo.existingKitIds,
     options.nonInteractive,
     options.kitId,
@@ -956,12 +1133,9 @@ export async function installKitOrInstance(
     options.instanceId,
   );
 
-  const { sourcePath, configDirPath, absSourcePath, absConfigDirPath } = await scaffoldKitFiles(
-    options.config,
+  const { sourcePath, configDirPath, absSourcePath, absConfigDirPath } = await source.setup(
     kitId,
     instanceId,
-    packageName,
-    templateType,
   );
 
   if (options.seedEnv?.envs && Object.keys(options.seedEnv.envs).length > 0) {
@@ -975,9 +1149,17 @@ export async function installKitOrInstance(
     });
   }
 
-  await buildAndInstallKit(absSourcePath, rawPkgName, isThirdParty);
+  await source.buildAndInstall(absSourcePath);
 
-  addKitToConfig(options.config, kitId, instanceId, packageName, sourcePath, configDirPath);
+  addKitToConfig(
+    options.config,
+    kitId,
+    instanceId,
+    source.sourcePackageName,
+    sourcePath,
+    configDirPath,
+    source.hasBuildScript,
+  );
 
   logLabeledSuccess("functions", `Function kit ${clc.bold(kitId)} successfully installed.`);
   await printKitFirstDeployReport(options, instanceId, absSourcePath);
