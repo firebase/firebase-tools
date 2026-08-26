@@ -2,6 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import * as path from "path";
 import * as fs from "fs-extra";
+import * as clc from "colorette";
 
 import {
   generateUniqueId,
@@ -946,16 +947,136 @@ describe("functions/kits/install", () => {
   });
 
   describe("printKitFirstDeployReport", () => {
-    it("should print bulleted lists of functions, required APIs, and required roles", async () => {
+    it("should report functions when present with bolded base names", async () => {
+      const mockBuild: build.Build = {
+        requiredAPIs: [],
+        endpoints: {
+          syncData: { entryPoint: "syncData" } as unknown as build.Endpoint,
+          cleanUp: { entryPoint: "cleanUp" } as unknown as build.Endpoint,
+        },
+        params: [],
+        requiredRoles: [],
+      };
+
+      const delegate = {
+        discoverBuild: sinon.stub().resolves(mockBuild),
+      };
+      sinon
+        .stub(runtimes, "getRuntimeDelegate")
+        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+
+      await printKitFirstDeployReport({}, "my-inst", "/mock/source");
+
+      expect(loggerInfoStub).to.have.been.calledWith(
+        sinon.match(/functions:/),
+        sinon.match(
+          `At the first deploy, the following functions will be created in your project:\n` +
+            `- kit-my-inst-${clc.bold("cleanUp")}\n` +
+            `- kit-my-inst-${clc.bold("syncData")}`,
+        ),
+      );
+    });
+
+    it("should report task queues with bolded base names when endpoints have taskQueueTrigger", async () => {
+      const mockBuild: build.Build = {
+        requiredAPIs: [],
+        endpoints: {
+          processTask: {
+            entryPoint: "processTask",
+            taskQueueTrigger: {},
+          } as unknown as build.Endpoint,
+        },
+        params: [],
+        requiredRoles: [],
+      };
+
+      const delegate = {
+        discoverBuild: sinon.stub().resolves(mockBuild),
+      };
+      sinon
+        .stub(runtimes, "getRuntimeDelegate")
+        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+
+      await printKitFirstDeployReport({}, "my-inst", "/mock/source");
+
+      expect(loggerInfoStub).to.have.been.calledWith(
+        sinon.match(/functions:/),
+        sinon.match(
+          `At the first deploy, the following Task Queues will be created in your project:\n` +
+            `- kit-my-inst-${clc.bold("processTask")}`,
+        ),
+      );
+    });
+
+    it("should report eventarc channels when endpoints have eventTrigger with channel", async () => {
+      const mockBuild: build.Build = {
+        requiredAPIs: [],
+        endpoints: {
+          onCustomEvent: {
+            entryPoint: "onCustomEvent",
+            eventTrigger: {
+              eventType: "custom.event",
+              channel: "projects/p/locations/l/channels/my-channel",
+              retry: false,
+            },
+          } as unknown as build.Endpoint,
+        },
+        params: [],
+        requiredRoles: [],
+      };
+
+      const delegate = {
+        discoverBuild: sinon.stub().resolves(mockBuild),
+      };
+      sinon
+        .stub(runtimes, "getRuntimeDelegate")
+        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+
+      await printKitFirstDeployReport({}, "my-inst", "/mock/source");
+
+      expect(loggerInfoStub).to.have.been.calledWith(
+        sinon.match(/functions:/),
+        sinon.match(
+          "At the first deploy, the following Eventarc channels will be created in your project:\n" +
+            "- projects/p/locations/l/channels/my-channel",
+        ),
+      );
+    });
+
+    it("should report required APIs when present", async () => {
       const mockBuild: build.Build = {
         requiredAPIs: [
           { api: "firestore.googleapis.com", reason: "Firestore access" },
           { api: "bigquery.googleapis.com", reason: "BigQuery export" },
         ],
-        endpoints: {
-          syncData: { entryPoint: "syncData" } as unknown as build.Endpoint,
-          cleanUp: { entryPoint: "cleanUp" } as unknown as build.Endpoint,
-        },
+        endpoints: {},
+        params: [],
+        requiredRoles: [],
+      };
+
+      const delegate = {
+        discoverBuild: sinon.stub().resolves(mockBuild),
+      };
+      sinon
+        .stub(runtimes, "getRuntimeDelegate")
+        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+
+      await printKitFirstDeployReport({}, "my-inst", "/mock/source");
+
+      expect(loggerInfoStub).to.have.been.calledWith(
+        sinon.match(/functions:/),
+        sinon.match(
+          "At the first deploy, the following APIs will be enabled in your project:\n" +
+            "- bigquery.googleapis.com\n" +
+            "- firestore.googleapis.com",
+        ),
+      );
+    });
+
+    it("should report required roles when present with formatted role names", async () => {
+      const mockBuild: build.Build = {
+        requiredAPIs: [],
+        endpoints: {},
         params: [],
         requiredRoles: ["roles/datastore.user", "roles/bigquery.dataEditor"],
       };
@@ -977,22 +1098,6 @@ describe("functions/kits/install", () => {
       expect(loggerInfoStub).to.have.been.calledWith(
         sinon.match(/functions:/),
         sinon.match(
-          "At the first deploy, the following functions will be created in your project:\n" +
-            "- kit-my-inst-cleanUp\n" +
-            "- kit-my-inst-syncData",
-        ),
-      );
-      expect(loggerInfoStub).to.have.been.calledWith(
-        sinon.match(/functions:/),
-        sinon.match(
-          "At the first deploy, the following APIs will be enabled in your project:\n" +
-            "- bigquery.googleapis.com\n" +
-            "- firestore.googleapis.com",
-        ),
-      );
-      expect(loggerInfoStub).to.have.been.calledWith(
-        sinon.match(/functions:/),
-        sinon.match(
           "At the first deploy, the following roles will be granted to the kit service account:\n" +
             "- BigQuery Data Editor\n" +
             "- Cloud Datastore User",
@@ -1000,7 +1105,80 @@ describe("functions/kits/install", () => {
       );
     });
 
-    it("should not print anything when there are no functions, APIs, or roles", async () => {
+    it("should report all resources, APIs, roles, and CTA together when all are present", async () => {
+      const mockBuild: build.Build = {
+        requiredAPIs: [{ api: "bigquery.googleapis.com" }],
+        endpoints: {
+          taskEndpoint: {
+            entryPoint: "taskEndpoint",
+            taskQueueTrigger: {},
+          } as unknown as build.Endpoint,
+          eventEndpoint: {
+            entryPoint: "eventEndpoint",
+            eventTrigger: {
+              eventType: "custom.event",
+              channel: "projects/p/locations/l/channels/channel-1",
+              retry: false,
+            },
+          } as unknown as build.Endpoint,
+        },
+        params: [],
+        requiredRoles: ["roles/bigquery.dataEditor"],
+      };
+
+      const delegate = {
+        discoverBuild: sinon.stub().resolves(mockBuild),
+      };
+      sinon
+        .stub(runtimes, "getRuntimeDelegate")
+        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      sinon.stub(iam, "getRoleName").resolves("BigQuery Data Editor");
+
+      await printKitFirstDeployReport({}, "my-inst", "/mock/source");
+
+      expect(loggerInfoStub).to.have.been.calledWith(
+        sinon.match(/functions:/),
+        sinon.match(
+          "At the first deploy, the following functions will be created in your project:",
+        ),
+      );
+      expect(loggerInfoStub).to.have.been.calledWith(
+        sinon.match(/functions:/),
+        sinon.match(
+          `At the first deploy, the following Task Queues will be created in your project:\n` +
+            `- kit-my-inst-${clc.bold("taskEndpoint")}`,
+        ),
+      );
+      expect(loggerInfoStub).to.have.been.calledWith(
+        sinon.match(/functions:/),
+        sinon.match(
+          "At the first deploy, the following Eventarc channels will be created in your project:\n" +
+            "- projects/p/locations/l/channels/channel-1",
+        ),
+      );
+      expect(loggerInfoStub).to.have.been.calledWith(
+        sinon.match(/functions:/),
+        sinon.match(
+          "At the first deploy, the following APIs will be enabled in your project:\n" +
+            "- bigquery.googleapis.com",
+        ),
+      );
+      expect(loggerInfoStub).to.have.been.calledWith(
+        sinon.match(/functions:/),
+        sinon.match(
+          "At the first deploy, the following roles will be granted to the kit service account:\n" +
+            "- BigQuery Data Editor",
+        ),
+      );
+      expect(loggerWarnStub).to.have.been.calledWith(
+        sinon.match(/functions:/),
+        sinon.match(
+          "Please review the resources and IAM roles above. If you do not want them created or granted in your project, uninstall this kit before running firebase deploy.",
+        ),
+      );
+    });
+
+    it("should not print anything when there are no functions, APIs, roles, or resources", async () => {
       const mockBuild: build.Build = {
         requiredAPIs: [],
         endpoints: {},
@@ -1018,42 +1196,7 @@ describe("functions/kits/install", () => {
       await printKitFirstDeployReport({}, "my-inst", "/mock/source");
 
       expect(loggerInfoStub).to.not.have.been.called;
-    });
-
-    it("should only print sections for non-empty lists", async () => {
-      const mockBuild: build.Build = {
-        requiredAPIs: [],
-        endpoints: {
-          syncData: { entryPoint: "syncData" } as unknown as build.Endpoint,
-        },
-        params: [],
-        requiredRoles: [],
-      };
-
-      const delegate = {
-        discoverBuild: sinon.stub().resolves(mockBuild),
-      };
-      sinon
-        .stub(runtimes, "getRuntimeDelegate")
-        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
-
-      await printKitFirstDeployReport({}, "my-inst", "/mock/source");
-
-      expect(loggerInfoStub).to.have.been.calledWith(
-        sinon.match(/functions:/),
-        sinon.match(
-          "At the first deploy, the following functions will be created in your project:\n" +
-            "- kit-my-inst-syncData",
-        ),
-      );
-      expect(loggerInfoStub).to.not.have.been.calledWith(
-        sinon.match("At the first deploy, the following APIs will be enabled in your project"),
-      );
-      expect(loggerInfoStub).to.not.have.been.calledWith(
-        sinon.match(
-          "At the first deploy, the following roles will be granted to the kit service account",
-        ),
-      );
+      expect(loggerWarnStub).to.not.have.been.called;
     });
 
     it("should handle discovery errors gracefully without throwing", async () => {

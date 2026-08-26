@@ -752,7 +752,27 @@ export async function printKitFirstDeployReport(
     return;
   }
 
-  const functions = Object.keys(discoveredBuild.endpoints).sort();
+  const formatScopedName = (name: string): string => {
+    const fullPrefix = `${prefix}-`;
+    if (name.startsWith(fullPrefix)) {
+      return `${fullPrefix}${clc.bold(name.slice(fullPrefix.length))}`;
+    }
+    return clc.bold(name);
+  };
+
+  const functions = Object.keys(discoveredBuild.endpoints).sort().map(formatScopedName);
+  const taskQueues = Object.entries(discoveredBuild.endpoints)
+    .filter(([, endpoint]) => build.isTaskQueueTriggered(endpoint))
+    .map(([id]) => id)
+    .sort()
+    .map(formatScopedName);
+  const channelSet = new Set<string>();
+  for (const endpoint of Object.values(discoveredBuild.endpoints)) {
+    if (build.isEventTriggered(endpoint) && endpoint.eventTrigger?.channel) {
+      channelSet.add(endpoint.eventTrigger.channel);
+    }
+  }
+  const eventarcChannels = Array.from(channelSet).sort();
   const apis = (discoveredBuild.requiredAPIs || []).map((a) => a.api).sort();
   const rawRoles = discoveredBuild.requiredRoles || [];
   const roles = (await Promise.all(rawRoles.map((r) => iam.getRoleName(r)))).sort();
@@ -767,11 +787,33 @@ export async function printKitFirstDeployReport(
     "At the first deploy, the following functions will be created in your project:",
     functions,
   );
+  printSection(
+    "At the first deploy, the following Task Queues will be created in your project:",
+    taskQueues,
+  );
+  printSection(
+    "At the first deploy, the following Eventarc channels will be created in your project:",
+    eventarcChannels,
+  );
   printSection("At the first deploy, the following APIs will be enabled in your project:", apis);
   printSection(
     "At the first deploy, the following roles will be granted to the kit service account:",
     roles,
   );
+
+  const hasItems =
+    functions.length > 0 ||
+    taskQueues.length > 0 ||
+    eventarcChannels.length > 0 ||
+    apis.length > 0 ||
+    roles.length > 0;
+
+  if (hasItems) {
+    logLabeledWarning(
+      "functions",
+      "Please review the resources and IAM roles above. If you do not want them created or granted in your project, uninstall this kit before running firebase deploy.",
+    );
+  }
 }
 
 /**
