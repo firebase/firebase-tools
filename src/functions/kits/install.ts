@@ -584,27 +584,30 @@ export async function buildAndInstallKit(
   }
 }
 
+export interface AddKitToConfigOptions {
+  kitId: string;
+  instanceId: string;
+  packageName?: string;
+  sourcePath: string;
+  configDirPath: string;
+  hasBuildScript?: boolean;
+}
+
 /**
  * Appends the newly configured kit into the firebase.json configuration and saves the file.
  */
-export function addKitToConfig(
-  config: Config,
-  kitId: string,
-  instanceId: string,
-  packageName: string | undefined,
-  sourcePath: string,
-  configDirPath: string,
-  hasBuildScript = true,
-): void {
+export function addKitToConfig(config: Config, options: AddKitToConfigOptions): void {
   const configSrc = config.src;
   const newKitConfig: KitFunctionConfig = {
-    kit: kitId,
-    ...(packageName ? { sourcePackage: { name: packageName } } : {}),
-    source: sourcePath,
+    kit: options.kitId,
+    ...(options.packageName ? { sourcePackage: { name: options.packageName } } : {}),
+    source: options.sourcePath,
     instances: {
-      [instanceId]: configDirPath,
+      [options.instanceId]: options.configDirPath,
     },
-    ...(hasBuildScript ? { predeploy: ['npm --prefix "$RESOURCE_DIR" run build'] } : {}),
+    ...(options.hasBuildScript ?? true
+      ? { predeploy: ['npm --prefix "$RESOURCE_DIR" run build'] }
+      : {}),
   };
 
   const functionsRaw = configSrc.functions as KitFunctionConfig | KitFunctionConfig[] | undefined;
@@ -762,14 +765,13 @@ export async function scaffoldKit(options: ScaffoldKitOptions): Promise<Scaffold
     });
   }
 
-  addKitToConfig(
-    options.config,
-    options.kitId,
-    options.instanceId,
-    options.packageName,
-    paths.sourcePath,
-    paths.configDirPath,
-  );
+  addKitToConfig(options.config, {
+    kitId: options.kitId,
+    instanceId: options.instanceId,
+    packageName: options.packageName,
+    sourcePath: paths.sourcePath,
+    configDirPath: paths.configDirPath,
+  });
 
   return paths;
 }
@@ -1107,6 +1109,9 @@ export async function installKitOrInstance(
   if (!options.package && !options.directory) {
     throw new FirebaseError("Must specify either --package or --directory.");
   }
+  if (options.directory && options.template) {
+    throw new FirebaseError("Cannot specify --template with --directory.");
+  }
 
   const existingFunctionsInfo = extractExistingFunctionsInfo(options.config.src.functions);
   const existingKit = findExistingKit(existingFunctionsInfo.existingFunctions, options);
@@ -1151,15 +1156,14 @@ export async function installKitOrInstance(
 
   await source.buildAndInstall(absSourcePath);
 
-  addKitToConfig(
-    options.config,
+  addKitToConfig(options.config, {
     kitId,
     instanceId,
-    source.sourcePackageName,
+    packageName: source.sourcePackageName,
     sourcePath,
     configDirPath,
-    source.hasBuildScript,
-  );
+    hasBuildScript: source.hasBuildScript,
+  });
 
   logLabeledSuccess("functions", `Function kit ${clc.bold(kitId)} successfully installed.`);
   await printKitFirstDeployReport(options, instanceId, absSourcePath);

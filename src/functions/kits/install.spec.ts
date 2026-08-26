@@ -358,14 +358,13 @@ describe("functions/kits/install", () => {
         },
       } as unknown as Config;
 
-      addKitToConfig(
-        mockConfig,
-        "new-kit",
-        "new-instance",
-        "@scope/pkg",
-        "function-kits/new-kit/source",
-        "function-kits/new-kit/config-new-instance",
-      );
+      addKitToConfig(mockConfig, {
+        kitId: "new-kit",
+        instanceId: "new-instance",
+        packageName: "@scope/pkg",
+        sourcePath: "function-kits/new-kit/source",
+        configDirPath: "function-kits/new-kit/config-new-instance",
+      });
 
       expect(writtenFiles["firebase.json"]).to.deep.equal({
         functions: [
@@ -397,14 +396,13 @@ describe("functions/kits/install", () => {
         },
       } as unknown as Config;
 
-      addKitToConfig(
-        mockConfig,
-        "new-kit",
-        "new-instance",
-        "@scope/pkg",
-        "function-kits/new-kit/source",
-        "function-kits/new-kit/config-new-instance",
-      );
+      addKitToConfig(mockConfig, {
+        kitId: "new-kit",
+        instanceId: "new-instance",
+        packageName: "@scope/pkg",
+        sourcePath: "function-kits/new-kit/source",
+        configDirPath: "function-kits/new-kit/config-new-instance",
+      });
 
       const functions = (writtenFiles["firebase.json"] as { functions: unknown[] }).functions;
       expect(functions).to.have.length(2);
@@ -434,14 +432,13 @@ describe("functions/kits/install", () => {
         },
       } as unknown as Config;
 
-      addKitToConfig(
-        mockConfig,
-        "new-kit",
-        "new-instance",
-        "@scope/pkg",
-        "function-kits/new-kit/source",
-        "function-kits/new-kit/config-new-instance",
-      );
+      addKitToConfig(mockConfig, {
+        kitId: "new-kit",
+        instanceId: "new-instance",
+        packageName: "@scope/pkg",
+        sourcePath: "function-kits/new-kit/source",
+        configDirPath: "function-kits/new-kit/config-new-instance",
+      });
 
       const functions = (writtenFiles["firebase.json"] as { functions: unknown[] }).functions;
       expect(functions).to.have.length(2);
@@ -457,15 +454,14 @@ describe("functions/kits/install", () => {
         },
       } as unknown as Config;
 
-      addKitToConfig(
-        mockConfig,
-        "local-kit",
-        "inst1",
-        undefined,
-        "my-local-functions",
-        "function-kits/local-kit/config-inst1",
-        true,
-      );
+      addKitToConfig(mockConfig, {
+        kitId: "local-kit",
+        instanceId: "inst1",
+        packageName: undefined,
+        sourcePath: "my-local-functions",
+        configDirPath: "function-kits/local-kit/config-inst1",
+        hasBuildScript: true,
+      });
 
       expect(writtenFiles["firebase.json"]).to.deep.equal({
         functions: [
@@ -490,15 +486,14 @@ describe("functions/kits/install", () => {
         },
       } as unknown as Config;
 
-      addKitToConfig(
-        mockConfig,
-        "local-kit",
-        "inst1",
-        undefined,
-        "my-local-functions",
-        "function-kits/local-kit/config-inst1",
-        false,
-      );
+      addKitToConfig(mockConfig, {
+        kitId: "local-kit",
+        instanceId: "inst1",
+        packageName: undefined,
+        sourcePath: "my-local-functions",
+        configDirPath: "function-kits/local-kit/config-inst1",
+        hasBuildScript: false,
+      });
 
       expect(writtenFiles["firebase.json"]).to.deep.equal({
         functions: [
@@ -1680,6 +1675,22 @@ describe("functions/kits/install", () => {
         FirebaseError,
         "Cannot specify both --package and --directory. Please choose one.",
       );
+    });
+
+    it("should throw an error if both directory and template are provided", async () => {
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+        path: (p: string) => path.join("/mock/project", p),
+      } as unknown as Config;
+
+      await expect(
+        installKitOrInstance({
+          config: mockConfig,
+          directory: "./my-kit",
+          template: "migration",
+        }),
+      ).to.be.rejectedWith(FirebaseError, "Cannot specify --template with --directory.");
     });
 
     it("should throw an error if package has an invalid package name", async () => {

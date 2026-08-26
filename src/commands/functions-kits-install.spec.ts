@@ -93,6 +93,26 @@ describe("functions:kits:install", () => {
       );
     });
 
+    it("should throw an error if both --directory and --template are provided", async () => {
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: {
+          functions: [],
+        },
+        path: (p: string) => `/mock/project/${p}`,
+      } as unknown as Config;
+
+      await expect(
+        command.runner()({
+          directory: "./my-kit",
+          template: "migration",
+          cwd: "/mock/project",
+          config: mockConfig,
+          nonInteractive: true,
+        }),
+      ).to.be.rejectedWith(FirebaseError, /Cannot specify --template with --directory\./);
+    });
+
     it("should delegate to installKitOrInstance with the provided --package options", async () => {
       const mockConfig = {
         projectDir: "/mock/project",

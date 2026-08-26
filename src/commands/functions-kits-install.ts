@@ -2,12 +2,7 @@ import { Command } from "../command";
 import { FirebaseError } from "../error";
 import * as experiments from "../experiments";
 import { Options } from "../options";
-import {
-  DEFAULT_TEMPLATE,
-  installKitOrInstance,
-  TEMPLATES,
-  TemplateType,
-} from "../functions/kits/install";
+import { installKitOrInstance, TEMPLATES, TemplateType } from "../functions/kits/install";
 
 export interface FunctionsKitsInstallOptions extends Options {
   package?: string;
@@ -23,9 +18,8 @@ export const command = new Command("functions:kits:install")
     "path to a local functions codebase directory to install as a function kit",
   )
   .option(
-    `--template [${Object.keys(TEMPLATES).join("|")}]`,
-    "template to use for the kit index file",
-    DEFAULT_TEMPLATE,
+    `--template <template>`,
+    `template to use for the kit index file (${Object.keys(TEMPLATES).join("|")})`,
   )
   .action(async (options: FunctionsKitsInstallOptions): Promise<void> => {
     experiments.assertEnabled("kits", "install a function kit");
@@ -40,12 +34,15 @@ export const command = new Command("functions:kits:install")
     if (!options.package && !options.directory) {
       throw new FirebaseError("Must specify either --package or --directory.");
     }
+    if (options.directory && options.template) {
+      throw new FirebaseError("Cannot specify --template with --directory.");
+    }
 
     await installKitOrInstance({
       config: options.config,
       package: options.package,
       directory: options.directory,
-      template: options.template as TemplateType,
+      template: options.template as TemplateType | undefined,
       nonInteractive: options.nonInteractive,
       project: options.project,
       projectId: options.projectId,
