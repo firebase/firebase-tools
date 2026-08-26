@@ -1,3 +1,5 @@
 - [Added] Add -f, --force option to `firebase ext:migrate`.
 - [Fixed] Fix parameter type preservation and optional system parameter handling during extension updates in `firebase ext:migrate`.
+- [Fixed] Defer secret access permission granting to release phase to prevent service account 404 race conditions.
+- Fixed parsing and path resolution bugs in `ext:export` options, and reverted `--extension-instance` option back to `--instance`.
 - [Fixed] Increases default polling timeout for App Hosting operations and rollouts to 60 minutes.

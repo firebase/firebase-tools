@@ -1018,7 +1018,7 @@
                     "description": "Package details when resolved from a package repository.",
                     "properties": {
                         "name": {
-                            "description": "Package name (e.g., \"@firebase-functions-kits/firestore-bigquery-export\")",
+                            "description": "Package name (e.g., \"@firebase-function-kits/firestore-bigquery-export\")",
                             "type": "string"
                         }
                     },

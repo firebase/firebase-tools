@@ -5,6 +5,7 @@ import { needProjectId } from "../projectUtils";
 import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
 import { requirePermissions } from "../requirePermissions";
 import { createMigrationPlan, tryUpdateInstance } from "../extensions/migrate";
+import { validateNpmPackageName } from "../functions/kits";
 import { logger } from "../logger";
 import { Options } from "../options";
 import { logLabeledBullet } from "../utils";
@@ -26,6 +27,9 @@ export const command = new Command("ext:migrate")
   .before(checkMinRequiredVersion, "extMinVersion")
   .action(async (options: ExtMigrateOptions) => {
     const projectId = needProjectId(options);
+    if (options.package) {
+      validateNpmPackageName(options.package);
+    }
     const plan = await createMigrationPlan(projectId, {
       package: options.package,
       extInstance: options.extInstance,

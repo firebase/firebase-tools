@@ -346,6 +346,7 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       });
     });
   });
+<<<<<<< HEAD
 
   describe("tryUpdateInstance", () => {
     it("should return original instance when instance is already up to date", async () => {
@@ -373,4 +374,6 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       expect(updated).to.equal(mockInstance1);
     });
   });
+=======
+>>>>>>> origin/main
 });
