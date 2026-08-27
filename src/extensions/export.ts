@@ -162,31 +162,34 @@ export function functionsEnvFromInstance(instance: ExtensionInstance): Record<st
  * @return a list of all outstanding secrets, in projectId/secretId format
  */
 export async function secretsNeedingEjection(instance: ExtensionInstance): Promise<string[]> {
-  const result: string[] = [];
   const liveParams = instance.config?.params || {};
-  for (const specParam of instance.config?.source?.spec?.params ?? []) {
-    if (specParam.type !== "SECRET") {
-      continue;
-    }
+  const secretParams = (instance.config?.source?.spec?.params ?? []).filter(
+    (p) => p.type === "SECRET",
+  );
+
+  const checks = secretParams.map(async (specParam) => {
     const secretName = specParam.param;
     const resourceName = liveParams[secretName];
     if (!resourceName) {
       throw new FirebaseError(
-        `Secret ${secretName} was defined in the extension spec, but is missing in live deployed secrets.`,
+        "Secret " +
+          secretName +
+          " was defined in the extension spec, but is missing in live deployed secrets.",
         { exit: 1 },
       );
     }
     const match = resourceName.match(SECRET_VERSION_NAME_REGEX);
     if (!match?.groups) {
-      throw new FirebaseError(`Invalid secret version resource name [${resourceName}].`);
+      throw new FirebaseError("Invalid secret version resource name [" + resourceName + "].");
     }
     const projectId = match.groups.project;
     const secretId = match.groups.secret;
-    if (await secretHasExtensionsLabel(projectId, secretId)) {
-      result.push(`${projectId}/${secretId}`);
-    }
-  }
-  return result;
+    const hasLabel = await secretHasExtensionsLabel(projectId, secretId);
+    return hasLabel ? `${projectId}/${secretId}` : null;
+  });
+
+  const results = await Promise.all(checks);
+  return results.filter((r): r is string => r !== null);
 }
 
 /**
@@ -225,9 +228,8 @@ export async function ejectSecretsFromInstance(
       success.push(combinedId);
     } catch (err: unknown) {
       fail.push(combinedId);
-      if (err instanceof Error) {
-        logLabeledError("extensions", `failed to change labels on ${combinedId}: ${err.message}`);
-      }
+      const message = err instanceof Error ? err.message : String(err);
+      logLabeledError("extensions", "failed to change labels on " + combinedId + ": " + message);
     }
   }
   return { success: success, fail: fail };
