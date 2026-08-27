@@ -3,9 +3,9 @@ import * as Table from "cli-table3";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
-import { last, logLabeledBullet } from "../utils";
+import { last, logLabeledBullet, logLabeledWarning } from "../utils";
 import { logPrefix } from "./extensionsHelper";
-import { select } from "../prompt";
+import { confirm, select } from "../prompt";
 import * as extensionsApi from "./extensionsApi";
 import * as refs from "./refs";
 import * as paramHelper from "./paramHelper";
@@ -306,7 +306,7 @@ async function fetchOldSpec(
 async function getLatestExtensionVersion(baseRef: string): Promise<string | undefined> {
   try {
     const extInfo = await extensionsApi.getExtension(baseRef);
-    return extInfo.latestVersion || extInfo.latestApprovedVersion;
+    return extInfo.latestApprovedVersion || extInfo.latestVersion;
   } catch (err: unknown) {
     logger.debug(`Could not fetch extension details for ${baseRef}:`, err);
     return undefined;
@@ -319,6 +319,7 @@ async function getLatestExtensionVersion(baseRef: string): Promise<string | unde
 export async function ensureInstanceUpToDate(
   projectId: string,
   instance: ExtensionInstance,
+  options?: MigrateOptions,
 ): Promise<ExtensionInstance> {
   const instanceId = getInstanceId(instance);
   logLabeledBullet(
@@ -338,7 +339,21 @@ export async function ensureInstanceUpToDate(
     const parsed = refs.parse(rawRef);
     baseRef = refs.toExtensionRef(parsed);
     currentVersion = parsed.version || instance.config.source?.spec?.version;
-  } catch {
+  } catch (err: unknown) {
+    logger.debug(`[ensureInstanceUpToDate] Could not parse extension reference '${rawRef}':`, err);
+    logLabeledWarning(
+      logPrefix,
+      `Unable to parse extension reference ${clc.bold(rawRef)} to check for available updates.`,
+    );
+    const shouldContinue = await confirm({
+      message: `Do you want to proceed with migrating instance ${clc.bold(instanceId)} using its current configuration?`,
+      default: true,
+      nonInteractive: options?.nonInteractive,
+      force: options?.force,
+    });
+    if (!shouldContinue) {
+      throw new FirebaseError("Migration cancelled.");
+    }
     return instance;
   }
 

@@ -43,7 +43,7 @@ export const command = new Command("ext:migrate")
       `Selected instance ${clc.bold(plan.instanceId)} (${plan.kitPackage}) for migration.`,
     );
 
-    plan.instance = await ensureInstanceUpToDate(projectId, plan.instance);
+    plan.instance = await ensureInstanceUpToDate(projectId, plan.instance, options);
 
     logger.info("TODO: Draw the rest of the owl");
     return plan;

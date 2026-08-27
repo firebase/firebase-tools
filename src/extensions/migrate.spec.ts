@@ -395,5 +395,29 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
         /Failed to automatically upgrade extension instance email-1 to version 0.1.15: API rate limit exceeded. Please upgrade your extension instance manually using 'firebase ext:update email-1'/,
       );
     });
+
+    it("should prompt user when extension reference cannot be parsed and throw if user declines", async () => {
+      sandbox.stub(prompt, "confirm").resolves(false);
+      const invalidRefInstance = {
+        ...mockInstance1,
+        config: { ...mockInstance1.config, extensionRef: "invalid-ref-format" },
+      };
+
+      await expect(
+        migrateModule.ensureInstanceUpToDate("test-project", invalidRefInstance),
+      ).to.be.rejectedWith(FirebaseError, /Migration cancelled/);
+    });
+
+    it("should prompt user when extension reference cannot be parsed and continue if user accepts", async () => {
+      sandbox.stub(prompt, "confirm").resolves(true);
+      const invalidRefInstance = {
+        ...mockInstance1,
+        config: { ...mockInstance1.config, extensionRef: "invalid-ref-format" },
+      };
+
+      const result = await migrateModule.ensureInstanceUpToDate("test-project", invalidRefInstance);
+
+      expect(result).to.equal(invalidRefInstance);
+    });
   });
 });

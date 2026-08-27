@@ -187,7 +187,7 @@ export async function askForParam(args: {
         });
         valid = checkResponse(response, paramSpec);
         break;
-      case ParamType.MULTISELECT: {
+      case ParamType.MULTISELECT:
         response = (
           await checkbox<string>({
             message:
@@ -198,7 +198,6 @@ export async function askForParam(args: {
         ).join(",");
         valid = checkResponse(response, paramSpec);
         break;
-      }
       case ParamType.SECRET:
         do {
           secretLocations = await promptSecretLocations(paramSpec);
