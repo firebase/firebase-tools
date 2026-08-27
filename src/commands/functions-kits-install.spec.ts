@@ -52,7 +52,7 @@ describe("functions:kits:install", () => {
       ).to.be.rejectedWith(FirebaseError, /firebase.json not found/);
     });
 
-    it("should throw an error if --package is not provided", async () => {
+    it("should throw an error if neither --package nor --directory is provided", async () => {
       const mockConfig = {
         projectDir: "/mock/project",
         src: {
@@ -67,13 +67,53 @@ describe("functions:kits:install", () => {
           config: mockConfig,
           nonInteractive: true,
         }),
+      ).to.be.rejectedWith(FirebaseError, /Must specify either --package or --directory\./);
+    });
+
+    it("should throw an error if both --package and --directory are provided", async () => {
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: {
+          functions: [],
+        },
+        path: (p: string) => `/mock/project/${p}`,
+      } as unknown as Config;
+
+      await expect(
+        command.runner()({
+          package: "@firebase-function-kits/firestore-bigquery-export",
+          directory: "./my-kit",
+          cwd: "/mock/project",
+          config: mockConfig,
+          nonInteractive: true,
+        }),
       ).to.be.rejectedWith(
         FirebaseError,
-        /Set the --package option to a valid NPM package and try again\./,
+        /Cannot specify both --package and --directory\. Please choose one\./,
       );
     });
 
-    it("should delegate to installKitOrInstance with the provided options", async () => {
+    it("should throw an error if both --directory and --template are provided", async () => {
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: {
+          functions: [],
+        },
+        path: (p: string) => `/mock/project/${p}`,
+      } as unknown as Config;
+
+      await expect(
+        command.runner()({
+          directory: "./my-kit",
+          template: "migration",
+          cwd: "/mock/project",
+          config: mockConfig,
+          nonInteractive: true,
+        }),
+      ).to.be.rejectedWith(FirebaseError, /Cannot specify --template with --directory\./);
+    });
+
+    it("should delegate to installKitOrInstance with the provided --package options", async () => {
       const mockConfig = {
         projectDir: "/mock/project",
         src: {
@@ -100,7 +140,43 @@ describe("functions:kits:install", () => {
       expect(installKitOrInstanceStub).to.have.been.calledOnceWith({
         config: mockConfig,
         package: "@firebase-function-kits/firestore-bigquery-export@1.0.0",
+        directory: undefined,
         template: "migration",
+        nonInteractive: true,
+        project: "my-project",
+        projectId: "my-project",
+        rc: mockRc,
+      });
+    });
+
+    it("should delegate to installKitOrInstance with the provided --directory options", async () => {
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: {
+          functions: [],
+        },
+        path: (p: string) => `/mock/project/${p}`,
+      } as unknown as Config;
+
+      const mockRc = {
+        hasProjects: true,
+      };
+
+      await command.runner()({
+        directory: "./my-local-kit",
+        cwd: "/mock/project",
+        config: mockConfig,
+        nonInteractive: true,
+        project: "my-project",
+        projectId: "my-project",
+        rc: mockRc as unknown as RC,
+      });
+
+      expect(installKitOrInstanceStub).to.have.been.calledOnceWith({
+        config: mockConfig,
+        package: undefined,
+        directory: "./my-local-kit",
+        template: undefined,
         nonInteractive: true,
         project: "my-project",
         projectId: "my-project",
