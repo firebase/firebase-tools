@@ -886,6 +886,8 @@ describe("apphosting", () => {
         VAR2: { value: "override" },
         VAR3: { value: "val3" },
       });
+      expect(getAppHostingConfigurationStub).to.be.calledWith(sinon.match("/dir1"), false);
+      expect(getAppHostingConfigurationStub).to.be.calledWith(sinon.match("/dir2"), false);
     });
 
     it("extracts and merges runConfigs from multiple apphosting.yaml configs at the field level", async () => {

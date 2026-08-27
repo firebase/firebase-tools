@@ -276,7 +276,7 @@ export async function injectEnvVarsFromApphostingConfig(
     const appDir = path.join(rootDir, cfg.rootDir || "");
     let yamlConfig = AppHostingYamlConfig.empty();
     try {
-      yamlConfig = await getAppHostingConfiguration(appDir);
+      yamlConfig = await getAppHostingConfiguration(appDir, /* includeLocalConfigs= */ false);
     } catch (e: unknown) {
       logLabeledWarning(
         "apphosting",
