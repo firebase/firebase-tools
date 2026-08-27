@@ -192,7 +192,6 @@ async function fnHandler(options: Options): Promise<void> {
 /**
  * Attempts to remove the `firebase-extensions-managed` label from all Secrets in an ExtensionInstance.
  * Not doing this risks data loss, so ext:export requires this to be wholly successful if --force is not set.
- *
  * @return whether ext:export should continue, based on the result of of the ejection process and the value of options.force
  */
 export async function handleSecretEjection(
@@ -229,17 +228,11 @@ export async function handleSecretEjection(
         );
       }
     } else {
-      if (!options.force) {
-        logLabeledError(
-          "functions",
-          "Proceeding without migrating secrets risks permanant data loss. Re-run export with --force if you are sure you want to do this.",
-        );
-        return false;
-      }
-      logLabeledWarning(
+      logLabeledError(
         "functions",
-        "Proceeding without secret migration in --force mode. Manually remove the 'firebase-extensions-managed' label from the secrets, or risk permanant data loss.",
+        "Proceeding without migrating secrets risks permanant data loss. Re-run export with --force if you are sure you want to do this.",
       );
+      return false;
     }
   }
   return true;
