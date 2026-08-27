@@ -1252,6 +1252,25 @@ describe("functions/kits/install", () => {
       expect(res).to.equal("inst-2");
       expect(selectStub).to.not.have.been.called;
     });
+
+    it("should throw FirebaseError if specified instanceId is not configured for kit", async () => {
+      const kit = {
+        kit: "my-kit",
+        instances: {
+          "inst-1": "function-kits/my-kit/config-inst-1",
+        },
+      } as unknown as ValidatedKitSingle;
+
+      await expect(
+        promptExistingInstanceForProject(
+          { project: "my-project", instanceId: "invalid-inst", nonInteractive: true },
+          kit,
+        ),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        "Instance 'invalid-inst' is not configured for kit 'my-kit'. Available instances: inst-1",
+      );
+    });
   });
 
   describe("buildAndInstallKit", () => {

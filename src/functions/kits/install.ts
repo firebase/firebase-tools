@@ -31,6 +31,7 @@ import * as functionsEnv from "../env";
 import * as functionsConfig from "../../functionsConfig";
 import { partitionUserEnvs } from "../../deploy/functions/prepare";
 import { FirebaseConfig } from "../../deploy/functions/args";
+import { cloneDeep } from "../../utils";
 import { hasProjectEnv } from "../env";
 import { RC } from "../../rc";
 import { KitInstanceEnvSeed, seedKitInstanceEnv } from "./env";
@@ -462,8 +463,13 @@ export async function promptExistingInstanceForProject(
     throw new FirebaseError(`Kit '${existingKit.kit}' has no instances configured.`);
   }
 
-  if (options.instanceId && instanceIds.includes(options.instanceId)) {
-    return options.instanceId;
+  if (options.instanceId) {
+    if (instanceIds.includes(options.instanceId)) {
+      return options.instanceId;
+    }
+    throw new FirebaseError(
+      `Instance '${options.instanceId}' is not configured for kit '${existingKit.kit}'. Available instances: ${instanceIds.join(", ")}`,
+    );
   }
 
   if (instanceIds.length === 1) {
@@ -909,7 +915,7 @@ export async function printKitFirstDeployReport(
   const prefix = addKitPrefix(instanceId);
   try {
     discoveredBuild = preDiscoveredBuild
-      ? (JSON.parse(JSON.stringify(preDiscoveredBuild)) as build.Build)
+      ? cloneDeep(preDiscoveredBuild)
       : await discoverKitBuild(options, absSourcePath);
     build.applyPrefix(discoveredBuild, prefix);
   } catch (err: unknown) {
