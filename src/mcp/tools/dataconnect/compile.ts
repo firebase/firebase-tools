@@ -7,8 +7,28 @@ export const compile = tool(
   "dataconnect",
   {
     name: "build",
-    description:
-      "Use this to compile Firebase SQL Connect schema, operations, and/or connectors and check for build errors.",
+    description: `Use this to compile Firebase SQL Connect schema, operations, and/or connectors and check for build errors.
+
+Resolves service directories defined in the project's \`firebase.json\` under \`dataconnect\`, reads \`dataconnect.yaml\` to locate schema and connector directories, and validates all \`*.gql\` and \`*.graphql\` files within them.
+
+**Prerequisites:**
+* A \`firebase.json\` file at the root of the project with a configured \`dataconnect\` section.
+* A local SQL Connect service directory containing a \`dataconnect.yaml\` file and GraphQL source files.
+* Note: These files are ideally generated using the \`firebase_init\` MCP tool, or must follow the standard structure described in the \`firebase-data-connect-basics\` skill.
+
+**When to use it:**
+* Use this tool to compile schemas and operations, and check for syntax or type errors in your SQL Connect files.
+
+**How to use it:**
+* Call the tool to compile all services, or filter results by \`service_id\`, \`location_id\`, or \`error_filter\`.
+
+**JSON Example:**
+\`\`\`json
+{
+  "service_id": "my-service",
+  "error_filter": "schema"
+}
+\`\`\``,
     inputSchema: z.object({
       error_filter: z
         .enum(["all", "schema", "operations"])
@@ -49,7 +69,7 @@ export const compile = tool(
           return await compileErrors(serviceInfo.sourceDirectory, error_filter);
         }),
       )
-    ).flat();
+    ).filter(Boolean);
     if (errors.length > 0)
       return {
         content: [

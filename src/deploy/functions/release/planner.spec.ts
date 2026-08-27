@@ -608,9 +608,9 @@ describe("planner", () => {
       );
     });
 
-    it("does not delete the service account when requiredRoles is defined but empty", async () => {
+    it("deletes the service account when requiredRoles is defined but all functions in codebase are deleted", async () => {
       const wantBackend = backend.empty();
-      wantBackend.requiredRoles = [];
+      wantBackend.requiredRoles = ["roles/datastore.user"];
       const haveBackend = backend.of(func("id", "region"));
 
       const plan = await planner.createDeploymentPlan({
@@ -622,6 +622,24 @@ describe("planner", () => {
         managedSA: "firebase-fn-123@my-project.iam.gserviceaccount.com",
       });
 
+      expect(plan.serviceAccountToDelete).to.equal(
+        "firebase-fn-123@my-project.iam.gserviceaccount.com",
+      );
+    });
+
+    it("does not create a service account when both wantBackend and haveBackend are empty even if requiredRoles is defined", async () => {
+      const wantBackend = backend.empty();
+      wantBackend.requiredRoles = ["roles/datastore.user"];
+      const haveBackend = backend.empty();
+
+      const plan = await planner.createDeploymentPlan({
+        wantBackend,
+        haveBackend,
+        codebase,
+        projectId: "my-project",
+      });
+
+      expect(plan.serviceAccountToCreate).to.be.undefined;
       expect(plan.serviceAccountToDelete).to.be.undefined;
     });
   });
