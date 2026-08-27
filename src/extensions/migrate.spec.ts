@@ -376,5 +376,24 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
 
       expect(getExtVersionStub).to.have.been.called;
     });
+
+    it("should throw FirebaseError with manual upgrade instructions when upgrade fails", async () => {
+      sandbox.stub(extensionsApi, "getExtension").resolves({
+        latestVersion: "0.1.15",
+      } as any);
+      sandbox.stub(extensionsApi, "getExtensionVersion").resolves({
+        name: "firebase/firestore-send-email@0.1.15",
+        ref: "firebase/firestore-send-email@0.1.15",
+        spec: { name: "firestore-send-email", version: "0.1.15", params: [] },
+      } as any);
+      sandbox.stub(updateHelper, "update").rejects(new Error("API rate limit exceeded"));
+
+      await expect(
+        migrateModule.ensureInstanceUpToDate("test-project", mockInstance1),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        /Failed to automatically upgrade extension instance email-1 to version 0.1.15: API rate limit exceeded. Please upgrade your extension instance manually using 'firebase ext:update email-1'/,
+      );
+    });
   });
 });

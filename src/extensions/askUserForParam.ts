@@ -410,5 +410,5 @@ async function addNewSecretVersion(
  */
 export function getInquirerDefault(options: ParamOption[], def: string): string {
   const defaultOption = options.find((o) => o.value === def);
-  return defaultOption ? defaultOption.label ?? defaultOption.value : "";
+  return defaultOption ? defaultOption.label || defaultOption.value : "";
 }

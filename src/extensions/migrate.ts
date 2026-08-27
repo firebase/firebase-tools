@@ -392,16 +392,24 @@ export async function ensureInstanceUpToDate(
 
   logLabeledBullet(logPrefix, `Updating instance ${clc.bold(instanceId)}...`);
 
-  await updateHelper.update({
-    projectId,
-    instanceId,
-    extRef: targetRef,
-    canEmitEvents: Boolean(instance.config.allowedEventTypes?.length),
-    allowedEventTypes: instance.config.allowedEventTypes,
-    eventarcChannel: instance.config.eventarcChannel,
-    params,
-    systemParams,
-  });
+  try {
+    await updateHelper.update({
+      projectId,
+      instanceId,
+      extRef: targetRef,
+      canEmitEvents: Boolean(instance.config.allowedEventTypes?.length),
+      allowedEventTypes: instance.config.allowedEventTypes,
+      eventarcChannel: instance.config.eventarcChannel,
+      params,
+      systemParams,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new FirebaseError(
+      `Failed to automatically upgrade extension instance ${instanceId} to version ${latestVersion}: ${message}. Please upgrade your extension instance manually using 'firebase ext:update ${instanceId}' before attempting migration.`,
+      { original: err instanceof Error ? err : undefined },
+    );
+  }
 
   const updatedInstance = await extensionsApi.getInstance(projectId, instanceId);
   return updatedInstance ?? instance;
