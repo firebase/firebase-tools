@@ -37,7 +37,7 @@ ${serviceAliasHelp()}
   unenforced   requests are allowed, but counted in the App Check metrics
   enforced     requests without a valid App Check token are rejected
 
-For already published apps that has newly implemented App Check, you should release it to your users and initially set this mode to unenforced. Monitor App Check metrics in the Firebase console, and set this mode to enforced when appropriate.
+For already published apps that have newly implemented App Check, you should release them to your users and initially set this mode to unenforced. Monitor App Check metrics in the Firebase console, and set this mode to enforced when appropriate.
 
 For new apps, consider starting in enforced mode.
 
