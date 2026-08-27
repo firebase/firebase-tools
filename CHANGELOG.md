@@ -1,1 +1,5 @@
 - Deploying a task queue function whose name is not a legal Cloud Tasks queue ID (for example one containing an underscore) now fails validation instead of silently leaving the function without a queue, and such functions can now be deleted (#10834).
+- [Fixed] Defer secret access permission granting to release phase to prevent service account 404 race conditions.
+- Fixed parsing and path resolution bugs in `ext:export` options, and reverted `--extension-instance` option back to `--instance`.
+- [Fixed] Increases default polling timeout for App Hosting operations and rollouts to 60 minutes.
+- Fixed an issue where App Hosting deploys failed when the deploying account lacked permission to create or grant roles to the default compute service account, even when that service account already existed. (#10806)
