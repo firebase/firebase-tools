@@ -8,8 +8,9 @@ import {
 } from "../gcp/secretManager";
 import { getActiveSecrets } from "./secretsUtils";
 import { ExtensionInstance } from "./types";
-import { transferSecretToKits } from "../deploy/extensions/secrets";
+import { transferSecretToKits, secretHasExtensionsLabel } from "../deploy/extensions/secrets";
 import { FirebaseError } from "../error";
+import { logLabeledError } from "../utils";
 
 /**
  * parameterizeProject searchs spec.params for any param that include projectId or projectNumber,
@@ -156,12 +157,12 @@ export function functionsEnvFromInstance(instance: ExtensionInstance): Record<st
 }
 
 /**
- * Removes the Extensions label from all secrets in an ExtensionInstance and replaces them
- * them with the Functions label.
- * @return a list of all secrets that were modified
+ * Returns the list of all secrets in an ExtensionInstance that still have the Extensions
+ * management label, and will need to be changed for a Kits migration.
+ * @return a list of all outstanding secrets, in projectId/secretId format
  */
-export async function ejectSecretsFromInstance(instance: ExtensionInstance): Promise<string[]> {
-  const secretsChanged: string[] = [];
+export async function secretsNeedingEjection(instance: ExtensionInstance): Promise<string[]> {
+  const result: string[] = [];
   const liveParams = instance.config?.params || {};
   for (const specParam of instance.config?.source?.spec?.params ?? []) {
     if (specParam.type !== "SECRET") {
@@ -181,8 +182,53 @@ export async function ejectSecretsFromInstance(instance: ExtensionInstance): Pro
     }
     const projectId = match.groups.project;
     const secretId = match.groups.secret;
-    await transferSecretToKits(projectId, secretId);
-    secretsChanged.push(`${projectId}/${secretId}`);
+    if (await secretHasExtensionsLabel(projectId, secretId)) {
+      result.push(`${projectId}/${secretId}`);
+    }
   }
-  return secretsChanged;
+  return result;
+}
+
+/**
+ * Removes the Extensions label from all secrets in an ExtensionInstance and replaces them
+ * them with the Functions label.
+ * @return {success: string[], fail: string[]}, both in projectId/secretId format
+ */
+export async function ejectSecretsFromInstance(
+  instance: ExtensionInstance,
+): Promise<{ success: string[]; fail: string[] }> {
+  const success: string[] = [];
+  const fail: string[] = [];
+
+  const liveParams = instance.config?.params || {};
+  for (const specParam of instance.config?.source?.spec?.params ?? []) {
+    if (specParam.type !== "SECRET") {
+      continue;
+    }
+    const secretName = specParam.param;
+    const resourceName = liveParams[secretName];
+    if (!resourceName) {
+      throw new FirebaseError(
+        `Secret ${secretName} was defined in the extension spec, but is missing in live deployed secrets.`,
+        { exit: 1 },
+      );
+    }
+    const match = resourceName.match(SECRET_VERSION_NAME_REGEX);
+    if (!match?.groups) {
+      throw new FirebaseError(`Invalid secret version resource name [${resourceName}].`);
+    }
+    const projectId = match.groups.project;
+    const secretId = match.groups.secret;
+    const combinedId = `${projectId}/${secretId}`;
+    try {
+      await transferSecretToKits(projectId, secretId);
+      success.push(combinedId);
+    } catch (err: unknown) {
+      fail.push(combinedId);
+      if (err instanceof Error) {
+        logLabeledError("extensions", `failed to change labels on ${combinedId}: ${err.message}`);
+      }
+    }
+  }
+  return { success: success, fail: fail };
 }
