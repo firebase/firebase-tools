@@ -231,12 +231,20 @@ export async function localBuild(
   }
 
   const addedEnv = await toProcessEnv(projectId, env);
+
+  // For monorepos: if rootDir resolves to a subdirectory within projectRoot,
+  // set GOOGLE_BUILDABLE to that relative path.
   if (options?.rootDir) {
+    // Normalize Windows backslashes to forward slashes for cross-platform path resolution and buildpack compatibility.
     const normalizedRootDir = options.rootDir.replace(/\\/g, "/");
-    if (normalizedRootDir !== "." && normalizedRootDir !== "") {
-      addedEnv.GOOGLE_BUILDABLE = normalizedRootDir;
+    const root = path.resolve(projectRoot);
+    const appDir = path.resolve(path.join(projectRoot, normalizedRootDir));
+
+    if (appDir !== root) {
+      addedEnv.GOOGLE_BUILDABLE = path.relative(root, appDir).replace(/\\/g, "/");
     }
   }
+
   const apphostingBuildOutput = await runUniversalMaker(projectRoot, addedEnv);
 
   const discoveredEnv: Env[] | undefined =
