@@ -1511,6 +1511,9 @@ export class FunctionsEmulator implements EmulatorInstance {
       envs.FUNCTION_TARGET = target;
       envs.FUNCTION_SIGNATURE_TYPE = getSignatureType(trigger);
       envs.K_SERVICE = trigger.name;
+      if (trigger.region) {
+        envs.FUNCTION_REGION = trigger.region;
+      }
     }
     return envs;
   }

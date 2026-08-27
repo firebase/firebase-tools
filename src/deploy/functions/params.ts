@@ -482,6 +482,11 @@ function populateDefaultParams(config: FirebaseConfig): Record<string, ParamValu
       number: false,
     });
   }
+  defaultParams["FUNCTION_REGION"] = new ParamValue("", true, {
+    string: true,
+    boolean: false,
+    number: false,
+  });
   return defaultParams;
 }
 
