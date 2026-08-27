@@ -24,7 +24,13 @@ import { readTemplateSync } from "../../templates";
 import * as supported from "../../deploy/functions/runtimes/supported";
 import * as runtimes from "../../deploy/functions/runtimes";
 import * as build from "../../deploy/functions/build";
+import * as params from "../../deploy/functions/params";
+import * as experiments from "../../experiments";
 import * as iam from "../../gcp/iam";
+import * as functionsEnv from "../env";
+import * as functionsConfig from "../../functionsConfig";
+import { partitionUserEnvs } from "../../deploy/functions/prepare";
+import { FirebaseConfig } from "../../deploy/functions/args";
 import { hasProjectEnv } from "../env";
 import { RC } from "../../rc";
 import { KitInstanceEnvSeed, seedKitInstanceEnv } from "./env";
@@ -97,6 +103,7 @@ export interface InstallKitOrInstanceOptions {
   instanceId?: string;
   seedEnv?: KitInstanceEnvSeed;
   nonInteractive?: boolean;
+  force?: boolean;
   project?: string;
   projectId?: string;
   rc?: RC;
@@ -114,6 +121,7 @@ export interface PromptExistingInstanceOptions {
   project?: string;
   projectId?: string;
   nonInteractive?: boolean;
+  instanceId?: string;
 }
 
 export interface ExistingKitInstallOptions {
@@ -121,9 +129,22 @@ export interface ExistingKitInstallOptions {
   project?: string;
   projectId?: string;
   nonInteractive?: boolean;
+  force?: boolean;
   rc?: RC;
   instanceId?: string;
   seedEnv?: KitInstanceEnvSeed;
+}
+
+export interface PromptAndWriteKitParamsOptions {
+  config: Config;
+  projectId?: string;
+  projectAlias?: string;
+  absConfigDirPath: string;
+  absSourcePath: string;
+  instanceId: string;
+  nonInteractive?: boolean;
+  force?: boolean;
+  params?: params.Param[];
 }
 
 /**
@@ -430,7 +451,7 @@ export async function promptSecurityConfirmation(
 }
 
 /**
- * Guides the user on configuring an existing instance for the active project.
+ * Prompts the user to select an existing instance of the kit to configure for the project.
  */
 export async function promptExistingInstanceForProject(
   options: PromptExistingInstanceOptions,
@@ -441,24 +462,22 @@ export async function promptExistingInstanceForProject(
     throw new FirebaseError(`Kit '${existingKit.kit}' has no instances configured.`);
   }
 
-  let selectedInstanceId = "<instance-name>";
+  if (options.instanceId && instanceIds.includes(options.instanceId)) {
+    return options.instanceId;
+  }
+
   if (instanceIds.length === 1) {
-    selectedInstanceId = instanceIds[0];
-  } else if (!options.nonInteractive) {
-    selectedInstanceId = await select<string>({
+    return instanceIds[0];
+  }
+
+  if (!options.nonInteractive) {
+    return select<string>({
       message: "Which instance would you like to configure for this project?",
       choices: instanceIds.map((id) => ({ name: id, value: id })),
     });
   }
 
-  const targetProject = getProjectId(options) || options.project || "<project-name>";
-  logLabeledBullet(
-    "functions",
-    `To create a new instance in this project, deploy the instance dedicated to this project using\n` +
-      clc.bold(`firebase deploy --only functions:${selectedInstanceId} --project ${targetProject}`),
-  );
-
-  return selectedInstanceId;
+  return instanceIds[0];
 }
 
 /**
@@ -827,17 +846,71 @@ export async function discoverKitBuild(
 }
 
 /**
+ * Detects missing parameters from the kit instance's dotenv files, prompts the user to fill them in,
+ * and writes the resolved values into the instance's .env.<projectId> file.
+ */
+export async function promptAndWriteKitParams(
+  options: PromptAndWriteKitParamsOptions,
+): Promise<void> {
+  if (!options.params || options.params.length === 0) {
+    return;
+  }
+  if (!options.projectId) {
+    logger.debug("Skipping functions kit parameter prompt: no active project ID.");
+    return;
+  }
+
+  const userEnvOpt: functionsEnv.UserEnvsOpts = {
+    configDir: options.absConfigDirPath,
+    functionsSource: options.absSourcePath,
+    projectDir: options.config.projectDir,
+    projectId: options.projectId,
+    projectAlias: options.projectAlias,
+  };
+
+  const rawUserEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
+  const { userEnvs, secretRefs } = partitionUserEnvs(rawUserEnvs);
+
+  let firebaseConfig: FirebaseConfig = { projectId: options.projectId };
+  try {
+    firebaseConfig = await functionsConfig.getFirebaseConfig({ projectId: options.projectId });
+  } catch (err: unknown) {
+    logger.debug(
+      `Could not fetch Firebase config for project ${options.projectId}: ${getErrMsg(err)}`,
+    );
+  }
+
+  const typedUserEnvs = build.envWithTypes(options.params, userEnvs);
+  const { paramValues: resolvedEnvs, secretRefs: resolvedSecretRefs } = await params.resolveParams(
+    options.params,
+    firebaseConfig,
+    typedUserEnvs,
+    options.instanceId,
+    options.nonInteractive,
+    options.force,
+  );
+
+  functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
+  if (experiments.isEnabled("secretEnvParams")) {
+    functionsEnv.writeResolvedSecretRefs(resolvedSecretRefs, secretRefs, userEnvOpt);
+  }
+}
+
+/**
  * Discovers kit endpoints, required APIs, and required roles, and logs a formatted report.
  */
 export async function printKitFirstDeployReport(
   options: { config?: Config; project?: string; projectId?: string },
   instanceId: string,
   absSourcePath: string,
+  preDiscoveredBuild?: build.Build,
 ): Promise<void> {
   let discoveredBuild: build.Build;
   const prefix = addKitPrefix(instanceId);
   try {
-    discoveredBuild = await discoverKitBuild(options, absSourcePath);
+    discoveredBuild = preDiscoveredBuild
+      ? (JSON.parse(JSON.stringify(preDiscoveredBuild)) as build.Build)
+      : await discoverKitBuild(options, absSourcePath);
     build.applyPrefix(discoveredBuild, prefix);
   } catch (err: unknown) {
     logger.debug(`Could not discover kit build for reporting: ${getErrMsg(err)}`);
@@ -954,8 +1027,14 @@ export async function addKitInstanceOrConfigureProject(
     action = "addInstance";
   }
 
+  let resultAction: "addedInstance" | "configuredEnv";
+  let instanceId: string;
+  let configDirPath: string;
+  let absConfigDirPath: string;
+
   if (action === "addInstance") {
-    const instanceId = await promptKitInstanceId(
+    resultAction = "addedInstance";
+    instanceId = await promptKitInstanceId(
       existingKit.kit,
       existingFunctionsInfo.existingInstanceIds,
       existingFunctionsInfo.existingCodebases,
@@ -970,26 +1049,65 @@ export async function addKitInstanceOrConfigureProject(
       seedEnv: options.seedEnv,
     });
 
+    configDirPath = result.configDirPath;
+    absConfigDirPath = result.absConfigDirPath;
+  } else if (action === "addEnv") {
+    resultAction = "configuredEnv";
+    instanceId = await promptExistingInstanceForProject(options, existingKit);
+    configDirPath = existingKit.instances[instanceId];
+    if (!configDirPath) {
+      throw new FirebaseError(
+        `Configuration directory for instance '${instanceId}' not found in kit '${existingKit.kit}'.`,
+      );
+    }
+    absConfigDirPath = options.config.path(configDirPath);
+  } else {
+    throw new FirebaseError(`Unexpected action '${String(action)}' for kit installation.`);
+  }
+
+  const absSourcePath = options.config.path(existingKit.source);
+  let discoveredBuild: build.Build | undefined;
+  try {
+    discoveredBuild = await discoverKitBuild(options, absSourcePath);
+  } catch (err: unknown) {
+    logger.debug(`Could not discover kit build for params prompting: ${getErrMsg(err)}`);
+  }
+
+  if (discoveredBuild?.params && discoveredBuild.params.length > 0) {
+    await promptAndWriteKitParams({
+      config: options.config,
+      projectId,
+      projectAlias,
+      absConfigDirPath,
+      absSourcePath,
+      instanceId,
+      nonInteractive: options.nonInteractive,
+      force: options.force,
+      params: discoveredBuild.params,
+    });
+  }
+
+  if (action === "addInstance") {
     logLabeledSuccess(
       "functions",
       `Function kit instance ${clc.bold(instanceId)} successfully added to kit ${clc.bold(existingKit.kit)}.`,
     );
-    await printKitFirstDeployReport(options, instanceId, options.config.path(existingKit.source));
-
-    return {
-      action: "addedInstance",
-      kitId: existingKit.kit,
-      instanceId,
-      sourcePath: existingKit.source,
-      configDirPath: result.configDirPath,
-    };
+  } else if (action === "addEnv") {
+    const projectDisplay = projectId || options.project || "project";
+    logLabeledSuccess(
+      "functions",
+      `Function kit instance ${clc.bold(instanceId)} successfully configured for ${clc.bold(projectDisplay)}.`,
+    );
   }
 
-  const selectedInstanceId = await promptExistingInstanceForProject(options, existingKit);
+  await printKitFirstDeployReport(options, instanceId, absSourcePath, discoveredBuild);
+
   return {
-    action: "configuredEnv",
+    action: resultAction,
     kitId: existingKit.kit,
-    instanceId: selectedInstanceId,
+    instanceId,
+    sourcePath: existingKit.source,
+    configDirPath,
   };
 }
 
@@ -1156,6 +1274,33 @@ export async function installKitOrInstance(
 
   await source.buildAndInstall(absSourcePath);
 
+  const projectId = getProjectId(options) || options.projectId;
+  const projectAlias =
+    options.rc?.hasProjects && options.project && options.rc.hasProjectAlias(options.project)
+      ? options.project
+      : undefined;
+
+  let discoveredBuild: build.Build | undefined;
+  try {
+    discoveredBuild = await discoverKitBuild(options, absSourcePath);
+  } catch (err: unknown) {
+    logger.debug(`Could not discover kit build for params prompting: ${getErrMsg(err)}`);
+  }
+
+  if (discoveredBuild?.params && discoveredBuild.params.length > 0) {
+    await promptAndWriteKitParams({
+      config: options.config,
+      projectId,
+      projectAlias,
+      absConfigDirPath,
+      absSourcePath,
+      instanceId,
+      nonInteractive: options.nonInteractive,
+      force: options.force,
+      params: discoveredBuild.params,
+    });
+  }
+
   addKitToConfig(options.config, {
     kitId,
     instanceId,
@@ -1166,7 +1311,7 @@ export async function installKitOrInstance(
   });
 
   logLabeledSuccess("functions", `Function kit ${clc.bold(kitId)} successfully installed.`);
-  await printKitFirstDeployReport(options, instanceId, absSourcePath);
+  await printKitFirstDeployReport(options, instanceId, absSourcePath, discoveredBuild);
 
   return {
     action: "installedKit",

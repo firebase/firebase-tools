@@ -44,6 +44,7 @@ export const command = new Command("functions:kits:install")
       directory: options.directory,
       template: options.template as TemplateType | undefined,
       nonInteractive: options.nonInteractive,
+      force: options.force,
       project: options.project,
       projectId: options.projectId,
       rc: options.rc,
