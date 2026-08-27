@@ -4,6 +4,7 @@ import { checkBillingEnabled, enableBilling } from "../gcp/cloudbilling";
 import {
   createOrUpdateLogBucket,
   createOrUpdateLogSink,
+  grantLogViewAccess,
   LogBucket,
   LogSink,
 } from "../gcp/cloudlogging";
@@ -13,6 +14,8 @@ import { logLabeledBullet, logLabeledSuccess } from "../utils";
 export const CRASHLYTICS_TELEMETRY_BUCKET_ID = "firebase-telemetry";
 export const CRASHLYTICS_TELEMETRY_SINK_ID = "firebase-telemetry-routing";
 export const CRASHLYTICS_TELEMETRY_RESOURCE_TYPE = "firebasetelemetry.googleapis.com/App";
+export const CRASHLYTICS_TELEMETRY_VIEW_ID = "_AllLogs";
+export const CRASHLYTICS_TELEMETRY_VIEW_ACCESSOR_ROLE = "roles/logging.viewAccessor";
 
 export interface OnboardWebResult {
   bucket: LogBucket;
@@ -22,7 +25,8 @@ export interface OnboardWebResult {
 
 /**
  * Onboards a Firebase Web App to Crashlytics by enabling required APIs,
- * setting up Cloud Logging bucket and sink routing, and creating a Telemetry Config.
+ * setting up Cloud Logging bucket and sink routing, granting view accessor permissions,
+ * and creating a Telemetry Config.
  */
 export async function onboardCrashlyticsWeb(
   projectId: string,
@@ -57,6 +61,20 @@ export async function onboardCrashlyticsWeb(
     true,
   );
   logLabeledSuccess("crashlytics", "Cloud Logging bucket configured.");
+
+  logLabeledBullet(
+    "crashlytics",
+    `Granting view accessor permission on bucket '${CRASHLYTICS_TELEMETRY_BUCKET_ID}' to project viewers and editors...`,
+  );
+  await grantLogViewAccess(
+    projectId,
+    CRASHLYTICS_TELEMETRY_BUCKET_ID,
+    CRASHLYTICS_TELEMETRY_VIEW_ID,
+    [`projectViewer:${projectId}`, `projectEditor:${projectId}`],
+    CRASHLYTICS_TELEMETRY_VIEW_ACCESSOR_ROLE,
+    "global",
+  );
+  logLabeledSuccess("crashlytics", "Cloud Logging view permissions configured.");
 
   const destination = `logging.googleapis.com/projects/${projectId}/locations/global/buckets/${CRASHLYTICS_TELEMETRY_BUCKET_ID}`;
   const filter = `resource.type="${CRASHLYTICS_TELEMETRY_RESOURCE_TYPE}"`;

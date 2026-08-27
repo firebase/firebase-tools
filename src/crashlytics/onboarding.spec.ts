@@ -12,6 +12,7 @@ import { FirebaseError } from "../error";
 describe("onboarding", () => {
   let ensureStub: sinon.SinonStub;
   let bucketStub: sinon.SinonStub;
+  let grantViewAccessStub: sinon.SinonStub;
   let sinkStub: sinon.SinonStub;
   let configStub: sinon.SinonStub;
   let checkBillingStub: sinon.SinonStub;
@@ -30,6 +31,11 @@ describe("onboarding", () => {
     bucketStub = sinon.stub(cloudlogging, "createOrUpdateLogBucket").resolves({
       name: "projects/test-project/locations/global/buckets/firebase-telemetry",
       analyticsEnabled: true,
+    });
+    grantViewAccessStub = sinon.stub(cloudlogging, "grantLogViewAccess").resolves({
+      bindings: [{ role: "roles/logging.viewAccessor", members: ["projectViewer:test-project"] }],
+      etag: "etag",
+      version: 3,
     });
     sinkStub = sinon.stub(cloudlogging, "createOrUpdateLogSink").resolves({
       name: "firebase-telemetry-routing",
@@ -59,6 +65,14 @@ describe("onboarding", () => {
       "firebase-telemetry",
       "global",
       true,
+    );
+    expect(grantViewAccessStub).to.have.been.calledWith(
+      "test-project",
+      "firebase-telemetry",
+      "_AllLogs",
+      ["projectViewer:test-project", "projectEditor:test-project"],
+      "roles/logging.viewAccessor",
+      "global",
     );
     expect(sinkStub).to.have.been.calledOnce;
     expect(configStub).to.have.been.calledWith(
