@@ -233,7 +233,7 @@ describe("prepare", () => {
         const config: ValidatedConfig = [
           {
             kit: "my-kit",
-            sourcePackage: { name: "@firebase-functions-kits/my-kit" },
+            sourcePackage: { name: "@firebase-function-kits/my-kit" },
             source: "source",
             instances: {
               "inst-alpha": "config/inst-alpha",
@@ -266,7 +266,7 @@ describe("prepare", () => {
         const config: ValidatedConfig = [
           {
             kit: "my-kit",
-            sourcePackage: { name: "@firebase-functions-kits/my-kit" },
+            sourcePackage: { name: "@firebase-function-kits/my-kit" },
             source: "source",
             instances: {
               "inst-alpha": "config/inst-alpha",

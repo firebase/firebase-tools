@@ -8,6 +8,7 @@ import { isFirebaseManaged } from "../../../deploymentTool";
 import { FirebaseError } from "../../../error";
 import * as utils from "../../../utils";
 import * as backend from "../backend";
+import * as ensure from "../ensure";
 import * as v2events from "../../../functions/events/v2";
 
 export interface EndpointUpdate {
@@ -26,6 +27,7 @@ export interface Changeset {
 export interface BaseCodebasePlan {
   regionalChangesets: Record<string, Changeset>;
   plannedBackend: backend.Backend;
+  secretAccessPlan?: Record<string, string[]>;
 }
 
 export interface ActiveSecurityPlan {
@@ -226,6 +228,12 @@ export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan
         "old default of 1. You can change this with the 'concurrency' option.",
     );
   }
+  const secretAccessPlan = await ensure.secretsAccessDelta({
+    projectId: args.projectId,
+    wantBackend,
+    haveBackend,
+  });
+
   if (requiredRoles && hasWantEndpoints) {
     if (!managedSA) {
       throw new FirebaseError("managedServiceAccount is required when requiredRoles is defined.", {
@@ -235,6 +243,7 @@ export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan
     return {
       regionalChangesets,
       plannedBackend: wantBackend,
+      secretAccessPlan,
       rolesToAdd,
       rolesToRemove,
       serviceAccountToCreate,
@@ -244,6 +253,7 @@ export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan
     return {
       regionalChangesets,
       plannedBackend: wantBackend,
+      secretAccessPlan,
       serviceAccountToDelete,
     };
   }
