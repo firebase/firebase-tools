@@ -6,6 +6,7 @@ import { RC } from "../../rc";
 import { Context } from "./args";
 import release from "./release";
 import { expect } from "chai";
+import { FirebaseError } from "../../error";
 
 const BASE_OPTS = {
   cwd: "/",
@@ -19,8 +20,6 @@ const BASE_OPTS = {
 };
 
 describe("apphosting", () => {
-  let orchestrateRolloutStub: sinon.SinonStub;
-
   afterEach(() => {
     sinon.verifyAndRestore();
   });
@@ -47,22 +46,40 @@ describe("apphosting", () => {
             rootDir: "/",
             ignore: [],
           },
+          bar: {
+            backendId: "bar",
+            rootDir: "/",
+            ignore: [],
+          },
         },
-        backendLocations: { foo: "us-central1" },
+        backendLocations: { foo: "us-central1", bar: "us-central1" },
         backendStorageUris: {
           foo: "gs://firebaseapphosting-sources-us-central1/foo-1234.zip",
+          bar: "gs://firebaseapphosting-sources-us-central1/bar-1234.zip",
         },
         backendLocalBuilds: {},
       };
 
-      orchestrateRolloutStub = sinon
+      const orchestrateRolloutStub = sinon
         .stub(rollout, "orchestrateRollout")
         .throws("Unexpected orchestrateRollout call");
 
-      orchestrateRolloutStub.onFirstCall().rejects();
+      orchestrateRolloutStub.onFirstCall().rejects(new Error("Build failed"));
       orchestrateRolloutStub.onSecondCall().resolves();
+      sinon.stub(backend, "getBackend").resolves({
+        name: "projects/my-project/locations/us-central1/backends/bar",
+        servingLocality: "GLOBAL_ACCESS",
+        labels: {},
+        createTime: "2023-01-01T00:00:00Z",
+        updateTime: "2023-01-01T00:00:00Z",
+        uri: "bar.apphosting.com",
+      });
 
-      await expect(release(context, opts)).to.eventually.not.rejected;
+      await expect(release(context, opts)).to.be.rejectedWith(
+        FirebaseError,
+        "One or more rollouts failed. Please review the errors above and try again.",
+      );
+      expect(orchestrateRolloutStub).to.have.been.calledTwice;
     });
 
     it("correctly passes buildInput for local builds", async () => {
