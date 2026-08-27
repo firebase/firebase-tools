@@ -6,6 +6,7 @@ import { logger } from "../logger";
 import * as prompt from "../prompt";
 import * as extensionsApi from "./extensionsApi";
 import * as migrateModule from "./migrate";
+import * as paramHelper from "./paramHelper";
 import * as updateHelper from "./updateHelper";
 import { ExtensionInstance } from "./types";
 
@@ -375,6 +376,38 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       await migrateModule.ensureInstanceUpToDate("test-project", mockInstance1);
 
       expect(getExtVersionStub).to.have.been.called;
+    });
+
+    it("should merge systemParams into currentParams when prompting for new parameters", async () => {
+      sandbox.stub(extensionsApi, "getExtension").resolves({
+        latestVersion: "0.1.15",
+      } as any);
+      sandbox.stub(extensionsApi, "getExtensionVersion").resolves({
+        name: "firebase/firestore-send-email@0.1.15",
+        ref: "firebase/firestore-send-email@0.1.15",
+        spec: { name: "firestore-send-email", version: "0.1.15", params: [] },
+      } as any);
+      const promptStub = sandbox.stub(paramHelper, "promptForNewParams").resolves({} as any);
+      sandbox.stub(updateHelper, "update").resolves({} as any);
+      sandbox.stub(extensionsApi, "getInstance").resolves(mockInstance1);
+
+      const instanceWithSystemParams: ExtensionInstance = {
+        ...mockInstance1,
+        config: {
+          ...mockInstance1.config,
+          params: { FOO: "bar" },
+          systemParams: { "firebaseextensions.v1beta.function/location": "us-central1" },
+        },
+      };
+
+      await migrateModule.ensureInstanceUpToDate("test-project", instanceWithSystemParams);
+
+      expect(promptStub).to.have.been.calledWithMatch({
+        currentParams: {
+          FOO: "bar",
+          "firebaseextensions.v1beta.function/location": "us-central1",
+        },
+      });
     });
 
     it("should throw FirebaseError with manual upgrade instructions when upgrade fails", async () => {

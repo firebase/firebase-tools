@@ -372,7 +372,10 @@ export async function ensureInstanceUpToDate(
   );
 
   const targetRef = `${baseRef}@${latestVersion}`;
-  let finalParams = instance.config.params;
+  let finalParams: Record<string, string> = {
+    ...instance.config.params,
+    ...(instance.config.systemParams ?? {}),
+  };
 
   const newExtensionVersion = await extensionsApi.getExtensionVersion(targetRef);
   const oldSpec = await fetchOldSpec(instance, rawRef);
