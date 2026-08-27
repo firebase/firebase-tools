@@ -13,6 +13,7 @@ import * as fs from "fs";
 import * as getProjectNumber from "../../getProjectNumber";
 import * as experiments from "../../experiments";
 import { FirebaseError } from "../../error";
+import { CLOUD_RUN_SIZE_LIMIT_BYTES } from "../../apphosting/constants";
 
 const BASE_OPTS = {
   cwd: "/",
@@ -201,6 +202,7 @@ describe("apphosting", () => {
         sinon.match.any,
         "firebaseapphosting-sources-000000000000-us-central1",
         gcs.ContentType.TAR,
+        CLOUD_RUN_SIZE_LIMIT_BYTES,
       );
     });
 
@@ -244,6 +246,7 @@ describe("apphosting", () => {
         sinon.match.any,
         "firebaseapphosting-sources-000000000000-us-central1",
         gcs.ContentType.TAR,
+        CLOUD_RUN_SIZE_LIMIT_BYTES,
       );
 
       expect(context.backendStorageUris["foo"]).to.equal(`gs://${bucketName}/foo-1234.zip`);
