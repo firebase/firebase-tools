@@ -125,6 +125,31 @@ export async function upsertQueue(queue: Queue): Promise<boolean> {
   }
 }
 
+/**
+ * Best-effort update issued when a task queue triggered function is deleted.
+ * Skips the call when the queue no longer exists: updateQueue issues a PATCH,
+ * which creates the queue if it is absent, so patching an already-deleted queue
+ * would recreate it -- or fail with "existed too recently" when it was just
+ * deleted out of band (issue #9305).
+ *
+ * Note: queues.patch cannot change `state` (it is output only in the Cloud Tasks
+ * API; state changes go through pause/resume or queue.yaml), so this preserves
+ * the long-standing PATCH behavior while no longer resurrecting a queue the user
+ * already removed.
+ */
+export async function disableQueue(name: string): Promise<void> {
+  try {
+    // Here and throughout we use module.exports to ensure late binding & enable stubs in unit tests.
+    await (module.exports.getQueue as typeof getQueue)(name);
+  } catch (err: any) {
+    if (err?.context?.response?.statusCode === 404) {
+      return;
+    }
+    throw err;
+  }
+  await (module.exports.updateQueue as typeof updateQueue)({ name, state: "DISABLED" });
+}
+
 /** Purges all messages in a queue with a given name. */
 export async function purgeQueue(name: string): Promise<void> {
   await client.post(`${name}:purge`);
