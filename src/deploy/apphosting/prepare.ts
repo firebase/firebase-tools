@@ -239,6 +239,7 @@ export default async function (context: Context, options: Options): Promise<void
         {
           nonInteractive: options.nonInteractive,
           allowLocalBuildSecrets: !!options.allowLocalBuildSecrets,
+          rootDir: cfg.rootDir,
         },
       );
       context.backendLocalBuilds[cfg.backendId] = {
