@@ -439,7 +439,7 @@ export async function prepare(
     }
 
     if (isMonorepoSource(sourceDir)) {
-      sourceDir = await runIsolate(sourceDirName);
+      sourceDir = await runIsolate(sourceDir);
     }
 
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2" || e.platform === "run")) {

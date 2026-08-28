@@ -196,9 +196,10 @@ export function isMonorepoSource(absoluteSourceDir: string): boolean {
 }
 
 /**
- * Isolate the source directory and return the path to the isolated directory.
+ * Isolate the given absolute source directory and return the absolute path to
+ * the isolated directory.
  */
-export async function runIsolate(sourceDirName: string): Promise<string> {
+export async function runIsolate(sourceDir: string): Promise<string> {
   try {
     utils.logLabeledBullet("isolate", "Isolating the source");
     /**
@@ -211,30 +212,22 @@ export async function runIsolate(sourceDirName: string): Promise<string> {
     const { isolate } = (await dynamicImport("isolate-package")) as IsolateExports;
 
     /**
-     * Only set the targetPackagePath if the sourceDirName is not the current
-     * working directory. By default the isolate function will use the current
-     * working directory and assume the monorepo root is elsewhere, but the
-     * sourceDirName is given a path if we deploy from the monorepo root.
+     * Passing the absolute source directory keeps isolation independent of the
+     * directory the CLI was invoked from; isolate-package auto-detects the
+     * workspace root by walking upward from it.
      */
-    const isolateDir = await isolate(
-      sourceDirName !== "."
-        ? {
-            targetPackagePath: path.join("./", sourceDirName),
-          }
-        : undefined,
-    );
+    const isolateDir = await isolate({ targetPackagePath: sourceDir });
 
     utils.logLabeledBullet("isolate", `Finished isolation at ${clc.bold(isolateDir)}`);
     return isolateDir;
   } catch (err: any) {
-    utils.logLabeledBullet("isolate", `Isolation failed: ${err.message}`, "error");
-    throw err;
+    throw new FirebaseError(`Failed to isolate the functions source: ${err.message}`, {
+      original: err,
+      exit: 1,
+    });
   }
 }
 
-/**
- *
- */
 export function convertToSortedKeyValueArray(config: any): SortedConfig {
   if (typeof config !== "object" || config === null) return config;
 

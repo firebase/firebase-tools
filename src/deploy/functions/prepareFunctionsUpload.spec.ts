@@ -7,6 +7,7 @@ import * as path from "path";
 import * as fs from "fs";
 import * as projectConfig from "../../functions/projectConfig";
 import * as dynamicImportModule from "../../dynamicImport";
+import { FirebaseError } from "../../error";
 import * as prepareFunctionsUpload from "./prepareFunctionsUpload";
 
 describe("prepareFunctionsUpload", () => {
@@ -187,26 +188,23 @@ describe("prepareFunctionsUpload", () => {
       sandbox.restore();
     });
 
-    it("should target the source directory when deploying from a parent directory", async () => {
-      const result = await prepareFunctionsUpload.runIsolate("packages/functions");
+    it("should pass the absolute source directory so isolation is independent of cwd", async () => {
+      const sourceDir = path.join(path.sep, "workspace", "packages", "functions");
+      const result = await prepareFunctionsUpload.runIsolate(sourceDir);
 
-      expect(isolateStub).to.be.calledOnceWith({
-        targetPackagePath: path.join("./", "packages/functions"),
-      });
+      expect(isolateStub).to.be.calledOnceWith({ targetPackagePath: sourceDir });
       expect(result).to.equal("/tmp/isolate-output");
     });
 
-    it("should isolate the current working directory when it is the source directory", async () => {
-      const result = await prepareFunctionsUpload.runIsolate(".");
-
-      expect(isolateStub).to.be.calledOnceWith(undefined);
-      expect(result).to.equal("/tmp/isolate-output");
-    });
-
-    it("should rethrow when isolation fails", async () => {
+    it("should wrap isolation failures in a FirebaseError", async () => {
       isolateStub.rejects(new Error("lockfile not found"));
 
-      await expect(prepareFunctionsUpload.runIsolate(".")).to.be.rejectedWith("lockfile not found");
+      await expect(
+        prepareFunctionsUpload.runIsolate(path.join(path.sep, "workspace", "functions")),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        /Failed to isolate the functions source: lockfile not found/,
+      );
     });
   });
 });
