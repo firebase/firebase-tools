@@ -230,7 +230,7 @@ async function getSecretInfo(
 }
 
 /**
- * Returns true if a Secret resource has the  "firebase-extensions-managed" label
+ * Returns true if a Secret resource has the "firebase-extensions-managed" label
  */
 export async function secretHasExtensionsLabel(
   projectId: string,
