@@ -13,7 +13,16 @@ import { Options } from "../../options";
 import * as functionsConfig from "../../functionsConfig";
 
 /**
- *
+ * Deletes Functions based on the provided EndpointFilter, which
+ * allows deleting all functions that match a specific codebase, ID
+ * prefix, or both.
+ * 
+ * Asks for confirmation before delete. If CLI options are passed,
+ * respects force and nonInteractive.
+ * 
+ * @param projectId the project to delete Functions from
+ * @param epFilters the EndpointFilters to select functions for deletion (OR, not AND)
+ * @param options? pass through CLI options.
  */
 export async function deleteFunctionsByEndpointFilters(
   projectId: string,
