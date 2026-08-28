@@ -5,6 +5,9 @@ import * as path from "path";
 import * as tmp from "tmp";
 import * as crypto from "crypto";
 
+import { detectMonorepo } from "detect-monorepo";
+import type { IsolateExports } from "isolate-package";
+import { dynamicImport } from "../../dynamicImport";
 import { FirebaseError } from "../../error";
 import { logger } from "../../logger";
 import { getSourceHash } from "./cache/hash";
@@ -183,6 +186,55 @@ export async function prepareFunctionsUpload(
   return packageSource(projectDir, sourceDir, config, additionalSources, runtimeConfig, options);
 }
 
+/**
+ * Check whether the given absolute source directory sits inside a monorepo
+ * workspace (pnpm, npm/yarn/bun workspaces, or Rush). Used as a cheap gate
+ * before invoking isolate-package.
+ */
+export function isMonorepoSource(absoluteSourceDir: string): boolean {
+  return detectMonorepo(absoluteSourceDir) !== null;
+}
+
+/**
+ * Isolate the source directory and return the path to the isolated directory.
+ */
+export async function runIsolate(sourceDirName: string): Promise<string> {
+  try {
+    utils.logLabeledBullet("isolate", "Isolating the source");
+    /**
+     * Use a dynamic import because isolate-package depends on ESM. A normal
+     * "await import()" gets transpiled to require() so we use the dynamicImport
+     * function which was created to get around that exact problem. Unfortunately,
+     * when using it we lose all type information so IsolateExports was created to
+     * be able to cast the result.
+     */
+    const { isolate } = (await dynamicImport("isolate-package")) as IsolateExports;
+
+    /**
+     * Only set the targetPackagePath if the sourceDirName is not the current
+     * working directory. By default the isolate function will use the current
+     * working directory and assume the monorepo root is elsewhere, but the
+     * sourceDirName is given a path if we deploy from the monorepo root.
+     */
+    const isolateDir = await isolate(
+      sourceDirName !== "."
+        ? {
+            targetPackagePath: path.join("./", sourceDirName),
+          }
+        : undefined,
+    );
+
+    utils.logLabeledBullet("isolate", `Finished isolation at ${clc.bold(isolateDir)}`);
+    return isolateDir;
+  } catch (err: any) {
+    utils.logLabeledBullet("isolate", `Isolation failed: ${err.message}`, "error");
+    throw err;
+  }
+}
+
+/**
+ *
+ */
 export function convertToSortedKeyValueArray(config: any): SortedConfig {
   if (typeof config !== "object" || config === null) return config;
 

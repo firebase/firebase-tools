@@ -6,6 +6,7 @@ import * as os from "os";
 import * as path from "path";
 import * as fs from "fs";
 import * as projectConfig from "../../functions/projectConfig";
+import * as dynamicImportModule from "../../dynamicImport";
 import * as prepareFunctionsUpload from "./prepareFunctionsUpload";
 
 describe("prepareFunctionsUpload", () => {
@@ -121,6 +122,91 @@ describe("prepareFunctionsUpload", () => {
       expect((archive.file as sinon.SinonStub).secondCall.args[1].mode).to.equal(0o755);
 
       getSourceHashStub.restore();
+    });
+  });
+
+  describe("isMonorepoSource", () => {
+    let tmpDir: string;
+
+    beforeEach(() => {
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "firebase-tools-monorepo-test-"));
+      // Detection stops walking up at a VCS root, so this bounds the fixture.
+      fs.mkdirSync(path.join(tmpDir, ".git"));
+    });
+
+    afterEach(() => {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    function createSourceDir(...segments: string[]): string {
+      const dir = path.join(tmpDir, ...segments);
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, "package.json"), '{"name":"functions"}');
+      return dir;
+    }
+
+    it("should detect a pnpm workspace root above the source directory", () => {
+      fs.writeFileSync(path.join(tmpDir, "pnpm-workspace.yaml"), "packages:\n  - packages/*\n");
+      const sourceDir = createSourceDir("packages", "functions");
+      expect(prepareFunctionsUpload.isMonorepoSource(sourceDir)).to.be.true;
+    });
+
+    it("should detect an npm/yarn/bun workspaces root above the source directory", () => {
+      fs.writeFileSync(
+        path.join(tmpDir, "package.json"),
+        '{"name":"root","workspaces":["packages/*"]}',
+      );
+      const sourceDir = createSourceDir("packages", "functions");
+      expect(prepareFunctionsUpload.isMonorepoSource(sourceDir)).to.be.true;
+    });
+
+    it("should detect a Rush workspace root above the source directory", () => {
+      fs.writeFileSync(path.join(tmpDir, "rush.json"), "{}");
+      const sourceDir = createSourceDir("services", "functions");
+      expect(prepareFunctionsUpload.isMonorepoSource(sourceDir)).to.be.true;
+    });
+
+    it("should return false for a standalone project so behavior is unchanged", () => {
+      fs.writeFileSync(path.join(tmpDir, "package.json"), '{"name":"standalone"}');
+      const sourceDir = createSourceDir("functions");
+      expect(prepareFunctionsUpload.isMonorepoSource(sourceDir)).to.be.false;
+    });
+  });
+
+  describe("runIsolate", () => {
+    let sandbox: sinon.SinonSandbox;
+    let isolateStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      isolateStub = sandbox.stub().resolves("/tmp/isolate-output");
+      sandbox.stub(dynamicImportModule, "dynamicImport").resolves({ isolate: isolateStub });
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should target the source directory when deploying from a parent directory", async () => {
+      const result = await prepareFunctionsUpload.runIsolate("packages/functions");
+
+      expect(isolateStub).to.be.calledOnceWith({
+        targetPackagePath: path.join("./", "packages/functions"),
+      });
+      expect(result).to.equal("/tmp/isolate-output");
+    });
+
+    it("should isolate the current working directory when it is the source directory", async () => {
+      const result = await prepareFunctionsUpload.runIsolate(".");
+
+      expect(isolateStub).to.be.calledOnceWith(undefined);
+      expect(result).to.equal("/tmp/isolate-output");
+    });
+
+    it("should rethrow when isolation fails", async () => {
+      isolateStub.rejects(new Error("lockfile not found"));
+
+      await expect(prepareFunctionsUpload.runIsolate(".")).to.be.rejectedWith("lockfile not found");
     });
   });
 });
