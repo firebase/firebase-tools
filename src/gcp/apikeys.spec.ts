@@ -40,7 +40,7 @@ describe("apikeys", () => {
     const apiKeyString = "AIzaSyFakeKeyString";
     const serviceName = "testservice.googleapis.com";
 
-    const PATCH_TEST_KEY_PATH = `/v2/${TEST_KEY_RESOURCE_NAME}`;
+    const TEST_KEY_PATH = `/v2/${TEST_KEY_RESOURCE_NAME}`;
 
     it("should not patch an unrestricted key with empty restrictions", async () => {
       const emptyRestrictionsKey: TestKey = {
@@ -54,7 +54,7 @@ describe("apikeys", () => {
         .query({ keyString: apiKeyString })
         .reply(200, { name: TEST_KEY_RESOURCE_NAME });
 
-      nock(apiKeysOrigin()).get(PATCH_TEST_KEY_PATH).reply(200, emptyRestrictionsKey);
+      nock(apiKeysOrigin()).get(TEST_KEY_PATH).reply(200, emptyRestrictionsKey);
 
       await apikeys.updateAppApiKeyRestriction(apiKeyString, serviceName);
     });
@@ -73,7 +73,7 @@ describe("apikeys", () => {
         .query({ keyString: apiKeyString })
         .reply(200, { name: TEST_KEY_RESOURCE_NAME });
 
-      nock(apiKeysOrigin()).get(PATCH_TEST_KEY_PATH).reply(200, emptyApiTargetsKey);
+      nock(apiKeysOrigin()).get(TEST_KEY_PATH).reply(200, emptyApiTargetsKey);
 
       await apikeys.updateAppApiKeyRestriction(apiKeyString, serviceName);
     });
@@ -92,7 +92,7 @@ describe("apikeys", () => {
         .query({ keyString: apiKeyString })
         .reply(200, { name: TEST_KEY_RESOURCE_NAME });
 
-      nock(apiKeysOrigin()).get(PATCH_TEST_KEY_PATH).reply(200, restrictedAlreadyAllowedKey);
+      nock(apiKeysOrigin()).get(TEST_KEY_PATH).reply(200, restrictedAlreadyAllowedKey);
 
       await apikeys.updateAppApiKeyRestriction(apiKeyString, serviceName);
     });
@@ -112,10 +112,10 @@ describe("apikeys", () => {
         .query({ keyString: apiKeyString })
         .reply(200, { name: TEST_KEY_RESOURCE_NAME });
 
-      nock(apiKeysOrigin()).get(PATCH_TEST_KEY_PATH).reply(200, restrictedMissingKey);
+      nock(apiKeysOrigin()).get(TEST_KEY_PATH).reply(200, restrictedMissingKey);
 
       const request = nock(apiKeysOrigin())
-        .patch(PATCH_TEST_KEY_PATH, (body: TestKey) => {
+        .patch(TEST_KEY_PATH, (body: TestKey) => {
           expect(body.restrictions?.apiTargets).to.deep.equal([
             { service: existingServiceName },
             { service: serviceName },
@@ -154,7 +154,7 @@ describe("apikeys", () => {
         .reply(200, { name: TEST_KEY_RESOURCE_NAME });
 
       nock(apiKeysOrigin())
-        .get(PATCH_TEST_KEY_PATH)
+        .get(TEST_KEY_PATH)
         .reply(403, { error: { message: "Permission denied" } });
 
       await expect(
@@ -180,10 +180,10 @@ describe("apikeys", () => {
         .query({ keyString: apiKeyString })
         .reply(200, { name: TEST_KEY_RESOURCE_NAME });
 
-      nock(apiKeysOrigin()).get(PATCH_TEST_KEY_PATH).reply(200, restrictedMissingKey);
+      nock(apiKeysOrigin()).get(TEST_KEY_PATH).reply(200, restrictedMissingKey);
 
       nock(apiKeysOrigin())
-        .patch(PATCH_TEST_KEY_PATH)
+        .patch(TEST_KEY_PATH)
         .query({ updateMask: "restrictions" })
         .reply(403, { error: { message: "Permission denied" } });
 
