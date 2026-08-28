@@ -3,6 +3,7 @@ import * as sinon from "sinon";
 
 import * as exportHelper from "../extensions/export";
 import * as exportCmd from "./ext-export";
+import * as prompt from "../prompt";
 import { Options } from "../options";
 import { ExtensionInstance } from "../extensions/types";
 
@@ -24,6 +25,13 @@ describe("ext:export secret ejection", () => {
 
   it("passes through if there are no secrets needing ejection", async () => {
     sinon.stub(exportHelper, "secretsNeedingEjection").resolves([]);
+    const proceeds = await exportCmd.handleSecretEjection(fakeOptions(false), fakeInstance());
+    expect(proceeds).to.be.true;
+  });
+
+  it("passes through if the user denies permission to eject secrets", async () => {
+    sinon.stub(exportHelper, "secretsNeedingEjection").resolves(["foo/bar", "baz/qux"]);
+    sinon.stub(prompt, "confirm").resolves(false);
     const proceeds = await exportCmd.handleSecretEjection(fakeOptions(false), fakeInstance());
     expect(proceeds).to.be.true;
   });

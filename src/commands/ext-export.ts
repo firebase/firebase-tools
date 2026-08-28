@@ -171,7 +171,7 @@ async function fnHandler(options: Options): Promise<void> {
   // Do not go past this block without either --force or all secrets having been ejected from extensions successfully
   const canContinue = await handleSecretEjection(options, instance);
   if (!canContinue) {
-    return;
+    throw new FirebaseError("Secret migration failed.");
   }
 
   const convertedEnv = functionsEnvFromInstance(instance);
@@ -200,8 +200,16 @@ export async function handleSecretEjection(
 ): Promise<boolean> {
   const secrets = await secretsNeedingEjection(instance);
   if (secrets.length > 0) {
+    logLabeledBullet(
+      "functions",
+      "Cloud Secret Manager resources still require migration from Extensions lifecycle management to Kits.",
+    );
+    logLabeledWarning(
+      "functions",
+      "Finishing the Extension migration process with extensions:uninstall without updating bound secrets will result in permanent loss of secrets.",
+    );
     const userAllowedEjection = await confirm({
-      message: `${secrets.length} Cloud Secret Manager resources found in export. Remove from Extensions lifecycle management?\nThis is necessary to prevent extension uninstall from deleting potentially migrated secrets.`,
+      message: `Automatically migrate ${secrets.length} Secrets from Extensions to Kits? (Y/n)`,
       nonInteractive: options.nonInteractive,
       force: options.force,
       default: true,
@@ -209,16 +217,18 @@ export async function handleSecretEjection(
     if (userAllowedEjection) {
       const results = await ejectSecretsFromInstance(instance);
       if (results.fail.length > 0) {
-        logLabeledError(
-          "functions",
-          `Added functions-managed label to secrets: ${results.success}. ${results.fail.length} secrets failed to update: ${results.fail}`,
-        );
+        let resultMsg = "";
+        if (results.success.length > 0) {
+          resultMsg = `Added functions-managed label to secrets: ${results.success}.`;
+        }
+        resultMsg += `${results.fail.length} secrets failed to update: ${results.fail}`;
+        logLabeledError("functions", resultMsg);
         if (!options.force) {
           return false;
         } else {
           logLabeledWarning(
             "functions",
-            "Proceeding after secret migration failure in --force mode. Manually remove the 'firebase-extensions-managed' label from the secrets, or risk permanant data loss.",
+            "Proceeding after secret migration failure in --force mode. Manually remove the 'firebase-extensions-managed' label from the secrets, or risk permanent data loss.",
           );
         }
       } else {
@@ -230,9 +240,8 @@ export async function handleSecretEjection(
     } else {
       logLabeledError(
         "functions",
-        "Proceeding without migrating secrets risks permanant data loss. Re-run export with --force if you are sure you want to do this.",
+        "Proceeding without migrating secrets risks permanant data loss. Manually remove the 'firebase-extensions-managed' label from the secrets before running ext:uninstall.",
       );
-      return false;
     }
   }
   return true;
