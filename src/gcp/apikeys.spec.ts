@@ -7,6 +7,19 @@ import { apiKeysOrigin } from "../api";
 import * as operationPoller from "../operation-poller";
 import { FirebaseError } from "../error";
 
+interface TestKey {
+  name: string;
+  displayName?: string;
+  keyString?: string;
+  restrictions?: {
+    apiTargets?: Array<{ service: string; methods?: string[] }>;
+  };
+}
+
+const PROJECT_ID = "test-project";
+const TEST_KEY_RESOURCE_NAME = `projects/${PROJECT_ID}/locations/global/keys/test-key`;
+const LOOKUP_KEYS_PATH = "/v2/keys:lookupKey";
+
 describe("apikeys", () => {
   const sandbox = sinon.createSandbox();
 
@@ -23,496 +36,160 @@ describe("apikeys", () => {
     nock.cleanAll();
   });
 
-  describe("lookupKey", () => {
-    it("should resolve with key lookup metadata on success", async () => {
-      const lookupResponse: apikeys.LookupKeyResponse = {
-        name: "projects/12345/locations/global/keys/abcd-1234",
-        parent: "projects/12345/locations/global",
-        displayName: "Browser key",
-      };
+  describe("updateAppApiKeyRestriction", () => {
+    const apiKeyString = "AIzaSyFakeKeyString";
+    const serviceName = "testservice.googleapis.com";
 
-      nock(apiKeysOrigin())
-        .get("/v2/keys:lookupKey")
-        .query({ keyString: "AIzaSyFakeKeyString" })
-        .reply(200, lookupResponse);
+    const PATCH_TEST_KEY_PATH = `/v2/${TEST_KEY_RESOURCE_NAME}`;
 
-      const res = await apikeys.lookupKey("AIzaSyFakeKeyString");
-      expect(res).to.deep.equal(lookupResponse);
-    });
-
-    it("should throw FirebaseError with instructions when 403 Forbidden is returned", async () => {
-      nock(apiKeysOrigin())
-        .get("/v2/keys:lookupKey")
-        .query({ keyString: "AIzaSyFakeKeyString" })
-        .reply(403, { error: { message: "The caller does not have permission" } });
-
-      await expect(apikeys.lookupKey("AIzaSyFakeKeyString")).to.be.rejectedWith(
-        FirebaseError,
-        /Permission denied when looking up API key/,
-      );
-    });
-
-    it("should reject with original error if API returns non-403 error", async () => {
-      nock(apiKeysOrigin())
-        .get("/v2/keys:lookupKey")
-        .query({ keyString: "invalid-key" })
-        .reply(404, { error: { message: "Key not found" } });
-
-      await expect(apikeys.lookupKey("invalid-key")).to.be.rejected;
-    });
-  });
-
-  describe("getKey", () => {
-    it("should resolve with the key resource", async () => {
-      const key: apikeys.Key = {
-        name: "projects/12345/locations/global/keys/abcd-1234",
-        displayName: "Browser key",
-        restrictions: {
-          apiTargets: [{ service: "identitytoolkit.googleapis.com" }],
-        },
-      };
-
-      nock(apiKeysOrigin())
-        .get("/v2/projects/12345/locations/global/keys/abcd-1234")
-        .reply(200, key);
-
-      const res = await apikeys.getKey("projects/12345/locations/global/keys/abcd-1234");
-      expect(res).to.deep.equal(key);
-    });
-
-    it("should throw FirebaseError with key name and console link when 403 Forbidden is returned", async () => {
-      nock(apiKeysOrigin())
-        .get("/v2/projects/12345/locations/global/keys/abcd-1234")
-        .reply(403, { error: { message: "Permission denied" } });
-
-      await expect(
-        apikeys.getKey("projects/12345/locations/global/keys/abcd-1234"),
-      ).to.be.rejectedWith(
-        FirebaseError,
-        /Permission denied when retrieving API key projects\/12345\/locations\/global\/keys\/abcd-1234/,
-      );
-    });
-  });
-
-  describe("getKeyByString", () => {
-    it("should lookup and fetch the full key resource", async () => {
-      const lookupResponse: apikeys.LookupKeyResponse = {
-        name: "projects/12345/locations/global/keys/abcd-1234",
-        parent: "projects/12345/locations/global",
-        displayName: "Browser key",
-      };
-      const key: apikeys.Key = {
-        name: "projects/12345/locations/global/keys/abcd-1234",
-        displayName: "Browser key",
+    it("should not patch an unrestricted key with empty restrictions", async () => {
+      const emptyRestrictionsKey: TestKey = {
+        name: TEST_KEY_RESOURCE_NAME,
+        displayName: "Empty Restrictions Key",
         restrictions: {},
       };
 
       nock(apiKeysOrigin())
-        .get("/v2/keys:lookupKey")
-        .query({ keyString: "AIzaSyFakeKeyString" })
-        .reply(200, lookupResponse);
+        .get(LOOKUP_KEYS_PATH)
+        .query({ keyString: apiKeyString })
+        .reply(200, { name: TEST_KEY_RESOURCE_NAME });
 
-      nock(apiKeysOrigin())
-        .get("/v2/projects/12345/locations/global/keys/abcd-1234")
-        .reply(200, key);
+      nock(apiKeysOrigin()).get(PATCH_TEST_KEY_PATH).reply(200, emptyRestrictionsKey);
 
-      const res = await apikeys.getKeyByString("AIzaSyFakeKeyString");
-      expect(res).to.deep.equal(key);
-    });
-  });
-
-  describe("listKeys", () => {
-    it("should list all keys for a project across multiple pages", async () => {
-      const page1Keys: apikeys.Key[] = [
-        { name: "projects/test-project/locations/global/keys/key-1", displayName: "Key 1" },
-      ];
-      const page2Keys: apikeys.Key[] = [
-        { name: "projects/test-project/locations/global/keys/key-2", displayName: "Key 2" },
-      ];
-
-      nock(apiKeysOrigin())
-        .get("/v2/projects/test-project/locations/global/keys")
-        .reply(200, { keys: page1Keys, nextPageToken: "page-2-token" });
-
-      nock(apiKeysOrigin())
-        .get("/v2/projects/test-project/locations/global/keys")
-        .query({ pageToken: "page-2-token" })
-        .reply(200, { keys: page2Keys });
-
-      const res = await apikeys.listKeys("test-project");
-      expect(res).to.deep.equal([...page1Keys, ...page2Keys]);
+      await apikeys.updateAppApiKeyRestriction(apiKeyString, serviceName);
     });
 
-    it("should return empty array if no keys are found", async () => {
-      nock(apiKeysOrigin()).get("/v2/projects/test-project/locations/global/keys").reply(200, {});
-
-      const res = await apikeys.listKeys("test-project");
-      expect(res).to.deep.equal([]);
-    });
-
-    it("should throw FirebaseError with project ID when 403 Forbidden is returned", async () => {
-      nock(apiKeysOrigin())
-        .get("/v2/projects/test-project/locations/global/keys")
-        .reply(403, { error: { message: "Permission denied" } });
-
-      await expect(apikeys.listKeys("test-project")).to.be.rejectedWith(
-        FirebaseError,
-        /Permission denied when listing API keys for project test-project/,
-      );
-    });
-  });
-
-  describe("updateKey", () => {
-    it("should return the response directly when LRO is already done", async () => {
-      const updatedKey: apikeys.Key = {
-        name: "projects/12345/locations/global/keys/abcd-1234",
-        displayName: "Browser key",
-        restrictions: {
-          apiTargets: [{ service: "firebasetelemetry.googleapis.com" }],
-        },
-      };
-
-      nock(apiKeysOrigin())
-        .patch("/v2/projects/12345/locations/global/keys/abcd-1234")
-        .query({ updateMask: "restrictions" })
-        .reply(200, {
-          name: "operations/op-123",
-          done: true,
-          response: updatedKey,
-        });
-
-      const res = await apikeys.updateKey(updatedKey, ["restrictions"]);
-      expect(res).to.deep.equal(updatedKey);
-    });
-
-    it("should poll the operation when LRO is not immediately done", async () => {
-      const updatedKey: apikeys.Key = {
-        name: "projects/12345/locations/global/keys/abcd-1234",
-        displayName: "Browser key",
-        restrictions: {
-          apiTargets: [{ service: "firebasetelemetry.googleapis.com" }],
-        },
-      };
-
-      nock(apiKeysOrigin())
-        .patch("/v2/projects/12345/locations/global/keys/abcd-1234")
-        .query({ updateMask: "restrictions" })
-        .reply(200, {
-          name: "operations/op-123",
-          done: false,
-        });
-
-      sandbox.stub(operationPoller, "pollOperation").resolves(updatedKey);
-
-      const res = await apikeys.updateKey(updatedKey, ["restrictions"]);
-      expect(res).to.deep.equal(updatedKey);
-      expect(operationPoller.pollOperation).to.have.been.calledWith({
-        apiOrigin: apiKeysOrigin(),
-        apiVersion: "v2",
-        operationResourceName: "operations/op-123",
-      });
-    });
-
-    it("should throw FirebaseError with key name and console link when 403 Forbidden is returned", async () => {
-      const keyToUpdate: apikeys.Key = {
-        name: "projects/test-project/locations/global/keys/abcd-1234",
-        displayName: "Web App Key",
-        restrictions: {
-          apiTargets: [{ service: "firebasetelemetry.googleapis.com" }],
-        },
-      };
-
-      nock(apiKeysOrigin())
-        .patch("/v2/projects/test-project/locations/global/keys/abcd-1234")
-        .query({ updateMask: "restrictions" })
-        .reply(403, { error: { message: "Permission denied" } });
-
-      await expect(apikeys.updateKey(keyToUpdate, ["restrictions"])).to.be.rejectedWith(
-        FirebaseError,
-        /Permission denied when updating API key Web App Key \(projects\/test-project\/locations\/global\/keys\/abcd-1234\)/,
-      );
-    });
-  });
-
-  describe("ensureServiceInKeyRestrictions", () => {
-    it("should do nothing if key has no apiTargets restrictions (unrestricted)", async () => {
-      const key: apikeys.Key = {
-        name: "projects/12345/locations/global/keys/abcd-1234",
-        displayName: "Browser key",
-        restrictions: {
-          browserKeyRestrictions: { allowedReferrers: ["https://example.com/*"] },
-        },
-      };
-
-      nock(apiKeysOrigin())
-        .get("/v2/keys:lookupKey")
-        .query({ keyString: "AIzaSyFakeKeyString" })
-        .reply(200, { name: key.name });
-
-      nock(apiKeysOrigin())
-        .get("/v2/projects/12345/locations/global/keys/abcd-1234")
-        .reply(200, key);
-
-      const res = await apikeys.ensureServiceInKeyRestrictions(
-        "AIzaSyFakeKeyString",
-        "firebasetelemetry.googleapis.com",
-      );
-
-      expect(res.updated).to.be.false;
-      expect(res.key).to.deep.equal(key);
-    });
-
-    it("should accept a Key object directly without looking up keyString", async () => {
-      const key: apikeys.Key = {
-        name: "projects/12345/locations/global/keys/abcd-1234",
-        displayName: "Browser key",
-        restrictions: {
-          apiTargets: [{ service: "identitytoolkit.googleapis.com" }],
-        },
-      };
-
-      const updatedKey: apikeys.Key = {
-        ...key,
-        restrictions: {
-          apiTargets: [
-            { service: "identitytoolkit.googleapis.com" },
-            { service: "firebasetelemetry.googleapis.com" },
-          ],
-        },
-      };
-
-      nock(apiKeysOrigin())
-        .patch("/v2/projects/12345/locations/global/keys/abcd-1234")
-        .query({ updateMask: "restrictions" })
-        .reply(200, {
-          name: "operations/op-123",
-          done: true,
-          response: updatedKey,
-        });
-
-      const res = await apikeys.ensureServiceInKeyRestrictions(
-        key,
-        "firebasetelemetry.googleapis.com",
-      );
-
-      expect(res.updated).to.be.true;
-      expect(res.key).to.deep.equal(updatedKey);
-    });
-
-    it("should do nothing if apiTargets is empty", async () => {
-      const key: apikeys.Key = {
-        name: "projects/12345/locations/global/keys/abcd-1234",
-        displayName: "Browser key",
+    it("should not patch an unrestricted key with empty apiTargets", async () => {
+      const emptyApiTargetsKey: TestKey = {
+        name: TEST_KEY_RESOURCE_NAME,
+        displayName: "Empty apiTargets Key",
         restrictions: {
           apiTargets: [],
         },
       };
 
       nock(apiKeysOrigin())
-        .get("/v2/keys:lookupKey")
-        .query({ keyString: "AIzaSyFakeKeyString" })
-        .reply(200, { name: key.name });
+        .get(LOOKUP_KEYS_PATH)
+        .query({ keyString: apiKeyString })
+        .reply(200, { name: TEST_KEY_RESOURCE_NAME });
 
-      nock(apiKeysOrigin())
-        .get("/v2/projects/12345/locations/global/keys/abcd-1234")
-        .reply(200, key);
+      nock(apiKeysOrigin()).get(PATCH_TEST_KEY_PATH).reply(200, emptyApiTargetsKey);
 
-      const res = await apikeys.ensureServiceInKeyRestrictions(
-        "AIzaSyFakeKeyString",
-        "firebasetelemetry.googleapis.com",
-      );
-
-      expect(res.updated).to.be.false;
-      expect(res.key).to.deep.equal(key);
+      await apikeys.updateAppApiKeyRestriction(apiKeyString, serviceName);
     });
 
-    it("should do nothing if the service is already present in apiTargets", async () => {
-      const key: apikeys.Key = {
-        name: "projects/12345/locations/global/keys/abcd-1234",
-        displayName: "Browser key",
+    it("should not patch a restricted already allowed key", async () => {
+      const restrictedAlreadyAllowedKey: TestKey = {
+        name: TEST_KEY_RESOURCE_NAME,
+        displayName: "Already Allowed Key",
         restrictions: {
-          apiTargets: [
-            { service: "identitytoolkit.googleapis.com" },
-            { service: "firebasetelemetry.googleapis.com" },
-          ],
+          apiTargets: [{ service: serviceName }],
         },
       };
 
       nock(apiKeysOrigin())
-        .get("/v2/keys:lookupKey")
-        .query({ keyString: "AIzaSyFakeKeyString" })
-        .reply(200, { name: key.name });
+        .get(LOOKUP_KEYS_PATH)
+        .query({ keyString: apiKeyString })
+        .reply(200, { name: TEST_KEY_RESOURCE_NAME });
 
-      nock(apiKeysOrigin())
-        .get("/v2/projects/12345/locations/global/keys/abcd-1234")
-        .reply(200, key);
+      nock(apiKeysOrigin()).get(PATCH_TEST_KEY_PATH).reply(200, restrictedAlreadyAllowedKey);
 
-      const res = await apikeys.ensureServiceInKeyRestrictions(
-        "AIzaSyFakeKeyString",
-        "firebasetelemetry.googleapis.com",
-      );
-
-      expect(res.updated).to.be.false;
-      expect(res.key).to.deep.equal(key);
+      await apikeys.updateAppApiKeyRestriction(apiKeyString, serviceName);
     });
 
-    it("should append service and update key when apiTargets is restricted and missing the service", async () => {
-      const existingKey: apikeys.Key = {
-        name: "projects/12345/locations/global/keys/abcd-1234",
-        displayName: "Browser key",
+    it("should patch a restricted key to include the missing service restriction with polling", async () => {
+      const existingServiceName = "existingservice.googleapis.com";
+      const restrictedMissingKey: TestKey = {
+        name: TEST_KEY_RESOURCE_NAME,
+        displayName: "Restricted Key",
         restrictions: {
-          apiTargets: [{ service: "identitytoolkit.googleapis.com" }],
-        },
-      };
-
-      const updatedKey: apikeys.Key = {
-        ...existingKey,
-        restrictions: {
-          apiTargets: [
-            { service: "identitytoolkit.googleapis.com" },
-            { service: "firebasetelemetry.googleapis.com" },
-          ],
+          apiTargets: [{ service: existingServiceName }],
         },
       };
 
       nock(apiKeysOrigin())
-        .get("/v2/keys:lookupKey")
-        .query({ keyString: "AIzaSyFakeKeyString" })
-        .reply(200, { name: existingKey.name });
+        .get(LOOKUP_KEYS_PATH)
+        .query({ keyString: apiKeyString })
+        .reply(200, { name: TEST_KEY_RESOURCE_NAME });
 
-      nock(apiKeysOrigin())
-        .get("/v2/projects/12345/locations/global/keys/abcd-1234")
-        .reply(200, existingKey);
+      nock(apiKeysOrigin()).get(PATCH_TEST_KEY_PATH).reply(200, restrictedMissingKey);
 
-      nock(apiKeysOrigin())
-        .patch("/v2/projects/12345/locations/global/keys/abcd-1234", (body: apikeys.Key) => {
+      const request = nock(apiKeysOrigin())
+        .patch(PATCH_TEST_KEY_PATH, (body: TestKey) => {
           expect(body.restrictions?.apiTargets).to.deep.equal([
-            { service: "identitytoolkit.googleapis.com" },
-            { service: "firebasetelemetry.googleapis.com" },
+            { service: existingServiceName },
+            { service: serviceName },
           ]);
           return true;
         })
         .query({ updateMask: "restrictions" })
-        .reply(200, {
-          name: "operations/op-123",
-          done: true,
-          response: updatedKey,
-        });
+        .reply(200, { name: "operations/op-123" });
 
-      const res = await apikeys.ensureServiceInKeyRestrictions(
-        "AIzaSyFakeKeyString",
-        "firebasetelemetry.googleapis.com",
-      );
+      const pollStub = sandbox.stub(operationPoller, "pollOperation").resolves();
 
-      expect(res.updated).to.be.true;
-      expect(res.key).to.deep.equal(updatedKey);
+      await apikeys.updateAppApiKeyRestriction(apiKeyString, serviceName);
+      expect(request.isDone()).to.be.true;
+      expect(pollStub).to.have.been.calledWith({
+        apiOrigin: apiKeysOrigin(),
+        apiVersion: "v2",
+        operationResourceName: "operations/op-123",
+      });
     });
-  });
 
-  describe("ensureServiceInProjectKeyRestrictions", () => {
-    it("should update restricted keys missing the service and skip unrestricted/already-allowed keys", async () => {
-      const unrestrictedKey: apikeys.Key = {
-        name: "projects/test-project/locations/global/keys/key-1",
-        displayName: "Unrestricted Key",
-        restrictions: {},
-      };
-      const alreadyAllowedKey: apikeys.Key = {
-        name: "projects/test-project/locations/global/keys/key-2",
-        displayName: "Already Allowed Key",
-        restrictions: {
-          apiTargets: [{ service: "firebasetelemetry.googleapis.com" }],
-        },
-      };
-      const restrictedKey: apikeys.Key = {
-        name: "projects/test-project/locations/global/keys/key-3",
+    it("should throw FirebaseError when lookup API returns 403", async () => {
+      nock(apiKeysOrigin())
+        .get(LOOKUP_KEYS_PATH)
+        .query({ keyString: apiKeyString })
+        .reply(403, { error: { message: "Permission denied" } });
+
+      await expect(
+        apikeys.updateAppApiKeyRestriction(apiKeyString, serviceName),
+      ).to.be.rejectedWith(FirebaseError, /Permission denied when looking up API key/);
+    });
+
+    it("should throw FirebaseError with key resource name when getKeyWithResourceName API returns 403", async () => {
+      nock(apiKeysOrigin())
+        .get(LOOKUP_KEYS_PATH)
+        .query({ keyString: apiKeyString })
+        .reply(200, { name: TEST_KEY_RESOURCE_NAME });
+
+      nock(apiKeysOrigin())
+        .get(PATCH_TEST_KEY_PATH)
+        .reply(403, { error: { message: "Permission denied" } });
+
+      await expect(
+        apikeys.updateAppApiKeyRestriction(apiKeyString, serviceName),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        /Permission denied when retrieving API key projects\/test-project\/locations\/global\/keys\/test-key/,
+      );
+    });
+
+    it("should throw FirebaseError with key display name when updateKey API returns 403", async () => {
+      const existingServiceName = "existingservice.googleapis.com";
+      const restrictedMissingKey: TestKey = {
+        name: TEST_KEY_RESOURCE_NAME,
         displayName: "Restricted Key",
         restrictions: {
-          apiTargets: [{ service: "identitytoolkit.googleapis.com" }],
-        },
-      };
-      const updatedRestrictedKey: apikeys.Key = {
-        ...restrictedKey,
-        restrictions: {
-          apiTargets: [
-            { service: "identitytoolkit.googleapis.com" },
-            { service: "firebasetelemetry.googleapis.com" },
-          ],
+          apiTargets: [{ service: existingServiceName }],
         },
       };
 
       nock(apiKeysOrigin())
-        .get("/v2/projects/test-project/locations/global/keys")
-        .reply(200, { keys: [unrestrictedKey, alreadyAllowedKey, restrictedKey] });
+        .get(LOOKUP_KEYS_PATH)
+        .query({ keyString: apiKeyString })
+        .reply(200, { name: TEST_KEY_RESOURCE_NAME });
+
+      nock(apiKeysOrigin()).get(PATCH_TEST_KEY_PATH).reply(200, restrictedMissingKey);
 
       nock(apiKeysOrigin())
-        .patch("/v2/projects/test-project/locations/global/keys/key-3")
+        .patch(PATCH_TEST_KEY_PATH)
         .query({ updateMask: "restrictions" })
-        .reply(200, {
-          name: "operations/op-123",
-          done: true,
-          response: updatedRestrictedKey,
-        });
+        .reply(403, { error: { message: "Permission denied" } });
 
-      const res = await apikeys.ensureServiceInProjectKeyRestrictions(
-        "test-project",
-        "firebasetelemetry.googleapis.com",
-      );
-
-      expect(res.updatedKeys).to.deep.equal([updatedRestrictedKey]);
-      expect(res.unchangedKeys).to.deep.equal([unrestrictedKey, alreadyAllowedKey]);
-    });
-  });
-
-  describe("updateProjectKeyRestrictions", () => {
-    it("should apply updater function across all project keys", async () => {
-      const key1: apikeys.Key = {
-        name: "projects/test-project/locations/global/keys/key-1",
-        displayName: "Key 1",
-        restrictions: {
-          browserKeyRestrictions: { allowedReferrers: ["https://old.example.com/*"] },
-        },
-      };
-      const key2: apikeys.Key = {
-        name: "projects/test-project/locations/global/keys/key-2",
-        displayName: "Key 2",
-        restrictions: {},
-      };
-
-      const updatedKey1: apikeys.Key = {
-        ...key1,
-        restrictions: {
-          browserKeyRestrictions: { allowedReferrers: ["https://new.example.com/*"] },
-        },
-      };
-
-      nock(apiKeysOrigin())
-        .get("/v2/projects/test-project/locations/global/keys")
-        .reply(200, { keys: [key1, key2] });
-
-      nock(apiKeysOrigin())
-        .patch("/v2/projects/test-project/locations/global/keys/key-1")
-        .query({ updateMask: "restrictions" })
-        .reply(200, {
-          name: "operations/op-123",
-          done: true,
-          response: updatedKey1,
-        });
-
-      const res = await apikeys.updateProjectKeyRestrictions(
-        "test-project",
-        (restrictions, key) => {
-          if (key.name === key1.name) {
-            return {
-              ...restrictions,
-              browserKeyRestrictions: { allowedReferrers: ["https://new.example.com/*"] },
-            };
-          }
-          return undefined; // Skip key2
-        },
-      );
-
-      expect(res.updatedKeys).to.deep.equal([updatedKey1]);
-      expect(res.unchangedKeys).to.deep.equal([key2]);
+      await expect(
+        apikeys.updateAppApiKeyRestriction(apiKeyString, serviceName),
+      ).to.be.rejectedWith(FirebaseError, /Permission denied when updating API key Restricted Key/);
     });
   });
 });

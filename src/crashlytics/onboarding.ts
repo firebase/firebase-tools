@@ -9,6 +9,9 @@ import {
 } from "../gcp/cloudlogging";
 import { createOrUpdateTelemetryConfig, TelemetryConfig } from "./firebasetelemetry";
 import { logLabeledBullet, logLabeledSuccess } from "../utils";
+import { updateAppApiKeyRestriction } from "../gcp/apikeys";
+import { AppPlatform, getAppConfig } from "../management/apps";
+import { WebConfig } from "../fetchWebSetup";
 
 export const CRASHLYTICS_TELEMETRY_BUCKET_ID = "firebase-telemetry";
 export const CRASHLYTICS_TELEMETRY_SINK_ID = "firebase-telemetry-routing";
@@ -45,6 +48,13 @@ export async function onboardCrashlyticsWeb(
     ensure(projectId, "firebasetelemetryadmin.googleapis.com", "crashlytics", false),
   ]);
   logLabeledSuccess("crashlytics", "Telemetry APIs enabled.");
+
+  logLabeledBullet("crashlytics", "Enabling API key restriction for telemetry APIs...");
+  const appConfig = (await getAppConfig(appId, AppPlatform.WEB)) as WebConfig;
+  if (appConfig.apiKey) {
+    await updateAppApiKeyRestriction(appConfig.apiKey, "firebasetelemetry.googleapis.com");
+  }
+  logLabeledSuccess("crashlytics", "API key restriction for telemetry APIs enabled.");
 
   logLabeledBullet(
     "crashlytics",

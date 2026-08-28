@@ -7,6 +7,8 @@ import * as ensureApiEnabled from "../ensureApiEnabled";
 import * as cloudlogging from "../gcp/cloudlogging";
 import * as cloudbilling from "../gcp/cloudbilling";
 import * as firebasetelemetry from "./firebasetelemetry";
+import * as apps from "../management/apps";
+import * as apikeys from "../gcp/apikeys";
 import { FirebaseError } from "../error";
 
 describe("onboarding", () => {
@@ -15,6 +17,8 @@ describe("onboarding", () => {
   let sinkStub: sinon.SinonStub;
   let configStub: sinon.SinonStub;
   let checkBillingStub: sinon.SinonStub;
+  let getAppConfigStub: sinon.SinonStub;
+  let updateAppApiKeyRestrictionStub: sinon.SinonStub;
 
   before(() => {
     nock.disableNetConnect();
@@ -43,6 +47,11 @@ describe("onboarding", () => {
       samplingRate: 1,
       enablementState: "ENABLED",
     });
+    getAppConfigStub = sinon.stub(apps, "getAppConfig").resolves({
+      projectId: "test-project",
+      apiKey: "fake-api-key-123",
+    });
+    updateAppApiKeyRestrictionStub = sinon.stub(apikeys, "updateAppApiKeyRestriction").resolves();
   });
 
   afterEach(() => {
@@ -67,6 +76,35 @@ describe("onboarding", () => {
       "projects/test-project/locations/global/buckets/firebase-telemetry",
       1,
     );
+    expect(updateAppApiKeyRestrictionStub).to.have.been.calledWith(
+      "fake-api-key-123",
+      "firebasetelemetry.googleapis.com",
+    );
+    expect(res.config.enablementState).to.equal("ENABLED");
+  });
+
+  it("should successfully onboard web app without calling updateAppApiKeyRestriction if apiKey is missing", async () => {
+    getAppConfigStub.resolves({
+      projectId: "test-project",
+    });
+
+    const res = await onboarding.onboardCrashlyticsWeb("test-project", "1:123:web:456");
+
+    expect(ensureStub).to.have.been.calledTwice;
+    expect(bucketStub).to.have.been.calledWith(
+      "test-project",
+      "firebase-telemetry",
+      "global",
+      true,
+    );
+    expect(sinkStub).to.have.been.calledOnce;
+    expect(configStub).to.have.been.calledWith(
+      "test-project",
+      "1:123:web:456",
+      "projects/test-project/locations/global/buckets/firebase-telemetry",
+      1,
+    );
+    expect(updateAppApiKeyRestrictionStub).to.not.have.been.called;
     expect(res.config.enablementState).to.equal("ENABLED");
   });
 

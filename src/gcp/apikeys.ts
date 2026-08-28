@@ -1,43 +1,43 @@
 import { apiKeysOrigin } from "../api";
 import { Client } from "../apiv2";
 import { FirebaseError, getErrStatus } from "../error";
-import { OperationResult, pollOperation } from "../operation-poller";
+import { LongRunningOperation, pollOperation } from "../operation-poller";
 
-export const API_VERSION = "v2";
+const API_VERSION = "v2";
 
-export const client = new Client({
+const client = new Client({
   urlPrefix: apiKeysOrigin(),
   auth: true,
   apiVersion: API_VERSION,
 });
 
-export interface ApiTarget {
+interface ApiTarget {
   service: string;
   methods?: string[];
 }
 
-export interface AndroidApplication {
+interface AndroidApplication {
   sha1Fingerprint: string;
   packageName: string;
 }
 
-export interface AndroidKeyRestrictions {
+interface AndroidKeyRestrictions {
   allowedApplications: AndroidApplication[];
 }
 
-export interface IosKeyRestrictions {
+interface IosKeyRestrictions {
   allowedBundleIds: string[];
 }
 
-export interface BrowserKeyRestrictions {
+interface BrowserKeyRestrictions {
   allowedReferrers: string[];
 }
 
-export interface ServerKeyRestrictions {
+interface ServerKeyRestrictions {
   allowedIps: string[];
 }
 
-export interface Restrictions {
+interface Restrictions {
   apiTargets?: ApiTarget[];
   browserKeyRestrictions?: BrowserKeyRestrictions;
   serverKeyRestrictions?: ServerKeyRestrictions;
@@ -45,40 +45,54 @@ export interface Restrictions {
   iosKeyRestrictions?: IosKeyRestrictions;
 }
 
-export interface Key {
+interface Key {
   name: string;
   displayName?: string;
+  keyString: string;
   restrictions?: Restrictions;
 }
 
-export interface LookupKeyResponse {
+interface LookupKeyResponse {
   name: string;
   parent: string;
   displayName?: string;
 }
 
-function getCredentialsConsoleUrl(projectId?: string): string {
-  return projectId
-    ? `https://console.cloud.google.com/apis/credentials?project=${projectId}`
-    : `https://console.cloud.google.com/apis/credentials`;
+/**
+ * Ensures that a specific service is allowed under the restrictions of the API key
+ * identified by the given API key string.
+ *
+ * If the API key is unrestricted, this is a no-op. If it is restricted and does not
+ * already allow the service, the service is added to the key's allowed API targets.
+ *
+ * @param apiKeyString The API key string (e.g. "AIzaSy...") to update.
+ * @param service The service to allow (e.g. "firebasetelemetry.googleapis.com").
+ */
+export async function updateAppApiKeyRestriction(
+  apiKeyString: string,
+  service: string,
+): Promise<void> {
+  const lookup = await lookupKeyResourceName(apiKeyString);
+  const key = await getKeyWithResourceName(lookup.name);
+  await ensureServiceInKeyRestrictions(key, service);
 }
 
 /**
  * Looks up the key resource name and parent for a given API key string.
  * Ref: https://cloud.google.com/api-keys/docs/reference/rest/v2/keys/lookupKey
  */
-export async function lookupKey(keyString: string): Promise<LookupKeyResponse> {
+async function lookupKeyResourceName(apiKeyString: string): Promise<LookupKeyResponse> {
   try {
     const res = await client.get<LookupKeyResponse>("/keys:lookupKey", {
-      queryParams: { keyString },
+      queryParams: { keyString: apiKeyString },
     });
     return res.body;
   } catch (err: unknown) {
     if (getErrStatus(err) === 403) {
       throw new FirebaseError(
         `Permission denied when looking up API key.\n\n` +
-        `To resolve this, ensure your account has the right permissions on the project in the Google Cloud Console:\n\n` +
-        `  ${getCredentialsConsoleUrl()}`,
+          `To resolve this, ensure your account has the right permissions on the project in the Google Cloud Console:\n\n` +
+          `  ${getCredentialsConsoleUrl()}`,
         { original: err instanceof Error ? err : undefined, status: 403 },
       );
     }
@@ -90,104 +104,16 @@ export async function lookupKey(keyString: string): Promise<LookupKeyResponse> {
  * Gets the details of an API key given its resource name.
  * Ref: https://cloud.google.com/api-keys/docs/reference/rest/v2/projects.locations.keys/get
  */
-export async function getKey(keyName: string): Promise<Key> {
-  const path = keyName.startsWith("/") ? keyName : `/${keyName}`;
+async function getKeyWithResourceName(keyResourceName: string): Promise<Key> {
   try {
-    const res = await client.get<Key>(path);
+    const res = await client.get<Key>(keyResourceName);
     return res.body;
   } catch (err: unknown) {
     if (getErrStatus(err) === 403) {
-      const projectId = extractProjectId(keyName.replace(/^\//, ""));
       throw new FirebaseError(
-        `Permission denied when retrieving API key ${keyName}.\n\n` +
-        `To resolve this, ensure your account has the right permissions on the project in the Google Cloud Console:\n\n` +
-        `  ${getCredentialsConsoleUrl(projectId)}`,
-        { original: err instanceof Error ? err : undefined, status: 403 },
-      );
-    }
-    throw err;
-  }
-}
-
-/**
- * Retrieves an API key's full resource by its key string.
- */
-export async function getKeyByString(keyString: string): Promise<Key> {
-  const lookup = await lookupKey(keyString);
-  return getKey(lookup.name);
-}
-
-/**
- * Updates the properties of an API key, tracking the long-running operation until completion.
- * Ref: https://cloud.google.com/api-keys/docs/reference/rest/v2/projects.locations.keys/patch
- */
-async function updateKey(key: Key, updateMask: string[] = ["restrictions"]): Promise<Key> {
-  const queryParams: Record<string, string> = {};
-  if (updateMask.length > 0) {
-    queryParams.updateMask = updateMask.join(",");
-  }
-  const path = key.name.startsWith("/") ? key.name : `/${key.name}`;
-
-  try {
-    const res = await client.patch<Key, OperationResult<Key> & { name: string }>(path, key, {
-      queryParams,
-    });
-
-    if (res.body.done && res.body.response) {
-      return res.body.response;
-    }
-
-    return await pollOperation<Key>({
-      apiOrigin: apiKeysOrigin(),
-      apiVersion: API_VERSION,
-      operationResourceName: res.body.name,
-    });
-  } catch (err: unknown) {
-    if (getErrStatus(err) === 403) {
-      const keyIdentifier = key.displayName ? `${key.displayName} (${key.name})` : key.name;
-      const projectId = extractProjectId(key.name.replace(/^\//, ""));
-      throw new FirebaseError(
-        `Permission denied when updating API key ${keyIdentifier}.\n\n` +
-        `To resolve this, ensure your account has the right permissions on the project in the Google Cloud Console:\n\n` +
-        `  ${getCredentialsConsoleUrl(projectId)}`,
-        { original: err instanceof Error ? err : undefined, status: 403 },
-      );
-    }
-    throw err;
-  }
-}
-
-export interface ListKeysResponse {
-  keys?: Key[];
-  nextPageToken?: string;
-}
-
-/**
- * Lists all API keys for a project, handling pagination.
- * Ref: https://cloud.google.com/api-keys/docs/reference/rest/v2/projects.locations.keys/list
- */
-export async function listKeys(projectId: string): Promise<Key[]> {
-  const parent = `projects/${projectId}/locations/global`;
-  let pageToken: string | undefined;
-  const keys: Key[] = [];
-
-  try {
-    do {
-      const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
-      const res = await client.get<ListKeysResponse>(`/${parent}/keys`, { queryParams });
-      if (res.body.keys) {
-        keys.push(...res.body.keys);
-      }
-      pageToken = res.body.nextPageToken;
-    } while (pageToken);
-
-    return keys;
-  } catch (err: unknown) {
-    if (getErrStatus(err) === 403) {
-      throw new FirebaseError(
-        `Permission denied when listing API keys for project ${projectId}.\n\n` +
-        `To resolve this, ensure your account has the right permissions on the project in the Google Cloud Console:\n\n` +
-        `  ${getCredentialsConsoleUrl(projectId)}`,
+        `Permission denied when retrieving API key ${keyResourceName}.\n\n` +
+          `To resolve this, ensure your account has the right permissions on the project in the Google Cloud Console:\n\n` +
+          `  ${getCredentialsConsoleUrl()}`,
         { original: err instanceof Error ? err : undefined, status: 403 },
       );
     }
@@ -204,83 +130,61 @@ export async function listKeys(projectId: string): Promise<Key[]> {
  * - If the key is restricted and is missing the service, the service is appended to `apiTargets`
  *   and the key is updated.
  */
-export async function ensureServiceInKeyRestrictions(
-  key: Key | string,
-  service: string,
-): Promise<{ updated: boolean; key: Key }> {
-  const resolvedKey = typeof key === "string" ? await getKeyByString(key) : key;
-
-  if (!resolvedKey.restrictions?.apiTargets || resolvedKey.restrictions.apiTargets.length === 0) {
-    return { updated: false, key: resolvedKey };
+async function ensureServiceInKeyRestrictions(key: Key, service: string): Promise<void> {
+  if (!key.restrictions?.apiTargets || key.restrictions.apiTargets.length === 0) {
+    return;
   }
 
-  const alreadyAllowed = resolvedKey.restrictions.apiTargets.some(
-    (target) => target.service === service,
-  );
+  const alreadyAllowed = key.restrictions.apiTargets.some((target) => target.service === service);
   if (alreadyAllowed) {
-    return { updated: false, key: resolvedKey };
+    return;
   }
 
   const updatedRestrictions: Restrictions = {
-    ...resolvedKey.restrictions,
-    apiTargets: [...resolvedKey.restrictions.apiTargets, { service }],
+    ...key.restrictions,
+    apiTargets: [...key.restrictions.apiTargets, { service }],
   };
 
-  const updatedKey = await updateKey(
-    {
-      ...resolvedKey,
-      restrictions: updatedRestrictions,
-    },
-    ["restrictions"],
-  );
-
-  return { updated: true, key: updatedKey };
+  await updateKeyRestrictions({
+    ...key,
+    restrictions: updatedRestrictions,
+  });
 }
 
 /**
- * Ensures a specific service is permitted across all restricted API keys in a project.
- *
- * - For keys that are unrestricted (`apiTargets` is undefined or empty), no changes are made
- *   to avoid accidentally restricting them.
- * - For keys that are restricted and missing the service, the service is appended to `apiTargets`.
+ * Updates the properties of an API key, tracking the long-running operation until completion.
+ * Ref: https://cloud.google.com/api-keys/docs/reference/rest/v2/projects.locations.keys/patch
  */
-export async function updateAllApiKeysRestriction(
-  projectId: string,
-  service: string,
-): Promise<void> {
-  const keys = await listKeys(projectId);
-  await Promise.all(keys.map((key) => ensureServiceInKeyRestrictions(key, service)));
+async function updateKeyRestrictions(key: Key): Promise<void> {
+  const queryParams: Record<string, string> = { updateMask: "restrictions" };
+
+  try {
+    const res = await client.patch<Key, LongRunningOperation<Key>>(key.name, key, {
+      queryParams,
+    });
+
+    await pollOperation<Key>({
+      apiOrigin: apiKeysOrigin(),
+      apiVersion: API_VERSION,
+      operationResourceName: res.body.name,
+    });
+  } catch (err: unknown) {
+    if (getErrStatus(err) === 403) {
+      const keyIdentifier = key.displayName ? `${key.displayName} (${key.name})` : key.name;
+      throw new FirebaseError(
+        `Permission denied when updating API key ${keyIdentifier}.\n\n` +
+          `To resolve this, ensure your account has the right permissions on the project in the Google Cloud Console:\n\n` +
+          `  ${getCredentialsConsoleUrl()}`,
+        { original: err instanceof Error ? err : undefined, status: 403 },
+      );
+    }
+    throw err;
+  }
 }
 
 /**
- * Updates restrictions across all API keys in a project using a custom updater function.
- *
- * The updater function receives the current `Restrictions` and `Key`. If it returns a new
- * `Restrictions` object, the key is updated. If it returns undefined or null, the key is skipped.
- *
-export async function updateProjectKeyRestrictions(
-  projectId: string,
-  updater: (restrictions: Restrictions, key: Key) => Restrictions | undefined | null,
-): Promise<{ updatedKeys: Key[]; unchangedKeys: Key[] }> {
-  const keys = await listKeys(projectId);
-  const updatedKeys: Key[] = [];
-  const unchangedKeys: Key[] = [];
-
-  for (const key of keys) {
-    const newRestrictions = updater(key.restrictions || {}, key);
-    if (newRestrictions) {
-      const updatedKey = await updateKey(
-        {
-          ...key,
-          restrictions: newRestrictions,
-        },
-        ["restrictions"],
-      );
-      updatedKeys.push(updatedKey);
-    } else {
-      unchangedKeys.push(key);
-    }
-  }
-
-  return { updatedKeys, unchangedKeys };
-}*/
+ * Returns the URL to the Google Cloud Console credentials page.
+ */
+function getCredentialsConsoleUrl(): string {
+  return "https://console.cloud.google.com/apis/credentials";
+}
