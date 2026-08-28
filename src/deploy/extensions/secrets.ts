@@ -238,18 +238,13 @@ export async function secretHasExtensionsLabel(
 ): Promise<boolean> {
   try {
     const have = await secretManager.getSecret(projectId, secretName);
-    for (const labelKey of Object.keys(have.labels)) {
-      if (labelKey === secretUtils.SECRET_LABEL) {
-        return true;
-      }
-    }
-  } catch (err: any) {
+    return secretUtils.SECRET_LABEL in have.labels;
+  } catch (err: unknown) {
     throw new FirebaseError(
       `Error when retrieving current state of migrating secret ${projectId}/${secretName}: ${err instanceof Error ? err.message : String(err)}`,
       { original: err instanceof Error ? err : undefined },
     );
   }
-  return false;
 }
 
 /**
@@ -268,7 +263,7 @@ export async function transferSecretToKits(
         newLabels[labelKey] = labelValue;
       }
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     throw new FirebaseError(
       `Error when retrieving current state of migrating secret ${projectId}/${secretName}: ${err instanceof Error ? err.message : String(err)}`,
       { original: err instanceof Error ? err : undefined },

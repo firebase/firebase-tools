@@ -185,11 +185,11 @@ export async function secretsNeedingEjection(instance: ExtensionInstance): Promi
     const projectId = match.groups.project;
     const secretId = match.groups.secret;
     const hasLabel = await secretHasExtensionsLabel(projectId, secretId);
-    return hasLabel ? `${projectId}/${secretId}` : null;
+    return hasLabel ? `${projectId}/${secretId}` : undefined;
   });
 
   const results = await Promise.all(checks);
-  return results.filter((r): r is string => r !== null);
+  return results.filter((r): r is string => r !== undefined);
 }
 
 /**
