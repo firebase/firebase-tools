@@ -187,17 +187,23 @@ export async function askForParam(args: {
         });
         valid = checkResponse(response, paramSpec);
         break;
-      case ParamType.MULTISELECT:
+      case ParamType.MULTISELECT: {
+        const defaultValues = (paramSpec.default || "").split(",");
         response = (
           await checkbox<string>({
             message:
               "Which options do you want enabled for this parameter? " +
               "Press Space to select, then Enter to confirm your choices. ",
-            choices: convertExtensionOptionToLabeledList(paramSpec.options as ParamOption[]),
+            choices: (paramSpec.options as ParamOption[]).map((option) => ({
+              checked: defaultValues.includes(option.value),
+              name: option.label || option.value,
+              value: option.value,
+            })),
           })
         ).join(",");
         valid = checkResponse(response, paramSpec);
         break;
+      }
       case ParamType.SECRET:
         do {
           secretLocations = await promptSecretLocations(paramSpec);

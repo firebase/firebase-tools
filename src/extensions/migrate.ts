@@ -303,7 +303,7 @@ async function fetchOldSpec(
   }
 }
 
-async function getLatestExtensionVersion(baseRef: string): Promise<string | undefined> {
+async function getLatestExtensionVersionNumber(baseRef: string): Promise<string | undefined> {
   try {
     const extInfo = await extensionsApi.getExtension(baseRef);
     return extInfo.latestApprovedVersion || extInfo.latestVersion;
@@ -361,14 +361,14 @@ export async function ensureInstanceUpToDate(
     return instance;
   }
 
-  const latestVersion = await getLatestExtensionVersion(baseRef);
+  const latestVersion = await getLatestExtensionVersionNumber(baseRef);
   if (!latestVersion || currentVersion === latestVersion) {
     return instance;
   }
 
   logLabeledBullet(
     logPrefix,
-    `Upgrading extension instance ${clc.bold(instanceId)} from version ${clc.bold(currentVersion)} to ${clc.bold(latestVersion)} to derisk migration...`,
+    `Upgrading extension instance ${clc.bold(instanceId)} from version ${clc.bold(currentVersion)} to ${clc.bold(latestVersion)} to ensure a smooth migration...`,
   );
 
   const targetRef = `${baseRef}@${latestVersion}`;
