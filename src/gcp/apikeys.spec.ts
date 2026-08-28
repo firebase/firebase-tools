@@ -56,7 +56,11 @@ describe("apikeys", () => {
 
       nock(apiKeysOrigin()).get(TEST_KEY_PATH).reply(200, emptyRestrictionsKey);
 
+      const patchReq = nock(apiKeysOrigin()).patch(TEST_KEY_PATH).reply(200);
+
       await apikeys.updateAppApiKeyRestriction(apiKeyString, serviceName);
+
+      expect(patchReq.isDone()).to.be.false;
     });
 
     it("should not patch an unrestricted key with empty apiTargets", async () => {
@@ -75,7 +79,11 @@ describe("apikeys", () => {
 
       nock(apiKeysOrigin()).get(TEST_KEY_PATH).reply(200, emptyApiTargetsKey);
 
+      const patchReq = nock(apiKeysOrigin()).patch(TEST_KEY_PATH).reply(200);
+
       await apikeys.updateAppApiKeyRestriction(apiKeyString, serviceName);
+
+      expect(patchReq.isDone()).to.be.false;
     });
 
     it("should not patch a restricted already allowed key", async () => {
@@ -94,7 +102,11 @@ describe("apikeys", () => {
 
       nock(apiKeysOrigin()).get(TEST_KEY_PATH).reply(200, restrictedAlreadyAllowedKey);
 
+      const patchReq = nock(apiKeysOrigin()).patch(TEST_KEY_PATH).reply(200);
+
       await apikeys.updateAppApiKeyRestriction(apiKeyString, serviceName);
+
+      expect(patchReq.isDone()).to.be.false;
     });
 
     it("should patch a restricted key to include the missing service restriction with polling", async () => {
@@ -114,7 +126,7 @@ describe("apikeys", () => {
 
       nock(apiKeysOrigin()).get(TEST_KEY_PATH).reply(200, restrictedMissingKey);
 
-      const request = nock(apiKeysOrigin())
+      const patchReq = nock(apiKeysOrigin())
         .patch(TEST_KEY_PATH, (body: TestKey) => {
           expect(body.restrictions?.apiTargets).to.deep.equal([
             { service: existingServiceName },
@@ -128,7 +140,7 @@ describe("apikeys", () => {
       const pollStub = sandbox.stub(operationPoller, "pollOperation").resolves();
 
       await apikeys.updateAppApiKeyRestriction(apiKeyString, serviceName);
-      expect(request.isDone()).to.be.true;
+      expect(patchReq.isDone()).to.be.true;
       expect(pollStub).to.have.been.calledWith({
         apiOrigin: apiKeysOrigin(),
         apiVersion: "v2",
