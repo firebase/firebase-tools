@@ -196,13 +196,20 @@ async function uninstallProjectInstance(
 ): Promise<void> {
   const envFilePath = join(kitInstancePath, `.env.${projectId}`);
   const epFilters: EndpointFilter[] = [{ codebase: instanceId }];
-  const functionsDeleted = await deleteFunctionsByEndpointFilters(projectId, epFilters, options);
-
-  if (functionsDeleted === 0) {
+  const { deletionCount, hasErrors } = await deleteFunctionsByEndpointFilters(
+    projectId,
+    epFilters,
+    options,
+  );
+  if (hasErrors) {
+    throw new FirebaseError("Some functions deletions failed. Not modifying firebase.json.");
+  }
+  if (deletionCount === 0) {
     logger.info(
       `No deployed functions found for instance ${instanceId}. This is normal if firebase deploy was never run.`,
     );
   }
+
   config.deleteProjectFile(envFilePath);
 }
 
