@@ -10,7 +10,11 @@ import { FirebaseError } from "../../error";
 import { reduceFlat } from "../../functional";
 import { confirm } from "../../prompt";
 import { Options } from "../../options";
+import * as functionsConfig from "../../functionsConfig";
 
+/**
+ *
+ */
 export async function deleteFunctionsByEndpointFilters(
   projectId: string,
   epFilters: EndpointFilter[],
@@ -35,16 +39,14 @@ export async function deleteFunctionsByEndpointFilters(
     .sort(backend.compareFunctions);
   if (allEpToDelete.length > 0) {
     const deleteList = allEpToDelete.map((func) => `\t${getFunctionLabel(func)}`).join("\n");
-    const skipPrompt = options?.nonInteractive ?? false;
-    const promptForce = skipPrompt ? options?.force ?? false : false;
     const confirmDeletion = await confirm({
       message:
         "You are about to delete the following Cloud Functions:\n" +
         deleteList +
         "\n  Are you sure?",
       default: false,
-      force: promptForce,
-      nonInteractive: skipPrompt,
+      force: options?.force,
+      nonInteractive: options?.nonInteractive,
     });
     if (!confirmDeletion) {
       throw new FirebaseError("Command aborted.");
@@ -56,8 +58,9 @@ export async function deleteFunctionsByEndpointFilters(
       concurrency: 40,
       maxBackoff: 40000,
     });
-    // GAE location doesn't matter for deleting an existing codebase
-    const appEngineLocation = "us-central1";
+
+    const firebaseConfig = await functionsConfig.getFirebaseConfig(options || {});
+    const appEngineLocation = functionsConfig.getAppEngineLocation(firebaseConfig);
     try {
       const fab = new fabricator.Fabricator({
         functionExecutor,

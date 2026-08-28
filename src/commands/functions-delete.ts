@@ -9,6 +9,7 @@ import * as utils from "../utils";
 import * as backend from "../deploy/functions/backend";
 import * as projectConfig from "../functions/projectConfig";
 import { deleteFunctionsByEndpointFilters } from "../deploy/functions/delete";
+import { FirebaseError } from "../error";
 
 export const command = new Command("functions:delete [filters...]")
   .description("delete one or more Cloud Functions by name, group name, or codebase.")
@@ -68,5 +69,16 @@ export const command = new Command("functions:delete [filters...]")
       );
     }
 
-    await deleteFunctionsByEndpointFilters(context.projectId, context.filters, options);
+    const deletedCount = await deleteFunctionsByEndpointFilters(
+      context.projectId,
+      context.filters,
+      options,
+    );
+    if (deletedCount === 0) {
+      throw new FirebaseError(
+        `The specified filters do not match any existing functions in project ${clc.bold(
+          context.projectId,
+        )}.`,
+      );
+    }
   });
