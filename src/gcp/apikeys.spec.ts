@@ -2,19 +2,11 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import nock from "../test/helpers/nock";
 
+import { Key } from "./apikeys";
 import * as apikeys from "./apikeys";
 import { apiKeysOrigin } from "../api";
 import * as operationPoller from "../operation-poller";
 import { FirebaseError } from "../error";
-
-interface TestKey {
-  name: string;
-  displayName?: string;
-  keyString?: string;
-  restrictions?: {
-    apiTargets?: Array<{ service: string; methods?: string[] }>;
-  };
-}
 
 const PROJECT_ID = "test-project";
 const TEST_KEY_RESOURCE_NAME = `projects/${PROJECT_ID}/locations/global/keys/test-key`;
@@ -43,7 +35,7 @@ describe("apikeys", () => {
     const TEST_KEY_PATH = `/v2/${TEST_KEY_RESOURCE_NAME}`;
 
     it("should not patch an unrestricted key with empty restrictions", async () => {
-      const emptyRestrictionsKey: TestKey = {
+      const emptyRestrictionsKey: Key = {
         name: TEST_KEY_RESOURCE_NAME,
         displayName: "Empty Restrictions Key",
         restrictions: {},
@@ -64,7 +56,7 @@ describe("apikeys", () => {
     });
 
     it("should not patch an unrestricted key with empty apiTargets", async () => {
-      const emptyApiTargetsKey: TestKey = {
+      const emptyApiTargetsKey: Key = {
         name: TEST_KEY_RESOURCE_NAME,
         displayName: "Empty apiTargets Key",
         restrictions: {
@@ -87,7 +79,7 @@ describe("apikeys", () => {
     });
 
     it("should not patch a restricted already allowed key", async () => {
-      const restrictedAlreadyAllowedKey: TestKey = {
+      const restrictedAlreadyAllowedKey: Key = {
         name: TEST_KEY_RESOURCE_NAME,
         displayName: "Already Allowed Key",
         restrictions: {
@@ -111,7 +103,7 @@ describe("apikeys", () => {
 
     it("should patch a restricted key to include the missing service restriction with polling", async () => {
       const existingServiceName = "existingservice.googleapis.com";
-      const restrictedMissingKey: TestKey = {
+      const restrictedMissingKey: Key = {
         name: TEST_KEY_RESOURCE_NAME,
         displayName: "Restricted Key",
         restrictions: {
@@ -127,7 +119,7 @@ describe("apikeys", () => {
       nock(apiKeysOrigin()).get(TEST_KEY_PATH).reply(200, restrictedMissingKey);
 
       const patchReq = nock(apiKeysOrigin())
-        .patch(TEST_KEY_PATH, (body: TestKey) => {
+        .patch(TEST_KEY_PATH, (body: Key) => {
           expect(body.restrictions?.apiTargets).to.deep.equal([
             { service: existingServiceName },
             { service: serviceName },
@@ -179,7 +171,7 @@ describe("apikeys", () => {
 
     it("should throw FirebaseError with key display name when updateKey API returns 403", async () => {
       const existingServiceName = "existingservice.googleapis.com";
-      const restrictedMissingKey: TestKey = {
+      const restrictedMissingKey: Key = {
         name: TEST_KEY_RESOURCE_NAME,
         displayName: "Restricted Key",
         restrictions: {

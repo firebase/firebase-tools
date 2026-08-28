@@ -4,6 +4,7 @@ import { FirebaseError, getErrStatus } from "../error";
 import { LongRunningOperation, pollOperation } from "../operation-poller";
 
 const API_VERSION = "v2";
+const CREDENTIALS_CONSOLE_URL = "https://console.cloud.google.com/apis/credentials";
 
 const client = new Client({
   urlPrefix: apiKeysOrigin(),
@@ -45,17 +46,14 @@ interface Restrictions {
   iosKeyRestrictions?: IosKeyRestrictions;
 }
 
-interface Key {
+export interface Key {
   name: string;
   displayName?: string;
-  keyString: string;
   restrictions?: Restrictions;
 }
 
 interface LookupKeyResponse {
   name: string;
-  parent: string;
-  displayName?: string;
 }
 
 /**
@@ -73,7 +71,7 @@ export async function updateAppApiKeyRestriction(
   service: string,
 ): Promise<void> {
   const lookup = await lookupKeyResourceName(apiKeyString);
-  const key = await getKeyWithResourceName(lookup.name);
+  const key = await getKey(lookup.name);
   await ensureServiceInKeyRestrictions(key, service);
 }
 
@@ -92,7 +90,7 @@ async function lookupKeyResourceName(apiKeyString: string): Promise<LookupKeyRes
       throw new FirebaseError(
         `Permission denied when looking up API key.\n\n` +
           `To resolve this, ensure your account has the right permissions on the project in the Google Cloud Console:\n\n` +
-          `  ${getCredentialsConsoleUrl()}`,
+          `  ${CREDENTIALS_CONSOLE_URL}`,
         { original: err instanceof Error ? err : undefined, status: 403 },
       );
     }
@@ -104,7 +102,7 @@ async function lookupKeyResourceName(apiKeyString: string): Promise<LookupKeyRes
  * Gets the details of an API key given its resource name.
  * Ref: https://cloud.google.com/api-keys/docs/reference/rest/v2/projects.locations.keys/get
  */
-async function getKeyWithResourceName(keyResourceName: string): Promise<Key> {
+async function getKey(keyResourceName: string): Promise<Key> {
   try {
     const res = await client.get<Key>(keyResourceName);
     return res.body;
@@ -113,7 +111,7 @@ async function getKeyWithResourceName(keyResourceName: string): Promise<Key> {
       throw new FirebaseError(
         `Permission denied when retrieving API key ${keyResourceName}.\n\n` +
           `To resolve this, ensure your account has the right permissions on the project in the Google Cloud Console:\n\n` +
-          `  ${getCredentialsConsoleUrl()}`,
+          `  ${CREDENTIALS_CONSOLE_URL}`,
         { original: err instanceof Error ? err : undefined, status: 403 },
       );
     }
@@ -123,23 +121,20 @@ async function getKeyWithResourceName(keyResourceName: string): Promise<Key> {
 
 /**
  * Ensures a specific service is permitted in an API key's restrictions.
- *
- * - If the key is unrestricted (`apiTargets` is undefined or empty), no changes are made
- *   because the key is already allowed to access all enabled services on the project.
- * - If the key is restricted and already includes the service, no update is performed.
- * - If the key is restricted and is missing the service, the service is appended to `apiTargets`
- *   and the key is updated.
  */
 async function ensureServiceInKeyRestrictions(key: Key, service: string): Promise<void> {
+  // If the key is unrestricted, no update is made
   if (!key.restrictions?.apiTargets || key.restrictions.apiTargets.length === 0) {
     return;
   }
 
+  // If the key is restricted and already includes the service, no update is made
   const alreadyAllowed = key.restrictions.apiTargets.some((target) => target.service === service);
   if (alreadyAllowed) {
     return;
   }
 
+  // If the key is restricted and is missing the service, key is updated
   const updatedRestrictions: Restrictions = {
     ...key.restrictions,
     apiTargets: [...key.restrictions.apiTargets, { service }],
@@ -174,17 +169,10 @@ async function updateKeyRestrictions(key: Key): Promise<void> {
       throw new FirebaseError(
         `Permission denied when updating API key ${keyIdentifier}.\n\n` +
           `To resolve this, ensure your account has the right permissions on the project in the Google Cloud Console:\n\n` +
-          `  ${getCredentialsConsoleUrl()}`,
+          `  ${CREDENTIALS_CONSOLE_URL}`,
         { original: err instanceof Error ? err : undefined, status: 403 },
       );
     }
     throw err;
   }
-}
-
-/**
- * Returns the URL to the Google Cloud Console credentials page.
- */
-function getCredentialsConsoleUrl(): string {
-  return "https://console.cloud.google.com/apis/credentials";
 }
