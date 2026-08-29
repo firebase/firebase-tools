@@ -5,17 +5,39 @@ import * as dataplane from "../../../dataconnect/dataplaneClient";
 import { pickOneService } from "../../../dataconnect/load";
 import { graphqlResponseToToolResponse, parseVariables } from "../../util/dataconnect/converter";
 import { getDataConnectEmulatorClient } from "../../util/dataconnect/emulator";
-import { Client } from "../../../apiv2";
 
-export const execute = tool(
+export const execute_in_emulator = tool(
   "dataconnect",
   {
-    name: "execute",
-    description:
-      "Use this to execute a GraphQL operation against a SQL Connect service or its emulator.",
+    name: "execute_in_emulator",
+    description: `Executes a GraphQL operation against a local Firebase SQL Connect Service instance emulator.
+
+Grants access to run queries and mutations on the local emulator.
+
+**Prerequisites:**
+* The Firebase local emulators must be running (run \`firebase emulators:start\` in your project directory).
+* A \`firebase.json\` file configured with a \`dataconnect\` service.
+* A \`dataconnect.yaml\` configuration file inside the service's source directory.
+* A defined SQL Connect schema (configured via the schema/schemas fields in \`dataconnect.yaml\`).
+  * Note: These files are ideally generated using the \`firebase_init\` MCP tool, or must follow the standard structure described in the \`firebase-data-connect-basics\` skill.
+
+**When to use it:**
+* Use this tool to execute local GraphQL queries or mutations for development and testing.
+
+**How to use it:**
+* Call \`execute_in_emulator\` with the GraphQL \`query\` string.
+* Optionally provide \`service_id\`, \`location_id\`, \`variables_json\`, and \`auth_token_json\`.
+
+**JSON Example:**
+\`\`\`json
+{
+  "query": "query GetUser($id: UUID!) { user(id: $id) { name } }",
+  "variables_json": "{\\"id\\": \\"123e4567-e89b-12d3-a456-426614174000\\"}"
+}
+\`\`\`
+`,
     inputSchema: z.object({
       query: z.string().describe(`A Firebase SQL Connect GraphQL query or mutation to execute.
-You can use the \`dataconnect_generate_operation\` tool to generate a query.
 Example SQL Connect schema and example queries can be found in files ending in \`.graphql\` or \`.gql\`.
 `),
       service_id: z
@@ -44,19 +66,13 @@ Example SQL Connect schema and example queries can be found in files ending in \
             'Importantly, when executing queries with `@auth(level: USER)` or `auth.uid`, a valid Firebase Auth Token JWT with "sub" field is required. ' +
             '"auth.uid" expression in the query evaluates to the value of "sub" field in Firebase Auth token.',
         ),
-      use_emulator: z
-        .boolean()
-        .default(false)
-        .describe(
-          "If true, target the DataConnect emulator. Run `firebase emulators:start` to start it",
-        ),
     }),
     annotations: {
-      title: "Execute Firebase SQL Connect Query",
+      title: "Execute Firebase SQL Connect Query in Emulator",
     },
     _meta: {
       requiresProject: true,
-      requiresAuth: true,
+      requiresAuth: false,
     },
   },
   async (
@@ -65,7 +81,6 @@ Example SQL Connect schema and example queries can be found in files ending in \
       service_id,
       location_id,
       variables_json: unparsedVariables,
-      use_emulator,
       auth_token_json: unparsedAuthToken,
     },
     { projectId, config, host },
@@ -76,12 +91,7 @@ Example SQL Connect schema and example queries can be found in files ending in \
       service_id || undefined,
       location_id || undefined,
     );
-    let apiClient: Client;
-    if (use_emulator) {
-      apiClient = await getDataConnectEmulatorClient(host);
-    } else {
-      apiClient = dataplane.dataconnectDataplaneClient();
-    }
+    const apiClient = await getDataConnectEmulatorClient(host);
     let executeGraphQL = dataplane.executeGraphQL;
     if (query.startsWith("query")) {
       executeGraphQL = dataplane.executeGraphQLRead;
