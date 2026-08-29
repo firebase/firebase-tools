@@ -287,7 +287,7 @@ function getCallbackUrl(port?: number): string {
   if (typeof port === "undefined") {
     return "urn:ietf:wg:oauth:2.0:oob";
   }
-  return `http://localhost:${port}`;
+  return `http://127.0.0.1:${port}`;
 }
 
 function queryParamString(args: { [key: string]: string | undefined }) {
@@ -632,7 +632,7 @@ async function loginWithLocalhost<ResultType>(
       return;
     });
 
-    server.listen(port, () => {
+    server.listen(port, "127.0.0.1", () => {
       logger.info();
       logger.info("Visit this URL on this device to log in:");
       logger.info(clc.bold(clc.underline(authUrl)));
@@ -640,6 +640,18 @@ async function loginWithLocalhost<ResultType>(
       logger.info("Waiting for authentication...");
 
       open(authUrl);
+
+      setTimeout(() => {
+        if (server.listening) {
+          logger.info();
+          logger.info(
+            "Having trouble? Try " +
+              clc.bold("firebase login --no-localhost") +
+              " or " +
+              clc.bold("firebase login:ci"),
+          );
+        }
+      }, 30_000);
     });
 
     server.on("error", (err) => {
