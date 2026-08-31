@@ -1986,9 +1986,9 @@ describe("functions/kits/install", () => {
         existingKit,
         {
           existingFunctions: [existingKit],
-          existingKitIds: new Set(["firestore-bigquery-export"]),
-          existingCodebases: new Set(),
-          existingInstanceIds: new Set(["inst1"]),
+          existingKitIds: ["firestore-bigquery-export"],
+          existingCodebases: [],
+          existingInstanceIds: ["inst1"],
         },
       );
 
