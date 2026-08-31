@@ -421,6 +421,12 @@ describe("ensureInstanceSpec", () => {
     const res = await ensureInstanceSpec(instance);
     expect(res.config?.source?.spec?.name).to.equal("firestore-send-email");
     expect(res.config?.source?.spec?.params).to.have.length(1);
+    expect(res.config?.source?.name).to.equal(
+      "publishers/firebase/extensions/firestore-send-email/versions/0.1.35",
+    );
+    expect(res.config?.source?.packageUri).to.equal("https://example.com/download");
+    expect(res.config?.source?.hash).to.equal("hash123");
+    expect(res.config?.source?.state).to.equal("ACTIVE");
   });
 
   it("should fetch spec on demand if extensionRef is on instance directly", async () => {
@@ -464,5 +470,31 @@ describe("ensureInstanceSpec", () => {
     const res = await ensureInstanceSpec(instance);
     expect(res.config?.source?.spec?.name).to.equal("firestore-send-email");
     expect(res.config?.source?.spec?.params).to.have.length(1);
+    expect(res.config?.source?.name).to.equal(
+      "publishers/firebase/extensions/firestore-send-email/versions/0.1.35",
+    );
+  });
+
+  it("should let getExtensionVersion errors bubble up", async () => {
+    const instance: ExtensionInstance = {
+      name: "projects/123/instances/ext1",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      extensionRef: "firebase/firestore-send-email",
+      extensionVersion: "0.1.35",
+      config: {
+        name: "",
+        createTime: "",
+        params: {},
+        systemParams: {},
+      },
+    };
+
+    const networkErr = new Error("Network failure");
+    sandbox.stub(publisherApi, "getExtensionVersion").rejects(networkErr);
+
+    await expect(ensureInstanceSpec(instance)).to.be.rejectedWith(networkErr);
   });
 });
