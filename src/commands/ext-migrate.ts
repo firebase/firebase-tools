@@ -2,13 +2,20 @@ import * as clc from "colorette";
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { needProjectId } from "../projectUtils";
-import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
+import {
+  ensureExtensionsApiEnabled,
+  ensureInstanceSpec,
+  logPrefix,
+} from "../extensions/extensionsHelper";
 import { requirePermissions } from "../requirePermissions";
-import { createMigrationPlan, ensureInstanceUpToDate } from "../extensions/migrate";
+import { createMigrationPlan, ensureInstanceUpToDate, migrateSecrets } from "../extensions/migrate";
+import { functionsEnvFromInstance } from "../extensions/export";
+import { installKitOrInstance } from "../functions/kits/install";
 import { validateNpmPackageName } from "../functions/kits";
-import { logger } from "../logger";
 import { Options } from "../options";
-import { logLabeledBullet } from "../utils";
+import { logLabeledBullet, logLabeledWarning } from "../utils";
+import { FirebaseError } from "../error";
+import { logger } from "../logger";
 
 export interface ExtMigrateOptions extends Options {
   package?: string;
@@ -26,6 +33,9 @@ export const command = new Command("ext:migrate")
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
   .action(async (options: ExtMigrateOptions) => {
+    if (!options.config) {
+      throw new FirebaseError("Not in a Firebase project directory (firebase.json not found).");
+    }
     const projectId = needProjectId(options);
     if (options.package) {
       validateNpmPackageName(options.package);
@@ -44,6 +54,36 @@ export const command = new Command("ext:migrate")
     );
 
     plan.instance = await ensureInstanceUpToDate(projectId, plan.instance, options);
+
+    if (plan.instance.state !== "ACTIVE") {
+      logLabeledWarning(
+        logPrefix,
+        `Extension instance ${clc.bold(plan.instanceId)} is in state ${plan.instance.state}. Migration may not function as expected.`,
+      );
+    }
+
+    plan.instance = await ensureInstanceSpec(plan.instance);
+
+    const exportedEnvs = functionsEnvFromInstance(plan.instance);
+
+    await migrateSecrets(plan.instance);
+
+    logLabeledBullet(
+      logPrefix,
+      `Installing kit ${clc.bold(plan.kitPackage)} for instance ${clc.bold(plan.instanceId)}...`,
+    );
+
+    await installKitOrInstance({
+      ...options,
+      config: options.config,
+      package: plan.kitPackage,
+      template: "migration",
+      seedEnv: {
+        projectId,
+        envs: exportedEnvs,
+      },
+      skipReport: true,
+    });
 
     logger.info("TODO: Draw the rest of the owl");
     return plan;

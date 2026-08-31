@@ -1,17 +1,18 @@
 import * as clc from "colorette";
 import * as Table from "cli-table3";
 
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrStatus } from "../error";
 import { logger } from "../logger";
-import { last, logLabeledBullet, logLabeledWarning } from "../utils";
+import { last, logLabeledBullet, logLabeledSuccess, logLabeledWarning } from "../utils";
 import { logPrefix } from "./extensionsHelper";
 import { confirm, select } from "../prompt";
 import * as extensionsApi from "./extensionsApi";
 import * as refs from "./refs";
 import * as paramHelper from "./paramHelper";
 import * as updateHelper from "./updateHelper";
-import { ExtensionInstance, ExtensionSpec } from "./types";
+import { ExtensionInstance, ExtensionSpec, ParamType } from "./types";
 import * as replacements from "./replacements.json";
+import { ejectSecretsFromInstance } from "./export";
 
 export interface MigrateOptions {
   package?: string;
@@ -431,4 +432,42 @@ export async function ensureInstanceUpToDate(
 
   const updatedInstance = await extensionsApi.getInstance(projectId, instanceId);
   return updatedInstance ?? instance;
+}
+
+/**
+ * Migrates secrets for an extension instance to Functions management if secrets are present.
+ * If no secrets are defined in the extension spec, exits early without logging.
+ */
+export async function migrateSecrets(instance: ExtensionInstance): Promise<string[]> {
+  const hasSecrets = (instance.config?.source?.spec?.params ?? []).some(
+    (p) => p.type === ParamType.SECRET,
+  );
+  if (!hasSecrets) {
+    return [];
+  }
+
+  const instanceId = instance.name.split("/").pop() || "";
+  logLabeledBullet(
+    logPrefix,
+    `Transferring secrets for instance ${clc.bold(instanceId)} to Functions management...`,
+  );
+
+  try {
+    const secretsChanged = await ejectSecretsFromInstance(instance);
+    if (secretsChanged.length > 0) {
+      logLabeledSuccess(
+        logPrefix,
+        `Successfully transferred secrets to Functions management: ${secretsChanged.join(", ")}`,
+      );
+    }
+    return secretsChanged;
+  } catch (err: unknown) {
+    if (getErrStatus(err) === 403) {
+      throw new FirebaseError(
+        "You do not have permissions to transfer secrets from Extensions to Functions. Please ask an IAM administrator to run the migration",
+        { original: err instanceof Error ? err : undefined, exit: 1 },
+      );
+    }
+    throw err;
+  }
 }

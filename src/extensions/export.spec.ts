@@ -1,9 +1,19 @@
 import { expect } from "chai";
+import * as sinon from "sinon";
 
-import { functionsEnvFromInstance, parameterizeProject, setSecretParamsToLatest } from "./export";
+import {
+  functionsEnvFromInstance,
+  parameterizeProject,
+  setSecretParamsToLatest,
+  ejectSecretsFromInstance,
+} from "./export";
+import { ensureInstanceSpec } from "./extensionsHelper";
 import { DeploymentInstanceSpec } from "../deploy/extensions/planner";
 import { ParamType } from "./types";
 import { ExtensionInstance } from "./types";
+import * as publisherApi from "./publisherApi";
+import * as secretsModule from "../deploy/extensions/secrets";
+import { FirebaseError } from "../error";
 
 describe("ext:export helpers", () => {
   describe("parameterizeProject", () => {
@@ -296,6 +306,41 @@ describe("functionsEnvFromInstance", () => {
     });
   });
 
+  it("system params location should map to DEFAULT_FUNCTION_REGION", () => {
+    const instance: ExtensionInstance = {
+      name: "",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      config: {
+        name: "",
+        createTime: "",
+        params: {},
+        systemParams: {
+          "firebaseextensions.v1beta.function/location": "us-central1",
+        },
+        source: {
+          name: "",
+          state: "ACTIVE",
+          packageUri: "",
+          hash: "",
+          spec: {
+            name: "",
+            version: "1",
+            resources: [],
+            params: [],
+            systemParams: [],
+          },
+        },
+      },
+    };
+    const output = functionsEnvFromInstance(instance);
+    expect(output).to.deep.equal({
+      DEFAULT_FUNCTION_REGION: "us-central1",
+    });
+  });
+
   it("eventarc special cases", () => {
     const instance: ExtensionInstance = {
       name: "",
@@ -330,5 +375,178 @@ describe("functionsEnvFromInstance", () => {
       EXT_SELECTED_EVENTS: "firebase.extensions.storage-resize-images.v1.complete",
       EVENTARC_CHANNEL: "projects/1234/locations/us-west1/channels/firebase",
     });
+  });
+});
+
+describe("ensureInstanceSpec", () => {
+  let getExtensionVersionStub: sinon.SinonStub;
+
+  beforeEach(() => {
+    getExtensionVersionStub = sinon.stub(publisherApi, "getExtensionVersion");
+  });
+
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it("should return instance as is if spec already exists", async () => {
+    const instance: ExtensionInstance = {
+      name: "projects/p/instances/i",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      config: {
+        name: "projects/p/instances/i/configurations/1",
+        createTime: "",
+        params: {},
+        systemParams: {},
+        source: {
+          name: "sources/1",
+          state: "ACTIVE",
+          packageUri: "",
+          hash: "",
+          spec: {
+            name: "my-ext",
+            version: "0.1.0",
+            resources: [],
+            params: [],
+            systemParams: [],
+          },
+        },
+      },
+    };
+
+    const result = await ensureInstanceSpec(instance);
+    expect(result.config.source?.spec?.name).to.equal("my-ext");
+    expect(getExtensionVersionStub).to.not.have.been.called;
+  });
+
+  it("should fetch spec on demand if missing", async () => {
+    const instance = {
+      name: "projects/p/instances/i",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      config: {
+        name: "projects/p/instances/i/configurations/1",
+        createTime: "",
+        extensionRef: "firebase/storage-resize-images",
+        extensionVersion: "0.1.30",
+        params: {},
+        systemParams: {},
+      },
+    } satisfies ExtensionInstance;
+
+    getExtensionVersionStub.withArgs("firebase/storage-resize-images@0.1.30").resolves({
+      spec: {
+        name: "storage-resize-images",
+        version: "0.1.30",
+        resources: [],
+        params: [],
+        systemParams: [],
+      },
+    });
+
+    const result = await ensureInstanceSpec(instance);
+    expect(result.config.source?.spec?.name).to.equal("storage-resize-images");
+    expect(getExtensionVersionStub).to.have.been.calledOnce;
+  });
+});
+
+describe("ejectSecretsFromInstance", () => {
+  let transferSecretToKitsStub: sinon.SinonStub;
+
+  beforeEach(() => {
+    transferSecretToKitsStub = sinon.stub(secretsModule, "transferSecretToKits");
+  });
+
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it("should eject secrets successfully", async () => {
+    const instance: ExtensionInstance = {
+      name: "projects/my-proj/instances/my-inst",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      config: {
+        name: "projects/my-proj/instances/my-inst/configurations/1",
+        createTime: "",
+        params: {
+          API_KEY: "projects/my-proj/secrets/API_KEY/versions/1",
+        },
+        systemParams: {},
+        source: {
+          name: "sources/1",
+          state: "ACTIVE",
+          packageUri: "",
+          hash: "",
+          spec: {
+            name: "my-ext",
+            version: "1.0.0",
+            resources: [],
+            params: [
+              {
+                param: "API_KEY",
+                label: "API Key",
+                type: ParamType.SECRET,
+              },
+            ],
+            systemParams: [],
+          },
+        },
+      },
+    };
+
+    transferSecretToKitsStub.resolves();
+    const changed = await ejectSecretsFromInstance(instance);
+    expect(changed).to.deep.equal(["my-proj/API_KEY"]);
+    expect(transferSecretToKitsStub).to.have.been.calledWith("my-proj", "API_KEY");
+  });
+
+  it("should propagate errors thrown by transferSecretToKits", async () => {
+    const instance: ExtensionInstance = {
+      name: "projects/my-proj/instances/my-inst",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      config: {
+        name: "projects/my-proj/instances/my-inst/configurations/1",
+        createTime: "",
+        params: {
+          API_KEY: "projects/my-proj/secrets/API_KEY/versions/1",
+        },
+        systemParams: {},
+        source: {
+          name: "sources/1",
+          state: "ACTIVE",
+          packageUri: "",
+          hash: "",
+          spec: {
+            name: "my-ext",
+            version: "1.0.0",
+            resources: [],
+            params: [
+              {
+                param: "API_KEY",
+                label: "API Key",
+                type: ParamType.SECRET,
+              },
+            ],
+            systemParams: [],
+          },
+        },
+      },
+    };
+
+    const permError = new FirebaseError("Forbidden", { status: 403 });
+    transferSecretToKitsStub.rejects(permError);
+
+    await expect(ejectSecretsFromInstance(instance)).to.be.rejectedWith(permError);
   });
 });
