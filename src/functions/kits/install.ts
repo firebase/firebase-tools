@@ -105,6 +105,7 @@ export interface InstallKitOrInstanceOptions {
   seedEnv?: KitInstanceEnvSeed;
   nonInteractive?: boolean;
   force?: boolean;
+  configure?: boolean;
   project?: string;
   projectId?: string;
   rc?: RC;
@@ -131,6 +132,7 @@ export interface ExistingKitInstallOptions {
   projectId?: string;
   nonInteractive?: boolean;
   force?: boolean;
+  configure?: boolean;
   rc?: RC;
   instanceId?: string;
   seedEnv?: KitInstanceEnvSeed;
@@ -1071,26 +1073,34 @@ export async function addKitInstanceOrConfigureProject(
     throw new FirebaseError(`Unexpected action '${String(action)}' for kit installation.`);
   }
 
-  const absSourcePath = options.config.path(existingKit.source);
-  let discoveredBuild: build.Build | undefined;
-  try {
-    discoveredBuild = await discoverKitBuild(options, absSourcePath);
-  } catch (err: unknown) {
-    logger.debug(`Could not discover kit build for params prompting: ${getErrMsg(err)}`);
+  if (projectId) {
+    fs.ensureFileSync(path.join(absConfigDirPath, `.env.${projectId}`));
   }
 
-  if (discoveredBuild?.params && discoveredBuild.params.length > 0) {
-    await promptAndWriteKitParams({
-      config: options.config,
-      projectId,
-      projectAlias,
-      absConfigDirPath,
-      absSourcePath,
-      instanceId,
-      nonInteractive: options.nonInteractive,
-      force: options.force,
-      params: discoveredBuild.params,
-    });
+  const absSourcePath = options.config.path(existingKit.source);
+  let discoveredBuild: build.Build | undefined;
+
+  const shouldConfigure = options.configure !== false;
+  if (shouldConfigure) {
+    try {
+      discoveredBuild = await discoverKitBuild(options, absSourcePath);
+    } catch (err: unknown) {
+      logger.debug(`Could not discover kit build for params prompting: ${getErrMsg(err)}`);
+    }
+
+    if (discoveredBuild?.params && discoveredBuild.params.length > 0) {
+      await promptAndWriteKitParams({
+        config: options.config,
+        projectId,
+        projectAlias,
+        absConfigDirPath,
+        absSourcePath,
+        instanceId,
+        nonInteractive: options.nonInteractive,
+        force: options.force,
+        params: discoveredBuild.params,
+      });
+    }
   }
 
   if (action === "addInstance") {
@@ -1286,25 +1296,33 @@ export async function installKitOrInstance(
       ? options.project
       : undefined;
 
-  let discoveredBuild: build.Build | undefined;
-  try {
-    discoveredBuild = await discoverKitBuild(options, absSourcePath);
-  } catch (err: unknown) {
-    logger.debug(`Could not discover kit build for params prompting: ${getErrMsg(err)}`);
+  if (projectId) {
+    fs.ensureFileSync(path.join(absConfigDirPath, `.env.${projectId}`));
   }
 
-  if (discoveredBuild?.params && discoveredBuild.params.length > 0) {
-    await promptAndWriteKitParams({
-      config: options.config,
-      projectId,
-      projectAlias,
-      absConfigDirPath,
-      absSourcePath,
-      instanceId,
-      nonInteractive: options.nonInteractive,
-      force: options.force,
-      params: discoveredBuild.params,
-    });
+  let discoveredBuild: build.Build | undefined;
+
+  const shouldConfigure = options.configure !== false;
+  if (shouldConfigure) {
+    try {
+      discoveredBuild = await discoverKitBuild(options, absSourcePath);
+    } catch (err: unknown) {
+      logger.debug(`Could not discover kit build for params prompting: ${getErrMsg(err)}`);
+    }
+
+    if (discoveredBuild?.params && discoveredBuild.params.length > 0) {
+      await promptAndWriteKitParams({
+        config: options.config,
+        projectId,
+        projectAlias,
+        absConfigDirPath,
+        absSourcePath,
+        instanceId,
+        nonInteractive: options.nonInteractive,
+        force: options.force,
+        params: discoveredBuild.params,
+      });
+    }
   }
 
   addKitToConfig(options.config, {

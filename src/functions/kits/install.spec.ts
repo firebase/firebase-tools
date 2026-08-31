@@ -66,6 +66,7 @@ describe("functions/kits/install", () => {
       .stub(initSpawn, "spawnWithOutput")
       .resolves(JSON.stringify([{ hasShrinkwrap: true }]));
     sinon.stub(fs, "ensureDir").resolves();
+    sinon.stub(fs, "ensureFileSync");
     sinon.stub(fs, "pathExists").resolves(false);
     statStub = sinon.stub(fs, "stat").resolves({ isDirectory: () => true } as fs.Stats);
     sinon.stub(fs, "readJson").resolves({});
@@ -1980,6 +1981,58 @@ describe("functions/kits/install", () => {
       expect(resolveParamsStub).to.have.been.calledOnce;
       expect(writeResolvedParamsStub).to.have.been.calledOnce;
     });
+
+    it("should skip parameter prompting when configure is false", async () => {
+      const existingKit: ValidatedKitSingle = {
+        kit: "firestore-bigquery-export",
+        sourcePackage: { name: "@firebase-function-kits/firestore-bigquery-export" },
+        source: "function-kits/firestore-bigquery-export/source",
+        instances: {
+          inst1: "function-kits/firestore-bigquery-export/config-inst1",
+        },
+      };
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [existingKit] },
+        path: (p: string) => path.join("/mock/project", p),
+      } as unknown as Config;
+
+      sinon.stub(prompt, "select").resolves("addEnv");
+
+      const resolveParamsStub = sinon.stub(params, "resolveParams");
+
+      const res = await addKitInstanceOrConfigureProject(
+        {
+          config: mockConfig,
+          project: "my-project",
+          projectId: "my-project",
+          configure: false,
+        },
+        existingKit,
+        {
+          existingFunctions: [existingKit],
+          existingKitIds: new Set(["firestore-bigquery-export"]),
+          existingCodebases: new Set(),
+          existingInstanceIds: new Set(["inst1"]),
+        },
+      );
+
+      expect(res).to.deep.equal({
+        action: "configuredEnv",
+        kitId: "firestore-bigquery-export",
+        instanceId: "inst1",
+        sourcePath: "function-kits/firestore-bigquery-export/source",
+        configDirPath: "function-kits/firestore-bigquery-export/config-inst1",
+      });
+      expect(resolveParamsStub).to.not.have.been.called;
+      expect(fs.ensureFileSync).to.have.been.calledWith(
+        path.join(
+          "/mock/project",
+          "function-kits/firestore-bigquery-export/config-inst1",
+          ".env.my-project",
+        ),
+      );
+    });
   });
 
   describe("installKitOrInstance", () => {
@@ -2581,6 +2634,36 @@ describe("functions/kits/install", () => {
       ).to.be.rejectedWith(
         FirebaseError,
         "In non-interactive mode but have no value for the following environment variables: REQUIRED_PARAM",
+      );
+    });
+
+    it("should skip parameter prompting and touch .env.projectId when configure is false", async () => {
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: sinon.stub(),
+        askWriteProjectFile: sinon.stub().resolves(),
+      } as unknown as Config;
+
+      const resolveParamsStub = sinon.stub(params, "resolveParams");
+
+      const res = await installKitOrInstance({
+        config: mockConfig,
+        package: "@firebase-function-kits/firestore-bigquery-export@1.0.0",
+        nonInteractive: true,
+        projectId: "target-proj",
+        configure: false,
+      });
+
+      expect(res.action).to.equal("installedKit");
+      expect(resolveParamsStub).to.not.have.been.called;
+      expect(fs.ensureFileSync).to.have.been.calledWith(
+        path.join(
+          "/mock/project",
+          "function-kits/firestore-bigquery-export/config-firestore-bigquery-export",
+          ".env.target-proj",
+        ),
       );
     });
   });
