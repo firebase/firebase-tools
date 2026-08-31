@@ -109,6 +109,7 @@ export interface InstallKitOrInstanceOptions {
   project?: string;
   projectId?: string;
   rc?: RC;
+  skipReport?: boolean;
 }
 
 export interface InstallKitOrInstanceResult {
@@ -136,6 +137,7 @@ export interface ExistingKitInstallOptions {
   rc?: RC;
   instanceId?: string;
   seedEnv?: KitInstanceEnvSeed;
+  skipReport?: boolean;
 }
 
 export interface PromptAndWriteKitParamsOptions {
@@ -1071,6 +1073,17 @@ export async function addKitInstanceOrConfigureProject(
       );
     }
     absConfigDirPath = options.config.path(configDirPath);
+    if (options.seedEnv?.envs && Object.keys(options.seedEnv.envs).length > 0) {
+      await fs.ensureDir(absConfigDirPath);
+      seedKitInstanceEnv({
+        configDir: absConfigDirPath,
+        functionsSource: options.config.path(existingKit.source),
+        projectDir: options.config.projectDir,
+        projectId: options.seedEnv.projectId,
+        projectAlias: options.seedEnv.projectAlias,
+        envs: options.seedEnv.envs,
+      });
+    }
   } else {
     throw new FirebaseError(`Unexpected action '${String(action)}' for kit installation.`);
   }
@@ -1118,14 +1131,16 @@ export async function addKitInstanceOrConfigureProject(
     );
   }
 
-  await printKitFirstDeployReport({
-    config: options.config,
-    project: options.project,
-    projectId: options.projectId,
-    instanceId,
-    absSourcePath,
-    preDiscoveredBuild: discoveredBuild,
-  });
+  if (!options.skipReport) {
+    await printKitFirstDeployReport({
+      config: options.config,
+      project: options.project,
+      projectId: options.projectId,
+      instanceId,
+      absSourcePath,
+      preDiscoveredBuild: discoveredBuild,
+    });
+  }
 
   return {
     action: resultAction,
@@ -1344,14 +1359,16 @@ export async function installKitOrInstance(
   });
 
   logLabeledSuccess("functions", `Function kit ${clc.bold(kitId)} successfully installed.`);
-  await printKitFirstDeployReport({
-    config: options.config,
-    project: options.project,
-    projectId: options.projectId,
-    instanceId,
-    absSourcePath,
-    preDiscoveredBuild: discoveredBuild,
-  });
+  if (!options.skipReport) {
+    await printKitFirstDeployReport({
+      config: options.config,
+      project: options.project,
+      projectId: options.projectId,
+      instanceId,
+      absSourcePath,
+      preDiscoveredBuild: discoveredBuild,
+    });
+  }
 
   return {
     action: "installedKit",

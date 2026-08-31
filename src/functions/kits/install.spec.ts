@@ -1967,6 +1967,62 @@ describe("functions/kits/install", () => {
       });
     });
 
+    it("should seed env for existing instance when seedEnv is provided", async () => {
+      const existingKit: ValidatedKitSingle = {
+        kit: "firestore-bigquery-export",
+        sourcePackage: { name: "@firebase-function-kits/firestore-bigquery-export" },
+        source: "function-kits/firestore-bigquery-export/source",
+        instances: {
+          inst1: "function-kits/firestore-bigquery-export/config-inst1",
+        },
+      };
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [existingKit] },
+        path: (p: string) => path.join("/mock/project", p),
+      } as unknown as Config;
+
+      sinon.stub(prompt, "select").resolves("addEnv");
+
+      const res = await addKitInstanceOrConfigureProject(
+        {
+          config: mockConfig,
+          project: "my-project",
+          seedEnv: {
+            projectId: "my-project",
+            envs: {
+              FOO: "bar",
+            },
+          },
+        },
+        existingKit,
+        {
+          existingFunctions: [existingKit],
+          existingKitIds: new Set(["firestore-bigquery-export"]),
+          existingCodebases: new Set(),
+          existingInstanceIds: new Set(["inst1"]),
+        },
+      );
+
+      expect(seedKitInstanceEnvStub).to.have.been.calledOnceWith({
+        configDir: path.join(
+          "/mock/project",
+          "function-kits/firestore-bigquery-export/config-inst1",
+        ),
+        functionsSource: path.join(
+          "/mock/project",
+          "function-kits/firestore-bigquery-export/source",
+        ),
+        projectDir: "/mock/project",
+        projectId: "my-project",
+        projectAlias: undefined,
+        envs: {
+          FOO: "bar",
+        },
+      });
+      expect(res.action).to.equal("configuredEnv");
+    });
+
     it("should prompt and write params when configuring env for existing instance with params", async () => {
       const existingKit: ValidatedKitSingle = {
         kit: "firestore-bigquery-export",
@@ -2299,6 +2355,28 @@ describe("functions/kits/install", () => {
           PARAM_ONE: "value1",
         },
       });
+    });
+
+    it("should suppress first deploy report when skipReport is true", async () => {
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: sinon.stub(),
+        askWriteProjectFile: sinon.stub().resolves(),
+      } as unknown as Config;
+
+      const getRuntimeDelegateStub = sinon.stub(runtimes, "getRuntimeDelegate");
+
+      await installKitOrInstance({
+        config: mockConfig,
+        package: "@firebase-function-kits/firestore-bigquery-export@1.0.0",
+        nonInteractive: true,
+        configure: false,
+        skipReport: true,
+      });
+
+      expect(getRuntimeDelegateStub).to.not.have.been.called;
     });
 
     it("should handle existing kit when package is already in firebase.json", async () => {
