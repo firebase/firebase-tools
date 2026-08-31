@@ -8,6 +8,7 @@ export interface FunctionsKitsInstallOptions extends Options {
   package?: string;
   directory?: string;
   template?: string;
+  configure?: boolean;
 }
 
 export const command = new Command("functions:kits:install")
@@ -21,6 +22,7 @@ export const command = new Command("functions:kits:install")
     `--template <template>`,
     `template to use for the kit index file (${Object.keys(TEMPLATES).join("|")})`,
   )
+  .option("--no-configure", "skip parameter prompting and configuration during installation")
   .action(async (options: FunctionsKitsInstallOptions): Promise<void> => {
     experiments.assertEnabled("kits", "install a function kit");
 
@@ -44,6 +46,8 @@ export const command = new Command("functions:kits:install")
       directory: options.directory,
       template: options.template as TemplateType | undefined,
       nonInteractive: options.nonInteractive,
+      force: options.force,
+      configure: options.configure,
       project: options.project,
       projectId: options.projectId,
       rc: options.rc,
