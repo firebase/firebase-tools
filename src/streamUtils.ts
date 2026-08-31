@@ -25,13 +25,13 @@ export function streamToString(s?: NodeJS.ReadableStream | null): Promise<string
     return Promise.resolve("");
   }
   return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
+    const chunks: Uint8Array[] = [];
     s.on("error", reject);
-    s.on("data", (d: Buffer | string) => {
+    s.on("data", (d: Buffer | string | Uint8Array) => {
       // Buffer the raw chunks and decode once at the end. Decoding each chunk
       // on its own corrupts any multi-byte character that straddles a chunk
       // boundary, turning it into replacement characters.
-      chunks.push(Buffer.isBuffer(d) ? d : Buffer.from(String(d), "utf8"));
+      chunks.push(d instanceof Uint8Array ? d : Buffer.from(String(d), "utf8"));
     });
     s.once("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
   });

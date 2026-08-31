@@ -308,6 +308,20 @@ describe("utils", () => {
 
       await expect(utils.streamToString(stream)).to.eventually.equal(text);
     });
+
+    it("should decode Uint8Array chunks", async () => {
+      // Object-mode streams, e.g. Readable.from(), hand back the chunks as they
+      // were supplied rather than coercing them to Buffer.
+      const text = "caf\u00e9 \u4e2d\u6587 \u{1F600}";
+      const buf = Buffer.from(text, "utf8");
+      const cut = buf.indexOf(Buffer.from("\u00e9", "utf8")) + 1;
+      const stream = Readable.from([
+        new Uint8Array(buf.subarray(0, cut)),
+        new Uint8Array(buf.subarray(cut)),
+      ]);
+
+      await expect(utils.streamToString(stream)).to.eventually.equal(text);
+    });
   });
 
   describe("allSettled", () => {
