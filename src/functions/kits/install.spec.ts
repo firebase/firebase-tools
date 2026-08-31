@@ -1235,6 +1235,25 @@ describe("functions/kits/install", () => {
       expect(selectStub).to.have.been.calledOnce;
     });
 
+    it("should return first instance directly when multiple instances exist in nonInteractive mode", async () => {
+      const selectStub = sinon.stub(prompt, "select");
+      const kit = {
+        kit: "my-kit",
+        instances: {
+          "inst-1": "function-kits/my-kit/config-inst-1",
+          "inst-2": "function-kits/my-kit/config-inst-2",
+        },
+      } as unknown as ValidatedKitSingle;
+
+      const res = await promptExistingInstanceForProject(
+        { project: "my-project", nonInteractive: true },
+        kit,
+      );
+
+      expect(res).to.equal("inst-1");
+      expect(selectStub).to.not.have.been.called;
+    });
+
     it("should return specified instanceId directly if provided in options and valid", async () => {
       const selectStub = sinon.stub(prompt, "select");
       const kit = {

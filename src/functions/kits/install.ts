@@ -483,18 +483,14 @@ export async function promptExistingInstanceForProject(
     );
   }
 
-  if (instanceIds.length === 1) {
+  if (instanceIds.length === 1 || options.nonInteractive) {
     return instanceIds[0];
   }
 
-  if (!options.nonInteractive) {
-    return select<string>({
-      message: "Which instance would you like to configure for this project?",
-      choices: instanceIds.map((id) => ({ name: id, value: id })),
-    });
-  }
-
-  return instanceIds[0];
+  return select<string>({
+    message: "Which instance would you like to configure for this project?",
+    choices: instanceIds.map((id) => ({ name: id, value: id })),
+  });
 }
 
 /**
