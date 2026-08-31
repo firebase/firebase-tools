@@ -1,5 +1,3 @@
-- Added `appcheck:providers:list`, `appcheck:providers:get` and `appcheck:providers:set` to configure App Check attestation providers for an app.
-- Added `appcheck:apps:list` to show every app with its configured App Check providers.
-- Added web app support for Crashlytics MCP tools and prompts.
-- Added support for forwarding custom HTTP headers (`Mcp-Param-*`) to remote MCP tools when defined in tool parameter input schemas (`x-mcp-header`), per [SEP-2243](https://modelcontextprotocol.io/seps/2243-http-standardization).
-- Fixed the Functions emulator replacing an IPC failure with an unrelated `TypeError` about stream chunk types, hiding why the runtime became unreachable (#10876).
+- Fixed an issue where the Functions emulator replaced an IPC failure with an unrelated `TypeError` about stream chunk types, hiding why the runtime became unreachable (#10876).
+- [Added] Add -f, --force option to `firebase ext:migrate`.
+- [Fixed] Fix parameter type preservation and optional system parameter handling during extension updates in `firebase ext:migrate`

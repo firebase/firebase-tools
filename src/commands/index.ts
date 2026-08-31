@@ -133,6 +133,9 @@ export function load(client: CLIClient): CLIClient {
   client.ext.list = loadCommand("ext-list");
   client.ext.uninstall = loadCommand("ext-uninstall");
   client.ext.update = loadCommand("ext-update");
+  if (experiments.isEnabled("extMigrationFeatures")) {
+    client.ext.migrate = loadCommand("ext-migrate");
+  }
   client.ext.sdk = {};
   client.ext.sdk.install = loadCommand("ext-sdk-install");
   client.ext.dev = {};
@@ -198,6 +201,12 @@ export function load(client: CLIClient): CLIClient {
   client.functions.secrets.set = loadCommand("functions-secrets-set");
   client.functions.artifacts = {};
   client.functions.artifacts.setpolicy = loadCommand("functions-artifacts-setpolicy");
+  if (experiments.isEnabled("kits")) {
+    client.functions.kits = {};
+    client.functions.kits.install = loadCommand("functions-kits-install");
+    client.functions.kits.uninstall = loadCommand("functions-kits-uninstall");
+    client.functions.kits.list = loadCommand("functions-kits-list");
+  }
   client.help = loadCommand("help");
   client.hosting = {};
   client.hosting.channel = {};

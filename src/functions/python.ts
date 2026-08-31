@@ -40,8 +40,6 @@ export function runWithVirtualEnv(
     cwd,
     stdio: "pipe",
     ...spawnOpts,
-    // Linting disabled since internal types expect NODE_ENV which does not apply to Python runtimes.
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
-    env: envs as any,
+    env: { ...process.env, ...envs },
   });
 }

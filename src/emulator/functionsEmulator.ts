@@ -599,7 +599,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       emulatableBackend.runtime = runtimeDelegate.runtime;
       emulatableBackend.bin = runtimeDelegate.bin;
 
-      // Don't include user envs when parsing triggers. Do include user envs when resolving parameter values
       const firebaseConfig = this.getFirebaseConfig();
       const environment = {
         ...this.getSystemEnvs(),
@@ -613,9 +612,13 @@ export class FunctionsEmulator implements EmulatorInstance {
         projectAlias: this.args.projectAlias,
         isEmulator: true,
         configDir: emulatableBackend.configDir,
+        projectDir: this.args.projectDir,
       };
       const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
-      const discoveredBuild = await runtimeDelegate.discoverBuild(runtimeConfig, environment);
+      const discoveredBuild = await runtimeDelegate.discoverBuild(runtimeConfig, {
+        ...userEnvs,
+        ...environment,
+      });
       if (discoveredBuild.extensions && this.args.extensionsEmulator) {
         await this.args.extensionsEmulator.addDynamicExtensions(
           emulatableBackend.codebase,
@@ -628,6 +631,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         build: discoveredBuild,
         firebaseConfig: JSON.parse(firebaseConfig),
         userEnvs,
+        codebase: emulatableBackend.codebase,
         nonInteractive: false,
         isEmulator: true,
       });
@@ -1476,6 +1480,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       projectId: this.args.projectId,
       projectAlias: this.args.projectAlias,
       isEmulator: true,
+      projectDir: this.args.projectDir,
     };
 
     if (functionsEnv.hasUserEnvs(projectInfo)) {
@@ -1738,7 +1743,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       port: 8081 + randomInt(0, 1000), // Add a small jitter to avoid race condition.
     });
     const childProcess = runWithVirtualEnv(args, backend.functionsDir, {
-      ...process.env,
       ...envs,
       // Required to flush stdout/stderr immediately to the piped channels.
       PYTHONUNBUFFERED: "1",
