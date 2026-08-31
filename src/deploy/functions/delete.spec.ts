@@ -82,6 +82,18 @@ describe("function delete helper", () => {
     ).to.eventually.equal(0);
   });
 
+  it("removes functions from consideration if they don't match a provided --region flag", async () => {
+    sinon.stub(backend, "existingBackend").resolves(fakeBackend);
+
+    await expect(
+      deleteFunctionsByEndpointFilters("my-project", [{ codebase: "foo" }], {
+        nonInteractive: true,
+        force: true,
+        region: "us-east1",
+      } as unknown as Options),
+    ).to.eventually.equal(0);
+  });
+
   it("throws an error if any delete op fails", async () => {
     sinon.stub(backend, "existingBackend").resolves(fakeBackendWithBoth);
     sinon.stub(functionsConfig, "getFirebaseConfig").resolves({ projectId: "my-project" });
