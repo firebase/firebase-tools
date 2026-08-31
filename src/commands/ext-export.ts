@@ -169,10 +169,7 @@ async function fnHandler(options: Options): Promise<void> {
   }
 
   // Do not go past this block without either --force or all secrets having been ejected from extensions successfully
-  const canContinue = await handleSecretEjection(options, instance);
-  if (!canContinue) {
-    throw new FirebaseError("Secret migration failed.");
-  }
+  await handleSecretEjection(options, instance);
 
   const convertedEnv = functionsEnvFromInstance(instance);
   const writeLocation: UserEnvsOpts = kitExportTarget(instanceId, projectId, options);
@@ -191,16 +188,19 @@ async function fnHandler(options: Options): Promise<void> {
 
 /**
  * Attempts to remove the `firebase-extensions-managed` label from all Secrets in an ExtensionInstance.
- * Not doing this risks data loss, so ext:export requires this to be wholly successful if --force is not set.
- * @return whether ext:export should continue, based on the result of of the ejection process and the value of options.force
+ * The legacy Extensions backend tears down Secrets that have this label upon Extension uninstall, so
+ * not doing this risks accidentally destroying the user's secret during kits migration.
+ * Because of this risk ext:export requires secret ejection to be wholly successful if --force is not set.
+ *
+ * Throws an error if ext:export shouldn't proceed, based on the result of of the ejection process and the value of options.force
  */
 export async function handleSecretEjection(
   options: Options,
   instance: ExtensionInstance,
-): Promise<boolean> {
+): Promise<void> {
   const secrets = await secretsNeedingEjection(instance);
   if (secrets.length === 0) {
-    return true;
+    return;
   }
 
   logLabeledBullet(
@@ -209,7 +209,7 @@ export async function handleSecretEjection(
   );
   logLabeledWarning(
     "functions",
-    "Finishing the Extension migration process with extensions:uninstall without updating bound secrets will result in permanent loss of secrets.",
+    "Finishing the Extension migration process with extensions:uninstall without migrating bound secrets will result in permanent loss of secrets.",
   );
   const userAllowedEjection = await confirm({
     message: `Automatically migrate ${secrets.length} Secrets from Extensions to Kits? (Y/n)`,
@@ -227,7 +227,7 @@ export async function handleSecretEjection(
       resultMsg += `${results.fail.length} secrets failed to update: ${results.fail}`;
       logLabeledError("functions", resultMsg);
       if (!options.force) {
-        return false;
+        throw new FirebaseError("Secret migration failed.");
       } else {
         logLabeledWarning(
           "functions",
@@ -243,11 +243,9 @@ export async function handleSecretEjection(
   } else {
     logLabeledError(
       "functions",
-      "Proceeding without migrating secrets risks permanant data loss. Manually remove the 'firebase-extensions-managed' label from the secrets before running ext:uninstall.",
+      "Proceeding without migrating secrets risks permanent data loss. Manually remove the 'firebase-extensions-managed' label from the secrets before running ext:uninstall.",
     );
   }
-
-  return true;
 }
 
 /**
