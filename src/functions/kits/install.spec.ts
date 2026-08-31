@@ -813,6 +813,17 @@ describe("functions/kits/install", () => {
       expect(source.sourcePackageName).to.equal("@firebase-function-kits/firestore-export");
       expect(source.hasBuildScript).to.be.true;
     });
+
+    it("should reject malformed package specifier with trailing @", async () => {
+      await expect(
+        resolvePackageSource({
+          config: { projectDir: "/mock/project" } as Config,
+          package: "my-kit@",
+          template: "installation",
+          nonInteractive: true,
+        }),
+      ).to.be.rejectedWith(FirebaseError, /Invalid NPM package name 'my-kit@'/);
+    });
   });
 
   describe("resolveDirectorySource", () => {

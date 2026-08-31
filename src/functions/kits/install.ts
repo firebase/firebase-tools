@@ -207,12 +207,12 @@ export function parseNpmPackageSpecifier(rawPkg: string): {
 export function validateNpmPackageName(packageNameOrSpecifier: string): void {
   const { packageName, version } = parseNpmPackageSpecifier(packageNameOrSpecifier);
   const npmPackageRegex = /^(?:@[a-z0-9_.-]+\/[a-z0-9_.-]+|[a-z0-9_.-]+)$/i;
-  if (!packageName || packageName.length > 214 || !npmPackageRegex.test(packageName)) {
-    throw new FirebaseError(
-      `Invalid NPM package name '${packageNameOrSpecifier}'. Package names must be valid npm package specifiers (e.g. 'my-kit' or '@scope/my-kit').`,
-    );
-  }
-  if (packageNameOrSpecifier.lastIndexOf("@") > 0 && !version) {
+  if (
+    !packageName ||
+    packageName.length > 214 ||
+    !npmPackageRegex.test(packageName) ||
+    (packageNameOrSpecifier.lastIndexOf("@") > 0 && !version)
+  ) {
     throw new FirebaseError(
       `Invalid NPM package name '${packageNameOrSpecifier}'. Package names must be valid npm package specifiers (e.g. 'my-kit' or '@scope/my-kit').`,
     );
@@ -1214,8 +1214,8 @@ export async function resolvePackageSource(
     throw new FirebaseError("Set the --package option to a valid NPM package and try again.");
   }
 
+  validateNpmPackageName(rawPkgName);
   const { packageName } = parseNpmPackageSpecifier(rawPkgName);
-  validateNpmPackageName(packageName);
 
   const isThirdParty = await promptSecurityConfirmation(
     rawPkgName,
