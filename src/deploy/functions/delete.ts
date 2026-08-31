@@ -35,7 +35,13 @@ export async function deleteFunctionsByEndpointFilters(
     projectId: projectId,
     filters: epFilters,
   };
-  const haveBackend = await backend.existingBackend(context);
+  let haveBackend = await backend.existingBackend(context);
+  if (options?.region) {
+    haveBackend = backend.matchingBackend(
+      haveBackend,
+      (endpoint) => endpoint.region === options.region,
+    );
+  }
   const plan = await planner.createDeploymentPlan({
     wantBackend: backend.empty(),
     haveBackend: haveBackend,
