@@ -62,7 +62,6 @@ interface LookupKeyResponse {
  *
  * If the API key is unrestricted, this is a no-op. If it is restricted and does not
  * already allow the service, the service is added to the key's allowed API targets.
- *
  * @param apiKeyString The API key string (e.g. "AIzaSy...") to update.
  * @param service The service to allow (e.g. "firebasetelemetry.googleapis.com").
  */
@@ -70,8 +69,8 @@ export async function updateAppApiKeyRestriction(
   apiKeyString: string,
   service: string,
 ): Promise<void> {
-  const lookup = await lookupKeyResourceName(apiKeyString);
-  const key = await getKey(lookup.name);
+  const keyResourceName = await lookupKeyResourceName(apiKeyString);
+  const key = await getKey(keyResourceName);
   await ensureServiceInKeyRestrictions(key, service);
 }
 
@@ -79,12 +78,12 @@ export async function updateAppApiKeyRestriction(
  * Looks up the key resource name for a given API key string.
  * Ref: https://cloud.google.com/api-keys/docs/reference/rest/v2/keys/lookupKey
  */
-async function lookupKeyResourceName(apiKeyString: string): Promise<LookupKeyResponse> {
+async function lookupKeyResourceName(apiKeyString: string): Promise<string> {
   try {
     const res = await client.get<LookupKeyResponse>("/keys:lookupKey", {
       queryParams: { keyString: apiKeyString },
     });
-    return res.body;
+    return res.body.name;
   } catch (err: unknown) {
     if (getErrStatus(err) === 403) {
       throw new FirebaseError(
