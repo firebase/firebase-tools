@@ -1,0 +1,2 @@
+- [Added] Add -f, --force option to `firebase ext:migrate`.
+- [Fixed] Fix parameter type preservation and optional system parameter handling during extension updates in `firebase ext:migrate`.
