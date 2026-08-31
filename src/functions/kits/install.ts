@@ -298,17 +298,13 @@ export function extractExistingFunctionsInfo(
 
   for (const c of existingFunctions) {
     if (isKitConfig(c)) {
-      if (c.kit && !existingKitIds.includes(c.kit)) {
+      if (c.kit) {
         existingKitIds.push(c.kit);
       }
       if (c.instances) {
-        for (const instId of Object.keys(c.instances)) {
-          if (!existingInstanceIds.includes(instId)) {
-            existingInstanceIds.push(instId);
-          }
-        }
+        existingInstanceIds.push(...Object.keys(c.instances));
       }
-    } else if (c.codebase && !existingCodebases.includes(c.codebase)) {
+    } else if (c.codebase) {
       existingCodebases.push(c.codebase);
     }
   }
