@@ -76,7 +76,7 @@ export async function updateAppApiKeyRestriction(
 }
 
 /**
- * Looks up the key resource name and parent for a given API key string.
+ * Looks up the key resource name for a given API key string.
  * Ref: https://cloud.google.com/api-keys/docs/reference/rest/v2/keys/lookupKey
  */
 async function lookupKeyResourceName(apiKeyString: string): Promise<LookupKeyResponse> {
