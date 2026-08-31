@@ -15,7 +15,7 @@ import { extensionsOrigin, extensionsPublisherOrigin, storageOrigin } from "../a
 import { archiveDirectory } from "../archiveDirectory";
 import { getFirebaseConfig } from "../functionsConfig";
 import { getProjectAdminSdkConfigOrCached } from "../emulator/adminSdkConfig";
-import { getErrMsg, FirebaseError } from "../error";
+import { FirebaseError } from "../error";
 import { diagnose } from "./diagnose";
 import { checkResponse } from "./askUserForParam";
 import { ensure, check } from "../ensureApiEnabled";
@@ -1265,36 +1265,31 @@ export async function ensureInstanceSpec(instance: ExtensionInstance): Promise<E
   }
 
   const extensionRef = instance.config?.extensionRef ?? instance.extensionRef;
-  const extensionVersion = instance.config?.extensionVersion ?? instance.extensionVersion;
-
-  if (extensionRef) {
-    try {
-      const ref = refs.parse(extensionRef);
-      const version = extensionVersion ? extensionVersion : "latest";
-      const extVersion = await getExtensionVersion(
-        `${ref.publisherId}/${ref.extensionId}@${version}`,
-      );
-      if (extVersion?.spec) {
-        return {
-          ...instance,
-          config: {
-            ...instance.config,
-            source: {
-              ...(instance.config?.source ?? {
-                state: "ACTIVE",
-                name: "",
-                packageUri: "",
-                hash: "",
-              }),
-              spec: extVersion.spec,
-            },
-          },
-        };
-      }
-    } catch (err: unknown) {
-      logger.debug(`Failed to fetch extension version for ${extensionRef}: ${getErrMsg(err)}`);
-    }
+  if (!extensionRef) {
+    return instance;
   }
 
-  return instance;
+  const extensionVersion =
+    instance.config?.extensionVersion ?? instance.extensionVersion ?? "latest";
+  const ref = refs.parse(extensionRef);
+  const extVersion = await getExtensionVersion(
+    `${ref.publisherId}/${ref.extensionId}@${extensionVersion}`,
+  );
+
+  return {
+    ...instance,
+    config: {
+      ...instance.config,
+      source: {
+        ...instance.config?.source,
+        name: instance.config?.source?.name ?? extVersion.name,
+        state:
+          instance.config?.source?.state ??
+          (extVersion.state === "PUBLISHED" ? "ACTIVE" : "STATE_UNSPECIFIED"),
+        packageUri: instance.config?.source?.packageUri ?? extVersion.sourceDownloadUri,
+        hash: instance.config?.source?.hash ?? extVersion.hash,
+        spec: extVersion.spec,
+      },
+    },
+  };
 }
