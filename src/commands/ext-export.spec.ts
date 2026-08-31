@@ -25,15 +25,15 @@ describe("ext:export secret ejection", () => {
 
   it("passes through if there are no secrets needing ejection", async () => {
     sinon.stub(exportHelper, "secretsNeedingEjection").resolves([]);
-    const proceeds = await exportCmd.handleSecretEjection(fakeOptions(false), fakeInstance());
-    expect(proceeds).to.be.true;
+    await expect(exportCmd.handleSecretEjection(fakeOptions(false), fakeInstance())).to.not.be
+      .rejected;
   });
 
   it("passes through if the user denies permission to eject secrets", async () => {
     sinon.stub(exportHelper, "secretsNeedingEjection").resolves(["foo/bar", "baz/qux"]);
     sinon.stub(prompt, "confirm").resolves(false);
-    const proceeds = await exportCmd.handleSecretEjection(fakeOptions(false), fakeInstance());
-    expect(proceeds).to.be.true;
+    await expect(exportCmd.handleSecretEjection(fakeOptions(false), fakeInstance())).to.not.be
+      .rejected;
   });
 
   it("passes through if all secrets successfully eject", async () => {
@@ -41,8 +41,8 @@ describe("ext:export secret ejection", () => {
     sinon
       .stub(exportHelper, "ejectSecretsFromInstance")
       .resolves({ success: ["foo/bar", "baz/qux"], fail: [] });
-    const proceeds = await exportCmd.handleSecretEjection(fakeOptions(false), fakeInstance());
-    expect(proceeds).to.be.true;
+    await expect(exportCmd.handleSecretEjection(fakeOptions(false), fakeInstance())).to.not.be
+      .rejected;
   });
 
   it("kills the command if any secrets fail to eject and --force is off", async () => {
@@ -50,8 +50,7 @@ describe("ext:export secret ejection", () => {
     sinon
       .stub(exportHelper, "ejectSecretsFromInstance")
       .resolves({ success: ["foo/bar"], fail: ["baz/qux"] });
-    const proceeds = await exportCmd.handleSecretEjection(fakeOptions(false), fakeInstance());
-    expect(proceeds).to.be.false;
+    await expect(exportCmd.handleSecretEjection(fakeOptions(false), fakeInstance())).to.be.rejected;
   });
 
   it("passes through if any secrets fail to eject and --force is on", async () => {
@@ -59,7 +58,7 @@ describe("ext:export secret ejection", () => {
     sinon
       .stub(exportHelper, "ejectSecretsFromInstance")
       .resolves({ success: ["foo/bar"], fail: ["baz/qux"] });
-    const proceeds = await exportCmd.handleSecretEjection(fakeOptions(true), fakeInstance());
-    expect(proceeds).to.be.true;
+    await expect(exportCmd.handleSecretEjection(fakeOptions(true), fakeInstance())).to.not.be
+      .rejected;
   });
 });
