@@ -48,9 +48,9 @@ export const FUNCTION_KITS_DIR = "function-kits";
 
 export interface ExistingFunctionsInfo {
   existingFunctions: ValidatedSingle[];
-  existingKitIds: Set<string>;
-  existingCodebases: Set<string>;
-  existingInstanceIds: Set<string>;
+  existingKitIds: string[];
+  existingCodebases: string[];
+  existingInstanceIds: string[];
 }
 
 export interface ScaffoldedKitPaths {
@@ -163,8 +163,8 @@ export interface PrintKitFirstDeployReportOptions {
  * Generates a unique identifier by appending a random 4-character hex suffix if a collision exists.
  * Ensures the candidate is truncated so the total length does not exceed 40 characters.
  */
-export function generateUniqueId(baseId: string, existingIds: Set<string>): string {
-  if (!existingIds.has(baseId)) {
+export function generateUniqueId(baseId: string, existingIds: string[]): string {
+  if (!existingIds.includes(baseId)) {
     return baseId;
   }
   const prefix = baseId.slice(0, 35);
@@ -172,7 +172,7 @@ export function generateUniqueId(baseId: string, existingIds: Set<string>): stri
   do {
     const randomSuffix = crypto.randomBytes(2).toString("hex");
     candidate = `${prefix}-${randomSuffix}`;
-  } while (existingIds.has(candidate));
+  } while (existingIds.includes(candidate));
   return candidate;
 }
 
@@ -289,22 +289,20 @@ export function extractExistingFunctionsInfo(
       ? normalizeAndValidate(configFunctions)
       : [];
 
-  const existingKitIds = new Set<string>();
-  const existingCodebases = new Set<string>();
-  const existingInstanceIds = new Set<string>();
+  const existingKitIds: string[] = [];
+  const existingCodebases: string[] = [];
+  const existingInstanceIds: string[] = [];
 
   for (const c of existingFunctions) {
     if (isKitConfig(c)) {
       if (c.kit) {
-        existingKitIds.add(c.kit);
+        existingKitIds.push(c.kit);
       }
       if (c.instances) {
-        for (const instId of Object.keys(c.instances)) {
-          existingInstanceIds.add(instId);
-        }
+        existingInstanceIds.push(...Object.keys(c.instances));
       }
     } else if (c.codebase) {
-      existingCodebases.add(c.codebase);
+      existingCodebases.push(c.codebase);
     }
   }
 
@@ -321,22 +319,22 @@ export function extractExistingFunctionsInfo(
  */
 export async function promptKitInstanceId(
   baseKitId: string,
-  existingInstanceIds: Set<string>,
-  existingCodebases: Set<string>,
+  existingInstanceIds: string[],
+  existingCodebases: string[],
   nonInteractive?: boolean,
   customInstanceId?: string,
 ): Promise<string> {
-  const instanceCollisions = new Set([...existingInstanceIds, ...existingCodebases]);
+  const instanceCollisions = [...existingInstanceIds, ...existingCodebases];
   const defaultInstanceId = generateUniqueId(baseKitId, instanceCollisions);
 
   if (customInstanceId) {
     validateKitInstanceId(customInstanceId);
-    if (existingInstanceIds.has(customInstanceId)) {
+    if (existingInstanceIds.includes(customInstanceId)) {
       throw new FirebaseError(
         `functions kit instance ID must be unique across all kits, but '${customInstanceId}' was used more than once.`,
       );
     }
-    if (existingCodebases.has(customInstanceId)) {
+    if (existingCodebases.includes(customInstanceId)) {
       throw new FirebaseError(
         `functions codebase name and kit instance ID must be mutually exclusive, but '${customInstanceId}' was used as both a codebase name and a kit instance ID.`,
       );
@@ -354,10 +352,10 @@ export async function promptKitInstanceId(
       } catch (err: unknown) {
         return getErrMsg(err);
       }
-      if (existingInstanceIds.has(val)) {
+      if (existingInstanceIds.includes(val)) {
         return `functions kit instance ID must be unique across all kits, but '${val}' was used more than once.`;
       }
-      if (existingCodebases.has(val)) {
+      if (existingCodebases.includes(val)) {
         return `functions codebase name and kit instance ID must be mutually exclusive, but '${val}' was used as both a codebase name and a kit instance ID.`;
       }
       return true;
@@ -365,12 +363,12 @@ export async function promptKitInstanceId(
   });
 
   validateKitInstanceId(instanceId);
-  if (existingInstanceIds.has(instanceId)) {
+  if (existingInstanceIds.includes(instanceId)) {
     throw new FirebaseError(
       `functions kit instance ID must be unique across all kits, but '${instanceId}' was used more than once.`,
     );
   }
-  if (existingCodebases.has(instanceId)) {
+  if (existingCodebases.includes(instanceId)) {
     throw new FirebaseError(
       `functions codebase name and kit instance ID must be mutually exclusive, but '${instanceId}' was used as both a codebase name and a kit instance ID.`,
     );
@@ -384,7 +382,7 @@ export async function promptKitInstanceId(
  */
 export async function promptKitId(
   packageName: string,
-  existingKitIds: Set<string>,
+  existingKitIds: string[],
   nonInteractive?: boolean,
   customKitId?: string,
 ): Promise<string> {
@@ -393,7 +391,7 @@ export async function promptKitId(
 
   if (customKitId) {
     validateKit(customKitId);
-    if (existingKitIds.has(customKitId)) {
+    if (existingKitIds.includes(customKitId)) {
       throw new FirebaseError(
         `functions.kit must be unique but '${customKitId}' was used more than once.`,
       );
@@ -411,7 +409,7 @@ export async function promptKitId(
       } catch (err: unknown) {
         return getErrMsg(err);
       }
-      if (existingKitIds.has(val)) {
+      if (existingKitIds.includes(val)) {
         return `functions.kit must be unique but '${val}' was used more than once.`;
       }
       return true;
@@ -419,7 +417,7 @@ export async function promptKitId(
   });
 
   validateKit(kitId);
-  if (existingKitIds.has(kitId)) {
+  if (existingKitIds.includes(kitId)) {
     throw new FirebaseError(`functions.kit must be unique but '${kitId}' was used more than once.`);
   }
 

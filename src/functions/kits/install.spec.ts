@@ -157,20 +157,20 @@ describe("functions/kits/install", () => {
 
   describe("generateUniqueId", () => {
     it("should return base ID when it is not in existing IDs", () => {
-      const existing = new Set(["other-kit"]);
+      const existing = ["other-kit"];
       expect(generateUniqueId("my-kit", existing)).to.equal("my-kit");
     });
 
     it("should append random 4-character hex suffix when base ID collides", () => {
-      const existing = new Set(["my-kit"]);
+      const existing = ["my-kit"];
       const res = generateUniqueId("my-kit", existing);
       expect(res).to.match(/^my-kit-[a-f0-9]{4}$/);
-      expect(existing.has(res)).to.be.false;
+      expect(existing.includes(res)).to.be.false;
     });
 
     it("should truncate long base IDs to ensure total length <= 40", () => {
       const longBase = "a".repeat(40);
-      const existing = new Set([longBase]);
+      const existing = [longBase];
       const res = generateUniqueId(longBase, existing);
       expect(res.length).to.be.at.most(40);
       expect(res).to.match(/^a{35}-[a-f0-9]{4}$/);
@@ -368,18 +368,18 @@ describe("functions/kits/install", () => {
   });
 
   describe("extractExistingFunctionsInfo", () => {
-    it("should return empty sets when configFunctions is undefined or empty", () => {
+    it("should return empty arrays when configFunctions is undefined or empty", () => {
       const resUndefined = extractExistingFunctionsInfo(undefined);
       expect(resUndefined.existingFunctions).to.deep.equal([]);
-      expect(resUndefined.existingKitIds.size).to.equal(0);
-      expect(resUndefined.existingCodebases.size).to.equal(0);
-      expect(resUndefined.existingInstanceIds.size).to.equal(0);
+      expect(resUndefined.existingKitIds).to.deep.equal([]);
+      expect(resUndefined.existingCodebases).to.deep.equal([]);
+      expect(resUndefined.existingInstanceIds).to.deep.equal([]);
 
       const resEmpty = extractExistingFunctionsInfo([]);
       expect(resEmpty.existingFunctions).to.deep.equal([]);
-      expect(resEmpty.existingKitIds.size).to.equal(0);
-      expect(resEmpty.existingCodebases.size).to.equal(0);
-      expect(resEmpty.existingInstanceIds.size).to.equal(0);
+      expect(resEmpty.existingKitIds).to.deep.equal([]);
+      expect(resEmpty.existingCodebases).to.deep.equal([]);
+      expect(resEmpty.existingInstanceIds).to.deep.equal([]);
     });
 
     it("should extract kit IDs, instance IDs, and codebases correctly", () => {
@@ -399,10 +399,10 @@ describe("functions/kits/install", () => {
       ];
 
       const res = extractExistingFunctionsInfo(functionsConfig);
-      expect(res.existingCodebases.has("my-codebase")).to.be.true;
-      expect(res.existingKitIds.has("my-kit")).to.be.true;
-      expect(res.existingInstanceIds.has("inst-1")).to.be.true;
-      expect(res.existingInstanceIds.has("inst-2")).to.be.true;
+      expect(res.existingCodebases).to.include("my-codebase");
+      expect(res.existingKitIds).to.include("my-kit");
+      expect(res.existingInstanceIds).to.include("inst-1");
+      expect(res.existingInstanceIds).to.include("inst-2");
     });
   });
 
@@ -1114,8 +1114,8 @@ describe("functions/kits/install", () => {
     it("should return custom instance ID directly if provided and valid", async () => {
       const res = await promptKitInstanceId(
         "my-kit",
-        new Set(["other-inst"]),
-        new Set(["codebase1"]),
+        ["other-inst"],
+        ["codebase1"],
         false,
         "valid-custom-inst",
       );
@@ -1124,50 +1124,38 @@ describe("functions/kits/install", () => {
 
     it("should throw if custom instance ID collides with existing instances", async () => {
       await expect(
-        promptKitInstanceId(
-          "my-kit",
-          new Set(["existing-inst"]),
-          new Set(),
-          false,
-          "existing-inst",
-        ),
+        promptKitInstanceId("my-kit", ["existing-inst"], [], false, "existing-inst"),
       ).to.be.rejectedWith(FirebaseError, /must be unique across all kits/);
     });
 
     it("should throw if custom instance ID collides with codebase name", async () => {
       await expect(
-        promptKitInstanceId(
-          "my-kit",
-          new Set(),
-          new Set(["existing-codebase"]),
-          false,
-          "existing-codebase",
-        ),
+        promptKitInstanceId("my-kit", [], ["existing-codebase"], false, "existing-codebase"),
       ).to.be.rejectedWith(FirebaseError, /must be mutually exclusive/);
     });
 
     it("should prompt user when custom instance ID is not provided", async () => {
       sinon.stub(prompt, "input").resolves("prompted-inst");
-      const res = await promptKitInstanceId("my-kit", new Set(), new Set());
+      const res = await promptKitInstanceId("my-kit", [], []);
       expect(res).to.equal("prompted-inst");
     });
   });
 
   describe("promptKitId", () => {
     it("should return custom kit ID directly if provided and valid", async () => {
-      const res = await promptKitId("my-pkg", new Set(["other-kit"]), false, "custom-kit-id");
+      const res = await promptKitId("my-pkg", ["other-kit"], false, "custom-kit-id");
       expect(res).to.equal("custom-kit-id");
     });
 
     it("should throw if custom kit ID collides with existing kit IDs", async () => {
       await expect(
-        promptKitId("my-pkg", new Set(["existing-kit"]), false, "existing-kit"),
+        promptKitId("my-pkg", ["existing-kit"], false, "existing-kit"),
       ).to.be.rejectedWith(FirebaseError, /functions.kit must be unique/);
     });
 
     it("should prompt user when custom kit ID is not provided", async () => {
       sinon.stub(prompt, "input").resolves("prompted-kit");
-      const res = await promptKitId("my-pkg", new Set());
+      const res = await promptKitId("my-pkg", []);
       expect(res).to.equal("prompted-kit");
     });
   });
@@ -1904,9 +1892,9 @@ describe("functions/kits/install", () => {
         existingKit,
         {
           existingFunctions: [existingKit],
-          existingKitIds: new Set(["firestore-bigquery-export"]),
-          existingCodebases: new Set(),
-          existingInstanceIds: new Set(["inst1"]),
+          existingKitIds: ["firestore-bigquery-export"],
+          existingCodebases: [],
+          existingInstanceIds: ["inst1"],
         },
       );
 
@@ -1970,9 +1958,9 @@ describe("functions/kits/install", () => {
         existingKit,
         {
           existingFunctions: [existingKit],
-          existingKitIds: new Set(["firestore-bigquery-export"]),
-          existingCodebases: new Set(),
-          existingInstanceIds: new Set(["inst1"]),
+          existingKitIds: ["firestore-bigquery-export"],
+          existingCodebases: [],
+          existingInstanceIds: ["inst1"],
         },
       );
 
@@ -2006,9 +1994,9 @@ describe("functions/kits/install", () => {
         existingKit,
         {
           existingFunctions: [existingKit],
-          existingKitIds: new Set(["firestore-bigquery-export"]),
-          existingCodebases: new Set(),
-          existingInstanceIds: new Set(["inst1"]),
+          existingKitIds: ["firestore-bigquery-export"],
+          existingCodebases: [],
+          existingInstanceIds: ["inst1"],
         },
       );
 
@@ -2065,9 +2053,9 @@ describe("functions/kits/install", () => {
         existingKit,
         {
           existingFunctions: [existingKit],
-          existingKitIds: new Set(["firestore-bigquery-export"]),
-          existingCodebases: new Set(),
-          existingInstanceIds: new Set(["inst1"]),
+          existingKitIds: ["firestore-bigquery-export"],
+          existingCodebases: [],
+          existingInstanceIds: ["inst1"],
         },
       );
 
@@ -2111,9 +2099,9 @@ describe("functions/kits/install", () => {
         existingKit,
         {
           existingFunctions: [existingKit],
-          existingKitIds: new Set(["firestore-bigquery-export"]),
-          existingCodebases: new Set(),
-          existingInstanceIds: new Set(["inst1"]),
+          existingKitIds: ["firestore-bigquery-export"],
+          existingCodebases: [],
+          existingInstanceIds: ["inst1"],
         },
       );
 
