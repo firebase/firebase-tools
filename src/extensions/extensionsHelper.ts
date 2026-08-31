@@ -513,9 +513,6 @@ async function promptForReleaseStage(args: {
   return stage;
 }
 
-/**
- *
- */
 export async function checkExtensionsApiEnabled(options: any): Promise<boolean> {
   const projectId = getProjectId(options);
   if (!projectId) {
@@ -524,9 +521,6 @@ export async function checkExtensionsApiEnabled(options: any): Promise<boolean> 
   return await check(projectId, extensionsOrigin(), "extensions", options.markdown);
 }
 
-/**
- *
- */
 export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
   const projectId = getProjectId(options);
   if (!projectId) {
@@ -535,9 +529,6 @@ export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
   return await ensure(projectId, extensionsOrigin(), "extensions", options.markdown);
 }
 
-/**
- *
- */
 export async function ensureExtensionsPublisherApiEnabled(options: any): Promise<void> {
   const projectId = getProjectId(options);
   if (!projectId) {
@@ -1039,9 +1030,6 @@ export async function uploadExtensionVersionFromLocalSource(args: {
   return res;
 }
 
-/**
- *
- */
 export function getMissingPublisherError(publisherId: string): FirebaseError {
   return new FirebaseError(
     `Couldn't find publisher ID '${clc.bold(
@@ -1199,16 +1187,10 @@ export async function instanceIdExists(projectId: string, instanceId: string): P
   return true;
 }
 
-/**
- *
- */
 export function isUrlPath(extInstallPath: string): boolean {
   return extInstallPath.startsWith("https:");
 }
 
-/**
- *
- */
 export function isLocalPath(extInstallPath: string): boolean {
   const trimmedPath = extInstallPath.trim();
   return (
@@ -1226,9 +1208,6 @@ export function isLocalPath(extInstallPath: string): boolean {
   );
 }
 
-/**
- *
- */
 export function isLocalOrURLPath(extInstallPath: string): boolean {
   return isLocalPath(extInstallPath) || isUrlPath(extInstallPath);
 }
@@ -1266,9 +1245,6 @@ export function getSourceOrigin(sourceOrVersion: string): SourceOrigin {
   );
 }
 
-/**
- *
- */
 export async function diagnoseAndFixProject(options: any): Promise<void> {
   const projectId = getProjectId(options);
   if (!projectId) {

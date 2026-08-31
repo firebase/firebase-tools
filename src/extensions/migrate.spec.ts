@@ -573,6 +573,31 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       );
     });
 
+    it("should throw if extension specification cannot be loaded", async () => {
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+      } as unknown as Config;
+
+      ensureSpecStub.resolves({
+        ...mockInstance1,
+        config: {
+          ...mockInstance1.config,
+          source: undefined,
+        },
+      });
+
+      await expect(
+        extMigrateCommand.runner()({
+          project: "test-project",
+          projectId: "test-project",
+          extInstance: "email-1",
+          config: mockConfig,
+          nonInteractive: true,
+        } as unknown as ExtMigrateOptions),
+      ).to.be.rejectedWith(FirebaseError, /Could not load extension specification for/);
+    });
+
     it("should export envs, migrate secrets, call installKitOrInstance, and return plan", async () => {
       const mockConfig = {
         projectDir: "/mock/project",

@@ -446,7 +446,7 @@ export async function migrateSecrets(instance: ExtensionInstance): Promise<strin
     return [];
   }
 
-  const instanceId = instance.name.split("/").pop() || "";
+  const instanceId = getInstanceId(instance);
   logLabeledBullet(
     logPrefix,
     `Transferring secrets for instance ${clc.bold(instanceId)} to Functions management...`,

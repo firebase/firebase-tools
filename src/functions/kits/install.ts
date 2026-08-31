@@ -1009,7 +1009,7 @@ export async function addKitInstanceOrConfigureProject(
 
   const selectedInstanceId =
     preselectedInstanceId || (await promptExistingInstanceForProject(options, existingKit));
-  const configDirPath = existingKit.instances[selectedInstanceId];
+  const configDirPath = existingKit.instances?.[selectedInstanceId];
   if (configDirPath && options.seedEnv?.envs && Object.keys(options.seedEnv.envs).length > 0) {
     const absConfigDirPath = options.config.path(configDirPath);
     await fs.ensureDir(absConfigDirPath);
