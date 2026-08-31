@@ -208,7 +208,6 @@ export function validateNpmPackageName(packageNameOrSpecifier: string): void {
     !packageName ||
     packageName.length > 214 ||
     !npmPackageRegex.test(packageName) ||
-    packageNameOrSpecifier.endsWith("@") ||
     (packageNameOrSpecifier.lastIndexOf("@") > 0 && !version)
   ) {
     throw new FirebaseError(
@@ -1192,8 +1191,8 @@ export async function resolvePackageSource(
     throw new FirebaseError("Set the --package option to a valid NPM package and try again.");
   }
 
+  validateNpmPackageName(rawPkgName);
   const { packageName } = parseNpmPackageSpecifier(rawPkgName);
-  validateNpmPackageName(packageName);
 
   const isThirdParty = await promptSecurityConfirmation(
     rawPkgName,
