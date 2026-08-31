@@ -47,7 +47,7 @@ export async function handleSecretParams(
 }
 
 /**
- * @returns true if the InstanceSpec defines any Secret params
+ * @return true if the InstanceSpec defines any Secret params
  */
 export async function checkSpecForSecrets(i: InstanceSpec): Promise<boolean> {
   const extensionSpec = await getExtensionSpec(i);
@@ -230,6 +230,24 @@ async function getSecretInfo(
 }
 
 /**
+ * Returns true if a Secret resource has the "firebase-extensions-managed" label
+ */
+export async function secretHasExtensionsLabel(
+  projectId: string,
+  secretName: string,
+): Promise<boolean> {
+  try {
+    const have = await secretManager.getSecret(projectId, secretName);
+    return secretUtils.SECRET_LABEL in have.labels;
+  } catch (err: unknown) {
+    throw new FirebaseError(
+      `Error when retrieving current state of migrating secret ${projectId}/${secretName}: ${err instanceof Error ? err.message : String(err)}`,
+      { original: err instanceof Error ? err : undefined },
+    );
+  }
+}
+
+/**
  * PATCHes a Secret resource by removing any "firebase-extensions-managed" labels
  * and replacing them with "firebase-managed": "functions"
  */
@@ -245,7 +263,7 @@ export async function transferSecretToKits(
         newLabels[labelKey] = labelValue;
       }
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     throw new FirebaseError(
       `Error when retrieving current state of migrating secret ${projectId}/${secretName}: ${err instanceof Error ? err.message : String(err)}`,
       { original: err instanceof Error ? err : undefined },
