@@ -13,47 +13,47 @@ const client = new Client({
 });
 
 interface ApiTarget {
-  service: string;
-  methods?: string[];
+  readonly service: string;
+  readonly methods?: readonly string[];
 }
 
 interface AndroidApplication {
-  sha1Fingerprint: string;
-  packageName: string;
+  readonly sha1Fingerprint: string;
+  readonly packageName: string;
 }
 
 interface AndroidKeyRestrictions {
-  allowedApplications: AndroidApplication[];
+  readonly allowedApplications: readonly AndroidApplication[];
 }
 
 interface IosKeyRestrictions {
-  allowedBundleIds: string[];
+  readonly allowedBundleIds: readonly string[];
 }
 
 interface BrowserKeyRestrictions {
-  allowedReferrers: string[];
+  readonly allowedReferrers: readonly string[];
 }
 
 interface ServerKeyRestrictions {
-  allowedIps: string[];
+  readonly allowedIps: readonly string[];
 }
 
 interface Restrictions {
-  apiTargets?: ApiTarget[];
-  browserKeyRestrictions?: BrowserKeyRestrictions;
-  serverKeyRestrictions?: ServerKeyRestrictions;
-  androidKeyRestrictions?: AndroidKeyRestrictions;
-  iosKeyRestrictions?: IosKeyRestrictions;
+  readonly apiTargets?: readonly ApiTarget[];
+  readonly browserKeyRestrictions?: BrowserKeyRestrictions;
+  readonly serverKeyRestrictions?: ServerKeyRestrictions;
+  readonly androidKeyRestrictions?: AndroidKeyRestrictions;
+  readonly iosKeyRestrictions?: IosKeyRestrictions;
 }
 
 export interface Key {
-  name: string;
-  displayName?: string;
-  restrictions?: Restrictions;
+  readonly name: string;
+  readonly displayName?: string;
+  readonly restrictions?: Restrictions;
 }
 
 interface LookupKeyResponse {
-  name: string;
+  readonly name: string;
 }
 
 /**
@@ -62,14 +62,13 @@ interface LookupKeyResponse {
  *
  * If the API key is unrestricted, this is a no-op. If it is restricted and does not
  * already allow the service, the service is added to the key's allowed API targets.
- * @param apiKeyString The API key string (e.g. "AIzaSy...") to update.
- * @param service The service to allow (e.g. "firebasetelemetry.googleapis.com").
  */
-export async function updateAppApiKeyRestriction(
-  apiKeyString: string,
-  service: string,
-): Promise<void> {
-  const keyResourceName = await lookupKeyResourceName(apiKeyString);
+export async function updateAppApiKeyRestriction(options: {
+  apiKey: string;
+  service: string;
+}): Promise<void> {
+  const { apiKey, service } = options;
+  const keyResourceName = await lookupKeyResourceName(apiKey);
   const key = await getKey(keyResourceName);
   await ensureServiceInKeyRestrictions(key, service);
 }

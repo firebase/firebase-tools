@@ -50,7 +50,7 @@ describe("apikeys", () => {
 
       const patchReq = nock(apiKeysOrigin()).patch(TEST_KEY_PATH).reply(200);
 
-      await apikeys.updateAppApiKeyRestriction(apiKeyString, serviceName);
+      await apikeys.updateAppApiKeyRestriction({ apiKey: apiKeyString, service: serviceName });
 
       expect(patchReq.isDone()).to.be.false;
     });
@@ -73,7 +73,7 @@ describe("apikeys", () => {
 
       const patchReq = nock(apiKeysOrigin()).patch(TEST_KEY_PATH).reply(200);
 
-      await apikeys.updateAppApiKeyRestriction(apiKeyString, serviceName);
+      await apikeys.updateAppApiKeyRestriction({ apiKey: apiKeyString, service: serviceName });
 
       expect(patchReq.isDone()).to.be.false;
     });
@@ -96,7 +96,7 @@ describe("apikeys", () => {
 
       const patchReq = nock(apiKeysOrigin()).patch(TEST_KEY_PATH).reply(200);
 
-      await apikeys.updateAppApiKeyRestriction(apiKeyString, serviceName);
+      await apikeys.updateAppApiKeyRestriction({ apiKey: apiKeyString, service: serviceName });
 
       expect(patchReq.isDone()).to.be.false;
     });
@@ -131,7 +131,7 @@ describe("apikeys", () => {
 
       const pollStub = sandbox.stub(operationPoller, "pollOperation").resolves();
 
-      await apikeys.updateAppApiKeyRestriction(apiKeyString, serviceName);
+      await apikeys.updateAppApiKeyRestriction({ apiKey: apiKeyString, service: serviceName });
       expect(patchReq.isDone()).to.be.true;
       expect(pollStub).to.have.been.calledWith({
         apiOrigin: apiKeysOrigin(),
@@ -147,7 +147,7 @@ describe("apikeys", () => {
         .reply(403, { error: { message: "Permission denied" } });
 
       await expect(
-        apikeys.updateAppApiKeyRestriction(apiKeyString, serviceName),
+        apikeys.updateAppApiKeyRestriction({ apiKey: apiKeyString, service: serviceName }),
       ).to.be.rejectedWith(FirebaseError, /Permission denied when looking up API key/);
     });
 
@@ -162,7 +162,7 @@ describe("apikeys", () => {
         .reply(403, { error: { message: "Permission denied" } });
 
       await expect(
-        apikeys.updateAppApiKeyRestriction(apiKeyString, serviceName),
+        apikeys.updateAppApiKeyRestriction({ apiKey: apiKeyString, service: serviceName }),
       ).to.be.rejectedWith(
         FirebaseError,
         /Permission denied when retrieving API key projects\/test-project\/locations\/global\/keys\/test-key/,
@@ -192,7 +192,7 @@ describe("apikeys", () => {
         .reply(403, { error: { message: "Permission denied" } });
 
       await expect(
-        apikeys.updateAppApiKeyRestriction(apiKeyString, serviceName),
+        apikeys.updateAppApiKeyRestriction({ apiKey: apiKeyString, service: serviceName }),
       ).to.be.rejectedWith(FirebaseError, /Permission denied when updating API key Restricted Key/);
     });
   });
