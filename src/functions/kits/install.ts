@@ -150,6 +150,15 @@ export interface PromptAndWriteKitParamsOptions {
   params?: params.Param[];
 }
 
+export interface PrintKitFirstDeployReportOptions {
+  instanceId: string;
+  absSourcePath: string;
+  config?: Config;
+  project?: string;
+  projectId?: string;
+  preDiscoveredBuild?: build.Build;
+}
+
 /**
  * Generates a unique identifier by appending a random 4-character hex suffix if a collision exists.
  * Ensures the candidate is truncated so the total length does not exceed 40 characters.
@@ -908,17 +917,14 @@ export async function promptAndWriteKitParams(
  * Discovers kit endpoints, required APIs, and required roles, and logs a formatted report.
  */
 export async function printKitFirstDeployReport(
-  options: { config?: Config; project?: string; projectId?: string },
-  instanceId: string,
-  absSourcePath: string,
-  preDiscoveredBuild?: build.Build,
+  options: PrintKitFirstDeployReportOptions,
 ): Promise<void> {
   let discoveredBuild: build.Build;
-  const prefix = addKitPrefix(instanceId);
+  const prefix = addKitPrefix(options.instanceId);
   try {
-    discoveredBuild = preDiscoveredBuild
-      ? cloneDeep(preDiscoveredBuild)
-      : await discoverKitBuild(options, absSourcePath);
+    discoveredBuild = options.preDiscoveredBuild
+      ? cloneDeep(options.preDiscoveredBuild)
+      : await discoverKitBuild(options, options.absSourcePath);
     build.applyPrefix(discoveredBuild, prefix);
   } catch (err: unknown) {
     logger.debug(`Could not discover kit build for reporting: ${getErrMsg(err)}`);
@@ -1116,7 +1122,14 @@ export async function addKitInstanceOrConfigureProject(
     );
   }
 
-  await printKitFirstDeployReport(options, instanceId, absSourcePath, discoveredBuild);
+  await printKitFirstDeployReport({
+    config: options.config,
+    project: options.project,
+    projectId: options.projectId,
+    instanceId,
+    absSourcePath,
+    preDiscoveredBuild: discoveredBuild,
+  });
 
   return {
     action: resultAction,
@@ -1335,7 +1348,14 @@ export async function installKitOrInstance(
   });
 
   logLabeledSuccess("functions", `Function kit ${clc.bold(kitId)} successfully installed.`);
-  await printKitFirstDeployReport(options, instanceId, absSourcePath, discoveredBuild);
+  await printKitFirstDeployReport({
+    config: options.config,
+    project: options.project,
+    projectId: options.projectId,
+    instanceId,
+    absSourcePath,
+    preDiscoveredBuild: discoveredBuild,
+  });
 
   return {
     action: "installedKit",

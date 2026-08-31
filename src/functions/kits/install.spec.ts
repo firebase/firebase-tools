@@ -1346,7 +1346,7 @@ describe("functions/kits/install", () => {
         .stub(runtimes, "getRuntimeDelegate")
         .resolves(delegate as unknown as runtimes.RuntimeDelegate);
 
-      await printKitFirstDeployReport({}, "my-inst", "/mock/source");
+      await printKitFirstDeployReport({ instanceId: "my-inst", absSourcePath: "/mock/source" });
 
       expect(loggerInfoStub).to.have.been.calledWith(
         sinon.match(/functions:/),
@@ -1378,7 +1378,7 @@ describe("functions/kits/install", () => {
         .stub(runtimes, "getRuntimeDelegate")
         .resolves(delegate as unknown as runtimes.RuntimeDelegate);
 
-      await printKitFirstDeployReport({}, "my-inst", "/mock/source");
+      await printKitFirstDeployReport({ instanceId: "my-inst", absSourcePath: "/mock/source" });
 
       expect(loggerInfoStub).to.have.been.calledWith(
         sinon.match(/functions:/),
@@ -1413,7 +1413,7 @@ describe("functions/kits/install", () => {
         .stub(runtimes, "getRuntimeDelegate")
         .resolves(delegate as unknown as runtimes.RuntimeDelegate);
 
-      await printKitFirstDeployReport({}, "my-inst", "/mock/source");
+      await printKitFirstDeployReport({ instanceId: "my-inst", absSourcePath: "/mock/source" });
 
       expect(loggerInfoStub).to.have.been.calledWith(
         sinon.match(/functions:/),
@@ -1442,7 +1442,7 @@ describe("functions/kits/install", () => {
         .stub(runtimes, "getRuntimeDelegate")
         .resolves(delegate as unknown as runtimes.RuntimeDelegate);
 
-      await printKitFirstDeployReport({}, "my-inst", "/mock/source");
+      await printKitFirstDeployReport({ instanceId: "my-inst", absSourcePath: "/mock/source" });
 
       expect(loggerInfoStub).to.have.been.calledWith(
         sinon.match(/functions:/),
@@ -1474,7 +1474,7 @@ describe("functions/kits/install", () => {
         return Promise.resolve(role);
       });
 
-      await printKitFirstDeployReport({}, "my-inst", "/mock/source");
+      await printKitFirstDeployReport({ instanceId: "my-inst", absSourcePath: "/mock/source" });
 
       expect(loggerInfoStub).to.have.been.calledWith(
         sinon.match(/functions:/),
@@ -1515,7 +1515,7 @@ describe("functions/kits/install", () => {
         .resolves(delegate as unknown as runtimes.RuntimeDelegate);
       sinon.stub(iam, "getRoleName").resolves("BigQuery Data Editor");
 
-      await printKitFirstDeployReport({}, "my-inst", "/mock/source");
+      await printKitFirstDeployReport({ instanceId: "my-inst", absSourcePath: "/mock/source" });
 
       expect(loggerInfoStub).to.have.been.calledWith(
         sinon.match(/functions:/),
@@ -1574,7 +1574,7 @@ describe("functions/kits/install", () => {
         .stub(runtimes, "getRuntimeDelegate")
         .resolves(delegate as unknown as runtimes.RuntimeDelegate);
 
-      await printKitFirstDeployReport({}, "my-inst", "/mock/source");
+      await printKitFirstDeployReport({ instanceId: "my-inst", absSourcePath: "/mock/source" });
 
       expect(loggerInfoStub).to.not.have.been.called;
       expect(loggerWarnStub).to.not.have.been.called;
@@ -1583,7 +1583,34 @@ describe("functions/kits/install", () => {
     it("should handle discovery errors gracefully without throwing", async () => {
       sinon.stub(runtimes, "getRuntimeDelegate").rejects(new Error("Discovery failed"));
 
-      await expect(printKitFirstDeployReport({}, "my-inst", "/mock/source")).to.not.be.rejected;
+      await expect(
+        printKitFirstDeployReport({ instanceId: "my-inst", absSourcePath: "/mock/source" }),
+      ).to.not.be.rejected;
+    });
+
+    it("should use preDiscoveredBuild when provided without rediscovering build", async () => {
+      const getRuntimeDelegateStub = sinon.stub(runtimes, "getRuntimeDelegate");
+
+      const mockBuild: build.Build = {
+        requiredAPIs: [{ api: "storage.googleapis.com" }],
+        endpoints: {},
+        params: [],
+        requiredRoles: [],
+      };
+
+      await printKitFirstDeployReport({
+        instanceId: "my-inst",
+        absSourcePath: "/mock/source",
+        preDiscoveredBuild: mockBuild,
+      });
+
+      expect(getRuntimeDelegateStub).to.not.have.been.called;
+      expect(loggerInfoStub).to.have.been.calledWith(
+        sinon.match(/functions:/),
+        sinon.match(
+          "At the first deploy, the following APIs will be enabled in your project:\n- storage.googleapis.com",
+        ),
+      );
     });
   });
 
