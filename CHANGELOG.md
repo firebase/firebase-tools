@@ -1,1 +1,1 @@
-﻿- Fixed `streamToString` corrupting multi-byte UTF-8 characters that span a stream chunk boundary.
+- Fixed `streamToString` corrupting multi-byte UTF-8 characters that span a stream chunk boundary.
