@@ -33,7 +33,7 @@ export async function grantFirexServiceAgentSecretAdminRole(
 }
 
 export async function getManagedSecrets(instance: ExtensionInstance): Promise<string[]> {
-  if (!instance.config.source?.spec) {
+  if (!instance.config?.source?.spec) {
     return [];
   }
   return (

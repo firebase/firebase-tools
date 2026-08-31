@@ -422,4 +422,47 @@ describe("ensureInstanceSpec", () => {
     expect(res.config?.source?.spec?.name).to.equal("firestore-send-email");
     expect(res.config?.source?.spec?.params).to.have.length(1);
   });
+
+  it("should fetch spec on demand if extensionRef is on instance directly", async () => {
+    const instance: ExtensionInstance = {
+      name: "projects/123/instances/ext1",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      extensionRef: "firebase/firestore-send-email",
+      extensionVersion: "0.1.35",
+      config: {
+        name: "",
+        createTime: "",
+        params: {},
+        systemParams: {},
+      },
+    };
+
+    sandbox.stub(publisherApi, "getExtensionVersion").resolves({
+      name: "publishers/firebase/extensions/firestore-send-email/versions/0.1.35",
+      ref: "firebase/firestore-send-email@0.1.35",
+      spec: {
+        name: "firestore-send-email",
+        version: "0.1.35",
+        resources: [],
+        params: [
+          {
+            param: "LOCATION",
+            label: "Location",
+            type: ParamType.SELECT,
+          },
+        ],
+        systemParams: [],
+      },
+      state: "PUBLISHED",
+      hash: "hash123",
+      sourceDownloadUri: "https://example.com/download",
+    });
+
+    const res = await ensureInstanceSpec(instance);
+    expect(res.config?.source?.spec?.name).to.equal("firestore-send-email");
+    expect(res.config?.source?.spec?.params).to.have.length(1);
+  });
 });

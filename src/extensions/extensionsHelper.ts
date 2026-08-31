@@ -1271,8 +1271,8 @@ export async function ensureInstanceSpec(instance: ExtensionInstance): Promise<E
     return instance;
   }
 
-  const extensionRef = instance.config?.extensionRef;
-  const extensionVersion = instance.config?.extensionVersion;
+  const extensionRef = instance.config?.extensionRef ?? instance.extensionRef;
+  const extensionVersion = instance.config?.extensionVersion ?? instance.extensionVersion;
 
   if (extensionRef) {
     try {
