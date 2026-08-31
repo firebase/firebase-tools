@@ -15,7 +15,7 @@ import { extensionsOrigin, extensionsPublisherOrigin, storageOrigin } from "../a
 import { archiveDirectory } from "../archiveDirectory";
 import { getFirebaseConfig } from "../functionsConfig";
 import { getProjectAdminSdkConfigOrCached } from "../emulator/adminSdkConfig";
-import { FirebaseError } from "../error";
+import { getErrMsg, FirebaseError } from "../error";
 import { diagnose } from "./diagnose";
 import { checkResponse } from "./askUserForParam";
 import { ensure, check } from "../ensureApiEnabled";
@@ -30,7 +30,14 @@ import {
   listExtensionVersions,
 } from "./publisherApi";
 import { Choice, confirm, input, select } from "../prompt";
-import { Extension, ExtensionSource, ExtensionSpec, ExtensionVersion, Param } from "./types";
+import {
+  Extension,
+  ExtensionInstance,
+  ExtensionSource,
+  ExtensionSpec,
+  ExtensionVersion,
+  Param,
+} from "./types";
 import * as refs from "./refs";
 import { EXTENSIONS_SPEC_FILE, readFile, getLocalExtensionSpec } from "./localHelper";
 import { logger } from "../logger";
@@ -1254,4 +1261,47 @@ export async function diagnoseAndFixProject(options: any): Promise<void> {
   if (!ok) {
     throw new FirebaseError("Unable to proceed until all issues are resolved.");
   }
+}
+
+/**
+ * Ensures that the extension instance has its spec loaded, fetching it on demand if missing.
+ */
+export async function ensureInstanceSpec(instance: ExtensionInstance): Promise<ExtensionInstance> {
+  if (instance.config?.source?.spec) {
+    return instance;
+  }
+
+  const extensionRef = instance.config?.extensionRef;
+  const extensionVersion = instance.config?.extensionVersion;
+
+  if (extensionRef) {
+    try {
+      const ref = refs.parse(extensionRef);
+      const version = extensionVersion ? extensionVersion : "latest";
+      const extVersion = await getExtensionVersion(
+        `${ref.publisherId}/${ref.extensionId}@${version}`,
+      );
+      if (extVersion?.spec) {
+        return {
+          ...instance,
+          config: {
+            ...instance.config,
+            source: {
+              ...(instance.config?.source ?? {
+                state: "ACTIVE",
+                name: "",
+                packageUri: "",
+                hash: "",
+              }),
+              spec: extVersion.spec,
+            },
+          },
+        };
+      }
+    } catch (err: unknown) {
+      logger.debug(`Failed to fetch extension version for ${extensionRef}: ${getErrMsg(err)}`);
+    }
+  }
+
+  return instance;
 }
