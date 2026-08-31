@@ -11,6 +11,7 @@ import {
   sanitizePackageNameToKitName,
   isThirdPartyPackage,
   checkPackageHasShrinkwrap,
+  getUnconfiguredInstancesForProject,
   isKitConfiguredForProject,
   extractExistingFunctionsInfo,
   addKitToConfig,
@@ -49,6 +50,7 @@ import { KitFunctionConfig } from "../../firebaseConfig";
 import { ValidatedKitSingle } from "../projectConfig";
 import { logger } from "../../logger";
 import * as experiments from "../../experiments";
+import * as utils from "../../utils";
 
 describe("functions/kits/install", () => {
   let wrapSpawnStub: sinon.SinonStub;
@@ -268,6 +270,80 @@ describe("functions/kits/install", () => {
     });
   });
 
+  describe("getUnconfiguredInstancesForProject", () => {
+    let hasProjectEnvStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      hasProjectEnvStub = sinon.stub(functionsEnv, "hasProjectEnv");
+    });
+
+    it("should return all instance IDs when none are configured", () => {
+      const mockConfig = { path: (p: string) => `/mock/${p}` };
+      const kit = {
+        kit: "test-kit",
+        source: "function-kits/test-kit",
+        instances: {
+          inst1: "function-kits/test-kit/config-inst1",
+          inst2: "function-kits/test-kit/config-inst2",
+        },
+      } as unknown as ValidatedKitSingle;
+      hasProjectEnvStub.returns(false);
+
+      expect(getUnconfiguredInstancesForProject(mockConfig, kit, "my-proj")).to.deep.equal([
+        "inst1",
+        "inst2",
+      ]);
+    });
+
+    it("should return only unconfigured instance IDs when some are configured", () => {
+      const mockConfig = { path: (p: string) => `/mock/${p}` };
+      const kit = {
+        kit: "test-kit",
+        source: "function-kits/test-kit",
+        instances: {
+          inst1: "function-kits/test-kit/config-inst1",
+          inst2: "function-kits/test-kit/config-inst2",
+        },
+      } as unknown as ValidatedKitSingle;
+      hasProjectEnvStub
+        .withArgs("/mock/function-kits/test-kit/config-inst1", "my-proj", undefined)
+        .returns(true);
+      hasProjectEnvStub
+        .withArgs("/mock/function-kits/test-kit/config-inst2", "my-proj", undefined)
+        .returns(false);
+
+      expect(getUnconfiguredInstancesForProject(mockConfig, kit, "my-proj")).to.deep.equal([
+        "inst2",
+      ]);
+    });
+
+    it("should return empty array when all instances are configured", () => {
+      const mockConfig = { path: (p: string) => `/mock/${p}` };
+      const kit = {
+        kit: "test-kit",
+        source: "function-kits/test-kit",
+        instances: {
+          inst1: "function-kits/test-kit/config-inst1",
+          inst2: "function-kits/test-kit/config-inst2",
+        },
+      } as unknown as ValidatedKitSingle;
+      hasProjectEnvStub.returns(true);
+
+      expect(getUnconfiguredInstancesForProject(mockConfig, kit, "my-proj")).to.deep.equal([]);
+    });
+
+    it("should return empty array when kit has no instances", () => {
+      const mockConfig = { path: (p: string) => `/mock/${p}` };
+      const kit = {
+        kit: "test-kit",
+        source: "function-kits/test-kit",
+        instances: {},
+      } as unknown as ValidatedKitSingle;
+
+      expect(getUnconfiguredInstancesForProject(mockConfig, kit, "my-proj")).to.deep.equal([]);
+    });
+  });
+
   describe("isKitConfiguredForProject", () => {
     let hasProjectEnvStub: sinon.SinonStub;
 
@@ -292,7 +368,7 @@ describe("functions/kits/install", () => {
       );
     });
 
-    it("should return true when any instance has project env", () => {
+    it("should return false when only some instances have project env", () => {
       const mockConfig = { path: (p: string) => `/mock/${p}` };
       const kit = {
         kit: "test-kit",
@@ -309,7 +385,38 @@ describe("functions/kits/install", () => {
         .withArgs("/mock/function-kits/test-kit/config-inst2", "my-target-proj", "staging")
         .returns(true);
 
+      expect(isKitConfiguredForProject(mockConfig, kit, "my-target-proj", "staging")).to.be.false;
+    });
+
+    it("should return true when all instances have project env", () => {
+      const mockConfig = { path: (p: string) => `/mock/${p}` };
+      const kit = {
+        kit: "test-kit",
+        source: "function-kits/test-kit",
+        instances: {
+          inst1: "function-kits/test-kit/config-inst1",
+          inst2: "function-kits/test-kit/config-inst2",
+        },
+      } as unknown as ValidatedKitSingle;
+      hasProjectEnvStub
+        .withArgs("/mock/function-kits/test-kit/config-inst1", "my-target-proj", "staging")
+        .returns(true);
+      hasProjectEnvStub
+        .withArgs("/mock/function-kits/test-kit/config-inst2", "my-target-proj", "staging")
+        .returns(true);
+
       expect(isKitConfiguredForProject(mockConfig, kit, "my-target-proj", "staging")).to.be.true;
+    });
+
+    it("should return false when kit has no instances", () => {
+      const mockConfig = { path: (p: string) => `/mock/${p}` };
+      const kit = {
+        kit: "test-kit",
+        source: "function-kits/test-kit",
+        instances: {},
+      } as unknown as ValidatedKitSingle;
+
+      expect(isKitConfiguredForProject(mockConfig, kit, "my-target-proj")).to.be.false;
     });
   });
 
@@ -1195,14 +1302,14 @@ describe("functions/kits/install", () => {
         instances: {},
       } as unknown as ValidatedKitSingle;
 
-      await expect(promptExistingInstanceForProject({}, kit)).to.be.rejectedWith(
-        FirebaseError,
-        /Kit 'my-kit' has no instances configured\./,
-      );
+      await expect(
+        promptExistingInstanceForProject({ existingKit: kit, unconfiguredInstanceIds: [] }),
+      ).to.be.rejectedWith(FirebaseError, /Kit 'my-kit' has no instances configured\./);
     });
 
-    it("should return the instance directly when only one instance exists", async () => {
+    it("should return the instance directly when only one instance exists and log reason", async () => {
       const selectStub = sinon.stub(prompt, "select");
+      const logBulletStub = sinon.stub(utils, "logLabeledBullet");
       const kit = {
         kit: "my-kit",
         instances: {
@@ -1210,10 +1317,17 @@ describe("functions/kits/install", () => {
         },
       } as unknown as ValidatedKitSingle;
 
-      const res = await promptExistingInstanceForProject({ project: "my-project" }, kit);
+      const res = await promptExistingInstanceForProject({
+        existingKit: kit,
+        unconfiguredInstanceIds: ["inst-1"],
+      });
 
       expect(res).to.equal("inst-1");
       expect(selectStub).to.not.have.been.called;
+      expect(logBulletStub).to.have.been.calledOnceWith(
+        "functions",
+        `${clc.bold("inst-1")} is the only instance without a configuration. Configuring...`,
+      );
     });
 
     it("should prompt to select instance when multiple instances exist", async () => {
@@ -1226,17 +1340,19 @@ describe("functions/kits/install", () => {
         },
       } as unknown as ValidatedKitSingle;
 
-      const res = await promptExistingInstanceForProject(
-        { project: "my-project", nonInteractive: false },
-        kit,
-      );
+      const res = await promptExistingInstanceForProject({
+        nonInteractive: false,
+        existingKit: kit,
+        unconfiguredInstanceIds: ["inst-1", "inst-2"],
+      });
 
       expect(res).to.equal("inst-2");
       expect(selectStub).to.have.been.calledOnce;
     });
 
-    it("should return first instance directly when multiple instances exist in nonInteractive mode", async () => {
+    it("should return first instance directly when multiple instances exist in nonInteractive mode and log reason", async () => {
       const selectStub = sinon.stub(prompt, "select");
+      const logBulletStub = sinon.stub(utils, "logLabeledBullet");
       const kit = {
         kit: "my-kit",
         instances: {
@@ -1245,13 +1361,18 @@ describe("functions/kits/install", () => {
         },
       } as unknown as ValidatedKitSingle;
 
-      const res = await promptExistingInstanceForProject(
-        { project: "my-project", nonInteractive: true },
-        kit,
-      );
+      const res = await promptExistingInstanceForProject({
+        nonInteractive: true,
+        existingKit: kit,
+        unconfiguredInstanceIds: ["inst-1", "inst-2"],
+      });
 
       expect(res).to.equal("inst-1");
       expect(selectStub).to.not.have.been.called;
+      expect(logBulletStub).to.have.been.calledOnceWith(
+        "functions",
+        `Configuring the first found instance ${clc.bold("inst-1")} in non-interactive mode.`,
+      );
     });
 
     it("should return specified instanceId directly if provided in options and valid", async () => {
@@ -1264,10 +1385,12 @@ describe("functions/kits/install", () => {
         },
       } as unknown as ValidatedKitSingle;
 
-      const res = await promptExistingInstanceForProject(
-        { project: "my-project", instanceId: "inst-2", nonInteractive: true },
-        kit,
-      );
+      const res = await promptExistingInstanceForProject({
+        instanceId: "inst-2",
+        nonInteractive: true,
+        existingKit: kit,
+        unconfiguredInstanceIds: ["inst-1", "inst-2"],
+      });
 
       expect(res).to.equal("inst-2");
       expect(selectStub).to.not.have.been.called;
@@ -1282,13 +1405,104 @@ describe("functions/kits/install", () => {
       } as unknown as ValidatedKitSingle;
 
       await expect(
-        promptExistingInstanceForProject(
-          { project: "my-project", instanceId: "invalid-inst", nonInteractive: true },
-          kit,
-        ),
+        promptExistingInstanceForProject({
+          instanceId: "invalid-inst",
+          nonInteractive: true,
+          existingKit: kit,
+          unconfiguredInstanceIds: ["inst-1"],
+        }),
       ).to.be.rejectedWith(
         FirebaseError,
         "Instance 'invalid-inst' is not configured for kit 'my-kit'. Available instances: inst-1",
+      );
+    });
+
+    it("should filter choices to only unconfigured instances when unconfiguredInstanceIds is provided", async () => {
+      const selectStub = sinon.stub(prompt, "select").resolves("inst-3");
+      const kit = {
+        kit: "my-kit",
+        instances: {
+          "inst-1": "function-kits/my-kit/config-inst-1",
+          "inst-2": "function-kits/my-kit/config-inst-2",
+          "inst-3": "function-kits/my-kit/config-inst-3",
+        },
+      } as unknown as ValidatedKitSingle;
+
+      const res = await promptExistingInstanceForProject({
+        nonInteractive: false,
+        unconfiguredInstanceIds: ["inst-2", "inst-3"],
+        existingKit: kit,
+      });
+
+      expect(res).to.equal("inst-3");
+      expect(selectStub).to.have.been.calledOnceWith({
+        message: "Which instance would you like to configure for this project?",
+        choices: [
+          { name: "inst-2", value: "inst-2" },
+          { name: "inst-3", value: "inst-3" },
+        ],
+      });
+    });
+
+    it("should return single unconfigured instance directly without prompting even if multiple instances exist", async () => {
+      const selectStub = sinon.stub(prompt, "select");
+      const kit = {
+        kit: "my-kit",
+        instances: {
+          "inst-1": "function-kits/my-kit/config-inst-1",
+          "inst-2": "function-kits/my-kit/config-inst-2",
+        },
+      } as unknown as ValidatedKitSingle;
+
+      const res = await promptExistingInstanceForProject({
+        nonInteractive: false,
+        unconfiguredInstanceIds: ["inst-2"],
+        existingKit: kit,
+      });
+
+      expect(res).to.equal("inst-2");
+      expect(selectStub).to.not.have.been.called;
+    });
+
+    it("should throw FirebaseError if specified instanceId is already configured for this project", async () => {
+      const kit = {
+        kit: "my-kit",
+        instances: {
+          "inst-1": "function-kits/my-kit/config-inst-1",
+          "inst-2": "function-kits/my-kit/config-inst-2",
+        },
+      } as unknown as ValidatedKitSingle;
+
+      await expect(
+        promptExistingInstanceForProject({
+          instanceId: "inst-1",
+          nonInteractive: true,
+          unconfiguredInstanceIds: ["inst-2"],
+          existingKit: kit,
+        }),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        "Instance 'inst-1' is already configured for this project.",
+      );
+    });
+
+    it("should throw FirebaseError if kit has no unconfigured instances for this project", async () => {
+      const kit = {
+        kit: "my-kit",
+        instances: {
+          "inst-1": "function-kits/my-kit/config-inst-1",
+        },
+      } as unknown as ValidatedKitSingle;
+
+      await expect(
+        promptExistingInstanceForProject({
+          nonInteractive: false,
+          unconfiguredInstanceIds: [],
+          existingKit: kit,
+        }),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        "Kit 'my-kit' has no unconfigured instances for this project.",
       );
     });
   });
@@ -2078,6 +2292,122 @@ describe("functions/kits/install", () => {
           ".env.my-project",
         ),
       );
+    });
+
+    it("should prompt with only unconfigured instances when some instances are configured and some are unconfigured", async () => {
+      const hasProjectEnvStub = sinon.stub(functionsEnv, "hasProjectEnv");
+      hasProjectEnvStub
+        .withArgs(
+          path.join("/mock/project", "function-kits/firestore-bigquery-export/config-inst1"),
+          "my-project",
+          undefined,
+        )
+        .returns(true);
+      hasProjectEnvStub
+        .withArgs(
+          path.join("/mock/project", "function-kits/firestore-bigquery-export/config-inst2"),
+          "my-project",
+          undefined,
+        )
+        .returns(false);
+
+      const existingKit: ValidatedKitSingle = {
+        kit: "firestore-bigquery-export",
+        sourcePackage: { name: "@firebase-function-kits/firestore-bigquery-export" },
+        source: "function-kits/firestore-bigquery-export/source",
+        instances: {
+          inst1: "function-kits/firestore-bigquery-export/config-inst1",
+          inst2: "function-kits/firestore-bigquery-export/config-inst2",
+        },
+      };
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [existingKit] },
+        path: (p: string) => path.join("/mock/project", p),
+      } as unknown as Config;
+
+      const selectStub = sinon.stub(prompt, "select").resolves("addEnv");
+
+      const res = await addKitInstanceOrConfigureProject(
+        {
+          config: mockConfig,
+          project: "my-project",
+          configure: false,
+        },
+        existingKit,
+        {
+          existingFunctions: [existingKit],
+          existingKitIds: new Set(["firestore-bigquery-export"]),
+          existingCodebases: new Set(),
+          existingInstanceIds: new Set(["inst1", "inst2"]),
+        },
+      );
+
+      expect(selectStub).to.have.been.calledOnceWith({
+        message:
+          "The following instances already exist, but are not configured for this project: inst2. What would you like to do?",
+        choices: [
+          {
+            name: "Add an instance to the existing kit",
+            value: "addInstance",
+          },
+          {
+            name: "Configure an existing instance for this project",
+            value: "addEnv",
+          },
+        ],
+      });
+      expect(res).to.deep.equal({
+        action: "configuredEnv",
+        kitId: "firestore-bigquery-export",
+        instanceId: "inst2",
+        sourcePath: "function-kits/firestore-bigquery-export/source",
+        configDirPath: "function-kits/firestore-bigquery-export/config-inst2",
+      });
+    });
+
+    it("should automatically add instance without prompt when all instances are already configured for this project", async () => {
+      sinon.stub(functionsEnv, "hasProjectEnv").returns(true);
+      const existingKit: ValidatedKitSingle = {
+        kit: "firestore-bigquery-export",
+        sourcePackage: { name: "@firebase-function-kits/firestore-bigquery-export" },
+        source: "function-kits/firestore-bigquery-export/source",
+        instances: {
+          inst1: "function-kits/firestore-bigquery-export/config-inst1",
+          inst2: "function-kits/firestore-bigquery-export/config-inst2",
+        },
+      };
+      const writtenFiles: Record<string, unknown> = {};
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [existingKit] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+        },
+      } as unknown as Config;
+
+      const selectStub = sinon.stub(prompt, "select");
+      sinon.stub(prompt, "input").resolves("inst3");
+
+      const res = await addKitInstanceOrConfigureProject(
+        {
+          config: mockConfig,
+          project: "my-project",
+          configure: false,
+        },
+        existingKit,
+        {
+          existingFunctions: [existingKit],
+          existingKitIds: new Set(["firestore-bigquery-export"]),
+          existingCodebases: new Set(),
+          existingInstanceIds: new Set(["inst1", "inst2"]),
+        },
+      );
+
+      expect(selectStub).to.not.have.been.called;
+      expect(res.action).to.equal("addedInstance");
+      expect(res.instanceId).to.equal("inst3");
     });
   });
 
