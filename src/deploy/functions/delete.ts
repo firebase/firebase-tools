@@ -19,6 +19,9 @@ import * as functionsConfig from "../../functionsConfig";
  *
  * Asks for confirmation before delete. If CLI options are passed,
  * respects force and nonInteractive.
+ *
+ * Returns the number of functions deleted. Awaits the success or failure
+ * of all delete operations before throwing if any operation failed.
  * @param projectId the project to delete Functions from
  * @param epFilters the EndpointFilters to select functions for deletion (OR, not AND)
  * @param options? pass through CLI options.
@@ -27,7 +30,7 @@ export async function deleteFunctionsByEndpointFilters(
   projectId: string,
   epFilters: EndpointFilter[],
   options?: Options,
-): Promise<{ deletionCount: number; hasErrors: boolean }> {
+): Promise<number> {
   const context: Context = {
     projectId: projectId,
     filters: epFilters,
@@ -46,7 +49,7 @@ export async function deleteFunctionsByEndpointFilters(
     .reduce(reduceFlat, [])
     .sort(backend.compareFunctions);
   if (allEpToDelete.length === 0) {
-    return { deletionCount: 0, hasErrors: false };
+    return 0;
   }
 
   const deleteList = allEpToDelete.map((func) => `\t${getFunctionLabel(func)}`).join("\n");
@@ -68,24 +71,33 @@ export async function deleteFunctionsByEndpointFilters(
     maxBackoff: 40000,
   });
 
-  let atLeastOneError = false;
-  const firebaseConfig = await functionsConfig.getFirebaseConfig(options || {});
-  const appEngineLocation = functionsConfig.getAppEngineLocation(firebaseConfig);
-  const fab = new fabricator.Fabricator({
-    functionExecutor,
-    runFunctionExecutor: functionExecutor,
-    appEngineLocation,
-    executor: new executor.QueueExecutor({}),
-    sources: {},
-    projectNumber: await getProjectNumber({ projectId: context.projectId }),
-    projectId: context.projectId,
-  });
-  const summary = await fab.applyPlan({ default: plan });
+  try {
+    const firebaseConfig = await functionsConfig.getFirebaseConfig({
+      ...options,
+      projectId,
+    });
+    const appEngineLocation = functionsConfig.getAppEngineLocation(firebaseConfig);
+    const fab = new fabricator.Fabricator({
+      functionExecutor,
+      runFunctionExecutor: functionExecutor,
+      appEngineLocation,
+      executor: new executor.QueueExecutor({}),
+      sources: {},
+      projectNumber: await getProjectNumber({ projectId: context.projectId }),
+      projectId: context.projectId,
+    });
+    const summary = await fab.applyPlan({ default: plan });
 
-  await reporter.logAndTrackDeployStats(summary);
-  reporter.printErrors(summary);
-  if (summary.results.some((r) => r.error)) {
-    atLeastOneError = true;
+    await reporter.logAndTrackDeployStats(summary);
+    reporter.printErrors(summary);
+    if (summary.results.some((r) => r.error)) {
+      throw new FirebaseError("At least one functions deletion operation failed.");
+    }
+    return allEpToDelete.length;
+  } catch (err: unknown) {
+    throw new FirebaseError(`Failed to delete functions: ${err}`, {
+      original: err as Error,
+      exit: 1,
+    });
   }
-  return { deletionCount: allEpToDelete.length, hasErrors: atLeastOneError };
 }
