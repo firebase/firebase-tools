@@ -251,7 +251,7 @@ describe("projectConfig", () => {
       const VALID_KIT_CONFIG = {
         kit: "firestore-bigquery-export",
         sourcePackage: {
-          name: "@firebase-functions-kits/firestore-bigquery-export",
+          name: "@firebase-function-kits/firestore-bigquery-export",
         },
         instances: {
           "firestore-bigquery-export": "config/bq-instance-1",
@@ -631,7 +631,7 @@ describe("projectConfig", () => {
         const cfg = projectConfig.validate([
           {
             kit: "my-kit",
-            sourcePackage: { name: "@firebase-functions-kits/my-kit" },
+            sourcePackage: { name: "@firebase-function-kits/my-kit" },
             source: "kit-source",
             instances: {
               "inst-alpha": "config/inst-alpha",
