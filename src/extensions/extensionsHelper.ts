@@ -15,7 +15,7 @@ import { extensionsOrigin, extensionsPublisherOrigin, storageOrigin } from "../a
 import { archiveDirectory } from "../archiveDirectory";
 import { getFirebaseConfig } from "../functionsConfig";
 import { getProjectAdminSdkConfigOrCached } from "../emulator/adminSdkConfig";
-import { FirebaseError } from "../error";
+import { getErrMsg, FirebaseError } from "../error";
 import { diagnose } from "./diagnose";
 import { checkResponse } from "./askUserForParam";
 import { ensure, check } from "../ensureApiEnabled";
@@ -1263,41 +1263,38 @@ export async function ensureInstanceSpec(instance: ExtensionInstance): Promise<E
   if (instance.config?.source?.spec) {
     return instance;
   }
-  const ref = instance.config?.extensionRef;
-  const version = instance.config?.extensionVersion;
-  const versionRef = ref
-    ? ref.includes("@")
-      ? ref
-      : version
-        ? `${ref}@${version}`
-        : ref
-    : undefined;
-  if (versionRef) {
+
+  const extensionRef = instance.config?.extensionRef ?? instance.extensionRef;
+  const extensionVersion = instance.config?.extensionVersion ?? instance.extensionVersion;
+
+  if (extensionRef) {
     try {
-      const extVersion = await getExtensionVersion(versionRef);
+      const ref = refs.parse(extensionRef);
+      const version = extensionVersion ? extensionVersion : "latest";
+      const extVersion = await getExtensionVersion(
+        `${ref.publisherId}/${ref.extensionId}@${version}`,
+      );
       if (extVersion?.spec) {
-        instance.config = instance.config || {
-          name: "",
-          createTime: "",
-          params: {},
-          systemParams: {},
-        };
-        instance.config.source = {
-          ...(instance.config.source || {
-            name: "",
-            state: "ACTIVE",
-            packageUri: "",
-            hash: "",
-          }),
-          spec: extVersion.spec,
+        return {
+          ...instance,
+          config: {
+            ...instance.config,
+            source: {
+              ...(instance.config?.source ?? {
+                state: "ACTIVE",
+                name: "",
+                packageUri: "",
+                hash: "",
+              }),
+              spec: extVersion.spec,
+            },
+          },
         };
       }
     } catch (err: unknown) {
-      logger.debug(
-        `[ensureInstanceSpec] Could not fetch extension version for ${versionRef}:`,
-        err,
-      );
+      logger.debug(`Failed to fetch extension version for ${extensionRef}: ${getErrMsg(err)}`);
     }
   }
+
   return instance;
 }
