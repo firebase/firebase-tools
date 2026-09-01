@@ -590,11 +590,11 @@ describe("ejectSecretsFromInstance", () => {
 
     transferSecretToKitsStub.resolves();
     const changed = await ejectSecretsFromInstance(instance);
-    expect(changed).to.deep.equal(["my-proj/API_KEY"]);
+    expect(changed).to.deep.equal({ success: ["my-proj/API_KEY"], fail: [] });
     expect(transferSecretToKitsStub).to.have.been.calledWith("my-proj", "API_KEY");
   });
 
-  it("should propagate errors thrown by transferSecretToKits", async () => {
+  it("should record failed secret ejections without throwing", async () => {
     const instance: ExtensionInstance = {
       name: "projects/my-proj/instances/my-inst",
       createTime: "",
@@ -633,6 +633,7 @@ describe("ejectSecretsFromInstance", () => {
     const permError = new FirebaseError("Forbidden", { status: 403 });
     transferSecretToKitsStub.rejects(permError);
 
-    await expect(ejectSecretsFromInstance(instance)).to.be.rejectedWith(permError);
+    const changed = await ejectSecretsFromInstance(instance);
+    expect(changed).to.deep.equal({ success: [], fail: ["my-proj/API_KEY"] });
   });
 });

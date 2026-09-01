@@ -3,7 +3,13 @@ import * as Table from "cli-table3";
 
 import { FirebaseError, getErrStatus } from "../error";
 import { logger } from "../logger";
-import { last, logLabeledBullet, logLabeledSuccess, logLabeledWarning } from "../utils";
+import {
+  last,
+  logLabeledBullet,
+  logLabeledError,
+  logLabeledSuccess,
+  logLabeledWarning,
+} from "../utils";
 import { logPrefix } from "./extensionsHelper";
 import { confirm, select } from "../prompt";
 import * as extensionsApi from "./extensionsApi";
@@ -438,7 +444,10 @@ export async function ensureInstanceUpToDate(
  * Migrates secrets for an extension instance to Functions management if secrets are present.
  * If no secrets are defined in the extension spec, exits early without logging.
  */
-export async function migrateSecrets(instance: ExtensionInstance): Promise<string[]> {
+export async function migrateSecrets(
+  instance: ExtensionInstance,
+  options?: { force?: boolean },
+): Promise<string[]> {
   const hasSecrets = (instance.config?.source?.spec?.params ?? []).some(
     (p) => p.type === ParamType.SECRET,
   );
@@ -453,14 +462,21 @@ export async function migrateSecrets(instance: ExtensionInstance): Promise<strin
   );
 
   try {
-    const secretsChanged = await ejectSecretsFromInstance(instance);
-    if (secretsChanged.length > 0) {
+    const results = await ejectSecretsFromInstance(instance);
+    if (results.success.length > 0) {
       logLabeledSuccess(
         logPrefix,
-        `Successfully transferred secrets to Functions management: ${secretsChanged.join(", ")}`,
+        `Successfully transferred secrets to Functions management: ${results.success.join(", ")}`,
       );
     }
-    return secretsChanged;
+    if (results.fail.length > 0) {
+      const resultMsg = `${results.fail.length} secrets failed to update: ${results.fail.join(", ")}.`;
+      logLabeledError("functions", resultMsg);
+      if (!options?.force) {
+        throw new FirebaseError("Secret migration failed.", { exit: 1 });
+      }
+    }
+    return results.success;
   } catch (err: unknown) {
     if (getErrStatus(err) === 403) {
       throw new FirebaseError(

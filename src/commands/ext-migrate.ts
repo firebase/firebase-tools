@@ -71,7 +71,7 @@ export const command = new Command("ext:migrate")
 
     const exportedEnvs = functionsEnvFromInstance(plan.instance);
 
-    await migrateSecrets(plan.instance);
+    await migrateSecrets(plan.instance, { force: options.force });
 
     logLabeledBullet(
       logPrefix,

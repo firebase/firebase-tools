@@ -493,10 +493,49 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
         },
       };
 
-      sandbox.stub(exportModule, "ejectSecretsFromInstance").resolves(["test-project/API_KEY"]);
+      sandbox
+        .stub(exportModule, "ejectSecretsFromInstance")
+        .resolves({ success: ["test-project/API_KEY"], fail: [] });
 
       const res = await migrateModule.migrateSecrets(instanceWithSecret);
       expect(res).to.deep.equal(["test-project/API_KEY"]);
+    });
+
+    it("should throw error when secret ejection fails without force", async () => {
+      const instanceWithSecret: ExtensionInstance = {
+        ...mockInstance1,
+        config: {
+          ...mockInstance1.config,
+          source: {
+            name: "sources/1",
+            state: "ACTIVE",
+            packageUri: "https://example.com/package.zip",
+            hash: "hash123",
+            spec: {
+              name: "ext",
+              version: "1.0.0",
+              resources: [],
+              params: [
+                {
+                  param: "API_KEY",
+                  label: "API Key",
+                  type: ParamType.SECRET,
+                },
+              ],
+              systemParams: [],
+            },
+          },
+        },
+      };
+
+      sandbox
+        .stub(exportModule, "ejectSecretsFromInstance")
+        .resolves({ success: [], fail: ["test-project/API_KEY"] });
+
+      await expect(migrateModule.migrateSecrets(instanceWithSecret)).to.be.rejectedWith(
+        FirebaseError,
+        "Secret migration failed.",
+      );
     });
 
     it("should throw informative error on IAM permission error (403)", async () => {
