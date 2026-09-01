@@ -13,6 +13,8 @@ import * as updateHelper from "./updateHelper";
 import { ExtensionInstance, ExtensionSpec, ParamType } from "./types";
 import * as replacements from "./replacements.json";
 import { ejectSecretsFromInstance } from "./export";
+import * as manifest from "./manifest";
+import { Options } from "../options";
 
 export interface MigrateOptions {
   package?: string;
@@ -470,4 +472,50 @@ export async function migrateSecrets(instance: ExtensionInstance): Promise<strin
     }
     throw err;
   }
+}
+
+/**
+ * Uninstalls an extension instance immediately by removing it from the local manifest (if present)
+ * and deleting the GCP instance resources.
+ */
+export async function uninstallExtension(
+  projectId: string,
+  instanceId: string,
+  options: Options,
+  skipConfirm = false,
+): Promise<void> {
+  let config;
+  try {
+    config = manifest.loadConfig(options);
+  } catch {
+    logLabeledBullet(
+      logPrefix,
+      "No firebase.json found. Proceeding to immediate extension instance teardown.",
+    );
+  }
+  if (config && manifest.instanceExists(instanceId, config)) {
+    manifest.removeFromManifest(instanceId, config);
+  }
+
+  if (
+    !skipConfirm &&
+    !(await confirm({
+      message: `About to delete Extensions instance ${projectId}/${instanceId}, its associated resources, and service account. Continue?`,
+      nonInteractive: options.nonInteractive,
+      force: options.force,
+      default: true,
+    }))
+  ) {
+    return;
+  }
+  logLabeledBullet(logPrefix, `Uninstalling extension instance ${clc.bold(instanceId)}...`);
+  try {
+    await extensionsApi.deleteInstance(projectId, instanceId);
+  } catch (err: unknown) {
+    throw new FirebaseError(
+      `Error when attempting deletion: ${err instanceof Error ? err.message : String(err)}`,
+      { original: err instanceof Error ? err : undefined },
+    );
+  }
+  logLabeledSuccess(logPrefix, `Deleted Extensions instance ${projectId}/${instanceId}.`);
 }

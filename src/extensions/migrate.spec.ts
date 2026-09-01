@@ -11,9 +11,11 @@ import * as updateHelper from "./updateHelper";
 import * as exportModule from "./export";
 import * as kitInstallModule from "../functions/kits/install";
 import * as extensionsHelper from "./extensionsHelper";
-import { command as extMigrateCommand, ExtMigrateOptions } from "../commands/ext-migrate";
+import { command as extMigrateCommand } from "../commands/ext-migrate";
 import { Config } from "../config";
 import { ExtensionInstance, ParamType } from "./types";
+import * as deployModule from "../deploy";
+import * as manifest from "./manifest";
 
 describe("ext:migrate core logic (Unique Veneer)", () => {
   let sandbox: sinon.SinonSandbox;
@@ -536,11 +538,70 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
     });
   });
 
+  describe("uninstallExtension", () => {
+    let deleteInstanceStub: sinon.SinonStub;
+    let loadConfigStub: sinon.SinonStub;
+    let instanceExistsStub: sinon.SinonStub;
+    let removeFromManifestStub: sinon.SinonStub;
+    let confirmStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      deleteInstanceStub = sandbox.stub(extensionsApi, "deleteInstance").resolves();
+      loadConfigStub = sandbox.stub(manifest, "loadConfig").returns({} as any);
+      instanceExistsStub = sandbox.stub(manifest, "instanceExists").returns(false);
+      removeFromManifestStub = sandbox.stub(manifest, "removeFromManifest");
+      confirmStub = sandbox.stub(prompt, "confirm").resolves(true);
+    });
+
+    it("should remove from manifest and delete instance when skipConfirm is true", async () => {
+      instanceExistsStub.returns(true);
+      await migrateModule.uninstallExtension("test-project", "email-1", {} as any, true);
+
+      expect(instanceExistsStub).to.have.been.calledOnceWith("email-1");
+      expect(removeFromManifestStub).to.have.been.calledOnceWith("email-1");
+      expect(confirmStub).to.not.have.been.called;
+      expect(deleteInstanceStub).to.have.been.calledOnceWith("test-project", "email-1");
+    });
+
+    it("should prompt confirmation when skipConfirm is false", async () => {
+      confirmStub.resolves(true);
+      await migrateModule.uninstallExtension("test-project", "email-1", {} as any, false);
+
+      expect(confirmStub).to.have.been.calledOnce;
+      expect(deleteInstanceStub).to.have.been.calledOnceWith("test-project", "email-1");
+    });
+
+    it("should abort deletion if confirmation is declined", async () => {
+      confirmStub.resolves(false);
+      await migrateModule.uninstallExtension("test-project", "email-1", {} as any, false);
+
+      expect(confirmStub).to.have.been.calledOnce;
+      expect(deleteInstanceStub).to.not.have.been.called;
+    });
+
+    it("should handle missing manifest / firebase.json gracefully", async () => {
+      loadConfigStub.throws(new Error("No firebase.json found"));
+      await migrateModule.uninstallExtension("test-project", "email-1", {} as any, true);
+
+      expect(deleteInstanceStub).to.have.been.calledOnceWith("test-project", "email-1");
+    });
+
+    it("should throw FirebaseError on deletion error", async () => {
+      deleteInstanceStub.rejects(new Error("Network error"));
+      await expect(
+        migrateModule.uninstallExtension("test-project", "email-1", {} as any, true),
+      ).to.be.rejectedWith(FirebaseError, "Error when attempting deletion: Network error");
+    });
+  });
+
   describe("ext:migrate command action", () => {
     let installKitOrInstanceStub: sinon.SinonStub;
     let migrateSecretsStub: sinon.SinonStub;
     let functionsEnvStub: sinon.SinonStub;
     let ensureSpecStub: sinon.SinonStub;
+    let deployStub: sinon.SinonStub;
+    let uninstallExtensionStub: sinon.SinonStub;
+    let confirmStub: sinon.SinonStub;
 
     beforeEach(() => {
       (extMigrateCommand as unknown as { befores: unknown[] }).befores = [];
@@ -559,6 +620,9 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
         PARAM_A: "val_a",
       });
       ensureSpecStub = sandbox.stub(extensionsHelper, "ensureInstanceSpec").resolves(mockInstance1);
+      deployStub = sandbox.stub(deployModule, "deploy").resolves();
+      uninstallExtensionStub = sandbox.stub(migrateModule, "uninstallExtension").resolves();
+      confirmStub = sandbox.stub(prompt, "confirm").resolves(true);
     });
 
     it("should throw if options.config is not provided", async () => {
@@ -566,26 +630,26 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
         extMigrateCommand.runner()({
           project: "test-project",
           projectId: "test-project",
-        } as unknown as ExtMigrateOptions),
+        }),
       ).to.be.rejectedWith(
         FirebaseError,
         "Not in a Firebase project directory (firebase.json not found).",
       );
     });
 
-    it("should export envs, migrate secrets, call installKitOrInstance, and return plan", async () => {
+    it("should deploy function kit and uninstall extension when confirmed", async () => {
       const mockConfig = {
         projectDir: "/mock/project",
         src: { functions: [] },
       } as unknown as Config;
 
-      const res = (await extMigrateCommand.runner()({
+      const res = await extMigrateCommand.runner()({
         project: "test-project",
         projectId: "test-project",
         extInstance: "email-1",
         config: mockConfig,
         nonInteractive: true,
-      } as unknown as ExtMigrateOptions)) as migrateModule.ExtensionMigrationPlan;
+      });
 
       expect(ensureSpecStub).to.have.been.calledOnce;
       expect(functionsEnvStub).to.have.been.calledOnce;
@@ -605,7 +669,76 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
         }),
       );
 
+      expect(deployStub).to.have.been.calledOnceWith(
+        ["functions"],
+        sinon.match({
+          only: "functions:email-1",
+          filteredTargets: ["functions"],
+          project: "test-project",
+        }),
+      );
+
+      expect(confirmStub).to.have.been.calledOnceWith(
+        sinon.match({
+          message: sinon.match(
+            /Functions kit email-1 successfully deployed.*uninstall extension instance email-1/,
+          ),
+          default: true,
+        }),
+      );
+
+      expect(uninstallExtensionStub).to.have.been.calledOnceWith(
+        "test-project",
+        "email-1",
+        sinon.match.any,
+        true,
+      );
+
       expect(res.instanceId).to.equal("email-1");
+    });
+
+    it("should skip uninstall and log future command when user declines uninstall", async () => {
+      confirmStub.resolves(false);
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+      } as unknown as Config;
+
+      await extMigrateCommand.runner()({
+        project: "test-project",
+        projectId: "test-project",
+        extInstance: "email-1",
+        config: mockConfig,
+        nonInteractive: true,
+      });
+
+      expect(deployStub).to.have.been.calledOnce;
+      expect(confirmStub).to.have.been.calledOnce;
+      expect(uninstallExtensionStub).to.not.have.been.called;
+    });
+
+    it("should throw FirebaseError with instructions if deploy fails", async () => {
+      deployStub.rejects(new Error("Build failure"));
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+      } as unknown as Config;
+
+      await expect(
+        extMigrateCommand.runner()({
+          project: "test-project",
+          projectId: "test-project",
+          extInstance: "email-1",
+          config: mockConfig,
+          nonInteractive: true,
+        }),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        "Failed to deploy. Please fix and retry with firebase deploy --only functions:email-1. After success you may remove the old extension with firebase ext:uninstall email-1 --project test-project --immediate",
+      );
+
+      expect(confirmStub).to.not.have.been.called;
+      expect(uninstallExtensionStub).to.not.have.been.called;
     });
   });
 });
