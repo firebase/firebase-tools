@@ -193,7 +193,7 @@ type SecretParam = ReturnType<typeof defineSecret>;
  * Substitutes any secret parameters with the correct format
  * @param projectNumber The project number we are installing into
  * @param params the full list of params to check for substitution.
- * @return The substituted list of params
+ * @returns The substituted list of params
  */
 export async function substituteSecretParams(
   projectNumber: string,
@@ -202,9 +202,10 @@ export async function substituteSecretParams(
   const newParams: Record<string, string> = {};
   for await (const [key, value] of Object.entries(params)) {
     if (typeof value !== "string") {
-      newParams[key] = `projects/${projectNumber}/secrets/${value.name}/versions/latest`;
+      newParams[key] =
+        `projects/${projectNumber}/secrets/${(value as SecretParam).name}/versions/latest`;
     } else {
-      newParams[key] = value;
+      newParams[key] = value as string;
     }
   }
   return newParams;
@@ -444,6 +445,7 @@ export async function promptForValidRepoURI(): Promise<string> {
 
 /**
  * Prompts for an extension root.
+ *
  * @param defaultRoot the default extension root
  */
 export async function promptForExtensionRoot(defaultRoot: string): Promise<string> {
@@ -456,6 +458,7 @@ export async function promptForExtensionRoot(defaultRoot: string): Promise<strin
 
 /**
  * Prompts for the extension version's release stage.
+ *
  * @param args.versionByStage map from stage to the next version to upload
  * @param args.autoReview whether the stable version will be automatically sent for review on upload
  * @param args.allowStable whether to allow stable versions
@@ -553,6 +556,7 @@ async function archiveAndUploadSource(extPath: string, bucketName: string): Prom
 
 /**
  * Gets a list of the next version to upload by release stage.
+ *
  * @param extensionRef the ref of the extension
  * @param version the new version of the extension
  */
@@ -592,6 +596,7 @@ export async function getNextVersionByStage(
 
 /**
  * Validates the extension spec.
+ *
  * @param rootDirectory the directory with the extension source
  * @param extensionRef the ref of the extension
  */
@@ -619,6 +624,7 @@ async function validateExtensionSpec(
 
 /**
  * Validates the release notes.
+ *
  * @param rootDirectory the directory with the extension source
  * @param newVersion the new extension version
  */
@@ -647,6 +653,7 @@ function validateReleaseNotes(rootDirectory: string, newVersion: string, extensi
 
 /**
  * Validates the extension version.
+ *
  * @param extensionRef the ref of the extension
  * @param newVersion the new extension version
  * @param latestVersion the latest extension version
@@ -712,7 +719,7 @@ function displayExtensionHeader(
   if (extension) {
     let source = "Local source";
     if (extension.repoUri) {
-      const uri = new URL(extension.repoUri);
+      const uri = new URL(extension.repoUri!);
       uri.pathname = path.join(uri.pathname, extensionRoot ?? "");
       source = `${uri.toString()} (use --repo and --root to modify)`;
     }
