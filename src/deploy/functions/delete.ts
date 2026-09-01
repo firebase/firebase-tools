@@ -22,9 +22,8 @@ import * as functionsConfig from "../../functionsConfig";
  *
  * Returns the number of functions deleted. Awaits the success or failure
  * of all delete operations before throwing if any operation failed.
- * @param projectId the project to delete Functions from
- * @param epFilters the EndpointFilters to select functions for deletion (OR, not AND)
- * @param options? pass through CLI options.
+ * @param context a Functions deploy context object, providing at least project id and filters, plus any cached GCP API call results.
+ * @param options pass through CLI options.
  */
 export async function deleteFunctionsByEndpointFilters(
   context: Context,
