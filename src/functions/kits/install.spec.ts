@@ -1347,12 +1347,14 @@ describe("functions/kits/install", () => {
       });
 
       expect(res).to.equal("inst-2");
-      expect(selectStub).to.have.been.calledOnce;
+      expect(selectStub).to.have.been.calledOnceWith({
+        message: "Which instance would you like to configure for this project?",
+        choices: ["inst-1", "inst-2"],
+        nonInteractive: false,
+      });
     });
 
-    it("should return first instance directly when multiple instances exist in nonInteractive mode and log reason", async () => {
-      const selectStub = sinon.stub(prompt, "select");
-      const logBulletStub = sinon.stub(utils, "logLabeledBullet");
+    it("should abort in non-interactive mode if multiple unconfigured instances exist", async () => {
       const kit = {
         kit: "my-kit",
         instances: {
@@ -1361,18 +1363,13 @@ describe("functions/kits/install", () => {
         },
       } as unknown as ValidatedKitSingle;
 
-      const res = await promptExistingInstanceForProject({
-        nonInteractive: true,
-        existingKit: kit,
-        unconfiguredInstanceIds: ["inst-1", "inst-2"],
-      });
-
-      expect(res).to.equal("inst-1");
-      expect(selectStub).to.not.have.been.called;
-      expect(logBulletStub).to.have.been.calledOnceWith(
-        "functions",
-        `Configuring the first found instance ${clc.bold("inst-1")} in non-interactive mode.`,
-      );
+      await expect(
+        promptExistingInstanceForProject({
+          nonInteractive: true,
+          existingKit: kit,
+          unconfiguredInstanceIds: ["inst-1", "inst-2"],
+        }),
+      ).to.be.rejectedWith(FirebaseError, /cannot be answered in non-interactive mode/);
     });
 
     it("should return specified instanceId directly if provided in options and valid", async () => {
@@ -1437,10 +1434,8 @@ describe("functions/kits/install", () => {
       expect(res).to.equal("inst-3");
       expect(selectStub).to.have.been.calledOnceWith({
         message: "Which instance would you like to configure for this project?",
-        choices: [
-          { name: "inst-2", value: "inst-2" },
-          { name: "inst-3", value: "inst-3" },
-        ],
+        choices: ["inst-2", "inst-3"],
+        nonInteractive: false,
       });
     });
 

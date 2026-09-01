@@ -512,19 +512,19 @@ export async function promptExistingInstanceForProject(
     );
   }
 
-  if (options.unconfiguredInstanceIds.length === 1 || options.nonInteractive) {
+  if (options.unconfiguredInstanceIds.length === 1) {
     const instanceId = options.unconfiguredInstanceIds[0];
-    const message =
-      options.unconfiguredInstanceIds.length === 1
-        ? `${clc.bold(instanceId)} is the only instance without a configuration. Configuring...`
-        : `Configuring the first found instance ${clc.bold(instanceId)} in non-interactive mode.`;
-    logLabeledBullet("functions", message);
+    logLabeledBullet(
+      "functions",
+      `${clc.bold(instanceId)} is the only instance without a configuration. Configuring...`,
+    );
     return instanceId;
   }
 
   return select<string>({
     message: "Which instance would you like to configure for this project?",
-    choices: options.unconfiguredInstanceIds.map((id) => ({ name: id, value: id })),
+    choices: options.unconfiguredInstanceIds,
+    nonInteractive: options.nonInteractive,
   });
 }
 
