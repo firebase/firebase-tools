@@ -641,7 +641,7 @@ async function loginWithLocalhost<ResultType>(
 
       open(authUrl);
 
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         if (server.listening) {
           logger.info();
           logger.info(
@@ -652,6 +652,10 @@ async function loginWithLocalhost<ResultType>(
           );
         }
       }, 30_000);
+
+      server.on("close", () => {
+        clearTimeout(timeoutId);
+      });
     });
 
     server.on("error", (err) => {
