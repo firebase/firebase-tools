@@ -185,7 +185,11 @@ export function generationDowngradeMessage(
     return undefined;
   }
   const from = have.platform === "gcfv2" ? "GCFv2" : "Cloud Run";
-  return `[${getFunctionLabel(want)}] Functions cannot be downgraded from ${from} to GCFv1`;
+  return (
+    `[${getFunctionLabel(want)}] Functions cannot be downgraded from ${from} to GCFv1. ` +
+    `To recreate it as GCFv1, delete the existing function first: ` +
+    `firebase functions:delete ${want.id} --region ${want.region}`
+  );
 }
 
 /**
