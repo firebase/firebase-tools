@@ -106,8 +106,8 @@ function displaySpecs(specs: DeploymentInstanceSpec[]): void {
 export function functionsEnvFromInstance(instance: ExtensionInstance): Record<string, string> {
   const liveParams = instance.config?.params || {};
   const liveSystemParams = instance.config?.systemParams || {};
-  const specParams = instance.config?.source?.spec?.params || {};
-  const specSystemParams = instance.config?.source?.spec?.systemParams || {};
+  const specParams = instance.config?.source?.spec?.params || [];
+  const specSystemParams = instance.config?.source?.spec?.systemParams || [];
 
   const envs: Record<string, string> = {};
 
@@ -129,18 +129,21 @@ export function functionsEnvFromInstance(instance: ExtensionInstance): Record<st
       .replace(/^firebaseextensions\.v1beta\.(v2)?function\//, "EXT_MIGRATED_SYSTEM_")
       .toUpperCase();
     if (renamed === "EXT_MIGRATED_SYSTEM_LOCATION") {
-      renamed = "DEFAULT_FUNCTION_REGION";
+      renamed = "FUNCTION_DEFAULT_REGION";
     }
     envs[renamed] = sysParamValue;
   }
-  for (const specSystemParam of Object.values(specSystemParams)) {
+  for (const specSystemParam of specSystemParams) {
     if (specSystemParam.param in liveSystemParams) {
       continue;
     }
     if ("default" in specSystemParam) {
-      const renamed = specSystemParam.param
+      let renamed = specSystemParam.param
         .replace(/^firebaseextensions\.v1beta\.(v2)?function\//, "EXT_MIGRATED_SYSTEM_")
         .toUpperCase();
+      if (renamed === "EXT_MIGRATED_SYSTEM_LOCATION") {
+        renamed = "FUNCTION_DEFAULT_REGION";
+      }
       envs[renamed] = specSystemParam.default ?? "";
     }
   }
