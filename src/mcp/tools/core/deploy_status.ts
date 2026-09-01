@@ -8,6 +8,7 @@ export const deploy_status = tool(
   {
     name: "deploy_status",
     description: "Check the status of a background deployment job using its Job ID.",
+    humanReadableDescription: "Check the status and progress of a background deployment job.",
     inputSchema: z.object({
       jobId: z.string().describe("The Job ID returned by the deploy tool"),
     }),

@@ -13,6 +13,8 @@ export const execute = tool(
     name: "execute",
     description:
       "Use this to execute a GraphQL operation against a SQL Connect service or its emulator.",
+    humanReadableDescription:
+      "Execute a GraphQL query or mutation against a Firebase SQL Connect service or emulator.",
     inputSchema: z.object({
       query: z.string().describe(`A Firebase SQL Connect GraphQL query or mutation to execute.
 You can use the \`dataconnect_generate_operation\` tool to generate a query.
