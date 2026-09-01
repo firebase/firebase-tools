@@ -278,24 +278,6 @@ export function getUnconfiguredInstancesForProject(
 }
 
 /**
- * Checks if all of the kit's instance configuration directories contain a dotenv file for the specified project.
- * If the kit has no instances configured (totalInstances === 0), returns false because there is no configured
- * instance for the project and a new instance needs to be added.
- */
-export function isKitFullyConfiguredForProject(
-  config: { path: (p: string) => string },
-  kit: ValidatedKitSingle,
-  projectId?: string,
-  projectAlias?: string,
-): boolean {
-  const totalInstances = Object.keys(kit.instances || {}).length;
-  if (totalInstances === 0) {
-    return false;
-  }
-  return getUnconfiguredInstancesForProject(config, kit, projectId, projectAlias).length === 0;
-}
-
-/**
  * Extracts and categorizes existing functions, kit IDs, instance IDs, and codebase names from configuration.
  */
 export function extractExistingFunctionsInfo(

@@ -12,7 +12,6 @@ import {
   isThirdPartyPackage,
   checkPackageHasShrinkwrap,
   getUnconfiguredInstancesForProject,
-  isKitFullyConfiguredForProject,
   extractExistingFunctionsInfo,
   addKitToConfig,
   findKitConfig,
@@ -395,84 +394,6 @@ describe("functions/kits/install", () => {
       } as unknown as ValidatedKitSingle;
 
       expect(getUnconfiguredInstancesForProject(mockConfig, kit, "my-proj")).to.deep.equal([]);
-    });
-  });
-
-  describe("isKitFullyConfiguredForProject", () => {
-    let hasProjectEnvStub: sinon.SinonStub;
-
-    beforeEach(() => {
-      hasProjectEnvStub = sinon.stub(functionsEnv, "hasProjectEnv");
-    });
-
-    it("should return false when no instance has project env", () => {
-      const mockConfig = { path: (p: string) => `/mock/${p}` };
-      const kit = {
-        kit: "test-kit",
-        source: "function-kits/test-kit",
-        instances: { inst: "function-kits/test-kit/config-inst" },
-      } as unknown as ValidatedKitSingle;
-      hasProjectEnvStub.returns(false);
-
-      expect(isKitFullyConfiguredForProject(mockConfig, kit, "my-target-proj")).to.be.false;
-      expect(hasProjectEnvStub).to.have.been.calledWith(
-        "/mock/function-kits/test-kit/config-inst",
-        "my-target-proj",
-        undefined,
-      );
-    });
-
-    it("should return false when only some instances have project env", () => {
-      const mockConfig = { path: (p: string) => `/mock/${p}` };
-      const kit = {
-        kit: "test-kit",
-        source: "function-kits/test-kit",
-        instances: {
-          inst1: "function-kits/test-kit/config-inst1",
-          inst2: "function-kits/test-kit/config-inst2",
-        },
-      } as unknown as ValidatedKitSingle;
-      hasProjectEnvStub
-        .withArgs("/mock/function-kits/test-kit/config-inst1", "my-target-proj", "staging")
-        .returns(false);
-      hasProjectEnvStub
-        .withArgs("/mock/function-kits/test-kit/config-inst2", "my-target-proj", "staging")
-        .returns(true);
-
-      expect(isKitFullyConfiguredForProject(mockConfig, kit, "my-target-proj", "staging")).to.be
-        .false;
-    });
-
-    it("should return true when all instances have project env", () => {
-      const mockConfig = { path: (p: string) => `/mock/${p}` };
-      const kit = {
-        kit: "test-kit",
-        source: "function-kits/test-kit",
-        instances: {
-          inst1: "function-kits/test-kit/config-inst1",
-          inst2: "function-kits/test-kit/config-inst2",
-        },
-      } as unknown as ValidatedKitSingle;
-      hasProjectEnvStub
-        .withArgs("/mock/function-kits/test-kit/config-inst1", "my-target-proj", "staging")
-        .returns(true);
-      hasProjectEnvStub
-        .withArgs("/mock/function-kits/test-kit/config-inst2", "my-target-proj", "staging")
-        .returns(true);
-
-      expect(isKitFullyConfiguredForProject(mockConfig, kit, "my-target-proj", "staging")).to.be
-        .true;
-    });
-
-    it("should return false when kit has no instances", () => {
-      const mockConfig = { path: (p: string) => `/mock/${p}` };
-      const kit = {
-        kit: "test-kit",
-        source: "function-kits/test-kit",
-        instances: {},
-      } as unknown as ValidatedKitSingle;
-
-      expect(isKitFullyConfiguredForProject(mockConfig, kit, "my-target-proj")).to.be.false;
     });
   });
 
