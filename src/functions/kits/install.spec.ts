@@ -2414,6 +2414,37 @@ describe("functions/kits/install", () => {
       });
     });
 
+    it("should accept defaultInstanceId as suggested instance ID for package kit", async () => {
+      const writtenFiles: Record<string, unknown> = {};
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+        },
+        askWriteProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+          return Promise.resolve();
+        },
+      } as unknown as Config;
+
+      const res = await installKitOrInstance({
+        config: mockConfig,
+        package: "@firebase-function-kits/firestore-bigquery-export@1.0.0",
+        defaultInstanceId: "my-extension-inst",
+        nonInteractive: true,
+      });
+
+      expect(res).to.deep.equal({
+        action: "installedKit",
+        kitId: "firestore-bigquery-export",
+        instanceId: "my-extension-inst",
+        sourcePath: "function-kits/firestore-bigquery-export/source",
+        configDirPath: "function-kits/firestore-bigquery-export/config-my-extension-inst",
+      });
+    });
+
     it("should seed environment variables when seedEnv is provided for package kit", async () => {
       const writtenFiles: Record<string, unknown> = {};
       const mockConfig = {

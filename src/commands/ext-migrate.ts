@@ -83,6 +83,7 @@ export const command = new Command("ext:migrate")
       config: options.config,
       package: plan.kitPackage,
       template: "migration",
+      defaultInstanceId: plan.instanceId,
       seedEnv: {
         projectId,
         envs: exportedEnvs,

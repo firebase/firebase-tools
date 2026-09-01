@@ -659,6 +659,7 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
           config: mockConfig,
           package: "@firebase-function-kits/firestore-send-email",
           template: "migration",
+          defaultInstanceId: "email-1",
           seedEnv: {
             projectId: "test-project",
             envs: {

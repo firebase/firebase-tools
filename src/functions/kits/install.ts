@@ -102,6 +102,7 @@ export interface InstallKitOrInstanceOptions {
   template?: TemplateType;
   kitId?: string;
   instanceId?: string;
+  defaultInstanceId?: string;
   seedEnv?: KitInstanceEnvSeed;
   nonInteractive?: boolean;
   force?: boolean;
@@ -136,6 +137,7 @@ export interface ExistingKitInstallOptions {
   configure?: boolean;
   rc?: RC;
   instanceId?: string;
+  defaultInstanceId?: string;
   seedEnv?: KitInstanceEnvSeed;
   skipReport?: boolean;
 }
@@ -1061,7 +1063,7 @@ export async function addKitInstanceOrConfigureProject(
   if (action === "addInstance") {
     resultAction = "addedInstance";
     instanceId = await promptKitInstanceId(
-      existingKit.kit,
+      options.defaultInstanceId ?? existingKit.kit,
       existingFunctionsInfo.existingInstanceIds,
       existingFunctionsInfo.existingCodebases,
       options.nonInteractive,
@@ -1304,7 +1306,7 @@ export async function installKitOrInstance(
   );
 
   const instanceId = await promptKitInstanceId(
-    kitId,
+    options.defaultInstanceId ?? kitId,
     existingFunctionsInfo.existingInstanceIds,
     existingFunctionsInfo.existingCodebases,
     options.nonInteractive,
