@@ -8,6 +8,7 @@ import {
   setSecretParamsToLatest,
   functionsEnvFromInstance,
   ejectSecretsFromInstance,
+  secretsNeedingEjection,
 } from "../extensions/export";
 import { ensureExtensionsApiEnabled } from "../extensions/extensionsHelper";
 import * as manifest from "../extensions/manifest";
@@ -20,15 +21,14 @@ import { needProjectId } from "../projectUtils";
 import { confirm } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import { getInstance } from "../extensions/extensionsApi";
-import { last } from "../utils";
+import { last, logLabeledBullet, logLabeledError, logLabeledWarning } from "../utils";
+import { ExtensionInstance } from "../extensions/types";
 import { writeUserEnvs, UserEnvsOpts, hasUserEnvs } from "../functions/env";
 import { mkdirSync } from "fs";
 import { resolve } from "path";
-import { logBullet } from "../utils";
 import { Config } from "../config";
 import { normalizeAndValidate, isKitConfig } from "../functions/projectConfig";
 import { FirebaseError } from "../error";
-import * as clc from "colorette";
 import * as experiments from "../experiments";
 
 export const command = new Command("ext:export")
@@ -168,45 +168,84 @@ async function fnHandler(options: Options): Promise<void> {
     return;
   }
 
-  const convertedEnv = functionsEnvFromInstance(instance);
-  const secretCount = Object.keys(convertedEnv).filter((key) =>
-    key.startsWith("FIREBASE_SECRET_REF_"),
-  ).length;
+  // Do not go past this block without either --force or all secrets having been ejected from extensions successfully
+  await handleSecretEjection(options, instance);
 
+  const convertedEnv = functionsEnvFromInstance(instance);
   const writeLocation: UserEnvsOpts = kitExportTarget(instanceId, projectId, options);
   if (hasUserEnvs(writeLocation)) {
     logger.info(
       `Exported extensions config appears to already exist in /${instanceId}, aborting write.`,
     );
   } else {
-    logBullet(
-      clc.cyan(clc.bold("functions: ")) +
-        `Saving exported extensions config as a Function Kits .env file`,
-    );
+    logLabeledBullet("functions", `Saving exported extensions config as a Function Kits .env file`);
     mkdirSync(resolve(writeLocation.projectDir, writeLocation.configDir ?? instanceId), {
       recursive: true,
     });
     writeUserEnvs(convertedEnv, writeLocation);
   }
+}
 
-  if (secretCount === 0) {
+/**
+ * Attempts to remove the `firebase-extensions-managed` label from all Secrets in an ExtensionInstance.
+ * The legacy Extensions backend tears down Secrets that have this label upon Extension uninstall, so
+ * not doing this risks accidentally destroying the user's secret during kits migration.
+ * Because of this risk ext:export requires secret ejection to be wholly successful if --force is not set.
+ *
+ * Throws an error if ext:export shouldn't proceed, based on the result of of the ejection process and the value of options.force
+ */
+export async function handleSecretEjection(
+  options: Options,
+  instance: ExtensionInstance,
+): Promise<void> {
+  const secrets = await secretsNeedingEjection(instance);
+  if (secrets.length === 0) {
     return;
   }
-  if (
-    !(await confirm({
-      message: `${secretCount} Cloud Secret Manager resources found in export. Remove from Extensions lifecycle management?\nThis is necessary to prevent extension uninstall from deleting potentially migrated secrets.`,
-      nonInteractive: options.nonInteractive,
-      force: options.force,
-      default: true,
-    }))
-  ) {
-    return;
-  }
-  const secretsChanged = await ejectSecretsFromInstance(instance);
-  logBullet(
-    clc.cyan(clc.bold("functions: ")) +
-      `Added functions-managed label to secrets: ${secretsChanged}`,
+
+  logLabeledBullet(
+    "functions",
+    "Cloud Secret Manager resources still require migration from Extensions lifecycle management to Kits.",
   );
+  logLabeledWarning(
+    "functions",
+    "Finishing the Extension migration process with extensions:uninstall without migrating bound secrets will result in permanent loss of secrets.",
+  );
+  const userAllowedEjection = await confirm({
+    message: `Automatically migrate ${secrets.length} Secrets from Extensions to Kits? (Y/n)`,
+    nonInteractive: options.nonInteractive,
+    force: options.force,
+    default: true,
+  });
+  if (userAllowedEjection) {
+    const results = await ejectSecretsFromInstance(instance);
+    if (results.fail.length > 0) {
+      let resultMsg = "";
+      if (results.success.length > 0) {
+        resultMsg = `Added functions-managed label to secrets: ${results.success}.`;
+      }
+      resultMsg += `${results.fail.length} secrets failed to update: ${results.fail}`;
+      logLabeledError("functions", resultMsg);
+      if (!options.force) {
+        throw new FirebaseError("Secret migration failed.");
+      } else {
+        logLabeledWarning(
+          "functions",
+          "Proceeding after secret migration failure in --force mode. Manually remove the 'firebase-extensions-managed' label from the secrets, or risk permanent data loss.",
+        );
+      }
+    } else {
+      logLabeledBullet(
+        "functions",
+        `Added functions-managed label to secrets: ${results.success}.`,
+      );
+    }
+  } else {
+    logLabeledError(
+      "functions",
+      "Proceeding without migrating secrets risks permanent data loss. Manually remove the 'firebase-extensions-managed' label from the secrets before running ext:uninstall.",
+    );
+  }
 }
 
 /**

@@ -79,10 +79,15 @@ export const command = new Command("ext:migrate")
     }
 
     plan.instance = await ensureInstanceSpec(plan.instance);
+    if (!plan.instance.config?.source?.spec) {
+      throw new FirebaseError(
+        `Could not load extension specification for ${clc.bold(plan.instanceId)}. Unable to export configuration.`,
+      );
+    }
 
     const exportedEnvs = functionsEnvFromInstance(plan.instance);
 
-    await migrateSecrets(plan.instance);
+    await migrateSecrets(plan.instance, { force: options.force });
 
     logLabeledBullet(
       logPrefix,

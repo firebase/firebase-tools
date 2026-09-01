@@ -513,9 +513,6 @@ async function promptForReleaseStage(args: {
   return stage;
 }
 
-/**
- *
- */
 export async function checkExtensionsApiEnabled(options: any): Promise<boolean> {
   const projectId = getProjectId(options);
   if (!projectId) {
@@ -524,9 +521,6 @@ export async function checkExtensionsApiEnabled(options: any): Promise<boolean> 
   return await check(projectId, extensionsOrigin(), "extensions", options.markdown);
 }
 
-/**
- *
- */
 export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
   const projectId = getProjectId(options);
   if (!projectId) {
@@ -535,9 +529,6 @@ export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
   return await ensure(projectId, extensionsOrigin(), "extensions", options.markdown);
 }
 
-/**
- *
- */
 export async function ensureExtensionsPublisherApiEnabled(options: any): Promise<void> {
   const projectId = getProjectId(options);
   if (!projectId) {
@@ -1039,9 +1030,6 @@ export async function uploadExtensionVersionFromLocalSource(args: {
   return res;
 }
 
-/**
- *
- */
 export function getMissingPublisherError(publisherId: string): FirebaseError {
   return new FirebaseError(
     `Couldn't find publisher ID '${clc.bold(
@@ -1199,16 +1187,10 @@ export async function instanceIdExists(projectId: string, instanceId: string): P
   return true;
 }
 
-/**
- *
- */
 export function isUrlPath(extInstallPath: string): boolean {
   return extInstallPath.startsWith("https:");
 }
 
-/**
- *
- */
 export function isLocalPath(extInstallPath: string): boolean {
   const trimmedPath = extInstallPath.trim();
   return (
@@ -1226,9 +1208,6 @@ export function isLocalPath(extInstallPath: string): boolean {
   );
 }
 
-/**
- *
- */
 export function isLocalOrURLPath(extInstallPath: string): boolean {
   return isLocalPath(extInstallPath) || isUrlPath(extInstallPath);
 }
@@ -1266,9 +1245,6 @@ export function getSourceOrigin(sourceOrVersion: string): SourceOrigin {
   );
 }
 
-/**
- *
- */
 export async function diagnoseAndFixProject(options: any): Promise<void> {
   const projectId = getProjectId(options);
   if (!projectId) {
@@ -1287,41 +1263,33 @@ export async function ensureInstanceSpec(instance: ExtensionInstance): Promise<E
   if (instance.config?.source?.spec) {
     return instance;
   }
-  const ref = instance.config?.extensionRef;
-  const version = instance.config?.extensionVersion;
-  const versionRef = ref
-    ? ref.includes("@")
-      ? ref
-      : version
-        ? `${ref}@${version}`
-        : ref
-    : undefined;
-  if (versionRef) {
-    try {
-      const extVersion = await getExtensionVersion(versionRef);
-      if (extVersion?.spec) {
-        instance.config = instance.config || {
-          name: "",
-          createTime: "",
-          params: {},
-          systemParams: {},
-        };
-        instance.config.source = {
-          ...(instance.config.source || {
-            name: "",
-            state: "ACTIVE",
-            packageUri: "",
-            hash: "",
-          }),
-          spec: extVersion.spec,
-        };
-      }
-    } catch (err: unknown) {
-      logger.debug(
-        `[ensureInstanceSpec] Could not fetch extension version for ${versionRef}:`,
-        err,
-      );
-    }
+
+  const extensionRef = instance.config?.extensionRef ?? instance.extensionRef;
+  if (!extensionRef) {
+    return instance;
   }
-  return instance;
+
+  const extensionVersion =
+    instance.config?.extensionVersion ?? instance.extensionVersion ?? "latest";
+  const ref = refs.parse(extensionRef);
+  const extVersion = await getExtensionVersion(
+    `${ref.publisherId}/${ref.extensionId}@${extensionVersion}`,
+  );
+
+  return {
+    ...instance,
+    config: {
+      ...instance.config,
+      source: {
+        ...instance.config?.source,
+        name: instance.config?.source?.name ?? extVersion.name,
+        state:
+          instance.config?.source?.state ??
+          (extVersion.state === "PUBLISHED" ? "ACTIVE" : "STATE_UNSPECIFIED"),
+        packageUri: instance.config?.source?.packageUri ?? extVersion.sourceDownloadUri,
+        hash: instance.config?.source?.hash ?? extVersion.hash,
+        spec: extVersion.spec,
+      },
+    },
+  };
 }

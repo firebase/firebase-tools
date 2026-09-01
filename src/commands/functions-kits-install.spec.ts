@@ -143,6 +143,8 @@ describe("functions:kits:install", () => {
         directory: undefined,
         template: "migration",
         nonInteractive: true,
+        force: undefined,
+        configure: undefined,
         project: "my-project",
         projectId: "my-project",
         rc: mockRc,
@@ -167,6 +169,7 @@ describe("functions:kits:install", () => {
         cwd: "/mock/project",
         config: mockConfig,
         nonInteractive: true,
+        force: true,
         project: "my-project",
         projectId: "my-project",
         rc: mockRc as unknown as RC,
@@ -178,6 +181,46 @@ describe("functions:kits:install", () => {
         directory: "./my-local-kit",
         template: undefined,
         nonInteractive: true,
+        force: true,
+        configure: undefined,
+        project: "my-project",
+        projectId: "my-project",
+        rc: mockRc,
+      });
+    });
+
+    it("should pass configure: false when --no-configure is provided", async () => {
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: {
+          functions: [],
+        },
+        path: (p: string) => `/mock/project/${p}`,
+      } as unknown as Config;
+
+      const mockRc = {
+        hasProjects: true,
+      };
+
+      await command.runner()({
+        package: "@firebase-function-kits/firestore-bigquery-export",
+        cwd: "/mock/project",
+        config: mockConfig,
+        nonInteractive: true,
+        configure: false,
+        project: "my-project",
+        projectId: "my-project",
+        rc: mockRc as unknown as RC,
+      });
+
+      expect(installKitOrInstanceStub).to.have.been.calledOnceWith({
+        config: mockConfig,
+        package: "@firebase-function-kits/firestore-bigquery-export",
+        directory: undefined,
+        template: undefined,
+        nonInteractive: true,
+        force: undefined,
+        configure: false,
         project: "my-project",
         projectId: "my-project",
         rc: mockRc,

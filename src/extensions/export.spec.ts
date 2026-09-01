@@ -9,8 +9,7 @@ import {
 } from "./export";
 import { ensureInstanceSpec } from "./extensionsHelper";
 import { DeploymentInstanceSpec } from "../deploy/extensions/planner";
-import { ParamType } from "./types";
-import { ExtensionInstance } from "./types";
+import { ExtensionInstance, ParamType } from "./types";
 import * as publisherApi from "./publisherApi";
 import * as secretsModule from "../deploy/extensions/secrets";
 import { FirebaseError } from "../error";
@@ -379,30 +378,30 @@ describe("functionsEnvFromInstance", () => {
 });
 
 describe("ensureInstanceSpec", () => {
-  let getExtensionVersionStub: sinon.SinonStub;
+  let sandbox: sinon.SinonSandbox;
 
   beforeEach(() => {
-    getExtensionVersionStub = sinon.stub(publisherApi, "getExtensionVersion");
+    sandbox = sinon.createSandbox();
   });
 
   afterEach(() => {
-    sinon.restore();
+    sandbox.restore();
   });
 
   it("should return instance as is if spec already exists", async () => {
     const instance: ExtensionInstance = {
-      name: "projects/p/instances/i",
+      name: "projects/123/instances/ext1",
       createTime: "",
       updateTime: "",
       state: "ACTIVE",
       serviceAccountEmail: "",
       config: {
-        name: "projects/p/instances/i/configurations/1",
+        name: "",
         createTime: "",
         params: {},
         systemParams: {},
         source: {
-          name: "sources/1",
+          name: "",
           state: "ACTIVE",
           packageUri: "",
           hash: "",
@@ -417,41 +416,128 @@ describe("ensureInstanceSpec", () => {
       },
     };
 
-    const result = await ensureInstanceSpec(instance);
-    expect(result.config.source?.spec?.name).to.equal("my-ext");
+    const getExtensionVersionStub = sandbox.stub(publisherApi, "getExtensionVersion");
+    const res = await ensureInstanceSpec(instance);
+    expect(res).to.equal(instance);
     expect(getExtensionVersionStub).to.not.have.been.called;
   });
 
   it("should fetch spec on demand if missing", async () => {
-    const instance = {
-      name: "projects/p/instances/i",
+    const instance: ExtensionInstance = {
+      name: "projects/123/instances/ext1",
       createTime: "",
       updateTime: "",
       state: "ACTIVE",
       serviceAccountEmail: "",
       config: {
-        name: "projects/p/instances/i/configurations/1",
+        name: "",
         createTime: "",
-        extensionRef: "firebase/storage-resize-images",
-        extensionVersion: "0.1.30",
+        params: {},
+        systemParams: {},
+        extensionRef: "firebase/firestore-send-email",
+        extensionVersion: "0.1.35",
+      },
+    };
+
+    sandbox.stub(publisherApi, "getExtensionVersion").resolves({
+      name: "publishers/firebase/extensions/firestore-send-email/versions/0.1.35",
+      ref: "firebase/firestore-send-email@0.1.35",
+      spec: {
+        name: "firestore-send-email",
+        version: "0.1.35",
+        resources: [],
+        params: [
+          {
+            param: "LOCATION",
+            label: "Location",
+            type: ParamType.SELECT,
+          },
+        ],
+        systemParams: [],
+      },
+      state: "PUBLISHED",
+      hash: "hash123",
+      sourceDownloadUri: "https://example.com/download",
+    });
+
+    const res = await ensureInstanceSpec(instance);
+    expect(res.config?.source?.spec?.name).to.equal("firestore-send-email");
+    expect(res.config?.source?.spec?.params).to.have.length(1);
+    expect(res.config?.source?.name).to.equal(
+      "publishers/firebase/extensions/firestore-send-email/versions/0.1.35",
+    );
+    expect(res.config?.source?.packageUri).to.equal("https://example.com/download");
+    expect(res.config?.source?.hash).to.equal("hash123");
+    expect(res.config?.source?.state).to.equal("ACTIVE");
+  });
+
+  it("should fetch spec on demand if extensionRef is on instance directly", async () => {
+    const instance: ExtensionInstance = {
+      name: "projects/123/instances/ext1",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      extensionRef: "firebase/firestore-send-email",
+      extensionVersion: "0.1.35",
+      config: {
+        name: "",
+        createTime: "",
         params: {},
         systemParams: {},
       },
-    } satisfies ExtensionInstance;
+    };
 
-    getExtensionVersionStub.withArgs("firebase/storage-resize-images@0.1.30").resolves({
+    sandbox.stub(publisherApi, "getExtensionVersion").resolves({
+      name: "publishers/firebase/extensions/firestore-send-email/versions/0.1.35",
+      ref: "firebase/firestore-send-email@0.1.35",
       spec: {
-        name: "storage-resize-images",
-        version: "0.1.30",
+        name: "firestore-send-email",
+        version: "0.1.35",
         resources: [],
-        params: [],
+        params: [
+          {
+            param: "LOCATION",
+            label: "Location",
+            type: ParamType.SELECT,
+          },
+        ],
         systemParams: [],
       },
+      state: "PUBLISHED",
+      hash: "hash123",
+      sourceDownloadUri: "https://example.com/download",
     });
 
-    const result = await ensureInstanceSpec(instance);
-    expect(result.config.source?.spec?.name).to.equal("storage-resize-images");
-    expect(getExtensionVersionStub).to.have.been.calledOnce;
+    const res = await ensureInstanceSpec(instance);
+    expect(res.config?.source?.spec?.name).to.equal("firestore-send-email");
+    expect(res.config?.source?.spec?.params).to.have.length(1);
+    expect(res.config?.source?.name).to.equal(
+      "publishers/firebase/extensions/firestore-send-email/versions/0.1.35",
+    );
+  });
+
+  it("should let getExtensionVersion errors bubble up", async () => {
+    const instance: ExtensionInstance = {
+      name: "projects/123/instances/ext1",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      extensionRef: "firebase/firestore-send-email",
+      extensionVersion: "0.1.35",
+      config: {
+        name: "",
+        createTime: "",
+        params: {},
+        systemParams: {},
+      },
+    };
+
+    const networkErr = new Error("Network failure");
+    sandbox.stub(publisherApi, "getExtensionVersion").rejects(networkErr);
+
+    await expect(ensureInstanceSpec(instance)).to.be.rejectedWith(networkErr);
   });
 });
 
@@ -504,11 +590,11 @@ describe("ejectSecretsFromInstance", () => {
 
     transferSecretToKitsStub.resolves();
     const changed = await ejectSecretsFromInstance(instance);
-    expect(changed).to.deep.equal(["my-proj/API_KEY"]);
+    expect(changed).to.deep.equal({ success: ["my-proj/API_KEY"], fail: [] });
     expect(transferSecretToKitsStub).to.have.been.calledWith("my-proj", "API_KEY");
   });
 
-  it("should propagate errors thrown by transferSecretToKits", async () => {
+  it("should record failed secret ejections without throwing", async () => {
     const instance: ExtensionInstance = {
       name: "projects/my-proj/instances/my-inst",
       createTime: "",
@@ -547,6 +633,7 @@ describe("ejectSecretsFromInstance", () => {
     const permError = new FirebaseError("Forbidden", { status: 403 });
     transferSecretToKitsStub.rejects(permError);
 
-    await expect(ejectSecretsFromInstance(instance)).to.be.rejectedWith(permError);
+    const changed = await ejectSecretsFromInstance(instance);
+    expect(changed).to.deep.equal({ success: [], fail: ["my-proj/API_KEY"] });
   });
 });
