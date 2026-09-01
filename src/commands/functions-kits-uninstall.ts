@@ -83,14 +83,23 @@ async function handleInstance(options: Options, config: Config): Promise<void> {
     `Kit ${kitForInstance.kit} uninstall mode: conservativeDeletion=${conservativeDeletion}`,
   );
 
-  const projectsWithConfigs: string[] = [];
+  const envFileNames: string[] = [];
+  const projectNamesInEnvs: string[] = [];
   const configDirContents = config.lsProjectDir(instanceConfigDirPath);
   const fileNames = configDirContents.filter((f) => f.isFile()).map((f) => f.name);
   for (const fileName of fileNames) {
     if (!fileName.startsWith(".env.")) {
       continue;
     }
-    projectsWithConfigs.push(fileName.slice(".env.".length));
+    envFileNames.push(fileName.slice(".env.".length));
+  }
+  const aliasToProjectMappings = getAliasesToProjects(config);
+  for (const envName of envFileNames) {
+    if (aliasToProjectMappings[envName]) {
+      projectNamesInEnvs.push(aliasToProjectMappings[envName]);
+    } else {
+      projectNamesInEnvs.push(envName);
+    }
   }
 
   // Cases:
@@ -100,12 +109,12 @@ async function handleInstance(options: Options, config: Config): Promise<void> {
   // - current project is only project for an instance, so just tear down the instance
   // - only remove .env and function
 
-  if (projectsWithConfigs.length > 0 && !projectsWithConfigs.includes(projectId)) {
+  if (projectNamesInEnvs.length > 0 && !projectNamesInEnvs.includes(projectId)) {
     throw new FirebaseError(
       `Instance at ${instanceConfigDirPath} contains no .env file for current project`,
     );
   }
-  if (projectsWithConfigs.length === 0 || projectsWithConfigs.length === 1) {
+  if (envFileNames.length === 0 || envFileNames.length === 1) {
     if (Object.keys(kitForInstance.instances).length > 1) {
       await uninstallInstance(
         options,
@@ -130,7 +139,20 @@ async function handleInstance(options: Options, config: Config): Promise<void> {
     await uninstallKit(options, config, kitForInstance);
     return;
   }
-  await uninstallProjectInstance(options, config, projectId, instanceId, instanceConfigDirPath);
+  let filesystemNameForProject = projectId;
+  for (const [alias, project] of Object.entries(aliasToProjectMappings)) {
+    if (project === projectId) {
+      filesystemNameForProject = alias;
+    }
+  }
+  await uninstallProjectInstance(
+    options,
+    config,
+    projectId,
+    filesystemNameForProject,
+    instanceId,
+    instanceConfigDirPath,
+  );
 }
 
 /*
@@ -155,8 +177,14 @@ async function uninstallInstance(
     if (!fileName.startsWith(".env.")) {
       continue;
     }
-    const projectId = fileName.replace(new RegExp("^.env."), "");
-    await uninstallProjectInstance(options, config, projectId, instanceId, instanceConfigDirPath);
+    const projectIdOrAlias = fileName.replace(new RegExp("^.env."), "");
+    await uninstallProjectInstanceByAlias(
+      options,
+      config,
+      projectIdOrAlias,
+      instanceId,
+      instanceConfigDirPath,
+    );
   }
   if (!onlyDeleteEmpty || configDirEmpty(config, instanceConfigDirPath)) {
     config.deleteProjectDir(instanceConfigDirPath);
@@ -181,21 +209,46 @@ async function uninstallInstance(
   config.writeProjectFile("firebase.json", config.src);
 }
 
+/**
+ * Invoke uninstallProjectInstance when only the instance's .env file name is known
+ * (from doing a directory walk), checking .firebaserc for whether name is a known project alias.
+ */
+async function uninstallProjectInstanceByAlias(
+  options: Options,
+  config: Config,
+  projectAlias: string,
+  instanceId: string,
+  kitInstancePath: string,
+) {
+  const aliasToProjectMappings = getAliasesToProjects(config);
+  const projectId = aliasToProjectMappings[projectAlias] || projectAlias;
+  await uninstallProjectInstance(
+    options,
+    config,
+    projectId,
+    projectAlias,
+    instanceId,
+    kitInstancePath,
+  );
+}
+
 /*
- * Remove the .env.<projectId> file and deployed Function for a specific project instance
+ * Remove the .env.<projectAlias> file and deployed Function for a specific project instance
 
  * @param configPath: project-relative function-kits/<kitId>/config-<instanceId>
  * @param projectId: must be specified, since configPath is user-overridable
+ * #param filesystemId: the project reference in name of .env file, either the project id or from .firebaserc aliases 
  * @param instanceId: must be specified, since configPath is user-overridable
  */
 async function uninstallProjectInstance(
   options: Options,
   config: Config,
   projectId: string,
+  filesystemId: string,
   instanceId: string,
   kitInstancePath: string,
 ): Promise<void> {
-  const envFilePath = join(kitInstancePath, `.env.${projectId}`);
+  const envFilePath = join(kitInstancePath, `.env.${filesystemId}`);
   const epFilters: EndpointFilter[] = [{ codebase: instanceId }];
   const deployContext: Context = { projectId: projectId, filters: epFilters };
   const deletionCount = await deleteFunctionsByEndpointFilters(deployContext, options);
@@ -292,4 +345,20 @@ function configDirEmpty(config: Config, projectRelativePath: string): boolean {
     return false;
   }
   return true;
+}
+
+// Reads .firebaserc for the project-to-alias mapping and reverses it
+function getAliasesToProjects(config: Config): Record<string, string> {
+  const firebaserc = config.readProjectFile(".firebaserc", {
+    json: true,
+    fallback: {},
+  });
+  if ("projects" in firebaserc && typeof firebaserc.projects === "object") {
+    const asStrings: Record<string, string> = {};
+    for (const [project, alias] of Object.entries(firebaserc.projects)) {
+      asStrings[String(alias)] = project;
+    }
+    return asStrings;
+  }
+  return {};
 }
