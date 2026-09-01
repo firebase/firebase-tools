@@ -44,9 +44,8 @@ export const command = new Command("ext:migrate")
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
   .before((options: Options) => {
-    if (options.project) {
-      return checkServiceAccountIam(options.project);
-    }
+    const projectId = needProjectId(options);
+    return checkServiceAccountIam(projectId);
   })
   .action(async (options: ExtMigrateOptions) => {
     if (!options.config) {
