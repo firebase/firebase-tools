@@ -88,11 +88,32 @@ describe("functions/kits/install", () => {
       expect(() => validateNpmPackageName("kit_123.v1")).to.not.throw();
     });
 
+    it("should accept valid unscoped package specifiers with version or tag", () => {
+      expect(() => validateNpmPackageName("my-kit@1.2.3")).to.not.throw();
+      expect(() => validateNpmPackageName("my-kit@next")).to.not.throw();
+      expect(() => validateNpmPackageName("my-kit@^2.0.0")).to.not.throw();
+    });
+
     it("should accept valid scoped package names with exactly one slash", () => {
       expect(() =>
         validateNpmPackageName("@firebase-function-kits/firestore-bigquery-export"),
       ).to.not.throw();
       expect(() => validateNpmPackageName("@invertase/example-kit")).to.not.throw();
+    });
+
+    it("should accept valid scoped package specifiers with version or tag", () => {
+      expect(() =>
+        validateNpmPackageName("@firebase-function-kits/firestore-bigquery-export@1.0.0"),
+      ).to.not.throw();
+      expect(() =>
+        validateNpmPackageName("@firebase-function-kits/firestore-bigquery-export@1.0.0-rc.1"),
+      ).to.not.throw();
+      expect(() =>
+        validateNpmPackageName("@firebase-function-kits/firestore-bigquery-export@latest"),
+      ).to.not.throw();
+      expect(() =>
+        validateNpmPackageName("@firebase-function-kits/firestore-bigquery-export@next"),
+      ).to.not.throw();
     });
 
     it("should reject package names with multiple slashes", () => {
@@ -116,6 +137,14 @@ describe("functions/kits/install", () => {
     it("should reject empty or malformed package names", () => {
       expect(() => validateNpmPackageName("")).to.throw(FirebaseError, /Invalid NPM package name/);
       expect(() => validateNpmPackageName("@scope")).to.throw(
+        FirebaseError,
+        /Invalid NPM package name/,
+      );
+      expect(() => validateNpmPackageName("my-kit@")).to.throw(
+        FirebaseError,
+        /Invalid NPM package name/,
+      );
+      expect(() => validateNpmPackageName("@scope/my-kit@")).to.throw(
         FirebaseError,
         /Invalid NPM package name/,
       );
@@ -218,9 +247,28 @@ describe("functions/kits/install", () => {
       expect(sanitizePackageNameToKitName("@foo/bar")).to.equal("bar");
     });
 
+    it("should extract kit name from scoped package specifier with version or tag", () => {
+      expect(
+        sanitizePackageNameToKitName("@firebase-function-kits/firestore-bigquery-export@1.0.0"),
+      ).to.equal("firestore-bigquery-export");
+      expect(
+        sanitizePackageNameToKitName("@firebase-function-kits/firestore-bigquery-export@next"),
+      ).to.equal("firestore-bigquery-export");
+      expect(
+        sanitizePackageNameToKitName(
+          "@firebase-function-kits/firestore-bigquery-export@1.0.0-rc.1",
+        ),
+      ).to.equal("firestore-bigquery-export");
+    });
+
     it("should sanitize non-scoped package name", () => {
       expect(sanitizePackageNameToKitName("my-kit")).to.equal("my-kit");
       expect(sanitizePackageNameToKitName("My_Kit!")).to.equal("my_kit");
+    });
+
+    it("should sanitize non-scoped package specifier with version or tag", () => {
+      expect(sanitizePackageNameToKitName("my-kit@1.2.3")).to.equal("my-kit");
+      expect(sanitizePackageNameToKitName("my-kit@next")).to.equal("my-kit");
     });
 
     it("should truncate long names to 40 characters", () => {
@@ -232,6 +280,10 @@ describe("functions/kits/install", () => {
   describe("isThirdPartyPackage", () => {
     it("should return false for packages under @firebase-function-kits scope", () => {
       expect(isThirdPartyPackage("@firebase-function-kits/firestore-bigquery-export")).to.be.false;
+      expect(isThirdPartyPackage("@firebase-function-kits/firestore-bigquery-export@1.0.0")).to.be
+        .false;
+      expect(isThirdPartyPackage("@firebase-function-kits/firestore-bigquery-export@next")).to.be
+        .false;
     });
 
     it("should return true for packages outside @firebase-function-kits scope", () => {
@@ -239,6 +291,8 @@ describe("functions/kits/install", () => {
       expect(isThirdPartyPackage("@firebase-function-kits-fake/foo")).to.be.true;
       expect(isThirdPartyPackage("@other-scope/my-kit")).to.be.true;
       expect(isThirdPartyPackage("third-party-kit")).to.be.true;
+      expect(isThirdPartyPackage("third-party-kit@1.2.3")).to.be.true;
+      expect(isThirdPartyPackage("third-party-kit@next")).to.be.true;
     });
   });
 
@@ -758,6 +812,17 @@ describe("functions/kits/install", () => {
       expect(source.defaultKitName).to.equal("@firebase-function-kits/firestore-export");
       expect(source.sourcePackageName).to.equal("@firebase-function-kits/firestore-export");
       expect(source.hasBuildScript).to.be.true;
+    });
+
+    it("should reject malformed package specifier with trailing @", async () => {
+      await expect(
+        resolvePackageSource({
+          config: { projectDir: "/mock/project" } as Config,
+          package: "my-kit@",
+          template: "installation",
+          nonInteractive: true,
+        }),
+      ).to.be.rejectedWith(FirebaseError, /Invalid NPM package name 'my-kit@'/);
     });
   });
 
