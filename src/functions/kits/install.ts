@@ -1078,6 +1078,17 @@ export async function addKitInstanceOrConfigureProject(
       );
     }
     absConfigDirPath = options.config.path(configDirPath);
+    if (options.seedEnv?.envs && Object.keys(options.seedEnv.envs).length > 0) {
+      await fs.ensureDir(absConfigDirPath);
+      seedKitInstanceEnv({
+        configDir: absConfigDirPath,
+        functionsSource: options.config.path(existingKit.source),
+        projectDir: options.config.projectDir,
+        projectId: options.seedEnv.projectId,
+        projectAlias: options.seedEnv.projectAlias,
+        envs: options.seedEnv.envs,
+      });
+    }
   } else {
     throw new FirebaseError(`Unexpected action '${String(action)}' for kit installation.`);
   }
