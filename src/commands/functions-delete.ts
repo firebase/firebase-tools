@@ -69,11 +69,7 @@ export const command = new Command("functions:delete [filters...]")
       );
     }
 
-    const deletionCount = await deleteFunctionsByEndpointFilters(
-      context.projectId,
-      context.filters,
-      options,
-    );
+    const deletionCount = await deleteFunctionsByEndpointFilters(context, options);
     if (deletionCount === 0) {
       throw new FirebaseError(
         `The specified filters do not match any existing functions in project ${clc.bold(

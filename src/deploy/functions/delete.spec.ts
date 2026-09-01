@@ -64,10 +64,13 @@ describe("function delete helper", () => {
     sinon.stub(reporter, "logAndTrackDeployStats").resolves();
 
     await expect(
-      deleteFunctionsByEndpointFilters("my-project", [{ codebase: "foo" }], {
-        nonInteractive: true,
-        force: true,
-      } as Options),
+      deleteFunctionsByEndpointFilters(
+        { projectId: "my-project", filters: [{ codebase: "foo" }] },
+        {
+          nonInteractive: true,
+          force: true,
+        } as Options,
+      ),
     ).to.eventually.equal(1);
   });
 
@@ -75,10 +78,13 @@ describe("function delete helper", () => {
     sinon.stub(backend, "existingBackend").resolves(fakeBackend);
 
     await expect(
-      deleteFunctionsByEndpointFilters("my-project", [{ codebase: "asdf" }], {
-        nonInteractive: true,
-        force: true,
-      } as Options),
+      deleteFunctionsByEndpointFilters(
+        { projectId: "my-project", filters: [{ codebase: "asdf" }] },
+        {
+          nonInteractive: true,
+          force: true,
+        } as Options,
+      ),
     ).to.eventually.equal(0);
   });
 
@@ -86,11 +92,14 @@ describe("function delete helper", () => {
     sinon.stub(backend, "existingBackend").resolves(fakeBackend);
 
     await expect(
-      deleteFunctionsByEndpointFilters("my-project", [{ codebase: "foo" }], {
-        nonInteractive: true,
-        force: true,
-        region: "us-east1",
-      } as unknown as Options),
+      deleteFunctionsByEndpointFilters(
+        { projectId: "my-project", filters: [{ codebase: "foo" }] },
+        {
+          nonInteractive: true,
+          force: true,
+          region: "us-east1",
+        } as unknown as Options,
+      ),
     ).to.eventually.equal(0);
   });
 
@@ -116,10 +125,13 @@ describe("function delete helper", () => {
     sinon.stub(reporter, "logAndTrackDeployStats").resolves();
 
     await expect(
-      deleteFunctionsByEndpointFilters("my-project", [{ codebase: "foo" }], {
-        nonInteractive: true,
-        force: true,
-      } as Options),
+      deleteFunctionsByEndpointFilters(
+        { projectId: "my-project", filters: [{ codebase: "foo" }] },
+        {
+          nonInteractive: true,
+          force: true,
+        } as Options,
+      ),
     ).to.be.rejected;
   });
 });

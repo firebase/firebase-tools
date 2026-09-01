@@ -14,6 +14,7 @@ import { logLabeledWarning } from "../utils";
 import { EndpointFilter } from "../deploy/functions/functionsDeployHelper";
 import { logger } from "../logger";
 import { deleteFunctionsByEndpointFilters } from "../deploy/functions/delete";
+import { Context } from "../deploy/functions/args";
 
 export const command = new Command("functions:kits:uninstall")
   .description("uninstall a function kit or kit instance from your project")
@@ -196,7 +197,8 @@ async function uninstallProjectInstance(
 ): Promise<void> {
   const envFilePath = join(kitInstancePath, `.env.${projectId}`);
   const epFilters: EndpointFilter[] = [{ codebase: instanceId }];
-  const deletionCount = await deleteFunctionsByEndpointFilters(projectId, epFilters, options);
+  const deployContext: Context = { projectId: projectId, filters: epFilters };
+  const deletionCount = await deleteFunctionsByEndpointFilters(deployContext, options);
   if (deletionCount === 0) {
     logger.info(
       `No deployed functions found for instance ${instanceId}. This is normal if firebase deploy was never run.`,

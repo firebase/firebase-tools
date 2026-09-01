@@ -2,7 +2,7 @@ import * as backend from "./backend";
 import * as planner from "./release/planner";
 import * as executor from "./release/executor";
 import * as fabricator from "./release/fabricator";
-import { EndpointFilter, getFunctionLabel } from "./functionsDeployHelper";
+import { getFunctionLabel } from "./functionsDeployHelper";
 import { getProjectNumber } from "../../getProjectNumber";
 import * as reporter from "./release/reporter";
 import { Context } from "./args";
@@ -27,14 +27,9 @@ import * as functionsConfig from "../../functionsConfig";
  * @param options? pass through CLI options.
  */
 export async function deleteFunctionsByEndpointFilters(
-  projectId: string,
-  epFilters: EndpointFilter[],
+  context: Context,
   options?: Options,
 ): Promise<number> {
-  const context: Context = {
-    projectId: projectId,
-    filters: epFilters,
-  };
   let haveBackend = await backend.existingBackend(context);
   if (options?.region) {
     haveBackend = backend.matchingBackend(
@@ -80,7 +75,7 @@ export async function deleteFunctionsByEndpointFilters(
   try {
     const firebaseConfig = await functionsConfig.getFirebaseConfig({
       ...options,
-      projectId,
+      projectId: context.projectId,
     });
     const appEngineLocation = functionsConfig.getAppEngineLocation(firebaseConfig);
     const fab = new fabricator.Fabricator({
