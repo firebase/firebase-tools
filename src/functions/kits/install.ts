@@ -187,9 +187,10 @@ export function parseNpmPackageSpecifier(rawPkg: string): {
 } {
   const lastAt = rawPkg.lastIndexOf("@");
   if (lastAt > 0) {
+    const version = rawPkg.substring(lastAt + 1);
     return {
       packageName: rawPkg.substring(0, lastAt),
-      version: rawPkg.substring(lastAt + 1),
+      ...(version ? { version } : {}),
     };
   }
   return { packageName: rawPkg };
@@ -200,11 +201,17 @@ export function parseNpmPackageSpecifier(rawPkg: string): {
  * - Unscoped: 'name' (no slashes)
  * - Scoped: '@scope/name' (exactly one slash)
  */
-export function validateNpmPackageName(packageName: string): void {
+export function validateNpmPackageName(packageNameOrSpecifier: string): void {
+  const { packageName, version } = parseNpmPackageSpecifier(packageNameOrSpecifier);
   const npmPackageRegex = /^(?:@[a-z0-9_.-]+\/[a-z0-9_.-]+|[a-z0-9_.-]+)$/i;
-  if (!packageName || packageName.length > 214 || !npmPackageRegex.test(packageName)) {
+  if (
+    !packageName ||
+    packageName.length > 214 ||
+    !npmPackageRegex.test(packageName) ||
+    (packageNameOrSpecifier.lastIndexOf("@") > 0 && !version)
+  ) {
     throw new FirebaseError(
-      `Invalid NPM package name '${packageName}'. Package names must be valid npm package specifiers (e.g. 'my-kit' or '@scope/my-kit').`,
+      `Invalid NPM package name '${packageNameOrSpecifier}'. Package names must be valid npm package specifiers (e.g. 'my-kit' or '@scope/my-kit').`,
     );
   }
 }
@@ -213,7 +220,8 @@ export function validateNpmPackageName(packageName: string): void {
  * Sanitizes an npm package name into a valid kit identifier.
  * e.g., "@firebase-function-kits/firestore-bigquery-export" -> "firestore-bigquery-export"
  */
-export function sanitizePackageNameToKitName(packageName: string): string {
+export function sanitizePackageNameToKitName(packageNameOrSpecifier: string): string {
+  const { packageName } = parseNpmPackageSpecifier(packageNameOrSpecifier);
   const parts = packageName.split("/");
   const nameWithoutScope = parts[parts.length - 1] || packageName;
   const sanitized = nameWithoutScope.toLowerCase().replace(/[^a-z0-9_-]/g, "");
@@ -223,7 +231,8 @@ export function sanitizePackageNameToKitName(packageName: string): string {
 /**
  * Checks if a package name is third-party (outside the @firebase-function-kits scope).
  */
-export function isThirdPartyPackage(packageName: string): boolean {
+export function isThirdPartyPackage(packageNameOrSpecifier: string): boolean {
+  const { packageName } = parseNpmPackageSpecifier(packageNameOrSpecifier);
   return !packageName.startsWith("@firebase-function-kits/");
 }
 
@@ -1193,8 +1202,8 @@ export async function resolvePackageSource(
     throw new FirebaseError("Set the --package option to a valid NPM package and try again.");
   }
 
+  validateNpmPackageName(rawPkgName);
   const { packageName } = parseNpmPackageSpecifier(rawPkgName);
-  validateNpmPackageName(packageName);
 
   const isThirdParty = await promptSecurityConfirmation(
     rawPkgName,
