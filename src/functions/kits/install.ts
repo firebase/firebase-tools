@@ -110,7 +110,6 @@ export interface InstallKitOrInstanceOptions {
   project?: string;
   projectId?: string;
   rc?: RC;
-  skipReport?: boolean;
 }
 
 export interface InstallKitOrInstanceResult {
@@ -139,7 +138,6 @@ export interface ExistingKitInstallOptions {
   instanceId?: string;
   defaultInstanceId?: string;
   seedEnv?: KitInstanceEnvSeed;
-  skipReport?: boolean;
 }
 
 export interface PromptAndWriteKitParamsOptions {
@@ -1148,16 +1146,14 @@ export async function addKitInstanceOrConfigureProject(
     );
   }
 
-  if (!options.skipReport) {
-    await printKitFirstDeployReport({
-      config: options.config,
-      project: options.project,
-      projectId: options.projectId,
-      instanceId,
-      absSourcePath,
-      preDiscoveredBuild: discoveredBuild,
-    });
-  }
+  await printKitFirstDeployReport({
+    config: options.config,
+    project: options.project,
+    projectId: options.projectId,
+    instanceId,
+    absSourcePath,
+    preDiscoveredBuild: discoveredBuild,
+  });
 
   return {
     action: resultAction,
@@ -1376,16 +1372,14 @@ export async function installKitOrInstance(
   });
 
   logLabeledSuccess("functions", `Function kit ${clc.bold(kitId)} successfully installed.`);
-  if (!options.skipReport) {
-    await printKitFirstDeployReport({
-      config: options.config,
-      project: options.project,
-      projectId: options.projectId,
-      instanceId,
-      absSourcePath,
-      preDiscoveredBuild: discoveredBuild,
-    });
-  }
+  await printKitFirstDeployReport({
+    config: options.config,
+    project: options.project,
+    projectId: options.projectId,
+    instanceId,
+    absSourcePath,
+    preDiscoveredBuild: discoveredBuild,
+  });
 
   return {
     action: "installedKit",

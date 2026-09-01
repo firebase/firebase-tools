@@ -2490,28 +2490,6 @@ describe("functions/kits/install", () => {
       });
     });
 
-    it("should suppress first deploy report when skipReport is true", async () => {
-      const mockConfig = {
-        projectDir: "/mock/project",
-        src: { functions: [] },
-        path: (p: string) => path.join("/mock/project", p),
-        writeProjectFile: sinon.stub(),
-        askWriteProjectFile: sinon.stub().resolves(),
-      } as unknown as Config;
-
-      const getRuntimeDelegateStub = sinon.stub(runtimes, "getRuntimeDelegate");
-
-      await installKitOrInstance({
-        config: mockConfig,
-        package: "@firebase-function-kits/firestore-bigquery-export@1.0.0",
-        nonInteractive: true,
-        configure: false,
-        skipReport: true,
-      });
-
-      expect(getRuntimeDelegateStub).to.not.have.been.called;
-    });
-
     it("should handle existing kit when package is already in firebase.json", async () => {
       const existingKit: ValidatedKitSingle = {
         kit: "firestore-bigquery-export",
