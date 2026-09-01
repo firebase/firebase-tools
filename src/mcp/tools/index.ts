@@ -144,8 +144,8 @@ export async function markdownDocsOfTools(): Promise<string> {
       feature = "core";
     }
     const description = (
-      tool.mcp?.humanReadableDescription ||
-      tool.mcp?.description ||
+      tool.mcp.humanReadableDescription ||
+      tool.mcp.description ||
       ""
     ).replaceAll("\n", "<br>");
     doc += `
