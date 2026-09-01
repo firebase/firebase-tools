@@ -120,8 +120,8 @@ export interface InstallKitOrInstanceResult {
 }
 
 export interface PromptExistingInstanceOptions {
-  project?: string;
-  projectId?: string;
+  existingKit: ValidatedKitSingle;
+  unconfiguredInstanceIds: readonly string[];
   nonInteractive?: boolean;
   instanceId?: string;
 }
@@ -264,17 +264,17 @@ export async function checkPackageHasShrinkwrap(rawPkgName: string): Promise<boo
 }
 
 /**
- * Checks if any of the kit's instance configuration directories contain a dotenv file for the current project.
+ * Returns the list of instance IDs in the kit that do not have a dotenv file for the specified project.
  */
-export function isKitConfiguredForProject(
+export function getUnconfiguredInstancesForProject(
   config: { path: (p: string) => string },
   kit: ValidatedKitSingle,
   projectId?: string,
   projectAlias?: string,
-): boolean {
-  return Object.values(kit.instances || {}).some((configDir) =>
-    hasProjectEnv(config.path(configDir), projectId, projectAlias),
-  );
+): string[] {
+  return Object.entries(kit.instances || {})
+    .filter(([, configDir]) => !hasProjectEnv(config.path(configDir), projectId, projectAlias))
+    .map(([instanceId]) => instanceId);
 }
 
 /**
@@ -471,32 +471,49 @@ export async function promptSecurityConfirmation(
 
 /**
  * Prompts the user to select an existing instance of the kit to configure for the project.
+ * Restricts selection to instances that are not already configured for the project.
  */
 export async function promptExistingInstanceForProject(
   options: PromptExistingInstanceOptions,
-  existingKit: ValidatedKitSingle,
 ): Promise<string> {
-  const instanceIds: string[] = Object.keys(existingKit.instances || {});
-  if (instanceIds.length === 0) {
-    throw new FirebaseError(`Kit '${existingKit.kit}' has no instances configured.`);
+  const allInstanceIds: string[] = Object.keys(options.existingKit.instances || {});
+  if (allInstanceIds.length === 0) {
+    throw new FirebaseError(`Kit '${options.existingKit.kit}' has no instances configured.`);
   }
 
   if (options.instanceId) {
-    if (instanceIds.includes(options.instanceId)) {
-      return options.instanceId;
+    if (!allInstanceIds.includes(options.instanceId)) {
+      throw new FirebaseError(
+        `Instance '${options.instanceId}' does not exist in kit '${options.existingKit.kit}'. Available instances: ${allInstanceIds.join(", ")}`,
+      );
     }
+    if (!options.unconfiguredInstanceIds.includes(options.instanceId)) {
+      throw new FirebaseError(
+        `Instance '${options.instanceId}' is already configured for this project.`,
+      );
+    }
+    return options.instanceId;
+  }
+
+  if (options.unconfiguredInstanceIds.length === 0) {
     throw new FirebaseError(
-      `Instance '${options.instanceId}' is not configured for kit '${existingKit.kit}'. Available instances: ${instanceIds.join(", ")}`,
+      `Kit '${options.existingKit.kit}' has no unconfigured instances for this project.`,
     );
   }
 
-  if (instanceIds.length === 1 || options.nonInteractive) {
-    return instanceIds[0];
+  if (options.unconfiguredInstanceIds.length === 1) {
+    const instanceId = options.unconfiguredInstanceIds[0];
+    logLabeledBullet(
+      "functions",
+      `${clc.bold(instanceId)} is the only instance without a configuration. Configuring...`,
+    );
+    return instanceId;
   }
 
   return select<string>({
     message: "Which instance would you like to configure for this project?",
-    choices: instanceIds.map((id) => ({ name: id, value: id })),
+    choices: options.unconfiguredInstanceIds,
+    nonInteractive: options.nonInteractive,
   });
 }
 
@@ -1011,18 +1028,29 @@ export async function addKitInstanceOrConfigureProject(
     options.rc?.hasProjects && options.project && options.rc.hasProjectAlias(options.project)
       ? options.project
       : undefined;
-  const isConfiguredForProject = isKitConfiguredForProject(
+  const unconfiguredInstances = getUnconfiguredInstancesForProject(
     options.config,
     existingKit,
     projectId,
     projectAlias,
   );
+  const isConfiguredForProject =
+    Object.keys(existingKit.instances || {}).length > 0 && unconfiguredInstances.length === 0;
 
   let action: "addInstance" | "addEnv";
-  if (!isConfiguredForProject && !options.nonInteractive) {
-    const existingInstances = Object.keys(existingKit.instances || {}).join(", ");
+  if (options.instanceId && existingKit.instances && options.instanceId in existingKit.instances) {
+    if (!unconfiguredInstances.includes(options.instanceId)) {
+      throw new FirebaseError(
+        `Instance '${options.instanceId}' is already configured for this project.`,
+      );
+    }
+    action = "addEnv";
+  } else if (options.instanceId) {
+    action = "addInstance";
+  } else if (unconfiguredInstances.length > 0 && !options.nonInteractive) {
+    const unconfiguredInstancesList = unconfiguredInstances.join(", ");
     action = await select<"addInstance" | "addEnv">({
-      message: `The following instances already exist, but are not configured for this project: ${existingInstances}. What would you like to do?`,
+      message: `The following instances already exist, but are not configured for this project: ${unconfiguredInstancesList}. What would you like to do?`,
       choices: [
         {
           name: "Add an instance to the existing kit",
@@ -1070,7 +1098,11 @@ export async function addKitInstanceOrConfigureProject(
     absConfigDirPath = result.absConfigDirPath;
   } else if (action === "addEnv") {
     resultAction = "configuredEnv";
-    instanceId = await promptExistingInstanceForProject(options, existingKit);
+    instanceId = await promptExistingInstanceForProject({
+      ...options,
+      existingKit,
+      unconfiguredInstanceIds: unconfiguredInstances,
+    });
     configDirPath = existingKit.instances[instanceId];
     if (!configDirPath) {
       throw new FirebaseError(
