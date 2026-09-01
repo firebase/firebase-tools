@@ -12,7 +12,7 @@ import {
   isThirdPartyPackage,
   checkPackageHasShrinkwrap,
   getUnconfiguredInstancesForProject,
-  isKitConfiguredForProject,
+  isKitFullyConfiguredForProject,
   extractExistingFunctionsInfo,
   addKitToConfig,
   findKitConfig,
@@ -398,7 +398,7 @@ describe("functions/kits/install", () => {
     });
   });
 
-  describe("isKitConfiguredForProject", () => {
+  describe("isKitFullyConfiguredForProject", () => {
     let hasProjectEnvStub: sinon.SinonStub;
 
     beforeEach(() => {
@@ -414,7 +414,7 @@ describe("functions/kits/install", () => {
       } as unknown as ValidatedKitSingle;
       hasProjectEnvStub.returns(false);
 
-      expect(isKitConfiguredForProject(mockConfig, kit, "my-target-proj")).to.be.false;
+      expect(isKitFullyConfiguredForProject(mockConfig, kit, "my-target-proj")).to.be.false;
       expect(hasProjectEnvStub).to.have.been.calledWith(
         "/mock/function-kits/test-kit/config-inst",
         "my-target-proj",
@@ -439,7 +439,8 @@ describe("functions/kits/install", () => {
         .withArgs("/mock/function-kits/test-kit/config-inst2", "my-target-proj", "staging")
         .returns(true);
 
-      expect(isKitConfiguredForProject(mockConfig, kit, "my-target-proj", "staging")).to.be.false;
+      expect(isKitFullyConfiguredForProject(mockConfig, kit, "my-target-proj", "staging")).to.be
+        .false;
     });
 
     it("should return true when all instances have project env", () => {
@@ -459,7 +460,8 @@ describe("functions/kits/install", () => {
         .withArgs("/mock/function-kits/test-kit/config-inst2", "my-target-proj", "staging")
         .returns(true);
 
-      expect(isKitConfiguredForProject(mockConfig, kit, "my-target-proj", "staging")).to.be.true;
+      expect(isKitFullyConfiguredForProject(mockConfig, kit, "my-target-proj", "staging")).to.be
+        .true;
     });
 
     it("should return false when kit has no instances", () => {
@@ -470,7 +472,7 @@ describe("functions/kits/install", () => {
         instances: {},
       } as unknown as ValidatedKitSingle;
 
-      expect(isKitConfiguredForProject(mockConfig, kit, "my-target-proj")).to.be.false;
+      expect(isKitFullyConfiguredForProject(mockConfig, kit, "my-target-proj")).to.be.false;
     });
   });
 
@@ -1446,7 +1448,7 @@ describe("functions/kits/install", () => {
       expect(selectStub).to.not.have.been.called;
     });
 
-    it("should throw FirebaseError if specified instanceId is not configured for kit", async () => {
+    it("should throw FirebaseError if specified instanceId does not exist in kit", async () => {
       const kit = {
         kit: "my-kit",
         instances: {
@@ -1463,7 +1465,7 @@ describe("functions/kits/install", () => {
         }),
       ).to.be.rejectedWith(
         FirebaseError,
-        "Instance 'invalid-inst' is not configured for kit 'my-kit'. Available instances: inst-1",
+        "Instance 'invalid-inst' does not exist in kit 'my-kit'. Available instances: inst-1",
       );
     });
 
@@ -2441,9 +2443,9 @@ describe("functions/kits/install", () => {
         existingKit,
         {
           existingFunctions: [existingKit],
-          existingKitIds: new Set(["firestore-bigquery-export"]),
-          existingCodebases: new Set(),
-          existingInstanceIds: new Set(["inst1", "inst2"]),
+          existingKitIds: ["firestore-bigquery-export"],
+          existingCodebases: [],
+          existingInstanceIds: ["inst1", "inst2"],
         },
       );
 
@@ -2503,15 +2505,198 @@ describe("functions/kits/install", () => {
         existingKit,
         {
           existingFunctions: [existingKit],
-          existingKitIds: new Set(["firestore-bigquery-export"]),
-          existingCodebases: new Set(),
-          existingInstanceIds: new Set(["inst1", "inst2"]),
+          existingKitIds: ["firestore-bigquery-export"],
+          existingCodebases: [],
+          existingInstanceIds: ["inst1", "inst2"],
         },
       );
 
       expect(selectStub).to.not.have.been.called;
       expect(res.action).to.equal("addedInstance");
       expect(res.instanceId).to.equal("inst3");
+    });
+
+    it("should configure existing unconfigured instance directly when instanceId is provided without prompt", async () => {
+      const hasProjectEnvStub = sinon.stub(functionsEnv, "hasProjectEnv");
+      hasProjectEnvStub
+        .withArgs(
+          path.join("/mock/project", "function-kits/firestore-bigquery-export/config-inst1"),
+          "my-project",
+          undefined,
+        )
+        .returns(true);
+      hasProjectEnvStub
+        .withArgs(
+          path.join("/mock/project", "function-kits/firestore-bigquery-export/config-inst2"),
+          "my-project",
+          undefined,
+        )
+        .returns(false);
+
+      const existingKit: ValidatedKitSingle = {
+        kit: "firestore-bigquery-export",
+        sourcePackage: { name: "@firebase-function-kits/firestore-bigquery-export" },
+        source: "function-kits/firestore-bigquery-export/source",
+        instances: {
+          inst1: "function-kits/firestore-bigquery-export/config-inst1",
+          inst2: "function-kits/firestore-bigquery-export/config-inst2",
+        },
+      };
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [existingKit] },
+        path: (p: string) => path.join("/mock/project", p),
+      } as unknown as Config;
+
+      const selectStub = sinon.stub(prompt, "select");
+
+      const res = await addKitInstanceOrConfigureProject(
+        {
+          config: mockConfig,
+          project: "my-project",
+          configure: false,
+          instanceId: "inst2",
+          nonInteractive: true,
+        },
+        existingKit,
+        {
+          existingFunctions: [existingKit],
+          existingKitIds: ["firestore-bigquery-export"],
+          existingCodebases: [],
+          existingInstanceIds: ["inst1", "inst2"],
+        },
+      );
+
+      expect(selectStub).to.not.have.been.called;
+      expect(res.action).to.equal("configuredEnv");
+      expect(res.instanceId).to.equal("inst2");
+    });
+
+    it("should throw FirebaseError when specified instanceId is already configured for this project", async () => {
+      const hasProjectEnvStub = sinon.stub(functionsEnv, "hasProjectEnv");
+      hasProjectEnvStub
+        .withArgs(
+          path.join("/mock/project", "function-kits/firestore-bigquery-export/config-inst1"),
+          "my-project",
+          undefined,
+        )
+        .returns(true);
+
+      const existingKit: ValidatedKitSingle = {
+        kit: "firestore-bigquery-export",
+        sourcePackage: { name: "@firebase-function-kits/firestore-bigquery-export" },
+        source: "function-kits/firestore-bigquery-export/source",
+        instances: {
+          inst1: "function-kits/firestore-bigquery-export/config-inst1",
+        },
+      };
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [existingKit] },
+        path: (p: string) => path.join("/mock/project", p),
+      } as unknown as Config;
+
+      await expect(
+        addKitInstanceOrConfigureProject(
+          {
+            config: mockConfig,
+            project: "my-project",
+            configure: false,
+            instanceId: "inst1",
+          },
+          existingKit,
+          {
+            existingFunctions: [existingKit],
+            existingKitIds: ["firestore-bigquery-export"],
+            existingCodebases: [],
+            existingInstanceIds: ["inst1"],
+          },
+        ),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        "Instance 'inst1' is already configured for this project.",
+      );
+    });
+
+    it("should add instance directly when specified instanceId is net new without prompt", async () => {
+      sinon.stub(functionsEnv, "hasProjectEnv").returns(false);
+      const existingKit: ValidatedKitSingle = {
+        kit: "firestore-bigquery-export",
+        sourcePackage: { name: "@firebase-function-kits/firestore-bigquery-export" },
+        source: "function-kits/firestore-bigquery-export/source",
+        instances: {
+          inst1: "function-kits/firestore-bigquery-export/config-inst1",
+        },
+      };
+      const writtenFiles: Record<string, unknown> = {};
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [existingKit] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+        },
+      } as unknown as Config;
+
+      const selectStub = sinon.stub(prompt, "select");
+
+      const res = await addKitInstanceOrConfigureProject(
+        {
+          config: mockConfig,
+          project: "my-project",
+          configure: false,
+          instanceId: "inst-new",
+        },
+        existingKit,
+        {
+          existingFunctions: [existingKit],
+          existingKitIds: ["firestore-bigquery-export"],
+          existingCodebases: [],
+          existingInstanceIds: ["inst1"],
+        },
+      );
+
+      expect(selectStub).to.not.have.been.called;
+      expect(res.action).to.equal("addedInstance");
+      expect(res.instanceId).to.equal("inst-new");
+    });
+
+    it("should throw FirebaseError when specified instanceId collides with an existing instance in another kit", async () => {
+      sinon.stub(functionsEnv, "hasProjectEnv").returns(false);
+      const existingKit: ValidatedKitSingle = {
+        kit: "firestore-bigquery-export",
+        sourcePackage: { name: "@firebase-function-kits/firestore-bigquery-export" },
+        source: "function-kits/firestore-bigquery-export/source",
+        instances: {
+          inst1: "function-kits/firestore-bigquery-export/config-inst1",
+        },
+      };
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [existingKit] },
+        path: (p: string) => path.join("/mock/project", p),
+      } as unknown as Config;
+
+      await expect(
+        addKitInstanceOrConfigureProject(
+          {
+            config: mockConfig,
+            project: "my-project",
+            configure: false,
+            instanceId: "other-kit-inst",
+          },
+          existingKit,
+          {
+            existingFunctions: [existingKit],
+            existingKitIds: ["firestore-bigquery-export", "other-kit"],
+            existingCodebases: [],
+            existingInstanceIds: ["inst1", "other-kit-inst"],
+          },
+        ),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        "functions kit instance ID must be unique across all kits, but 'other-kit-inst' was used more than once.",
+      );
     });
   });
 
