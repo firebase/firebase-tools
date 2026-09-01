@@ -1269,9 +1269,9 @@ export async function ensureInstanceSpec(instance: ExtensionInstance): Promise<E
     return instance;
   }
 
-  const extensionVersion =
-    instance.config?.extensionVersion ?? instance.extensionVersion ?? "latest";
   const ref = refs.parse(extensionRef);
+  const extensionVersion =
+    instance.config?.extensionVersion ?? instance.extensionVersion ?? ref.version ?? "latest";
   const extVersion = await getExtensionVersion(
     `${ref.publisherId}/${ref.extensionId}@${extensionVersion}`,
   );
