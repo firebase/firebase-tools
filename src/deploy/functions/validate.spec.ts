@@ -156,6 +156,15 @@ describe("validate", () => {
       );
     });
 
+    it("tells the user how to recreate the function as gcfv1", () => {
+      const want = backend.of({ ...ENDPOINT_BASE, platform: "gcfv1" });
+      const have = backend.of({ ...ENDPOINT_BASE, platform: "gcfv2" });
+
+      expect(() => validate.endpointsAreValid(want, have)).to.throw(
+        "firebase functions:delete id --region us-east1",
+      );
+    });
+
     it("allows a gcfv1 function that does not exist yet", () => {
       const want = backend.of({ ...ENDPOINT_BASE, platform: "gcfv1" });
 
