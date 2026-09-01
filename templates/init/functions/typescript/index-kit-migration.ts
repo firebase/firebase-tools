@@ -31,7 +31,10 @@ setGlobalOptions({
     ? Number(process.env.EXT_MIGRATED_SYSTEM_TIMEOUTSECONDS)
     : undefined,
   vpcConnectorEgressSettings:
-    (process.env.EXT_MIGRATED_SYSTEM_VPCCONNECTOREGRESSSETTINGS as VpcEgressSetting) ?? undefined,
+    process.env.EXT_MIGRATED_SYSTEM_VPCCONNECTOREGRESSSETTINGS &&
+    process.env.EXT_MIGRATED_SYSTEM_VPCCONNECTOREGRESSSETTINGS !== "VPC_CONNECTOR_EGRESS_SETTINGS_UNSPECIFIED"
+      ? (process.env.EXT_MIGRATED_SYSTEM_VPCCONNECTOREGRESSSETTINGS as VpcEgressSetting)
+      : undefined,
   vpcConnector: process.env.EXT_MIGRATED_SYSTEM_VPCCONNECTOR ?? undefined,
   maxInstances: process.env.EXT_MIGRATED_SYSTEM_MAXINSTANCES
     ? Number(process.env.EXT_MIGRATED_SYSTEM_MAXINSTANCES)
@@ -41,7 +44,18 @@ setGlobalOptions({
     : undefined,
   ingressSettings: (process.env.EXT_MIGRATED_SYSTEM_INGRESSSETTINGS as IngressSetting) ?? undefined,
   labels: process.env.EXT_MIGRATED_SYSTEM_LABELS
-    ? (JSON.parse(process.env.EXT_MIGRATED_SYSTEM_LABELS) as Record<string, string>)
+    ? process.env.EXT_MIGRATED_SYSTEM_LABELS.split(",").reduce<Record<string, string> | undefined>(
+        (acc, curr) => {
+          const [key, ...values] = curr.split(":");
+          const trimmedKey = key?.trim();
+          if (trimmedKey && values.length > 0) {
+            acc = acc ?? {};
+            acc[trimmedKey] = values.join(":").trim();
+          }
+          return acc;
+        },
+        undefined,
+      )
     : undefined,
 });
 
