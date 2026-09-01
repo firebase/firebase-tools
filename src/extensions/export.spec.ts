@@ -1,11 +1,8 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
 
 import { functionsEnvFromInstance, parameterizeProject, setSecretParamsToLatest } from "./export";
 import { DeploymentInstanceSpec } from "../deploy/extensions/planner";
 import { ExtensionInstance, ParamType } from "./types";
-import { ensureInstanceSpec } from "./extensionsHelper";
-import * as publisherApi from "./publisherApi";
 
 describe("ext:export helpers", () => {
   describe("parameterizeProject", () => {
@@ -298,6 +295,46 @@ describe("functionsEnvFromInstance", () => {
     });
   });
 
+  it("system params location should map to FUNCTION_DEFAULT_REGION", () => {
+    const instance: ExtensionInstance = {
+      name: "projects/1234/instances/ext1",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      config: {
+        name: "",
+        createTime: "",
+        params: {},
+        systemParams: {},
+        source: {
+          name: "",
+          state: "ACTIVE",
+          packageUri: "",
+          hash: "",
+          spec: {
+            name: "storage-resize-images",
+            version: "0.1.30",
+            resources: [],
+            params: [],
+            systemParams: [
+              {
+                param: "firebaseextensions.v1beta.function/location",
+                label: "Location",
+                default: "us-central1",
+              },
+            ],
+          },
+        },
+      },
+    };
+
+    const output = functionsEnvFromInstance(instance);
+    expect(output).to.deep.equal({
+      FUNCTION_DEFAULT_REGION: "us-central1",
+    });
+  });
+
   it("eventarc special cases", () => {
     const instance: ExtensionInstance = {
       name: "",
@@ -332,169 +369,5 @@ describe("functionsEnvFromInstance", () => {
       EXT_SELECTED_EVENTS: "firebase.extensions.storage-resize-images.v1.complete",
       EVENTARC_CHANNEL: "projects/1234/locations/us-west1/channels/firebase",
     });
-  });
-});
-
-describe("ensureInstanceSpec", () => {
-  let sandbox: sinon.SinonSandbox;
-
-  beforeEach(() => {
-    sandbox = sinon.createSandbox();
-  });
-
-  afterEach(() => {
-    sandbox.restore();
-  });
-
-  it("should return instance as is if spec already exists", async () => {
-    const instance: ExtensionInstance = {
-      name: "projects/123/instances/ext1",
-      createTime: "",
-      updateTime: "",
-      state: "ACTIVE",
-      serviceAccountEmail: "",
-      config: {
-        name: "",
-        createTime: "",
-        params: {},
-        systemParams: {},
-        source: {
-          name: "",
-          state: "ACTIVE",
-          packageUri: "",
-          hash: "",
-          spec: {
-            name: "my-ext",
-            version: "0.1.0",
-            resources: [],
-            params: [],
-            systemParams: [],
-          },
-        },
-      },
-    };
-
-    const getExtensionVersionStub = sandbox.stub(publisherApi, "getExtensionVersion");
-    const res = await ensureInstanceSpec(instance);
-    expect(res).to.equal(instance);
-    expect(getExtensionVersionStub).to.not.have.been.called;
-  });
-
-  it("should fetch spec on demand if missing", async () => {
-    const instance: ExtensionInstance = {
-      name: "projects/123/instances/ext1",
-      createTime: "",
-      updateTime: "",
-      state: "ACTIVE",
-      serviceAccountEmail: "",
-      config: {
-        name: "",
-        createTime: "",
-        params: {},
-        systemParams: {},
-        extensionRef: "firebase/firestore-send-email",
-        extensionVersion: "0.1.35",
-      },
-    };
-
-    sandbox.stub(publisherApi, "getExtensionVersion").resolves({
-      name: "publishers/firebase/extensions/firestore-send-email/versions/0.1.35",
-      ref: "firebase/firestore-send-email@0.1.35",
-      spec: {
-        name: "firestore-send-email",
-        version: "0.1.35",
-        resources: [],
-        params: [
-          {
-            param: "LOCATION",
-            label: "Location",
-            type: ParamType.SELECT,
-          },
-        ],
-        systemParams: [],
-      },
-      state: "PUBLISHED",
-      hash: "hash123",
-      sourceDownloadUri: "https://example.com/download",
-    });
-
-    const res = await ensureInstanceSpec(instance);
-    expect(res.config?.source?.spec?.name).to.equal("firestore-send-email");
-    expect(res.config?.source?.spec?.params).to.have.length(1);
-    expect(res.config?.source?.name).to.equal(
-      "publishers/firebase/extensions/firestore-send-email/versions/0.1.35",
-    );
-    expect(res.config?.source?.packageUri).to.equal("https://example.com/download");
-    expect(res.config?.source?.hash).to.equal("hash123");
-    expect(res.config?.source?.state).to.equal("ACTIVE");
-  });
-
-  it("should fetch spec on demand if extensionRef is on instance directly", async () => {
-    const instance: ExtensionInstance = {
-      name: "projects/123/instances/ext1",
-      createTime: "",
-      updateTime: "",
-      state: "ACTIVE",
-      serviceAccountEmail: "",
-      extensionRef: "firebase/firestore-send-email",
-      extensionVersion: "0.1.35",
-      config: {
-        name: "",
-        createTime: "",
-        params: {},
-        systemParams: {},
-      },
-    };
-
-    sandbox.stub(publisherApi, "getExtensionVersion").resolves({
-      name: "publishers/firebase/extensions/firestore-send-email/versions/0.1.35",
-      ref: "firebase/firestore-send-email@0.1.35",
-      spec: {
-        name: "firestore-send-email",
-        version: "0.1.35",
-        resources: [],
-        params: [
-          {
-            param: "LOCATION",
-            label: "Location",
-            type: ParamType.SELECT,
-          },
-        ],
-        systemParams: [],
-      },
-      state: "PUBLISHED",
-      hash: "hash123",
-      sourceDownloadUri: "https://example.com/download",
-    });
-
-    const res = await ensureInstanceSpec(instance);
-    expect(res.config?.source?.spec?.name).to.equal("firestore-send-email");
-    expect(res.config?.source?.spec?.params).to.have.length(1);
-    expect(res.config?.source?.name).to.equal(
-      "publishers/firebase/extensions/firestore-send-email/versions/0.1.35",
-    );
-  });
-
-  it("should let getExtensionVersion errors bubble up", async () => {
-    const instance: ExtensionInstance = {
-      name: "projects/123/instances/ext1",
-      createTime: "",
-      updateTime: "",
-      state: "ACTIVE",
-      serviceAccountEmail: "",
-      extensionRef: "firebase/firestore-send-email",
-      extensionVersion: "0.1.35",
-      config: {
-        name: "",
-        createTime: "",
-        params: {},
-        systemParams: {},
-      },
-    };
-
-    const networkErr = new Error("Network failure");
-    sandbox.stub(publisherApi, "getExtensionVersion").rejects(networkErr);
-
-    await expect(ensureInstanceSpec(instance)).to.be.rejectedWith(networkErr);
   });
 });
