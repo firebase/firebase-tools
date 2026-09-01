@@ -48,9 +48,9 @@ export const FUNCTION_KITS_DIR = "function-kits";
 
 export interface ExistingFunctionsInfo {
   existingFunctions: ValidatedSingle[];
-  existingKitIds: Set<string>;
-  existingCodebases: Set<string>;
-  existingInstanceIds: Set<string>;
+  existingKitIds: string[];
+  existingCodebases: string[];
+  existingInstanceIds: string[];
 }
 
 export interface ScaffoldedKitPaths {
@@ -163,8 +163,8 @@ export interface PrintKitFirstDeployReportOptions {
  * Generates a unique identifier by appending a random 4-character hex suffix if a collision exists.
  * Ensures the candidate is truncated so the total length does not exceed 40 characters.
  */
-export function generateUniqueId(baseId: string, existingIds: Set<string>): string {
-  if (!existingIds.has(baseId)) {
+export function generateUniqueId(baseId: string, existingIds: string[]): string {
+  if (!existingIds.includes(baseId)) {
     return baseId;
   }
   const prefix = baseId.slice(0, 35);
@@ -172,7 +172,7 @@ export function generateUniqueId(baseId: string, existingIds: Set<string>): stri
   do {
     const randomSuffix = crypto.randomBytes(2).toString("hex");
     candidate = `${prefix}-${randomSuffix}`;
-  } while (existingIds.has(candidate));
+  } while (existingIds.includes(candidate));
   return candidate;
 }
 
@@ -187,9 +187,10 @@ export function parseNpmPackageSpecifier(rawPkg: string): {
 } {
   const lastAt = rawPkg.lastIndexOf("@");
   if (lastAt > 0) {
+    const version = rawPkg.substring(lastAt + 1);
     return {
       packageName: rawPkg.substring(0, lastAt),
-      version: rawPkg.substring(lastAt + 1),
+      ...(version ? { version } : {}),
     };
   }
   return { packageName: rawPkg };
@@ -200,11 +201,17 @@ export function parseNpmPackageSpecifier(rawPkg: string): {
  * - Unscoped: 'name' (no slashes)
  * - Scoped: '@scope/name' (exactly one slash)
  */
-export function validateNpmPackageName(packageName: string): void {
+export function validateNpmPackageName(packageNameOrSpecifier: string): void {
+  const { packageName, version } = parseNpmPackageSpecifier(packageNameOrSpecifier);
   const npmPackageRegex = /^(?:@[a-z0-9_.-]+\/[a-z0-9_.-]+|[a-z0-9_.-]+)$/i;
-  if (!packageName || packageName.length > 214 || !npmPackageRegex.test(packageName)) {
+  if (
+    !packageName ||
+    packageName.length > 214 ||
+    !npmPackageRegex.test(packageName) ||
+    (packageNameOrSpecifier.lastIndexOf("@") > 0 && !version)
+  ) {
     throw new FirebaseError(
-      `Invalid NPM package name '${packageName}'. Package names must be valid npm package specifiers (e.g. 'my-kit' or '@scope/my-kit').`,
+      `Invalid NPM package name '${packageNameOrSpecifier}'. Package names must be valid npm package specifiers (e.g. 'my-kit' or '@scope/my-kit').`,
     );
   }
 }
@@ -213,7 +220,8 @@ export function validateNpmPackageName(packageName: string): void {
  * Sanitizes an npm package name into a valid kit identifier.
  * e.g., "@firebase-function-kits/firestore-bigquery-export" -> "firestore-bigquery-export"
  */
-export function sanitizePackageNameToKitName(packageName: string): string {
+export function sanitizePackageNameToKitName(packageNameOrSpecifier: string): string {
+  const { packageName } = parseNpmPackageSpecifier(packageNameOrSpecifier);
   const parts = packageName.split("/");
   const nameWithoutScope = parts[parts.length - 1] || packageName;
   const sanitized = nameWithoutScope.toLowerCase().replace(/[^a-z0-9_-]/g, "");
@@ -223,7 +231,8 @@ export function sanitizePackageNameToKitName(packageName: string): string {
 /**
  * Checks if a package name is third-party (outside the @firebase-function-kits scope).
  */
-export function isThirdPartyPackage(packageName: string): boolean {
+export function isThirdPartyPackage(packageNameOrSpecifier: string): boolean {
+  const { packageName } = parseNpmPackageSpecifier(packageNameOrSpecifier);
   return !packageName.startsWith("@firebase-function-kits/");
 }
 
@@ -279,22 +288,20 @@ export function extractExistingFunctionsInfo(
       ? normalizeAndValidate(configFunctions)
       : [];
 
-  const existingKitIds = new Set<string>();
-  const existingCodebases = new Set<string>();
-  const existingInstanceIds = new Set<string>();
+  const existingKitIds: string[] = [];
+  const existingCodebases: string[] = [];
+  const existingInstanceIds: string[] = [];
 
   for (const c of existingFunctions) {
     if (isKitConfig(c)) {
       if (c.kit) {
-        existingKitIds.add(c.kit);
+        existingKitIds.push(c.kit);
       }
       if (c.instances) {
-        for (const instId of Object.keys(c.instances)) {
-          existingInstanceIds.add(instId);
-        }
+        existingInstanceIds.push(...Object.keys(c.instances));
       }
     } else if (c.codebase) {
-      existingCodebases.add(c.codebase);
+      existingCodebases.push(c.codebase);
     }
   }
 
@@ -311,22 +318,22 @@ export function extractExistingFunctionsInfo(
  */
 export async function promptKitInstanceId(
   baseKitId: string,
-  existingInstanceIds: Set<string>,
-  existingCodebases: Set<string>,
+  existingInstanceIds: string[],
+  existingCodebases: string[],
   nonInteractive?: boolean,
   customInstanceId?: string,
 ): Promise<string> {
-  const instanceCollisions = new Set([...existingInstanceIds, ...existingCodebases]);
+  const instanceCollisions = [...existingInstanceIds, ...existingCodebases];
   const defaultInstanceId = generateUniqueId(baseKitId, instanceCollisions);
 
   if (customInstanceId) {
     validateKitInstanceId(customInstanceId);
-    if (existingInstanceIds.has(customInstanceId)) {
+    if (existingInstanceIds.includes(customInstanceId)) {
       throw new FirebaseError(
         `functions kit instance ID must be unique across all kits, but '${customInstanceId}' was used more than once.`,
       );
     }
-    if (existingCodebases.has(customInstanceId)) {
+    if (existingCodebases.includes(customInstanceId)) {
       throw new FirebaseError(
         `functions codebase name and kit instance ID must be mutually exclusive, but '${customInstanceId}' was used as both a codebase name and a kit instance ID.`,
       );
@@ -344,10 +351,10 @@ export async function promptKitInstanceId(
       } catch (err: unknown) {
         return getErrMsg(err);
       }
-      if (existingInstanceIds.has(val)) {
+      if (existingInstanceIds.includes(val)) {
         return `functions kit instance ID must be unique across all kits, but '${val}' was used more than once.`;
       }
-      if (existingCodebases.has(val)) {
+      if (existingCodebases.includes(val)) {
         return `functions codebase name and kit instance ID must be mutually exclusive, but '${val}' was used as both a codebase name and a kit instance ID.`;
       }
       return true;
@@ -355,12 +362,12 @@ export async function promptKitInstanceId(
   });
 
   validateKitInstanceId(instanceId);
-  if (existingInstanceIds.has(instanceId)) {
+  if (existingInstanceIds.includes(instanceId)) {
     throw new FirebaseError(
       `functions kit instance ID must be unique across all kits, but '${instanceId}' was used more than once.`,
     );
   }
-  if (existingCodebases.has(instanceId)) {
+  if (existingCodebases.includes(instanceId)) {
     throw new FirebaseError(
       `functions codebase name and kit instance ID must be mutually exclusive, but '${instanceId}' was used as both a codebase name and a kit instance ID.`,
     );
@@ -374,7 +381,7 @@ export async function promptKitInstanceId(
  */
 export async function promptKitId(
   packageName: string,
-  existingKitIds: Set<string>,
+  existingKitIds: string[],
   nonInteractive?: boolean,
   customKitId?: string,
 ): Promise<string> {
@@ -383,7 +390,7 @@ export async function promptKitId(
 
   if (customKitId) {
     validateKit(customKitId);
-    if (existingKitIds.has(customKitId)) {
+    if (existingKitIds.includes(customKitId)) {
       throw new FirebaseError(
         `functions.kit must be unique but '${customKitId}' was used more than once.`,
       );
@@ -401,7 +408,7 @@ export async function promptKitId(
       } catch (err: unknown) {
         return getErrMsg(err);
       }
-      if (existingKitIds.has(val)) {
+      if (existingKitIds.includes(val)) {
         return `functions.kit must be unique but '${val}' was used more than once.`;
       }
       return true;
@@ -409,7 +416,7 @@ export async function promptKitId(
   });
 
   validateKit(kitId);
-  if (existingKitIds.has(kitId)) {
+  if (existingKitIds.includes(kitId)) {
     throw new FirebaseError(`functions.kit must be unique but '${kitId}' was used more than once.`);
   }
 
@@ -1071,6 +1078,17 @@ export async function addKitInstanceOrConfigureProject(
       );
     }
     absConfigDirPath = options.config.path(configDirPath);
+    if (options.seedEnv?.envs && Object.keys(options.seedEnv.envs).length > 0) {
+      await fs.ensureDir(absConfigDirPath);
+      seedKitInstanceEnv({
+        configDir: absConfigDirPath,
+        functionsSource: options.config.path(existingKit.source),
+        projectDir: options.config.projectDir,
+        projectId: options.seedEnv.projectId,
+        projectAlias: options.seedEnv.projectAlias,
+        envs: options.seedEnv.envs,
+      });
+    }
   } else {
     throw new FirebaseError(`Unexpected action '${String(action)}' for kit installation.`);
   }
@@ -1184,8 +1202,8 @@ export async function resolvePackageSource(
     throw new FirebaseError("Set the --package option to a valid NPM package and try again.");
   }
 
+  validateNpmPackageName(rawPkgName);
   const { packageName } = parseNpmPackageSpecifier(rawPkgName);
-  validateNpmPackageName(packageName);
 
   const isThirdParty = await promptSecurityConfirmation(
     rawPkgName,

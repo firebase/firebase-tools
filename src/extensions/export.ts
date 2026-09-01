@@ -8,8 +8,9 @@ import {
 } from "../gcp/secretManager";
 import { getActiveSecrets } from "./secretsUtils";
 import { ExtensionInstance } from "./types";
-import { transferSecretToKits } from "../deploy/extensions/secrets";
+import { transferSecretToKits, secretHasExtensionsLabel } from "../deploy/extensions/secrets";
 import { FirebaseError } from "../error";
+import { logLabeledError } from "../utils";
 
 /**
  * parameterizeProject searchs spec.params for any param that include projectId or projectNumber,
@@ -105,8 +106,8 @@ function displaySpecs(specs: DeploymentInstanceSpec[]): void {
 export function functionsEnvFromInstance(instance: ExtensionInstance): Record<string, string> {
   const liveParams = instance.config?.params || {};
   const liveSystemParams = instance.config?.systemParams || {};
-  const specParams = instance.config?.source?.spec?.params || {};
-  const specSystemParams = instance.config?.source?.spec?.systemParams || {};
+  const specParams = instance.config?.source?.spec?.params || [];
+  const specSystemParams = instance.config?.source?.spec?.systemParams || [];
 
   const envs: Record<string, string> = {};
 
@@ -128,18 +129,21 @@ export function functionsEnvFromInstance(instance: ExtensionInstance): Record<st
       .replace(/^firebaseextensions\.v1beta\.(v2)?function\//, "EXT_MIGRATED_SYSTEM_")
       .toUpperCase();
     if (renamed === "EXT_MIGRATED_SYSTEM_LOCATION") {
-      renamed = "DEFAULT_FUNCTION_REGION";
+      renamed = "FUNCTION_DEFAULT_REGION";
     }
     envs[renamed] = sysParamValue;
   }
-  for (const specSystemParam of Object.values(specSystemParams)) {
+  for (const specSystemParam of specSystemParams) {
     if (specSystemParam.param in liveSystemParams) {
       continue;
     }
     if ("default" in specSystemParam) {
-      const renamed = specSystemParam.param
+      let renamed = specSystemParam.param
         .replace(/^firebaseextensions\.v1beta\.(v2)?function\//, "EXT_MIGRATED_SYSTEM_")
         .toUpperCase();
+      if (renamed === "EXT_MIGRATED_SYSTEM_LOCATION") {
+        renamed = "FUNCTION_DEFAULT_REGION";
+      }
       envs[renamed] = specSystemParam.default ?? "";
     }
   }
@@ -156,12 +160,52 @@ export function functionsEnvFromInstance(instance: ExtensionInstance): Record<st
 }
 
 /**
+ * Returns the list of all secrets in an ExtensionInstance that still have the Extensions
+ * management label, and will need to be changed for a Kits migration.
+ * @return a list of all outstanding secrets, in projectId/secretId format
+ */
+export async function secretsNeedingEjection(instance: ExtensionInstance): Promise<string[]> {
+  const liveParams = instance.config?.params || {};
+  const secretParams = (instance.config?.source?.spec?.params ?? []).filter(
+    (p) => p.type === "SECRET",
+  );
+
+  const checks = secretParams.map(async (specParam) => {
+    const secretName = specParam.param;
+    const resourceName = liveParams[secretName];
+    if (!resourceName) {
+      throw new FirebaseError(
+        "Secret " +
+          secretName +
+          " was defined in the extension spec, but is missing in live deployed secrets.",
+        { exit: 1 },
+      );
+    }
+    const match = resourceName.match(SECRET_VERSION_NAME_REGEX);
+    if (!match?.groups) {
+      throw new FirebaseError("Invalid secret version resource name [" + resourceName + "].");
+    }
+    const projectId = match.groups.project;
+    const secretId = match.groups.secret;
+    const hasLabel = await secretHasExtensionsLabel(projectId, secretId);
+    return hasLabel ? `${projectId}/${secretId}` : undefined;
+  });
+
+  const results = await Promise.all(checks);
+  return results.filter((r): r is string => r !== undefined);
+}
+
+/**
  * Removes the Extensions label from all secrets in an ExtensionInstance and replaces them
  * them with the Functions label.
- * @return a list of all secrets that were modified
+ * @return {success: string[], fail: string[]}, both in projectId/secretId format
  */
-export async function ejectSecretsFromInstance(instance: ExtensionInstance): Promise<string[]> {
-  const secretsChanged: string[] = [];
+export async function ejectSecretsFromInstance(
+  instance: ExtensionInstance,
+): Promise<{ success: string[]; fail: string[] }> {
+  const success: string[] = [];
+  const fail: string[] = [];
+
   const liveParams = instance.config?.params || {};
   for (const specParam of instance.config?.source?.spec?.params ?? []) {
     if (specParam.type !== "SECRET") {
@@ -181,8 +225,15 @@ export async function ejectSecretsFromInstance(instance: ExtensionInstance): Pro
     }
     const projectId = match.groups.project;
     const secretId = match.groups.secret;
-    await transferSecretToKits(projectId, secretId);
-    secretsChanged.push(`${projectId}/${secretId}`);
+    const combinedId = `${projectId}/${secretId}`;
+    try {
+      await transferSecretToKits(projectId, secretId);
+      success.push(combinedId);
+    } catch (err: unknown) {
+      fail.push(combinedId);
+      const message = err instanceof Error ? err.message : String(err);
+      logLabeledError("extensions", "failed to change labels on " + combinedId + ": " + message);
+    }
   }
-  return secretsChanged;
+  return { success: success, fail: fail };
 }

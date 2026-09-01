@@ -2,8 +2,7 @@ import { expect } from "chai";
 
 import { functionsEnvFromInstance, parameterizeProject, setSecretParamsToLatest } from "./export";
 import { DeploymentInstanceSpec } from "../deploy/extensions/planner";
-import { ParamType } from "./types";
-import { ExtensionInstance } from "./types";
+import { ExtensionInstance, ParamType } from "./types";
 
 describe("ext:export helpers", () => {
   describe("parameterizeProject", () => {
@@ -293,6 +292,46 @@ describe("functionsEnvFromInstance", () => {
     expect(output).to.deep.equal({
       EXT_MIGRATED_SYSTEM_MEMORY: "256",
       EXT_MIGRATED_SYSTEM_MININSTANCES: "10",
+    });
+  });
+
+  it("system params location should map to FUNCTION_DEFAULT_REGION", () => {
+    const instance: ExtensionInstance = {
+      name: "projects/1234/instances/ext1",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      config: {
+        name: "",
+        createTime: "",
+        params: {},
+        systemParams: {},
+        source: {
+          name: "",
+          state: "ACTIVE",
+          packageUri: "",
+          hash: "",
+          spec: {
+            name: "storage-resize-images",
+            version: "0.1.30",
+            resources: [],
+            params: [],
+            systemParams: [
+              {
+                param: "firebaseextensions.v1beta.function/location",
+                label: "Location",
+                default: "us-central1",
+              },
+            ],
+          },
+        },
+      },
+    };
+
+    const output = functionsEnvFromInstance(instance);
+    expect(output).to.deep.equal({
+      FUNCTION_DEFAULT_REGION: "us-central1",
     });
   });
 
