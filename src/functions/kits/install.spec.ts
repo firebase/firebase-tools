@@ -2020,6 +2020,62 @@ describe("functions/kits/install", () => {
       });
     });
 
+    it("should seed env for existing instance when seedEnv is provided", async () => {
+      const existingKit: ValidatedKitSingle = {
+        kit: "firestore-bigquery-export",
+        sourcePackage: { name: "@firebase-function-kits/firestore-bigquery-export" },
+        source: "function-kits/firestore-bigquery-export/source",
+        instances: {
+          inst1: "function-kits/firestore-bigquery-export/config-inst1",
+        },
+      };
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [existingKit] },
+        path: (p: string) => path.join("/mock/project", p),
+      } as unknown as Config;
+
+      sinon.stub(prompt, "select").resolves("addEnv");
+
+      const res = await addKitInstanceOrConfigureProject(
+        {
+          config: mockConfig,
+          project: "my-project",
+          seedEnv: {
+            projectId: "my-project",
+            envs: {
+              FOO: "bar",
+            },
+          },
+        },
+        existingKit,
+        {
+          existingFunctions: [existingKit],
+          existingKitIds: ["firestore-bigquery-export"],
+          existingCodebases: [],
+          existingInstanceIds: ["inst1"],
+        },
+      );
+
+      expect(seedKitInstanceEnvStub).to.have.been.calledOnceWith({
+        configDir: path.join(
+          "/mock/project",
+          "function-kits/firestore-bigquery-export/config-inst1",
+        ),
+        functionsSource: path.join(
+          "/mock/project",
+          "function-kits/firestore-bigquery-export/source",
+        ),
+        projectDir: "/mock/project",
+        projectId: "my-project",
+        projectAlias: undefined,
+        envs: {
+          FOO: "bar",
+        },
+      });
+      expect(res.action).to.equal("configuredEnv");
+    });
+
     it("should prompt and write params when configuring env for existing instance with params", async () => {
       const existingKit: ValidatedKitSingle = {
         kit: "firestore-bigquery-export",
