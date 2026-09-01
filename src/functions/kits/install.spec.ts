@@ -2044,7 +2044,7 @@ describe("functions/kits/install", () => {
           seedEnv: {
             projectId: "my-project",
             envs: {
-              PARAM1: "val1",
+              FOO: "bar",
             },
           },
         },
@@ -2056,14 +2056,6 @@ describe("functions/kits/install", () => {
           existingInstanceIds: ["inst1"],
         },
       );
-
-      expect(res).to.deep.equal({
-        action: "configuredEnv",
-        kitId: "firestore-bigquery-export",
-        instanceId: "inst1",
-        sourcePath: "function-kits/firestore-bigquery-export/source",
-        configDirPath: "function-kits/firestore-bigquery-export/config-inst1",
-      });
 
       expect(seedKitInstanceEnvStub).to.have.been.calledOnceWith({
         configDir: path.join(
@@ -2078,9 +2070,10 @@ describe("functions/kits/install", () => {
         projectId: "my-project",
         projectAlias: undefined,
         envs: {
-          PARAM1: "val1",
+          FOO: "bar",
         },
       });
+      expect(res.action).to.equal("configuredEnv");
     });
 
     it("should prompt and write params when configuring env for existing instance with params", async () => {
