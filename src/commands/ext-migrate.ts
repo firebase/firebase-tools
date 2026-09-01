@@ -88,7 +88,6 @@ export const command = new Command("ext:migrate")
         projectId,
         envs: exportedEnvs,
       },
-      skipReport: true,
     });
 
     logger.info("TODO: Draw the rest of the owl");

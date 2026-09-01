@@ -666,7 +666,6 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
               PARAM_A: "val_a",
             },
           },
-          skipReport: true,
         }),
       );
 
