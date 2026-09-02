@@ -64,15 +64,8 @@ const MOCK_INSTANCES = [
   },
 ];
 
-/**
- * In interactive TTY environments or when colors are enabled in Mocha, cli-table3
- * styles border characters with ANSI color escape codes (e.g. \u001b[90m), which prevents
- * raw border character matching like line.trim().startsWith("│").
- *
- * This helper dynamically locates the table logger call and strips VT/ANSI control
- * characters so that row and column parsing works consistently across all terminal
- * and test runner configurations.
- */
+// Locates the table log call and strips ANSI styling so row parsing
+// works consistently in both TTY and non-TTY test runners.
 function findTableOutput(stub: sinon.SinonStub): string {
   const call = stub.args.find(
     (args) => typeof args[0] === "string" && args[0].includes("Extension"),
