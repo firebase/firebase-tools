@@ -48,11 +48,12 @@ setGlobalOptions({
   labels: process.env.EXT_MIGRATED_SYSTEM_LABELS
     ? process.env.EXT_MIGRATED_SYSTEM_LABELS.split(",").reduce<Record<string, string> | undefined>(
         (acc, curr) => {
-          const [key, ...values] = curr.split(":");
+          const [key, value] = curr.split(":");
           const trimmedKey = key?.trim();
-          if (trimmedKey && values.length > 0) {
+          const trimmedValue = value?.trim();
+          if (trimmedKey && trimmedValue) {
             acc = acc ?? {};
-            acc[trimmedKey] = values.join(":").trim();
+            acc[trimmedKey] = trimmedValue;
           }
           return acc;
         },
