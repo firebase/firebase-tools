@@ -83,24 +83,14 @@ async function handleInstance(options: Options, config: Config): Promise<void> {
     `Kit ${kitForInstance.kit} uninstall mode: conservativeDeletion=${conservativeDeletion}`,
   );
 
-  const envFileNames: string[] = [];
-  const projectNamesInEnvs: string[] = [];
   const configDirContents = config.lsProjectDir(instanceConfigDirPath);
-  const fileNames = configDirContents.filter((f) => f.isFile()).map((f) => f.name);
-  for (const fileName of fileNames) {
-    if (!fileName.startsWith(".env.")) {
-      continue;
-    }
-    envFileNames.push(fileName.slice(".env.".length));
-  }
+  const envFileNames = configDirContents
+    .filter((f) => f.isFile() && f.name.startsWith(".env."))
+    .map((f) => f.name.slice(".env.".length));
   const aliasToProjectMappings = getAliasesToProjects(config);
-  for (const envName of envFileNames) {
-    if (aliasToProjectMappings[envName]) {
-      projectNamesInEnvs.push(aliasToProjectMappings[envName]);
-    } else {
-      projectNamesInEnvs.push(envName);
-    }
-  }
+  const projectNamesInEnvs = envFileNames.map(
+    (envName) => aliasToProjectMappings[envName] || envName,
+  );
 
   // Cases:
   // - error if instance config dir contains projects but doesn't contain current project
@@ -219,7 +209,7 @@ async function uninstallProjectInstanceByAlias(
   projectAlias: string,
   instanceId: string,
   kitInstancePath: string,
-) {
+): Promise<void> {
   const aliasToProjectMappings = getAliasesToProjects(config);
   const projectId = aliasToProjectMappings[projectAlias] || projectAlias;
   await uninstallProjectInstance(
@@ -353,12 +343,13 @@ function getAliasesToProjects(config: Config): Record<string, string> {
     json: true,
     fallback: {},
   });
-  if ("projects" in firebaserc && typeof firebaserc.projects === "object") {
-    const asStrings: Record<string, string> = {};
-    for (const [project, alias] of Object.entries(firebaserc.projects)) {
-      asStrings[String(alias)] = project;
-    }
-    return asStrings;
+  if (!("projects" in firebaserc) || typeof firebaserc.projects !== "object") {
+    return {};
   }
-  return {};
+  const projects = firebaserc.projects;
+  const asStrings: Record<string, string> = {};
+  for (const [alias, project] of Object.entries(projects)) {
+    asStrings[alias] = String(project);
+  }
+  return asStrings;
 }
