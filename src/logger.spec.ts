@@ -104,6 +104,17 @@ describe("logger", () => {
       expect(target.ext).to.equal(".txt");
     });
 
+    it("should handle error thrown by fs.statSync gracefully", () => {
+      const existingFile = path.join(testTmpDir, "stat-error.log");
+      fs.writeFileSync(existingFile, "hello");
+      sinon.stub(fs, "statSync").throws(new Error("EPERM"));
+
+      const target = resolveLogTarget(existingFile);
+      expect(target.baseDir).to.equal(testTmpDir);
+      expect(target.baseName).to.equal("stat-error");
+      expect(target.ext).to.equal(".log");
+    });
+
     it("should handle non-existent directory ending in separator", () => {
       const targetDir = path.join(testTmpDir, "new-dir") + path.sep;
       const target = resolveLogTarget(targetDir);
@@ -193,6 +204,16 @@ describe("logger", () => {
         const err: NodeJS.ErrnoException = new Error("Permission denied");
         err.code = "EPERM";
         throw err;
+      });
+
+      expect(() => findAvailableLogFile(testTmpDir)).to.throw(
+        "Unable to obtain permissions for firebase-debug.log",
+      );
+    });
+
+    it("should handle error without code property thrown by fs.openSync", () => {
+      sinon.stub(fs, "openSync").callsFake(() => {
+        throw new Error("unexpected error without code");
       });
 
       expect(() => findAvailableLogFile(testTmpDir)).to.throw(

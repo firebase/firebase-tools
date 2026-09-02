@@ -95,7 +95,7 @@ export async function mcp(): Promise<void> {
   }
 
   setFirebaseMcp(true);
-  if (process.env.FIREBASE_DEBUG_PATH) {
+  if (process.env.FIREBASE_DEBUG_PATH?.trim()) {
     useFileLogger();
   } else {
     // Write debug logs to ~/.cache/firebase to avoid polluting the user's project directory.

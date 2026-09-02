@@ -151,7 +151,13 @@ export function resolveLogTarget(customPath?: string): LogTarget {
   const resolvedPath = path.resolve(process.cwd(), trimmed);
 
   if (fs.existsSync(resolvedPath)) {
-    if (fs.statSync(resolvedPath).isDirectory()) {
+    let isDir = false;
+    try {
+      isDir = fs.statSync(resolvedPath).isDirectory();
+    } catch {
+      // If stat fails, assume it's not a directory
+    }
+    if (isDir) {
       return {
         baseDir: resolvedPath,
         baseName: "firebase-debug",
@@ -216,7 +222,12 @@ export function findAvailableLogFile(customPath?: string): string {
       fs.closeSync(fd);
       return logFilename;
     } catch (err: unknown) {
-      if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      if (
+        typeof err === "object" &&
+        err !== null &&
+        "code" in err &&
+        (err as { code?: string }).code === "ENOENT"
+      ) {
         try {
           fs.accessSync(baseDir, fs.constants.W_OK);
           return logFilename;
@@ -267,7 +278,7 @@ export const logger: Logger = maybeUseVSCodeLogger(
  * Sets up logging to the firebase-debug.log file.
  */
 export function useFileLogger(logFile?: string): string {
-  const logFileName = logFile ? findAvailableLogFile(logFile) : findAvailableLogFile();
+  const logFileName = findAvailableLogFile(logFile);
   logger.add(
     new winston.transports.File({
       level: "debug",
