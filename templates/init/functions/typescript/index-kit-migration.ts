@@ -51,10 +51,11 @@ setGlobalOptions({
           const [key, value] = curr.split(":");
           const trimmedKey = key?.trim();
           const trimmedValue = value?.trim();
-          if (trimmedKey && trimmedValue) {
-            acc = acc ?? {};
-            acc[trimmedKey] = trimmedValue;
+          if (!trimmedKey || !trimmedValue) {
+            return acc;
           }
+          acc = acc ?? {};
+          acc[trimmedKey] = trimmedValue;
           return acc;
         },
         undefined,
