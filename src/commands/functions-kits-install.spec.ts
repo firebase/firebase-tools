@@ -10,9 +10,7 @@ import { RC } from "../rc";
 import { requireConfig } from "../requireConfig";
 
 describe("functions:kits:install", () => {
-  const originalBefores = [
-    ...((command as unknown as { befores: Array<{ fn: unknown; args: unknown[] }> }).befores || []),
-  ];
+  const originalBefores = [...(command["befores"] || [])];
   let assertEnabledStub: sinon.SinonStub;
   let installKitOrInstanceStub: sinon.SinonStub;
 
@@ -27,7 +25,7 @@ describe("functions:kits:install", () => {
   });
 
   afterEach(() => {
-    (command as unknown as { befores: unknown[] }).befores = [...originalBefores];
+    command["befores"] = [...originalBefores];
     sinon.restore();
   });
 
@@ -57,7 +55,7 @@ describe("functions:kits:install", () => {
         "Command requires authentication, please run firebase login",
       );
       const requireAuthStub = sinon.stub().rejects(authError);
-      (command as unknown as { befores: unknown[] }).befores = [
+      command["befores"] = [
         { fn: requireConfig, args: [] },
         { fn: requireAuthStub, args: [] },
       ];
@@ -80,7 +78,7 @@ describe("functions:kits:install", () => {
 
   describe("command action", () => {
     beforeEach(() => {
-      (command as unknown as { befores: unknown[] }).befores = [];
+      command["befores"] = [];
     });
 
     it("should assert that kits experiment is enabled", async () => {
