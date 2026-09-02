@@ -33,6 +33,7 @@ import {
   installKitOrInstance,
   promptAndWriteKitParams,
   getKitPackagesToSave,
+  resolveSdkSpecifierToSave,
   TemplateType,
 } from "./install";
 import * as env from "./env";
@@ -82,6 +83,17 @@ describe("functions/kits/install", () => {
   afterEach(() => {
     sinon.restore();
   });
+
+  function mockFs(files: Record<string, unknown>): void {
+    (fs.pathExists as sinon.SinonStub).callsFake((p: string) => Promise.resolve(p in files));
+    (fs.readJson as sinon.SinonStub).callsFake((p: string) => {
+      const val = files[p];
+      if (val instanceof Error) {
+        return Promise.reject(val);
+      }
+      return Promise.resolve(val || {});
+    });
+  }
 
   describe("validateNpmPackageName", () => {
     it("should accept valid unscoped package names", () => {
@@ -153,6 +165,56 @@ describe("functions/kits/install", () => {
       expect(() => validateNpmPackageName("a".repeat(215))).to.throw(
         FirebaseError,
         /Invalid NPM package name/,
+      );
+    });
+  });
+
+  describe("resolveSdkSpecifierToSave", () => {
+    it("should preserve exact pins with = prefix", () => {
+      expect(resolveSdkSpecifierToSave("firebase-functions", "7.1.0", "7.1.0")).to.equal(
+        "firebase-functions@=7.1.0",
+      );
+      expect(resolveSdkSpecifierToSave("firebase-functions", "=7.1.0", "7.1.0")).to.equal(
+        "firebase-functions@=7.1.0",
+      );
+      expect(resolveSdkSpecifierToSave("firebase-functions", "v7.1.0", "7.1.0")).to.equal(
+        "firebase-functions@=7.1.0",
+      );
+      expect(resolveSdkSpecifierToSave("firebase-functions", "7.1.0")).to.equal(
+        "firebase-functions@=7.1.0",
+      );
+    });
+
+    it("should preserve tilde ranges anchored to installed version", () => {
+      expect(resolveSdkSpecifierToSave("firebase-functions", "~7.1.0", "7.1.2")).to.equal(
+        "firebase-functions@~7.1.2",
+      );
+      expect(resolveSdkSpecifierToSave("firebase-functions", "~7.1.0")).to.equal(
+        "firebase-functions@~7.1.0",
+      );
+    });
+
+    it("should anchor caret ranges to installed version with ^", () => {
+      expect(resolveSdkSpecifierToSave("firebase-functions", "^7.0.0", "7.3.2")).to.equal(
+        "firebase-functions@^7.3.2",
+      );
+    });
+
+    it("should anchor wide ranges to installed version with ^", () => {
+      expect(resolveSdkSpecifierToSave("firebase-functions", ">=7.0.0", "7.3.2")).to.equal(
+        "firebase-functions@^7.3.2",
+      );
+      expect(resolveSdkSpecifierToSave("firebase-functions", ">=7.0.0 <8.0.0", "7.3.2")).to.equal(
+        "firebase-functions@^7.3.2",
+      );
+    });
+
+    it("should preserve declared range when installed version is not available", () => {
+      expect(resolveSdkSpecifierToSave("firebase-functions", "^7.0.0")).to.equal(
+        "firebase-functions@^7.0.0",
+      );
+      expect(resolveSdkSpecifierToSave("firebase-functions", ">=7.0.0")).to.equal(
+        "firebase-functions@>=7.0.0",
       );
     });
   });
@@ -1487,6 +1549,34 @@ describe("functions/kits/install", () => {
   });
 
   describe("buildAndInstallKit", () => {
+    // Function kits must declare 'firebase-functions' as a dependency or peer dependency.
+    // Provide a mock package-lock.json with valid kit entries and installed SDK versions
+    // so tests can exercise installation logic (e.g. npm flags, scripts) against a valid kit baseline.
+    beforeEach(() => {
+      mockFs({
+        "/abs/path/package-lock.json": {
+          packages: {
+            "node_modules/@firebase-function-kits/my-kit": {
+              peerDependencies: {
+                "firebase-functions": "^7.0.0",
+              },
+            },
+            "node_modules/third-party-kit": {
+              peerDependencies: {
+                "firebase-functions": "^7.0.0",
+              },
+            },
+            "node_modules/my-kit": {
+              peerDependencies: {
+                "firebase-functions": "^7.0.0",
+              },
+            },
+            "node_modules/firebase-functions": { version: "7.3.2" },
+          },
+        },
+      });
+    });
+
     it("should run npm install and npm run build without --ignore-scripts for first-party kit", async () => {
       await buildAndInstallKit("/abs/path", "@firebase-function-kits/my-kit", false);
 
@@ -1498,7 +1588,7 @@ describe("functions/kits/install", () => {
       );
       expect(wrapSpawnStub.secondCall).to.have.been.calledWith(
         "npm",
-        ["install", "firebase-functions@latest", "--save-prefix=^"],
+        ["install", "firebase-functions@^7.3.2", "--save-prefix=^"],
         "/abs/path",
       );
       expect(wrapSpawnStub.thirdCall).to.have.been.calledWith("npm", ["run", "build"], "/abs/path");
@@ -1515,7 +1605,39 @@ describe("functions/kits/install", () => {
       );
       expect(wrapSpawnStub.secondCall).to.have.been.calledWith(
         "npm",
-        ["install", "firebase-functions@latest", "--save-prefix=^", "--ignore-scripts"],
+        ["install", "firebase-functions@^7.3.2", "--save-prefix=^", "--ignore-scripts"],
+        "/abs/path",
+      );
+      expect(wrapSpawnStub.thirdCall).to.have.been.calledWith("npm", ["run", "build"], "/abs/path");
+    });
+
+    it("should save multiple SDK dependencies when kit declares both functions and admin", async () => {
+      mockFs({
+        "/abs/path/package-lock.json": {
+          packages: {
+            "node_modules/@firebase-function-kits/my-kit": {
+              peerDependencies: {
+                "firebase-admin": "^14.0.0",
+                "firebase-functions": "^7.0.0",
+              },
+            },
+            "node_modules/firebase-admin": { version: "14.3.0" },
+            "node_modules/firebase-functions": { version: "7.3.2" },
+          },
+        },
+      });
+
+      await buildAndInstallKit("/abs/path", "@firebase-function-kits/my-kit", false);
+
+      expect(wrapSpawnStub).to.have.been.calledThrice;
+      expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
+        "npm",
+        ["install", "@firebase-function-kits/my-kit", "--save-prefix=^"],
+        "/abs/path",
+      );
+      expect(wrapSpawnStub.secondCall).to.have.been.calledWith(
+        "npm",
+        ["install", "firebase-functions@^7.3.2", "firebase-admin@^14.3.0", "--save-prefix=^"],
         "/abs/path",
       );
       expect(wrapSpawnStub.thirdCall).to.have.been.calledWith("npm", ["run", "build"], "/abs/path");
@@ -1533,7 +1655,7 @@ describe("functions/kits/install", () => {
     it("should throw FirebaseError if saving SDK dependencies fails", async () => {
       const origError = new Error("ERESOLVE peer dependency conflict");
       wrapSpawnStub
-        .withArgs("npm", ["install", "firebase-functions@latest", "--save-prefix=^"], "/abs/path")
+        .withArgs("npm", ["install", "firebase-functions@^7.3.2", "--save-prefix=^"], "/abs/path")
         .rejects(origError);
 
       let err: unknown;
@@ -1562,17 +1684,6 @@ describe("functions/kits/install", () => {
   });
 
   describe("getKitPackagesToSave", () => {
-    function mockFs(files: Record<string, unknown>): void {
-      (fs.pathExists as sinon.SinonStub).callsFake((p: string) => Promise.resolve(p in files));
-      (fs.readJson as sinon.SinonStub).callsFake((p: string) => {
-        const val = files[p];
-        if (val instanceof Error) {
-          return Promise.reject(val);
-        }
-        return Promise.resolve(val || {});
-      });
-    }
-
     it("should resolve installed versions from package-lock.json when hoisted", async () => {
       mockFs({
         "/mock/src/package-lock.json": {
@@ -1633,7 +1744,7 @@ describe("functions/kits/install", () => {
       expect(packagesToSave).to.deep.equal(["firebase-functions@^7.2.0"]);
     });
 
-    it("should fall back to firebase-functions@latest when functions is undeclared and not installed", async () => {
+    it("should throw FirebaseError when functions is undeclared", async () => {
       mockFs({
         "/mock/src/package-lock.json": {
           packages: {
@@ -1644,9 +1755,10 @@ describe("functions/kits/install", () => {
         },
       });
 
-      const packagesToSave = await getKitPackagesToSave("/mock/src", "@scope/my-kit");
-
-      expect(packagesToSave).to.deep.equal(["firebase-functions@latest"]);
+      await expect(getKitPackagesToSave("/mock/src", "@scope/my-kit")).to.be.rejectedWith(
+        FirebaseError,
+        /Package '@scope\/my-kit' is not a valid Function Kit: it must declare 'firebase-functions'/,
+      );
     });
 
     it("should fall back to reading node_modules package.json when lockfile is missing", async () => {
@@ -1695,6 +1807,44 @@ describe("functions/kits/install", () => {
       const packagesToSave = await getKitPackagesToSave("/mock/src", "@scope/my-kit");
 
       expect(packagesToSave).to.deep.equal(["firebase-functions@^7.0.0"]);
+    });
+
+    it("should preserve exact pins when declared in package-lock.json", async () => {
+      mockFs({
+        "/mock/src/package-lock.json": {
+          packages: {
+            "node_modules/@scope/my-kit": {
+              peerDependencies: {
+                "firebase-functions": "7.1.0",
+              },
+            },
+            "node_modules/firebase-functions": { version: "7.1.0" },
+          },
+        },
+      });
+
+      const packagesToSave = await getKitPackagesToSave("/mock/src", "@scope/my-kit");
+
+      expect(packagesToSave).to.deep.equal(["firebase-functions@=7.1.0"]);
+    });
+
+    it("should preserve tilde ranges when declared in package-lock.json", async () => {
+      mockFs({
+        "/mock/src/package-lock.json": {
+          packages: {
+            "node_modules/@scope/my-kit": {
+              peerDependencies: {
+                "firebase-functions": "~7.1.0",
+              },
+            },
+            "node_modules/firebase-functions": { version: "7.1.3" },
+          },
+        },
+      });
+
+      const packagesToSave = await getKitPackagesToSave("/mock/src", "@scope/my-kit");
+
+      expect(packagesToSave).to.deep.equal(["firebase-functions@~7.1.3"]);
     });
   });
 
@@ -2789,6 +2939,34 @@ describe("functions/kits/install", () => {
   });
 
   describe("installKitOrInstance", () => {
+    // Function kits must declare 'firebase-functions' as a dependency or peer dependency.
+    // Provide a mock package-lock.json for the package kits installed in this suite
+    // so getKitPackagesToSave can resolve valid kit SDK versions during installation.
+    beforeEach(() => {
+      mockFs({
+        "/mock/project/function-kits/firestore-bigquery-export/source/package-lock.json": {
+          packages: {
+            "node_modules/@firebase-function-kits/firestore-bigquery-export": {
+              peerDependencies: {
+                "firebase-functions": "^7.0.0",
+              },
+            },
+            "node_modules/firebase-functions": { version: "7.3.2" },
+          },
+        },
+        "/mock/project/function-kits/custom-kit/source/package-lock.json": {
+          packages: {
+            "node_modules/@firebase-function-kits/firestore-bigquery-export": {
+              peerDependencies: {
+                "firebase-functions": "^7.0.0",
+              },
+            },
+            "node_modules/firebase-functions": { version: "7.3.2" },
+          },
+        },
+      });
+    });
+
     it("should throw an error if neither package nor directory is provided", async () => {
       const mockConfig = {
         projectDir: "/mock/project",
@@ -2909,7 +3087,7 @@ describe("functions/kits/install", () => {
       );
       expect(wrapSpawnStub.secondCall).to.have.been.calledWith(
         "npm",
-        ["install", "firebase-functions@latest", "--save-prefix=^"],
+        ["install", "firebase-functions@^7.3.2", "--save-prefix=^"],
         "/mock/project/function-kits/firestore-bigquery-export/source",
       );
       expect(wrapSpawnStub.thirdCall).to.have.been.calledWith(

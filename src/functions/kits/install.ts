@@ -2,6 +2,7 @@ import * as crypto from "crypto";
 import * as path from "path";
 import * as clc from "colorette";
 import * as fs from "fs-extra";
+import * as semver from "semver";
 
 import { Config } from "../../config";
 import { FirebaseError, getErrMsg } from "../../error";
@@ -551,7 +552,9 @@ export async function writeKitPackageJson(
     try {
       pkgJson = JSON.parse(subbedTemplate) as typeof pkgJson;
     } catch (err: unknown) {
-      throw new FirebaseError("Failed to parse package-kit.json template: " + getErrMsg(err));
+      throw new FirebaseError("Failed to parse package-kit.json template: " + getErrMsg(err), {
+        original: err instanceof Error ? err : undefined,
+      });
     }
   }
 
@@ -611,6 +614,49 @@ export async function scaffoldKitFiles(
   return { sourcePath, configDirPath, absSourcePath, absConfigDirPath };
 }
 
+interface PackageLockEntry {
+  version?: string;
+  dependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+}
+
+interface PackageLock {
+  packages?: Record<string, PackageLockEntry>;
+}
+
+interface KitManifest {
+  dependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+}
+
+/**
+ * Resolves the package specifier to save to the wrapper package.json.
+ *
+ * - Exact pin (e.g. "7.1.0", "=7.1.0", "v7.1.0"): Preserved as exact ("=X.Y.Z").
+ * - Tilde range (e.g. "~7.1.0"): Preserved as tilde ("~installedVer" or declared).
+ * - Caret / wider range (e.g. "^7.0.0", ">=7.0.0"): Anchored to caret ("^installedVer" or declared).
+ */
+export function resolveSdkSpecifierToSave(
+  packageName: string,
+  declaredVer: string,
+  installedVer?: string,
+): string {
+  const cleanVer = semver.clean(declaredVer);
+  if (cleanVer) {
+    return `${packageName}@=${installedVer || cleanVer}`;
+  }
+
+  if (declaredVer.trim().startsWith("~")) {
+    return installedVer ? `${packageName}@~${installedVer}` : `${packageName}@${declaredVer}`;
+  }
+
+  if (installedVer) {
+    return `${packageName}@^${installedVer}`;
+  }
+
+  return `${packageName}@${declaredVer}`;
+}
+
 /**
  * Inspects package-lock.json (or node_modules as fallback) to determine which SDK versions
  * should be explicitly saved to the wrapper package.json using npm install.
@@ -628,16 +674,7 @@ export async function getKitPackagesToSave(
 
   if (await fs.pathExists(lockfilePath)) {
     try {
-      const lockfile = (await fs.readJson(lockfilePath)) as {
-        packages?: Record<
-          string,
-          {
-            version?: string;
-            dependencies?: Record<string, string>;
-            peerDependencies?: Record<string, string>;
-          }
-        >;
-      };
+      const lockfile = (await fs.readJson(lockfilePath)) as PackageLock;
       const packages = lockfile.packages || {};
       const kitEntry = packages[`node_modules/${packageName}`] || {};
       peerDeps = kitEntry.peerDependencies || {};
@@ -653,10 +690,7 @@ export async function getKitPackagesToSave(
     const kitPkgJsonPath = path.join(absSourcePath, "node_modules", packageName, "package.json");
     if (await fs.pathExists(kitPkgJsonPath)) {
       try {
-        const kitPkgJson = (await fs.readJson(kitPkgJsonPath)) as {
-          peerDependencies?: Record<string, string>;
-          dependencies?: Record<string, string>;
-        };
+        const kitPkgJson = (await fs.readJson(kitPkgJsonPath)) as KitManifest;
         peerDeps = kitPkgJson.peerDependencies || {};
         directDeps = kitPkgJson.dependencies || {};
       } catch (err: unknown) {
@@ -665,27 +699,24 @@ export async function getKitPackagesToSave(
     }
   }
 
-  // 1. Resolve firebase-functions (always required by index-kit.ts)
+  // 1. Resolve firebase-functions (must be declared by a valid Function Kit)
   const declaredFunctionsVer = peerDeps["firebase-functions"] || directDeps["firebase-functions"];
-  let functionsSpecifier: string;
-  if (installedFunctionsVer) {
-    functionsSpecifier = `firebase-functions@^${installedFunctionsVer}`;
-  } else if (declaredFunctionsVer) {
-    functionsSpecifier = `firebase-functions@${declaredFunctionsVer}`;
-  } else {
-    functionsSpecifier = "firebase-functions@latest";
+  if (!declaredFunctionsVer) {
+    throw new FirebaseError(
+      `Package '${packageName}' is not a valid Function Kit: it must declare 'firebase-functions' as a dependency or peer dependency.`,
+    );
   }
 
-  const packagesToSave: string[] = [functionsSpecifier];
+  const packagesToSave: string[] = [
+    resolveSdkSpecifierToSave("firebase-functions", declaredFunctionsVer, installedFunctionsVer),
+  ];
 
   // 2. Resolve firebase-admin (strictly conditional: only if kit declared it)
   const declaredAdminVer = peerDeps["firebase-admin"] || directDeps["firebase-admin"];
   if (declaredAdminVer) {
-    if (installedAdminVer) {
-      packagesToSave.push(`firebase-admin@^${installedAdminVer}`);
-    } else {
-      packagesToSave.push(`firebase-admin@${declaredAdminVer}`);
-    }
+    packagesToSave.push(
+      resolveSdkSpecifierToSave("firebase-admin", declaredAdminVer, installedAdminVer),
+    );
   }
 
   return packagesToSave;
@@ -725,7 +756,8 @@ export async function buildAndInstallKit(
       await wrapSpawn("npm", saveArgs, absSourcePath);
     } catch (err: unknown) {
       throw new FirebaseError(
-        `Failed to install required SDK dependencies (${packagesToSave.join(", ")}): ${getErrMsg(err)}`,
+        `Failed to install required SDK dependencies (${packagesToSave.join(", ")}): ${getErrMsg(err)}. ` +
+          "Verify that the kit's dependencies are compatible with the resolved Firebase SDK versions.",
         { original: err instanceof Error ? err : undefined },
       );
     }
