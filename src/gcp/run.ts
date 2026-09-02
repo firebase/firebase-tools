@@ -308,12 +308,14 @@ export async function setInvokerCreate(
  * @param projectId id of the project
  * @param serviceName cloud run service
  * @param invoker an array of invoker strings
+ * @param onlyIfUnset when true, leaves an existing invoker binding untouched
  * @throws {@link FirebaseError} on an empty invoker, when the IAM Polciy fails to be grabbed or set
  */
 export async function setInvokerUpdate(
   projectId: string,
   serviceName: string,
   invoker: string[],
+  onlyIfUnset: boolean,
   httpClient: Client = client, // for unit testing
 ) {
   if (invoker.length === 0) {
@@ -325,6 +327,11 @@ export async function setInvokerUpdate(
   const currentInvokerBinding = currentPolicy.bindings?.find(
     (binding) => binding.role === invokerRole,
   );
+
+  if (onlyIfUnset && currentInvokerBinding) {
+    return;
+  }
+
   if (
     currentInvokerBinding &&
     JSON.stringify(currentInvokerBinding.members.sort()) === JSON.stringify(invokerMembers.sort())

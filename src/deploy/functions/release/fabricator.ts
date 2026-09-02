@@ -741,7 +741,22 @@ export class Fabricator {
     endpoint.uri = resultFunction?.httpsTrigger?.url;
     let invoker: string[] | undefined;
     if (backend.isHttpsTriggered(endpoint)) {
-      invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
+      // An unset invoker means "leave whatever is there alone, but heal it if the create
+      // never got as far as writing a policy". An explicit invoker, "private" included,
+      // is written verbatim: "private" resolves to an empty member list, which is how a
+      // function gets narrowed from public.
+      const desiredInvoker = endpoint.httpsTrigger.invoker || ["public"];
+      const onlyIfUnset = !endpoint.httpsTrigger.invoker;
+      await this.executor
+        .run(() =>
+          gcf.setInvokerUpdate(
+            endpoint.project,
+            backend.functionName(endpoint),
+            desiredInvoker,
+            onlyIfUnset,
+          ),
+        )
+        .catch(rethrowAs(endpoint, "set invoker"));
     } else if (backend.isTaskQueueTriggered(endpoint)) {
       invoker = endpoint.taskQueueTrigger.invoker === null ? [] : endpoint.taskQueueTrigger.invoker;
     } else if (
@@ -752,7 +767,9 @@ export class Fabricator {
     }
     if (invoker) {
       await this.executor
-        .run(() => gcf.setInvokerUpdate(endpoint.project, backend.functionName(endpoint), invoker!))
+        .run(() =>
+          gcf.setInvokerUpdate(endpoint.project, backend.functionName(endpoint), invoker!, true),
+        )
         .catch(rethrowAs(endpoint, "set invoker"));
     }
   }
@@ -807,8 +824,13 @@ export class Fabricator {
       return;
     }
     let invoker: string[] | undefined;
+    // An unset invoker means "leave whatever is there alone, but heal it if the create
+    // never got as far as writing a policy". Every other branch below comes from explicit
+    // configuration and is written verbatim.
+    let onlyIfUnset = false;
     if (backend.isHttpsTriggered(endpoint)) {
-      invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
+      invoker = endpoint.httpsTrigger.invoker || ["public"];
+      onlyIfUnset = !endpoint.httpsTrigger.invoker;
     } else if (backend.isDataConnectGraphqlTriggered(endpoint)) {
       invoker =
         endpoint.dataConnectGraphqlTrigger.invoker === null
@@ -832,7 +854,7 @@ export class Fabricator {
 
     if (invoker) {
       await this.executor
-        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!))
+        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!, onlyIfUnset))
         .catch(rethrowAs(endpoint, "set invoker"));
     }
   }
@@ -950,15 +972,19 @@ export class Fabricator {
 
     const serviceName = `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.runServiceId}`;
     // We check for null vs undefined to respect settings people make on the Google Console.
-    // If it's omitted (undefined), we don't touch policies. If it is explicitly null, we make it public.
+    // An omitted (undefined) invoker leaves an existing policy alone, but still heals one
+    // that is missing entirely, which is the state a failed create leaves behind. An
+    // explicit null makes it public.
     let invoker: string[] | undefined;
+    let onlyIfUnset = false;
     if (backend.isHttpsTriggered(endpoint)) {
-      invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
+      invoker = endpoint.httpsTrigger.invoker || ["public"];
+      onlyIfUnset = !endpoint.httpsTrigger.invoker;
     }
 
     if (invoker) {
       await this.executor
-        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!))
+        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!, onlyIfUnset))
         .catch(rethrowAs(endpoint, "set invoker"));
     }
   }
