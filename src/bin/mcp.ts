@@ -95,10 +95,14 @@ export async function mcp(): Promise<void> {
   }
 
   setFirebaseMcp(true);
-  // Write debug logs to ~/.cache/firebase to avoid polluting the user's project directory.
-  const mcpLogDir = join(homedir(), ".cache", "firebase");
-  await mkdir(mcpLogDir, { recursive: true });
-  useFileLogger(join(mcpLogDir, "firebase-debug.log"));
+  if (process.env.FIREBASE_DEBUG_PATH?.trim()) {
+    useFileLogger();
+  } else {
+    // Write debug logs to ~/.cache/firebase to avoid polluting the user's project directory.
+    const mcpLogDir = join(homedir(), ".cache", "firebase");
+    await mkdir(mcpLogDir, { recursive: true });
+    useFileLogger(join(mcpLogDir, "firebase-debug.log"));
+  }
   const activeFeatures = (values.only || "")
     .split(",")
     .map((f) => f.trim())
