@@ -32,6 +32,7 @@ import {
   addKitInstanceOrConfigureProject,
   installKitOrInstance,
   promptAndWriteKitParams,
+  getKitPackagesToSave,
   TemplateType,
 } from "./install";
 import * as env from "./env";
@@ -992,7 +993,10 @@ describe("functions/kits/install", () => {
         projectDir: "/mock/project",
         src: {},
         path: (rel: string) => path.join("/mock/project", rel),
-        askWriteProjectFile: sinon.stub().resolves(),
+        askWriteProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+          return Promise.resolve();
+        },
         writeProjectFile: (file: string, content: unknown) => {
           writtenFiles[file] = content;
         },
@@ -1009,6 +1013,10 @@ describe("functions/kits/install", () => {
       expect(paths.configDirPath).to.equal("function-kits/my-kit/config-inst1");
       expect(seedKitInstanceEnvStub).to.not.have.been.called;
       expect(writtenFiles["firebase.json"]).to.exist;
+      expect(writtenFiles["function-kits/my-kit/source/package.json"]).to.deep.include({
+        name: "my-kit-wrapper",
+        dependencies: {},
+      });
     });
 
     it("should scaffold files, seed .env.<project-id>, and add kit to config when seedEnv is provided", async () => {
@@ -1482,7 +1490,7 @@ describe("functions/kits/install", () => {
     it("should run npm install and npm run build without --ignore-scripts for first-party kit", async () => {
       await buildAndInstallKit("/abs/path", "@firebase-function-kits/my-kit", false);
 
-      expect(wrapSpawnStub).to.have.been.calledTwice;
+      expect(wrapSpawnStub).to.have.been.calledThrice;
       expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
         "npm",
         ["install", "@firebase-function-kits/my-kit", "--save-prefix=^"],
@@ -1490,15 +1498,16 @@ describe("functions/kits/install", () => {
       );
       expect(wrapSpawnStub.secondCall).to.have.been.calledWith(
         "npm",
-        ["run", "build"],
+        ["install", "firebase-functions@latest", "--save-prefix=^"],
         "/abs/path",
       );
+      expect(wrapSpawnStub.thirdCall).to.have.been.calledWith("npm", ["run", "build"], "/abs/path");
     });
 
     it("should run npm install with --ignore-scripts for third-party kit", async () => {
       await buildAndInstallKit("/abs/path", "third-party-kit", true);
 
-      expect(wrapSpawnStub).to.have.been.calledTwice;
+      expect(wrapSpawnStub).to.have.been.calledThrice;
       expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
         "npm",
         ["install", "third-party-kit", "--save-prefix=^", "--ignore-scripts"],
@@ -1506,9 +1515,10 @@ describe("functions/kits/install", () => {
       );
       expect(wrapSpawnStub.secondCall).to.have.been.calledWith(
         "npm",
-        ["run", "build"],
+        ["install", "firebase-functions@latest", "--save-prefix=^"],
         "/abs/path",
       );
+      expect(wrapSpawnStub.thirdCall).to.have.been.calledWith("npm", ["run", "build"], "/abs/path");
     });
 
     it("should throw FirebaseError if npm install fails", async () => {
@@ -1520,14 +1530,163 @@ describe("functions/kits/install", () => {
       );
     });
 
+    it("should throw FirebaseError if saving SDK dependencies fails", async () => {
+      wrapSpawnStub
+        .withArgs("npm", ["install", "firebase-functions@latest", "--save-prefix=^"], "/abs/path")
+        .rejects(new Error("ERESOLVE peer dependency conflict"));
+
+      await expect(buildAndInstallKit("/abs/path", "my-kit", false)).to.be.rejectedWith(
+        FirebaseError,
+        /Failed to install required SDK dependencies/,
+      );
+    });
+
     it("should throw FirebaseError if typescript build fails", async () => {
-      wrapSpawnStub.onFirstCall().resolves();
-      wrapSpawnStub.onSecondCall().rejects(new Error("tsc build error"));
+      wrapSpawnStub
+        .withArgs("npm", ["run", "build"], "/abs/path")
+        .rejects(new Error("tsc build error"));
 
       await expect(buildAndInstallKit("/abs/path", "my-kit", false)).to.be.rejectedWith(
         FirebaseError,
         /TypeScript build failed: tsc build error/,
       );
+    });
+  });
+
+  describe("getKitPackagesToSave", () => {
+    function mockFs(files: Record<string, unknown>): void {
+      (fs.pathExists as sinon.SinonStub).callsFake((p: string) => Promise.resolve(p in files));
+      (fs.readJson as sinon.SinonStub).callsFake((p: string) => {
+        const val = files[p];
+        if (val instanceof Error) {
+          return Promise.reject(val);
+        }
+        return Promise.resolve(val || {});
+      });
+    }
+
+    it("should resolve installed versions from package-lock.json when hoisted", async () => {
+      mockFs({
+        "/mock/src/package-lock.json": {
+          packages: {
+            "node_modules/@scope/my-kit": {
+              peerDependencies: {
+                "firebase-admin": "^14.0.0",
+                "firebase-functions": "^7.0.0",
+              },
+            },
+            "node_modules/firebase-admin": { version: "14.3.0" },
+            "node_modules/firebase-functions": { version: "7.3.2" },
+          },
+        },
+      });
+
+      const packagesToSave = await getKitPackagesToSave("/mock/src", "@scope/my-kit");
+
+      expect(packagesToSave).to.deep.equal(["firebase-functions@^7.3.2", "firebase-admin@^14.3.0"]);
+    });
+
+    it("should resolve declared versions from package-lock.json when packages are not hoisted", async () => {
+      mockFs({
+        "/mock/src/package-lock.json": {
+          packages: {
+            "node_modules/@scope/my-kit": {
+              peerDependencies: {
+                "firebase-admin": "^14.2.0",
+                "firebase-functions": "^7.1.0",
+              },
+            },
+          },
+        },
+      });
+
+      const packagesToSave = await getKitPackagesToSave("/mock/src", "@scope/my-kit");
+
+      expect(packagesToSave).to.deep.equal(["firebase-functions@^7.1.0", "firebase-admin@^14.2.0"]);
+    });
+
+    it("should omit firebase-admin when not declared, even if firebase-admin is present in package-lock.json", async () => {
+      mockFs({
+        "/mock/src/package-lock.json": {
+          packages: {
+            "node_modules/@scope/my-kit": {
+              dependencies: {
+                "firebase-functions": "^7.2.0",
+              },
+            },
+            "node_modules/firebase-admin": { version: "14.3.0" },
+            "node_modules/firebase-functions": { version: "7.2.0" },
+          },
+        },
+      });
+
+      const packagesToSave = await getKitPackagesToSave("/mock/src", "@scope/my-kit");
+
+      expect(packagesToSave).to.deep.equal(["firebase-functions@^7.2.0"]);
+    });
+
+    it("should fall back to firebase-functions@latest when functions is undeclared and not installed", async () => {
+      mockFs({
+        "/mock/src/package-lock.json": {
+          packages: {
+            "node_modules/@scope/my-kit": {
+              dependencies: {},
+            },
+          },
+        },
+      });
+
+      const packagesToSave = await getKitPackagesToSave("/mock/src", "@scope/my-kit");
+
+      expect(packagesToSave).to.deep.equal(["firebase-functions@latest"]);
+    });
+
+    it("should fall back to reading node_modules package.json when lockfile is missing", async () => {
+      mockFs({
+        "/mock/src/node_modules/@scope/my-kit/package.json": {
+          peerDependencies: {
+            "firebase-admin": "^14.1.0",
+            "firebase-functions": "^7.3.2",
+          },
+        },
+      });
+
+      const packagesToSave = await getKitPackagesToSave("/mock/src", "@scope/my-kit");
+
+      expect(packagesToSave).to.deep.equal(["firebase-functions@^7.3.2", "firebase-admin@^14.1.0"]);
+    });
+
+    it("should preserve range and >= syntax when falling back to node_modules package.json", async () => {
+      mockFs({
+        "/mock/src/node_modules/@scope/my-kit/package.json": {
+          peerDependencies: {
+            "firebase-admin": ">=13.0.0 <15.0.0",
+            "firebase-functions": ">=7.0.0",
+          },
+        },
+      });
+
+      const packagesToSave = await getKitPackagesToSave("/mock/src", "@scope/my-kit");
+
+      expect(packagesToSave).to.deep.equal([
+        "firebase-functions@>=7.0.0",
+        "firebase-admin@>=13.0.0 <15.0.0",
+      ]);
+    });
+
+    it("should fall back gracefully to node_modules when lockfile contains invalid JSON", async () => {
+      mockFs({
+        "/mock/src/package-lock.json": new Error("Invalid JSON"),
+        "/mock/src/node_modules/@scope/my-kit/package.json": {
+          dependencies: {
+            "firebase-functions": "^7.0.0",
+          },
+        },
+      });
+
+      const packagesToSave = await getKitPackagesToSave("/mock/src", "@scope/my-kit");
+
+      expect(packagesToSave).to.deep.equal(["firebase-functions@^7.0.0"]);
     });
   });
 
@@ -2734,13 +2893,18 @@ describe("functions/kits/install", () => {
         configDirPath: "function-kits/firestore-bigquery-export/config-firestore-bigquery-export",
       });
 
-      expect(wrapSpawnStub).to.have.been.calledTwice;
+      expect(wrapSpawnStub).to.have.been.calledThrice;
       expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
         "npm",
         ["install", "@firebase-function-kits/firestore-bigquery-export@1.0.0", "--save-prefix=^"],
         "/mock/project/function-kits/firestore-bigquery-export/source",
       );
       expect(wrapSpawnStub.secondCall).to.have.been.calledWith(
+        "npm",
+        ["install", "firebase-functions@latest", "--save-prefix=^"],
+        "/mock/project/function-kits/firestore-bigquery-export/source",
+      );
+      expect(wrapSpawnStub.thirdCall).to.have.been.calledWith(
         "npm",
         ["run", "build"],
         "/mock/project/function-kits/firestore-bigquery-export/source",

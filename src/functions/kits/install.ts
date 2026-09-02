@@ -546,14 +546,12 @@ export async function writeKitPackageJson(
     }
   } else {
     const latestNodeVersion = supported.latest("nodejs").replace("nodejs", "");
-    const packageNoLintingTemplate = readTemplateSync(
-      "init/functions/typescript/package.nolint.json",
-    );
-    const subbedTemplate = packageNoLintingTemplate.replace(/{{RUNTIME}}/g, latestNodeVersion);
+    const packageKitTemplate = readTemplateSync("init/functions/typescript/package-kit.json");
+    const subbedTemplate = packageKitTemplate.replace(/{{RUNTIME}}/g, latestNodeVersion);
     try {
       pkgJson = JSON.parse(subbedTemplate) as typeof pkgJson;
     } catch (err: unknown) {
-      throw new FirebaseError("Failed to parse package.nolint.json template: " + getErrMsg(err));
+      throw new FirebaseError("Failed to parse package-kit.json template: " + getErrMsg(err));
     }
   }
 
@@ -614,6 +612,86 @@ export async function scaffoldKitFiles(
 }
 
 /**
+ * Inspects package-lock.json (or node_modules as fallback) to determine which SDK versions
+ * should be explicitly saved to the wrapper package.json using npm install.
+ */
+export async function getKitPackagesToSave(
+  absSourcePath: string,
+  packageName: string,
+): Promise<string[]> {
+  const lockfilePath = path.join(absSourcePath, "package-lock.json");
+
+  let peerDeps: Record<string, string> = {};
+  let directDeps: Record<string, string> = {};
+  let installedFunctionsVer: string | undefined;
+  let installedAdminVer: string | undefined;
+
+  if (await fs.pathExists(lockfilePath)) {
+    try {
+      const lockfile = (await fs.readJson(lockfilePath)) as {
+        packages?: Record<
+          string,
+          {
+            version?: string;
+            dependencies?: Record<string, string>;
+            peerDependencies?: Record<string, string>;
+          }
+        >;
+      };
+      const packages = lockfile.packages || {};
+      const kitEntry = packages[`node_modules/${packageName}`] || {};
+      peerDeps = kitEntry.peerDependencies || {};
+      directDeps = kitEntry.dependencies || {};
+      installedFunctionsVer = packages["node_modules/firebase-functions"]?.version;
+      installedAdminVer = packages["node_modules/firebase-admin"]?.version;
+    } catch (err: unknown) {
+      logger.debug(`Failed to read package-lock.json: ${getErrMsg(err)}`);
+    }
+  }
+
+  if (Object.keys(peerDeps).length === 0 && Object.keys(directDeps).length === 0) {
+    const kitPkgJsonPath = path.join(absSourcePath, "node_modules", packageName, "package.json");
+    if (await fs.pathExists(kitPkgJsonPath)) {
+      try {
+        const kitPkgJson = (await fs.readJson(kitPkgJsonPath)) as {
+          peerDependencies?: Record<string, string>;
+          dependencies?: Record<string, string>;
+        };
+        peerDeps = kitPkgJson.peerDependencies || {};
+        directDeps = kitPkgJson.dependencies || {};
+      } catch (err: unknown) {
+        logger.debug(`Failed to read kit package.json: ${getErrMsg(err)}`);
+      }
+    }
+  }
+
+  // 1. Resolve firebase-functions (always required by index-kit.ts)
+  const declaredFunctionsVer = peerDeps["firebase-functions"] || directDeps["firebase-functions"];
+  let functionsSpecifier: string;
+  if (installedFunctionsVer) {
+    functionsSpecifier = `firebase-functions@^${installedFunctionsVer}`;
+  } else if (declaredFunctionsVer) {
+    functionsSpecifier = `firebase-functions@${declaredFunctionsVer}`;
+  } else {
+    functionsSpecifier = "firebase-functions@latest";
+  }
+
+  const packagesToSave: string[] = [functionsSpecifier];
+
+  // 2. Resolve firebase-admin (strictly conditional: only if kit declared it)
+  const declaredAdminVer = peerDeps["firebase-admin"] || directDeps["firebase-admin"];
+  if (declaredAdminVer) {
+    if (installedAdminVer) {
+      packagesToSave.push(`firebase-admin@^${installedAdminVer}`);
+    } else {
+      packagesToSave.push(`firebase-admin@${declaredAdminVer}`);
+    }
+  }
+
+  return packagesToSave;
+}
+
+/**
  * Installs dependencies and compiles TypeScript source for the kit.
  */
 export async function buildAndInstallKit(
@@ -621,6 +699,7 @@ export async function buildAndInstallKit(
   rawPkgName: string,
   isThirdParty: boolean,
 ): Promise<void> {
+  const { packageName } = parseNpmPackageSpecifier(rawPkgName);
   const installArgs = ["install", rawPkgName, "--save-prefix=^"];
   if (isThirdParty) {
     installArgs.push("--ignore-scripts");
@@ -630,6 +709,21 @@ export async function buildAndInstallKit(
     await wrapSpawn("npm", installArgs, absSourcePath);
   } catch (err: unknown) {
     throw new FirebaseError(`NPM install failed: ${getErrMsg(err)}`);
+  }
+
+  const packagesToSave = await getKitPackagesToSave(absSourcePath, packageName);
+  if (packagesToSave.length > 0) {
+    logLabeledBullet(
+      "functions",
+      `Saving resolved SDK dependencies: ${clc.bold(packagesToSave.join(", "))}...`,
+    );
+    try {
+      await wrapSpawn("npm", ["install", ...packagesToSave, "--save-prefix=^"], absSourcePath);
+    } catch (err: unknown) {
+      throw new FirebaseError(
+        `Failed to install required SDK dependencies (${packagesToSave.join(", ")}): ${getErrMsg(err)}`,
+      );
+    }
   }
 
   logLabeledBullet("functions", "Building TypeScript source...");
