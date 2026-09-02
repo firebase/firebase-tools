@@ -43,6 +43,8 @@ setGlobalOptions({
     ? Number(process.env.EXT_MIGRATED_SYSTEM_MININSTANCES)
     : undefined,
   ingressSettings: (process.env.EXT_MIGRATED_SYSTEM_INGRESSSETTINGS as IngressSetting) ?? undefined,
+  // Parses a comma-separated string of key:value pairs into a key-value object
+  // (e.g. "key1:value1,key2:value2" -> { key1: "value1", key2: "value2" }).
   labels: process.env.EXT_MIGRATED_SYSTEM_LABELS
     ? process.env.EXT_MIGRATED_SYSTEM_LABELS.split(",").reduce<Record<string, string> | undefined>(
         (acc, curr) => {
