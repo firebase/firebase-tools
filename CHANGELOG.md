@@ -1,3 +1,4 @@
+- Added support for the `FIREBASE_DEBUG_PATH` environment variable to customize the debug log output location.
 - Add `humanReadableDescription` field to MCP tools and use it in `--generate-tool-list` output.
 - Fixed an issue where the Functions emulator replaced an IPC failure with an unrelated `TypeError` about stream chunk types, hiding why the runtime became unreachable (#10876).
 - [Added] Add -f, --force option to `firebase ext:migrate`.
