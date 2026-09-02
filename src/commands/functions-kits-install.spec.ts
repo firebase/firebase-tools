@@ -7,6 +7,7 @@ import * as experiments from "../experiments";
 import { Config } from "../config";
 import { FirebaseError } from "../error";
 import { RC } from "../rc";
+import { requireAuth } from "../requireAuth";
 import { requireConfig } from "../requireConfig";
 
 describe("functions:kits:install", () => {
@@ -15,6 +16,7 @@ describe("functions:kits:install", () => {
   let installKitOrInstanceStub: sinon.SinonStub;
 
   beforeEach(() => {
+    command["befores"] = [];
     sinon.stub(command, "prepare").resolves();
     assertEnabledStub = sinon.stub(experiments, "assertEnabled");
     installKitOrInstanceStub = sinon.stub(kits, "installKitOrInstance").resolves({
@@ -29,58 +31,16 @@ describe("functions:kits:install", () => {
     sinon.restore();
   });
 
-  describe("command prerequisites", () => {
-    it("should throw an error and not start install if requireConfig is not met", async () => {
-      await expect(
-        command.runner()({
-          package: "@firebase-function-kits/firestore-bigquery-export",
-          cwd: "/mock/project",
-          nonInteractive: true,
-        }),
-      ).to.be.rejectedWith(FirebaseError, /could not locate firebase\.json/);
-
-      expect(installKitOrInstanceStub).not.to.have.been.called;
-    });
-
-    it("should throw an error and not start install if requireAuth is not met", async () => {
-      const mockConfig = {
-        projectDir: "/mock/project",
-        src: {
-          functions: [],
-        },
-        path: (p: string) => `/mock/project/${p}`,
-      } as unknown as Config;
-
-      const authError = new FirebaseError(
-        "Command requires authentication, please run firebase login",
-      );
-      const requireAuthStub = sinon.stub().rejects(authError);
-      command["befores"] = [
+  describe("command configuration", () => {
+    it("should have requireConfig and requireAuth as before hooks", () => {
+      expect(originalBefores).to.deep.equal([
         { fn: requireConfig, args: [] },
-        { fn: requireAuthStub, args: [] },
-      ];
-
-      await expect(
-        command.runner()({
-          package: "@firebase-function-kits/firestore-bigquery-export",
-          cwd: "/mock/project",
-          config: mockConfig,
-          nonInteractive: true,
-        }),
-      ).to.be.rejectedWith(
-        FirebaseError,
-        "Command requires authentication, please run firebase login",
-      );
-
-      expect(installKitOrInstanceStub).not.to.have.been.called;
+        { fn: requireAuth, args: [] },
+      ]);
     });
   });
 
   describe("command action", () => {
-    beforeEach(() => {
-      command["befores"] = [];
-    });
-
     it("should assert that kits experiment is enabled", async () => {
       assertEnabledStub.throws(new FirebaseError("kits experiment disabled"));
 
