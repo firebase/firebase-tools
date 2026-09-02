@@ -1515,7 +1515,7 @@ describe("functions/kits/install", () => {
       );
       expect(wrapSpawnStub.secondCall).to.have.been.calledWith(
         "npm",
-        ["install", "firebase-functions@latest", "--save-prefix=^"],
+        ["install", "firebase-functions@latest", "--save-prefix=^", "--ignore-scripts"],
         "/abs/path",
       );
       expect(wrapSpawnStub.thirdCall).to.have.been.calledWith("npm", ["run", "build"], "/abs/path");
@@ -1531,14 +1531,22 @@ describe("functions/kits/install", () => {
     });
 
     it("should throw FirebaseError if saving SDK dependencies fails", async () => {
+      const origError = new Error("ERESOLVE peer dependency conflict");
       wrapSpawnStub
         .withArgs("npm", ["install", "firebase-functions@latest", "--save-prefix=^"], "/abs/path")
-        .rejects(new Error("ERESOLVE peer dependency conflict"));
+        .rejects(origError);
 
-      await expect(buildAndInstallKit("/abs/path", "my-kit", false)).to.be.rejectedWith(
-        FirebaseError,
+      let err: unknown;
+      try {
+        await buildAndInstallKit("/abs/path", "my-kit", false);
+      } catch (e: unknown) {
+        err = e;
+      }
+      expect(err).to.be.an.instanceOf(FirebaseError);
+      expect((err as FirebaseError).message).to.match(
         /Failed to install required SDK dependencies/,
       );
+      expect((err as FirebaseError).original).to.equal(origError);
     });
 
     it("should throw FirebaseError if typescript build fails", async () => {

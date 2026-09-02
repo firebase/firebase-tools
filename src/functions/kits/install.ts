@@ -717,11 +717,16 @@ export async function buildAndInstallKit(
       "functions",
       `Saving resolved SDK dependencies: ${clc.bold(packagesToSave.join(", "))}...`,
     );
+    const saveArgs = ["install", ...packagesToSave, "--save-prefix=^"];
+    if (isThirdParty) {
+      saveArgs.push("--ignore-scripts");
+    }
     try {
-      await wrapSpawn("npm", ["install", ...packagesToSave, "--save-prefix=^"], absSourcePath);
+      await wrapSpawn("npm", saveArgs, absSourcePath);
     } catch (err: unknown) {
       throw new FirebaseError(
         `Failed to install required SDK dependencies (${packagesToSave.join(", ")}): ${getErrMsg(err)}`,
+        { original: err instanceof Error ? err : undefined },
       );
     }
   }
