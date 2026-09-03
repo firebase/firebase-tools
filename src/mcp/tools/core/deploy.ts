@@ -23,6 +23,8 @@ export const deploy = tool(
     name: "deploy",
     description:
       "Deploy resources to your Firebase project, based on the contents of firebase.json.",
+    humanReadableDescription:
+      "Deploy Firebase services and resources configured in firebase.json to your project.",
     inputSchema: z.object({
       only: z
         .string()
@@ -51,10 +53,13 @@ export const deploy = tool(
       targets = parts.filter((p) => validTargets.includes(p));
     }
 
+    const baseOptions = await ctx.host.resolveOptions();
+
     const jobId = Date.now().toString();
     jobTracker.createJob(jobId);
 
     const options = {
+      ...baseOptions,
       only: only || "",
       except: "",
       filteredTargets: targets,
