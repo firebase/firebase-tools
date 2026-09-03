@@ -8,6 +8,7 @@ import {
   logPrefix,
 } from "../extensions/extensionsHelper";
 import { requirePermissions } from "../requirePermissions";
+import { requireConfig } from "../requireConfig";
 import { createMigrationPlan, ensureInstanceUpToDate, migrateSecrets } from "../extensions/migrate";
 import { functionsEnvFromInstance } from "../extensions/export";
 import { installKitOrInstance } from "../functions/kits/install";
@@ -29,13 +30,11 @@ export const command = new Command("ext:migrate")
   .option("-i, --ext-instance <instanceId>", "extension instance ID to migrate")
   .option("-e, --extension <extensionRef>", "extension reference or name to migrate")
   .option("-f, --force", "force update and migration without prompting")
+  .before(requireConfig)
   .before(requirePermissions, ["firebaseextensions.instances.list"])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
   .action(async (options: ExtMigrateOptions) => {
-    if (!options.config) {
-      throw new FirebaseError("Not in a Firebase project directory (firebase.json not found).");
-    }
     const projectId = needProjectId(options);
     if (options.package) {
       validateNpmPackageName(options.package);

@@ -11,6 +11,7 @@ import * as updateHelper from "./updateHelper";
 import * as exportModule from "./export";
 import * as kitInstallModule from "../functions/kits/install";
 import * as extensionsHelper from "./extensionsHelper";
+import * as utils from "../utils";
 import { command as extMigrateCommand, ExtMigrateOptions } from "../commands/ext-migrate";
 import { Config } from "../config";
 import { ExtensionInstance, ParamType } from "./types";
@@ -460,39 +461,41 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
   });
 
   describe("migrateSecrets", () => {
-    it("should return empty array without logging if instance has no secrets", async () => {
+    const instanceWithSecret: ExtensionInstance = {
+      ...mockInstance1,
+      config: {
+        ...mockInstance1.config,
+        source: {
+          name: "sources/1",
+          state: "ACTIVE",
+          packageUri: "https://example.com/package.zip",
+          hash: "hash123",
+          spec: {
+            name: "ext",
+            version: "1.0.0",
+            resources: [],
+            params: [
+              {
+                param: "API_KEY",
+                label: "API Key",
+                type: ParamType.SECRET,
+              },
+            ],
+            systemParams: [],
+          },
+        },
+      },
+    };
+
+    it("should return empty array without logging if instance has no secrets needing ejection", async () => {
+      sandbox.stub(exportModule, "secretsNeedingEjection").resolves([]);
       const res = await migrateModule.migrateSecrets(mockInstance1);
       expect(res).to.deep.equal([]);
       expect(logger.info).to.not.have.been.called;
     });
 
     it("should eject secrets and log when instance has secrets", async () => {
-      const instanceWithSecret: ExtensionInstance = {
-        ...mockInstance1,
-        config: {
-          ...mockInstance1.config,
-          source: {
-            name: "sources/1",
-            state: "ACTIVE",
-            packageUri: "https://example.com/package.zip",
-            hash: "hash123",
-            spec: {
-              name: "ext",
-              version: "1.0.0",
-              resources: [],
-              params: [
-                {
-                  param: "API_KEY",
-                  label: "API Key",
-                  type: ParamType.SECRET,
-                },
-              ],
-              systemParams: [],
-            },
-          },
-        },
-      };
-
+      sandbox.stub(exportModule, "secretsNeedingEjection").resolves(["test-project/API_KEY"]);
       sandbox
         .stub(exportModule, "ejectSecretsFromInstance")
         .resolves({ success: ["test-project/API_KEY"], fail: [] });
@@ -501,76 +504,35 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       expect(res).to.deep.equal(["test-project/API_KEY"]);
     });
 
-    it("should throw error when secret ejection fails without force", async () => {
-      const instanceWithSecret: ExtensionInstance = {
-        ...mockInstance1,
-        config: {
-          ...mockInstance1.config,
-          source: {
-            name: "sources/1",
-            state: "ACTIVE",
-            packageUri: "https://example.com/package.zip",
-            hash: "hash123",
-            spec: {
-              name: "ext",
-              version: "1.0.0",
-              resources: [],
-              params: [
-                {
-                  param: "API_KEY",
-                  label: "API Key",
-                  type: ParamType.SECRET,
-                },
-              ],
-              systemParams: [],
-            },
-          },
-        },
-      };
-
+    it("should throw error and log IAM advice when secret ejection fails without force", async () => {
+      sandbox.stub(exportModule, "secretsNeedingEjection").resolves(["test-project/API_KEY"]);
       sandbox
         .stub(exportModule, "ejectSecretsFromInstance")
         .resolves({ success: [], fail: ["test-project/API_KEY"] });
+      const errorSpy = sandbox.spy(utils, "logLabeledError");
 
       await expect(migrateModule.migrateSecrets(instanceWithSecret)).to.be.rejectedWith(
         FirebaseError,
         "Secret migration failed.",
       );
+      expect(errorSpy).to.have.been.calledWith(
+        "functions",
+        sinon.match(/roles\/secretmanager\.admin/),
+      );
     });
 
-    it("should throw informative error on IAM permission error (403)", async () => {
-      const instanceWithSecret: ExtensionInstance = {
-        ...mockInstance1,
-        config: {
-          ...mockInstance1.config,
-          source: {
-            name: "sources/1",
-            state: "ACTIVE",
-            packageUri: "https://example.com/package.zip",
-            hash: "hash123",
-            spec: {
-              name: "ext",
-              version: "1.0.0",
-              resources: [],
-              params: [
-                {
-                  param: "API_KEY",
-                  label: "API Key",
-                  type: ParamType.SECRET,
-                },
-              ],
-              systemParams: [],
-            },
-          },
-        },
-      };
+    it("should log warning about potential data loss when secret ejection fails with force", async () => {
+      sandbox.stub(exportModule, "secretsNeedingEjection").resolves(["test-project/API_KEY"]);
+      sandbox
+        .stub(exportModule, "ejectSecretsFromInstance")
+        .resolves({ success: [], fail: ["test-project/API_KEY"] });
+      const warnSpy = sandbox.spy(utils, "logLabeledWarning");
 
-      const permError = new FirebaseError("Forbidden", { status: 403 });
-      sandbox.stub(exportModule, "ejectSecretsFromInstance").rejects(permError);
-
-      await expect(migrateModule.migrateSecrets(instanceWithSecret)).to.be.rejectedWith(
-        FirebaseError,
-        "You do not have permissions to transfer secrets from Extensions to Functions. Please ask an IAM administrator to run the migration",
+      const res = await migrateModule.migrateSecrets(instanceWithSecret, { force: true });
+      expect(res).to.deep.equal([]);
+      expect(warnSpy).to.have.been.calledWith(
+        "functions",
+        sinon.match(/Proceeding after secret migration failure in --force mode/),
       );
     });
   });
@@ -582,7 +544,7 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
     let ensureSpecStub: sinon.SinonStub;
 
     beforeEach(() => {
-      (extMigrateCommand as unknown as { befores: unknown[] }).befores = [];
+      sandbox.stub(extMigrateCommand as unknown as { befores: unknown[] }, "befores").value([]);
       sandbox.stub(extMigrateCommand, "prepare").resolves();
       sandbox.stub(extensionsApi, "listInstances").resolves([mockInstance1]);
       sandbox.stub(migrateModule, "ensureInstanceUpToDate").resolves(mockInstance1);
@@ -598,18 +560,6 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
         PARAM_A: "val_a",
       });
       ensureSpecStub = sandbox.stub(extensionsHelper, "ensureInstanceSpec").resolves(mockInstance1);
-    });
-
-    it("should throw if options.config is not provided", async () => {
-      await expect(
-        extMigrateCommand.runner()({
-          project: "test-project",
-          projectId: "test-project",
-        } as unknown as ExtMigrateOptions),
-      ).to.be.rejectedWith(
-        FirebaseError,
-        "Not in a Firebase project directory (firebase.json not found).",
-      );
     });
 
     it("should throw if extension specification cannot be loaded", async () => {

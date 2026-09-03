@@ -1,3 +1,2 @@
-- [Added] Support exporting Extension parameters and initializing Function Kits in `firebase ext:migrate`.
 - [Added] Add -f, --force option to `firebase ext:migrate`.
 - [Fixed] Fix parameter type preservation and optional system parameter handling during extension updates in `firebase ext:migrate`.

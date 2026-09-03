@@ -1025,7 +1025,11 @@ export async function addKitInstanceOrConfigureProject(
   let action: "addInstance" | "addEnv";
   let preselectedInstanceId: string | undefined;
 
-  if (options.instanceId && existingKit.instances && options.instanceId in existingKit.instances) {
+  if (
+    options.instanceId &&
+    existingKit.instances &&
+    Object.prototype.hasOwnProperty.call(existingKit.instances, options.instanceId)
+  ) {
     action = "addEnv";
     preselectedInstanceId = options.instanceId;
   } else if (!isConfiguredForProject && !options.nonInteractive) {
@@ -1080,7 +1084,7 @@ export async function addKitInstanceOrConfigureProject(
   } else if (action === "addEnv") {
     resultAction = "configuredEnv";
     instanceId =
-      preselectedInstanceId || (await promptExistingInstanceForProject(options, existingKit));
+      preselectedInstanceId ?? (await promptExistingInstanceForProject(options, existingKit));
     configDirPath = existingKit.instances?.[instanceId];
     if (!configDirPath) {
       throw new FirebaseError(
