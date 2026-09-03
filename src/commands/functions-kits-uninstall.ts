@@ -1,4 +1,5 @@
 import { requireConfig } from "../requireConfig";
+import { requireAuth } from "../requireAuth";
 import { Command } from "../command";
 import { Config } from "../config";
 import { listKitConfigs } from "../functions/kits/config";
@@ -19,6 +20,7 @@ import { Context } from "../deploy/functions/args";
 export const command = new Command("functions:kits:uninstall")
   .description("uninstall a function kit or kit instance from your project")
   .before(requireConfig)
+  .before(requireAuth)
   .option("--kit <kitId>", "")
   .option("--instance <instanceId>", "")
   .action(async (options: Options): Promise<void> => {

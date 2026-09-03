@@ -1,4 +1,2 @@
-- Add `humanReadableDescription` field to MCP tools and use it in `--generate-tool-list` output.
-- Fixed an issue where the Functions emulator replaced an IPC failure with an unrelated `TypeError` about stream chunk types, hiding why the runtime became unreachable (#10876).
-- [Added] Add -f, --force option to `firebase ext:migrate`.
-- [Fixed] Fix parameter type preservation and optional system parameter handling during extension updates in `firebase ext:migrate`
+- Updated the Firebase SQL Connect local toolkit to v3.4.19, which includes the following changes:
+  - [fixed] Bug fixes and performance improvements for the PostgreSQL emulator.

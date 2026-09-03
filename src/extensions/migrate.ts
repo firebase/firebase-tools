@@ -3,7 +3,13 @@ import * as Table from "cli-table3";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
-import { last, logLabeledBullet, logLabeledWarning } from "../utils";
+import {
+  last,
+  logLabeledBullet,
+  logLabeledError,
+  logLabeledSuccess,
+  logLabeledWarning,
+} from "../utils";
 import { logPrefix } from "./extensionsHelper";
 import { confirm, select } from "../prompt";
 import * as extensionsApi from "./extensionsApi";
@@ -12,6 +18,9 @@ import * as paramHelper from "./paramHelper";
 import * as updateHelper from "./updateHelper";
 import { ExtensionInstance, ExtensionSpec } from "./types";
 import * as replacements from "./replacements.json";
+import { ejectSecretsFromInstance, secretsNeedingEjection } from "./export";
+import * as manifest from "./manifest";
+import { Options } from "../options";
 
 export interface MigrateOptions {
   package?: string;
@@ -431,4 +440,95 @@ export async function ensureInstanceUpToDate(
 
   const updatedInstance = await extensionsApi.getInstance(projectId, instanceId);
   return updatedInstance ?? instance;
+}
+
+/**
+ * Migrates secrets for an extension instance to Functions management if secrets are present.
+ * If no secrets are defined in the extension spec or already migrated, exits early without logging.
+ */
+export async function migrateSecrets(
+  instance: ExtensionInstance,
+  options?: { force?: boolean },
+): Promise<string[]> {
+  const secrets = await secretsNeedingEjection(instance);
+  if (secrets.length === 0) {
+    return [];
+  }
+
+  const instanceId = getInstanceId(instance);
+  logLabeledBullet(
+    logPrefix,
+    `Transferring secrets for instance ${clc.bold(instanceId)} to Functions management...`,
+  );
+
+  const results = await ejectSecretsFromInstance(instance);
+  if (results.success.length > 0) {
+    logLabeledSuccess(
+      logPrefix,
+      `Successfully transferred secrets to Functions management: ${results.success.join(", ")}`,
+    );
+  }
+  if (results.fail.length > 0) {
+    const resultMsg = `${results.fail.length} secrets failed to update: ${results.fail.join(", ")}.`;
+    logLabeledError("functions", resultMsg);
+    logLabeledError(
+      "functions",
+      "Ensure you have Secret Manager Admin (roles/secretmanager.admin) permissions to transfer secrets.",
+    );
+    if (!options?.force) {
+      throw new FirebaseError("Secret migration failed.", { exit: 1 });
+    }
+    logLabeledWarning(
+      "functions",
+      "Proceeding after secret migration failure in --force mode. Manually remove the 'firebase-extensions-managed' label from the secrets before running ext:uninstall, or risk permanent data loss.",
+    );
+  }
+  return results.success;
+}
+
+/**
+ * Uninstalls an extension instance immediately by removing it from the local manifest (if present)
+ * and deleting the GCP instance resources.
+ */
+export async function uninstallExtension(
+  projectId: string,
+  instanceId: string,
+  options: Options,
+  skipConfirm = false,
+): Promise<void> {
+  if (
+    !skipConfirm &&
+    !(await confirm({
+      message: `About to delete Extensions instance ${projectId}/${instanceId}, its associated resources, and service account. Continue?`,
+      nonInteractive: options.nonInteractive,
+      force: options.force,
+      default: true,
+    }))
+  ) {
+    return;
+  }
+
+  let config;
+  try {
+    config = manifest.loadConfig(options);
+  } catch {
+    logLabeledBullet(
+      logPrefix,
+      "No firebase.json found. Proceeding to immediate extension instance teardown.",
+    );
+  }
+  if (config && manifest.instanceExists(instanceId, config)) {
+    manifest.removeFromManifest(instanceId, config);
+  }
+
+  logLabeledBullet(logPrefix, `Uninstalling extension instance ${clc.bold(instanceId)}...`);
+  try {
+    await extensionsApi.deleteInstance(projectId, instanceId);
+  } catch (err: unknown) {
+    throw new FirebaseError(
+      `Error when attempting deletion: ${err instanceof Error ? err.message : String(err)}`,
+      { original: err instanceof Error ? err : undefined },
+    );
+  }
+  logLabeledSuccess(logPrefix, `Deleted Extensions instance ${projectId}/${instanceId}.`);
 }

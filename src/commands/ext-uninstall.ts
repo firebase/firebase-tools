@@ -6,13 +6,11 @@ import {
   logPrefix,
 } from "../extensions/extensionsHelper";
 import { requirePermissions } from "../requirePermissions";
-import { logLabeledBullet, logLabeledWarning, logLabeledSuccess } from "../utils";
+import { logLabeledWarning } from "../utils";
 import * as manifest from "../extensions/manifest";
-import { deleteInstance } from "../extensions/extensionsApi";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
-import { confirm } from "../prompt";
-import { FirebaseError } from "../error";
+import { uninstallExtension } from "../extensions/migrate";
 
 export const command = new Command("ext:uninstall <extensionInstanceId>")
   .description("uninstall an extension that is installed in your Firebase project by instance ID")
@@ -35,38 +33,7 @@ export const command = new Command("ext:uninstall <extensionInstanceId>")
     }
     if (options.immediate) {
       const projectId = needProjectId(options);
-      let config;
-      try {
-        config = manifest.loadConfig(options);
-      } catch {
-        logLabeledBullet(
-          logPrefix,
-          "No firebase.json found. Proceeding to immediate extension instance teardown.",
-        );
-      }
-      if (config && manifest.instanceExists(instanceId, config)) {
-        manifest.removeFromManifest(instanceId, config);
-      }
-
-      if (
-        !(await confirm({
-          message: `About to delete Extensions instance ${projectId}/${instanceId}, its associated resources, and service account. Continue?`,
-          nonInteractive: options.nonInteractive,
-          force: options.force,
-          default: true,
-        }))
-      ) {
-        return;
-      }
-      try {
-        await deleteInstance(projectId, instanceId);
-      } catch (err: unknown) {
-        throw new FirebaseError(
-          `Error when attempting deletion: ${err instanceof Error ? err.message : String(err)}`,
-          { original: err instanceof Error ? err : undefined },
-        );
-      }
-      logLabeledSuccess(logPrefix, `Deleted Extensions instance ${projectId}/${instanceId}.`);
+      await uninstallExtension(projectId, instanceId, options, false);
       return;
     }
     const config = manifest.loadConfig(options);
