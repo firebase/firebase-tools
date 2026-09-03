@@ -25,6 +25,18 @@ import * as versioning from "./versioning";
 
 import { fileExistsSync } from "../../../../fsutils";
 
+/** A running function discovery server. */
+interface AdminServer {
+  /** Shuts the server down. Safe to call after it has already exited. */
+  kill: () => Promise<void>;
+  /**
+   * Rejects if the server exits before discovery has finished, and otherwise
+   * never settles. Discovery races this so that a crash during module load is
+   * reported as itself rather than as a timeout.
+   */
+  serverExited: Promise<never>;
+}
+
 /**
  *
  */
@@ -255,28 +267,75 @@ export class Delegate {
     config: backend.RuntimeConfigValues,
     envs: backend.EnvironmentVariables,
     port: string,
-  ): Promise<() => Promise<void>> {
+  ): Promise<AdminServer> {
     const childProcess = this.spawnFunctionsProcess(config, { ...envs, PORT: port });
 
-    // TODO: Refactor return type to () => Promise<void> to simplify nested promises
-    return Promise.resolve(async () => {
-      const p = new Promise<void>((resolve, reject) => {
-        childProcess.once("exit", resolve);
-        childProcess.once("error", reject);
+    // Attached at spawn time rather than in kill(): neither event replays, so a
+    // server that died before shutdown ran would leave a listener that can never
+    // fire and a kill() that never resolves.
+    let exited = false;
+    const exit = new Promise<void>((resolve, reject) => {
+      childProcess.once("exit", () => {
+        exited = true;
+        resolve();
       });
+      childProcess.once("error", reject);
+    });
+    exit.catch(() => {
+      // kill() is the only intended consumer; it may never be called.
+    });
 
+    let stderr = "";
+    childProcess.stderr?.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString();
+    });
+
+    // Armed only while discovery is in flight. Once we have asked the server to
+    // quit, an exit is expected rather than a crash.
+    let armed = true;
+    const serverExited = new Promise<never>((_resolve, reject) => {
+      childProcess.once("exit", (code, signal) => {
+        if (!armed) {
+          return;
+        }
+        const how = code === null ? `signal ${String(signal)}` : `code ${code}`;
+        const details = stderr.trim();
+        reject(
+          new FirebaseError(
+            `User code failed to load. Cannot determine backend specification. ` +
+              `The functions process exited with ${how} before it could be analyzed.` +
+              (details ? `\n\n${details}` : ""),
+          ),
+        );
+      });
+    });
+    serverExited.catch(() => {
+      // Discovery may finish before the server exits and never race this.
+    });
+
+    const kill = async (): Promise<void> => {
+      armed = false;
+      if (exited) {
+        return;
+      }
       try {
         await fetch(`http://localhost:${port}/__/quitquitquit`);
       } catch (e) {
         logger.debug("Failed to call quitquitquit. This often means the server failed to start", e);
       }
-      setTimeout(() => {
+      const killTimer = setTimeout(() => {
         if (!childProcess.killed) {
           childProcess.kill("SIGKILL");
         }
       }, 10_000);
-      return p;
-    });
+      try {
+        await exit;
+      } finally {
+        clearTimeout(killTimer);
+      }
+    };
+
+    return Promise.resolve({ kill, serverExited });
   }
 
   // eslint-disable-next-line require-await
@@ -314,9 +373,16 @@ export class Delegate {
         // HTTP-based discovery (default)
         const basePort = 8000 + randomInt(0, 1000); // Add a jitter to reduce likelihood of race condition
         const port = await portfinder.getPortPromise({ port: basePort });
-        const kill = await this.serveAdmin(config, env, port.toString());
+        const { kill, serverExited } = await this.serveAdmin(config, env, port.toString());
         try {
-          discovered = await discovery.detectFromPort(port, this.projectId, this.runtime);
+          discovered = await discovery.detectFromPort(
+            port,
+            this.projectId,
+            this.runtime,
+            undefined,
+            undefined,
+            serverExited,
+          );
         } finally {
           await kill();
         }
