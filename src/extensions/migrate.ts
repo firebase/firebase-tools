@@ -500,6 +500,18 @@ export async function uninstallExtension(
   options: Options,
   skipConfirm = false,
 ): Promise<void> {
+  if (
+    !skipConfirm &&
+    !(await confirm({
+      message: `About to delete Extensions instance ${projectId}/${instanceId}, its associated resources, and service account. Continue?`,
+      nonInteractive: options.nonInteractive,
+      force: options.force,
+      default: true,
+    }))
+  ) {
+    return;
+  }
+
   let config;
   try {
     config = manifest.loadConfig(options);
@@ -513,17 +525,6 @@ export async function uninstallExtension(
     manifest.removeFromManifest(instanceId, config);
   }
 
-  if (
-    !skipConfirm &&
-    !(await confirm({
-      message: `About to delete Extensions instance ${projectId}/${instanceId}, its associated resources, and service account. Continue?`,
-      nonInteractive: options.nonInteractive,
-      force: options.force,
-      default: true,
-    }))
-  ) {
-    return;
-  }
   logLabeledBullet(logPrefix, `Uninstalling extension instance ${clc.bold(instanceId)}...`);
   try {
     await extensionsApi.deleteInstance(projectId, instanceId);

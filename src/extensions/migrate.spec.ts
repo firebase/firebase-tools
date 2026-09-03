@@ -13,7 +13,8 @@ import * as kitInstallModule from "../functions/kits/install";
 import * as extensionsHelper from "./extensionsHelper";
 import { command as extMigrateCommand } from "../commands/ext-migrate";
 import { Config } from "../config";
-import { ExtensionInstance, ParamType } from "./types";
+import { Options } from "../options";
+import { Extension, ExtensionInstance, ExtensionVersion, ParamType } from "./types";
 import * as deployModule from "../deploy";
 import * as manifest from "./manifest";
 
@@ -361,7 +362,7 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
         name: "firebase/firestore-send-email@0.1.14",
         ref: "firebase/firestore-send-email@0.1.14",
         spec: { name: "firestore-send-email", version: "0.1.14" },
-      } as any);
+      } as unknown as ExtensionVersion);
 
       const updated = await migrateModule.ensureInstanceUpToDate("test-project", mockInstance1);
 
@@ -371,13 +372,13 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
     it("should automatically attempt upgrade when a newer version exists", async () => {
       sandbox.stub(extensionsApi, "getExtension").resolves({
         latestVersion: "0.1.15",
-      } as any);
+      } as unknown as Extension);
       const getExtVersionStub = sandbox.stub(extensionsApi, "getExtensionVersion").resolves({
         name: "firebase/firestore-send-email@0.1.15",
         ref: "firebase/firestore-send-email@0.1.15",
         spec: { name: "firestore-send-email", version: "0.1.15", params: [] },
-      } as any);
-      sandbox.stub(updateHelper, "update").resolves({} as any);
+      } as unknown as ExtensionVersion);
+      sandbox.stub(updateHelper, "update").resolves({} as unknown as ExtensionInstance);
       sandbox.stub(extensionsApi, "getInstance").resolves(mockInstance1);
 
       await migrateModule.ensureInstanceUpToDate("test-project", mockInstance1);
@@ -388,14 +389,16 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
     it("should merge systemParams into currentParams when prompting for new parameters", async () => {
       sandbox.stub(extensionsApi, "getExtension").resolves({
         latestVersion: "0.1.15",
-      } as any);
+      } as unknown as Extension);
       sandbox.stub(extensionsApi, "getExtensionVersion").resolves({
         name: "firebase/firestore-send-email@0.1.15",
         ref: "firebase/firestore-send-email@0.1.15",
         spec: { name: "firestore-send-email", version: "0.1.15", params: [] },
-      } as any);
-      const promptStub = sandbox.stub(paramHelper, "promptForNewParams").resolves({} as any);
-      sandbox.stub(updateHelper, "update").resolves({} as any);
+      } as unknown as ExtensionVersion);
+      const promptStub = sandbox
+        .stub(paramHelper, "promptForNewParams")
+        .resolves({} as { [option: string]: paramHelper.ParamBindingOptions });
+      sandbox.stub(updateHelper, "update").resolves({} as unknown as ExtensionInstance);
       sandbox.stub(extensionsApi, "getInstance").resolves(mockInstance1);
 
       const instanceWithSystemParams: ExtensionInstance = {
@@ -420,12 +423,12 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
     it("should throw FirebaseError with manual upgrade instructions when upgrade fails", async () => {
       sandbox.stub(extensionsApi, "getExtension").resolves({
         latestVersion: "0.1.15",
-      } as any);
+      } as unknown as Extension);
       sandbox.stub(extensionsApi, "getExtensionVersion").resolves({
         name: "firebase/firestore-send-email@0.1.15",
         ref: "firebase/firestore-send-email@0.1.15",
         spec: { name: "firestore-send-email", version: "0.1.15", params: [] },
-      } as any);
+      } as unknown as ExtensionVersion);
       sandbox.stub(updateHelper, "update").rejects(new Error("API rate limit exceeded"));
 
       await expect(
@@ -583,10 +586,11 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
     let instanceExistsStub: sinon.SinonStub;
     let removeFromManifestStub: sinon.SinonStub;
     let confirmStub: sinon.SinonStub;
+    const mockOptions = {} as unknown as Options;
 
     beforeEach(() => {
       deleteInstanceStub = sandbox.stub(extensionsApi, "deleteInstance").resolves();
-      loadConfigStub = sandbox.stub(manifest, "loadConfig").returns({} as any);
+      loadConfigStub = sandbox.stub(manifest, "loadConfig").returns({} as unknown as Config);
       instanceExistsStub = sandbox.stub(manifest, "instanceExists").returns(false);
       removeFromManifestStub = sandbox.stub(manifest, "removeFromManifest");
       confirmStub = sandbox.stub(prompt, "confirm").resolves(true);
@@ -594,7 +598,7 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
 
     it("should remove from manifest and delete instance when skipConfirm is true", async () => {
       instanceExistsStub.returns(true);
-      await migrateModule.uninstallExtension("test-project", "email-1", {} as any, true);
+      await migrateModule.uninstallExtension("test-project", "email-1", mockOptions, true);
 
       expect(instanceExistsStub).to.have.been.calledOnceWith("email-1");
       expect(removeFromManifestStub).to.have.been.calledOnceWith("email-1");
@@ -602,25 +606,29 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       expect(deleteInstanceStub).to.have.been.calledOnceWith("test-project", "email-1");
     });
 
-    it("should prompt confirmation when skipConfirm is false", async () => {
+    it("should prompt confirmation and remove from manifest and delete when skipConfirm is false and confirmed", async () => {
+      instanceExistsStub.returns(true);
       confirmStub.resolves(true);
-      await migrateModule.uninstallExtension("test-project", "email-1", {} as any, false);
+      await migrateModule.uninstallExtension("test-project", "email-1", mockOptions, false);
 
       expect(confirmStub).to.have.been.calledOnce;
+      expect(removeFromManifestStub).to.have.been.calledOnceWith("email-1");
       expect(deleteInstanceStub).to.have.been.calledOnceWith("test-project", "email-1");
     });
 
-    it("should abort deletion if confirmation is declined", async () => {
+    it("should abort deletion and not remove from manifest if confirmation is declined", async () => {
+      instanceExistsStub.returns(true);
       confirmStub.resolves(false);
-      await migrateModule.uninstallExtension("test-project", "email-1", {} as any, false);
+      await migrateModule.uninstallExtension("test-project", "email-1", mockOptions, false);
 
       expect(confirmStub).to.have.been.calledOnce;
+      expect(removeFromManifestStub).to.not.have.been.called;
       expect(deleteInstanceStub).to.not.have.been.called;
     });
 
     it("should handle missing manifest / firebase.json gracefully", async () => {
       loadConfigStub.throws(new Error("No firebase.json found"));
-      await migrateModule.uninstallExtension("test-project", "email-1", {} as any, true);
+      await migrateModule.uninstallExtension("test-project", "email-1", mockOptions, true);
 
       expect(deleteInstanceStub).to.have.been.calledOnceWith("test-project", "email-1");
     });
@@ -628,7 +636,7 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
     it("should throw FirebaseError on deletion error", async () => {
       deleteInstanceStub.rejects(new Error("Network error"));
       await expect(
-        migrateModule.uninstallExtension("test-project", "email-1", {} as any, true),
+        migrateModule.uninstallExtension("test-project", "email-1", mockOptions, true),
       ).to.be.rejectedWith(FirebaseError, "Error when attempting deletion: Network error");
     });
   });

@@ -105,7 +105,10 @@ export const command = new Command("ext:migrate")
       skipReport: true,
     });
 
-    const kitInstanceId = installResult.instanceId || plan.instanceId;
+    const kitInstanceId = installResult.instanceId;
+    if (!kitInstanceId) {
+      throw new FirebaseError("Kit installation failed: no instance ID returned.", { exit: 1 });
+    }
 
     logLabeledBullet(logPrefix, `Deploying functions kit instance ${clc.bold(kitInstanceId)}...`);
 
