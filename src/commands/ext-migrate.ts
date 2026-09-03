@@ -9,14 +9,21 @@ import {
 } from "../extensions/extensionsHelper";
 import { requirePermissions } from "../requirePermissions";
 import { requireConfig } from "../requireConfig";
-import { createMigrationPlan, ensureInstanceUpToDate, migrateSecrets } from "../extensions/migrate";
+import {
+  createMigrationPlan,
+  ensureInstanceUpToDate,
+  migrateSecrets,
+  uninstallExtension,
+} from "../extensions/migrate";
 import { functionsEnvFromInstance } from "../extensions/export";
 import { installKitOrInstance } from "../functions/kits/install";
 import { validateNpmPackageName } from "../functions/kits";
 import { Options } from "../options";
 import { logLabeledBullet, logLabeledWarning } from "../utils";
 import { FirebaseError } from "../error";
-import { logger } from "../logger";
+import { deploy, TARGET_PERMISSIONS } from "../deploy";
+import { checkServiceAccountIam } from "../deploy/functions/checkIam";
+import { confirm } from "../prompt";
 
 export interface ExtMigrateOptions extends Options {
   package?: string;
@@ -31,9 +38,17 @@ export const command = new Command("ext:migrate")
   .option("-e, --extension <extensionRef>", "extension reference or name to migrate")
   .option("-f, --force", "force update and migration without prompting")
   .before(requireConfig)
-  .before(requirePermissions, ["firebaseextensions.instances.list"])
+  .before(requirePermissions, [
+    "firebaseextensions.instances.list",
+    "firebaseextensions.instances.delete",
+    ...TARGET_PERMISSIONS["functions"],
+  ])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
+  .before((options: Options) => {
+    const projectId = needProjectId(options);
+    return checkServiceAccountIam(projectId);
+  })
   .action(async (options: ExtMigrateOptions) => {
     const projectId = needProjectId(options);
     if (options.package) {
@@ -77,7 +92,7 @@ export const command = new Command("ext:migrate")
       `Installing kit ${clc.bold(plan.kitPackage)} for instance ${clc.bold(plan.instanceId)}...`,
     );
 
-    await installKitOrInstance({
+    const installResult = await installKitOrInstance({
       ...options,
       config: options.config,
       package: plan.kitPackage,
@@ -89,6 +104,44 @@ export const command = new Command("ext:migrate")
       },
     });
 
-    logger.info("TODO: Draw the rest of the owl");
+    const kitInstanceId = installResult.instanceId;
+    if (!kitInstanceId) {
+      throw new FirebaseError("Kit installation failed: no instance ID returned.", { exit: 1 });
+    }
+
+    logLabeledBullet(logPrefix, `Deploying functions kit instance ${clc.bold(kitInstanceId)}...`);
+
+    const deployOptions: Options = {
+      ...options,
+      only: `functions:${kitInstanceId}`,
+      filteredTargets: ["functions"],
+      project: projectId,
+    };
+
+    try {
+      await deploy(["functions"], deployOptions);
+    } catch (err: unknown) {
+      throw new FirebaseError(
+        `Failed to deploy. Please fix and retry with firebase deploy --only functions:${kitInstanceId}. After success you may remove the old extension with firebase ext:uninstall ${plan.instanceId} --project ${projectId} --immediate`,
+        { original: err instanceof Error ? err : undefined, exit: 1 },
+      );
+    }
+
+    const shouldUninstall = await confirm({
+      message: `Functions kit ${kitInstanceId} successfully deployed. After checking function logs to verify that your backend is performing correctly, you should uninstall extension instance ${plan.instanceId}. Uninstall it now?`,
+      default: true,
+      nonInteractive: options.nonInteractive,
+      force: options.force,
+    });
+
+    if (!shouldUninstall) {
+      logLabeledBullet(
+        logPrefix,
+        `You may safely uninstall extension instance ${clc.bold(plan.instanceId)} in the future with the command ${clc.bold(`firebase ext:uninstall ${plan.instanceId} --project ${projectId} --immediate`)}`,
+      );
+      return plan;
+    }
+
+    await uninstallExtension(projectId, plan.instanceId, options, true);
     return plan;
   });
