@@ -129,7 +129,7 @@ export function functionsEnvFromInstance(instance: ExtensionInstance): Record<st
       .replace(/^firebaseextensions\.v1beta\.(v2)?function\//, "EXT_MIGRATED_SYSTEM_")
       .toUpperCase();
     if (renamed === "EXT_MIGRATED_SYSTEM_LOCATION") {
-      renamed = "DEFAULT_FUNCTION_REGION";
+      renamed = "FUNCTION_DEFAULT_REGION";
     }
     envs[renamed] = sysParamValue;
   }
@@ -142,7 +142,7 @@ export function functionsEnvFromInstance(instance: ExtensionInstance): Record<st
         .replace(/^firebaseextensions\.v1beta\.(v2)?function\//, "EXT_MIGRATED_SYSTEM_")
         .toUpperCase();
       if (renamed === "EXT_MIGRATED_SYSTEM_LOCATION") {
-        renamed = "DEFAULT_FUNCTION_REGION";
+        renamed = "FUNCTION_DEFAULT_REGION";
       }
       envs[renamed] = String(specSystemParam.default ?? "");
     }

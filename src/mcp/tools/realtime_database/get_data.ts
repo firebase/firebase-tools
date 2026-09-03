@@ -12,6 +12,7 @@ export const get_data = tool(
     name: "get_data",
     description:
       "Use this to retrieve data from the specified location in a Firebase Realtime Database.",
+    humanReadableDescription: "Read data from a specified path in the Firebase Realtime Database.",
     inputSchema: z.object({
       databaseUrl: z
         .string()
