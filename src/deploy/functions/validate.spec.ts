@@ -165,6 +165,28 @@ describe("validate", () => {
       );
     });
 
+    it("reports every downgraded function, not just the first", () => {
+      const want = backend.of(
+        { ...ENDPOINT_BASE, id: "a", platform: "gcfv1" },
+        { ...ENDPOINT_BASE, id: "b", platform: "gcfv1" },
+      );
+      const have = backend.of(
+        { ...ENDPOINT_BASE, id: "a", platform: "gcfv2" },
+        { ...ENDPOINT_BASE, id: "b", platform: "run" },
+      );
+
+      let err: unknown;
+      try {
+        validate.endpointsAreValid(want, have);
+      } catch (e: unknown) {
+        err = e;
+      }
+
+      expect(err).to.be.instanceOf(FirebaseError);
+      expect((err as FirebaseError).message).to.match(/a\(us-east1\)[\s\S]*GCFv2/);
+      expect((err as FirebaseError).message).to.match(/b\(us-east1\)[\s\S]*Cloud Run/);
+    });
+
     it("allows a gcfv1 function that does not exist yet", () => {
       const want = backend.of({ ...ENDPOINT_BASE, platform: "gcfv1" });
 

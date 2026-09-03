@@ -148,12 +148,16 @@ function noGenerationDowngrades(
   wantBackend: backend.Backend,
   existingBackend: backend.Backend,
 ): void {
-  for (const want of backend.allEndpoints(wantBackend)) {
+  const msgs: string[] = [];
+  for (const want of backend.allEndpoints(wantBackend).sort(backend.compareFunctions)) {
     const have = existingBackend.endpoints[want.region]?.[want.id];
     const msg = have && generationDowngradeMessage(want, have);
     if (msg) {
-      throw new FirebaseError(msg);
+      msgs.push(msg);
     }
+  }
+  if (msgs.length) {
+    throw new FirebaseError(msgs.join("\n"));
   }
 }
 
