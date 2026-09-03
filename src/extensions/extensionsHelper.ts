@@ -30,7 +30,14 @@ import {
   listExtensionVersions,
 } from "./publisherApi";
 import { Choice, confirm, input, select } from "../prompt";
-import { Extension, ExtensionSource, ExtensionSpec, ExtensionVersion, Param } from "./types";
+import {
+  Extension,
+  ExtensionInstance,
+  ExtensionSource,
+  ExtensionSpec,
+  ExtensionVersion,
+  Param,
+} from "./types";
 import * as refs from "./refs";
 import { EXTENSIONS_SPEC_FILE, readFile, getLocalExtensionSpec } from "./localHelper";
 import { logger } from "../logger";
@@ -1254,4 +1261,42 @@ export async function diagnoseAndFixProject(options: any): Promise<void> {
   if (!ok) {
     throw new FirebaseError("Unable to proceed until all issues are resolved.");
   }
+}
+
+/**
+ * Ensures that the extension instance has its spec loaded, fetching it on demand if missing.
+ */
+export async function ensureInstanceSpec(instance: ExtensionInstance): Promise<ExtensionInstance> {
+  if (instance.config?.source?.spec) {
+    return instance;
+  }
+
+  const extensionRef = instance.config?.extensionRef ?? instance.extensionRef;
+  if (!extensionRef) {
+    return instance;
+  }
+
+  const ref = refs.parse(extensionRef);
+  const extensionVersion =
+    instance.config?.extensionVersion ?? instance.extensionVersion ?? ref.version ?? "latest";
+  const extVersion = await getExtensionVersion(
+    `${ref.publisherId}/${ref.extensionId}@${extensionVersion}`,
+  );
+
+  return {
+    ...instance,
+    config: {
+      ...instance.config,
+      source: {
+        ...instance.config?.source,
+        name: instance.config?.source?.name ?? extVersion.name,
+        state:
+          instance.config?.source?.state ??
+          (extVersion.state === "PUBLISHED" ? "ACTIVE" : "STATE_UNSPECIFIED"),
+        packageUri: instance.config?.source?.packageUri ?? extVersion.sourceDownloadUri,
+        hash: instance.config?.source?.hash ?? extVersion.hash,
+        spec: extVersion.spec,
+      },
+    },
+  };
 }

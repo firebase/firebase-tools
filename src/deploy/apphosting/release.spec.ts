@@ -140,5 +140,85 @@ describe("apphosting", () => {
         },
       });
     });
+
+    it("correctly passes runConfig in buildInput and locallyBuilt source", async () => {
+      const context: Context = {
+        backendConfigs: {
+          fooLocalBuild: {
+            backendId: "fooLocalBuild",
+            rootDir: "/root",
+            ignore: [],
+            localBuild: true,
+          },
+        },
+        backendLocations: { fooLocalBuild: "us-central1" },
+        backendStorageUris: {
+          fooLocalBuild: "gs://bucket/foo-local-build.tar.gz",
+        },
+        backendLocalBuilds: {
+          fooLocalBuild: {
+            outputFiles: ["./dist"],
+            localBuildScratchDir: "/root/.local_build_fooLocalBuild",
+            buildConfig: {
+              runCommand: "npm run build",
+              env: [{ variable: "VAR1", value: "VALUE1" }],
+              runConfig: {
+                cpu: 2,
+                memoryMib: 3072,
+                concurrency: 8,
+                minInstances: 1,
+                maxInstances: 10,
+              },
+            },
+          },
+        },
+      };
+
+      const orchestrateRolloutStub = sinon.stub(rollout, "orchestrateRollout").resolves();
+      sinon.stub(backend, "getBackend").resolves({
+        name: "projects/my-project/locations/us-central1/backends/fooLocalBuild",
+        servingLocality: "GLOBAL_ACCESS",
+        labels: {},
+        createTime: "2023-01-01T00:00:00Z",
+        updateTime: "2023-01-01T00:00:00Z",
+        uri: "foo.apphosting.com",
+      });
+
+      await release(context, opts);
+
+      expect(orchestrateRolloutStub).to.be.calledWith({
+        projectId: "my-project",
+        backendId: "fooLocalBuild",
+        location: "us-central1",
+        buildInput: {
+          config: {
+            runCommand: "npm run build",
+            env: [{ variable: "VAR1", value: "VALUE1" }],
+            runConfig: {
+              cpu: 2,
+              memoryMib: 3072,
+              concurrency: 8,
+              minInstances: 1,
+              maxInstances: 10,
+            },
+          },
+          source: {
+            locallyBuilt: {
+              userStorageUri: "gs://bucket/foo-local-build.tar.gz",
+              rootDirectory: "/root",
+              runCommand: "npm run build",
+              env: [{ variable: "VAR1", value: "VALUE1" }],
+              runConfig: {
+                cpu: 2,
+                memoryMib: 3072,
+                concurrency: 8,
+                minInstances: 1,
+                maxInstances: 10,
+              },
+            },
+          },
+        },
+      });
+    });
   });
 });

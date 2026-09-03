@@ -7,6 +7,7 @@ import {
   isTransientError,
   parseErrorCode,
 } from "./executor";
+import * as ensure from "../ensure";
 import { FirebaseError } from "../../../error";
 
 import { SourceTokenScraper } from "./sourceTokenScraper";
@@ -241,6 +242,23 @@ export class Fabricator {
     for (const [codebase, codebasePlan] of Object.entries(plan)) {
       await this.grantNewRoles(codebasePlan, codebase);
     }
+
+    const secretAccessPromises = Object.values(plan).flatMap((codebasePlan) =>
+      Object.entries(codebasePlan.secretAccessPlan || {}).map(([secret, serviceAccounts]) =>
+        this.executor.run(
+          () =>
+            ensure.grantSecretAccess({
+              projectId: this.projectId,
+              secret,
+              serviceAccounts,
+            }),
+          {
+            retryPredicates: [isTransientError, isServiceAccount404],
+          },
+        ),
+      ),
+    );
+    await Promise.all(secretAccessPromises);
 
     // Accumulate all regional changesets across all codebases
     const allChangesets: planner.Changeset[] = [];

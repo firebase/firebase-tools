@@ -10,6 +10,7 @@ export const create_note = tool(
     name: "create_note",
     description:
       "Add a note to an issue from crashlytics. Only supported for mobile (Android and iOS) apps.",
+    humanReadableDescription: "Add a note to a Crashlytics issue for an Android or iOS app.",
     inputSchema: z.object({
       appId: ApplicationIdSchema,
       issueId: IssueIdSchema,
@@ -38,6 +39,8 @@ export const list_notes = tool(
     name: "list_notes",
     description:
       "Use this to list all notes for an issue in Crashlytics. Only supported for mobile (Android and iOS) apps.",
+    humanReadableDescription:
+      "List all notes attached to a Crashlytics issue for an Android or iOS app.",
     inputSchema: z.object({
       appId: ApplicationIdSchema,
       issueId: IssueIdSchema,
@@ -65,6 +68,7 @@ export const delete_note = tool(
     name: "delete_note",
     description:
       "Delete a note from a Crashlytics issue. Only supported for mobile (Android and iOS) apps.",
+    humanReadableDescription: "Delete a note from a Crashlytics issue for an Android or iOS app.",
     inputSchema: z.object({
       appId: ApplicationIdSchema,
       issueId: IssueIdSchema,

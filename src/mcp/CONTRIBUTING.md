@@ -92,9 +92,11 @@ import { tool } from "../../tool";
 import { mcpError, toContent } from "../../util";
 
 export const foo_bar = tool(
+  "<product>",
   {
     name: "foo_bar",
     description: "Foos a bar. This description informs LLMs when to use this tool",
+    humanReadableDescription: "Foos a bar.",
     inputSchema: z.object({
       foo: z
         .string()
@@ -138,7 +140,8 @@ Here are a few style notes:
   - should be all lower-case letters
   - should be snake case
 - Descriptions
-  - should be aimed at informing LLMs, not humans
+  - `description` should be aimed at informing LLMs, not humans
+  - `humanReadableDescription` should be a short, 1 sentence description of what the tool does for human-facing documentation
 
 #### Load the command
 

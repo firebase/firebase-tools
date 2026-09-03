@@ -8,6 +8,7 @@ import {
   setSecretParamsToLatest,
   functionsEnvFromInstance,
   ejectSecretsFromInstance,
+  secretsNeedingEjection,
 } from "../extensions/export";
 import { ensureExtensionsApiEnabled } from "../extensions/extensionsHelper";
 import * as manifest from "../extensions/manifest";
@@ -20,15 +21,14 @@ import { needProjectId } from "../projectUtils";
 import { confirm } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import { getInstance } from "../extensions/extensionsApi";
-import { last } from "../utils";
+import { last, logLabeledBullet, logLabeledError, logLabeledWarning } from "../utils";
+import { ExtensionInstance } from "../extensions/types";
 import { writeUserEnvs, UserEnvsOpts, hasUserEnvs } from "../functions/env";
 import { mkdirSync } from "fs";
-import { join } from "path";
-import { logBullet } from "../utils";
+import { resolve } from "path";
 import { Config } from "../config";
 import { normalizeAndValidate, isKitConfig } from "../functions/projectConfig";
 import { FirebaseError } from "../error";
-import * as clc from "colorette";
 import * as experiments from "../experiments";
 
 export const command = new Command("ext:export")
@@ -38,14 +38,12 @@ export const command = new Command("ext:export")
     `experimental: controls the target system of the export (supports "extensions", "functions")`,
   )
   .option(
-    `-e`,
-    `--extension-instance <instanceId>`,
-    `scope the export to the single instance with the specified instance id`,
+    "--instance <instanceId>",
+    "scope the export to the single instance with the specified instance id",
   )
   .option(
-    `-k`,
-    "---kit-instance <kitId>",
-    `write the .env export from --mode functions to the config path for a kit instance currently defined in firebase.json`,
+    "-k, --kit-instance <kitId>",
+    "write the .env export from --mode functions to the config path for a kit instance currently defined in firebase.json",
   )
   .option(
     `--outputDir <path>`,
@@ -56,10 +54,7 @@ export const command = new Command("ext:export")
   .before(checkMinRequiredVersion, "extMinVersion")
   .withForce()
   .action(async (options: Options) => {
-    if (
-      experiments.isEnabled("extMigrationFeatures") &&
-      (options.mode === "functions" || options.mode === "kits")
-    ) {
+    if (experiments.isEnabled("extMigrationFeatures") && options.mode === "functions") {
       // Functions handler:
       // - writes to <instanceId>/.env-<projectId>
       // - does not parametrize project number and ID (e.g "12345678" instead of "{param:PROJECT_NUMBER}")
@@ -84,11 +79,11 @@ async function extHandler(options: Options): Promise<void> {
     logger.info(`No extension instances installed on ${projectId}, so there is nothing to export.`);
     return;
   }
-  if (options.extensionInstance) {
-    have = have.filter((s) => s.instanceId === options.extensionInstance);
+  if (options.instance) {
+    have = have.filter((s) => s.instanceId === options.instance);
     if (have.length === 0) {
       logger.info(
-        `No extension instances installed on ${projectId} match specified instance ID ${options.extensionInstance}.`,
+        `No extension instances installed on ${projectId} match specified instance ID ${options.instance}.`,
       );
       return;
     }
@@ -150,72 +145,107 @@ async function extHandler(options: Options): Promise<void> {
 }
 
 async function fnHandler(options: Options): Promise<void> {
-  if (!options.extensionInstance) {
+  if (!options.instance) {
     logger.info(
       `ext:export must specify an --instance <instanceId> option when exporting to Functions. Use ext:list to find your instance IDs.`,
     );
     return;
   }
   const projectId = needProjectId(options);
-  const instance = await getInstance(projectId, options.extensionInstance as string);
+  const instance = await getInstance(projectId, options.instance as string);
   if (typeof instance === "undefined") {
-    logger.info(`No extension matching instance ID ${options.extensionInstance} found`);
+    logger.info(`No extension matching instance ID ${options.instance} found`);
     return;
   }
   if (instance.state !== "ACTIVE" && !options.force) {
     throw new FirebaseError(
-      `Extension ${options.extensionInstance} is in state ${instance.state}. To export a non-ACTIVE extension, use the --force option.`,
+      `Extension ${options.instance} is in state ${instance.state}. To export a non-ACTIVE extension, use the --force option.`,
     );
   }
 
   const instanceId = last(instance.name.split("/")) ?? "";
-  if (instanceId !== options.extensionInstance) {
+  if (instanceId !== options.instance) {
     return;
   }
 
-  let secretCount = 0;
-  const convertedEnv = functionsEnvFromInstance(instance);
-  for (const key of Object.keys(convertedEnv)) {
-    if (key.startsWith("FIREBASE_SECRET_REF_")) {
-      secretCount += 1;
-    }
-    console.log(`${key}=${convertedEnv[key]}`);
-  }
+  // Do not go past this block without either --force or all secrets having been ejected from extensions successfully
+  await handleSecretEjection(options, instance);
 
+  const convertedEnv = functionsEnvFromInstance(instance);
   const writeLocation: UserEnvsOpts = kitExportTarget(instanceId, projectId, options);
   if (hasUserEnvs(writeLocation)) {
     logger.info(
       `Exported extensions config appears to already exist in /${instanceId}, aborting write.`,
     );
   } else {
-    logBullet(
-      clc.cyan(clc.bold("functions: ")) +
-        `Saving exported extensions config as a Function Kits .env file`,
-    );
-    mkdirSync(join(writeLocation.projectDir, writeLocation.configDir ?? instanceId), {
+    logLabeledBullet("functions", `Saving exported extensions config as a Function Kits .env file`);
+    mkdirSync(resolve(writeLocation.projectDir, writeLocation.configDir ?? instanceId), {
       recursive: true,
     });
     writeUserEnvs(convertedEnv, writeLocation);
   }
+}
 
-  if (secretCount === 0) {
+/**
+ * Attempts to remove the `firebase-extensions-managed` label from all Secrets in an ExtensionInstance.
+ * The legacy Extensions backend tears down Secrets that have this label upon Extension uninstall, so
+ * not doing this risks accidentally destroying the user's secret during kits migration.
+ * Because of this risk ext:export requires secret ejection to be wholly successful if --force is not set.
+ *
+ * Throws an error if ext:export shouldn't proceed, based on the result of of the ejection process and the value of options.force
+ */
+export async function handleSecretEjection(
+  options: Options,
+  instance: ExtensionInstance,
+): Promise<void> {
+  const secrets = await secretsNeedingEjection(instance);
+  if (secrets.length === 0) {
     return;
   }
-  if (
-    !(await confirm({
-      message: `${secretCount} Cloud Secret Manager resources found in export. Remove from Extensions lifecycle management?\nThis is necessary to prevent extension uninstall from deleting potentially migrated secrets.`,
-      nonInteractive: options.nonInteractive,
-      force: options.force,
-      default: true,
-    }))
-  ) {
-    return;
-  }
-  const secretsChanged = await ejectSecretsFromInstance(instance);
-  logBullet(
-    clc.cyan(clc.bold("functions: ")) +
-      `Added functions-managed label to secrets: ${secretsChanged}`,
+
+  logLabeledBullet(
+    "functions",
+    "Cloud Secret Manager resources still require migration from Extensions lifecycle management to Kits.",
   );
+  logLabeledWarning(
+    "functions",
+    "Finishing the Extension migration process with extensions:uninstall without migrating bound secrets will result in permanent loss of secrets.",
+  );
+  const userAllowedEjection = await confirm({
+    message: `Automatically migrate ${secrets.length} Secrets from Extensions to Kits? (Y/n)`,
+    nonInteractive: options.nonInteractive,
+    force: options.force,
+    default: true,
+  });
+  if (userAllowedEjection) {
+    const results = await ejectSecretsFromInstance(instance);
+    if (results.fail.length > 0) {
+      let resultMsg = "";
+      if (results.success.length > 0) {
+        resultMsg = `Added functions-managed label to secrets: ${results.success}.`;
+      }
+      resultMsg += `${results.fail.length} secrets failed to update: ${results.fail}`;
+      logLabeledError("functions", resultMsg);
+      if (!options.force) {
+        throw new FirebaseError("Secret migration failed.");
+      } else {
+        logLabeledWarning(
+          "functions",
+          "Proceeding after secret migration failure in --force mode. Manually remove the 'firebase-extensions-managed' label from the secrets, or risk permanent data loss.",
+        );
+      }
+    } else {
+      logLabeledBullet(
+        "functions",
+        `Added functions-managed label to secrets: ${results.success}.`,
+      );
+    }
+  } else {
+    logLabeledError(
+      "functions",
+      "Proceeding without migrating secrets risks permanent data loss. Manually remove the 'firebase-extensions-managed' label from the secrets before running ext:uninstall.",
+    );
+  }
 }
 
 /**
@@ -228,13 +258,14 @@ async function fnHandler(options: Options): Promise<void> {
  */
 function kitExportTarget(instanceId: string, projectId: string, options: Options): UserEnvsOpts {
   const firebaseConfig = Config.load(options, true);
+  const cwd = options.cwd ?? process.cwd();
   if (typeof options.outputDir !== "undefined") {
     return {
       functionsSource: instanceId,
-      configDir: String(options.outputDir),
+      configDir: resolve(cwd, String(options.outputDir)),
       projectId: projectId,
       isEmulator: false,
-      projectDir: options.cwd ?? process.cwd(),
+      projectDir: cwd,
     };
   }
   if (typeof options.kitInstance !== "undefined") {
@@ -250,23 +281,27 @@ function kitExportTarget(instanceId: string, projectId: string, options: Options
       if (!isKitConfig(fn)) {
         continue;
       }
-      for (const [kitId, kitPath] of Object.entries(fn.instances)) {
-        if (kitId === options.kitInstance) {
+      for (const [kitInstanceId, configDirPath] of Object.entries(fn.instances)) {
+        if (kitInstanceId === options.kitInstance) {
+          const projectDir = options.projectRoot ?? cwd;
           return {
             functionsSource: instanceId,
-            configDir: String(kitPath),
+            configDir: resolve(projectDir, String(configDirPath)),
             projectId: projectId,
             isEmulator: false,
-            projectDir: options.projectRoot ?? process.cwd(),
+            projectDir: projectDir,
           };
         }
       }
     }
+    throw new FirebaseError(
+      `Could not find kit instance "${options.kitInstance}" in firebase.json.`,
+    );
   }
   if (typeof options.projectRoot !== "undefined") {
     return {
       functionsSource: instanceId,
-      configDir: join(options.projectRoot, instanceId),
+      configDir: resolve(options.projectRoot, instanceId),
       projectId: projectId,
       isEmulator: false,
       projectDir: options.projectRoot,
@@ -274,10 +309,10 @@ function kitExportTarget(instanceId: string, projectId: string, options: Options
   } else {
     return {
       functionsSource: instanceId,
-      configDir: instanceId,
+      configDir: resolve(cwd, instanceId),
       projectId: projectId,
       isEmulator: false,
-      projectDir: options.cwd ?? process.cwd(),
+      projectDir: cwd,
     };
   }
 }
