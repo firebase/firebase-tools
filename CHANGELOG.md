@@ -1,0 +1,2 @@
+- Updated the Firebase SQL Connect local toolkit to v3.4.19, which includes the following changes:
+  - [fixed] Bug fixes and performance improvements for the PostgreSQL emulator.
