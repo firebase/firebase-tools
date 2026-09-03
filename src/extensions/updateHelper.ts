@@ -93,6 +93,7 @@ export interface UpdateOptions {
   source?: ExtensionSource;
   extRef?: string;
   params?: { [key: string]: string };
+  systemParams?: { [key: string]: string };
   canEmitEvents: boolean;
   allowedEventTypes?: string[];
   eventarcChannel?: string;
@@ -113,6 +114,7 @@ export async function update(updateOptions: UpdateOptions): Promise<any> {
     source,
     extRef,
     params,
+    systemParams,
     canEmitEvents,
     allowedEventTypes,
     eventarcChannel,
@@ -123,6 +125,7 @@ export async function update(updateOptions: UpdateOptions): Promise<any> {
       instanceId,
       extRef,
       params,
+      systemParams,
       canEmitEvents,
       allowedEventTypes,
       eventarcChannel,
@@ -133,6 +136,7 @@ export async function update(updateOptions: UpdateOptions): Promise<any> {
       instanceId,
       extensionSource: source,
       params,
+      systemParams,
       canEmitEvents,
       allowedEventTypes,
       eventarcChannel,

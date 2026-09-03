@@ -2,6 +2,7 @@ import * as crypto from "crypto";
 import * as path from "path";
 import * as clc from "colorette";
 import * as fs from "fs-extra";
+import * as semver from "semver";
 
 import { Config } from "../../config";
 import { FirebaseError, getErrMsg } from "../../error";
@@ -24,7 +25,14 @@ import { readTemplateSync } from "../../templates";
 import * as supported from "../../deploy/functions/runtimes/supported";
 import * as runtimes from "../../deploy/functions/runtimes";
 import * as build from "../../deploy/functions/build";
+import * as params from "../../deploy/functions/params";
+import * as experiments from "../../experiments";
 import * as iam from "../../gcp/iam";
+import * as functionsEnv from "../env";
+import * as functionsConfig from "../../functionsConfig";
+import { partitionUserEnvs } from "../../deploy/functions/prepare";
+import { FirebaseConfig } from "../../deploy/functions/args";
+import { cloneDeep } from "../../utils";
 import { hasProjectEnv } from "../env";
 import { RC } from "../../rc";
 import { KitInstanceEnvSeed, seedKitInstanceEnv } from "./env";
@@ -41,9 +49,9 @@ export const FUNCTION_KITS_DIR = "function-kits";
 
 export interface ExistingFunctionsInfo {
   existingFunctions: ValidatedSingle[];
-  existingKitIds: Set<string>;
-  existingCodebases: Set<string>;
-  existingInstanceIds: Set<string>;
+  existingKitIds: string[];
+  existingCodebases: string[];
+  existingInstanceIds: string[];
 }
 
 export interface ScaffoldedKitPaths {
@@ -97,6 +105,8 @@ export interface InstallKitOrInstanceOptions {
   instanceId?: string;
   seedEnv?: KitInstanceEnvSeed;
   nonInteractive?: boolean;
+  force?: boolean;
+  configure?: boolean;
   project?: string;
   projectId?: string;
   rc?: RC;
@@ -111,9 +121,10 @@ export interface InstallKitOrInstanceResult {
 }
 
 export interface PromptExistingInstanceOptions {
-  project?: string;
-  projectId?: string;
+  existingKit: ValidatedKitSingle;
+  unconfiguredInstanceIds: readonly string[];
   nonInteractive?: boolean;
+  instanceId?: string;
 }
 
 export interface ExistingKitInstallOptions {
@@ -121,17 +132,40 @@ export interface ExistingKitInstallOptions {
   project?: string;
   projectId?: string;
   nonInteractive?: boolean;
+  force?: boolean;
+  configure?: boolean;
   rc?: RC;
   instanceId?: string;
   seedEnv?: KitInstanceEnvSeed;
+}
+
+export interface PromptAndWriteKitParamsOptions {
+  config: Config;
+  projectId?: string;
+  projectAlias?: string;
+  absConfigDirPath: string;
+  absSourcePath: string;
+  instanceId: string;
+  nonInteractive?: boolean;
+  force?: boolean;
+  params?: params.Param[];
+}
+
+export interface PrintKitFirstDeployReportOptions {
+  instanceId: string;
+  absSourcePath: string;
+  config?: Config;
+  project?: string;
+  projectId?: string;
+  preDiscoveredBuild?: build.Build;
 }
 
 /**
  * Generates a unique identifier by appending a random 4-character hex suffix if a collision exists.
  * Ensures the candidate is truncated so the total length does not exceed 40 characters.
  */
-export function generateUniqueId(baseId: string, existingIds: Set<string>): string {
-  if (!existingIds.has(baseId)) {
+export function generateUniqueId(baseId: string, existingIds: string[]): string {
+  if (!existingIds.includes(baseId)) {
     return baseId;
   }
   const prefix = baseId.slice(0, 35);
@@ -139,7 +173,7 @@ export function generateUniqueId(baseId: string, existingIds: Set<string>): stri
   do {
     const randomSuffix = crypto.randomBytes(2).toString("hex");
     candidate = `${prefix}-${randomSuffix}`;
-  } while (existingIds.has(candidate));
+  } while (existingIds.includes(candidate));
   return candidate;
 }
 
@@ -154,9 +188,10 @@ export function parseNpmPackageSpecifier(rawPkg: string): {
 } {
   const lastAt = rawPkg.lastIndexOf("@");
   if (lastAt > 0) {
+    const version = rawPkg.substring(lastAt + 1);
     return {
       packageName: rawPkg.substring(0, lastAt),
-      version: rawPkg.substring(lastAt + 1),
+      ...(version ? { version } : {}),
     };
   }
   return { packageName: rawPkg };
@@ -167,11 +202,17 @@ export function parseNpmPackageSpecifier(rawPkg: string): {
  * - Unscoped: 'name' (no slashes)
  * - Scoped: '@scope/name' (exactly one slash)
  */
-export function validateNpmPackageName(packageName: string): void {
+export function validateNpmPackageName(packageNameOrSpecifier: string): void {
+  const { packageName, version } = parseNpmPackageSpecifier(packageNameOrSpecifier);
   const npmPackageRegex = /^(?:@[a-z0-9_.-]+\/[a-z0-9_.-]+|[a-z0-9_.-]+)$/i;
-  if (!packageName || packageName.length > 214 || !npmPackageRegex.test(packageName)) {
+  if (
+    !packageName ||
+    packageName.length > 214 ||
+    !npmPackageRegex.test(packageName) ||
+    (packageNameOrSpecifier.lastIndexOf("@") > 0 && !version)
+  ) {
     throw new FirebaseError(
-      `Invalid NPM package name '${packageName}'. Package names must be valid npm package specifiers (e.g. 'my-kit' or '@scope/my-kit').`,
+      `Invalid NPM package name '${packageNameOrSpecifier}'. Package names must be valid npm package specifiers (e.g. 'my-kit' or '@scope/my-kit').`,
     );
   }
 }
@@ -180,7 +221,8 @@ export function validateNpmPackageName(packageName: string): void {
  * Sanitizes an npm package name into a valid kit identifier.
  * e.g., "@firebase-function-kits/firestore-bigquery-export" -> "firestore-bigquery-export"
  */
-export function sanitizePackageNameToKitName(packageName: string): string {
+export function sanitizePackageNameToKitName(packageNameOrSpecifier: string): string {
+  const { packageName } = parseNpmPackageSpecifier(packageNameOrSpecifier);
   const parts = packageName.split("/");
   const nameWithoutScope = parts[parts.length - 1] || packageName;
   const sanitized = nameWithoutScope.toLowerCase().replace(/[^a-z0-9_-]/g, "");
@@ -190,7 +232,8 @@ export function sanitizePackageNameToKitName(packageName: string): string {
 /**
  * Checks if a package name is third-party (outside the @firebase-function-kits scope).
  */
-export function isThirdPartyPackage(packageName: string): boolean {
+export function isThirdPartyPackage(packageNameOrSpecifier: string): boolean {
+  const { packageName } = parseNpmPackageSpecifier(packageNameOrSpecifier);
   return !packageName.startsWith("@firebase-function-kits/");
 }
 
@@ -222,17 +265,17 @@ export async function checkPackageHasShrinkwrap(rawPkgName: string): Promise<boo
 }
 
 /**
- * Checks if any of the kit's instance configuration directories contain a dotenv file for the current project.
+ * Returns the list of instance IDs in the kit that do not have a dotenv file for the specified project.
  */
-export function isKitConfiguredForProject(
+export function getUnconfiguredInstancesForProject(
   config: { path: (p: string) => string },
   kit: ValidatedKitSingle,
   projectId?: string,
   projectAlias?: string,
-): boolean {
-  return Object.values(kit.instances || {}).some((configDir) =>
-    hasProjectEnv(config.path(configDir), projectId, projectAlias),
-  );
+): string[] {
+  return Object.entries(kit.instances || {})
+    .filter(([, configDir]) => !hasProjectEnv(config.path(configDir), projectId, projectAlias))
+    .map(([instanceId]) => instanceId);
 }
 
 /**
@@ -246,22 +289,20 @@ export function extractExistingFunctionsInfo(
       ? normalizeAndValidate(configFunctions)
       : [];
 
-  const existingKitIds = new Set<string>();
-  const existingCodebases = new Set<string>();
-  const existingInstanceIds = new Set<string>();
+  const existingKitIds: string[] = [];
+  const existingCodebases: string[] = [];
+  const existingInstanceIds: string[] = [];
 
   for (const c of existingFunctions) {
     if (isKitConfig(c)) {
       if (c.kit) {
-        existingKitIds.add(c.kit);
+        existingKitIds.push(c.kit);
       }
       if (c.instances) {
-        for (const instId of Object.keys(c.instances)) {
-          existingInstanceIds.add(instId);
-        }
+        existingInstanceIds.push(...Object.keys(c.instances));
       }
     } else if (c.codebase) {
-      existingCodebases.add(c.codebase);
+      existingCodebases.push(c.codebase);
     }
   }
 
@@ -278,22 +319,22 @@ export function extractExistingFunctionsInfo(
  */
 export async function promptKitInstanceId(
   baseKitId: string,
-  existingInstanceIds: Set<string>,
-  existingCodebases: Set<string>,
+  existingInstanceIds: string[],
+  existingCodebases: string[],
   nonInteractive?: boolean,
   customInstanceId?: string,
 ): Promise<string> {
-  const instanceCollisions = new Set([...existingInstanceIds, ...existingCodebases]);
+  const instanceCollisions = [...existingInstanceIds, ...existingCodebases];
   const defaultInstanceId = generateUniqueId(baseKitId, instanceCollisions);
 
   if (customInstanceId) {
     validateKitInstanceId(customInstanceId);
-    if (existingInstanceIds.has(customInstanceId)) {
+    if (existingInstanceIds.includes(customInstanceId)) {
       throw new FirebaseError(
         `functions kit instance ID must be unique across all kits, but '${customInstanceId}' was used more than once.`,
       );
     }
-    if (existingCodebases.has(customInstanceId)) {
+    if (existingCodebases.includes(customInstanceId)) {
       throw new FirebaseError(
         `functions codebase name and kit instance ID must be mutually exclusive, but '${customInstanceId}' was used as both a codebase name and a kit instance ID.`,
       );
@@ -311,10 +352,10 @@ export async function promptKitInstanceId(
       } catch (err: unknown) {
         return getErrMsg(err);
       }
-      if (existingInstanceIds.has(val)) {
+      if (existingInstanceIds.includes(val)) {
         return `functions kit instance ID must be unique across all kits, but '${val}' was used more than once.`;
       }
-      if (existingCodebases.has(val)) {
+      if (existingCodebases.includes(val)) {
         return `functions codebase name and kit instance ID must be mutually exclusive, but '${val}' was used as both a codebase name and a kit instance ID.`;
       }
       return true;
@@ -322,12 +363,12 @@ export async function promptKitInstanceId(
   });
 
   validateKitInstanceId(instanceId);
-  if (existingInstanceIds.has(instanceId)) {
+  if (existingInstanceIds.includes(instanceId)) {
     throw new FirebaseError(
       `functions kit instance ID must be unique across all kits, but '${instanceId}' was used more than once.`,
     );
   }
-  if (existingCodebases.has(instanceId)) {
+  if (existingCodebases.includes(instanceId)) {
     throw new FirebaseError(
       `functions codebase name and kit instance ID must be mutually exclusive, but '${instanceId}' was used as both a codebase name and a kit instance ID.`,
     );
@@ -341,7 +382,7 @@ export async function promptKitInstanceId(
  */
 export async function promptKitId(
   packageName: string,
-  existingKitIds: Set<string>,
+  existingKitIds: string[],
   nonInteractive?: boolean,
   customKitId?: string,
 ): Promise<string> {
@@ -350,7 +391,7 @@ export async function promptKitId(
 
   if (customKitId) {
     validateKit(customKitId);
-    if (existingKitIds.has(customKitId)) {
+    if (existingKitIds.includes(customKitId)) {
       throw new FirebaseError(
         `functions.kit must be unique but '${customKitId}' was used more than once.`,
       );
@@ -368,7 +409,7 @@ export async function promptKitId(
       } catch (err: unknown) {
         return getErrMsg(err);
       }
-      if (existingKitIds.has(val)) {
+      if (existingKitIds.includes(val)) {
         return `functions.kit must be unique but '${val}' was used more than once.`;
       }
       return true;
@@ -376,7 +417,7 @@ export async function promptKitId(
   });
 
   validateKit(kitId);
-  if (existingKitIds.has(kitId)) {
+  if (existingKitIds.includes(kitId)) {
     throw new FirebaseError(`functions.kit must be unique but '${kitId}' was used more than once.`);
   }
 
@@ -430,35 +471,51 @@ export async function promptSecurityConfirmation(
 }
 
 /**
- * Guides the user on configuring an existing instance for the active project.
+ * Prompts the user to select an existing instance of the kit to configure for the project.
+ * Restricts selection to instances that are not already configured for the project.
  */
 export async function promptExistingInstanceForProject(
   options: PromptExistingInstanceOptions,
-  existingKit: ValidatedKitSingle,
 ): Promise<string> {
-  const instanceIds: string[] = Object.keys(existingKit.instances || {});
-  if (instanceIds.length === 0) {
-    throw new FirebaseError(`Kit '${existingKit.kit}' has no instances configured.`);
+  const allInstanceIds: string[] = Object.keys(options.existingKit.instances || {});
+  if (allInstanceIds.length === 0) {
+    throw new FirebaseError(`Kit '${options.existingKit.kit}' has no instances configured.`);
   }
 
-  let selectedInstanceId = "<instance-name>";
-  if (instanceIds.length === 1) {
-    selectedInstanceId = instanceIds[0];
-  } else if (!options.nonInteractive) {
-    selectedInstanceId = await select<string>({
-      message: "Which instance would you like to configure for this project?",
-      choices: instanceIds.map((id) => ({ name: id, value: id })),
-    });
+  if (options.instanceId) {
+    if (!allInstanceIds.includes(options.instanceId)) {
+      throw new FirebaseError(
+        `Instance '${options.instanceId}' does not exist in kit '${options.existingKit.kit}'. Available instances: ${allInstanceIds.join(", ")}`,
+      );
+    }
+    if (!options.unconfiguredInstanceIds.includes(options.instanceId)) {
+      throw new FirebaseError(
+        `Instance '${options.instanceId}' is already configured for this project.`,
+      );
+    }
+    return options.instanceId;
   }
 
-  const targetProject = getProjectId(options) || options.project || "<project-name>";
-  logLabeledBullet(
-    "functions",
-    `To create a new instance in this project, deploy the instance dedicated to this project using\n` +
-      clc.bold(`firebase deploy --only functions:${selectedInstanceId} --project ${targetProject}`),
-  );
+  if (options.unconfiguredInstanceIds.length === 0) {
+    throw new FirebaseError(
+      `Kit '${options.existingKit.kit}' has no unconfigured instances for this project.`,
+    );
+  }
 
-  return selectedInstanceId;
+  if (options.unconfiguredInstanceIds.length === 1) {
+    const instanceId = options.unconfiguredInstanceIds[0];
+    logLabeledBullet(
+      "functions",
+      `${clc.bold(instanceId)} is the only instance without a configuration. Configuring...`,
+    );
+    return instanceId;
+  }
+
+  return select<string>({
+    message: "Which instance would you like to configure for this project?",
+    choices: options.unconfiguredInstanceIds,
+    nonInteractive: options.nonInteractive,
+  });
 }
 
 /**
@@ -490,14 +547,14 @@ export async function writeKitPackageJson(
     }
   } else {
     const latestNodeVersion = supported.latest("nodejs").replace("nodejs", "");
-    const packageNoLintingTemplate = readTemplateSync(
-      "init/functions/typescript/package.nolint.json",
-    );
-    const subbedTemplate = packageNoLintingTemplate.replace(/{{RUNTIME}}/g, latestNodeVersion);
+    const packageKitTemplate = readTemplateSync("init/functions/typescript/package-kit.json");
+    const subbedTemplate = packageKitTemplate.replace(/{{RUNTIME}}/g, latestNodeVersion);
     try {
       pkgJson = JSON.parse(subbedTemplate) as typeof pkgJson;
     } catch (err: unknown) {
-      throw new FirebaseError("Failed to parse package.nolint.json template: " + getErrMsg(err));
+      throw new FirebaseError("Failed to parse package-kit.json template: " + getErrMsg(err), {
+        original: err instanceof Error ? err : undefined,
+      });
     }
   }
 
@@ -557,6 +614,114 @@ export async function scaffoldKitFiles(
   return { sourcePath, configDirPath, absSourcePath, absConfigDirPath };
 }
 
+interface PackageLockEntry {
+  version?: string;
+  dependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+}
+
+interface PackageLock {
+  packages?: Record<string, PackageLockEntry>;
+}
+
+interface KitManifest {
+  dependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+}
+
+/**
+ * Resolves the package specifier to save to the wrapper package.json.
+ *
+ * - Exact pin (e.g. "7.1.0", "=7.1.0", "v7.1.0"): Preserved as exact ("=X.Y.Z").
+ * - Tilde range (e.g. "~7.1.0"): Preserved as tilde ("~installedVer" or declared).
+ * - Caret / wider range (e.g. "^7.0.0", ">=7.0.0"): Anchored to caret ("^installedVer" or declared).
+ */
+export function resolveSdkSpecifierToSave(
+  packageName: string,
+  declaredVer: string,
+  installedVer?: string,
+): string {
+  const cleanVer = semver.clean(declaredVer);
+  if (cleanVer) {
+    return `${packageName}@=${installedVer || cleanVer}`;
+  }
+
+  if (declaredVer.trim().startsWith("~")) {
+    return installedVer ? `${packageName}@~${installedVer}` : `${packageName}@${declaredVer}`;
+  }
+
+  if (installedVer) {
+    return `${packageName}@^${installedVer}`;
+  }
+
+  return `${packageName}@${declaredVer}`;
+}
+
+/**
+ * Inspects package-lock.json (or node_modules as fallback) to determine which SDK versions
+ * should be explicitly saved to the wrapper package.json using npm install.
+ */
+export async function getKitPackagesToSave(
+  absSourcePath: string,
+  packageName: string,
+): Promise<string[]> {
+  const lockfilePath = path.join(absSourcePath, "package-lock.json");
+
+  let peerDeps: Record<string, string> = {};
+  let directDeps: Record<string, string> = {};
+  let installedFunctionsVer: string | undefined;
+  let installedAdminVer: string | undefined;
+
+  if (await fs.pathExists(lockfilePath)) {
+    try {
+      const lockfile = (await fs.readJson(lockfilePath)) as PackageLock;
+      const packages = lockfile.packages || {};
+      const kitEntry = packages[`node_modules/${packageName}`] || {};
+      peerDeps = kitEntry.peerDependencies || {};
+      directDeps = kitEntry.dependencies || {};
+      installedFunctionsVer = packages["node_modules/firebase-functions"]?.version;
+      installedAdminVer = packages["node_modules/firebase-admin"]?.version;
+    } catch (err: unknown) {
+      logger.debug(`Failed to read package-lock.json: ${getErrMsg(err)}`);
+    }
+  }
+
+  if (Object.keys(peerDeps).length === 0 && Object.keys(directDeps).length === 0) {
+    const kitPkgJsonPath = path.join(absSourcePath, "node_modules", packageName, "package.json");
+    if (await fs.pathExists(kitPkgJsonPath)) {
+      try {
+        const kitPkgJson = (await fs.readJson(kitPkgJsonPath)) as KitManifest;
+        peerDeps = kitPkgJson.peerDependencies || {};
+        directDeps = kitPkgJson.dependencies || {};
+      } catch (err: unknown) {
+        logger.debug(`Failed to read kit package.json: ${getErrMsg(err)}`);
+      }
+    }
+  }
+
+  // 1. Resolve firebase-functions (must be declared by a valid Function Kit)
+  const declaredFunctionsVer = peerDeps["firebase-functions"] || directDeps["firebase-functions"];
+  if (!declaredFunctionsVer) {
+    throw new FirebaseError(
+      `Package '${packageName}' is not a valid Function Kit: it must declare 'firebase-functions' as a dependency or peer dependency.`,
+    );
+  }
+
+  const packagesToSave: string[] = [
+    resolveSdkSpecifierToSave("firebase-functions", declaredFunctionsVer, installedFunctionsVer),
+  ];
+
+  // 2. Resolve firebase-admin (strictly conditional: only if kit declared it)
+  const declaredAdminVer = peerDeps["firebase-admin"] || directDeps["firebase-admin"];
+  if (declaredAdminVer) {
+    packagesToSave.push(
+      resolveSdkSpecifierToSave("firebase-admin", declaredAdminVer, installedAdminVer),
+    );
+  }
+
+  return packagesToSave;
+}
+
 /**
  * Installs dependencies and compiles TypeScript source for the kit.
  */
@@ -565,6 +730,7 @@ export async function buildAndInstallKit(
   rawPkgName: string,
   isThirdParty: boolean,
 ): Promise<void> {
+  const { packageName } = parseNpmPackageSpecifier(rawPkgName);
   const installArgs = ["install", rawPkgName, "--save-prefix=^"];
   if (isThirdParty) {
     installArgs.push("--ignore-scripts");
@@ -574,6 +740,27 @@ export async function buildAndInstallKit(
     await wrapSpawn("npm", installArgs, absSourcePath);
   } catch (err: unknown) {
     throw new FirebaseError(`NPM install failed: ${getErrMsg(err)}`);
+  }
+
+  const packagesToSave = await getKitPackagesToSave(absSourcePath, packageName);
+  if (packagesToSave.length > 0) {
+    logLabeledBullet(
+      "functions",
+      `Saving resolved SDK dependencies: ${clc.bold(packagesToSave.join(", "))}...`,
+    );
+    const saveArgs = ["install", ...packagesToSave, "--save-prefix=^"];
+    if (isThirdParty) {
+      saveArgs.push("--ignore-scripts");
+    }
+    try {
+      await wrapSpawn("npm", saveArgs, absSourcePath);
+    } catch (err: unknown) {
+      throw new FirebaseError(
+        `Failed to install required SDK dependencies (${packagesToSave.join(", ")}): ${getErrMsg(err)}. ` +
+          "Verify that the kit's dependencies are compatible with the resolved Firebase SDK versions.",
+        { original: err instanceof Error ? err : undefined },
+      );
+    }
   }
 
   logLabeledBullet("functions", "Building TypeScript source...");
@@ -827,17 +1014,68 @@ export async function discoverKitBuild(
 }
 
 /**
+ * Detects missing parameters from the kit instance's dotenv files, prompts the user to fill them in,
+ * and writes the resolved values into the instance's .env.<projectId> file.
+ */
+export async function promptAndWriteKitParams(
+  options: PromptAndWriteKitParamsOptions,
+): Promise<void> {
+  if (!options.params || options.params.length === 0) {
+    return;
+  }
+  if (!options.projectId) {
+    logger.debug("Skipping functions kit parameter prompt: no active project ID.");
+    return;
+  }
+
+  const userEnvOpt: functionsEnv.UserEnvsOpts = {
+    configDir: options.absConfigDirPath,
+    functionsSource: options.absSourcePath,
+    projectDir: options.config.projectDir,
+    projectId: options.projectId,
+    projectAlias: options.projectAlias,
+  };
+
+  const rawUserEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
+  const { userEnvs, secretRefs } = partitionUserEnvs(rawUserEnvs);
+
+  let firebaseConfig: FirebaseConfig = { projectId: options.projectId };
+  try {
+    firebaseConfig = await functionsConfig.getFirebaseConfig({ projectId: options.projectId });
+  } catch (err: unknown) {
+    logger.debug(
+      `Could not fetch Firebase config for project ${options.projectId}: ${getErrMsg(err)}`,
+    );
+  }
+
+  const typedUserEnvs = build.envWithTypes(options.params, userEnvs);
+  const { paramValues: resolvedEnvs, secretRefs: resolvedSecretRefs } = await params.resolveParams(
+    options.params,
+    firebaseConfig,
+    typedUserEnvs,
+    options.instanceId,
+    options.nonInteractive,
+    options.force,
+  );
+
+  functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
+  if (experiments.isEnabled("secretEnvParams")) {
+    functionsEnv.writeResolvedSecretRefs(resolvedSecretRefs, secretRefs, userEnvOpt);
+  }
+}
+
+/**
  * Discovers kit endpoints, required APIs, and required roles, and logs a formatted report.
  */
 export async function printKitFirstDeployReport(
-  options: { config?: Config; project?: string; projectId?: string },
-  instanceId: string,
-  absSourcePath: string,
+  options: PrintKitFirstDeployReportOptions,
 ): Promise<void> {
   let discoveredBuild: build.Build;
-  const prefix = addKitPrefix(instanceId);
+  const prefix = addKitPrefix(options.instanceId);
   try {
-    discoveredBuild = await discoverKitBuild(options, absSourcePath);
+    discoveredBuild = options.preDiscoveredBuild
+      ? cloneDeep(options.preDiscoveredBuild)
+      : await discoverKitBuild(options, options.absSourcePath);
     build.applyPrefix(discoveredBuild, prefix);
   } catch (err: unknown) {
     logger.debug(`Could not discover kit build for reporting: ${getErrMsg(err)}`);
@@ -921,18 +1159,29 @@ export async function addKitInstanceOrConfigureProject(
     options.rc?.hasProjects && options.project && options.rc.hasProjectAlias(options.project)
       ? options.project
       : undefined;
-  const isConfiguredForProject = isKitConfiguredForProject(
+  const unconfiguredInstances = getUnconfiguredInstancesForProject(
     options.config,
     existingKit,
     projectId,
     projectAlias,
   );
+  const isConfiguredForProject =
+    Object.keys(existingKit.instances || {}).length > 0 && unconfiguredInstances.length === 0;
 
   let action: "addInstance" | "addEnv";
-  if (!isConfiguredForProject && !options.nonInteractive) {
-    const existingInstances = Object.keys(existingKit.instances || {}).join(", ");
+  if (options.instanceId && existingKit.instances && options.instanceId in existingKit.instances) {
+    if (!unconfiguredInstances.includes(options.instanceId)) {
+      throw new FirebaseError(
+        `Instance '${options.instanceId}' is already configured for this project.`,
+      );
+    }
+    action = "addEnv";
+  } else if (options.instanceId) {
+    action = "addInstance";
+  } else if (unconfiguredInstances.length > 0 && !options.nonInteractive) {
+    const unconfiguredInstancesList = unconfiguredInstances.join(", ");
     action = await select<"addInstance" | "addEnv">({
-      message: `The following instances already exist, but are not configured for this project: ${existingInstances}. What would you like to do?`,
+      message: `The following instances already exist, but are not configured for this project: ${unconfiguredInstancesList}. What would you like to do?`,
       choices: [
         {
           name: "Add an instance to the existing kit",
@@ -954,8 +1203,14 @@ export async function addKitInstanceOrConfigureProject(
     action = "addInstance";
   }
 
+  let resultAction: "addedInstance" | "configuredEnv";
+  let instanceId: string;
+  let configDirPath: string;
+  let absConfigDirPath: string;
+
   if (action === "addInstance") {
-    const instanceId = await promptKitInstanceId(
+    resultAction = "addedInstance";
+    instanceId = await promptKitInstanceId(
       existingKit.kit,
       existingFunctionsInfo.existingInstanceIds,
       existingFunctionsInfo.existingCodebases,
@@ -970,26 +1225,95 @@ export async function addKitInstanceOrConfigureProject(
       seedEnv: options.seedEnv,
     });
 
+    configDirPath = result.configDirPath;
+    absConfigDirPath = result.absConfigDirPath;
+  } else if (action === "addEnv") {
+    resultAction = "configuredEnv";
+    instanceId = await promptExistingInstanceForProject({
+      ...options,
+      existingKit,
+      unconfiguredInstanceIds: unconfiguredInstances,
+    });
+    configDirPath = existingKit.instances[instanceId];
+    if (!configDirPath) {
+      throw new FirebaseError(
+        `Configuration directory for instance '${instanceId}' not found in kit '${existingKit.kit}'.`,
+      );
+    }
+    absConfigDirPath = options.config.path(configDirPath);
+    if (options.seedEnv?.envs && Object.keys(options.seedEnv.envs).length > 0) {
+      await fs.ensureDir(absConfigDirPath);
+      seedKitInstanceEnv({
+        configDir: absConfigDirPath,
+        functionsSource: options.config.path(existingKit.source),
+        projectDir: options.config.projectDir,
+        projectId: options.seedEnv.projectId,
+        projectAlias: options.seedEnv.projectAlias,
+        envs: options.seedEnv.envs,
+      });
+    }
+  } else {
+    throw new FirebaseError(`Unexpected action '${String(action)}' for kit installation.`);
+  }
+
+  if (projectId) {
+    fs.ensureFileSync(path.join(absConfigDirPath, `.env.${projectId}`));
+  }
+
+  const absSourcePath = options.config.path(existingKit.source);
+  let discoveredBuild: build.Build | undefined;
+
+  const shouldConfigure = options.configure !== false;
+  if (shouldConfigure) {
+    try {
+      discoveredBuild = await discoverKitBuild(options, absSourcePath);
+    } catch (err: unknown) {
+      logger.debug(`Could not discover kit build for params prompting: ${getErrMsg(err)}`);
+    }
+
+    if (discoveredBuild?.params && discoveredBuild.params.length > 0) {
+      await promptAndWriteKitParams({
+        config: options.config,
+        projectId,
+        projectAlias,
+        absConfigDirPath,
+        absSourcePath,
+        instanceId,
+        nonInteractive: options.nonInteractive,
+        force: options.force,
+        params: discoveredBuild.params,
+      });
+    }
+  }
+
+  if (action === "addInstance") {
     logLabeledSuccess(
       "functions",
       `Function kit instance ${clc.bold(instanceId)} successfully added to kit ${clc.bold(existingKit.kit)}.`,
     );
-    await printKitFirstDeployReport(options, instanceId, options.config.path(existingKit.source));
-
-    return {
-      action: "addedInstance",
-      kitId: existingKit.kit,
-      instanceId,
-      sourcePath: existingKit.source,
-      configDirPath: result.configDirPath,
-    };
+  } else if (action === "addEnv") {
+    const projectDisplay = projectId || options.project || "project";
+    logLabeledSuccess(
+      "functions",
+      `Function kit instance ${clc.bold(instanceId)} successfully configured for ${clc.bold(projectDisplay)}.`,
+    );
   }
 
-  const selectedInstanceId = await promptExistingInstanceForProject(options, existingKit);
+  await printKitFirstDeployReport({
+    config: options.config,
+    project: options.project,
+    projectId: options.projectId,
+    instanceId,
+    absSourcePath,
+    preDiscoveredBuild: discoveredBuild,
+  });
+
   return {
-    action: "configuredEnv",
+    action: resultAction,
     kitId: existingKit.kit,
-    instanceId: selectedInstanceId,
+    instanceId,
+    sourcePath: existingKit.source,
+    configDirPath,
   };
 }
 
@@ -1041,8 +1365,8 @@ export async function resolvePackageSource(
     throw new FirebaseError("Set the --package option to a valid NPM package and try again.");
   }
 
+  validateNpmPackageName(rawPkgName);
   const { packageName } = parseNpmPackageSpecifier(rawPkgName);
-  validateNpmPackageName(packageName);
 
   const isThirdParty = await promptSecurityConfirmation(
     rawPkgName,
@@ -1156,6 +1480,41 @@ export async function installKitOrInstance(
 
   await source.buildAndInstall(absSourcePath);
 
+  const projectId = getProjectId(options) || options.projectId;
+  const projectAlias =
+    options.rc?.hasProjects && options.project && options.rc.hasProjectAlias(options.project)
+      ? options.project
+      : undefined;
+
+  if (projectId) {
+    fs.ensureFileSync(path.join(absConfigDirPath, `.env.${projectId}`));
+  }
+
+  let discoveredBuild: build.Build | undefined;
+
+  const shouldConfigure = options.configure !== false;
+  if (shouldConfigure) {
+    try {
+      discoveredBuild = await discoverKitBuild(options, absSourcePath);
+    } catch (err: unknown) {
+      logger.debug(`Could not discover kit build for params prompting: ${getErrMsg(err)}`);
+    }
+
+    if (discoveredBuild?.params && discoveredBuild.params.length > 0) {
+      await promptAndWriteKitParams({
+        config: options.config,
+        projectId,
+        projectAlias,
+        absConfigDirPath,
+        absSourcePath,
+        instanceId,
+        nonInteractive: options.nonInteractive,
+        force: options.force,
+        params: discoveredBuild.params,
+      });
+    }
+  }
+
   addKitToConfig(options.config, {
     kitId,
     instanceId,
@@ -1166,7 +1525,14 @@ export async function installKitOrInstance(
   });
 
   logLabeledSuccess("functions", `Function kit ${clc.bold(kitId)} successfully installed.`);
-  await printKitFirstDeployReport(options, instanceId, absSourcePath);
+  await printKitFirstDeployReport({
+    config: options.config,
+    project: options.project,
+    projectId: options.projectId,
+    instanceId,
+    absSourcePath,
+    preDiscoveredBuild: discoveredBuild,
+  });
 
   return {
     action: "installedKit",
