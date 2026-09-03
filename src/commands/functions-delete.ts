@@ -1,23 +1,15 @@
 import * as clc from "colorette";
-import * as functionsConfig from "../functionsConfig";
-
 import { Command } from "../command";
-import { FirebaseError } from "../error";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
-import { confirm } from "../prompt";
-import { reduceFlat } from "../functional";
 import { requirePermissions } from "../requirePermissions";
 import * as args from "../deploy/functions/args";
 import * as helper from "../deploy/functions/functionsDeployHelper";
 import * as utils from "../utils";
 import * as backend from "../deploy/functions/backend";
 import * as projectConfig from "../functions/projectConfig";
-import * as planner from "../deploy/functions/release/planner";
-import * as fabricator from "../deploy/functions/release/fabricator";
-import * as executor from "../deploy/functions/release/executor";
-import * as reporter from "../deploy/functions/release/reporter";
-import { getProjectNumber } from "../getProjectNumber";
+import { deleteFunctionsByEndpointFilters } from "../deploy/functions/delete";
+import { FirebaseError } from "../error";
 
 export const command = new Command("functions:delete [filters...]")
   .description("delete one or more Cloud Functions by name, group name, or codebase.")
@@ -37,13 +29,8 @@ export const command = new Command("functions:delete [filters...]")
       projectId: needProjectId(options),
       filters: [],
     };
-    const [firebaseConfig, letExistingBackend] = await Promise.all([
-      functionsConfig.getFirebaseConfig(options),
-      backend.existingBackend(context),
-    ]);
-    let existingBackend = letExistingBackend;
+    let existingBackend = await backend.existingBackend(context);
     await backend.checkAvailability(context, /* want=*/ backend.empty());
-    const appEngineLocation = functionsConfig.getAppEngineLocation(firebaseConfig);
 
     if (options.region) {
       existingBackend = backend.matchingBackend(
@@ -62,26 +49,6 @@ export const command = new Command("functions:delete [filters...]")
       ),
     ];
     context.filters = helper.parseDeleteFilters(filters, activeCodebases);
-
-    const plan = await planner.createDeploymentPlan({
-      wantBackend: backend.empty(),
-      haveBackend: existingBackend,
-      codebase: "",
-      projectId: context.projectId,
-      filters: context.filters,
-      deleteAll: true,
-    });
-    const allEpToDelete = Object.values(plan.regionalChangesets)
-      .map((changes) => changes.endpointsToDelete)
-      .reduce(reduceFlat, [])
-      .sort(backend.compareFunctions);
-    if (allEpToDelete.length === 0) {
-      throw new FirebaseError(
-        `The specified filters do not match any existing functions in project ${clc.bold(
-          context.projectId,
-        )}.`,
-      );
-    }
 
     // Inform the user when a name collision exists between a codebase name and a function name.
     // Codebase deletion takes precedence by design, but we provide the explicit '<codebase>:<name>' workaround.
@@ -102,47 +69,12 @@ export const command = new Command("functions:delete [filters...]")
       );
     }
 
-    const deleteList = allEpToDelete.map((func) => `\t${helper.getFunctionLabel(func)}`).join("\n");
-    const confirmDeletion = await confirm({
-      message:
-        "You are about to delete the following Cloud Functions:\n" +
-        deleteList +
-        "\n  Are you sure?",
-      default: false,
-      force: options.force,
-      nonInteractive: options.nonInteractive,
-    });
-    if (!confirmDeletion) {
-      throw new FirebaseError("Command aborted.");
-    }
-
-    const functionExecutor: executor.QueueExecutor = new executor.QueueExecutor({
-      retries: 30,
-      backoff: 20000,
-      concurrency: 40,
-      maxBackoff: 40000,
-    });
-
-    try {
-      const fab = new fabricator.Fabricator({
-        functionExecutor,
-        // Note: we don't need the temporary concurrency reduction of 2, because that quota limit is for deploys
-        runFunctionExecutor: functionExecutor,
-        appEngineLocation,
-        executor: new executor.QueueExecutor({}),
-        sources: {},
-        projectNumber:
-          options.projectNumber || (await getProjectNumber({ projectId: context.projectId })),
-        projectId: context.projectId,
-      });
-      const summary = await fab.applyPlan({ default: plan });
-
-      await reporter.logAndTrackDeployStats(summary);
-      reporter.printErrors(summary);
-    } catch (err: unknown) {
-      throw new FirebaseError("Failed to delete functions", {
-        original: err as Error,
-        exit: 1,
-      });
+    const deletionCount = await deleteFunctionsByEndpointFilters(context, options);
+    if (deletionCount === 0) {
+      throw new FirebaseError(
+        `The specified filters do not match any existing functions in project ${clc.bold(
+          context.projectId,
+        )}.`,
+      );
     }
   });

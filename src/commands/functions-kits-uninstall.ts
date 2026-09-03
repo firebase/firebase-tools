@@ -1,4 +1,5 @@
 import { requireConfig } from "../requireConfig";
+import { requireAuth } from "../requireAuth";
 import { Command } from "../command";
 import { Config } from "../config";
 import { listKitConfigs } from "../functions/kits/config";
@@ -7,25 +8,19 @@ import { join } from "path";
 import { ValidatedKitSingle } from "../functions/projectConfig";
 import { FirebaseError } from "../error";
 import { confirm } from "../prompt";
-import { reduceFlat } from "../functional";
 import { dirname } from "path/posix";
-import { Context } from "../deploy/functions/args";
 import { FunctionConfig } from "../firebaseConfig";
 import { needProjectId } from "../projectUtils";
 import { logLabeledWarning } from "../utils";
-import * as backend from "../deploy/functions/backend";
-import * as planner from "../deploy/functions/release/planner";
-import * as executor from "../deploy/functions/release/executor";
-import * as fabricator from "../deploy/functions/release/fabricator";
-import { EndpointFilter, getFunctionLabel } from "../deploy/functions/functionsDeployHelper";
-import * as functionsConfig from "../functionsConfig";
-import { getProjectNumber } from "../getProjectNumber";
-import * as reporter from "../deploy/functions/release/reporter";
+import { EndpointFilter } from "../deploy/functions/functionsDeployHelper";
 import { logger } from "../logger";
+import { deleteFunctionsByEndpointFilters } from "../deploy/functions/delete";
+import { Context } from "../deploy/functions/args";
 
 export const command = new Command("functions:kits:uninstall")
   .description("uninstall a function kit or kit instance from your project")
   .before(requireConfig)
+  .before(requireAuth)
   .option("--kit <kitId>", "")
   .option("--instance <instanceId>", "")
   .action(async (options: Options): Promise<void> => {
@@ -203,73 +198,15 @@ async function uninstallProjectInstance(
   kitInstancePath: string,
 ): Promise<void> {
   const envFilePath = join(kitInstancePath, `.env.${projectId}`);
-  const context: Context = {
-    projectId: projectId,
-    filters: [{ codebase: instanceId } as EndpointFilter],
-  };
-  const haveBackend = await backend.existingBackend(context);
-  const plan = await planner.createDeploymentPlan({
-    wantBackend: backend.empty(),
-    haveBackend: haveBackend,
-    codebase: "",
-    projectId: context.projectId,
-    filters: context.filters,
-    deleteAll: true,
-  });
-  const allEpToDelete = Object.values(plan.regionalChangesets)
-    .map((changes) => changes.endpointsToDelete)
-    .reduce(reduceFlat, [])
-    .sort(backend.compareFunctions);
-  if (allEpToDelete.length > 0) {
-    const deleteList = allEpToDelete.map((func) => `\t${getFunctionLabel(func)}`).join("\n");
-    const confirmDeletion = await confirm({
-      message:
-        "You are about to delete the following Cloud Functions:\n" +
-        deleteList +
-        "\n  Are you sure?",
-      default: false,
-      force: options.force,
-      nonInteractive: options.nonInteractive,
-    });
-    if (!confirmDeletion) {
-      throw new FirebaseError("Command aborted.");
-    }
-
-    const functionExecutor: executor.QueueExecutor = new executor.QueueExecutor({
-      retries: 30,
-      backoff: 20000,
-      concurrency: 40,
-      maxBackoff: 40000,
-    });
-    const appEngineLocation = functionsConfig.getAppEngineLocation(config);
-    try {
-      const fab = new fabricator.Fabricator({
-        functionExecutor,
-        runFunctionExecutor: functionExecutor,
-        appEngineLocation,
-        executor: new executor.QueueExecutor({}),
-        sources: {},
-        projectNumber: await getProjectNumber({ projectId: context.projectId }),
-        projectId: context.projectId,
-      });
-      const summary = await fab.applyPlan({ default: plan });
-
-      await reporter.logAndTrackDeployStats(summary);
-      reporter.printErrors(summary);
-      if (summary.results.some((r) => r.error)) {
-        throw new FirebaseError("Some functions deletions failed. Not modifying firebase.json.");
-      }
-    } catch (err: unknown) {
-      throw new FirebaseError("Failed to delete functions", {
-        original: err as Error,
-        exit: 1,
-      });
-    }
-  } else {
+  const epFilters: EndpointFilter[] = [{ codebase: instanceId }];
+  const deployContext: Context = { projectId: projectId, filters: epFilters };
+  const deletionCount = await deleteFunctionsByEndpointFilters(deployContext, options);
+  if (deletionCount === 0) {
     logger.info(
       `No deployed functions found for instance ${instanceId}. This is normal if firebase deploy was never run.`,
     );
   }
+
   config.deleteProjectFile(envFilePath);
 }
 

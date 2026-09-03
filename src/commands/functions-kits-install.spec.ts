@@ -7,13 +7,16 @@ import * as experiments from "../experiments";
 import { Config } from "../config";
 import { FirebaseError } from "../error";
 import { RC } from "../rc";
+import { requireAuth } from "../requireAuth";
+import { requireConfig } from "../requireConfig";
 
 describe("functions:kits:install", () => {
+  const originalBefores = [...(command["befores"] || [])];
   let assertEnabledStub: sinon.SinonStub;
   let installKitOrInstanceStub: sinon.SinonStub;
 
   beforeEach(() => {
-    (command as unknown as { befores: unknown[] }).befores = [];
+    command["befores"] = [];
     sinon.stub(command, "prepare").resolves();
     assertEnabledStub = sinon.stub(experiments, "assertEnabled");
     installKitOrInstanceStub = sinon.stub(kits, "installKitOrInstance").resolves({
@@ -24,7 +27,17 @@ describe("functions:kits:install", () => {
   });
 
   afterEach(() => {
+    command["befores"] = [...originalBefores];
     sinon.restore();
+  });
+
+  describe("command configuration", () => {
+    it("should have requireConfig and requireAuth as before hooks", () => {
+      expect(originalBefores).to.deep.equal([
+        { fn: requireConfig, args: [] },
+        { fn: requireAuth, args: [] },
+      ]);
+    });
   });
 
   describe("command action", () => {

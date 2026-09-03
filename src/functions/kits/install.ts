@@ -2,6 +2,7 @@ import * as crypto from "crypto";
 import * as path from "path";
 import * as clc from "colorette";
 import * as fs from "fs-extra";
+import * as semver from "semver";
 
 import { Config } from "../../config";
 import { FirebaseError, getErrMsg } from "../../error";
@@ -121,8 +122,8 @@ export interface InstallKitOrInstanceResult {
 }
 
 export interface PromptExistingInstanceOptions {
-  project?: string;
-  projectId?: string;
+  existingKit: ValidatedKitSingle;
+  unconfiguredInstanceIds: readonly string[];
   nonInteractive?: boolean;
   instanceId?: string;
 }
@@ -268,17 +269,17 @@ export async function checkPackageHasShrinkwrap(rawPkgName: string): Promise<boo
 }
 
 /**
- * Checks if any of the kit's instance configuration directories contain a dotenv file for the current project.
+ * Returns the list of instance IDs in the kit that do not have a dotenv file for the specified project.
  */
-export function isKitConfiguredForProject(
+export function getUnconfiguredInstancesForProject(
   config: { path: (p: string) => string },
   kit: ValidatedKitSingle,
   projectId?: string,
   projectAlias?: string,
-): boolean {
-  return Object.values(kit.instances || {}).some((configDir) =>
-    hasProjectEnv(config.path(configDir), projectId, projectAlias),
-  );
+): string[] {
+  return Object.entries(kit.instances || {})
+    .filter(([, configDir]) => !hasProjectEnv(config.path(configDir), projectId, projectAlias))
+    .map(([instanceId]) => instanceId);
 }
 
 /**
@@ -475,32 +476,49 @@ export async function promptSecurityConfirmation(
 
 /**
  * Prompts the user to select an existing instance of the kit to configure for the project.
+ * Restricts selection to instances that are not already configured for the project.
  */
 export async function promptExistingInstanceForProject(
   options: PromptExistingInstanceOptions,
-  existingKit: ValidatedKitSingle,
 ): Promise<string> {
-  const instanceIds: string[] = Object.keys(existingKit.instances || {});
-  if (instanceIds.length === 0) {
-    throw new FirebaseError(`Kit '${existingKit.kit}' has no instances configured.`);
+  const allInstanceIds: string[] = Object.keys(options.existingKit.instances || {});
+  if (allInstanceIds.length === 0) {
+    throw new FirebaseError(`Kit '${options.existingKit.kit}' has no instances configured.`);
   }
 
   if (options.instanceId) {
-    if (instanceIds.includes(options.instanceId)) {
-      return options.instanceId;
+    if (!allInstanceIds.includes(options.instanceId)) {
+      throw new FirebaseError(
+        `Instance '${options.instanceId}' does not exist in kit '${options.existingKit.kit}'. Available instances: ${allInstanceIds.join(", ")}`,
+      );
     }
+    if (!options.unconfiguredInstanceIds.includes(options.instanceId)) {
+      throw new FirebaseError(
+        `Instance '${options.instanceId}' is already configured for this project.`,
+      );
+    }
+    return options.instanceId;
+  }
+
+  if (options.unconfiguredInstanceIds.length === 0) {
     throw new FirebaseError(
-      `Instance '${options.instanceId}' is not configured for kit '${existingKit.kit}'. Available instances: ${instanceIds.join(", ")}`,
+      `Kit '${options.existingKit.kit}' has no unconfigured instances for this project.`,
     );
   }
 
-  if (instanceIds.length === 1 || options.nonInteractive) {
-    return instanceIds[0];
+  if (options.unconfiguredInstanceIds.length === 1) {
+    const instanceId = options.unconfiguredInstanceIds[0];
+    logLabeledBullet(
+      "functions",
+      `${clc.bold(instanceId)} is the only instance without a configuration. Configuring...`,
+    );
+    return instanceId;
   }
 
   return select<string>({
     message: "Which instance would you like to configure for this project?",
-    choices: instanceIds.map((id) => ({ name: id, value: id })),
+    choices: options.unconfiguredInstanceIds,
+    nonInteractive: options.nonInteractive,
   });
 }
 
@@ -533,14 +551,14 @@ export async function writeKitPackageJson(
     }
   } else {
     const latestNodeVersion = supported.latest("nodejs").replace("nodejs", "");
-    const packageNoLintingTemplate = readTemplateSync(
-      "init/functions/typescript/package.nolint.json",
-    );
-    const subbedTemplate = packageNoLintingTemplate.replace(/{{RUNTIME}}/g, latestNodeVersion);
+    const packageKitTemplate = readTemplateSync("init/functions/typescript/package-kit.json");
+    const subbedTemplate = packageKitTemplate.replace(/{{RUNTIME}}/g, latestNodeVersion);
     try {
       pkgJson = JSON.parse(subbedTemplate) as typeof pkgJson;
     } catch (err: unknown) {
-      throw new FirebaseError("Failed to parse package.nolint.json template: " + getErrMsg(err));
+      throw new FirebaseError("Failed to parse package-kit.json template: " + getErrMsg(err), {
+        original: err instanceof Error ? err : undefined,
+      });
     }
   }
 
@@ -600,6 +618,114 @@ export async function scaffoldKitFiles(
   return { sourcePath, configDirPath, absSourcePath, absConfigDirPath };
 }
 
+interface PackageLockEntry {
+  version?: string;
+  dependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+}
+
+interface PackageLock {
+  packages?: Record<string, PackageLockEntry>;
+}
+
+interface KitManifest {
+  dependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+}
+
+/**
+ * Resolves the package specifier to save to the wrapper package.json.
+ *
+ * - Exact pin (e.g. "7.1.0", "=7.1.0", "v7.1.0"): Preserved as exact ("=X.Y.Z").
+ * - Tilde range (e.g. "~7.1.0"): Preserved as tilde ("~installedVer" or declared).
+ * - Caret / wider range (e.g. "^7.0.0", ">=7.0.0"): Anchored to caret ("^installedVer" or declared).
+ */
+export function resolveSdkSpecifierToSave(
+  packageName: string,
+  declaredVer: string,
+  installedVer?: string,
+): string {
+  const cleanVer = semver.clean(declaredVer);
+  if (cleanVer) {
+    return `${packageName}@=${installedVer || cleanVer}`;
+  }
+
+  if (declaredVer.trim().startsWith("~")) {
+    return installedVer ? `${packageName}@~${installedVer}` : `${packageName}@${declaredVer}`;
+  }
+
+  if (installedVer) {
+    return `${packageName}@^${installedVer}`;
+  }
+
+  return `${packageName}@${declaredVer}`;
+}
+
+/**
+ * Inspects package-lock.json (or node_modules as fallback) to determine which SDK versions
+ * should be explicitly saved to the wrapper package.json using npm install.
+ */
+export async function getKitPackagesToSave(
+  absSourcePath: string,
+  packageName: string,
+): Promise<string[]> {
+  const lockfilePath = path.join(absSourcePath, "package-lock.json");
+
+  let peerDeps: Record<string, string> = {};
+  let directDeps: Record<string, string> = {};
+  let installedFunctionsVer: string | undefined;
+  let installedAdminVer: string | undefined;
+
+  if (await fs.pathExists(lockfilePath)) {
+    try {
+      const lockfile = (await fs.readJson(lockfilePath)) as PackageLock;
+      const packages = lockfile.packages || {};
+      const kitEntry = packages[`node_modules/${packageName}`] || {};
+      peerDeps = kitEntry.peerDependencies || {};
+      directDeps = kitEntry.dependencies || {};
+      installedFunctionsVer = packages["node_modules/firebase-functions"]?.version;
+      installedAdminVer = packages["node_modules/firebase-admin"]?.version;
+    } catch (err: unknown) {
+      logger.debug(`Failed to read package-lock.json: ${getErrMsg(err)}`);
+    }
+  }
+
+  if (Object.keys(peerDeps).length === 0 && Object.keys(directDeps).length === 0) {
+    const kitPkgJsonPath = path.join(absSourcePath, "node_modules", packageName, "package.json");
+    if (await fs.pathExists(kitPkgJsonPath)) {
+      try {
+        const kitPkgJson = (await fs.readJson(kitPkgJsonPath)) as KitManifest;
+        peerDeps = kitPkgJson.peerDependencies || {};
+        directDeps = kitPkgJson.dependencies || {};
+      } catch (err: unknown) {
+        logger.debug(`Failed to read kit package.json: ${getErrMsg(err)}`);
+      }
+    }
+  }
+
+  // 1. Resolve firebase-functions (must be declared by a valid Function Kit)
+  const declaredFunctionsVer = peerDeps["firebase-functions"] || directDeps["firebase-functions"];
+  if (!declaredFunctionsVer) {
+    throw new FirebaseError(
+      `Package '${packageName}' is not a valid Function Kit: it must declare 'firebase-functions' as a dependency or peer dependency.`,
+    );
+  }
+
+  const packagesToSave: string[] = [
+    resolveSdkSpecifierToSave("firebase-functions", declaredFunctionsVer, installedFunctionsVer),
+  ];
+
+  // 2. Resolve firebase-admin (strictly conditional: only if kit declared it)
+  const declaredAdminVer = peerDeps["firebase-admin"] || directDeps["firebase-admin"];
+  if (declaredAdminVer) {
+    packagesToSave.push(
+      resolveSdkSpecifierToSave("firebase-admin", declaredAdminVer, installedAdminVer),
+    );
+  }
+
+  return packagesToSave;
+}
+
 /**
  * Installs dependencies and compiles TypeScript source for the kit.
  */
@@ -608,6 +734,7 @@ export async function buildAndInstallKit(
   rawPkgName: string,
   isThirdParty: boolean,
 ): Promise<void> {
+  const { packageName } = parseNpmPackageSpecifier(rawPkgName);
   const installArgs = ["install", rawPkgName, "--save-prefix=^"];
   if (isThirdParty) {
     installArgs.push("--ignore-scripts");
@@ -617,6 +744,27 @@ export async function buildAndInstallKit(
     await wrapSpawn("npm", installArgs, absSourcePath);
   } catch (err: unknown) {
     throw new FirebaseError(`NPM install failed: ${getErrMsg(err)}`);
+  }
+
+  const packagesToSave = await getKitPackagesToSave(absSourcePath, packageName);
+  if (packagesToSave.length > 0) {
+    logLabeledBullet(
+      "functions",
+      `Saving resolved SDK dependencies: ${clc.bold(packagesToSave.join(", "))}...`,
+    );
+    const saveArgs = ["install", ...packagesToSave, "--save-prefix=^"];
+    if (isThirdParty) {
+      saveArgs.push("--ignore-scripts");
+    }
+    try {
+      await wrapSpawn("npm", saveArgs, absSourcePath);
+    } catch (err: unknown) {
+      throw new FirebaseError(
+        `Failed to install required SDK dependencies (${packagesToSave.join(", ")}): ${getErrMsg(err)}. ` +
+          "Verify that the kit's dependencies are compatible with the resolved Firebase SDK versions.",
+        { original: err instanceof Error ? err : undefined },
+      );
+    }
   }
 
   logLabeledBullet("functions", "Building TypeScript source...");
@@ -1015,27 +1163,33 @@ export async function addKitInstanceOrConfigureProject(
     options.rc?.hasProjects && options.project && options.rc.hasProjectAlias(options.project)
       ? options.project
       : undefined;
-  const isConfiguredForProject = isKitConfiguredForProject(
+  const unconfiguredInstances = getUnconfiguredInstancesForProject(
     options.config,
     existingKit,
     projectId,
     projectAlias,
   );
+  const isConfiguredForProject =
+    Object.keys(existingKit.instances || {}).length > 0 && unconfiguredInstances.length === 0;
 
   let action: "addInstance" | "addEnv";
-  let preselectedInstanceId: string | undefined;
-
   if (
     options.instanceId &&
     existingKit.instances &&
     Object.prototype.hasOwnProperty.call(existingKit.instances, options.instanceId)
   ) {
+    if (!unconfiguredInstances.includes(options.instanceId)) {
+      throw new FirebaseError(
+        `Instance '${options.instanceId}' is already configured for this project.`,
+      );
+    }
     action = "addEnv";
-    preselectedInstanceId = options.instanceId;
-  } else if (!isConfiguredForProject && !options.nonInteractive) {
-    const existingInstances = Object.keys(existingKit.instances || {}).join(", ");
+  } else if (options.instanceId) {
+    action = "addInstance";
+  } else if (unconfiguredInstances.length > 0 && !options.nonInteractive) {
+    const unconfiguredInstancesList = unconfiguredInstances.join(", ");
     action = await select<"addInstance" | "addEnv">({
-      message: `The following instances already exist, but are not configured for this project: ${existingInstances}. What would you like to do?`,
+      message: `The following instances already exist, but are not configured for this project: ${unconfiguredInstancesList}. What would you like to do?`,
       choices: [
         {
           name: "Add an instance to the existing kit",
@@ -1083,8 +1237,11 @@ export async function addKitInstanceOrConfigureProject(
     absConfigDirPath = result.absConfigDirPath;
   } else if (action === "addEnv") {
     resultAction = "configuredEnv";
-    instanceId =
-      preselectedInstanceId ?? (await promptExistingInstanceForProject(options, existingKit));
+    instanceId = await promptExistingInstanceForProject({
+      ...options,
+      existingKit,
+      unconfiguredInstanceIds: unconfiguredInstances,
+    });
     configDirPath = existingKit.instances?.[instanceId];
     if (!configDirPath) {
       throw new FirebaseError(
