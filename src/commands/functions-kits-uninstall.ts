@@ -87,9 +87,8 @@ async function handleInstance(options: Options, config: Config): Promise<void> {
   const envFileNames = configDirContents
     .filter((f) => f.isFile() && f.name.startsWith(".env."))
     .map((f) => f.name.slice(".env.".length));
-  const aliasToProjectMappings = getAliasesToProjects(config);
-  const projectNamesInEnvs = envFileNames.map(
-    (envName) => aliasToProjectMappings[envName] || envName,
+  const projectNamesInEnvs = envFileNames.map((envName) =>
+    options.rc ? options.rc.resolveAlias(envName) : envName,
   );
 
   // Cases:
@@ -130,15 +129,20 @@ async function handleInstance(options: Options, config: Config): Promise<void> {
     return;
   }
   let filesystemNameForProject = projectId;
-  for (const [alias, project] of Object.entries(aliasToProjectMappings)) {
-    if (project === projectId) {
-      filesystemNameForProject = alias;
-    }
+  const envFilesWhichAliasToProject = envFileNames.filter(
+    (name) => (options.rc?.resolveAlias(name) || name) === projectId,
+  );
+  if (envFilesWhichAliasToProject.length > 1) {
+    throw new FirebaseError(
+      `Instance ${instanceId} contains multiple .env files which ambiguously resolve to the current project ${envFileNames.map((s) => ".env." + s).join(",")}`,
+    );
+  }
+  if (envFilesWhichAliasToProject.length === 1) {
+    filesystemNameForProject = envFilesWhichAliasToProject[0];
   }
   await uninstallProjectInstance(
     options,
     config,
-    projectId,
     filesystemNameForProject,
     instanceId,
     instanceConfigDirPath,
@@ -167,8 +171,8 @@ async function uninstallInstance(
     if (!fileName.startsWith(".env.")) {
       continue;
     }
-    const projectIdOrAlias = fileName.replace(new RegExp("^.env."), "");
-    await uninstallProjectInstanceByAlias(
+    const projectIdOrAlias = fileName.slice(".env.".length);
+    await uninstallProjectInstance(
       options,
       config,
       projectIdOrAlias,
@@ -199,29 +203,6 @@ async function uninstallInstance(
   config.writeProjectFile("firebase.json", config.src);
 }
 
-/**
- * Invoke uninstallProjectInstance when only the instance's .env file name is known
- * (from doing a directory walk), checking .firebaserc for whether name is a known project alias.
- */
-async function uninstallProjectInstanceByAlias(
-  options: Options,
-  config: Config,
-  projectAlias: string,
-  instanceId: string,
-  kitInstancePath: string,
-): Promise<void> {
-  const aliasToProjectMappings = getAliasesToProjects(config);
-  const projectId = aliasToProjectMappings[projectAlias] || projectAlias;
-  await uninstallProjectInstance(
-    options,
-    config,
-    projectId,
-    projectAlias,
-    instanceId,
-    kitInstancePath,
-  );
-}
-
 /*
  * Remove the .env.<projectAlias> file and deployed Function for a specific project instance
 
@@ -233,12 +214,17 @@ async function uninstallProjectInstanceByAlias(
 async function uninstallProjectInstance(
   options: Options,
   config: Config,
-  projectId: string,
-  filesystemId: string,
+  envName: string,
   instanceId: string,
   kitInstancePath: string,
 ): Promise<void> {
-  const envFilePath = join(kitInstancePath, `.env.${filesystemId}`);
+  const projectId = options.rc?.resolveAlias(envName) || envName;
+  const envFilePath = join(kitInstancePath, `.env.${envName}`);
+  if (config.projectFileExists(envFilePath)) {
+    throw new FirebaseError(
+      `Expected to clean up project kit instance .env file at ${envFilePath}, but it doesn't exist.`,
+    );
+  }
   const epFilters: EndpointFilter[] = [{ codebase: instanceId }];
   const deployContext: Context = { projectId: projectId, filters: epFilters };
   const deletionCount = await deleteFunctionsByEndpointFilters(deployContext, options);
@@ -335,21 +321,4 @@ function configDirEmpty(config: Config, projectRelativePath: string): boolean {
     return false;
   }
   return true;
-}
-
-// Reads .firebaserc for the project-to-alias mapping and reverses it
-function getAliasesToProjects(config: Config): Record<string, string> {
-  const firebaserc = config.readProjectFile(".firebaserc", {
-    json: true,
-    fallback: {},
-  });
-  if (!("projects" in firebaserc) || typeof firebaserc.projects !== "object") {
-    return {};
-  }
-  const projects = firebaserc.projects;
-  const asStrings: Record<string, string> = {};
-  for (const [alias, project] of Object.entries(projects)) {
-    asStrings[alias] = String(project);
-  }
-  return asStrings;
 }
