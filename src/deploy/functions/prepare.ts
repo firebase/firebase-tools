@@ -7,6 +7,7 @@ import * as experiments from "../../experiments";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
 import * as functionsConfig from "../../functionsConfig";
 import * as functionsEnv from "../../functions/env";
+import * as params from "./params";
 import * as runtimes from "./runtimes";
 import * as supported from "./runtimes/supported";
 import * as validate from "./validate";
@@ -330,29 +331,39 @@ export async function prepare(
     const { userEnvs: userEnvs, secretRefs: secretRefs } = partitionUserEnvs(rawUserEnvs);
     const envs = { ...userEnvs, ...firebaseEnvs };
 
-    const relevantEndpoints = backend
-      .allEndpoints(existingBackend)
-      .filter((e) => e.codebase === codebase || e.codebase === undefined);
-    await resolveDefaultRegionsForBuild(wantBuild, backend.of(...relevantEndpoints));
-
     const parsedSecretRefs = mapObject<string, build.ParsedSecretRef>(secretRefs, (unparsed) =>
       build.parseSecretRef(unparsed),
     );
     build.applyEnvSecretBindings(wantBuild, parsedSecretRefs);
 
-    const {
-      backend: wantBackend,
-      envs: resolvedEnvs,
-      secretRefs: resolvedSecretRefs,
-    } = await build.resolveBackend({
-      build: wantBuild,
-      firebaseConfig,
-      userEnvs,
-      codebase,
-      nonInteractive: options.nonInteractive,
-      force: options.force,
-      isEmulator: false,
-    });
+    // Instead of calling build.resolveBackend() here, we unbundle params.resolveParams()
+    // and build.toBackend() (see #11020).
+    //
+    // Why:
+    // 1) resolveDefaultRegionsForBuild() needs resolved parameter values so trigger event filters
+    //    (e.g., Firestore database or Storage bucket) are not unparsed CEL expressions when querying GCP APIs.
+    // 2) build.toBackend() needs resolved endpoint regions so VPC connector resource strings
+    //    can be formatted with the concrete region (PR #10471).
+    //
+    // Unbundling allows resolveDefaultRegionsForBuild() to sit directly between parameter evaluation
+    // and Backend AST generation.
+    const { paramValues: resolvedEnvs, secretRefs: resolvedSecretRefs } =
+      await params.resolveParams(
+        wantBuild.params,
+        firebaseConfig,
+        build.envWithTypes(wantBuild.params, userEnvs),
+        codebase,
+        options.nonInteractive,
+        options.force,
+        false,
+      );
+
+    const relevantEndpoints = backend
+      .allEndpoints(existingBackend)
+      .filter((e) => e.codebase === codebase || e.codebase === undefined);
+    await resolveDefaultRegionsForBuild(wantBuild, backend.of(...relevantEndpoints), resolvedEnvs);
+
+    const wantBackend = build.toBackend(wantBuild, resolvedEnvs);
 
     functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
     if (experiments.isEnabled("secretEnvParams")) {
@@ -566,11 +577,17 @@ export async function prepare(
 
 /**
  * Resolves default regions for endpoints in a Build before it is converted to a Backend.
- * This allows the VPC connector string to be built with the correct region in build.ts.
+ * This allows the VPC connector string to be built with the correct region in build.ts (PR #10471).
+ *
+ * Parameter values are accepted here to substitute CEL expressions in trigger event filters
+ * (e.g., parameterized Firestore database or Storage bucket) prior to querying GCP resource APIs (see #11020).
+ * Note that endpoints are not mutated in-place; trigger event filters are resolved ephemerally for service
+ * calls, and build.toBackend remains the sole place where expressions are converted to backend strings.
  */
 export async function resolveDefaultRegionsForBuild(
   buildObj: build.Build,
   have: backend.Backend,
+  paramValues: Record<string, params.ParamValue> = {},
 ): Promise<void> {
   for (const [id, endpoint] of Object.entries(buildObj.endpoints)) {
     if (!endpoint.region?.length || endpoint.region.includes(build.REGION_TBD)) {
@@ -594,8 +611,8 @@ export async function resolveDefaultRegionsForBuild(
       } else {
         // Match triggers.
         try {
-          resolvedRegion = await resolveRegionForTrigger(endpoint);
-        } catch (err: any) {
+          resolvedRegion = await resolveRegionForTrigger(endpoint, paramValues);
+        } catch (err) {
           logger.debug(
             `Failed to resolve region for endpoint ${id}. Defaulting to ${FALLBACK_DEPLOYMENT_REGION}.`,
             getErrStack(err),
@@ -608,9 +625,38 @@ export async function resolveDefaultRegionsForBuild(
   }
 }
 
-async function resolveRegionForTrigger(endpoint: build.Endpoint): Promise<string> {
-  const service = serviceForEndpoint(endpoint);
-  return await service.getDefaultRegion(endpoint);
+/**
+ * Resolves the default region for an endpoint's trigger by calling the appropriate service.
+ * If the endpoint is event-triggered and paramValues are provided, an ephemeral copy with resolved
+ * trigger event filters is passed to the service so that GCP API calls receive concrete values.
+ * The endpoint on the Build object is not mutated; build.toBackend remains the sole place where
+ * expressions are converted to backend strings.
+ */
+async function resolveRegionForTrigger(
+  endpoint: build.Endpoint,
+  paramValues: Record<string, params.ParamValue> = {},
+): Promise<string> {
+  let targetEndpoint = endpoint;
+  if (paramValues && build.isEventTriggered(endpoint)) {
+    targetEndpoint = {
+      ...endpoint,
+      eventTrigger: {
+        ...endpoint.eventTrigger,
+        ...(endpoint.eventTrigger.eventFilters && {
+          eventFilters: mapObject(endpoint.eventTrigger.eventFilters, (v) =>
+            params.resolveString(v, paramValues),
+          ),
+        }),
+        ...(endpoint.eventTrigger.eventFilterPathPatterns && {
+          eventFilterPathPatterns: mapObject(endpoint.eventTrigger.eventFilterPathPatterns, (v) =>
+            params.resolveString(v, paramValues),
+          ),
+        }),
+      },
+    };
+  }
+  const service = serviceForEndpoint(targetEndpoint);
+  return await service.getDefaultRegion(targetEndpoint);
 }
 
 /**

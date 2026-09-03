@@ -1,0 +1,1 @@
+- [Fixed] Fix an issue where 2nd-gen functions with parameterized trigger event filters failed default region resolution (#11020).
