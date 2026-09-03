@@ -173,6 +173,7 @@ export function captureRuntimeValidationError(errMessage: string): string {
  * @param err The error returned from the operation.
  */
 function functionsOpLogReject(funcName: string, type: string, err: any): void {
+  const status = err?.context?.response?.statusCode || err?.status;
   // Sniff for runtime validation errors and log a more user-friendly warning.
   if ((err?.message as string).includes("Runtime validation errors")) {
     const capturedMessage = captureRuntimeValidationError(err.message);
@@ -180,7 +181,7 @@ function functionsOpLogReject(funcName: string, type: string, err: any): void {
       clc.bold(clc.yellow("functions:")) + " " + capturedMessage + " for function " + funcName,
     );
   }
-  if (err?.context?.response?.statusCode === 429) {
+  if (status === 429) {
     utils.logWarning(
       `${clc.bold(
         clc.yellow("functions:"),
@@ -193,7 +194,7 @@ function functionsOpLogReject(funcName: string, type: string, err: any): void {
   }
   throw new FirebaseError(`Failed to ${type} function ${funcName}`, {
     original: err,
-    status: err?.context?.response?.statusCode,
+    status,
     context: { function: funcName },
   });
 }
