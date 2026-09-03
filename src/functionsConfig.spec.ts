@@ -58,7 +58,11 @@ describe("config.getFirebaseConfig", () => {
   });
 
   afterEach(() => {
-    expect(nock.isDone()).to.be.true;
+    // Read isDone before cleaning, but clean before asserting, so a test that
+    // fails before its interceptor is used doesn't leak it into the next test.
+    const isDone = nock.isDone();
+    nock.cleanAll();
+    expect(isDone).to.equal(true, "all nock stubs should have been called");
   });
 
   it("should return the admin SDK config on success", async () => {
