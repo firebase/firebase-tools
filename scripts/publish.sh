@@ -7,7 +7,7 @@ printusage() {
   echo "e.g. REPOSITORY_ORG=user, REPOSITORY_NAME=repo"
   echo ""
   echo "Arguments:"
-  echo "  version: 'patch', 'minor', 'major', 'artifactsOnly', or 'preview'"
+  echo "  version: 'patch', 'minor', 'major', 'artifactsOnly', 'preview', or 'move-latest'"
   echo "  branch: required if version is 'preview'"
 }
 
@@ -19,12 +19,25 @@ if [[ $VERSION == "" ]]; then
 elif [[ $VERSION == "artifactsOnly" ]]; then
   echo "Skipping npm package publish since VERSION is artifactsOnly."
   exit 0
+elif [[ $VERSION == "move-latest" || $VERSION == "tag-latest" ]]; then
+  TARGET_VERSION=$2
+  if [[ -z "$TARGET_VERSION" && -f "/workspace/version_number.txt" ]]; then
+    TARGET_VERSION=$(cat /workspace/version_number.txt)
+  fi
+  if [[ -z "$TARGET_VERSION" ]]; then
+    TARGET_VERSION=$(jq -r ".version" package.json)
+  fi
+  echo "Moving npm latest tag to firebase-tools@${TARGET_VERSION}..."
+  npm dist-tag add "firebase-tools@${TARGET_VERSION}" latest --registry https://wombat-dressing-room.appspot.com
+  npm dist-tag rm firebase-tools staging --registry https://wombat-dressing-room.appspot.com || true
+  echo "npm latest tag successfully moved to ${TARGET_VERSION}."
+  exit 0
 elif [[ $VERSION == "preview" ]]; then
   if [[ $BRANCH == "" ]]; then
     printusage
     exit 1
   fi
-elif [[ ! ($VERSION == "patch" || $VERSION == "minor" || $VERSION == "major") ]]; then
+elif [[ ! ($VERSION == "patch" || $VERSION == "minor" || $VERSION == "major" || $VERSION == "move-latest" || $VERSION == "tag-latest") ]]; then
   printusage
   exit 1
 fi
@@ -134,12 +147,10 @@ echo "" >> "${RELEASE_NOTES_FILE}"
 cat CHANGELOG.md >> "${RELEASE_NOTES_FILE}"
 echo "Made the release notes."
 
-
-
 if [[ $VERSION != "preview" ]]; then
-  echo "Publishing to npm..."
-  npx clean-publish@5.0.0 --before-script ./scripts/clean-shrinkwrap.sh
-  echo "Published to npm."
+  echo "Publishing to npm (under staging tag to avoid moving latest tag)..."
+  npx clean-publish@5.0.0 --before-script ./scripts/clean-shrinkwrap.sh -- --tag staging
+  echo "Published to npm under staging tag."
 
   echo "Updating package-lock.json for Docker image..."
   npm --prefix ./scripts/publish/firebase-docker-image install
@@ -153,7 +164,7 @@ if [[ $VERSION != "preview" ]]; then
   echo "Cleaning up release notes..."
   rm CHANGELOG.md
   touch CHANGELOG.md
-  git commit -m "[firebase-release] Removed change log and reset repo after ${NEW_VERSION} release" CHANGELOG.md scripts/publish/firebase-docker-image/package-lock.json
+  git commit -m "[firebase-release] Removed change log and reset repo after ${NEW_VERSION} release" CHANGELOG.md scripts/publish/firebase-docker-image/package-lock.json src/mcp/server.json
   echo "Cleaned up release notes."
 
   echo "Pushing to GitHub..."
