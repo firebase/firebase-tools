@@ -134,7 +134,7 @@ async function handleInstance(options: Options, config: Config): Promise<void> {
   );
   if (envFilesWhichAliasToProject.length > 1) {
     throw new FirebaseError(
-      `Instance ${instanceId} contains multiple .env files which ambiguously resolve to the current project ${envFileNames.map((s) => ".env." + s).join(",")}`,
+      `Instance ${instanceId} contains multiple .env files which ambiguously resolve to the current project ${envFilesWhichAliasToProject.map((s) => ".env." + s).join(", ")}`,
     );
   }
   if (envFilesWhichAliasToProject.length === 1) {
@@ -220,7 +220,7 @@ async function uninstallProjectInstance(
 ): Promise<void> {
   const projectId = options.rc?.resolveAlias(envName) || envName;
   const envFilePath = join(kitInstancePath, `.env.${envName}`);
-  if (config.projectFileExists(envFilePath)) {
+  if (!config.projectFileExists(envFilePath)) {
     throw new FirebaseError(
       `Expected to clean up project kit instance .env file at ${envFilePath}, but it doesn't exist.`,
     );
