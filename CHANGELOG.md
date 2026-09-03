@@ -1,0 +1,2 @@
+- [Fixed] Increases default polling timeout for App Hosting operations and rollouts to 60 minutes.
+- Fixed `firebase deploy` leaving the Python discovery admin server (`serving.py`) running after a killed or wedged deploy, which caused later deploys to hang indefinitely on `connect ETIMEDOUT` (#10847).
