@@ -171,7 +171,8 @@ export async function prepare(
       clearOpt,
     );
 
-    const sourceDir = options.config.path(config.rootDir || ".");
+    const relativeRootDir = (config.rootDir || "").replace(/^\//, "") || ".";
+    const sourceDir = options.config.path(relativeRootDir);
     const yamlPath = path.join(sourceDir, "apphosting.yaml");
     let appHostingConfig: AppHostingYamlConfig | undefined;
     if (fileExistsSync(yamlPath)) {

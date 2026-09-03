@@ -29,11 +29,11 @@ describe("init features run", () => {
   });
 
   describe("askQuestions", () => {
-    it("should prompt for serviceId, region, and rootDir", async () => {
+    it("should prompt for serviceId, region, and rootDir with correct messages and defaults", async () => {
       const inputStub = sandbox.stub(prompt, "input");
       inputStub.onFirstCall().resolves("custom-service");
       inputStub.onSecondCall().resolves("us-central1");
-      inputStub.onThirdCall().resolves("./src");
+      inputStub.onThirdCall().resolves("/");
 
       const setup = createMockSetup({ projectId: "test-project" });
       await runFeature.askQuestions(setup);
@@ -41,8 +41,54 @@ describe("init features run", () => {
       expect(setup.featureInfo?.run).to.deep.equal({
         serviceId: "custom-service",
         region: "us-central1",
-        rootDir: "./src",
+        rootDir: "/",
       });
+
+      // Verify prompt 1: Service ID (no default)
+      const serviceCall = inputStub.firstCall.args[0];
+      expect(serviceCall.message).to.equal("Please enter a unique ID for your service");
+      expect(serviceCall.default).to.be.undefined;
+      expect(serviceCall.validate("ab")).to.be.a("string");
+      expect(serviceCall.validate("my-service-")).to.be.a("string");
+      expect(serviceCall.validate("My-Service")).to.be.a("string");
+      expect(serviceCall.validate("a".repeat(64))).to.be.a("string");
+      expect(serviceCall.validate("custom-service")).to.be.true;
+
+      // Verify prompt 2: Region (defaults to us-central1)
+      const regionCall = inputStub.secondCall.args[0];
+      expect(regionCall.message).to.equal("Which region should this service be deployed to?");
+      expect(regionCall.default).to.equal("us-central1");
+      expect(regionCall.validate("INVALID REGION")).to.be.a("string");
+      expect(regionCall.validate("us-central1")).to.be.true;
+
+      // Verify prompt 3: Root directory (defaults to /)
+      const rootDirCall = inputStub.thirdCall.args[0];
+      expect(rootDirCall.message).to.equal(
+        "Specify your app's root directory relative to your firebase.json directory",
+      );
+      expect(rootDirCall.default).to.equal("/");
+      expect(rootDirCall.validate("/")).to.be.true;
+    });
+
+    it("should validate rootDir existence against config.projectDir", async () => {
+      const inputStub = sandbox.stub(prompt, "input");
+      inputStub.onFirstCall().resolves("custom-service");
+      inputStub.onSecondCall().resolves("us-central1");
+      inputStub.onThirdCall().resolves("non-existent-folder");
+
+      const existsSyncStub = sandbox.stub(fs, "existsSync");
+      existsSyncStub.withArgs("/path/to/project/non-existent-folder").returns(false);
+      existsSyncStub.withArgs("/path/to/project/valid-folder").returns(true);
+
+      const setup = createMockSetup({ projectId: "test-project" });
+      const config = new Config({}, {});
+      config.projectDir = "/path/to/project";
+
+      await runFeature.askQuestions(setup, config);
+
+      const rootDirCall = inputStub.thirdCall.args[0];
+      expect(rootDirCall.validate("non-existent-folder")).to.include("does not exist");
+      expect(rootDirCall.validate("valid-folder")).to.be.true;
     });
 
     it("should throw FirebaseError if projectId is missing", async () => {

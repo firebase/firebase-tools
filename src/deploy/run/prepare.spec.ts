@@ -62,6 +62,29 @@ describe("run prepare", () => {
     expect(payload.run?.services?.[0].region).to.equal("us-central1");
   });
 
+  it("should normalize rootDir with leading slash to project relative path", async () => {
+    const payload: Payload = {};
+    const context: Context = {};
+    let pathArg = "";
+    const options = {
+      project: "project",
+      config: {
+        get: () => ({ serviceId: "my-service", region: "us-central1", rootDir: "/" }),
+        path: (p: string) => {
+          pathArg = p;
+          return `/project/${p}`;
+        },
+      },
+    } as unknown as Options;
+
+    getServiceStub.resolves(undefined);
+
+    await prepare(context, options, payload);
+
+    expect(pathArg).to.equal(".");
+    expect(payload.run?.services?.[0].source).to.equal("/project/.");
+  });
+
   it("should respect FIREBASE_RUN_REGION environment variable", async () => {
     process.env.FIREBASE_RUN_REGION = "europe-west1";
     const payload: Payload = {};

@@ -26,21 +26,20 @@ export async function askQuestions(setup: Setup, config?: Config, options?: any)
 
   logBullet("Configuring Cloud Run...");
 
-  const defaultServiceId =
-    options?.service ||
-    options?.serviceId ||
-    path
-      .basename(process.cwd())
-      .toLowerCase()
-      .replace(/[^a-z0-9-]/g, "-") ||
-    "my-service";
-
   const serviceId =
     options?.service ||
     options?.serviceId ||
     (await input({
-      message: "What should be the ID of your Cloud Run service?",
-      default: defaultServiceId,
+      message: "Please enter a unique ID for your service",
+      validate: (s: string) => {
+        if (!/^[a-z](?:[a-z0-9-]*[a-z0-9])?$/.test(s)) {
+          return "Must begin with a letter, can contain only lowercase, digits, hyphens, and cannot end with hyphen";
+        }
+        if (s.length < 3 || s.length > 63) {
+          return "Must be between 3 and 63 characters";
+        }
+        return true;
+      },
     }));
 
   const defaultRegion =
@@ -64,8 +63,17 @@ export async function askQuestions(setup: Setup, config?: Config, options?: any)
     options?.rootDir ||
     options?.source ||
     (await input({
-      message: "What is the root directory of your source code? (relative to firebase.json)",
-      default: ".",
+      message: "Specify your app's root directory relative to your firebase.json directory",
+      default: "/",
+      validate: (input: string) => {
+        if (config?.projectDir) {
+          const absPath = path.join(config.projectDir, input);
+          if (!existsSync(absPath)) {
+            return `Directory ${absPath} does not exist. Please enter a valid directory.`;
+          }
+        }
+        return true;
+      },
     }));
 
   setup.featureInfo = setup.featureInfo || {};
