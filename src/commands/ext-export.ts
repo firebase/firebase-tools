@@ -23,9 +23,9 @@ import { requirePermissions } from "../requirePermissions";
 import { getInstance } from "../extensions/extensionsApi";
 import { last, logLabeledBullet, logLabeledError, logLabeledWarning } from "../utils";
 import { ExtensionInstance } from "../extensions/types";
-import { writeUserEnvs, UserEnvsOpts, hasUserEnvs } from "../functions/env";
-import { mkdirSync } from "fs";
-import { resolve } from "path";
+import { writeUserEnvs, UserEnvsOpts } from "../functions/env";
+import { mkdirSync, statSync } from "fs";
+import { join, resolve } from "path";
 import { Config } from "../config";
 import { normalizeAndValidate, isKitConfig } from "../functions/projectConfig";
 import { FirebaseError } from "../error";
@@ -173,7 +173,9 @@ async function fnHandler(options: Options): Promise<void> {
 
   const convertedEnv = functionsEnvFromInstance(instance);
   const writeLocation: UserEnvsOpts = kitExportTarget(instanceId, projectId, options);
-  if (hasUserEnvs(writeLocation)) {
+  // Function kit installation with `kits:install --no-configure` creates an empty
+  // `.env.<projectId>` file via `fs.ensureFileSync`. We only abort if a non-empty configuration exists.
+  if (hasNonEmptyProjectEnv(writeLocation)) {
     logger.info(
       `Exported extensions config appears to already exist in /${instanceId}, aborting write.`,
     );
@@ -184,6 +186,27 @@ async function fnHandler(options: Options): Promise<void> {
     });
     writeUserEnvs(convertedEnv, writeLocation);
   }
+}
+
+/**
+ * Checks if a project-specific dotenv file exists and is non-empty.
+ * `kits:install --no-configure` creates an empty `.env.<projectId>` file on disk (whereas regular install
+ * populates it), so we only treat the configuration as already existing if the file has non-zero size.
+ */
+export function hasNonEmptyProjectEnv(opts: UserEnvsOpts): boolean {
+  const configDir = opts.configDir || opts.functionsSource;
+  const files = [
+    `.env.${opts.projectId}`,
+    ...(opts.projectAlias ? [`.env.${opts.projectAlias}`] : []),
+  ];
+  return files.some((f) => {
+    const fullPath = join(configDir, f);
+    try {
+      return statSync(fullPath).size > 0;
+    } catch {
+      return false;
+    }
+  });
 }
 
 /**
