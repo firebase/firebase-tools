@@ -2,7 +2,7 @@ import { bold } from "colorette";
 
 import { logger } from "../../logger";
 import { getEndpointFilters, endpointMatchesAnyFilter } from "./functionsDeployHelper";
-import { FirebaseError } from "../../error";
+import { FirebaseError, getErrStatus } from "../../error";
 import { Options } from "../../options";
 import { flattenArray } from "../../functional";
 import * as iam from "../../gcp/iam";
@@ -124,6 +124,70 @@ export async function checkHttpIam(
     );
   }
   logger.debug("[functions] found setIamPolicy permission, proceeding with deploy");
+}
+
+/**
+ * Checks that the default App Engine service account exists and is enabled, for codebases
+ * that will rely on it. Only 1st gen functions without an explicit `serviceAccount` fall back
+ * to the App Engine default service account (`<projectId>@appspot.gserviceaccount.com`) as
+ * their runtime identity; 2nd gen functions use the Compute Engine default service account
+ * instead, so this check is a no-op unless such a 1st gen endpoint is present.
+ *
+ * A missing or disabled service account otherwise causes the deploy to fail deep in the
+ * build/run pipeline with an opaque, generic error, so we surface an actionable error here
+ * instead.
+ * @param context The deploy context.
+ * @param options The command-wide options object.
+ * @param payload The deploy payload.
+ */
+export async function checkDefaultServiceAccountEnabled(
+  context: args.Context,
+  options: Options,
+  payload: args.Payload,
+): Promise<void> {
+  if (!payload.functions) {
+    return;
+  }
+  const filters = context.filters || getEndpointFilters(options, context.config!);
+  const wantBackends = Object.values(payload.functions).map(({ wantBackend }) => wantBackend);
+  const usesDefaultServiceAccount = [
+    ...flattenArray(wantBackends.map((b) => backend.allEndpoints(b))),
+  ]
+    .filter((f) => endpointMatchesAnyFilter(f, filters))
+    .some((f) => f.platform === "gcfv1" && !f.serviceAccount);
+
+  if (!usesDefaultServiceAccount) {
+    return;
+  }
+
+  const projectId = context.projectId;
+  const saEmail = `${projectId}@appspot.gserviceaccount.com`;
+  let serviceAccount: iam.ServiceAccount;
+  try {
+    serviceAccount = await iam.getServiceAccount(projectId, saEmail);
+  } catch (err: unknown) {
+    if (getErrStatus(err) === 404) {
+      throw new FirebaseError(
+        `The default App Engine service account ${bold(saEmail)} does not exist.\n\n` +
+          `To successfully deploy 1st gen functions, this service account is required. You can create it by enabling the App Engine Admin API here:\n\n` +
+          `https://console.cloud.google.com/apis/library/appengine.googleapis.com?project=${projectId}`,
+      );
+    }
+    logger.debug(
+      "[functions] failed to look up the default App Engine service account, deploy may fail:",
+      err,
+    );
+    // we want to fail this check open and not rethrow since it's informational only
+    return;
+  }
+
+  if (serviceAccount.disabled) {
+    throw new FirebaseError(
+      `The default App Engine service account ${bold(saEmail)} is disabled.\n\n` +
+        `To successfully deploy 1st gen functions, this service account must be enabled. Please enable it here:\n\n` +
+        `https://console.cloud.google.com/iam-admin/serviceaccounts?project=${projectId}`,
+    );
+  }
 }
 
 /** obtain the pubsub service agent */
