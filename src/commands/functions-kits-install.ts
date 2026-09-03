@@ -3,6 +3,8 @@ import { FirebaseError } from "../error";
 import * as experiments from "../experiments";
 import { Options } from "../options";
 import { installKitOrInstance, TEMPLATES, TemplateType } from "../functions/kits/install";
+import { requireAuth } from "../requireAuth";
+import { requireConfig } from "../requireConfig";
 
 export interface FunctionsKitsInstallOptions extends Options {
   package?: string;
@@ -13,6 +15,8 @@ export interface FunctionsKitsInstallOptions extends Options {
 
 export const command = new Command("functions:kits:install")
   .description("install a function kit into your project")
+  .before(requireConfig)
+  .before(requireAuth)
   .option("--package <package>", "NPM package name or specifier to install as a function kit")
   .option(
     "--directory <directory>",
