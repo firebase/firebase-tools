@@ -103,6 +103,7 @@ export interface InstallKitOrInstanceOptions {
   template?: TemplateType;
   kitId?: string;
   instanceId?: string;
+  defaultInstanceId?: string;
   seedEnv?: KitInstanceEnvSeed;
   nonInteractive?: boolean;
   force?: boolean;
@@ -136,6 +137,7 @@ export interface ExistingKitInstallOptions {
   configure?: boolean;
   rc?: RC;
   instanceId?: string;
+  defaultInstanceId?: string;
   seedEnv?: KitInstanceEnvSeed;
 }
 
@@ -198,9 +200,10 @@ export function parseNpmPackageSpecifier(rawPkg: string): {
 }
 
 /**
- * Validates that an npm package name adheres to npm naming conventions.
+ * Validates that an npm package name or specifier adheres to npm naming conventions.
  * - Unscoped: 'name' (no slashes)
  * - Scoped: '@scope/name' (exactly one slash)
+ * Supports optional version or tag suffix (e.g. '@1.2.3' or '@next').
  */
 export function validateNpmPackageName(packageNameOrSpecifier: string): void {
   const { packageName, version } = parseNpmPackageSpecifier(packageNameOrSpecifier);
@@ -218,8 +221,9 @@ export function validateNpmPackageName(packageNameOrSpecifier: string): void {
 }
 
 /**
- * Sanitizes an npm package name into a valid kit identifier.
- * e.g., "@firebase-function-kits/firestore-bigquery-export" -> "firestore-bigquery-export"
+ * Sanitizes an npm package name or specifier into a valid kit identifier.
+ * e.g., "@firebase-function-kits/firestore-bigquery-export@1.0.0" -> "firestore-bigquery-export"
+ * e.g., "my-kit@next" -> "my-kit"
  */
 export function sanitizePackageNameToKitName(packageNameOrSpecifier: string): string {
   const { packageName } = parseNpmPackageSpecifier(packageNameOrSpecifier);
@@ -230,7 +234,7 @@ export function sanitizePackageNameToKitName(packageNameOrSpecifier: string): st
 }
 
 /**
- * Checks if a package name is third-party (outside the @firebase-function-kits scope).
+ * Checks if a package name or specifier is third-party (outside the @firebase-function-kits scope).
  */
 export function isThirdPartyPackage(packageNameOrSpecifier: string): boolean {
   const { packageName } = parseNpmPackageSpecifier(packageNameOrSpecifier);
@@ -1169,7 +1173,11 @@ export async function addKitInstanceOrConfigureProject(
     Object.keys(existingKit.instances || {}).length > 0 && unconfiguredInstances.length === 0;
 
   let action: "addInstance" | "addEnv";
-  if (options.instanceId && existingKit.instances && options.instanceId in existingKit.instances) {
+  if (
+    options.instanceId &&
+    existingKit.instances &&
+    Object.prototype.hasOwnProperty.call(existingKit.instances, options.instanceId)
+  ) {
     if (!unconfiguredInstances.includes(options.instanceId)) {
       throw new FirebaseError(
         `Instance '${options.instanceId}' is already configured for this project.`,
@@ -1211,7 +1219,7 @@ export async function addKitInstanceOrConfigureProject(
   if (action === "addInstance") {
     resultAction = "addedInstance";
     instanceId = await promptKitInstanceId(
-      existingKit.kit,
+      options.defaultInstanceId ?? existingKit.kit,
       existingFunctionsInfo.existingInstanceIds,
       existingFunctionsInfo.existingCodebases,
       options.nonInteractive,
@@ -1234,7 +1242,7 @@ export async function addKitInstanceOrConfigureProject(
       existingKit,
       unconfiguredInstanceIds: unconfiguredInstances,
     });
-    configDirPath = existingKit.instances[instanceId];
+    configDirPath = existingKit.instances?.[instanceId];
     if (!configDirPath) {
       throw new FirebaseError(
         `Configuration directory for instance '${instanceId}' not found in kit '${existingKit.kit}'.`,
@@ -1455,7 +1463,7 @@ export async function installKitOrInstance(
   );
 
   const instanceId = await promptKitInstanceId(
-    kitId,
+    options.defaultInstanceId ?? kitId,
     existingFunctionsInfo.existingInstanceIds,
     existingFunctionsInfo.existingCodebases,
     options.nonInteractive,

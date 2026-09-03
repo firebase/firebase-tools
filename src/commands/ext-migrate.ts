@@ -2,13 +2,21 @@ import * as clc from "colorette";
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { needProjectId } from "../projectUtils";
-import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
+import {
+  ensureExtensionsApiEnabled,
+  ensureInstanceSpec,
+  logPrefix,
+} from "../extensions/extensionsHelper";
 import { requirePermissions } from "../requirePermissions";
-import { createMigrationPlan, ensureInstanceUpToDate } from "../extensions/migrate";
+import { requireConfig } from "../requireConfig";
+import { createMigrationPlan, ensureInstanceUpToDate, migrateSecrets } from "../extensions/migrate";
+import { functionsEnvFromInstance } from "../extensions/export";
+import { installKitOrInstance } from "../functions/kits/install";
 import { validateNpmPackageName } from "../functions/kits";
-import { logger } from "../logger";
 import { Options } from "../options";
-import { logLabeledBullet } from "../utils";
+import { logLabeledBullet, logLabeledWarning } from "../utils";
+import { FirebaseError } from "../error";
+import { logger } from "../logger";
 
 export interface ExtMigrateOptions extends Options {
   package?: string;
@@ -22,6 +30,7 @@ export const command = new Command("ext:migrate")
   .option("-i, --ext-instance <instanceId>", "extension instance ID to migrate")
   .option("-e, --extension <extensionRef>", "extension reference or name to migrate")
   .option("-f, --force", "force update and migration without prompting")
+  .before(requireConfig)
   .before(requirePermissions, ["firebaseextensions.instances.list"])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
@@ -44,6 +53,41 @@ export const command = new Command("ext:migrate")
     );
 
     plan.instance = await ensureInstanceUpToDate(projectId, plan.instance, options);
+
+    if (plan.instance.state !== "ACTIVE") {
+      logLabeledWarning(
+        logPrefix,
+        `Extension instance ${clc.bold(plan.instanceId)} is in state ${plan.instance.state}. Migration may not function as expected.`,
+      );
+    }
+
+    plan.instance = await ensureInstanceSpec(plan.instance);
+    if (!plan.instance.config?.source?.spec) {
+      throw new FirebaseError(
+        `Could not load extension specification for ${clc.bold(plan.instanceId)}. Unable to export configuration.`,
+      );
+    }
+
+    const exportedEnvs = functionsEnvFromInstance(plan.instance);
+
+    await migrateSecrets(plan.instance, { force: options.force });
+
+    logLabeledBullet(
+      logPrefix,
+      `Installing kit ${clc.bold(plan.kitPackage)} for instance ${clc.bold(plan.instanceId)}...`,
+    );
+
+    await installKitOrInstance({
+      ...options,
+      config: options.config,
+      package: plan.kitPackage,
+      template: "migration",
+      defaultInstanceId: plan.instanceId,
+      seedEnv: {
+        projectId,
+        envs: exportedEnvs,
+      },
+    });
 
     logger.info("TODO: Draw the rest of the owl");
     return plan;

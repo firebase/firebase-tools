@@ -8,7 +8,13 @@ import * as extensionsApi from "./extensionsApi";
 import * as migrateModule from "./migrate";
 import * as paramHelper from "./paramHelper";
 import * as updateHelper from "./updateHelper";
-import { ExtensionInstance } from "./types";
+import * as exportModule from "./export";
+import * as kitInstallModule from "../functions/kits/install";
+import * as extensionsHelper from "./extensionsHelper";
+import * as utils from "../utils";
+import { command as extMigrateCommand, ExtMigrateOptions } from "../commands/ext-migrate";
+import { Config } from "../config";
+import { ExtensionInstance, ParamType } from "./types";
 
 describe("ext:migrate core logic (Unique Veneer)", () => {
   let sandbox: sinon.SinonSandbox;
@@ -451,6 +457,169 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       const result = await migrateModule.ensureInstanceUpToDate("test-project", invalidRefInstance);
 
       expect(result).to.equal(invalidRefInstance);
+    });
+  });
+
+  describe("migrateSecrets", () => {
+    const instanceWithSecret: ExtensionInstance = {
+      ...mockInstance1,
+      config: {
+        ...mockInstance1.config,
+        source: {
+          name: "sources/1",
+          state: "ACTIVE",
+          packageUri: "https://example.com/package.zip",
+          hash: "hash123",
+          spec: {
+            name: "ext",
+            version: "1.0.0",
+            resources: [],
+            params: [
+              {
+                param: "API_KEY",
+                label: "API Key",
+                type: ParamType.SECRET,
+              },
+            ],
+            systemParams: [],
+          },
+        },
+      },
+    };
+
+    it("should return empty array without logging if instance has no secrets needing ejection", async () => {
+      sandbox.stub(exportModule, "secretsNeedingEjection").resolves([]);
+      const res = await migrateModule.migrateSecrets(mockInstance1);
+      expect(res).to.deep.equal([]);
+      expect(logger.info).to.not.have.been.called;
+    });
+
+    it("should eject secrets and log when instance has secrets", async () => {
+      sandbox.stub(exportModule, "secretsNeedingEjection").resolves(["test-project/API_KEY"]);
+      sandbox
+        .stub(exportModule, "ejectSecretsFromInstance")
+        .resolves({ success: ["test-project/API_KEY"], fail: [] });
+
+      const res = await migrateModule.migrateSecrets(instanceWithSecret);
+      expect(res).to.deep.equal(["test-project/API_KEY"]);
+    });
+
+    it("should throw error and log IAM advice when secret ejection fails without force", async () => {
+      sandbox.stub(exportModule, "secretsNeedingEjection").resolves(["test-project/API_KEY"]);
+      sandbox
+        .stub(exportModule, "ejectSecretsFromInstance")
+        .resolves({ success: [], fail: ["test-project/API_KEY"] });
+      const errorSpy = sandbox.spy(utils, "logLabeledError");
+
+      await expect(migrateModule.migrateSecrets(instanceWithSecret)).to.be.rejectedWith(
+        FirebaseError,
+        "Secret migration failed.",
+      );
+      expect(errorSpy).to.have.been.calledWith(
+        "functions",
+        sinon.match(/roles\/secretmanager\.admin/),
+      );
+    });
+
+    it("should log warning about potential data loss when secret ejection fails with force", async () => {
+      sandbox.stub(exportModule, "secretsNeedingEjection").resolves(["test-project/API_KEY"]);
+      sandbox
+        .stub(exportModule, "ejectSecretsFromInstance")
+        .resolves({ success: [], fail: ["test-project/API_KEY"] });
+      const warnSpy = sandbox.spy(utils, "logLabeledWarning");
+
+      const res = await migrateModule.migrateSecrets(instanceWithSecret, { force: true });
+      expect(res).to.deep.equal([]);
+      expect(warnSpy).to.have.been.calledWith(
+        "functions",
+        sinon.match(/Proceeding after secret migration failure in --force mode/),
+      );
+    });
+  });
+
+  describe("ext:migrate command action", () => {
+    let installKitOrInstanceStub: sinon.SinonStub;
+    let migrateSecretsStub: sinon.SinonStub;
+    let functionsEnvStub: sinon.SinonStub;
+    let ensureSpecStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sandbox.stub(extMigrateCommand as unknown as { befores: unknown[] }, "befores").value([]);
+      sandbox.stub(extMigrateCommand, "prepare").resolves();
+      sandbox.stub(extensionsApi, "listInstances").resolves([mockInstance1]);
+      sandbox.stub(migrateModule, "ensureInstanceUpToDate").resolves(mockInstance1);
+      installKitOrInstanceStub = sandbox.stub(kitInstallModule, "installKitOrInstance").resolves({
+        action: "installedKit",
+        kitId: "firestore-send-email",
+        instanceId: "email-1",
+      });
+      migrateSecretsStub = sandbox
+        .stub(migrateModule, "migrateSecrets")
+        .resolves(["test-project/SECRET1"]);
+      functionsEnvStub = sandbox.stub(exportModule, "functionsEnvFromInstance").returns({
+        PARAM_A: "val_a",
+      });
+      ensureSpecStub = sandbox.stub(extensionsHelper, "ensureInstanceSpec").resolves(mockInstance1);
+    });
+
+    it("should throw if extension specification cannot be loaded", async () => {
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+      } as unknown as Config;
+
+      ensureSpecStub.resolves({
+        ...mockInstance1,
+        config: {
+          ...mockInstance1.config,
+          source: undefined,
+        },
+      });
+
+      await expect(
+        extMigrateCommand.runner()({
+          project: "test-project",
+          projectId: "test-project",
+          extInstance: "email-1",
+          config: mockConfig,
+          nonInteractive: true,
+        } as unknown as ExtMigrateOptions),
+      ).to.be.rejectedWith(FirebaseError, /Could not load extension specification for/);
+    });
+
+    it("should export envs, migrate secrets, call installKitOrInstance, and return plan", async () => {
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+      } as unknown as Config;
+
+      const res = (await extMigrateCommand.runner()({
+        project: "test-project",
+        projectId: "test-project",
+        extInstance: "email-1",
+        config: mockConfig,
+        nonInteractive: true,
+      } as unknown as ExtMigrateOptions)) as migrateModule.ExtensionMigrationPlan;
+
+      expect(ensureSpecStub).to.have.been.calledOnce;
+      expect(functionsEnvStub).to.have.been.calledOnce;
+      expect(migrateSecretsStub).to.have.been.calledOnce;
+      expect(installKitOrInstanceStub).to.have.been.calledOnceWith(
+        sinon.match({
+          config: mockConfig,
+          package: "@firebase-function-kits/firestore-send-email",
+          template: "migration",
+          defaultInstanceId: "email-1",
+          seedEnv: {
+            projectId: "test-project",
+            envs: {
+              PARAM_A: "val_a",
+            },
+          },
+        }),
+      );
+
+      expect(res.instanceId).to.equal("email-1");
     });
   });
 });
