@@ -110,6 +110,27 @@ describe("Flutter", () => {
       });
       sinon.assert.calledWith(stub, "flutter", ["build", "web"], { cwd, stdio: "inherit" });
     });
+
+    it("should pass --wasm when the wasm context is set", async () => {
+      sandbox.stub(flutterUtils, "assertFlutterCliExists").returns(undefined);
+
+      const cwd = ".";
+
+      const mockResult: Partial<ReturnType<typeof crossSpawn.sync>> = { status: 0 };
+      const stub = sandbox
+        .stub(crossSpawn, "sync")
+        .returns(mockResult as ReturnType<typeof crossSpawn.sync>);
+
+      const result = build(cwd, undefined, { wasm: true });
+
+      expect(await result).to.deep.equal({
+        wantsBackend: false,
+      });
+      sinon.assert.calledWith(stub, "flutter", ["build", "web", "--wasm"], {
+        cwd,
+        stdio: "inherit",
+      });
+    });
   });
 
   describe("init", () => {
