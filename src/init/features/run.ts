@@ -26,22 +26,6 @@ export async function askQuestions(setup: Setup, config?: Config, options?: any)
 
   logBullet("Configuring Cloud Run...");
 
-  const serviceId =
-    options?.service ||
-    options?.serviceId ||
-    (await input({
-      message: "Please enter a unique ID for your service",
-      validate: (s: string) => {
-        if (!/^[a-z](?:[a-z0-9-]*[a-z0-9])?$/.test(s)) {
-          return "Must begin with a letter, can contain only lowercase, digits, hyphens, and cannot end with hyphen";
-        }
-        if (s.length < 3 || s.length > 63) {
-          return "Must be between 3 and 63 characters";
-        }
-        return true;
-      },
-    }));
-
   const defaultRegion =
     options?.primaryRegion || options?.region || process.env.FIREBASE_RUN_REGION || "us-central1";
 
@@ -54,6 +38,22 @@ export async function askQuestions(setup: Setup, config?: Config, options?: any)
       validate: (val: string) => {
         if (!/^[a-z0-9-]+$/.test(val)) {
           return "Region must be a valid GCP region string (e.g. us-central1).";
+        }
+        return true;
+      },
+    }));
+
+  const serviceId =
+    options?.service ||
+    options?.serviceId ||
+    (await input({
+      message: "Please enter a unique ID for your service",
+      validate: (s: string) => {
+        if (!/^[a-z](?:[a-z0-9-]*[a-z0-9])?$/.test(s)) {
+          return "Must begin with a letter, can contain only lowercase, digits, hyphens, and cannot end with hyphen";
+        }
+        if (s.length < 3 || s.length > 63) {
+          return "Must be between 3 and 63 characters";
         }
         return true;
       },
