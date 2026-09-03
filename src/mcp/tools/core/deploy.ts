@@ -23,6 +23,8 @@ export const deploy = tool(
     name: "deploy",
     description:
       "Deploy resources to your Firebase project, based on the contents of firebase.json.",
+    humanReadableDescription:
+      "Deploy Firebase services and resources configured in firebase.json to your project.",
     inputSchema: z.object({
       only: z
         .string()

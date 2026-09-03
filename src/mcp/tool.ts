@@ -23,6 +23,7 @@ export interface ServerTool<InputSchema extends ZodTypeAny = z.ZodAny> {
   mcp: {
     name: string;
     description?: string;
+    humanReadableDescription?: string;
     inputSchema: any;
     outputSchema?: any;
     annotations?: {
