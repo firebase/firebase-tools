@@ -174,7 +174,7 @@ steps:
           if [ "$${LATEST_TAG}" != "$${VERSION_NUM}" ]; then
             echo "Updating npm latest tag to $${VERSION_NUM}..."
             npm dist-tag add "firebase-tools@$${VERSION_NUM}" latest --registry https://wombat-dressing-room.appspot.com
-            npm dist-tag rm firebase-tools staging --registry https://wombat-dressing-room.appspot.com || true
+            npm dist-tag rm firebase-tools staging --registry https://wombat-dressing-room.appspot.com 2>/dev/null || true
           fi
           echo "Verified npm latest tag is pointing to $${VERSION_NUM}."
         else

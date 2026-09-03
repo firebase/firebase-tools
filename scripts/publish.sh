@@ -24,12 +24,16 @@ elif [[ $VERSION == "move-latest" || $VERSION == "tag-latest" ]]; then
   if [[ -z "$TARGET_VERSION" && -f "/workspace/version_number.txt" ]]; then
     TARGET_VERSION=$(cat /workspace/version_number.txt)
   fi
-  if [[ -z "$TARGET_VERSION" ]]; then
+  if [[ -z "$TARGET_VERSION" && -f package.json ]]; then
     TARGET_VERSION=$(jq -r ".version" package.json)
+  fi
+  if [[ -z "$TARGET_VERSION" ]]; then
+    echo "Could not determine target version for move-latest."
+    exit 1
   fi
   echo "Moving npm latest tag to firebase-tools@${TARGET_VERSION}..."
   npm dist-tag add "firebase-tools@${TARGET_VERSION}" latest --registry https://wombat-dressing-room.appspot.com
-  npm dist-tag rm firebase-tools staging --registry https://wombat-dressing-room.appspot.com || true
+  npm dist-tag rm firebase-tools staging --registry https://wombat-dressing-room.appspot.com 2>/dev/null || true
   echo "npm latest tag successfully moved to ${TARGET_VERSION}."
   exit 0
 elif [[ $VERSION == "preview" ]]; then
@@ -37,7 +41,7 @@ elif [[ $VERSION == "preview" ]]; then
     printusage
     exit 1
   fi
-elif [[ ! ($VERSION == "patch" || $VERSION == "minor" || $VERSION == "major" || $VERSION == "move-latest" || $VERSION == "tag-latest") ]]; then
+elif [[ ! ($VERSION == "patch" || $VERSION == "minor" || $VERSION == "major") ]]; then
   printusage
   exit 1
 fi

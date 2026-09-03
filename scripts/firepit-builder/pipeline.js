@@ -122,25 +122,33 @@ if (isPublishing) {
 
   // 2. Attach standalone artifacts to the draft release created by publish.sh
   shelljs.config.fatal = false;
-  const releaseCheck = exec(`hub release show ${releaseTag}`, { silent: true });
+  const releaseCheck = exec(`hub release show "${releaseTag}"`, { silent: true });
   shelljs.config.fatal = true;
 
   if (releaseCheck.code !== 0) {
     echo(`Release ${releaseTag} not found, creating draft release with standalone artifacts...`);
     const attachArgs = publishedFiles.map((f) => `-a "${path.join("../dist", f)}"`).join(" ");
-    exec(`hub release create --draft -m "${releaseTag}" ${attachArgs} ${releaseTag}`);
+    exec(`hub release create --draft -m "${releaseTag}" ${attachArgs} "${releaseTag}"`);
   } else {
     echo(`Attaching standalone artifacts to release ${releaseTag}...`);
     publishedFiles.forEach((filename) => {
       echo(`Attaching ${filename}...`);
-      hub("release", "edit", "-m", '""', "-a", path.join("../dist", filename), releaseTag);
+      hub(
+        "release",
+        "edit",
+        "-m",
+        '""',
+        "-a",
+        `"${path.join("../dist", filename)}"`,
+        `"${releaseTag}"`,
+      );
     });
   }
 
   // 3. Validate that the draft release has all of the expected artifacts
   echo(`Validating that draft release ${releaseTag} has all expected artifacts...`);
   shelljs.config.fatal = false;
-  const showResult = exec(`hub release show -f "%as" ${releaseTag}`, { silent: true });
+  const showResult = exec(`hub release show -f "%as" "${releaseTag}"`, { silent: true });
   shelljs.config.fatal = true;
 
   if (showResult.code !== 0) {
@@ -149,8 +157,9 @@ if (isPublishing) {
 
   const attachedAssets = showResult.stdout
     .split("\n")
-    .map((s) => s.trim())
-    .filter(Boolean);
+    .map((s) => s.trim().split(/[\t\s]/)[0])
+    .filter(Boolean)
+    .map((url) => path.basename(url));
   echo(`Found attached assets:\n${attachedAssets.map((a) => "  - " + a).join("\n")}`);
 
   const missing = publishedFiles.filter((f) => !attachedAssets.includes(f));
@@ -178,15 +187,16 @@ if (isPublishing) {
           if (matchedRelease && Array.isArray(matchedRelease.assets)) {
             for (const expectedFile of publishedFiles) {
               const asset = matchedRelease.assets.find((a) => a.name === expectedFile);
-              if (asset) {
-                if (asset.state !== "uploaded") {
-                  throw new Error(
-                    `Artifact ${expectedFile} state is "${asset.state}", expected "uploaded".`,
-                  );
-                }
-                if (typeof asset.size === "number" && asset.size <= 0) {
-                  throw new Error(`Artifact ${expectedFile} has invalid size: ${asset.size}`);
-                }
+              if (!asset) {
+                throw new Error(`Artifact ${expectedFile} is missing from GitHub release assets.`);
+              }
+              if (asset.state !== "uploaded") {
+                throw new Error(
+                  `Artifact ${expectedFile} state is "${asset.state}", expected "uploaded".`,
+                );
+              }
+              if (typeof asset.size === "number" && asset.size <= 0) {
+                throw new Error(`Artifact ${expectedFile} has invalid size: ${asset.size}`);
               }
             }
             echo("Artifact upload states and sizes confirmed via GitHub API.");
@@ -194,19 +204,29 @@ if (isPublishing) {
         }
       }
     } catch (apiErr) {
+      if (apiErr.message && apiErr.message.startsWith("Artifact ")) {
+        throw apiErr;
+      }
       echo(`Notice: GitHub API detail check warning: ${apiErr.message}`);
     }
   }
 
   // 4. Publish the draft release
   echo(`Publishing release ${releaseTag}...`);
-  hub("release", "edit", "--draft=false", "-m", '""', releaseTag);
+  hub("release", "edit", "--draft=false", "-m", '""', `"${releaseTag}"`);
   echo(`Successfully published release ${releaseTag}!`);
 
   // 5. Move the npm latest tag
   echo(`Moving npm latest tag to firebase-tools@${packageJson.version}...`);
   const registry = "https://wombat-dressing-room.appspot.com";
-  npm("dist-tag", "add", `firebase-tools@${packageJson.version}`, "latest", "--registry", registry);
+  npm(
+    "dist-tag",
+    "add",
+    `"firebase-tools@${packageJson.version}"`,
+    "latest",
+    "--registry",
+    registry,
+  );
   shelljs.config.fatal = false;
   npm("dist-tag", "rm", "firebase-tools", "staging", "--registry", registry);
   shelljs.config.fatal = true;
