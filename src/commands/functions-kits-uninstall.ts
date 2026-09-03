@@ -205,9 +205,9 @@ async function uninstallInstance(
 
 /*
  * Remove the .env.<projectAlias> file and deployed Function for a specific project instance
- * @param envName: the project reference in name of .env file, either the project id or from .firebaserc aliases 
+ * @param envName: the project reference in name of .env file, either the project id or from .firebaserc aliases
  * @param instanceId: must be specified, since configPath is user-overridable
- * @param kitInstancePath: project-relative function-kits/<kitId>/config-<instanceId> 
+ * @param kitInstancePath: project-relative function-kits/<kitId>/config-<instanceId>
  */
 async function uninstallProjectInstance(
   options: Options,
