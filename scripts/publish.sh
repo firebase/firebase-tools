@@ -7,7 +7,7 @@ printusage() {
   echo "e.g. REPOSITORY_ORG=user, REPOSITORY_NAME=repo"
   echo ""
   echo "Arguments:"
-  echo "  version: 'patch', 'minor', 'major', 'artifactsOnly', 'preview', or 'move-latest'"
+  echo "  version: 'patch', 'minor', 'major', 'artifactsOnly', or 'preview'"
   echo "  branch: required if version is 'preview'"
 }
 
@@ -18,23 +18,6 @@ if [[ $VERSION == "" ]]; then
   exit 1
 elif [[ $VERSION == "artifactsOnly" ]]; then
   echo "Skipping npm package publish since VERSION is artifactsOnly."
-  exit 0
-elif [[ $VERSION == "move-latest" || $VERSION == "tag-latest" ]]; then
-  TARGET_VERSION=$2
-  if [[ -z "$TARGET_VERSION" && -f "/workspace/version_number.txt" ]]; then
-    TARGET_VERSION=$(cat /workspace/version_number.txt)
-  fi
-  if [[ -z "$TARGET_VERSION" && -f package.json ]]; then
-    TARGET_VERSION=$(jq -r ".version" package.json)
-  fi
-  if [[ -z "$TARGET_VERSION" ]]; then
-    echo "Could not determine target version for move-latest."
-    exit 1
-  fi
-  echo "Moving npm latest tag to firebase-tools@${TARGET_VERSION}..."
-  npm dist-tag add "firebase-tools@${TARGET_VERSION}" latest --registry https://wombat-dressing-room.appspot.com
-  npm dist-tag rm firebase-tools staging --registry https://wombat-dressing-room.appspot.com 2>/dev/null || true
-  echo "npm latest tag successfully moved to ${TARGET_VERSION}."
   exit 0
 elif [[ $VERSION == "preview" ]]; then
   if [[ $BRANCH == "" ]]; then
