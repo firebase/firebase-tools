@@ -230,28 +230,46 @@ describe("fsAsync", () => {
       return expect(gotFileNames).to.deep.equal(expectFiles);
     });
 
-    it("should ignore symlinks when option is set", async () => {
-      const symlinkPath = path.join(baseDir, "symlink");
+    it("ignores symlinks by default (security: prevents symlink-following during deploy)", async () => {
+      const symlinkPath = path.join(baseDir, "default-symlink");
+      fs.symlinkSync(path.join(baseDir, "visible"), symlinkPath);
+
+      try {
+        const results = await fsAsync.readdirRecursive({ path: baseDir });
+        const gotFileNames = results.map((r) => r.name).sort();
+        const expectFiles = files.map((file) => path.join(baseDir, file)).sort();
+        // Symlink MUST NOT appear in the result by default. Following symlinks
+        // during deploy/upload is a security boundary issue (see JSDoc on
+        // ReaddirRecursiveOpts.ignoreSymlinks).
+        expect(gotFileNames).to.deep.equal(expectFiles);
+        expect(gotFileNames).to.not.include(symlinkPath);
+      } finally {
+        fs.unlinkSync(symlinkPath);
+      }
+    });
+
+    it("includes symlinks only when ignoreSymlinks is explicitly set to false", async () => {
+      const symlinkPath = path.join(baseDir, "explicit-symlink");
       fs.symlinkSync(path.join(baseDir, "visible"), symlinkPath);
 
       try {
         const resultsWithSymlinks = await fsAsync.readdirRecursive({
           path: baseDir,
-          ignoreSymlinks: true,
+          ignoreSymlinks: false,
         });
         const gotFileNamesWithSymlinks = resultsWithSymlinks.map((r) => r.name).sort();
-        const expectFiles = files.map((file) => path.join(baseDir, file)).sort();
-        expect(gotFileNamesWithSymlinks).to.deep.equal(expectFiles);
+        const expectFilesWithSymlinks = [...files, "explicit-symlink"]
+          .map((file) => path.join(baseDir, file))
+          .sort();
+        expect(gotFileNamesWithSymlinks).to.deep.equal(expectFilesWithSymlinks);
 
         const resultsWithoutSymlinks = await fsAsync.readdirRecursive({
           path: baseDir,
-          ignoreSymlinks: false,
+          ignoreSymlinks: true,
         });
         const gotFileNamesWithoutSymlinks = resultsWithoutSymlinks.map((r) => r.name).sort();
-        const expectFilesWithSymlinks = [...files, "symlink"]
-          .map((file) => path.join(baseDir, file))
-          .sort();
-        expect(gotFileNamesWithoutSymlinks).to.deep.equal(expectFilesWithSymlinks);
+        const expectFiles = files.map((file) => path.join(baseDir, file)).sort();
+        expect(gotFileNamesWithoutSymlinks).to.deep.equal(expectFiles);
       } finally {
         fs.unlinkSync(symlinkPath);
       }
