@@ -1,6 +1,7 @@
 import {
   EndpointFilter,
   endpointMatchesAnyFilter,
+  generationDowngradeMessage,
   getFunctionLabel,
 } from "../functionsDeployHelper";
 import { isFirebaseManaged } from "../../../deploymentTool";
@@ -392,10 +393,9 @@ export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endp
       )}] Changing from ${haveType} function to ${wantType} function is not allowed. Please delete your function and create a new one instead.`,
     );
   }
-  if (want.platform === "gcfv1" && have.platform === "gcfv2") {
-    throw new FirebaseError(
-      `[${getFunctionLabel(want)}] Functions cannot be downgraded from GCFv2 to GCFv1`,
-    );
+  const downgrade = generationDowngradeMessage(want, have);
+  if (downgrade) {
+    throw new FirebaseError(downgrade);
   }
 
   // We need to call from module exports so tests can stub this behavior, but that

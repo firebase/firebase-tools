@@ -649,7 +649,10 @@ export function inferDetailsFromExisting(
       wantE.availableMemoryMb = haveE.availableMemoryMb;
     }
 
-    if (typeof wantE.cpu === "undefined" && haveE.cpu) {
+    // cpu does not exist on gcfv1. Inheriting it from an existing gcfv2 function onto
+    // a gcfv1 endpoint fails CPU validation and masks the accurate "cannot be
+    // downgraded" error.
+    if (typeof wantE.cpu === "undefined" && haveE.cpu && wantE.platform !== "gcfv1") {
       wantE.cpu = haveE.cpu;
     }
 

@@ -125,6 +125,74 @@ describe("validate", () => {
       httpsTrigger: {},
     };
 
+    it("rejects downgrading an existing gcfv2 function to gcfv1", () => {
+      const want = backend.of({ ...ENDPOINT_BASE, platform: "gcfv1" });
+      const have = backend.of({ ...ENDPOINT_BASE, platform: "gcfv2", cpu: 1 });
+
+      expect(() => validate.endpointsAreValid(want, have)).to.throw(
+        /cannot be downgraded from GCFv2 to GCFv1/,
+      );
+    });
+
+    it("rejects redeploying an existing Cloud Run service as gcfv1", () => {
+      const want = backend.of({ ...ENDPOINT_BASE, platform: "gcfv1" });
+      const have = backend.of({ ...ENDPOINT_BASE, platform: "run", cpu: 1 });
+
+      expect(() => validate.endpointsAreValid(want, have)).to.throw(
+        /cannot be downgraded from Cloud Run to GCFv1/,
+      );
+    });
+
+    it("reports the downgrade rather than the inherited timeout", () => {
+      // inferDetailsFromExisting copies timeoutSeconds regardless of platform, so want
+      // reaches here carrying a timeout that is legal on gcfv2 and not on gcfv1. The
+      // downgrade check has to run before validateTimeoutConfig or that 540s limit is
+      // reported instead of the real reason.
+      const want = backend.of({ ...ENDPOINT_BASE, platform: "gcfv1", timeoutSeconds: 3600 });
+      const have = backend.of({ ...ENDPOINT_BASE, platform: "gcfv2", timeoutSeconds: 3600 });
+
+      expect(() => validate.endpointsAreValid(want, have)).to.throw(
+        /cannot be downgraded from GCFv2 to GCFv1/,
+      );
+    });
+
+    it("tells the user how to recreate the function as gcfv1", () => {
+      const want = backend.of({ ...ENDPOINT_BASE, platform: "gcfv1" });
+      const have = backend.of({ ...ENDPOINT_BASE, platform: "gcfv2" });
+
+      expect(() => validate.endpointsAreValid(want, have)).to.throw(
+        "firebase functions:delete id --region us-east1",
+      );
+    });
+
+    it("reports every downgraded function, not just the first", () => {
+      const want = backend.of(
+        { ...ENDPOINT_BASE, id: "a", platform: "gcfv1" },
+        { ...ENDPOINT_BASE, id: "b", platform: "gcfv1" },
+      );
+      const have = backend.of(
+        { ...ENDPOINT_BASE, id: "a", platform: "gcfv2" },
+        { ...ENDPOINT_BASE, id: "b", platform: "run" },
+      );
+
+      let err: unknown;
+      try {
+        validate.endpointsAreValid(want, have);
+      } catch (e: unknown) {
+        err = e;
+      }
+
+      expect(err).to.be.instanceOf(FirebaseError);
+      expect((err as FirebaseError).message).to.match(/a\(us-east1\)[\s\S]*GCFv2/);
+      expect((err as FirebaseError).message).to.match(/b\(us-east1\)[\s\S]*Cloud Run/);
+    });
+
+    it("allows a gcfv1 function that does not exist yet", () => {
+      const want = backend.of({ ...ENDPOINT_BASE, platform: "gcfv1" });
+
+      expect(() => validate.endpointsAreValid(want, backend.empty())).to.not.throw();
+    });
+
     it("disallows concurrency for GCF gen 1", () => {
       const ep: backend.Endpoint = {
         ...ENDPOINT_BASE,

@@ -4,7 +4,12 @@ import * as clc from "colorette";
 import { FirebaseError } from "../../error";
 import { getSecretVersion, SecretVersion } from "../../gcp/secretManager";
 import { logger } from "../../logger";
-import { EndpointFilter, endpointMatchesFilter, getFunctionLabel } from "./functionsDeployHelper";
+import {
+  EndpointFilter,
+  endpointMatchesFilter,
+  generationDowngradeMessage,
+  getFunctionLabel,
+} from "./functionsDeployHelper";
 import { serviceForEndpoint } from "./services";
 import * as fsutils from "../../fsutils";
 import * as backend from "./backend";
@@ -91,6 +96,9 @@ export function endpointsAreValid(
   validateLifecycleHooks(wantBackend, existingBackend);
   const endpoints = backend.allEndpoints(wantBackend);
   functionIdsAreValid(endpoints);
+  if (existingBackend) {
+    noGenerationDowngrades(wantBackend, existingBackend);
+  }
   validateTimeoutConfig(endpoints);
   for (const ep of endpoints) {
     validateScheduledTimeout(ep);
@@ -130,6 +138,27 @@ export function endpointsAreValid(
     throw new FirebaseError(msg);
   }
   cpuConfigIsValid(endpoints);
+}
+
+/**
+ * Rejects an existing gcfv2 function or Cloud Run service being redeployed as gcfv1. The
+ * release planner enforces this too, but only after the source has been uploaded.
+ */
+function noGenerationDowngrades(
+  wantBackend: backend.Backend,
+  existingBackend: backend.Backend,
+): void {
+  const msgs: string[] = [];
+  for (const want of backend.allEndpoints(wantBackend).sort(backend.compareFunctions)) {
+    const have = existingBackend.endpoints[want.region]?.[want.id];
+    const msg = have && generationDowngradeMessage(want, have);
+    if (msg) {
+      msgs.push(msg);
+    }
+  }
+  if (msgs.length) {
+    throw new FirebaseError(msgs.join("\n"));
+  }
 }
 
 /**

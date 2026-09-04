@@ -1,3 +1,6 @@
+- [Added] Add -f, --force option to `firebase ext:migrate`.
+- [Fixed] Fix parameter type preservation and optional system parameter handling during extension updates in `firebase ext:migrate`.
+- [Fixed] Report the GCFv2-to-GCFv1 downgrade error during validation instead of a misleading CPU error (#5461).
 - Updated the Firebase SQL Connect local toolkit to v3.4.19, which includes the following changes:
   - [fixed] Bug fixes and performance improvements for the PostgreSQL emulator.
 - [fixed] Clean up managed service accounts when all functions in a codebase are deleted.
