@@ -29,7 +29,8 @@ export async function deleteFunctionsByEndpointFilters(
   context: Context,
   options?: Options,
 ): Promise<number> {
-  let haveBackend = await backend.existingBackend(context);
+  const fullBackend = await backend.existingBackend(context);
+  let haveBackend = fullBackend;
   if (options?.region) {
     haveBackend = backend.matchingBackend(
       haveBackend,
@@ -50,6 +51,37 @@ export async function deleteFunctionsByEndpointFilters(
     .sort(backend.compareFunctions);
   if (allEpToDelete.length === 0) {
     return 0;
+  }
+
+  // Discover any managed service accounts (firebase-fn-*) used by endpoints slated for deletion.
+  // When declarative security (requiresRole) is used, the CLI synthesizes and manages these service
+  // accounts exclusively for the functions in that codebase.
+  const deletedManagedSAs = new Set(
+    allEpToDelete
+      .map((e) => e.serviceAccount)
+      .filter((sa): sa is string => typeof sa === "string" && sa.startsWith("firebase-fn-")),
+  );
+
+  // If all functions utilizing a managed service account are being deleted (i.e. no surviving
+  // endpoints in fullBackend across all regions still reference it), mark that service account for deletion.
+  // This prevents orphaned service accounts from accumulating in GCP IAM upon codebase deletion
+  // or kit uninstallation, and avoids stale reference errors during subsequent reinstalls.
+  const managedSAsToDelete: string[] = [];
+  if (deletedManagedSAs.size > 0) {
+    const deletedIds = new Set(allEpToDelete.map((del) => `${del.region}/${del.id}`));
+    const survivingEndpoints = backend
+      .allEndpoints(fullBackend)
+      .filter((e) => !deletedIds.has(`${e.region}/${e.id}`));
+    const survivingSAs = new Set(survivingEndpoints.map((e) => e.serviceAccount));
+    for (const sa of deletedManagedSAs) {
+      if (!survivingSAs.has(sa)) {
+        managedSAsToDelete.push(sa);
+      }
+    }
+  }
+
+  if (managedSAsToDelete.length > 0) {
+    plan.serviceAccountToDelete = managedSAsToDelete[0];
   }
 
   const deleteList = allEpToDelete.map((func) => `\t${getFunctionLabel(func)}`).join("\n");
@@ -86,7 +118,15 @@ export async function deleteFunctionsByEndpointFilters(
       projectNumber: await getProjectNumber({ projectId: context.projectId }),
       projectId: context.projectId,
     });
-    const summary = await fab.applyPlan({ default: plan });
+    const deploymentPlan: Record<string, planner.CodebasePlan> = { default: plan };
+    for (let i = 1; i < managedSAsToDelete.length; i++) {
+      deploymentPlan[`cleanup-sa-${i}`] = {
+        regionalChangesets: {},
+        plannedBackend: backend.empty(),
+        serviceAccountToDelete: managedSAsToDelete[i],
+      };
+    }
+    const summary = await fab.applyPlan(deploymentPlan);
 
     await reporter.logAndTrackDeployStats(summary);
     reporter.printErrors(summary);
