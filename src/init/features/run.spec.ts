@@ -29,7 +29,10 @@ describe("init features run", () => {
   });
 
   describe("askQuestions", () => {
-    it("should prompt for region, serviceId, and rootDir with correct messages and defaults", async () => {
+    it("should prompt for create, region, serviceId, and rootDir when creating new service", async () => {
+      const selectStub = sandbox.stub(prompt, "select");
+      selectStub.onFirstCall().resolves("create");
+
       const inputStub = sandbox.stub(prompt, "input");
       inputStub.onFirstCall().resolves("us-central1");
       inputStub.onSecondCall().resolves("custom-service");
@@ -37,6 +40,12 @@ describe("init features run", () => {
 
       const setup = createMockSetup({ projectId: "test-project" });
       await runFeature.askQuestions(setup);
+
+      expect(selectStub.calledOnce).to.be.true;
+      expect(selectStub.firstCall.args[0].choices).to.deep.equal([
+        { name: "Create a new service", value: "create" },
+        { name: "Link to an existing service", value: "link" },
+      ]);
 
       expect(setup.featureInfo?.run).to.deep.equal({
         serviceId: "custom-service",
@@ -70,7 +79,57 @@ describe("init features run", () => {
       expect(rootDirCall.validate("/")).to.be.true;
     });
 
+    it("should allow linking to an existing Cloud Run service", async () => {
+      const selectStub = sandbox.stub(prompt, "select");
+      selectStub.onFirstCall().resolves("link");
+      selectStub.onSecondCall().resolves({ serviceId: "existing-svc", region: "us-east1" });
+
+      const listServicesStub = sandbox.stub(runv2, "listCloudRunServices").resolves([
+        {
+          name: "projects/test-project/locations/us-east1/services/existing-svc",
+        } as unknown as runv2.Service,
+      ]);
+
+      const inputStub = sandbox.stub(prompt, "input");
+      inputStub.onFirstCall().resolves("/");
+
+      const setup = createMockSetup({ projectId: "test-project" });
+      await runFeature.askQuestions(setup);
+
+      expect(listServicesStub.calledOnceWith("test-project")).to.be.true;
+      expect(selectStub.calledTwice).to.be.true;
+      expect(setup.featureInfo?.run).to.deep.equal({
+        serviceId: "existing-svc",
+        region: "us-east1",
+        rootDir: "/",
+      });
+    });
+
+    it("should fall back to creation if no existing services are found when linking", async () => {
+      const selectStub = sandbox.stub(prompt, "select");
+      selectStub.onFirstCall().resolves("link");
+
+      sandbox.stub(runv2, "listCloudRunServices").resolves([]);
+
+      const inputStub = sandbox.stub(prompt, "input");
+      inputStub.onFirstCall().resolves("us-central1");
+      inputStub.onSecondCall().resolves("new-svc");
+      inputStub.onThirdCall().resolves("/");
+
+      const setup = createMockSetup({ projectId: "test-project" });
+      await runFeature.askQuestions(setup);
+
+      expect(setup.featureInfo?.run).to.deep.equal({
+        serviceId: "new-svc",
+        region: "us-central1",
+        rootDir: "/",
+      });
+    });
+
     it("should validate rootDir existence against config.projectDir", async () => {
+      const selectStub = sandbox.stub(prompt, "select");
+      selectStub.onFirstCall().resolves("create");
+
       const inputStub = sandbox.stub(prompt, "input");
       inputStub.onFirstCall().resolves("us-central1");
       inputStub.onSecondCall().resolves("custom-service");

@@ -415,6 +415,71 @@ export async function listServices(projectId: string): Promise<Service[]> {
   return allServices;
 }
 
+/**
+ * Parses a fully qualified Cloud Run service name into project, location, and serviceId.
+ * e.g. "projects/{projectId}/locations/{location}/services/{serviceId}"
+ */
+export function parseServiceName(serviceName: string): {
+  projectId: string;
+  location: string;
+  serviceId: string;
+} {
+  const match = /^projects\/([^/]+)\/locations\/([^/]+)\/services\/([^/]+)$/.exec(serviceName);
+  if (!match) {
+    throw new FirebaseError(`Invalid Cloud Run service name: "${serviceName}"`);
+  }
+  return {
+    projectId: match[1],
+    location: match[2],
+    serviceId: match[3],
+  };
+}
+
+/**
+ * Lists all Cloud Run services in the given project across all locations.
+ * Excludes internal Cloud Functions (2nd gen) services by default.
+ */
+export async function listCloudRunServices(
+  projectId: string,
+  includeFunctions = false,
+): Promise<Service[]> {
+  const allServices: Service[] = [];
+  let pageToken: string | undefined = undefined;
+
+  do {
+    const queryParams: Record<string, string> = {};
+    if (pageToken) {
+      queryParams["pageToken"] = pageToken;
+    }
+
+    const res = await client.get<{ services?: Service[]; nextPageToken?: string }>(
+      `/projects/${projectId}/locations/-/services`,
+      { queryParams },
+    );
+
+    if (res.status !== 200) {
+      throw new FirebaseError(`Failed to list Cloud Run services. HTTP Error: ${res.status}`, {
+        original: res.body as any,
+      });
+    }
+
+    if (res.body.services) {
+      for (const service of res.body.services) {
+        const isFunction =
+          service.labels?.[CLIENT_NAME_LABEL] === "cloud-functions" ||
+          service.labels?.[CLIENT_NAME_LABEL] === "cloudfunctions" ||
+          service.labels?.[CLIENT_NAME_LABEL] === "firebase-functions";
+        if (includeFunctions || !isFunction) {
+          allServices.push(service);
+        }
+      }
+    }
+    pageToken = res.body.nextPageToken;
+  } while (pageToken);
+
+  return allServices;
+}
+
 // TODO: Replace with real version:
 function functionNameToServiceName(id: string): string {
   return id.toLowerCase().replace(/_/g, "-");

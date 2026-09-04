@@ -2,12 +2,14 @@ import * as path from "path";
 import { existsSync } from "fs";
 import { Setup } from "../index";
 import { Config } from "../../config";
-import { input } from "../../prompt";
+import { input, select } from "../../prompt";
 import { logBullet, logSuccess } from "../../utils";
 import { readTemplateSync } from "../../templates";
 import { FirebaseError } from "../../error";
 import { DEFAULT_RUN_IGNORE } from "../../deploy/run/args";
 import { RunSingle } from "../../firebaseConfig";
+import * as runv2 from "../../gcp/runv2";
+import { logger } from "../../logger";
 
 export interface RunInfo {
   serviceId: string;
@@ -26,13 +28,54 @@ export async function askQuestions(setup: Setup, config?: Config, options?: any)
 
   logBullet("Configuring Cloud Run...");
 
-  const defaultRegion =
-    options?.primaryRegion || options?.region || process.env.FIREBASE_RUN_REGION || "us-central1";
+  let serviceId = options?.service || options?.serviceId;
+  let region = options?.primaryRegion || options?.region;
 
-  const region =
-    options?.primaryRegion ||
-    options?.region ||
-    (await input({
+  if (!serviceId) {
+    const createOrLink: string = await select({
+      default: "create",
+      message: "Please select an option",
+      choices: [
+        { name: "Create a new service", value: "create" },
+        { name: "Link to an existing service", value: "link" },
+      ],
+    });
+
+    if (createOrLink === "link") {
+      try {
+        const existingServices = await runv2.listCloudRunServices(projectId);
+        if (existingServices.length === 0) {
+          logBullet(
+            "No existing Cloud Run services found in this project. Creating a new service instead.",
+          );
+        } else {
+          const choices = existingServices.map((s) => {
+            const parsed = runv2.parseServiceName(s.name);
+            return {
+              name: `${parsed.serviceId} (${parsed.location})`,
+              value: { serviceId: parsed.serviceId, region: parsed.location },
+            };
+          });
+          const selected = await select<{ serviceId: string; region: string }>({
+            message: "Which Cloud Run service would you like to link?",
+            choices,
+          });
+          serviceId = selected.serviceId;
+          region = selected.region;
+          logSuccess(`Linked to service ${serviceId} in ${region}\n`);
+        }
+      } catch (err: unknown) {
+        logger.debug("Failed to list Cloud Run services:", err);
+        logBullet("Could not list existing Cloud Run services. Proceeding with service creation.");
+      }
+    }
+  }
+
+  if (!region) {
+    const defaultRegion =
+      options?.primaryRegion || options?.region || process.env.FIREBASE_RUN_REGION || "us-central1";
+
+    region = await input({
       message: "Which region should this service be deployed to?",
       default: defaultRegion,
       validate: (val: string) => {
@@ -41,12 +84,11 @@ export async function askQuestions(setup: Setup, config?: Config, options?: any)
         }
         return true;
       },
-    }));
+    });
+  }
 
-  const serviceId =
-    options?.service ||
-    options?.serviceId ||
-    (await input({
+  if (!serviceId) {
+    serviceId = await input({
       message: "Please enter a unique ID for your service",
       validate: (s: string) => {
         if (!/^[a-z](?:[a-z0-9-]*[a-z0-9])?$/.test(s)) {
@@ -57,7 +99,8 @@ export async function askQuestions(setup: Setup, config?: Config, options?: any)
         }
         return true;
       },
-    }));
+    });
+  }
 
   const rootDir =
     options?.rootDir ||
@@ -83,9 +126,6 @@ export async function askQuestions(setup: Setup, config?: Config, options?: any)
     rootDir,
   };
 }
-
-import * as runv2 from "../../gcp/runv2";
-import { logger } from "../../logger";
 
 /**
  * Scaffolds Cloud Run configuration in firebase.json, creates placeholder Cloud Run service in GCP,

@@ -865,4 +865,81 @@ describe("runv2", () => {
       expect(pollStub).to.have.been.calledOnce;
     });
   });
+
+  describe("parseServiceName", () => {
+    it("should parse a valid Cloud Run service resource name", () => {
+      const parsed = runv2.parseServiceName(
+        "projects/my-proj/locations/us-central1/services/my-svc",
+      );
+      expect(parsed).to.deep.equal({
+        projectId: "my-proj",
+        location: "us-central1",
+        serviceId: "my-svc",
+      });
+    });
+
+    it("should throw FirebaseError on invalid service resource name", () => {
+      expect(() => runv2.parseServiceName("invalid/name")).to.throw(
+        FirebaseError,
+        /Invalid Cloud Run service name/,
+      );
+    });
+  });
+
+  describe("listCloudRunServices", () => {
+    let sandbox: sinon.SinonSandbox;
+    let getStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      getStub = sandbox.stub(Client.prototype, "get");
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should list services and filter out cloud-functions by default", async () => {
+      getStub.resolves({
+        status: 200,
+        body: {
+          services: [
+            {
+              name: "projects/p/locations/us-central1/services/web-app",
+              labels: {},
+            },
+            {
+              name: "projects/p/locations/us-central1/services/fn-backend",
+              labels: { "goog-managed-by": "cloud-functions" },
+            },
+          ],
+        },
+      });
+
+      const services = await runv2.listCloudRunServices("p");
+      expect(services).to.have.length(1);
+      expect(services[0].name).to.equal("projects/p/locations/us-central1/services/web-app");
+    });
+
+    it("should include cloud-functions if includeFunctions is true", async () => {
+      getStub.resolves({
+        status: 200,
+        body: {
+          services: [
+            {
+              name: "projects/p/locations/us-central1/services/web-app",
+              labels: {},
+            },
+            {
+              name: "projects/p/locations/us-central1/services/fn-backend",
+              labels: { "goog-managed-by": "cloud-functions" },
+            },
+          ],
+        },
+      });
+
+      const services = await runv2.listCloudRunServices("p", /* includeFunctions= */ true);
+      expect(services).to.have.length(2);
+    });
+  });
 });
