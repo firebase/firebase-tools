@@ -29,7 +29,8 @@ export async function deleteFunctionsByEndpointFilters(
   context: Context,
   options?: Options,
 ): Promise<number> {
-  let haveBackend = await backend.existingBackend(context);
+  const fullBackend = await backend.existingBackend(context);
+  let haveBackend = fullBackend;
   if (options?.region) {
     haveBackend = backend.matchingBackend(
       haveBackend,
@@ -62,14 +63,14 @@ export async function deleteFunctionsByEndpointFilters(
   );
 
   // If all functions utilizing a managed service account are being deleted (i.e. no surviving
-  // endpoints in haveBackend still reference it), mark that service account for deletion.
+  // endpoints in fullBackend across all regions still reference it), mark that service account for deletion.
   // This prevents orphaned service accounts from accumulating in GCP IAM upon codebase deletion
   // or kit uninstallation, and avoids stale reference errors during subsequent reinstalls.
   const existingManagedSAs: string[] = [];
   if (deletedManagedSAs.size > 0) {
     const deletedIds = new Set(allEpToDelete.map((del) => `${del.region}/${del.id}`));
     const survivingEndpoints = backend
-      .allEndpoints(haveBackend)
+      .allEndpoints(fullBackend)
       .filter((e) => !deletedIds.has(`${e.region}/${e.id}`));
     const survivingSAs = new Set(survivingEndpoints.map((e) => e.serviceAccount));
     for (const sa of deletedManagedSAs) {
