@@ -366,73 +366,62 @@ async function deployService(
   const region = service.region;
   const message = (service.message || options.message) as string | undefined;
 
-  try {
-    // 1. Ensure Artifact Registry repository exists
-    await artifactregistry.ensureRepositoryExists(projectId, region, "cloud-run-source-deploy");
+  // 1. Ensure Artifact Registry repository exists
+  await artifactregistry.ensureRepositoryExists(projectId, region, "cloud-run-source-deploy");
 
-    // 2. Package source & upload to GCS staging bucket
-    service.storageSource = await packageAndUploadSource(projectId, region, service, options);
+  // 2. Package source & upload to GCS staging bucket
+  service.storageSource = await packageAndUploadSource(projectId, region, service, options);
 
-    // 3. Construct target image URI & submit Cloud Build
-    const imageTag = `${Date.now()}`;
-    const imageUri = `${region}-docker.pkg.dev/${projectId}/cloud-run-source-deploy/${service.serviceId}:${imageTag}`;
-    const { hasAbiu, resolvedBaseImageUri } = await submitServiceBuild(
+  // 3. Construct target image URI & submit Cloud Build
+  const imageTag = `${Date.now()}`;
+  const imageUri = `${region}-docker.pkg.dev/${projectId}/cloud-run-source-deploy/${service.serviceId}:${imageTag}`;
+  const { hasAbiu, resolvedBaseImageUri } = await submitServiceBuild(
+    projectId,
+    region,
+    service,
+    imageUri,
+  );
+
+  // 4. Create or update Cloud Run service
+  let existing = service.existingService;
+  if (existing) {
+    try {
+      const fresh = await runv2.getService(projectId, region, service.serviceId);
+      if (fresh) {
+        existing = fresh;
+      }
+    } catch (err: unknown) {
+      if ((err as { status?: number })?.status !== 404) {
+        logger.debug(`Failed to fetch latest service state for ${service.serviceId}:`, err);
+      }
+    }
+
+    const { newService, updateMask } = buildUpdatedServiceDefinition(
+      existing,
+      service,
+      projectId,
+      imageUri,
+      hasAbiu,
+      resolvedBaseImageUri,
+      message,
+    );
+    service.deployResponse = await runv2.updateService(newService, updateMask);
+  } else {
+    const newService = buildNewServiceDefinition(
       projectId,
       region,
       service,
       imageUri,
+      hasAbiu,
+      resolvedBaseImageUri,
+      message,
     );
-
-    // 4. Create or update Cloud Run service
-    let existing = service.existingService;
-    if (existing) {
-      try {
-        const fresh = await runv2.getService(projectId, region, service.serviceId);
-        if (fresh) {
-          existing = fresh;
-        }
-      } catch (err: unknown) {
-        if ((err as { status?: number })?.status !== 404) {
-          logger.debug(`Failed to fetch latest service state for ${service.serviceId}:`, err);
-        }
-      }
-
-      const { newService, updateMask } = buildUpdatedServiceDefinition(
-        existing,
-        service,
-        projectId,
-        imageUri,
-        hasAbiu,
-        resolvedBaseImageUri,
-        message,
-      );
-      service.deployResponse = await runv2.updateService(newService, updateMask);
-    } else {
-      const newService = buildNewServiceDefinition(
-        projectId,
-        region,
-        service,
-        imageUri,
-        hasAbiu,
-        resolvedBaseImageUri,
-        message,
-      );
-      service.deployResponse = await runv2.createService(
-        projectId,
-        region,
-        service.serviceId,
-        newService,
-      );
-    }
-  } catch (err) {
-    if (service.storageSource) {
-      try {
-        await gcs.deleteObject(`/${service.storageSource.bucket}/${service.storageSource.object}`);
-      } catch {
-        // ignore cleanup errors
-      }
-    }
-    throw err;
+    service.deployResponse = await runv2.createService(
+      projectId,
+      region,
+      service.serviceId,
+      newService,
+    );
   }
 }
 

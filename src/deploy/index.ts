@@ -119,7 +119,6 @@ export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], s
     "storage.buckets.create",
     "storage.buckets.update",
     "storage.objects.create",
-    "storage.objects.delete",
     "artifactregistry.repositories.get",
     "artifactregistry.repositories.create",
     "artifactregistry.repositories.downloadArtifacts",
