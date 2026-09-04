@@ -8,7 +8,16 @@ import * as extensionsApi from "./extensionsApi";
 import * as migrateModule from "./migrate";
 import * as paramHelper from "./paramHelper";
 import * as updateHelper from "./updateHelper";
-import { ExtensionInstance } from "./types";
+import * as exportModule from "./export";
+import * as kitInstallModule from "../functions/kits/install";
+import * as extensionsHelper from "./extensionsHelper";
+import * as utils from "../utils";
+import { command as extMigrateCommand, ExtMigrateOptions } from "../commands/ext-migrate";
+import { Config } from "../config";
+import { Options } from "../options";
+import { Extension, ExtensionInstance, ExtensionVersion, ParamType } from "./types";
+import * as deployModule from "../deploy";
+import * as manifest from "./manifest";
 
 describe("ext:migrate core logic (Unique Veneer)", () => {
   let sandbox: sinon.SinonSandbox;
@@ -354,7 +363,7 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
         name: "firebase/firestore-send-email@0.1.14",
         ref: "firebase/firestore-send-email@0.1.14",
         spec: { name: "firestore-send-email", version: "0.1.14" },
-      } as any);
+      } as unknown as ExtensionVersion);
 
       const updated = await migrateModule.ensureInstanceUpToDate("test-project", mockInstance1);
 
@@ -364,13 +373,13 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
     it("should automatically attempt upgrade when a newer version exists", async () => {
       sandbox.stub(extensionsApi, "getExtension").resolves({
         latestVersion: "0.1.15",
-      } as any);
+      } as unknown as Extension);
       const getExtVersionStub = sandbox.stub(extensionsApi, "getExtensionVersion").resolves({
         name: "firebase/firestore-send-email@0.1.15",
         ref: "firebase/firestore-send-email@0.1.15",
         spec: { name: "firestore-send-email", version: "0.1.15", params: [] },
-      } as any);
-      sandbox.stub(updateHelper, "update").resolves({} as any);
+      } as unknown as ExtensionVersion);
+      sandbox.stub(updateHelper, "update").resolves({} as unknown as ExtensionInstance);
       sandbox.stub(extensionsApi, "getInstance").resolves(mockInstance1);
 
       await migrateModule.ensureInstanceUpToDate("test-project", mockInstance1);
@@ -381,14 +390,16 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
     it("should merge systemParams into currentParams when prompting for new parameters", async () => {
       sandbox.stub(extensionsApi, "getExtension").resolves({
         latestVersion: "0.1.15",
-      } as any);
+      } as unknown as Extension);
       sandbox.stub(extensionsApi, "getExtensionVersion").resolves({
         name: "firebase/firestore-send-email@0.1.15",
         ref: "firebase/firestore-send-email@0.1.15",
         spec: { name: "firestore-send-email", version: "0.1.15", params: [] },
-      } as any);
-      const promptStub = sandbox.stub(paramHelper, "promptForNewParams").resolves({} as any);
-      sandbox.stub(updateHelper, "update").resolves({} as any);
+      } as unknown as ExtensionVersion);
+      const promptStub = sandbox
+        .stub(paramHelper, "promptForNewParams")
+        .resolves({} as { [option: string]: paramHelper.ParamBindingOptions });
+      sandbox.stub(updateHelper, "update").resolves({} as unknown as ExtensionInstance);
       sandbox.stub(extensionsApi, "getInstance").resolves(mockInstance1);
 
       const instanceWithSystemParams: ExtensionInstance = {
@@ -413,12 +424,12 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
     it("should throw FirebaseError with manual upgrade instructions when upgrade fails", async () => {
       sandbox.stub(extensionsApi, "getExtension").resolves({
         latestVersion: "0.1.15",
-      } as any);
+      } as unknown as Extension);
       sandbox.stub(extensionsApi, "getExtensionVersion").resolves({
         name: "firebase/firestore-send-email@0.1.15",
         ref: "firebase/firestore-send-email@0.1.15",
         spec: { name: "firestore-send-email", version: "0.1.15", params: [] },
-      } as any);
+      } as unknown as ExtensionVersion);
       sandbox.stub(updateHelper, "update").rejects(new Error("API rate limit exceeded"));
 
       await expect(
@@ -451,6 +462,307 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       const result = await migrateModule.ensureInstanceUpToDate("test-project", invalidRefInstance);
 
       expect(result).to.equal(invalidRefInstance);
+    });
+  });
+
+  describe("migrateSecrets", () => {
+    const instanceWithSecret: ExtensionInstance = {
+      ...mockInstance1,
+      config: {
+        ...mockInstance1.config,
+        source: {
+          name: "sources/1",
+          state: "ACTIVE",
+          packageUri: "https://example.com/package.zip",
+          hash: "hash123",
+          spec: {
+            name: "ext",
+            version: "1.0.0",
+            resources: [],
+            params: [
+              {
+                param: "API_KEY",
+                label: "API Key",
+                type: ParamType.SECRET,
+              },
+            ],
+            systemParams: [],
+          },
+        },
+      },
+    };
+
+    it("should return empty array without logging if instance has no secrets needing ejection", async () => {
+      sandbox.stub(exportModule, "secretsNeedingEjection").resolves([]);
+      const res = await migrateModule.migrateSecrets(mockInstance1);
+      expect(res).to.deep.equal([]);
+      expect(logger.info).to.not.have.been.called;
+    });
+
+    it("should eject secrets and log when instance has secrets", async () => {
+      sandbox.stub(exportModule, "secretsNeedingEjection").resolves(["test-project/API_KEY"]);
+      sandbox
+        .stub(exportModule, "ejectSecretsFromInstance")
+        .resolves({ success: ["test-project/API_KEY"], fail: [] });
+
+      const res = await migrateModule.migrateSecrets(instanceWithSecret);
+      expect(res).to.deep.equal(["test-project/API_KEY"]);
+    });
+
+    it("should throw error and log IAM advice when secret ejection fails without force", async () => {
+      sandbox.stub(exportModule, "secretsNeedingEjection").resolves(["test-project/API_KEY"]);
+      sandbox
+        .stub(exportModule, "ejectSecretsFromInstance")
+        .resolves({ success: [], fail: ["test-project/API_KEY"] });
+      const errorSpy = sandbox.spy(utils, "logLabeledError");
+
+      await expect(migrateModule.migrateSecrets(instanceWithSecret)).to.be.rejectedWith(
+        FirebaseError,
+        "Secret migration failed.",
+      );
+      expect(errorSpy).to.have.been.calledWith(
+        "functions",
+        sinon.match(/roles\/secretmanager\.admin/),
+      );
+    });
+
+    it("should log warning about potential data loss when secret ejection fails with force", async () => {
+      sandbox.stub(exportModule, "secretsNeedingEjection").resolves(["test-project/API_KEY"]);
+      sandbox
+        .stub(exportModule, "ejectSecretsFromInstance")
+        .resolves({ success: [], fail: ["test-project/API_KEY"] });
+      const warnSpy = sandbox.spy(utils, "logLabeledWarning");
+
+      const res = await migrateModule.migrateSecrets(instanceWithSecret, { force: true });
+      expect(res).to.deep.equal([]);
+      expect(warnSpy).to.have.been.calledWith(
+        "functions",
+        sinon.match(/Proceeding after secret migration failure in --force mode/),
+      );
+    });
+  });
+
+  describe("uninstallExtension", () => {
+    let deleteInstanceStub: sinon.SinonStub;
+    let loadConfigStub: sinon.SinonStub;
+    let instanceExistsStub: sinon.SinonStub;
+    let removeFromManifestStub: sinon.SinonStub;
+    let confirmStub: sinon.SinonStub;
+    const mockOptions = {} as unknown as Options;
+
+    beforeEach(() => {
+      deleteInstanceStub = sandbox.stub(extensionsApi, "deleteInstance").resolves();
+      loadConfigStub = sandbox.stub(manifest, "loadConfig").returns({} as unknown as Config);
+      instanceExistsStub = sandbox.stub(manifest, "instanceExists").returns(false);
+      removeFromManifestStub = sandbox.stub(manifest, "removeFromManifest");
+      confirmStub = sandbox.stub(prompt, "confirm").resolves(true);
+    });
+
+    it("should remove from manifest and delete instance when skipConfirm is true", async () => {
+      instanceExistsStub.returns(true);
+      await migrateModule.uninstallExtension("test-project", "email-1", mockOptions, true);
+
+      expect(instanceExistsStub).to.have.been.calledOnceWith("email-1");
+      expect(removeFromManifestStub).to.have.been.calledOnceWith("email-1");
+      expect(confirmStub).to.not.have.been.called;
+      expect(deleteInstanceStub).to.have.been.calledOnceWith("test-project", "email-1");
+    });
+
+    it("should prompt confirmation and remove from manifest and delete when skipConfirm is false and confirmed", async () => {
+      instanceExistsStub.returns(true);
+      confirmStub.resolves(true);
+      await migrateModule.uninstallExtension("test-project", "email-1", mockOptions, false);
+
+      expect(confirmStub).to.have.been.calledOnce;
+      expect(removeFromManifestStub).to.have.been.calledOnceWith("email-1");
+      expect(deleteInstanceStub).to.have.been.calledOnceWith("test-project", "email-1");
+    });
+
+    it("should abort deletion and not remove from manifest if confirmation is declined", async () => {
+      instanceExistsStub.returns(true);
+      confirmStub.resolves(false);
+      await migrateModule.uninstallExtension("test-project", "email-1", mockOptions, false);
+
+      expect(confirmStub).to.have.been.calledOnce;
+      expect(removeFromManifestStub).to.not.have.been.called;
+      expect(deleteInstanceStub).to.not.have.been.called;
+    });
+
+    it("should handle missing manifest / firebase.json gracefully", async () => {
+      loadConfigStub.throws(new Error("No firebase.json found"));
+      await migrateModule.uninstallExtension("test-project", "email-1", mockOptions, true);
+
+      expect(deleteInstanceStub).to.have.been.calledOnceWith("test-project", "email-1");
+    });
+
+    it("should throw FirebaseError on deletion error", async () => {
+      deleteInstanceStub.rejects(new Error("Network error"));
+      await expect(
+        migrateModule.uninstallExtension("test-project", "email-1", mockOptions, true),
+      ).to.be.rejectedWith(FirebaseError, "Error when attempting deletion: Network error");
+    });
+  });
+
+  describe("ext:migrate command action", () => {
+    let installKitOrInstanceStub: sinon.SinonStub;
+    let migrateSecretsStub: sinon.SinonStub;
+    let functionsEnvStub: sinon.SinonStub;
+    let ensureSpecStub: sinon.SinonStub;
+    let deployStub: sinon.SinonStub;
+    let uninstallExtensionStub: sinon.SinonStub;
+    let confirmStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sandbox.stub(extMigrateCommand as unknown as { befores: unknown[] }, "befores").value([]);
+      sandbox.stub(extMigrateCommand, "prepare").resolves();
+      sandbox.stub(extensionsApi, "listInstances").resolves([mockInstance1]);
+      sandbox.stub(migrateModule, "ensureInstanceUpToDate").resolves(mockInstance1);
+      installKitOrInstanceStub = sandbox.stub(kitInstallModule, "installKitOrInstance").resolves({
+        action: "installedKit",
+        kitId: "firestore-send-email",
+        instanceId: "email-1",
+        sourcePath: "/mock/path",
+        configDirPath: "functions/kits/firestore-send-email/email-1",
+      });
+      migrateSecretsStub = sandbox
+        .stub(migrateModule, "migrateSecrets")
+        .resolves(["test-project/SECRET1"]);
+      functionsEnvStub = sandbox.stub(exportModule, "functionsEnvFromInstance").returns({
+        PARAM_A: "val_a",
+      });
+      ensureSpecStub = sandbox.stub(extensionsHelper, "ensureInstanceSpec").resolves(mockInstance1);
+      deployStub = sandbox.stub(deployModule, "deploy").resolves();
+      uninstallExtensionStub = sandbox.stub(migrateModule, "uninstallExtension").resolves();
+      confirmStub = sandbox.stub(prompt, "confirm").resolves(true);
+    });
+
+    it("should throw if extension specification cannot be loaded", async () => {
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+      } as unknown as Config;
+
+      ensureSpecStub.resolves({
+        ...mockInstance1,
+        config: {
+          ...mockInstance1.config,
+          source: undefined,
+        },
+      });
+
+      await expect(
+        extMigrateCommand.runner()({
+          project: "test-project",
+          projectId: "test-project",
+          extInstance: "email-1",
+          config: mockConfig,
+          nonInteractive: true,
+        } as unknown as ExtMigrateOptions),
+      ).to.be.rejectedWith(FirebaseError, /Could not load extension specification for/);
+    });
+
+    it("should deploy function kit and uninstall extension when confirmed", async () => {
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+      } as unknown as Config;
+
+      const res = (await extMigrateCommand.runner()({
+        project: "test-project",
+        projectId: "test-project",
+        extInstance: "email-1",
+        config: mockConfig,
+        nonInteractive: true,
+      } as unknown as ExtMigrateOptions)) as migrateModule.ExtensionMigrationPlan;
+
+      expect(ensureSpecStub).to.have.been.calledOnce;
+      expect(functionsEnvStub).to.have.been.calledOnce;
+      expect(migrateSecretsStub).to.have.been.calledOnce;
+      expect(installKitOrInstanceStub).to.have.been.calledOnceWith(
+        sinon.match({
+          config: mockConfig,
+          package: "@firebase-function-kits/firestore-send-email",
+          template: "migration",
+          defaultInstanceId: "email-1",
+          seedEnv: {
+            projectId: "test-project",
+            envs: {
+              PARAM_A: "val_a",
+            },
+          },
+        }),
+      );
+
+      expect(deployStub).to.have.been.calledOnceWith(
+        ["functions"],
+        sinon.match({
+          only: "functions:email-1",
+          filteredTargets: ["functions"],
+          project: "test-project",
+        }),
+      );
+
+      expect(confirmStub).to.have.been.calledOnceWith(
+        sinon.match({
+          message: sinon.match(
+            /Functions kit email-1 successfully deployed.*uninstall extension instance email-1/,
+          ),
+          default: true,
+        }),
+      );
+
+      expect(uninstallExtensionStub).to.have.been.calledOnceWith(
+        "test-project",
+        "email-1",
+        sinon.match.any,
+        true,
+      );
+
+      expect(res.instanceId).to.equal("email-1");
+    });
+
+    it("should skip uninstall and log future command when user declines uninstall", async () => {
+      confirmStub.resolves(false);
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+      } as unknown as Config;
+
+      await extMigrateCommand.runner()({
+        project: "test-project",
+        projectId: "test-project",
+        extInstance: "email-1",
+        config: mockConfig,
+        nonInteractive: true,
+      } as unknown as ExtMigrateOptions);
+
+      expect(deployStub).to.have.been.calledOnce;
+      expect(confirmStub).to.have.been.calledOnce;
+      expect(uninstallExtensionStub).to.not.have.been.called;
+    });
+
+    it("should throw FirebaseError with instructions if deploy fails", async () => {
+      deployStub.rejects(new Error("Build failure"));
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+      } as unknown as Config;
+
+      await expect(
+        extMigrateCommand.runner()({
+          project: "test-project",
+          projectId: "test-project",
+          extInstance: "email-1",
+          config: mockConfig,
+          nonInteractive: true,
+        } as unknown as ExtMigrateOptions),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        "Failed to deploy. Please fix and retry with firebase deploy --only functions:email-1. After success you may remove the old extension with firebase ext:uninstall email-1 --project test-project --immediate",
+      );
+
+      expect(confirmStub).to.not.have.been.called;
+      expect(uninstallExtensionStub).to.not.have.been.called;
     });
   });
 });

@@ -2856,6 +2856,45 @@ describe("functions/kits/install", () => {
       );
     });
 
+    it("should automatically select addEnv when instanceId matches an existing unconfigured instance", async () => {
+      sinon.stub(functionsEnv, "hasProjectEnv").returns(false);
+      const existingKit: ValidatedKitSingle = {
+        kit: "firestore-bigquery-export",
+        sourcePackage: { name: "@firebase-function-kits/firestore-bigquery-export" },
+        source: "function-kits/firestore-bigquery-export/source",
+        instances: {
+          inst1: "function-kits/firestore-bigquery-export/config-inst1",
+        },
+      };
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [existingKit] },
+        path: (p: string) => path.join("/mock/project", p),
+      } as unknown as Config;
+
+      const selectStub = sinon.stub(prompt, "select");
+
+      const res = await addKitInstanceOrConfigureProject(
+        {
+          config: mockConfig,
+          project: "my-project",
+          configure: false,
+          instanceId: "inst1",
+        },
+        existingKit,
+        {
+          existingFunctions: [existingKit],
+          existingKitIds: ["firestore-bigquery-export"],
+          existingCodebases: [],
+          existingInstanceIds: ["inst1"],
+        },
+      );
+
+      expect(selectStub).to.not.have.been.called;
+      expect(res.action).to.equal("configuredEnv");
+      expect(res.instanceId).to.equal("inst1");
+    });
+
     it("should add instance directly when specified instanceId is net new without prompt", async () => {
       sinon.stub(functionsEnv, "hasProjectEnv").returns(false);
       const existingKit: ValidatedKitSingle = {
@@ -3143,6 +3182,37 @@ describe("functions/kits/install", () => {
         instanceId: "custom-instance",
         sourcePath: "function-kits/custom-kit/source",
         configDirPath: "function-kits/custom-kit/config-custom-instance",
+      });
+    });
+
+    it("should accept defaultInstanceId as suggested instance ID for package kit", async () => {
+      const writtenFiles: Record<string, unknown> = {};
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+        },
+        askWriteProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+          return Promise.resolve();
+        },
+      } as unknown as Config;
+
+      const res = await installKitOrInstance({
+        config: mockConfig,
+        package: "@firebase-function-kits/firestore-bigquery-export@1.0.0",
+        defaultInstanceId: "my-extension-inst",
+        nonInteractive: true,
+      });
+
+      expect(res).to.deep.equal({
+        action: "installedKit",
+        kitId: "firestore-bigquery-export",
+        instanceId: "my-extension-inst",
+        sourcePath: "function-kits/firestore-bigquery-export/source",
+        configDirPath: "function-kits/firestore-bigquery-export/config-my-extension-inst",
       });
     });
 

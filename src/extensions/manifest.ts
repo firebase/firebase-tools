@@ -8,7 +8,8 @@ import { logger } from "../logger";
 import { confirm, select } from "../prompt";
 import { readEnvFile } from "./paramHelper";
 import { FirebaseError } from "../error";
-import { isLocalPath } from "./extensionsHelper";
+import { isLocalPath, logPrefix } from "./extensionsHelper";
+import { logLabeledBullet } from "../utils";
 import { ParamType } from "./types";
 
 export const ENV_DIRECTORY = "extensions";
@@ -138,19 +139,24 @@ export function removeFromManifest(instanceId: string, config: Config) {
   extensions[instanceId] = undefined;
   config.set("extensions", extensions);
   config.writeProjectFile("firebase.json", config.src);
-  logger.info(`Removed extension instance ${instanceId} from firebase.json`);
+  logLabeledBullet(logPrefix, `Removed extension instance ${instanceId} from firebase.json`);
 
   config.deleteProjectFile(`extensions/${instanceId}.env`);
-  logger.info(`Removed extension instance environment config extensions/${instanceId}.env`);
+  logLabeledBullet(
+    logPrefix,
+    `Removed extension instance environment config extensions/${instanceId}.env`,
+  );
   if (config.projectFileExists(`extensions/${instanceId}.env.local`)) {
     config.deleteProjectFile(`extensions/${instanceId}.env.local`);
-    logger.info(
+    logLabeledBullet(
+      logPrefix,
       `Removed extension instance local environment config extensions/${instanceId}.env.local`,
     );
   }
   if (config.projectFileExists(`extensions/${instanceId}.secret.local`)) {
     config.deleteProjectFile(`extensions/${instanceId}.secret.local`);
-    logger.info(
+    logLabeledBullet(
+      logPrefix,
       `Removed extension instance local secret config extensions/${instanceId}.secret.local`,
     );
   }
