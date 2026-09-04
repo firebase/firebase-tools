@@ -134,4 +134,79 @@ describe("function delete helper", () => {
       ),
     ).to.be.rejected;
   });
+
+  it("identifies and passes managed service account for deletion when all functions using it are deleted", async () => {
+    const endpointWithSA: backend.Endpoint = {
+      ...fakeEndpoint,
+      serviceAccount: "firebase-fn-1234567890@my-project.iam.gserviceaccount.com",
+    };
+    const backendWithSA: backend.Backend = {
+      requiredAPIs: [],
+      environmentVariables: {},
+      endpoints: {
+        "us-central1": { foo: endpointWithSA },
+      },
+    };
+
+    sinon.stub(backend, "existingBackend").resolves(backendWithSA);
+    sinon.stub(functionsConfig, "getFirebaseConfig").resolves({ projectId: "my-project" });
+    sinon.stub(functionsConfig, "getAppEngineLocation").returns("us-central1");
+    sinon.stub(getProjectNumber, "getProjectNumber").resolves("1234");
+    const applyPlanStub = sinon.stub(fabricator.Fabricator.prototype, "applyPlan").resolves({
+      totalTime: 100,
+      results: [{ endpoint: endpointWithSA, durationMs: 100 }],
+    });
+    sinon.stub(reporter, "logAndTrackDeployStats").resolves();
+
+    await deleteFunctionsByEndpointFilters(
+      { projectId: "my-project", filters: [{ codebase: "foo" }] },
+      { nonInteractive: true, force: true } as Options,
+    );
+
+    expect(applyPlanStub.calledOnce).to.be.true;
+    const appliedPlan = applyPlanStub.firstCall.args[0];
+    expect(appliedPlan.default.serviceAccountToDelete).to.equal(
+      "firebase-fn-1234567890@my-project.iam.gserviceaccount.com",
+    );
+  });
+
+  it("does not delete managed service account if surviving functions still use it", async () => {
+    const sharedSA = "firebase-fn-1234567890@my-project.iam.gserviceaccount.com";
+    const endpoint1: backend.Endpoint = {
+      ...fakeEndpoint,
+      serviceAccount: sharedSA,
+    };
+    const endpoint2: backend.Endpoint = {
+      ...fakeEndpoint2,
+      codebase: "bar",
+      serviceAccount: sharedSA,
+    };
+    const backendWithSharedSA: backend.Backend = {
+      requiredAPIs: [],
+      environmentVariables: {},
+      endpoints: {
+        "us-central1": { foo: endpoint1, bar: endpoint2 },
+      },
+    };
+
+    sinon.stub(backend, "existingBackend").resolves(backendWithSharedSA);
+    sinon.stub(functionsConfig, "getFirebaseConfig").resolves({ projectId: "my-project" });
+    sinon.stub(functionsConfig, "getAppEngineLocation").returns("us-central1");
+    sinon.stub(getProjectNumber, "getProjectNumber").resolves("1234");
+    const applyPlanStub = sinon.stub(fabricator.Fabricator.prototype, "applyPlan").resolves({
+      totalTime: 100,
+      results: [{ endpoint: endpoint1, durationMs: 100 }],
+    });
+    sinon.stub(reporter, "logAndTrackDeployStats").resolves();
+
+    // Delete only codebase "foo", leaving codebase "bar" (which also uses sharedSA)
+    await deleteFunctionsByEndpointFilters(
+      { projectId: "my-project", filters: [{ codebase: "foo" }] },
+      { nonInteractive: true, force: true } as Options,
+    );
+
+    expect(applyPlanStub.calledOnce).to.be.true;
+    const appliedPlan = applyPlanStub.firstCall.args[0];
+    expect(appliedPlan.default.serviceAccountToDelete).to.be.undefined;
+  });
 });

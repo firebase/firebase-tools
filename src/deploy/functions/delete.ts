@@ -36,7 +36,7 @@ export async function deleteFunctionsByEndpointFilters(
       (endpoint) => endpoint.region === options.region,
     );
   }
-  const plan = await planner.createDeploymentPlan({
+  const initialPlan = await planner.createDeploymentPlan({
     wantBackend: backend.empty(),
     haveBackend: haveBackend,
     codebase: "",
@@ -44,13 +44,49 @@ export async function deleteFunctionsByEndpointFilters(
     filters: context.filters,
     deleteAll: true,
   });
-  const allEpToDelete = Object.values(plan.regionalChangesets)
+  const allEpToDelete = Object.values(initialPlan.regionalChangesets)
     .map((changes) => changes.endpointsToDelete)
     .reduce(reduceFlat, [])
     .sort(backend.compareFunctions);
   if (allEpToDelete.length === 0) {
     return 0;
   }
+
+  // Discover any managed service accounts (firebase-fn-*) used by endpoints slated for deletion.
+  // When declarative security (requiresRole) is used, the CLI synthesizes and manages these service
+  // accounts exclusively for the functions in that codebase.
+  const deletedManagedSAs = new Set(
+    allEpToDelete
+      .map((e) => e.serviceAccount)
+      .filter((sa): sa is string => typeof sa === "string" && sa.startsWith("firebase-fn-")),
+  );
+
+  // If all functions utilizing a managed service account are being deleted (i.e. no surviving
+  // endpoints in haveBackend still reference it), mark that service account for deletion.
+  // This prevents orphaned service accounts from accumulating in GCP IAM upon codebase deletion
+  // or kit uninstallation, and avoids stale reference errors during subsequent reinstalls.
+  let existingManagedSA: string | undefined;
+  if (deletedManagedSAs.size > 0) {
+    const survivingEndpoints = backend
+      .allEndpoints(haveBackend)
+      .filter((e) => !allEpToDelete.some((del) => del.id === e.id && del.region === e.region));
+    const survivingSAs = new Set(survivingEndpoints.map((e) => e.serviceAccount));
+    existingManagedSA = Array.from(deletedManagedSAs).find((sa) => !survivingSAs.has(sa));
+  }
+
+  // If a managed service account is ready for cleanup, regenerate the deployment plan with
+  // existingManagedSA populated so planner sets serviceAccountToDelete and fabricator deletes it.
+  const plan = existingManagedSA
+    ? await planner.createDeploymentPlan({
+        wantBackend: backend.empty(),
+        haveBackend: haveBackend,
+        codebase: "",
+        projectId: context.projectId,
+        filters: context.filters,
+        deleteAll: true,
+        existingManagedSA,
+      })
+    : initialPlan;
 
   const deleteList = allEpToDelete.map((func) => `\t${getFunctionLabel(func)}`).join("\n");
   const confirmDeletion = await confirm({
