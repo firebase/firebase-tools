@@ -66,10 +66,16 @@ export const command = new Command("remoteconfig:get")
 
       let filename = undefined;
       if (shouldUseDefaultFilename) {
-        filename = options.config.src.remoteconfig!.template;
+        filename = options.config.src.remoteconfig?.template;
       } else {
         utils.assertIsString(options.output);
         filename = options.output;
+      }
+
+      if (!filename) {
+        throw new FirebaseError(
+          "No Remote Config template file specified in firebase.json or command line argument.",
+        );
       }
 
       const outTemplate = { ...template };
