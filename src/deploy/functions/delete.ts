@@ -15,10 +15,12 @@ import { DEFAULT_CODEBASE } from "../../functions/projectConfig";
 /**
  * Deletes Functions based on the provided EndpointFilter, which
  * allows deleting all functions that match a specific codebase, ID
- * prefix, or both.
+ * prefix, or both. Also cleans up any declarative security managed
+ * service accounts when all functions in a codebase are deleted.
  *
- * Asks for confirmation before delete. If CLI options are passed,
- * respects force and nonInteractive.
+ * Asks for confirmation before delete (including any managed service
+ * accounts slated for deletion). If CLI options are passed, respects
+ * force and nonInteractive.
  *
  * Returns the number of functions deleted. Awaits the success or failure
  * of all delete operations before throwing if any operation failed.
@@ -57,9 +59,10 @@ export async function deleteFunctionsByEndpointFilters(
     let existingManagedSA: string | undefined;
     if (endpointsToDelete.length > 0 && endpointsToDelete.length === totalEndpointsInGcp.length) {
       const ep = totalEndpointsInGcp.find(
-        (e) => typeof e.serviceAccount === "string" && e.serviceAccount.startsWith("firebase-fn-"),
+        (e): e is backend.Endpoint & { serviceAccount: string } =>
+          typeof e.serviceAccount === "string" && e.serviceAccount.startsWith("firebase-fn-"),
       );
-      existingManagedSA = ep?.serviceAccount ?? undefined;
+      existingManagedSA = ep?.serviceAccount;
     }
 
     deploymentPlan[codebase] = await planner.createDeploymentPlan({
