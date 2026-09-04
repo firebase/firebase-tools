@@ -2,23 +2,25 @@ import * as backend from "./backend";
 import * as planner from "./release/planner";
 import * as executor from "./release/executor";
 import * as fabricator from "./release/fabricator";
-import { getFunctionLabel } from "./functionsDeployHelper";
+import { getFunctionLabel, endpointMatchesAnyFilter } from "./functionsDeployHelper";
 import { getProjectNumber } from "../../getProjectNumber";
 import * as reporter from "./release/reporter";
+import * as prompt from "../../prompt";
+import * as functionsConfig from "../../functionsConfig";
 import { Context } from "./args";
 import { FirebaseError } from "../../error";
-import { reduceFlat } from "../../functional";
-import { confirm } from "../../prompt";
 import { Options } from "../../options";
-import * as functionsConfig from "../../functionsConfig";
+import { DEFAULT_CODEBASE } from "../../functions/projectConfig";
 
 /**
  * Deletes Functions based on the provided EndpointFilter, which
  * allows deleting all functions that match a specific codebase, ID
- * prefix, or both.
+ * prefix, or both. Also cleans up any declarative security managed
+ * service accounts when all functions in a codebase are deleted.
  *
- * Asks for confirmation before delete. If CLI options are passed,
- * respects force and nonInteractive.
+ * Asks for confirmation before delete (including any managed service
+ * accounts slated for deletion). If CLI options are passed, respects
+ * force and nonInteractive.
  *
  * Returns the number of functions deleted. Awaits the success or failure
  * of all delete operations before throwing if any operation failed.
@@ -29,33 +31,74 @@ export async function deleteFunctionsByEndpointFilters(
   context: Context,
   options?: Options,
 ): Promise<number> {
-  let haveBackend = await backend.existingBackend(context);
-  if (options?.region) {
-    haveBackend = backend.matchingBackend(
-      haveBackend,
-      (endpoint) => endpoint.region === options.region,
+  const allExistingBackend = await backend.existingBackend(context);
+  const targetedRegionBackend = options?.region
+    ? backend.matchingBackend(allExistingBackend, (endpoint) => endpoint.region === options.region)
+    : allExistingBackend;
+
+  const codebases = new Set(
+    backend.allEndpoints(allExistingBackend).map((ep) => ep.codebase || DEFAULT_CODEBASE),
+  );
+
+  const deploymentPlan: planner.DeploymentPlan = {};
+  for (const codebase of codebases) {
+    const allCodebaseBackend = backend.matchingBackend(
+      allExistingBackend,
+      (ep) => (ep.codebase || DEFAULT_CODEBASE) === codebase,
     );
+    const targetedCodebaseBackend = backend.matchingBackend(
+      targetedRegionBackend,
+      (ep) => (ep.codebase || DEFAULT_CODEBASE) === codebase,
+    );
+
+    const totalEndpointsInGcp = backend.allEndpoints(allCodebaseBackend);
+    const endpointsToDelete = backend
+      .allEndpoints(targetedCodebaseBackend)
+      .filter((e) => endpointMatchesAnyFilter(e, context.filters));
+
+    let existingManagedSA: string | undefined;
+    if (endpointsToDelete.length > 0 && endpointsToDelete.length === totalEndpointsInGcp.length) {
+      const ep = totalEndpointsInGcp.find(
+        (e): e is backend.Endpoint & { serviceAccount: string } =>
+          typeof e.serviceAccount === "string" && e.serviceAccount.startsWith("firebase-fn-"),
+      );
+      existingManagedSA = ep?.serviceAccount;
+    }
+
+    deploymentPlan[codebase] = await planner.createDeploymentPlan({
+      wantBackend: backend.empty(),
+      haveBackend: targetedCodebaseBackend,
+      codebase,
+      projectId: context.projectId,
+      filters: context.filters,
+      deleteAll: true,
+      existingManagedSA,
+    });
   }
-  const plan = await planner.createDeploymentPlan({
-    wantBackend: backend.empty(),
-    haveBackend: haveBackend,
-    codebase: "",
-    projectId: context.projectId,
-    filters: context.filters,
-    deleteAll: true,
-  });
-  const allEpToDelete = Object.values(plan.regionalChangesets)
-    .map((changes) => changes.endpointsToDelete)
-    .reduce(reduceFlat, [])
+
+  const allEpToDelete = Object.values(deploymentPlan)
+    .flatMap((plan) =>
+      Object.values(plan.regionalChangesets).flatMap((changes) => changes.endpointsToDelete),
+    )
     .sort(backend.compareFunctions);
   if (allEpToDelete.length === 0) {
     return 0;
   }
 
   const deleteList = allEpToDelete.map((func) => `\t${getFunctionLabel(func)}`).join("\n");
-  const confirmDeletion = await confirm({
-    message:
-      "You are about to delete the following Cloud Functions:\n" + deleteList + "\n  Are you sure?",
+  const saToDelete = Object.values(deploymentPlan)
+    .map((p) => p.serviceAccountToDelete)
+    .filter((sa): sa is string => !!sa);
+
+  let message = "You are about to delete the following Cloud Functions:\n" + deleteList;
+  if (saToDelete.length > 0) {
+    const saList = saToDelete.map((sa) => `\t${sa}`).join("\n");
+    message += "\n\nThe following managed service accounts will also be deleted:\n" + saList;
+  }
+  message += "\n  Are you sure?";
+
+  const confirmDeletion = await prompt.confirm({
+    message,
     default: false,
     force: options?.force,
     nonInteractive: options?.nonInteractive,
@@ -86,7 +129,7 @@ export async function deleteFunctionsByEndpointFilters(
       projectNumber: await getProjectNumber({ projectId: context.projectId }),
       projectId: context.projectId,
     });
-    const summary = await fab.applyPlan({ default: plan });
+    const summary = await fab.applyPlan(deploymentPlan);
 
     await reporter.logAndTrackDeployStats(summary);
     reporter.printErrors(summary);
@@ -95,8 +138,9 @@ export async function deleteFunctionsByEndpointFilters(
     }
     return allEpToDelete.length;
   } catch (err: unknown) {
-    throw new FirebaseError(`Failed to delete functions: ${err}`, {
-      original: err as Error,
+    const message = err instanceof Error ? err.message : String(err);
+    throw new FirebaseError(`Failed to delete functions: ${message}`, {
+      original: err instanceof Error ? err : undefined,
       exit: 1,
     });
   }
