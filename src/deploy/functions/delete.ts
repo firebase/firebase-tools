@@ -66,7 +66,7 @@ export async function deleteFunctionsByEndpointFilters(
   // endpoints in fullBackend across all regions still reference it), mark that service account for deletion.
   // This prevents orphaned service accounts from accumulating in GCP IAM upon codebase deletion
   // or kit uninstallation, and avoids stale reference errors during subsequent reinstalls.
-  const existingManagedSAs: string[] = [];
+  const managedSAsToDelete: string[] = [];
   if (deletedManagedSAs.size > 0) {
     const deletedIds = new Set(allEpToDelete.map((del) => `${del.region}/${del.id}`));
     const survivingEndpoints = backend
@@ -75,13 +75,13 @@ export async function deleteFunctionsByEndpointFilters(
     const survivingSAs = new Set(survivingEndpoints.map((e) => e.serviceAccount));
     for (const sa of deletedManagedSAs) {
       if (!survivingSAs.has(sa)) {
-        existingManagedSAs.push(sa);
+        managedSAsToDelete.push(sa);
       }
     }
   }
 
-  if (existingManagedSAs.length > 0) {
-    plan.serviceAccountToDelete = existingManagedSAs[0];
+  if (managedSAsToDelete.length > 0) {
+    plan.serviceAccountToDelete = managedSAsToDelete[0];
   }
 
   const deleteList = allEpToDelete.map((func) => `\t${getFunctionLabel(func)}`).join("\n");
@@ -119,11 +119,11 @@ export async function deleteFunctionsByEndpointFilters(
       projectId: context.projectId,
     });
     const deploymentPlan: Record<string, planner.CodebasePlan> = { default: plan };
-    for (let i = 1; i < existingManagedSAs.length; i++) {
+    for (let i = 1; i < managedSAsToDelete.length; i++) {
       deploymentPlan[`cleanup-sa-${i}`] = {
         regionalChangesets: {},
         plannedBackend: backend.empty(),
-        serviceAccountToDelete: existingManagedSAs[i],
+        serviceAccountToDelete: managedSAsToDelete[i],
       };
     }
     const summary = await fab.applyPlan(deploymentPlan);
