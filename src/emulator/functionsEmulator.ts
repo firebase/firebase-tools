@@ -8,6 +8,7 @@ import * as semver from "semver";
 import { URL } from "url";
 import { EventEmitter } from "events";
 
+import { formatFunctionUrlForDisplay } from "./functionsEmulatorUtils";
 import { Account } from "../types/auth";
 import { logger } from "../logger";
 import { trackEmulator } from "../track";
@@ -844,7 +845,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         this.logger.logLabeled("BULLET", `functions[${definition.id}]`, msg);
       } else {
         const msg = url
-          ? `${clc.bold(triggerType)} function initialized (${url}).`
+          ? `${clc.bold(triggerType)} function initialized (${formatFunctionUrlForDisplay(url)}).`
           : `${clc.bold(triggerType)} function initialized.`;
         this.logger.logLabeled("SUCCESS", `functions[${definition.id}]`, msg);
       }
