@@ -209,4 +209,54 @@ describe("function delete helper", () => {
     const appliedPlan = applyPlanStub.firstCall.args[0];
     expect(appliedPlan.default.serviceAccountToDelete).to.be.undefined;
   });
+
+  it("identifies and passes multiple managed service accounts for deletion when functions from multiple codebases are deleted", async () => {
+    const sa1 = "firebase-fn-1111111111@my-project.iam.gserviceaccount.com";
+    const sa2 = "firebase-fn-2222222222@my-project.iam.gserviceaccount.com";
+    const endpoint1: backend.Endpoint = {
+      ...fakeEndpoint,
+      serviceAccount: sa1,
+    };
+    const endpoint2: backend.Endpoint = {
+      ...fakeEndpoint2,
+      codebase: "bar",
+      serviceAccount: sa2,
+    };
+    const backendWithTwoSAs: backend.Backend = {
+      requiredAPIs: [],
+      environmentVariables: {},
+      endpoints: {
+        "us-central1": { foo: endpoint1, bar: endpoint2 },
+      },
+    };
+
+    sinon.stub(backend, "existingBackend").resolves(backendWithTwoSAs);
+    sinon.stub(functionsConfig, "getFirebaseConfig").resolves({ projectId: "my-project" });
+    sinon.stub(functionsConfig, "getAppEngineLocation").returns("us-central1");
+    sinon.stub(getProjectNumber, "getProjectNumber").resolves("1234");
+    const applyPlanStub = sinon.stub(fabricator.Fabricator.prototype, "applyPlan").resolves({
+      totalTime: 200,
+      results: [
+        { endpoint: endpoint1, durationMs: 100 },
+        { endpoint: endpoint2, durationMs: 100 },
+      ],
+    });
+    sinon.stub(reporter, "logAndTrackDeployStats").resolves();
+
+    await deleteFunctionsByEndpointFilters(
+      {
+        projectId: "my-project",
+        filters: [{ codebase: "foo" }, { codebase: "bar" }],
+      },
+      { nonInteractive: true, force: true } as Options,
+    );
+
+    expect(applyPlanStub.calledOnce).to.be.true;
+    const appliedPlan = applyPlanStub.firstCall.args[0];
+    const cleanedSAs = [
+      appliedPlan.default.serviceAccountToDelete,
+      appliedPlan["cleanup-sa-1"]?.serviceAccountToDelete,
+    ];
+    expect(cleanedSAs).to.have.members([sa1, sa2]);
+  });
 });

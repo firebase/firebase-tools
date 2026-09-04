@@ -36,7 +36,7 @@ export async function deleteFunctionsByEndpointFilters(
       (endpoint) => endpoint.region === options.region,
     );
   }
-  const initialPlan = await planner.createDeploymentPlan({
+  const plan = await planner.createDeploymentPlan({
     wantBackend: backend.empty(),
     haveBackend: haveBackend,
     codebase: "",
@@ -44,7 +44,7 @@ export async function deleteFunctionsByEndpointFilters(
     filters: context.filters,
     deleteAll: true,
   });
-  const allEpToDelete = Object.values(initialPlan.regionalChangesets)
+  const allEpToDelete = Object.values(plan.regionalChangesets)
     .map((changes) => changes.endpointsToDelete)
     .reduce(reduceFlat, [])
     .sort(backend.compareFunctions);
@@ -65,28 +65,23 @@ export async function deleteFunctionsByEndpointFilters(
   // endpoints in haveBackend still reference it), mark that service account for deletion.
   // This prevents orphaned service accounts from accumulating in GCP IAM upon codebase deletion
   // or kit uninstallation, and avoids stale reference errors during subsequent reinstalls.
-  let existingManagedSA: string | undefined;
+  const existingManagedSAs: string[] = [];
   if (deletedManagedSAs.size > 0) {
+    const deletedIds = new Set(allEpToDelete.map((del) => `${del.region}/${del.id}`));
     const survivingEndpoints = backend
       .allEndpoints(haveBackend)
-      .filter((e) => !allEpToDelete.some((del) => del.id === e.id && del.region === e.region));
+      .filter((e) => !deletedIds.has(`${e.region}/${e.id}`));
     const survivingSAs = new Set(survivingEndpoints.map((e) => e.serviceAccount));
-    existingManagedSA = Array.from(deletedManagedSAs).find((sa) => !survivingSAs.has(sa));
+    for (const sa of deletedManagedSAs) {
+      if (!survivingSAs.has(sa)) {
+        existingManagedSAs.push(sa);
+      }
+    }
   }
 
-  // If a managed service account is ready for cleanup, regenerate the deployment plan with
-  // existingManagedSA populated so planner sets serviceAccountToDelete and fabricator deletes it.
-  const plan = existingManagedSA
-    ? await planner.createDeploymentPlan({
-        wantBackend: backend.empty(),
-        haveBackend: haveBackend,
-        codebase: "",
-        projectId: context.projectId,
-        filters: context.filters,
-        deleteAll: true,
-        existingManagedSA,
-      })
-    : initialPlan;
+  if (existingManagedSAs.length > 0) {
+    plan.serviceAccountToDelete = existingManagedSAs[0];
+  }
 
   const deleteList = allEpToDelete.map((func) => `\t${getFunctionLabel(func)}`).join("\n");
   const confirmDeletion = await confirm({
@@ -122,7 +117,15 @@ export async function deleteFunctionsByEndpointFilters(
       projectNumber: await getProjectNumber({ projectId: context.projectId }),
       projectId: context.projectId,
     });
-    const summary = await fab.applyPlan({ default: plan });
+    const deploymentPlan: Record<string, planner.CodebasePlan> = { default: plan };
+    for (let i = 1; i < existingManagedSAs.length; i++) {
+      deploymentPlan[`cleanup-sa-${i}`] = {
+        regionalChangesets: {},
+        plannedBackend: backend.empty(),
+        serviceAccountToDelete: existingManagedSAs[i],
+      };
+    }
+    const summary = await fab.applyPlan(deploymentPlan);
 
     await reporter.logAndTrackDeployStats(summary);
     reporter.printErrors(summary);
