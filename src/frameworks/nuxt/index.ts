@@ -1,21 +1,33 @@
-import { copy, mkdirp, pathExists } from "fs-extra";
-import { readFile } from "fs/promises";
-import { join, posix } from "path";
-import { lt } from "semver";
+import { execSync } from "child_process";
 import { spawn, sync as spawnSync } from "cross-spawn";
-import { FrameworkType, SupportLevel } from "../interfaces";
-import { simpleProxy, warnIfCustomBuildScript, getNodeModuleBin, relativeRequire } from "../utils";
-import { getNuxtVersion } from "./utils";
+import { copy, pathExists } from "fs-extra";
+import { readFile } from "fs/promises";
+import { load } from "js-yaml";
+import { join } from "path";
+import { lt } from "semver";
+import { FirebaseError } from "../../error";
+import {
+  BuildResult,
+  BundleConfig,
+  Framework,
+  FrameworkType,
+  PackageJson,
+  SupportLevel,
+} from "../interfaces";
+import {
+  getNodeModuleBin,
+  readJSON,
+  relativeRequire,
+  simpleProxy,
+  warnIfCustomBuildScript,
+} from "../utils";
+import type { NuxtOptions } from "./interfaces";
+import { getNuxtVersion, nuxtConfigFilesExist } from "./utils";
 
 export const name = "Nuxt";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Toolchain;
 export const supportedRange = "3";
-
-import { nuxtConfigFilesExist } from "./utils";
-import type { NuxtOptions } from "./interfaces";
-import { FirebaseError } from "../../error";
-import { execSync } from "child_process";
 
 const DEFAULT_BUILD_SCRIPT = ["nuxt build", "nuxi build"];
 
@@ -38,48 +50,56 @@ export async function discover(dir: string) {
   return { mayWantBackend, version };
 }
 
-export async function build(cwd: string) {
+let bundleConfig: BundleConfig;
+async function getBundleConfig(cwd: string): Promise<BundleConfig> {
+  if (!bundleConfig) {
+    const fileContents = await readFile(join(cwd, ".apphosting", "bundle.yaml"), "utf8");
+    bundleConfig = load(fileContents) as BundleConfig;
+  }
+
+  return bundleConfig;
+}
+
+/**
+ * Builds a Nuxt application
+ */
+export async function build(cwd: string): Promise<BuildResult> {
   await warnIfCustomBuildScript(cwd, name, DEFAULT_BUILD_SCRIPT);
-  const cli = getNodeModuleBin("nuxt", cwd);
-  const {
-    ssr: wantsBackend,
-    app: { baseURL: baseUrl },
-  } = await getConfig(cwd);
-  const command = wantsBackend ? ["build"] : ["generate"];
-  const build = spawnSync(cli, command, {
-    cwd,
-    stdio: "inherit",
-    env: { ...process.env, NITRO_PRESET: "node" },
-  });
+
+  const build = spawnSync("npx", ["@apphosting/adapter-nuxt", "build"], { cwd, stdio: "inherit" });
   if (build.status !== 0) throw new FirebaseError("Was unable to build your Nuxt application.");
-  const rewrites = wantsBackend
-    ? []
-    : [
-        {
-          source: posix.join(baseUrl, "**"),
-          destination: posix.join(baseUrl, "200.html"),
-        },
-      ];
-  return { wantsBackend, rewrites, baseUrl };
+
+  const { rewrites, serverDirectory } = await getBundleConfig(cwd);
+
+  return { wantsBackend: Boolean(serverDirectory), rewrites };
 }
 
-export async function ɵcodegenPublicDirectory(root: string, dest: string) {
-  const {
-    app: { baseURL },
-  } = await getConfig(root);
-  const distPath = join(root, ".output", "public");
-  const fullDest = join(dest, baseURL);
-  await mkdirp(fullDest);
-  await copy(distPath, fullDest);
+/**
+ * Create a directory for SSG content
+ */
+export async function ɵcodegenPublicDirectory(
+  root: string,
+  dest: string,
+): ReturnType<NonNullable<Framework["ɵcodegenPublicDirectory"]>> {
+  const bundleConfig = await getBundleConfig(root);
+
+  await Promise.all(bundleConfig.staticAssets.map((assetPath) => copy(assetPath, dest)));
 }
 
-export async function ɵcodegenFunctionsDirectory(sourceDir: string) {
-  const serverDir = join(sourceDir, ".output", "server");
-  const packageJsonBuffer = await readFile(join(sourceDir, "package.json"));
-  const packageJson = JSON.parse(packageJsonBuffer.toString());
-
+/**
+ * Create a directory for SSR content
+ */
+export async function ɵcodegenFunctionsDirectory(
+  sourceDir: string,
+): ReturnType<NonNullable<Framework["ɵcodegenFunctionsDirectory"]>> {
+  const packageJson = await readJSON<PackageJson>(join(sourceDir, "package.json"));
   packageJson.dependencies ||= {};
-  packageJson.dependencies["nitro-output"] = `file:${serverDir}`;
+
+  const { serverDirectory } = await getBundleConfig(sourceDir);
+
+  if (serverDirectory) {
+    packageJson.dependencies["nitro-output"] = `file:${join(serverDirectory)}`;
+  }
 
   return { packageJson, frameworksEntry: "nitro" };
 }
