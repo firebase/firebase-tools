@@ -45,6 +45,15 @@ export class FirestoreEmulator implements EmulatorInstance {
     if (this.args.rules && this.args.project_id) {
       const rulesPath = this.args.rules;
       this.rulesWatcher = chokidar.watch(rulesPath, { persistent: true, ignoreInitial: true });
+      // Without an "error" listener, a watcher failure (e.g. no inotify support in some CI or
+      // Docker environments) is thrown from the EventEmitter and terminates the whole CLI.
+      this.rulesWatcher.on("error", (err: Error) => {
+        utils.logLabeledWarning(
+          "firestore",
+          `Could not watch ${rulesPath} for changes, so rules hot reloading is disabled: ${err.message}. ` +
+            "If your environment does not support file watching, set CHOKIDAR_USEPOLLING=1 to fall back to polling.",
+        );
+      });
       this.rulesWatcher.on("change", async () => {
         // There have been some race conditions reported (on Windows) where reading the
         // file too quickly after the watcher fires results in an empty file being read.
