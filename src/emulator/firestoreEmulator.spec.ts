@@ -60,6 +60,17 @@ describe("FirestoreEmulator", () => {
     await emulator.stop();
   });
 
+  it("handles a non-Error value emitted by the rules watcher", async () => {
+    const emulator = new FirestoreEmulator({ project_id: "demo-test", rules: rulesPath });
+    await emulator.start();
+    const watcher = rulesWatcherOf(emulator);
+    expect(() => watcher.emit("error", "watcher exploded")).to.not.throw();
+    expect(logLabeledWarningStub).to.have.been.calledOnce;
+    const [, message] = logLabeledWarningStub.firstCall.args as [string, string];
+    expect(message).to.include("watcher exploded");
+    await emulator.stop();
+  });
+
   it("closes the rules watcher on stop", async () => {
     const emulator = new FirestoreEmulator({ project_id: "demo-test", rules: rulesPath });
     await emulator.start();
