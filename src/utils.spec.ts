@@ -709,4 +709,117 @@ describe("utils", () => {
       expect(utils.stringDistance("flaw", "lawn")).to.equal(2);
     });
   });
+
+  describe("timeToWait", () => {
+    it("should wait the base delay on the first attempt", () => {
+      const retryCount = 0;
+      const delay = 100;
+      const maxDelay = 1000;
+      expect(utils.timeToWait(retryCount, delay, maxDelay)).to.equal(delay);
+    });
+
+    it("should back off exponentially", () => {
+      const delay = 100;
+      const maxDelay = 1000;
+      expect(utils.timeToWait(1, delay, maxDelay)).to.equal(delay * 2);
+      expect(utils.timeToWait(2, delay, maxDelay)).to.equal(delay * 4);
+      expect(utils.timeToWait(3, delay, maxDelay)).to.equal(delay * 8);
+    });
+
+    it("should not wait longer than maxDelay", () => {
+      const retryCount = 2;
+      const delay = 300;
+      const maxDelay = 400;
+      expect(utils.timeToWait(retryCount, delay, maxDelay)).to.equal(maxDelay);
+    });
+  });
+
+  describe("retryWithBackoff", () => {
+    it("should return result on first attempt if successful", async () => {
+      let attempts = 0;
+      const result = await utils.retryWithBackoff(
+        async () => {
+          attempts++;
+          return "success";
+        },
+        { retryPredicate: () => true },
+      );
+      expect(result).to.equal("success");
+      expect(attempts).to.equal(1);
+    });
+
+    it("should not retry if retries is omitted (default 0)", async () => {
+      let attempts = 0;
+      await expect(
+        utils.retryWithBackoff(
+          async () => {
+            attempts++;
+            throw new Error("transient error");
+          },
+          {
+            retryPredicate: () => true,
+          },
+        ),
+      ).to.be.rejectedWith("transient error");
+      expect(attempts).to.equal(1);
+    });
+
+    it("should retry and succeed when predicate matches", async () => {
+      let attempts = 0;
+      const result = await utils.retryWithBackoff(
+        async () => {
+          attempts++;
+          if (attempts < 3) {
+            throw new Error("transient error");
+          }
+          return "success";
+        },
+        {
+          retries: 3,
+          delay: 1,
+          maxDelay: 5,
+          retryPredicate: (err) => (err as Error).message === "transient error",
+        },
+      );
+      expect(result).to.equal("success");
+      expect(attempts).to.equal(3);
+    });
+
+    it("should fail fast if predicate returns false", async () => {
+      let attempts = 0;
+      await expect(
+        utils.retryWithBackoff(
+          async () => {
+            attempts++;
+            throw new Error("fatal error");
+          },
+          {
+            delay: 1,
+            maxDelay: 5,
+            retryPredicate: (err) => (err as Error).message === "other error",
+          },
+        ),
+      ).to.be.rejectedWith("fatal error");
+      expect(attempts).to.equal(1);
+    });
+
+    it("should throw after exhausting all retries", async () => {
+      let attempts = 0;
+      await expect(
+        utils.retryWithBackoff(
+          async () => {
+            attempts++;
+            throw new Error("persistent error");
+          },
+          {
+            retries: 3,
+            delay: 1,
+            maxDelay: 5,
+            retryPredicate: () => true,
+          },
+        ),
+      ).to.be.rejectedWith("persistent error");
+      expect(attempts).to.equal(4);
+    });
+  });
 });
