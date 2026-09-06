@@ -169,16 +169,6 @@ export async function getIamPolicy(name: string): Promise<iam.Policy> {
 
 const ENQUEUER_ROLE = "roles/cloudtasks.enqueuer";
 
-/**
- * A queue whose IAM policy has never been set comes back from the API with no
- * `bindings` field at all, even though iam.Policy declares it required. Fill it in
- * on read so callers can treat it as the empty array it represents. `run.ts` already
- * applies the same guard to Cloud Run service policies.
- */
-function withBindings(policy: iam.Policy): iam.Policy {
-  return { ...policy, bindings: policy.bindings ?? [] };
-}
-
 /** Ensures that the invoker policy is set for a given queue. */
 export async function setEnqueuer(
   name: string,
@@ -193,7 +183,9 @@ export async function setEnqueuer(
       version: 3,
     };
   } else {
-    existing = withBindings(await (module.exports.getIamPolicy as typeof getIamPolicy)(name));
+    existing = await (module.exports.getIamPolicy as typeof getIamPolicy)(name);
+    // A queue whose IAM policy has never been set comes back without `bindings`.
+    existing.bindings ??= [];
   }
 
   const [, project] = name.split("/");
@@ -219,7 +211,8 @@ export async function setEnqueuer(
     } catch (err: any) {
       // Re-fetch on conflict
       if (err?.context?.response?.statusCode === 429) {
-        existing = withBindings(await (module.exports.getIamPolicy as typeof getIamPolicy)(name));
+        existing = await (module.exports.getIamPolicy as typeof getIamPolicy)(name);
+        existing.bindings ??= [];
         continue;
       }
       throw err;

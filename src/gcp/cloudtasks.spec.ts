@@ -251,7 +251,8 @@ describe("CloudTasks", () => {
 
     it("can insert a binding into a policy that has never been set", async () => {
       // A queue with no IAM policy yet comes back without a `bindings` field at all.
-      ct.getIamPolicy.resolves({ etag: "", version: 3 } as unknown as iam.Policy);
+      const noBindings: Partial<iam.Policy> = { etag: "", version: 3 };
+      ct.getIamPolicy.resolves(noBindings as iam.Policy);
 
       await cloudtasks.setEnqueuer(NAME, ["public"]);
       expect(ct.getIamPolicy).to.have.been.called;
