@@ -682,10 +682,10 @@ describe("Fabricator", () => {
         functionExecutor: queueExec,
       });
 
-      const saError: any = new Error(
+      const saError = new FirebaseError(
         "Service account sa@proj.iam.gserviceaccount.com was not found",
+        { status: 404 },
       );
-      saError.status = 404;
 
       gcfv2.createFunction.onFirstCall().rejects(saError);
       gcfv2.createFunction.onSecondCall().resolves({ name: "op", done: false });
