@@ -654,7 +654,7 @@ describe("Fabricator", () => {
       } catch (err) {
         // do nothing, error is expected
       }
-      await expect(sc.getToken()).to.eventually.equal("magic token");
+      await expect(sc.withToken(async (t) => t)).to.eventually.equal("magic token");
     });
 
     it("deletes broken function and retries on cloud run quota exhaustion", async () => {
@@ -669,6 +669,34 @@ describe("Fabricator", () => {
 
       expect(gcfv2.createFunction).to.have.been.calledTwice;
       expect(gcfv2.deleteFunction).to.have.been.called;
+    });
+
+    it("retries createV2Function and succeeds when service account 404 occurs", async () => {
+      const queueExec = new executor.QueueExecutor({
+        retries: 5,
+        backoff: 1,
+        maxBackoff: 1,
+      });
+      const fabWithQueue = new fabricator.Fabricator({
+        ...ctorArgs,
+        functionExecutor: queueExec,
+      });
+
+      const saError: any = new Error(
+        "Service account sa@proj.iam.gserviceaccount.com was not found",
+      );
+      saError.status = 404;
+
+      gcfv2.createFunction.onFirstCall().rejects(saError);
+      gcfv2.createFunction.onSecondCall().resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      run.setInvokerCreate.resolves();
+
+      const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
+      const sc = new scraper.SourceTokenScraper();
+      await fabWithQueue.createV2Function(ep, sc);
+
+      expect(gcfv2.createFunction).to.have.been.calledTwice;
     });
 
     it("throws on set invoker failure", async () => {
@@ -1033,7 +1061,7 @@ describe("Fabricator", () => {
       } catch (err) {
         // do nothing, error is expected
       }
-      await expect(sc.getToken()).to.eventually.equal("magic token");
+      await expect(sc.withToken(async (t) => t)).to.eventually.equal("magic token");
     });
   });
 
