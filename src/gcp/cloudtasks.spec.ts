@@ -249,6 +249,20 @@ describe("CloudTasks", () => {
       });
     });
 
+    it("can insert a binding into a policy that has never been set", async () => {
+      // A queue with no IAM policy yet comes back without a `bindings` field at all.
+      const noBindings: Partial<iam.Policy> = { etag: "", version: 3 };
+      ct.getIamPolicy.resolves(noBindings as iam.Policy);
+
+      await cloudtasks.setEnqueuer(NAME, ["public"]);
+      expect(ct.getIamPolicy).to.have.been.called;
+      expect(ct.setIamPolicy).to.have.been.calledWith(NAME, {
+        bindings: [PUBLIC_ENQUEUER_BINDING],
+        etag: "",
+        version: 3,
+      });
+    });
+
     it("can resolve conflicts", async () => {
       ct.getIamPolicy.onCall(0).resolves({
         bindings: [ADMIN_BINDING],

@@ -184,6 +184,8 @@ export async function setEnqueuer(
     };
   } else {
     existing = await (module.exports.getIamPolicy as typeof getIamPolicy)(name);
+    // A queue whose IAM policy has never been set comes back without `bindings`.
+    existing.bindings ??= [];
   }
 
   const [, project] = name.split("/");
@@ -210,6 +212,7 @@ export async function setEnqueuer(
       // Re-fetch on conflict
       if (err?.context?.response?.statusCode === 429) {
         existing = await (module.exports.getIamPolicy as typeof getIamPolicy)(name);
+        existing.bindings ??= [];
         continue;
       }
       throw err;
