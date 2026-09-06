@@ -61,6 +61,7 @@ function mockSetIamPolicy(
 describe("resourceManager", () => {
   afterEach(() => {
     nock.cleanAll();
+    sinon.restore();
   });
 
   describe("addServiceAccountToRoles", () => {
@@ -176,6 +177,20 @@ describe("resourceManager", () => {
 
       await expect(addServiceAccountToRoles(PROJECT_ID, SA_EMAIL, ["roles/viewer"], true)).to.be
         .rejected;
+    });
+
+    it("should fail immediately on 400 error when role does not exist without retrying", async () => {
+      mockGetIamPolicy(EMPTY_POLICY);
+      mockSetIamPolicy(400, {
+        error: {
+          code: 400,
+          message: "Role roles/nonexistent does not exist.",
+          status: "INVALID_ARGUMENT",
+        },
+      });
+
+      await expect(addServiceAccountToRoles(PROJECT_ID, SA_EMAIL, ["roles/nonexistent"], true)).to
+        .be.rejected;
     });
   });
 

@@ -6,7 +6,7 @@ import * as os from "os";
 import * as path from "path";
 
 import * as utils from "./utils";
-import { FirebaseError } from "./error";
+import { FirebaseError, getErrMsg } from "./error";
 
 describe("utils", () => {
   describe("consoleUrl", () => {
@@ -778,7 +778,7 @@ describe("utils", () => {
           retries: 3,
           delay: 1,
           maxDelay: 5,
-          retryPredicate: (err) => (err as Error).message === "transient error",
+          retryPredicate: (err) => getErrMsg(err) === "transient error",
         },
       );
       expect(result).to.equal("success");
@@ -796,7 +796,7 @@ describe("utils", () => {
           {
             delay: 1,
             maxDelay: 5,
-            retryPredicate: (err) => (err as Error).message === "other error",
+            retryPredicate: (err) => getErrMsg(err) === "other error",
           },
         ),
       ).to.be.rejectedWith("fatal error");

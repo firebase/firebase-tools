@@ -1,4 +1,3 @@
-import { findIndex } from "lodash";
 import { resourceManagerOrigin } from "../api";
 import { Client } from "../apiv2";
 import { getErrMsg, getErrStatus } from "../error";
@@ -61,7 +60,8 @@ function isRetryableIamError(err: unknown): boolean {
     return true;
   }
   const msg = getErrMsg(err).toLowerCase();
-  if (status === 400 && msg.includes("does not exist")) {
+  const hasSa = msg.includes("service account") || msg.includes("serviceaccount");
+  if (status === 400 && hasSa && msg.includes("does not exist")) {
     return true;
   }
   return false;
@@ -81,47 +81,36 @@ export async function addServiceAccountToRoles(
   roles: string[],
   skipAccountLookup = false,
 ): Promise<Policy> {
+  const { name: fullServiceAccountName } = skipAccountLookup
+    ? { name: serviceAccountName }
+    : await getServiceAccount(projectId, serviceAccountName);
+
+  // The way the service account name is formatted in the Policy object
+  // https://cloud.google.com/iam/docs/reference/rest/v1/Policy
+  // serviceAccount:my-project-id@appspot.gserviceaccount.com
+  const newMemberName = `serviceAccount:${fullServiceAccountName.split("/").pop()}`;
+
   // Service accounts are typically assigned roles immediately after creation. Due to cross-region
   // IAM replication delay, Cloud Resource Manager setIamPolicy can transiently fail with HTTP 400
   // ("Service account ... does not exist"). Retrying absorbs this replication window and also
   // handles HTTP 409 concurrency conflicts by re-fetching the latest policy and fresh etag.
   return await utils.retryWithBackoff(
     async () => {
-      const [{ name: fullServiceAccountName }, projectPolicy] = await Promise.all([
-        skipAccountLookup
-          ? Promise.resolve({ name: serviceAccountName })
-          : getServiceAccount(projectId, serviceAccountName),
-        getIamPolicy(projectId),
-      ]);
+      const projectPolicy = await getIamPolicy(projectId);
       projectPolicy.bindings = projectPolicy.bindings || [];
 
-      // The way the service account name is formatted in the Policy object
-      // https://cloud.google.com/iam/docs/reference/rest/v1/Policy
-      // serviceAccount:my-project-id@appspot.gserviceaccount.com
-      const newMemberName = `serviceAccount:${fullServiceAccountName.split("/").pop()}`;
-
-      roles.forEach((roleName) => {
-        let bindingIndex = findIndex(
-          projectPolicy.bindings,
-          (binding: Binding) => binding.role === roleName,
-        );
+      for (const roleName of roles) {
+        let binding = projectPolicy.bindings.find((b: Binding) => b.role === roleName);
 
         // create a new binding if the role doesn't exist in the policy yet
-        if (bindingIndex === -1) {
-          bindingIndex =
-            projectPolicy.bindings.push({
-              role: roleName,
-              members: [],
-            }) - 1;
+        if (!binding) {
+          binding = { role: roleName, members: [] };
+          projectPolicy.bindings.push(binding);
         }
-
-        const binding = projectPolicy.bindings[bindingIndex];
-
-        // No need to update if service account already has role
         if (!binding.members.includes(newMemberName)) {
           binding.members.push(newMemberName);
         }
-      });
+      }
 
       return await setIamPolicy(projectId, projectPolicy, "bindings");
     },
