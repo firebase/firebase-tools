@@ -699,6 +699,34 @@ describe("Fabricator", () => {
       expect(gcfv2.createFunction).to.have.been.calledTwice;
     });
 
+    it("retries createV2Function and succeeds when service account 400 propagation error occurs", async () => {
+      const queueExec = new executor.QueueExecutor({
+        retries: 5,
+        backoff: 1,
+        maxBackoff: 1,
+      });
+      const fabWithQueue = new fabricator.Fabricator({
+        ...ctorArgs,
+        functionExecutor: queueExec,
+      });
+
+      const saError: any = new Error(
+        "Validation failed for trigger: The request was invalid: invalid service account firebase-fn-123@proj.iam.gserviceaccount.com provided",
+      );
+      saError.status = 400;
+
+      gcfv2.createFunction.onFirstCall().rejects(saError);
+      gcfv2.createFunction.onSecondCall().resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      run.setInvokerCreate.resolves();
+
+      const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
+      const sc = new scraper.SourceTokenScraper();
+      await fabWithQueue.createV2Function(ep, sc);
+
+      expect(gcfv2.createFunction).to.have.been.calledTwice;
+    });
+
     it("throws on set invoker failure", async () => {
       gcfv2.createFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });

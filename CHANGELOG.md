@@ -7,3 +7,4 @@
 - Configured the `Mcp-Param-Region` HTTP header workaround in `OneMcpServer` for MCP routing support.
 - [fixed] Retry IAM policy updates on replication lag and concurrency conflicts.
 - [fixed] Prevent deadlock and stale source tokens during Cloud Functions deployment retries.
+- [fixed] Retry Cloud Functions creation on HTTP 400 service account propagation errors.

@@ -33,7 +33,17 @@ export const isTransientError: RetryPredicate = (err: any): boolean =>
   isQuotaExhaustion(err) || isConflict(err) || isServiceUnavailable(err);
 
 export const isServiceAccount404: RetryPredicate = (err: any): boolean => {
-  if (parseErrorCode(err) !== 404) {
+  const code = parseErrorCode(err);
+  // Newly created service accounts take time to propagate across IAM systems.
+  // When downstream services (such as Eventarc trigger creation) validate the request,
+  // an unpropagated service account fails input validation and is reported as HTTP 400
+  // (INVALID_ARGUMENT: "The request was invalid: invalid service account ... provided")
+  // rather than HTTP 404 (which is reserved for missing API URL resources).
+  //
+  // To avoid false positives on user typos with custom service accounts, HTTP 400
+  // retries are restricted to declarative security service accounts (firebase-fn-[0-9]+@),
+  // which are provisioned dynamically on the fly during deployment.
+  if (code !== 404 && code !== 400) {
     return false;
   }
   let message = "";
@@ -42,6 +52,7 @@ export const isServiceAccount404: RetryPredicate = (err: any): boolean => {
       err?.message,
       err?.original?.message,
       err?.context?.body?.error?.message,
+      err?.original?.context?.body?.error?.message,
       String(err),
     ]
       .filter(Boolean)
@@ -50,12 +61,21 @@ export const isServiceAccount404: RetryPredicate = (err: any): boolean => {
   } catch {
     message = String(err).toLowerCase();
   }
-  return (
+  const hasSa =
     message.includes("serviceaccount") ||
     message.includes("service account") ||
     /\b[a-z0-9._%+-]+@[a-z0-9.-]+\.gserviceaccount\.com\b/i.test(message) ||
-    /\bgserviceaccount\.com\b/i.test(message)
-  );
+    /\bgserviceaccount\.com\b/i.test(message);
+
+  if (!hasSa) {
+    return false;
+  }
+
+  if (code === 404) {
+    return true;
+  }
+
+  return message.includes("invalid service account") && /\bfirebase-fn-[0-9]+@/i.test(message);
 };
 
 export const isCloudRunResourceExhausted: RetryPredicate = (err: any): boolean =>
