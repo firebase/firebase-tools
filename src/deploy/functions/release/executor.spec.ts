@@ -1,5 +1,6 @@
 import { expect } from "chai";
 
+import { FirebaseError } from "../../../error";
 import * as executor from "./executor";
 
 describe("Executor", () => {
@@ -123,42 +124,39 @@ describe("Executor", () => {
     });
 
     it("does not match non-404/400 errors or non-service-account errors", () => {
-      const err1: any = new Error("Service account missing");
-      err1.status = 500;
+      const err1 = new FirebaseError("Service account missing", { status: 500 });
       expect(executor.isServiceAccount404(err1)).to.be.false;
 
-      const err2: any = new Error("Function region us-central1 not found");
-      err2.status = 404;
+      const err2 = new FirebaseError("Function region us-central1 not found", { status: 404 });
       expect(executor.isServiceAccount404(err2)).to.be.false;
 
-      const err3: any = new Error("Invalid function name: my-func");
-      err3.status = 400;
+      const err3 = new FirebaseError("Invalid function name: my-func", { status: 400 });
       expect(executor.isServiceAccount404(err3)).to.be.false;
     });
 
     it("matches 400 errors caused by service account propagation delays", () => {
-      const err1: any = new Error(
+      const err1 = new FirebaseError(
         "Validation failed for trigger projects/p/locations/l/triggers/t: The request was invalid: invalid service account firebase-fn-5768298711@p.iam.gserviceaccount.com provided",
+        { status: 400 },
       );
-      err1.status = 400;
       expect(executor.isServiceAccount404(err1)).to.be.true;
 
-      const err2: any = new Error(
+      const err2 = new FirebaseError(
         "The request was invalid: invalid service account firebase-fn-123@p.iam.gserviceaccount.com in project 12345 provided",
+        { status: 400 },
       );
-      err2.status = 400;
       expect(executor.isServiceAccount404(err2)).to.be.true;
 
-      const err3: any = new Error(
+      const err3 = new FirebaseError(
         "The request was invalid: invalid service account custom-sa@p.iam.gserviceaccount.com provided",
+        { status: 400 },
       );
-      err3.status = 400;
       expect(executor.isServiceAccount404(err3)).to.be.false;
 
-      const err4: any = new Error(
+      const err4 = new FirebaseError(
         "Service account firebase-fn-123@p.iam.gserviceaccount.com has permission denied",
+        { status: 400 },
       );
-      err4.status = 400;
       expect(executor.isServiceAccount404(err4)).to.be.false;
     });
 

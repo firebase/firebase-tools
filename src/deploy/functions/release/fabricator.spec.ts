@@ -710,10 +710,10 @@ describe("Fabricator", () => {
         functionExecutor: queueExec,
       });
 
-      const saError: any = new Error(
+      const saError = new FirebaseError(
         "Validation failed for trigger: The request was invalid: invalid service account firebase-fn-123@proj.iam.gserviceaccount.com provided",
+        { status: 400 },
       );
-      saError.status = 400;
 
       gcfv2.createFunction.onFirstCall().rejects(saError);
       gcfv2.createFunction.onSecondCall().resolves({ name: "op", done: false });

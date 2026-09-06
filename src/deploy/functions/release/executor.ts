@@ -61,11 +61,7 @@ export const isServiceAccount404: RetryPredicate = (err: any): boolean => {
   } catch {
     message = String(err).toLowerCase();
   }
-  const hasSa =
-    message.includes("serviceaccount") ||
-    message.includes("service account") ||
-    /\b[a-z0-9._%+-]+@[a-z0-9.-]+\.gserviceaccount\.com\b/i.test(message) ||
-    /\bgserviceaccount\.com\b/i.test(message);
+  const hasSa = message.includes("serviceaccount") || message.includes("service account");
 
   if (!hasSa) {
     return false;
