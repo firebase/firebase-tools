@@ -42,7 +42,7 @@ export const get_report = tool(
   {
     name: "get_report",
     description:
-      `Use this to request numerical reports from Crashlytics. The result aggregates the sum of events and impacted users, grouped by a dimension appropriate for that report. Agents must read the [Firebase Crashlytics Reports Guide](firebase://guides/crashlytics/reports) using the \`firebase_read_resources\` tool before calling to understand critical prerequisites for requesting reports and how to interpret the results.
+      `Use this to request numerical reports from Crashlytics. The result aggregates the sum of events and impacted users, grouped by a dimension appropriate for that report. Agents must read the [Firebase Crashlytics Reports Guide](firebase://guides/crashlytics/reports) using the \`firebase_read_resources\` tool before calling to understand critical prerequisites for requesting reports and how to interpret the results. When the response contains a \`nextPageToken\`, more groups are available: call again with \`pageToken\` set to that value and the same \`filter\` and \`pageSize\` to retrieve them.
     `.trim(),
     humanReadableDescription:
       "Generate aggregated numerical reports for Crashlytics issues and events.",
@@ -55,7 +55,7 @@ export const get_report = tool(
       requiresAuth: true,
     },
   },
-  async ({ appId, report, pageSize, filter }) => {
+  async ({ appId, report, pageSize, pageToken, filter }) => {
     const result: CallToolResult = { content: [] };
 
     if (!report) {
@@ -78,7 +78,9 @@ export const get_report = tool(
       return result;
     }
     // Everything is OK so fetch report
-    const reportResponse = simplifyReport(await getReport(report, appId, filter, pageSize));
+    const reportResponse = simplifyReport(
+      await getReport(report, appId, filter, pageSize, pageToken),
+    );
     reportResponse.usage =
       reportResponse.groups && reportResponse.groups.length
         ? reportResponse.usage || ""

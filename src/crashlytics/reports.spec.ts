@@ -178,6 +178,36 @@ describe("getReport", () => {
     expect(nock.isDone()).to.be.true;
   });
 
+  it("should send page_token when a pageToken is given", async () => {
+    const pageToken = "next-page-token-abc123";
+    const mockResponse = { groups: [{ version: { displayName: "1.2.3 (123)" } }] };
+
+    nock(crashlyticsApiOrigin())
+      .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports/topVersions`)
+      .query({ page_size: "10", page_token: pageToken })
+      .reply(200, mockResponse);
+
+    const result = await getReport(CrashlyticsReport.TOP_VERSIONS, appId, {}, undefined, pageToken);
+
+    expect(result).to.deep.equal(mockResponse);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should omit page_token when no pageToken is given", async () => {
+    const mockResponse = { groups: [] };
+
+    nock(crashlyticsApiOrigin())
+      .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports/topVersions`)
+      // Exact object match: an unexpected page_token would fail to match this interceptor.
+      .query({ page_size: "10" })
+      .reply(200, mockResponse);
+
+    const result = await getReport(CrashlyticsReport.TOP_VERSIONS, appId, {});
+
+    expect(result).to.deep.equal(mockResponse);
+    expect(nock.isDone()).to.be.true;
+  });
+
   it("should throw a FirebaseError if the appId is invalid", async () => {
     const invalidAppId = "invalid-app-id";
 
