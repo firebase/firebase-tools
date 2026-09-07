@@ -642,4 +642,40 @@ describe("functionsDeployHelper", () => {
       expect(collisions).to.be.empty;
     });
   });
+
+  describe("isCodebasePartiallyFiltered", () => {
+    it("should return false when filters is undefined or empty", () => {
+      expect(helper.isCodebasePartiallyFiltered("codebaseA")).to.be.false;
+      expect(helper.isCodebasePartiallyFiltered("codebaseA", [])).to.be.false;
+    });
+
+    it("should return false when a filter targets the whole codebase without idChunks", () => {
+      expect(helper.isCodebasePartiallyFiltered("codebaseA", [{ codebase: "codebaseA" }])).to.be
+        .false;
+      expect(
+        helper.isCodebasePartiallyFiltered("codebaseA", [{ codebase: "codebaseA", idChunks: [] }]),
+      ).to.be.false;
+    });
+
+    it("should return false when filter with idChunks targets a different codebase", () => {
+      expect(
+        helper.isCodebasePartiallyFiltered("codebaseA", [
+          { codebase: "codebaseA" },
+          { codebase: "codebaseB", idChunks: ["funcB"] },
+        ]),
+      ).to.be.false;
+    });
+
+    it("should return true when filter with idChunks targets this codebase", () => {
+      expect(
+        helper.isCodebasePartiallyFiltered("codebaseA", [
+          { codebase: "codebaseA", idChunks: ["funcA"] },
+        ]),
+      ).to.be.true;
+    });
+
+    it("should return true when filter with idChunks has no codebase (wildcard filter)", () => {
+      expect(helper.isCodebasePartiallyFiltered("codebaseA", [{ idChunks: ["funcA"] }])).to.be.true;
+    });
+  });
 });
