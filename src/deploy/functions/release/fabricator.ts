@@ -3,7 +3,7 @@ import * as clc from "colorette";
 import {
   Executor,
   isCloudRunResourceExhausted,
-  isServiceAccount404,
+  isServiceAccountPropagationError,
   isTransientError,
   parseErrorCode,
 } from "./executor";
@@ -253,7 +253,7 @@ export class Fabricator {
               serviceAccounts,
             }),
           {
-            retryPredicates: [isTransientError, isServiceAccount404],
+            retryPredicates: [isTransientError, isServiceAccountPropagationError],
           },
         ),
       ),
@@ -509,7 +509,7 @@ export class Fabricator {
               onPoll: scraper.poller,
             });
           }),
-        { retryPredicates: [isTransientError, isServiceAccount404] },
+        { retryPredicates: [isTransientError, isServiceAccountPropagationError] },
       )
       .catch(rethrowAs<gcf.CloudFunction>(endpoint, "create"));
 
@@ -647,7 +647,7 @@ export class Fabricator {
                 onPoll: scraper.poller,
               });
             }),
-          { retryPredicates: [isTransientError, isServiceAccount404] },
+          { retryPredicates: [isTransientError, isServiceAccountPropagationError] },
         )
         .catch(async (err: any) => {
           // If the createFunction call returns RPC error code RESOURCE_EXHAUSTED (8),
@@ -751,7 +751,7 @@ export class Fabricator {
               onPoll: scraper.poller,
             });
           }),
-        { retryPredicates: [isTransientError, isServiceAccount404] },
+        { retryPredicates: [isTransientError, isServiceAccountPropagationError] },
       )
       .catch(rethrowAs<gcf.CloudFunction>(endpoint, "update"));
 
@@ -810,7 +810,13 @@ export class Fabricator {
               onPoll: scraper.poller,
             });
           }),
-        { retryPredicates: [isTransientError, isCloudRunResourceExhausted, isServiceAccount404] },
+        {
+          retryPredicates: [
+            isTransientError,
+            isCloudRunResourceExhausted,
+            isServiceAccountPropagationError,
+          ],
+        },
       )
       .catch((err: any) => {
         logger.error((err as Error).message);
@@ -887,7 +893,13 @@ export class Fabricator {
           };
           await poller.pollOperation<void>(pollerOptions);
         },
-        { retryPredicates: [isTransientError, isCloudRunResourceExhausted, isServiceAccount404] },
+        {
+          retryPredicates: [
+            isTransientError,
+            isCloudRunResourceExhausted,
+            isServiceAccountPropagationError,
+          ],
+        },
       )
       .catch(rethrowAs(endpoint, "delete"));
   }
@@ -923,7 +935,7 @@ export class Fabricator {
           endpoint.uri = op.uri;
           endpoint.runServiceId = endpoint.id;
         },
-        { retryPredicates: [isTransientError, isServiceAccount404] },
+        { retryPredicates: [isTransientError, isServiceAccountPropagationError] },
       )
       .catch(rethrowAs(endpoint, "create"));
 
