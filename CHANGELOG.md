@@ -5,3 +5,4 @@
 - Repurposed the local `dataconnect_execute` tool as `dataconnect_execute_in_emulator` to run GraphQL queries and mutations on the local SQL Connect emulator.
 - Configured the SQL Connect (Data Connect) OneMCP proxy server in `ONEMCP_SERVERS` with a selection of remote tools.
 - Configured the `Mcp-Param-Region` HTTP header workaround in `OneMcpServer` for MCP routing support.
+- [fixed] Retry IAM policy updates on replication lag and concurrency conflicts.
