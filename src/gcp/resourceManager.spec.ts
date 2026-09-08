@@ -1,6 +1,9 @@
+import * as sinon from "sinon";
 import { expect } from "chai";
 
+import { resourceManagerOrigin } from "../api";
 import nock from "../test/helpers/nock";
+import * as utils from "../utils";
 import {
   addServiceAccountToRoles,
   serviceAccountHasRoles,
@@ -12,92 +15,84 @@ import { Policy } from "./iam";
 
 const PROJECT_ID = "test-project";
 const SERVICE_ACCOUNT_NAME = "test-sa";
-const FULL_SA_NAME = `projects/${PROJECT_ID}/serviceAccounts/${SERVICE_ACCOUNT_NAME}@${PROJECT_ID}.iam.gserviceaccount.com`;
-const MEMBER_NAME = `serviceAccount:${SERVICE_ACCOUNT_NAME}@${PROJECT_ID}.iam.gserviceaccount.com`;
+const SA_EMAIL = `${SERVICE_ACCOUNT_NAME}@${PROJECT_ID}.iam.gserviceaccount.com`;
+const FULL_SA_NAME = `projects/${PROJECT_ID}/serviceAccounts/${SA_EMAIL}`;
+const MEMBER_NAME = `serviceAccount:${SA_EMAIL}`;
+
+const EMPTY_POLICY: Policy = {
+  bindings: [],
+  etag: "etag",
+  version: 1,
+};
+
+const VIEWER_POLICY: Policy = {
+  bindings: [
+    {
+      role: "roles/viewer",
+      members: [MEMBER_NAME],
+    },
+  ],
+  etag: "etag",
+  version: 1,
+};
+
+function mockGetIamPolicy(policy: Policy = EMPTY_POLICY, projectId = PROJECT_ID): void {
+  nock(resourceManagerOrigin()).post(`/v1/projects/${projectId}:getIamPolicy`).reply(200, policy);
+}
+
+function mockSetIamPolicy(
+  status: number,
+  response: Policy | Record<string, unknown>,
+  expectedPolicy?: Policy,
+  projectId = PROJECT_ID,
+): void {
+  nock(resourceManagerOrigin())
+    .post(
+      `/v1/projects/${projectId}:setIamPolicy`,
+      expectedPolicy
+        ? (body: { updateMask?: string; policy?: Policy }) =>
+            body.updateMask === "bindings" &&
+            JSON.stringify(body.policy) === JSON.stringify(expectedPolicy)
+        : undefined,
+    )
+    .reply(status, response);
+}
 
 describe("resourceManager", () => {
   afterEach(() => {
     nock.cleanAll();
+    sinon.restore();
   });
 
   describe("addServiceAccountToRoles", () => {
+    const origRetryWithBackoff = utils.retryWithBackoff;
+    let retryStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      retryStub = sinon
+        .stub(utils, "retryWithBackoff")
+        .callsFake((fn, opts) => origRetryWithBackoff(fn, { ...opts, delay: 1, maxDelay: 5 }));
+    });
+
+    afterEach(() => {
+      retryStub.restore();
+    });
     it("should add roles when skipAccountLookup is true", async () => {
-      const initialPolicy: Policy = {
-        bindings: [],
-        etag: "etag",
-        version: 1,
-      };
+      mockGetIamPolicy(EMPTY_POLICY);
+      mockSetIamPolicy(200, VIEWER_POLICY, VIEWER_POLICY);
 
-      const expectedPolicy: Policy = {
-        bindings: [
-          {
-            role: "roles/viewer",
-            members: [MEMBER_NAME],
-          },
-        ],
-        etag: "etag",
-        version: 1,
-      };
+      const result = await addServiceAccountToRoles(PROJECT_ID, SA_EMAIL, ["roles/viewer"], true);
 
-      nock("https://cloudresourcemanager.googleapis.com")
-        .post(`/v1/projects/${PROJECT_ID}:getIamPolicy`)
-        .reply(200, initialPolicy);
-
-      nock("https://cloudresourcemanager.googleapis.com")
-        .post(`/v1/projects/${PROJECT_ID}:setIamPolicy`, (body: any) => {
-          return (
-            body.updateMask === "bindings" &&
-            JSON.stringify(body.policy) === JSON.stringify(expectedPolicy)
-          );
-        })
-        .reply(200, expectedPolicy);
-
-      const result = await addServiceAccountToRoles(
-        PROJECT_ID,
-        `${SERVICE_ACCOUNT_NAME}@${PROJECT_ID}.iam.gserviceaccount.com`,
-        ["roles/viewer"],
-        true,
-      );
-
-      expect(result).to.deep.equal(expectedPolicy);
+      expect(result).to.deep.equal(VIEWER_POLICY);
     });
 
     it("should add roles when skipAccountLookup is false", async () => {
-      const initialPolicy: Policy = {
-        bindings: [],
-        etag: "etag",
-        version: 1,
-      };
-
-      const expectedPolicy: Policy = {
-        bindings: [
-          {
-            role: "roles/viewer",
-            members: [MEMBER_NAME],
-          },
-        ],
-        etag: "etag",
-        version: 1,
-      };
-
       nock("https://iam.googleapis.com")
-        .get(
-          `/v1/projects/${PROJECT_ID}/serviceAccounts/${SERVICE_ACCOUNT_NAME}@${PROJECT_ID}.iam.gserviceaccount.com`,
-        )
+        .get(`/v1/projects/${PROJECT_ID}/serviceAccounts/${SA_EMAIL}`)
         .reply(200, { name: FULL_SA_NAME });
 
-      nock("https://cloudresourcemanager.googleapis.com")
-        .post(`/v1/projects/${PROJECT_ID}:getIamPolicy`)
-        .reply(200, initialPolicy);
-
-      nock("https://cloudresourcemanager.googleapis.com")
-        .post(`/v1/projects/${PROJECT_ID}:setIamPolicy`, (body: any) => {
-          return (
-            body.updateMask === "bindings" &&
-            JSON.stringify(body.policy) === JSON.stringify(expectedPolicy)
-          );
-        })
-        .reply(200, expectedPolicy);
+      mockGetIamPolicy(EMPTY_POLICY);
+      mockSetIamPolicy(200, VIEWER_POLICY, VIEWER_POLICY);
 
       const result = await addServiceAccountToRoles(
         PROJECT_ID,
@@ -106,42 +101,96 @@ describe("resourceManager", () => {
         false,
       );
 
-      expect(result).to.deep.equal(expectedPolicy);
+      expect(result).to.deep.equal(VIEWER_POLICY);
     });
 
     it("should not duplicate roles if already present", async () => {
-      const initialPolicy: Policy = {
-        bindings: [
-          {
-            role: "roles/viewer",
-            members: [MEMBER_NAME],
-          },
-        ],
-        etag: "etag",
-        version: 1,
-      };
+      mockGetIamPolicy(VIEWER_POLICY);
+      mockSetIamPolicy(200, VIEWER_POLICY, VIEWER_POLICY);
 
-      nock("https://cloudresourcemanager.googleapis.com")
-        .post(`/v1/projects/${PROJECT_ID}:getIamPolicy`)
-        .reply(200, initialPolicy);
+      const result = await addServiceAccountToRoles(PROJECT_ID, SA_EMAIL, ["roles/viewer"], true);
 
-      nock("https://cloudresourcemanager.googleapis.com")
-        .post(`/v1/projects/${PROJECT_ID}:setIamPolicy`, (body: any) => {
-          return (
-            body.updateMask === "bindings" &&
-            JSON.stringify(body.policy) === JSON.stringify(initialPolicy)
-          );
-        })
-        .reply(200, initialPolicy);
+      expect(result).to.deep.equal(VIEWER_POLICY);
+    });
 
-      const result = await addServiceAccountToRoles(
-        PROJECT_ID,
-        `${SERVICE_ACCOUNT_NAME}@${PROJECT_ID}.iam.gserviceaccount.com`,
-        ["roles/viewer"],
-        true,
-      );
+    it("should retry and succeed when setIamPolicy initially fails with 400 'does not exist' error", async () => {
+      const expectedPolicy = { ...VIEWER_POLICY, etag: "etag2" };
 
-      expect(result).to.deep.equal(initialPolicy);
+      mockGetIamPolicy(EMPTY_POLICY);
+      mockSetIamPolicy(400, {
+        error: {
+          code: 400,
+          message: `Service account ${SA_EMAIL} does not exist.`,
+          status: "INVALID_ARGUMENT",
+        },
+      });
+      mockGetIamPolicy(EMPTY_POLICY);
+      mockSetIamPolicy(200, expectedPolicy);
+
+      const result = await addServiceAccountToRoles(PROJECT_ID, SA_EMAIL, ["roles/viewer"], true);
+
+      expect(result).to.deep.equal(expectedPolicy);
+    });
+
+    it("should retry and succeed when setIamPolicy initially fails with 409 conflict", async () => {
+      const expectedPolicy = { ...VIEWER_POLICY, etag: "etag2" };
+
+      mockGetIamPolicy(EMPTY_POLICY);
+      mockSetIamPolicy(409, {
+        error: {
+          code: 409,
+          message: "There were concurrent policy changes.",
+          status: "ABORTED",
+        },
+      });
+      mockGetIamPolicy(EMPTY_POLICY);
+      mockSetIamPolicy(200, expectedPolicy);
+
+      const result = await addServiceAccountToRoles(PROJECT_ID, SA_EMAIL, ["roles/viewer"], true);
+
+      expect(result).to.deep.equal(expectedPolicy);
+    });
+
+    it("should fail immediately on 403 permission error without retrying", async () => {
+      mockGetIamPolicy(EMPTY_POLICY);
+      mockSetIamPolicy(403, {
+        error: {
+          code: 403,
+          message: "The caller does not have permission",
+          status: "PERMISSION_DENIED",
+        },
+      });
+
+      await expect(addServiceAccountToRoles(PROJECT_ID, SA_EMAIL, ["roles/viewer"], true)).to.be
+        .rejected;
+    });
+
+    it("should fail immediately on 404 not found error without retrying", async () => {
+      mockGetIamPolicy(EMPTY_POLICY);
+      mockSetIamPolicy(404, {
+        error: {
+          code: 404,
+          message: "Project does not exist",
+          status: "NOT_FOUND",
+        },
+      });
+
+      await expect(addServiceAccountToRoles(PROJECT_ID, SA_EMAIL, ["roles/viewer"], true)).to.be
+        .rejected;
+    });
+
+    it("should fail immediately on 400 error when role does not exist without retrying", async () => {
+      mockGetIamPolicy(EMPTY_POLICY);
+      mockSetIamPolicy(400, {
+        error: {
+          code: 400,
+          message: "Role roles/nonexistent does not exist.",
+          status: "INVALID_ARGUMENT",
+        },
+      });
+
+      await expect(addServiceAccountToRoles(PROJECT_ID, SA_EMAIL, ["roles/nonexistent"], true)).to
+        .be.rejected;
     });
   });
 
@@ -162,13 +211,11 @@ describe("resourceManager", () => {
         version: 1,
       };
 
-      nock("https://cloudresourcemanager.googleapis.com")
-        .post(`/v1/projects/${PROJECT_ID}:getIamPolicy`)
-        .reply(200, policy);
+      mockGetIamPolicy(policy);
 
       const result = await serviceAccountHasRoles(
         PROJECT_ID,
-        `${SERVICE_ACCOUNT_NAME}@${PROJECT_ID}.iam.gserviceaccount.com`,
+        SA_EMAIL,
         ["roles/viewer", "roles/editor"],
         true,
       );
@@ -188,13 +235,11 @@ describe("resourceManager", () => {
         version: 1,
       };
 
-      nock("https://cloudresourcemanager.googleapis.com")
-        .post(`/v1/projects/${PROJECT_ID}:getIamPolicy`)
-        .reply(200, policy);
+      mockGetIamPolicy(policy);
 
       const result = await serviceAccountHasRoles(
         PROJECT_ID,
-        `${SERVICE_ACCOUNT_NAME}@${PROJECT_ID}.iam.gserviceaccount.com`,
+        SA_EMAIL,
         ["roles/viewer", "roles/editor"],
         true,
       );
@@ -214,16 +259,9 @@ describe("resourceManager", () => {
         version: 1,
       };
 
-      nock("https://cloudresourcemanager.googleapis.com")
-        .post(`/v1/projects/${PROJECT_ID}:getIamPolicy`)
-        .reply(200, policy);
+      mockGetIamPolicy(policy);
 
-      const result = await serviceAccountHasRoles(
-        PROJECT_ID,
-        `${SERVICE_ACCOUNT_NAME}@${PROJECT_ID}.iam.gserviceaccount.com`,
-        ["roles/viewer"],
-        true,
-      );
+      const result = await serviceAccountHasRoles(PROJECT_ID, SA_EMAIL, ["roles/viewer"], true);
 
       expect(result).to.be.false;
     });
@@ -246,24 +284,13 @@ describe("resourceManager", () => {
         version: 1,
       };
 
-      nock("https://cloudresourcemanager.googleapis.com")
-        .post(`/v1/projects/${PROJECT_ID}:getIamPolicy`)
-        .reply(200, initialPolicy);
+      mockGetIamPolicy(initialPolicy);
+      mockSetIamPolicy(200, expectedPolicy, expectedPolicy);
 
-      nock("https://cloudresourcemanager.googleapis.com")
-        .post(`/v1/projects/${PROJECT_ID}:setIamPolicy`, (body: any) => {
-          return (
-            body.updateMask === "bindings" &&
-            JSON.stringify(body.policy) === JSON.stringify(expectedPolicy)
-          );
-        })
-        .reply(200, expectedPolicy);
-
-      const result = await removeServiceAccountRoles(
-        PROJECT_ID,
-        `${SERVICE_ACCOUNT_NAME}@${PROJECT_ID}.iam.gserviceaccount.com`,
-        ["roles/viewer", "roles/editor"],
-      );
+      const result = await removeServiceAccountRoles(PROJECT_ID, SA_EMAIL, [
+        "roles/viewer",
+        "roles/editor",
+      ]);
 
       expect(result).to.deep.equal(expectedPolicy);
     });
@@ -281,14 +308,9 @@ describe("resourceManager", () => {
         version: 1,
       };
 
-      nock("https://cloudresourcemanager.googleapis.com")
-        .post(`/v1/projects/${PROJECT_ID}:getIamPolicy`)
-        .reply(200, policy);
+      mockGetIamPolicy(policy);
 
-      const roles = await getServiceAccountRoles(
-        PROJECT_ID,
-        `${SERVICE_ACCOUNT_NAME}@${PROJECT_ID}.iam.gserviceaccount.com`,
-      );
+      const roles = await getServiceAccountRoles(PROJECT_ID, SA_EMAIL);
       expect(roles).to.deep.equal(["roles/role1", "roles/role3"]);
     });
   });
