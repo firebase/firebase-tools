@@ -728,8 +728,12 @@ describe("applyPrefix", () => {
     expect(Object.keys(testBuild.endpoints).sort()).to.deep.equal(["func1", "func2"]);
   });
 
-  it("should prefix secret names in secretEnvironmentVariables", () => {
+  it("should prefix secret names in secretEnvironmentVariables and update param references to that secret", () => {
     const testBuild: build.Build = {
+      params: [
+        { type: "secret", name: "API_KEY" },
+        { type: "secret", name: "DB_PASSWORD" },
+      ],
       endpoints: {
         func1: {
           region: "us-central1",
@@ -755,7 +759,6 @@ describe("applyPrefix", () => {
           ],
         },
       },
-      params: [],
       requiredAPIs: [],
     };
 
@@ -771,6 +774,10 @@ describe("applyPrefix", () => {
     ]);
     expect(testBuild.endpoints["staging-func2"].secretEnvironmentVariables).to.deep.equal([
       { key: "SERVICE_TOKEN", secret: "staging-service-secret", projectId: "test-project" },
+    ]);
+    expect(testBuild.params).to.deep.equal([
+      { type: "secret", name: "API_KEY", resourceId: "STAGING_API_KEY" },
+      { type: "secret", name: "DB_PASSWORD", resourceId: "STAGING_DB_PASSWORD" },
     ]);
   });
 

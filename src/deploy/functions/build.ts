@@ -8,6 +8,7 @@ import { FirebaseConfig } from "./args";
 import { Runtime } from "./runtimes/supported";
 import { ExprParseError } from "./cel";
 import { defineSecret } from "firebase-functions/params";
+import { toUpperSnakeCase } from "../../functions/secrets";
 
 export const REGION_TBD = "REGION_TBD";
 export const SECRET_REF_PREFIX = "FIREBASE_SECRET_REF_";
@@ -354,15 +355,15 @@ export async function resolveBackend(opts: ResolveBackendOpts): Promise<{
   envs: Record<string, params.ParamValue>;
   secretRefs: Record<string, string>;
 }> {
-  const { paramValues: paramValues, secretRefs: secretRefs } = await params.resolveParams(
-    opts.build.params,
-    opts.firebaseConfig,
-    envWithTypes(opts.build.params, opts.userEnvs),
-    opts.codebase,
-    opts.nonInteractive,
-    opts.force,
-    opts.isEmulator,
-  );
+  const { paramValues: paramValues, secretRefs: secretRefs } = await params.resolveParams({
+    params: opts.build.params,
+    firebaseConfig: opts.firebaseConfig,
+    userEnvs: envWithTypes(opts.build.params, opts.userEnvs),
+    codebase: opts.codebase,
+    nonInteractive: opts.nonInteractive,
+    force: opts.force,
+    isEmulator: opts.isEmulator,
+  });
 
   return { backend: toBackend(opts.build, paramValues), envs: paramValues, secretRefs: secretRefs };
 }
@@ -740,6 +741,14 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
  * Prefixes all endpoint IDs and secret names in a build with a given prefix.
  * This ensures that functions and their associated secrets from different codebases
  * remain isolated and don't conflict when deployed to the same project.
+ *
+ * Secret params in a build are rewritten to point to resource names respecting
+ * the same prefixing, so that the interactive secret creation flow still works
+ * and the non-interactive message prints the correct secret to create.
+ *
+ * When deploying a function which already has secret bindings in its .env files,
+ * applyEnvSecretBindings will run after this and overwrite both the updated
+ * secret params and SecretEnvVars to reflect deployed reality.
  */
 export function applyPrefix(build: Build, prefix: string): void {
   if (!prefix) {
@@ -772,6 +781,13 @@ export function applyPrefix(build: Build, prefix: string): void {
     }
   }
   build.endpoints = newEndpoints;
+
+  for (const param of build.params) {
+    if (param.type !== "secret") {
+      continue;
+    }
+    param.resourceId = toUpperSnakeCase(`${prefix}-${param.resourceId || param.name}`);
+  }
 
   if (build.lifecycleHooks) {
     for (const hook of Object.values(build.lifecycleHooks)) {
@@ -806,7 +822,7 @@ export interface ParsedSecretRef {
  * /version can be omitted and will cause the secret to resolve to whatever the latest version was at time of deploy.
  *
  * For each binding imported from the .env file,
- * 1) TODO: Check if a conflicting SecretParam with the same name exists. If so, override the param so that the prompting flow will look in the right place when deciding whether or not to create a new Secret.
+ * 1) Check if a conflicting SecretParam with the same name exists. If so, override the param so that the prompting flow will look in the right place when deciding whether or not to create a new Secret.
  * 2) Upsert the binding directly into the Build's SecretEnvVars, which will cause it to be actually available in process.ENV
  */
 export function applyEnvSecretBindings(

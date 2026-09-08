@@ -2228,14 +2228,14 @@ describe("functions/kits/install", () => {
         projectAlias: "staging",
       });
 
-      expect(resolveParamsStub).to.have.been.calledWith(
-        paramList,
-        { projectId: "my-project" },
-        sinon.match.object,
-        "inst",
-        false,
-        false,
-      );
+      expect(resolveParamsStub).to.have.been.calledWith({
+        params: paramList,
+        firebaseConfig: { projectId: "my-project" },
+        userEnvs: sinon.match.object,
+        codebase: "inst",
+        nonInteractive: false,
+        force: false,
+      });
 
       expect(writeResolvedParamsStub).to.have.been.calledWith(
         resolvedParamValues,
@@ -2290,14 +2290,14 @@ describe("functions/kits/install", () => {
         params: paramList,
       });
 
-      expect(resolveParamsStub).to.have.been.calledWith(
-        paramList,
-        { projectId: "my-project" },
-        sinon.match.object,
-        "inst",
-        undefined,
-        undefined,
-      );
+      expect(resolveParamsStub).to.have.been.calledWith({
+        params: paramList,
+        firebaseConfig: { projectId: "my-project" },
+        userEnvs: sinon.match.object,
+        codebase: "inst",
+        nonInteractive: undefined,
+        force: undefined,
+      });
     });
 
     it("should propagate errors thrown by resolveParams", async () => {
