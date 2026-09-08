@@ -2,7 +2,7 @@ import { resourceManagerOrigin } from "../api";
 import { Client } from "../apiv2";
 import { getErrMsg, getErrStatus } from "../error";
 import * as utils from "../utils";
-import { Binding, getServiceAccount, Policy } from "./iam";
+import { Binding, getServiceAccount, mergeBindings, Policy } from "./iam";
 
 const API_VERSION = "v1";
 
@@ -54,6 +54,23 @@ export async function setIamPolicy(
   return response.body;
 }
 
+/**
+ * Determines whether an IAM policy modification error is transient and safe to retry.
+ *
+ * Retried errors:
+ * 1. HTTP 409 (ABORTED): Policy update conflict ("There were concurrent policy changes.").
+ *    Occurs when another operation updates the IAM policy concurrently, invalidating the etag.
+ *    Retrying re-fetches the latest policy with a fresh etag and reapplies the desired bindings.
+ * 2. HTTP 400 (INVALID_ARGUMENT) with message like "Service account ... does not exist":
+ *    Occurs due to cross-region IAM eventual consistency lag immediately after service account creation.
+ *    Retrying absorbs this replication window.
+ *
+ * Fast-failed errors (returns false):
+ * - Always returns false for all non-4xx status codes (such as 5xx server errors or non-HTTP errors).
+ * - Returns false for all other 4xx status codes (e.g. 403, 404), as well as non-retryable 400 errors
+ *   (such as "Role roles/<name> does not exist.") which represent permanent configuration or permission
+ *   failures that will not resolve on retry.
+ */
 function isRetryableIamError(err: unknown): boolean {
   const status = getErrStatus(err);
   if (status === 409) {
@@ -99,18 +116,11 @@ export async function addServiceAccountToRoles(
       const projectPolicy = await getIamPolicy(projectId);
       projectPolicy.bindings = projectPolicy.bindings || [];
 
-      for (const roleName of roles) {
-        let binding = projectPolicy.bindings.find((b: Binding) => b.role === roleName);
-
-        // create a new binding if the role doesn't exist in the policy yet
-        if (!binding) {
-          binding = { role: roleName, members: [] };
-          projectPolicy.bindings.push(binding);
-        }
-        if (!binding.members.includes(newMemberName)) {
-          binding.members.push(newMemberName);
-        }
-      }
+      const requiredBindings: Binding[] = roles.map((role) => ({
+        role,
+        members: [newMemberName],
+      }));
+      mergeBindings(projectPolicy, requiredBindings);
 
       return await setIamPolicy(projectId, projectPolicy, "bindings");
     },
