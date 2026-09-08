@@ -279,4 +279,31 @@ describe("iam", () => {
       });
     });
   });
+
+  describe("computeRolesEtag", () => {
+    it("should generate a 32-character string matching the base38 character set", () => {
+      const etag = iam.computeRolesEtag(["roles/viewer", "roles/editor"]);
+      expect(etag).to.have.lengthOf(32);
+      expect(etag).to.match(/^[a-z0-9_-]{32}$/);
+    });
+
+    it("should produce pure deterministic output for identical role sets", () => {
+      const etag1 = iam.computeRolesEtag(["roles/viewer", "roles/editor"]);
+      const etag2 = iam.computeRolesEtag(["roles/viewer", "roles/editor"]);
+      expect(etag1).to.equal(etag2);
+    });
+
+    it("should produce identical output regardless of role ordering", () => {
+      const etag1 = iam.computeRolesEtag(["roles/viewer", "roles/editor"]);
+      const etag2 = iam.computeRolesEtag(["roles/editor", "roles/viewer"]);
+      expect(etag1).to.equal(etag2);
+    });
+
+    it("should produce different etags for distinct role sets", () => {
+      const etag1 = iam.computeRolesEtag(["roles/viewer"]);
+      const etag2 = iam.computeRolesEtag(["roles/editor"]);
+      expect(etag1).to.not.equal(etag2);
+    });
+  });
 });
+

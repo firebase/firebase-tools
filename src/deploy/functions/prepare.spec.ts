@@ -1671,5 +1671,90 @@ describe("prepare", () => {
         /To ensure a whole codebase is migrated cleanly, you may not deploy only part of a codebase when opting into or out of declarative security/,
       );
     });
+
+    it("should hit fast path without calling testIamPermissions on re-deployment with matching 32-character ETag", async () => {
+      testIamPermissionsStub.rejects(new Error("Should not be called"));
+      const etag = iam.computeRolesEtag(["roles/viewer"]);
+      expect(etag).to.have.lengthOf(32);
+      const e: backend.Endpoint = {
+        ...ENDPOINT,
+        serviceAccount: "firebase-fn-123@project.iam.gserviceaccount.com",
+        labels: {
+          "firebase-declarative-security-etag": etag,
+        },
+      };
+      const want = backend.of(e);
+      want.requiredRoles = ["roles/viewer"];
+      const have = backend.of({
+        ...e,
+        labels: { ...e.labels },
+      });
+
+      const result = await prepare.discoverSecurityDetails("default", want, have, "project");
+
+      expect(result.haveRolesEtag).to.equal(etag);
+      expect(result.newEtag).to.equal(etag);
+      expect(result.haveRoles).to.deep.equal(["roles/viewer"]);
+      expect(result.managedSA).to.equal("firebase-fn-123@project.iam.gserviceaccount.com");
+      expect(e.labels?.["firebase-declarative-security-etag"]).to.equal(etag);
+      expect(testIamPermissionsStub).to.not.have.been.called;
+    });
+
+    it("should trigger testIamPermissions on re-deployment when roles change", async () => {
+      const oldEtag = iam.computeRolesEtag(["roles/viewer"]);
+      const expectedNewEtag = iam.computeRolesEtag(["roles/editor"]);
+      const e: backend.Endpoint = {
+        ...ENDPOINT,
+        serviceAccount: "firebase-fn-123@project.iam.gserviceaccount.com",
+        labels: {
+          "firebase-declarative-security-etag": oldEtag,
+        },
+      };
+      const want = backend.of(e);
+      want.requiredRoles = ["roles/editor"];
+      const have = backend.of({
+        ...e,
+        labels: { ...e.labels },
+      });
+
+      const result = await prepare.discoverSecurityDetails("default", want, have, "project");
+
+      expect(result.haveRolesEtag).to.equal(oldEtag);
+      expect(result.newEtag).to.equal(expectedNewEtag);
+      expect(result.newEtag).to.not.equal(oldEtag);
+      expect(result.newEtag).to.have.lengthOf(32);
+      expect(e.labels?.["firebase-declarative-security-etag"]).to.equal(expectedNewEtag);
+      expect(testIamPermissionsStub).to.have.been.calledOnce;
+    });
+
+    it("should mismatch cleanly, recalculate pure 32-character ETag, and trigger permissions check for legacy salted ETag", async () => {
+      const legacySaltedEtag = "abcdefghij-0123456789abcdef0123456789abcdef";
+      expect(legacySaltedEtag).to.have.lengthOf(43);
+      const expectedNewEtag = iam.computeRolesEtag(["roles/viewer"]);
+      expect(expectedNewEtag).to.have.lengthOf(32);
+
+      const e: backend.Endpoint = {
+        ...ENDPOINT,
+        serviceAccount: "firebase-fn-123@project.iam.gserviceaccount.com",
+        labels: {
+          "firebase-declarative-security-etag": legacySaltedEtag,
+        },
+      };
+      const want = backend.of(e);
+      want.requiredRoles = ["roles/viewer"];
+      const have = backend.of({
+        ...e,
+        labels: { ...e.labels },
+      });
+
+      const result = await prepare.discoverSecurityDetails("default", want, have, "project");
+
+      expect(result.haveRolesEtag).to.equal(legacySaltedEtag);
+      expect(result.newEtag).to.equal(expectedNewEtag);
+      expect(result.newEtag).to.not.equal(legacySaltedEtag);
+      expect(result.newEtag).to.have.lengthOf(32);
+      expect(e.labels?.["firebase-declarative-security-etag"]).to.equal(expectedNewEtag);
+      expect(testIamPermissionsStub).to.have.been.calledOnce;
+    });
   });
 });
