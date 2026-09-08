@@ -75,7 +75,7 @@ describe("Executor", () => {
       };
 
       const result = await exec.run(handler, {
-        retryPredicates: [executor.isTransientError, executor.isServiceAccount404],
+        retryPredicates: [executor.isTransientError, executor.isServiceAccountPropagationError],
       });
       expect(result).to.equal("success");
       expect(attempts).to.equal(2);
@@ -87,7 +87,7 @@ describe("Executor", () => {
         retries: 5,
         maxBackoff: 1,
         backoff: 1,
-        defaultRetryPredicates: [executor.isServiceAccount404],
+        defaultRetryPredicates: [executor.isServiceAccountPropagationError],
       });
 
       const handler = (): Promise<string> => {
@@ -106,32 +106,32 @@ describe("Executor", () => {
     });
   });
 
-  describe("isServiceAccount404", () => {
+  describe("isServiceAccountPropagationError", () => {
     it("matches 404 errors containing service account references", () => {
       const err1: any = new Error("Service account proj@iam.gserviceaccount.com does not exist");
       err1.status = 404;
-      expect(executor.isServiceAccount404(err1)).to.be.true;
+      expect(executor.isServiceAccountPropagationError(err1)).to.be.true;
 
       const err2: any = new Error("Resource 'serviceaccount' not found");
       err2.code = 404;
-      expect(executor.isServiceAccount404(err2)).to.be.true;
+      expect(executor.isServiceAccountPropagationError(err2)).to.be.true;
 
       const err3: any = {
         status: 404,
         context: { body: { error: { message: "service account missing" } } },
       };
-      expect(executor.isServiceAccount404(err3)).to.be.true;
+      expect(executor.isServiceAccountPropagationError(err3)).to.be.true;
     });
 
     it("does not match non-404/400 errors or non-service-account errors", () => {
       const err1 = new FirebaseError("Service account missing", { status: 500 });
-      expect(executor.isServiceAccount404(err1)).to.be.false;
+      expect(executor.isServiceAccountPropagationError(err1)).to.be.false;
 
       const err2 = new FirebaseError("Function region us-central1 not found", { status: 404 });
-      expect(executor.isServiceAccount404(err2)).to.be.false;
+      expect(executor.isServiceAccountPropagationError(err2)).to.be.false;
 
       const err3 = new FirebaseError("Invalid function name: my-func", { status: 400 });
-      expect(executor.isServiceAccount404(err3)).to.be.false;
+      expect(executor.isServiceAccountPropagationError(err3)).to.be.false;
     });
 
     it("matches 400 errors caused by service account propagation delays", () => {
@@ -139,25 +139,25 @@ describe("Executor", () => {
         "Validation failed for trigger projects/p/locations/l/triggers/t: The request was invalid: invalid service account firebase-fn-5768298711@p.iam.gserviceaccount.com provided",
         { status: 400 },
       );
-      expect(executor.isServiceAccount404(err1)).to.be.true;
+      expect(executor.isServiceAccountPropagationError(err1)).to.be.true;
 
       const err2 = new FirebaseError(
         "The request was invalid: invalid service account firebase-fn-123@p.iam.gserviceaccount.com in project 12345 provided",
         { status: 400 },
       );
-      expect(executor.isServiceAccount404(err2)).to.be.true;
+      expect(executor.isServiceAccountPropagationError(err2)).to.be.true;
 
       const err3 = new FirebaseError(
         "The request was invalid: invalid service account custom-sa@p.iam.gserviceaccount.com provided",
         { status: 400 },
       );
-      expect(executor.isServiceAccount404(err3)).to.be.false;
+      expect(executor.isServiceAccountPropagationError(err3)).to.be.false;
 
       const err4 = new FirebaseError(
         "Service account firebase-fn-123@p.iam.gserviceaccount.com has permission denied",
         { status: 400 },
       );
-      expect(executor.isServiceAccount404(err4)).to.be.false;
+      expect(executor.isServiceAccountPropagationError(err4)).to.be.false;
     });
 
     it("inspects all error message sources when err.message is generic", () => {
@@ -170,7 +170,7 @@ describe("Executor", () => {
           },
         },
       };
-      expect(executor.isServiceAccount404(genericErr)).to.be.true;
+      expect(executor.isServiceAccountPropagationError(genericErr)).to.be.true;
     });
 
     it("safely handles circular error objects without throwing", () => {
@@ -179,7 +179,7 @@ describe("Executor", () => {
       );
       circularErr.status = 404;
       circularErr.self = circularErr; // Circular reference
-      expect(executor.isServiceAccount404(circularErr)).to.be.true;
+      expect(executor.isServiceAccountPropagationError(circularErr)).to.be.true;
     });
   });
 

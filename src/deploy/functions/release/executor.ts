@@ -32,7 +32,7 @@ export const isServiceUnavailable: RetryPredicate = (err: any): boolean =>
 export const isTransientError: RetryPredicate = (err: any): boolean =>
   isQuotaExhaustion(err) || isConflict(err) || isServiceUnavailable(err);
 
-export const isServiceAccount404: RetryPredicate = (err: any): boolean => {
+export const isServiceAccountPropagationError: RetryPredicate = (err: any): boolean => {
   const code = parseErrorCode(err);
   // Newly created service accounts take time to propagate across IAM systems.
   // When downstream services (such as Eventarc trigger creation) validate the request,
