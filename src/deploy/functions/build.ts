@@ -776,7 +776,7 @@ export function applyPrefix(build: Build, prefix: string): void {
     if (endpoint.secretEnvironmentVariables) {
       endpoint.secretEnvironmentVariables = endpoint.secretEnvironmentVariables.map((secret) => ({
         ...secret,
-        secret: `${prefix}-${secret.secret}`,
+        secret: toUpperSnakeCase(`${prefix}-${secret.secret}`),
       }));
     }
   }
