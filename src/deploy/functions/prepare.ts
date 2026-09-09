@@ -83,9 +83,14 @@ export async function checkDeclarativeSecurityApisEnabled(
   codebase: string,
 ): Promise<void> {
   const checks = await Promise.all(
-    REQUIRED_SECURITY_APIS.map((api) =>
-      ensureApiEnabled.check(projectId, api, "functions", /* silent= */ true),
-    ),
+    REQUIRED_SECURITY_APIS.map(async (api) => {
+      try {
+        return await ensureApiEnabled.check(projectId, api, "functions", /* silent= */ true);
+      } catch (err) {
+        logger.debug(`Silence error checking enablement for API ${api}: ${err}`);
+        return true;
+      }
+    }),
   );
   const disabledApis = REQUIRED_SECURITY_APIS.filter((_, idx) => !checks[idx]);
 
@@ -112,6 +117,11 @@ export async function checkDeclarativeSecurityApisEnabled(
     );
   }
 }
+
+const SERVICE_FRIENDLY_NAMES: Record<string, string> = {
+  "cloudresourcemanager.googleapis.com": "Cloud Resource Manager",
+  "iam.googleapis.com": "Identity and Access Management",
+};
 
 interface ServiceErrorDetail {
   reason?: string;
@@ -154,10 +164,11 @@ export function isServiceDisabledError(err: unknown, service?: string): boolean 
     return true;
   }
   if (service) {
+    const friendlyName = SERVICE_FRIENDLY_NAMES[service];
     return (
       message.includes("has not been used in project") &&
       message.includes("before or it is disabled") &&
-      message.includes(service)
+      (message.includes(service) || (!!friendlyName && message.includes(friendlyName)))
     );
   }
   return (

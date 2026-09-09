@@ -1797,6 +1797,22 @@ describe("prepare", () => {
         );
       });
 
+      it("should not block deployment if caller lacks permission to check API enablement", async () => {
+        checkApiStub.rejects(
+          new FirebaseError("HTTP Error: 403, PERMISSION_DENIED on serviceusage.services.get", {
+            status: 403,
+          }),
+        );
+
+        const e: backend.Endpoint = { ...ENDPOINT };
+        const want = backend.of(e);
+        want.requiredRoles = ["roles/viewer"];
+        const have = backend.empty();
+
+        const result = await prepare.discoverSecurityDetails("default", want, have, "test-project");
+        expect(result.managedSA).to.equal("firebase-fn-123@test-project.iam.gserviceaccount.com");
+      });
+
       it("should not block unenrollment even if security APIs are disabled", async () => {
         checkApiStub.resolves(false);
 
@@ -1885,7 +1901,14 @@ describe("prepare", () => {
           "Cloud Resource Manager API has not been used in project 12345 before or it is disabled.",
         );
         expect(prepare.isServiceDisabledError(err, "Cloud Resource Manager API")).to.be.true;
+        expect(prepare.isServiceDisabledError(err, "cloudresourcemanager.googleapis.com")).to.be
+          .true;
         expect(prepare.isServiceDisabledError(err)).to.be.true;
+
+        const iamErr = new Error(
+          "Identity and Access Management API has not been used in project 12345 before or it is disabled.",
+        );
+        expect(prepare.isServiceDisabledError(iamErr, "iam.googleapis.com")).to.be.true;
       });
 
       it("should return false for unrelated errors", () => {
