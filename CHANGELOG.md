@@ -1,6 +1,7 @@
 - Updated the Firebase SQL Connect local toolkit to v3.4.19, which includes the following changes:
   - [fixed] Bug fixes and performance improvements for the PostgreSQL emulator.
 - [fixed] Clean up managed service accounts when all functions in a codebase are deleted.
+- Added `pageToken` support to the Crashlytics `get_report` MCP tool, so agents can page through report groups using the `nextPageToken` from a previous response.
 - Corrected Cloud Tasks emulator Queue ID validation error message to match Cloud Tasks naming rules.
 - Repurposed the local `dataconnect_execute` tool as `dataconnect_execute_in_emulator` to run GraphQL queries and mutations on the local SQL Connect emulator.
 - Configured the SQL Connect (Data Connect) OneMCP proxy server in `ONEMCP_SERVERS` with a selection of remote tools.

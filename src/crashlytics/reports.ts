@@ -31,6 +31,13 @@ export const ReportInputSchema = z.object({
   report: CrashlyticsReportSchema,
   filter: EventFilterSchema,
   pageSize: z.number().optional().describe("Number of rows to return").default(DEFAULT_PAGE_SIZE),
+  pageToken: z
+    .string()
+    .optional()
+    .describe(
+      "A page token returned as `nextPageToken` by a previous call to this report. " +
+        "Pass it, together with the same filter and pageSize, to retrieve the next page of groups.",
+    ),
 });
 
 export type ReportInput = z.infer<typeof ReportInputSchema>;
@@ -41,6 +48,7 @@ export type ReportInput = z.infer<typeof ReportInputSchema>;
  * @param appId Firebase app_id
  * @param filter The report will count only events matching the given filters
  * @param pageSize Number of rows to return, generally defaulting to 10
+ * @param pageToken Optional token from a previous response's nextPageToken, to fetch the next page
  * @return A Report object, grouped appropriately with metrics for eventCount and impactedUsers
  */
 /**
@@ -72,6 +80,7 @@ export async function getReport(
   appId: string,
   filter: EventFilter,
   pageSize = DEFAULT_PAGE_SIZE,
+  pageToken?: string,
 ): Promise<Report> {
   if (!reportName) {
     throw new FirebaseError("Invalid Crashlytics report " + reportName);
@@ -79,6 +88,9 @@ export async function getReport(
   const requestProjectNumber = parseProjectNumber(appId);
   const queryParams = filterToUrlSearchParams(filter);
   queryParams.set("page_size", `${pageSize}`);
+  if (pageToken) {
+    queryParams.set("page_token", pageToken);
+  }
   logger.debug(
     `[crashlytics] report ${reportName} called with appId: ${appId} filter: ${queryParams.toString()}, page_size: ${pageSize}`,
   );
