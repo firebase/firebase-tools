@@ -52,7 +52,7 @@ type ProjectInfo = {
   projectNumber: string;
 };
 
-export function toUpperSnakeCase(key: string): string {
+function toUpperSnakeCase(key: string): string {
   return key
     .replace(/[.-]/g, "_")
     .replace(/([a-z])([A-Z])/g, "$1_$2")

@@ -8,7 +8,6 @@ import { FirebaseConfig } from "./args";
 import { Runtime } from "./runtimes/supported";
 import { ExprParseError } from "./cel";
 import { defineSecret } from "firebase-functions/params";
-import { toUpperSnakeCase } from "../../functions/secrets";
 
 export const REGION_TBD = "REGION_TBD";
 export const SECRET_REF_PREFIX = "FIREBASE_SECRET_REF_";
@@ -738,17 +737,9 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
 }
 
 /**
- * Prefixes all endpoint IDs and secret names in a build with a given prefix.
- * This ensures that functions and their associated secrets from different codebases
- * remain isolated and don't conflict when deployed to the same project.
- *
- * Secret params in a build are rewritten to point to resource names respecting
- * the same prefixing, so that the interactive secret creation flow still works
- * and the non-interactive message prints the correct secret to create.
- *
- * When deploying a function which already has secret bindings in its .env files,
- * applyEnvSecretBindings will run after this and overwrite both the updated
- * secret params and SecretEnvVars to reflect deployed reality.
+ * Prefixes all endpoint IDs in a build with a given prefix.
+ * This ensures that functions from different codebases or Kits instances
+ * don't conflict when deployed to the same project.
  */
 export function applyPrefix(build: Build, prefix: string): void {
   if (!prefix) {
@@ -772,22 +763,8 @@ export function applyPrefix(build: Build, prefix: string): void {
     }
 
     newEndpoints[newId] = endpoint;
-
-    if (endpoint.secretEnvironmentVariables) {
-      endpoint.secretEnvironmentVariables = endpoint.secretEnvironmentVariables.map((secret) => ({
-        ...secret,
-        secret: toUpperSnakeCase(`${prefix}-${secret.secret}`),
-      }));
-    }
   }
   build.endpoints = newEndpoints;
-
-  for (const param of build.params) {
-    if (param.type !== "secret") {
-      continue;
-    }
-    param.resourceId = toUpperSnakeCase(`${prefix}-${param.resourceId || param.name}`);
-  }
 
   if (build.lifecycleHooks) {
     for (const hook of Object.values(build.lifecycleHooks)) {
