@@ -1483,6 +1483,8 @@ describe("prepare", () => {
 
   describe("discoverSecurityDetails", () => {
     let testIamPermissionsStub: sinon.SinonStub;
+    let checkApiStub: sinon.SinonStub;
+    let uncacheApiStub: sinon.SinonStub;
 
     beforeEach(() => {
       testIamPermissionsStub = sinon
@@ -1490,6 +1492,8 @@ describe("prepare", () => {
         .resolves({ passed: true } as any);
       sinon.stub(iam, "generateManagedServiceAccountName").resolves("firebase-fn-123");
       sinon.stub(resourcemanager, "getServiceAccountRoles").resolves([]);
+      checkApiStub = sinon.stub(ensureApiEnabled, "check").resolves(true);
+      uncacheApiStub = sinon.stub(ensureApiEnabled, "uncacheEnabledAPI");
     });
 
     afterEach(() => {
@@ -1670,6 +1674,226 @@ describe("prepare", () => {
         FirebaseError,
         /To ensure a whole codebase is migrated cleanly, you may not deploy only part of a codebase when opting into or out of declarative security/,
       );
+    });
+
+    describe("API enablement checks", () => {
+      it("should throw actionable error when both iam and cloudresourcemanager APIs are disabled", async () => {
+        checkApiStub.callsFake((projectId: string, api: string) => {
+          if (api === "iam.googleapis.com" || api === "cloudresourcemanager.googleapis.com") {
+            return Promise.resolve(false);
+          }
+          return Promise.resolve(true);
+        });
+
+        const e: backend.Endpoint = { ...ENDPOINT };
+        const want = backend.of(e);
+        want.requiredRoles = ["roles/viewer"];
+        const have = backend.empty();
+
+        let error: FirebaseError | undefined;
+        try {
+          await prepare.discoverSecurityDetails("default", want, have, "test-project");
+        } catch (err) {
+          if (err instanceof FirebaseError) {
+            error = err;
+          }
+        }
+
+        expect(error).to.be.instanceOf(FirebaseError);
+        expect(error!.message).to.include(
+          'Cannot deploy functions with declarative security in codebase "default"',
+        );
+        expect(error!.message).to.include("iam.googleapis.com");
+        expect(error!.message).to.include("cloudresourcemanager.googleapis.com");
+        expect(error!.message).to.include(
+          "gcloud services enable iam.googleapis.com cloudresourcemanager.googleapis.com --project test-project",
+        );
+        expect(error!.message).to.include(
+          "https://console.cloud.google.com/apis/library/iam.googleapis.com?project=test-project",
+        );
+        expect(error!.message).to.include(
+          "https://console.cloud.google.com/apis/library/cloudresourcemanager.googleapis.com?project=test-project",
+        );
+        expect(testIamPermissionsStub).to.not.have.been.called;
+      });
+
+      it("should throw actionable error when only iam API is disabled", async () => {
+        checkApiStub.callsFake((projectId: string, api: string) => {
+          if (api === "iam.googleapis.com") {
+            return Promise.resolve(false);
+          }
+          return Promise.resolve(true);
+        });
+
+        const e: backend.Endpoint = { ...ENDPOINT };
+        const want = backend.of(e);
+        want.requiredRoles = ["roles/viewer"];
+        const have = backend.empty();
+
+        let error: FirebaseError | undefined;
+        try {
+          await prepare.discoverSecurityDetails("default", want, have, "test-project");
+        } catch (err) {
+          if (err instanceof FirebaseError) {
+            error = err;
+          }
+        }
+
+        expect(error).to.be.instanceOf(FirebaseError);
+        expect(error!.message).to.include("iam.googleapis.com");
+        expect(error!.message).to.not.include("cloudresourcemanager.googleapis.com");
+        expect(error!.message).to.include(
+          "gcloud services enable iam.googleapis.com --project test-project",
+        );
+        expect(error!.message).to.include(
+          "https://console.cloud.google.com/apis/library/iam.googleapis.com?project=test-project",
+        );
+      });
+
+      it("should throw actionable error when only cloudresourcemanager API is disabled", async () => {
+        checkApiStub.callsFake((projectId: string, api: string) => {
+          if (api === "cloudresourcemanager.googleapis.com") {
+            return Promise.resolve(false);
+          }
+          return Promise.resolve(true);
+        });
+
+        const e: backend.Endpoint = { ...ENDPOINT };
+        const want = backend.of(e);
+        want.requiredRoles = ["roles/viewer"];
+        const have = backend.empty();
+
+        let error: FirebaseError | undefined;
+        try {
+          await prepare.discoverSecurityDetails("default", want, have, "test-project");
+        } catch (err) {
+          if (err instanceof FirebaseError) {
+            error = err;
+          }
+        }
+
+        expect(error).to.be.instanceOf(FirebaseError);
+        expect(error!.message).to.include("cloudresourcemanager.googleapis.com");
+        expect(error!.message).to.not.include("iam.googleapis.com");
+        expect(error!.message).to.include(
+          "gcloud services enable cloudresourcemanager.googleapis.com --project test-project",
+        );
+        expect(error!.message).to.include(
+          "https://console.cloud.google.com/apis/library/cloudresourcemanager.googleapis.com?project=test-project",
+        );
+      });
+
+      it("should not check security APIs when codebase does not use declarative security", async () => {
+        const e: backend.Endpoint = { ...ENDPOINT };
+        const want = backend.of(e);
+        const have = backend.empty();
+
+        await prepare.discoverSecurityDetails("default", want, have, "test-project");
+
+        expect(checkApiStub).to.not.have.been.calledWith("test-project", "iam.googleapis.com");
+        expect(checkApiStub).to.not.have.been.calledWith(
+          "test-project",
+          "cloudresourcemanager.googleapis.com",
+        );
+      });
+
+      it("should not block unenrollment even if security APIs are disabled", async () => {
+        checkApiStub.resolves(false);
+
+        const e: backend.Endpoint = {
+          ...ENDPOINT,
+          serviceAccount: "firebase-fn-123@project.iam.gserviceaccount.com",
+          labels: {
+            "firebase-declarative-security-etag": "salt-etag",
+          },
+        };
+        const want = backend.of(e);
+        const have = backend.of({
+          ...e,
+          labels: { ...e.labels },
+        });
+
+        const result = await prepare.discoverSecurityDetails("default", want, have, "project");
+        expect(result.existingManagedSA).to.equal(
+          "firebase-fn-123@project.iam.gserviceaccount.com",
+        );
+        expect(e.serviceAccount).to.be.null;
+      });
+
+      it("should catch downstream testIamPermissions 403 error due to disabled cloudresourcemanager, uncache API, and throw actionable error", async () => {
+        checkApiStub.resolves(true);
+        const disabledError = new FirebaseError(
+          "HTTP Error: 403, Cloud Resource Manager API has not been used in project test-project before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/cloudresourcemanager.googleapis.com/overview?project=test-project then retry.",
+          { status: 403 },
+        );
+        testIamPermissionsStub.rejects(disabledError);
+
+        const e: backend.Endpoint = { ...ENDPOINT };
+        const want = backend.of(e);
+        want.requiredRoles = ["roles/viewer"];
+        const have = backend.empty();
+
+        let error: FirebaseError | undefined;
+        try {
+          await prepare.discoverSecurityDetails("default", want, have, "test-project");
+        } catch (err) {
+          if (err instanceof FirebaseError) {
+            error = err;
+          }
+        }
+
+        expect(error).to.be.instanceOf(FirebaseError);
+        expect(uncacheApiStub).to.have.been.calledWith(
+          "test-project",
+          "cloudresourcemanager.googleapis.com",
+        );
+        expect(error!.message).to.include(
+          "Cloud Resource Manager API (cloudresourcemanager.googleapis.com) is disabled on project test-project",
+        );
+        expect(error!.message).to.include(
+          "gcloud services enable cloudresourcemanager.googleapis.com --project test-project",
+        );
+        expect(error!.message).to.include(
+          "https://console.cloud.google.com/apis/library/cloudresourcemanager.googleapis.com?project=test-project",
+        );
+      });
+    });
+
+    describe("isServiceDisabledError", () => {
+      it("should return true when error details contains SERVICE_DISABLED", () => {
+        const err = {
+          context: {
+            body: {
+              error: {
+                details: [
+                  {
+                    reason: "SERVICE_DISABLED",
+                    metadata: { service: "cloudresourcemanager.googleapis.com" },
+                  },
+                ],
+              },
+            },
+          },
+        };
+        expect(prepare.isServiceDisabledError(err, "cloudresourcemanager.googleapis.com")).to.be
+          .true;
+        expect(prepare.isServiceDisabledError(err, "iam.googleapis.com")).to.be.false;
+      });
+
+      it("should return true when error message matches disabled API format", () => {
+        const err = new Error(
+          "Cloud Resource Manager API has not been used in project 12345 before or it is disabled.",
+        );
+        expect(prepare.isServiceDisabledError(err, "Cloud Resource Manager API")).to.be.true;
+        expect(prepare.isServiceDisabledError(err)).to.be.true;
+      });
+
+      it("should return false for unrelated errors", () => {
+        const err = new Error("Permission denied: user does not have permission");
+        expect(prepare.isServiceDisabledError(err)).to.be.false;
+        expect(prepare.isServiceDisabledError(err, "cloudresourcemanager.googleapis.com")).to.be
+          .false;
+      });
     });
   });
 });

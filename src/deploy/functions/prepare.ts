@@ -69,6 +69,102 @@ import * as resourcemanager from "../../gcp/resourceManager";
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 export const DECLARATIVE_SECURITY_ETAG_LABEL = "firebase-declarative-security-etag";
 
+const REQUIRED_SECURITY_APIS = [
+  "iam.googleapis.com",
+  "cloudresourcemanager.googleapis.com",
+] as const;
+
+/**
+ * Validates that the Google Cloud APIs required for Declarative Security are enabled.
+ * Fails fast with an actionable gcloud command and console URLs if either API is disabled.
+ */
+export async function checkDeclarativeSecurityApisEnabled(
+  projectId: string,
+  codebase: string,
+): Promise<void> {
+  const checks = await Promise.all(
+    REQUIRED_SECURITY_APIS.map((api) =>
+      ensureApiEnabled.check(projectId, api, "functions", /* silent= */ true),
+    ),
+  );
+  const disabledApis = REQUIRED_SECURITY_APIS.filter((_, idx) => !checks[idx]);
+
+  if (disabledApis.length > 0) {
+    const apiBulletList = disabledApis.map((api) => `  - ${clc.bold(api)}`).join("\n");
+    const enableCmd = clc.bold(
+      `gcloud services enable ${disabledApis.join(" ")} --project ${projectId}`,
+    );
+    const consoleLinks = disabledApis
+      .map((api) => `  - ${api}: ${ensureApiEnabled.enableApiURI(projectId, api)}`)
+      .join("\n");
+
+    throw new FirebaseError(
+      `Cannot deploy functions with declarative security in codebase "${codebase}". ` +
+        `The following required Google Cloud API(s) are not enabled on project ${clc.bold(projectId)}:\n` +
+        apiBulletList +
+        `\n\nDeclarative security requires these APIs to provision and configure managed service accounts and IAM roles.\n` +
+        `To enable them, run:\n\n` +
+        `  ${enableCmd}\n\n` +
+        `Or ask a project owner to enable them in the Google Cloud Console:\n` +
+        consoleLinks +
+        `\n`,
+      { exit: 1 },
+    );
+  }
+}
+
+interface ServiceErrorDetail {
+  reason?: string;
+  metadata?: {
+    service?: string;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+interface ServiceErrorResponse {
+  message?: string;
+  context?: {
+    body?: {
+      error?: {
+        details?: ServiceErrorDetail[];
+      };
+    };
+  };
+  original?: ServiceErrorResponse;
+}
+
+/**
+ * Checks whether an error is caused by a Google Cloud service/API being disabled.
+ */
+export function isServiceDisabledError(err: unknown, service?: string): boolean {
+  const errorObj = err as ServiceErrorResponse;
+  const message = typeof errorObj?.message === "string" ? errorObj.message : "";
+  const details =
+    errorObj?.context?.body?.error?.details ||
+    errorObj?.original?.context?.body?.error?.details ||
+    [];
+  const hasServiceDisabledDetail =
+    Array.isArray(details) &&
+    details.some(
+      (d: ServiceErrorDetail) =>
+        d.reason === "SERVICE_DISABLED" && (!service || d.metadata?.service === service),
+    );
+  if (hasServiceDisabledDetail) {
+    return true;
+  }
+  if (service) {
+    return (
+      message.includes("has not been used in project") &&
+      message.includes("before or it is disabled") &&
+      message.includes(service)
+    );
+  }
+  return (
+    message.includes("has not been used in project") && message.includes("before or it is disabled")
+  );
+}
+
 /**
  * Discovers and coordinates declarative security details for a codebase.
  * Mutates `want` Backend to populate managed service account and etag labels.
@@ -164,6 +260,8 @@ export async function discoverSecurityDetails(
     };
   }
 
+  await checkDeclarativeSecurityApisEnabled(projectId, codebase);
+
   let managedSA = existingManagedSA;
   if (!managedSA) {
     const saToCreate = await iam.generateManagedServiceAccountName(projectId, "firebase-fn");
@@ -193,7 +291,30 @@ export async function discoverSecurityDetails(
   if (!existingManagedSA) {
     permissionsToTest.push("iam.serviceAccounts.create");
   }
-  const iamResult = await iam.testIamPermissions(projectId, permissionsToTest);
+  let iamResult;
+  try {
+    iamResult = await iam.testIamPermissions(projectId, permissionsToTest);
+  } catch (err: unknown) {
+    const errOriginal = err instanceof Error ? err : undefined;
+    if (isServiceDisabledError(err, "cloudresourcemanager.googleapis.com")) {
+      ensureApiEnabled.uncacheEnabledAPI(projectId, "cloudresourcemanager.googleapis.com");
+      const crmConsoleUrl = ensureApiEnabled.enableApiURI(
+        projectId,
+        "cloudresourcemanager.googleapis.com",
+      );
+      throw new FirebaseError(
+        `Cannot deploy functions with declarative security in codebase "${codebase}". ` +
+          `Cloud Resource Manager API (${clc.bold("cloudresourcemanager.googleapis.com")}) is disabled on project ${clc.bold(projectId)}.\n\n` +
+          `Declarative security requires this API to verify and update IAM policies.\n` +
+          `To enable it, run:\n\n` +
+          `  ${clc.bold(`gcloud services enable cloudresourcemanager.googleapis.com --project ${projectId}`)}\n\n` +
+          `Or ask a project owner to enable it in the Google Cloud Console:\n` +
+          `  - ${crmConsoleUrl}\n`,
+        { exit: 1, original: errOriginal },
+      );
+    }
+    throw err;
+  }
   if (!iamResult.passed) {
     if (!existingManagedSA) {
       throw new FirebaseError(

@@ -1,3 +1,4 @@
+- [fixed] Fail fast with an actionable error and remediation instructions when declarative security APIs (IAM and Cloud Resource Manager) are disabled on the project.
 - Updated the Firebase SQL Connect local toolkit to v3.4.19, which includes the following changes:
   - [fixed] Bug fixes and performance improvements for the PostgreSQL emulator.
 - [fixed] Clean up managed service accounts when all functions in a codebase are deleted.
