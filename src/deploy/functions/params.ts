@@ -957,11 +957,13 @@ async function promptSelectMultiple<T extends string>(
   converter: (res: string[]) => T[] | retryInput,
 ): Promise<T[]> {
   const response = await checkbox({
+    // `default` only serves non-interactive mode; the checkbox prompt itself
+    // preselects through `checked` on each choice.
     default: resolvedDefault,
     message: prompt,
     choices: input.multiSelect.options.map((option: SelectOptions<string>): ListItem => {
       return {
-        checked: false,
+        checked: resolvedDefault?.includes(option.value.toString()) ?? false,
         name: option.label,
         value: option.value.toString(),
       };
