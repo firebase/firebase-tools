@@ -1,1 +1,2 @@
 - [fixed] Clean up managed service accounts when opting out of declarative security alongside a filtered codebase deploy.
+- [fixed] Honor boolean and integer defaults in `select` prompts for function params instead of preselecting the first option.

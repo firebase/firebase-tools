@@ -372,6 +372,62 @@ describe("resolveParams", () => {
     ).to.eventually.be.rejected;
   });
 
+  it("preselects a boolean default in a select prompt", async () => {
+    const select = sinon.stub(prompt, "select").resolves("false");
+    try {
+      const paramsToResolve: params.Param[] = [
+        {
+          name: "MAKE_PUBLIC",
+          type: "boolean",
+          default: false,
+          input: {
+            select: {
+              options: [
+                { label: "Yes", value: true },
+                { label: "No", value: false },
+              ],
+            },
+          },
+        },
+      ];
+      const resolved = await params.resolveParams(paramsToResolve, fakeConfig, {}, "default");
+      expect(select.firstCall.args[0].default).to.equal("false");
+      expect(resolved.paramValues.MAKE_PUBLIC).to.deep.equal(
+        new params.ParamValue("false", false, { string: false, number: false, boolean: true }),
+      );
+    } finally {
+      select.restore();
+    }
+  });
+
+  it("preselects an int default in a select prompt", async () => {
+    const select = sinon.stub(prompt, "select").resolves("2");
+    try {
+      const paramsToResolve: params.Param[] = [
+        {
+          name: "REPLICAS",
+          type: "int",
+          default: 2,
+          input: {
+            select: {
+              options: [
+                { label: "One", value: 1 },
+                { label: "Two", value: 2 },
+              ],
+            },
+          },
+        },
+      ];
+      const resolved = await params.resolveParams(paramsToResolve, fakeConfig, {}, "default");
+      expect(select.firstCall.args[0].default).to.equal("2");
+      expect(resolved.paramValues.REPLICAS).to.deep.equal(
+        new params.ParamValue("2", false, { string: false, number: true, boolean: false }),
+      );
+    } finally {
+      select.restore();
+    }
+  });
+
   it("does not throw in non-interactive mode if secret exists in cloud", async () => {
     const paramsToResolve: params.Param[] = [{ name: "MY_SECRET", type: "secret" }];
     const getSecretMetadataStub = sinon.stub(secretManager, "getSecretMetadata").resolves({

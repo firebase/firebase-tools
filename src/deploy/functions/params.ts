@@ -931,7 +931,9 @@ async function promptSelect<T extends RawParamValue>(
   converter: (res: string) => T | retryInput,
 ): Promise<T> {
   const response = await select<string>({
-    default: resolvedDefault as string,
+    // Choice values are stringified below, so the default must be too or a
+    // boolean/number default never matches and the first option is preselected.
+    default: resolvedDefault?.toString(),
     message: prompt,
     choices: input.select.options.map((option: SelectOptions<T>): ListItem => {
       return {
