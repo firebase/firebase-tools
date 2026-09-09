@@ -141,8 +141,9 @@ export async function disableQueue(name: string): Promise<void> {
   try {
     // Here and throughout we use module.exports to ensure late binding & enable stubs in unit tests.
     await (module.exports.getQueue as typeof getQueue)(name);
-  } catch (err: any) {
-    if (err?.context?.response?.statusCode === 404) {
+  } catch (err) {
+    const responseError = err as { context?: { response?: { statusCode?: number } } };
+    if (responseError.context?.response?.statusCode === 404) {
       return;
     }
     throw err;

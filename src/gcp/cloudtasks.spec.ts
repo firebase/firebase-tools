@@ -3,6 +3,7 @@ import * as sinon from "sinon";
 
 import * as iam from "./iam";
 import * as backend from "../deploy/functions/backend";
+import { FirebaseError } from "../error";
 import * as cloudtasks from "./cloudtasks";
 import * as proto from "./proto";
 
@@ -205,9 +206,10 @@ describe("CloudTasks", () => {
     });
 
     it("rethrows non-404 errors without patching", async () => {
-      ct.getQueue.rejects({ context: { response: { statusCode: 500 } } });
+      const err = new FirebaseError("boom", { context: { response: { statusCode: 500 } } });
+      ct.getQueue.rejects(err);
 
-      await expect(cloudtasks.disableQueue(NAME)).to.be.rejected;
+      await expect(cloudtasks.disableQueue(NAME)).to.be.rejectedWith(err);
       expect(ct.updateQueue).to.not.have.been.called;
     });
   });
