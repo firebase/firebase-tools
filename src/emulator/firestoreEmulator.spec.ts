@@ -21,6 +21,7 @@ describe("FirestoreEmulator", () => {
   let logLabeledWarningStub: sinon.SinonStub;
   let tmpDir: string;
   let rulesPath: string;
+  let emulator: FirestoreEmulator | undefined;
 
   beforeEach(() => {
     sandbox.stub(downloadableEmulators, "start").resolves();
@@ -31,13 +32,16 @@ describe("FirestoreEmulator", () => {
     fs.writeFileSync(rulesPath, "rules_version = '2';");
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     sandbox.restore();
+    // Close the watcher even if a test failed before reaching stop(), so nothing keeps tmpDir open.
+    await emulator?.rulesWatcher?.close();
+    emulator = undefined;
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
   it("does not watch a rules file when none is configured", async () => {
-    const emulator = new FirestoreEmulator({ project_id: "demo-test" });
+    emulator = new FirestoreEmulator({ project_id: "demo-test" });
     await emulator.start();
 
     expect(emulator.rulesWatcher).to.be.undefined;
@@ -45,7 +49,7 @@ describe("FirestoreEmulator", () => {
   });
 
   it("logs a warning instead of exiting when the rules watcher fails", async () => {
-    const emulator = new FirestoreEmulator({ project_id: "demo-test", rules: rulesPath });
+    emulator = new FirestoreEmulator({ project_id: "demo-test", rules: rulesPath });
     await emulator.start();
     const watcher = rulesWatcherOf(emulator);
 
@@ -61,7 +65,7 @@ describe("FirestoreEmulator", () => {
   });
 
   it("handles a non-Error value emitted by the rules watcher", async () => {
-    const emulator = new FirestoreEmulator({ project_id: "demo-test", rules: rulesPath });
+    emulator = new FirestoreEmulator({ project_id: "demo-test", rules: rulesPath });
     await emulator.start();
     const watcher = rulesWatcherOf(emulator);
     expect(() => watcher.emit("error", "watcher exploded")).to.not.throw();
@@ -72,7 +76,7 @@ describe("FirestoreEmulator", () => {
   });
 
   it("closes the rules watcher on stop", async () => {
-    const emulator = new FirestoreEmulator({ project_id: "demo-test", rules: rulesPath });
+    emulator = new FirestoreEmulator({ project_id: "demo-test", rules: rulesPath });
     await emulator.start();
     const closeSpy = sandbox.spy(rulesWatcherOf(emulator), "close");
 
