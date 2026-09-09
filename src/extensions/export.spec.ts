@@ -131,7 +131,7 @@ describe("ext:export helpers", () => {
   });
 
   describe("memoryToMb", () => {
-    const testCases: { input: string; expected: number }[] = [
+    const testCases: { input?: string; expected: number }[] = [
       { input: "256", expected: 256 },
       { input: "512", expected: 512 },
       { input: "1024", expected: 1024 },
@@ -148,10 +148,12 @@ describe("ext:export helpers", () => {
       { input: "-256", expected: 0 },
       { input: "invalid", expected: 0 },
       { input: "", expected: 0 },
+      { input: "   ", expected: 0 },
+      { input: undefined, expected: 0 },
     ];
 
     for (const { input, expected } of testCases) {
-      it(`should parse "${input}" to ${expected} MB`, () => {
+      it(`should parse "${String(input)}" to ${expected} MB`, () => {
         expect(memoryToMb(input)).to.equal(expected);
       });
     }
@@ -183,6 +185,7 @@ describe("ext:export helpers", () => {
       { input: "-256", expected: undefined },
       { input: "invalid", expected: undefined },
       { input: "", expected: undefined },
+      { input: "   ", expected: undefined },
       { input: undefined, expected: undefined },
     ];
 

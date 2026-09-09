@@ -98,19 +98,28 @@ function displaySpecs(specs: DeploymentInstanceSpec[]): void {
   }
 }
 
+const GIB_REGEX = /^\d+(?:\.\d+)?(?:Gi|GiB|G|GB)$/i;
+const MIB_REGEX = /^\d+(?:\.\d+)?(?:Mi|MiB|M|MB)?$/i;
+
 /**
  * Converts a memory string (e.g. "256", "512Mi", "1Gi", "1024") to megabytes (MB) for comparison.
  */
-export function memoryToMb(memory: string): number {
-  const trimmed = memory.trim();
-  if (/^\d+(?:\.\d+)?(?:Gi|GiB|G|GB)$/i.test(trimmed)) {
-    return parseFloat(trimmed) * 1024;
+export function memoryToMb(memory?: string): number {
+  if (!memory) {
+    return 0;
   }
-  const parsed = parseFloat(trimmed);
-  return isNaN(parsed) || parsed < 0 ? 0 : parsed;
+  const trimmed = memory.trim();
+  if (GIB_REGEX.test(trimmed)) {
+    return Math.round(parseFloat(trimmed) * 1024);
+  }
+  if (MIB_REGEX.test(trimmed)) {
+    const parsed = parseFloat(trimmed);
+    return isNaN(parsed) || parsed < 0 ? 0 : parsed;
+  }
+  return 0;
 }
 
-const MB_TO_MEMORY_OPTION: Record<number, MemoryOption> = {
+const MB_TO_MEMORY_OPTION: Partial<Record<number, MemoryOption>> = {
   128: "128MiB",
   256: "256MiB",
   512: "512MiB",
@@ -129,18 +138,7 @@ export function parseMemory(raw?: string): MemoryOption | undefined {
   if (!raw) {
     return undefined;
   }
-  const trimmed = raw.trim();
-  let mb: number;
-  if (/^\d+(?:\.\d+)?(?:Gi|GiB|G|GB)$/i.test(trimmed)) {
-    mb = parseFloat(trimmed) * 1024;
-  } else if (/^\d+(?:\.\d+)?(?:Mi|MiB|M|MB)?$/i.test(trimmed)) {
-    mb = parseFloat(trimmed);
-  } else {
-    return undefined;
-  }
-  if (isNaN(mb) || mb <= 0) {
-    return undefined;
-  }
+  const mb = memoryToMb(raw);
   return MB_TO_MEMORY_OPTION[mb];
 }
 
