@@ -1,1 +1,2 @@
 - [fixed] Clean up managed service accounts when opting out of declarative security alongside a filtered codebase deploy.
+- [fixed] Keep scheduling queued tasks after a task exhausts its retries instead of leaving the rest of the queue unscheduled.
