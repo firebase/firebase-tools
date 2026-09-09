@@ -2,3 +2,10 @@
   - [fixed] Bug fixes and performance improvements for the PostgreSQL emulator.
 - [fixed] Clean up managed service accounts when all functions in a codebase are deleted.
 - Added `pageToken` support to the Crashlytics `get_report` MCP tool, so agents can page through report groups using the `nextPageToken` from a previous response.
+- Corrected Cloud Tasks emulator Queue ID validation error message to match Cloud Tasks naming rules.
+- Repurposed the local `dataconnect_execute` tool as `dataconnect_execute_in_emulator` to run GraphQL queries and mutations on the local SQL Connect emulator.
+- Configured the SQL Connect (Data Connect) OneMCP proxy server in `ONEMCP_SERVERS` with a selection of remote tools.
+- Configured the `Mcp-Param-Region` HTTP header workaround in `OneMcpServer` for MCP routing support.
+- [fixed] Retry IAM policy updates on replication lag and concurrency conflicts.
+- [fixed] Prevent deadlock and stale source tokens during Cloud Functions deployment retries.
+- [fixed] Retry Cloud Functions creation on HTTP 400 service account propagation errors.
