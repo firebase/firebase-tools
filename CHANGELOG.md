@@ -1,1 +1,7 @@
 - [changed] Improve formatting and user experience for Cloud Functions parameter and secret prompts.
+- [fixed] Fail fast with an actionable error and remediation instructions when declarative security APIs (IAM and Cloud Resource Manager) are disabled on the project.
+- Updated Pub/Sub emulator to version 0.8.36.
+- [fixed] Clean up managed service accounts when opting out of declarative security alongside a filtered codebase deploy.
+- ext:uninstall --immediate now warns about secrets bound to the extension that will be deleted and offers a migration path.
+- [fixed] Generate deterministic unsalted ETags for declarative security roles.
+- Added an optional `maxFrames` parameter to the `crashlytics_list_events` and `crashlytics_batch_get_events` MCP tools to include more than 20 stack frames per trace.
