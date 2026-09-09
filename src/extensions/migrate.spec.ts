@@ -358,6 +358,12 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
     });
   });
   describe("ensureInstanceUpToDate", () => {
+    let confirmStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      confirmStub = sandbox.stub(prompt, "confirm").resolves(true);
+    });
+
     it("should return original instance when instance is already up to date", async () => {
       sandbox.stub(extensionsApi, "getExtensionVersion").resolves({
         name: "firebase/firestore-send-email@0.1.14",
@@ -368,9 +374,10 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       const updated = await migrateModule.ensureInstanceUpToDate("test-project", mockInstance1);
 
       expect(updated).to.equal(mockInstance1);
+      expect(confirmStub).to.not.have.been.called;
     });
 
-    it("should automatically attempt upgrade when a newer version exists", async () => {
+    it("should prompt user and upgrade when a newer version exists and user confirms", async () => {
       sandbox.stub(extensionsApi, "getExtension").resolves({
         latestVersion: "0.1.15",
       } as unknown as Extension);
@@ -384,7 +391,67 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
 
       await migrateModule.ensureInstanceUpToDate("test-project", mockInstance1);
 
+      expect(confirmStub).to.have.been.calledWithMatch({
+        message: sinon.match(/on version 0.1.18, but the latest version is 0.1.15/),
+        default: true,
+      });
       expect(getExtVersionStub).to.have.been.called;
+    });
+
+    it("should throw FirebaseError with instructions to rerun with --force if user declines upgrade", async () => {
+      confirmStub.resolves(false);
+      sandbox.stub(extensionsApi, "getExtension").resolves({
+        latestVersion: "0.1.19",
+      } as unknown as Extension);
+
+      await expect(
+        migrateModule.ensureInstanceUpToDate("test-project", mockInstance1),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        /Extension instance email-1 must be upgraded to version 0.1.19 before migrating. To bypass this requirement and migrate with the current version, rerun with --force./,
+      );
+    });
+
+    it("should bypass upgrade with a warning if --force is specified", async () => {
+      sandbox.stub(extensionsApi, "getExtension").resolves({
+        latestVersion: "0.1.19",
+      } as unknown as Extension);
+      const updateSpy = sandbox.spy(updateHelper, "update");
+
+      const result = await migrateModule.ensureInstanceUpToDate("test-project", mockInstance1, {
+        force: true,
+      });
+
+      expect(result).to.equal(mockInstance1);
+      expect(confirmStub).to.not.have.been.called;
+      expect(updateSpy).to.not.have.been.called;
+    });
+
+    it("should resolve currentVersion from instance.config.extensionVersion if spec version is missing", async () => {
+      const instanceWithoutSpec: ExtensionInstance = {
+        ...mockInstance1,
+        config: {
+          ...mockInstance1.config,
+          extensionVersion: "0.1.14",
+          source: undefined,
+        },
+      };
+      sandbox.stub(extensionsApi, "getExtension").resolves({
+        latestVersion: "0.1.15",
+      } as unknown as Extension);
+      sandbox.stub(extensionsApi, "getExtensionVersion").resolves({
+        name: "firebase/firestore-send-email@0.1.15",
+        ref: "firebase/firestore-send-email@0.1.15",
+        spec: { name: "firestore-send-email", version: "0.1.15", params: [] },
+      } as unknown as ExtensionVersion);
+      sandbox.stub(updateHelper, "update").resolves({} as unknown as ExtensionInstance);
+      sandbox.stub(extensionsApi, "getInstance").resolves(mockInstance1);
+
+      await migrateModule.ensureInstanceUpToDate("test-project", instanceWithoutSpec);
+
+      expect(confirmStub).to.have.been.calledWithMatch({
+        message: sinon.match(/on version 0.1.14, but the latest version is 0.1.15/),
+      });
     });
 
     it("should merge systemParams into currentParams when prompting for new parameters", async () => {
@@ -441,7 +508,7 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
     });
 
     it("should prompt user when extension reference cannot be parsed and throw if user declines", async () => {
-      sandbox.stub(prompt, "confirm").resolves(false);
+      confirmStub.resolves(false);
       const invalidRefInstance = {
         ...mockInstance1,
         config: { ...mockInstance1.config, extensionRef: "invalid-ref-format" },
@@ -453,7 +520,7 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
     });
 
     it("should prompt user when extension reference cannot be parsed and continue if user accepts", async () => {
-      sandbox.stub(prompt, "confirm").resolves(true);
+      confirmStub.resolves(true);
       const invalidRefInstance = {
         ...mockInstance1,
         config: { ...mockInstance1.config, extensionRef: "invalid-ref-format" },
@@ -707,7 +774,7 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
           message: sinon.match(
             /Functions kit email-1 successfully deployed.*uninstall extension instance email-1/,
           ),
-          default: true,
+          default: false,
         }),
       );
 
