@@ -298,6 +298,9 @@ export abstract class Throttler<T, R> {
     }
     this.cleanupTask(cursorIndex);
     this.finish(error);
+    // A failed task frees its concurrency slot just like a fulfilled one. Without this,
+    // tasks still waiting behind it are never scheduled and their promises never settle.
+    this.process();
   }
 
   private cleanupTask(cursorIndex: number): void {

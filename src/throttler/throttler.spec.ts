@@ -398,6 +398,41 @@ const throttlerTest = (ThrottlerConstructor: ThrottlerConstructorType): void => 
     expect(q.retried).to.equal(1);
     expect(q.total).to.equal(2);
   });
+  it("should keep scheduling waiting tasks after a task fails", async () => {
+    const handler = sinon.stub();
+    handler.withArgs(1).rejects(TEST_ERROR);
+    handler.withArgs(2).resolves(2);
+    const q = new ThrottlerConstructor({
+      handler,
+      concurrency: 1,
+      retries: 0,
+    });
+
+    const first = q.run(1);
+    const second = q.run(2);
+
+    let err;
+    try {
+      await first;
+    } catch (e: any) {
+      err = e;
+    }
+    expect(err).to.be.instanceOf(RetriesExhaustedError);
+
+    // Task 2 was queued behind task 1. If the throttler stops scheduling after a
+    // failure, this promise never settles.
+    const result = await Promise.race([
+      second,
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("task 2 was never scheduled")), 100),
+      ),
+    ]);
+    expect(result).to.equal(2);
+    expect(handler.callCount).to.equal(2);
+    expect(q.complete).to.equal(2);
+    expect(q.success).to.equal(1);
+    expect(q.errored).to.equal(1);
+  });
 };
 
 describe("Throttler", () => {
