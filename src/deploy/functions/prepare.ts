@@ -87,7 +87,7 @@ export async function checkDeclarativeSecurityApisEnabled(
       try {
         return await ensureApiEnabled.check(projectId, api, "functions", /* silent= */ true);
       } catch (err) {
-        logger.debug(`Silence error checking enablement for API ${api}: ${err}`);
+        logger.debug(`Silence error checking enablement for API ${api}: ${String(err)}`);
         return true;
       }
     }),

@@ -1698,18 +1698,18 @@ describe("prepare", () => {
         }
 
         expect(error).to.be.instanceOf(FirebaseError);
-        expect(error!.message).to.include(
+        expect(error?.message).to.include(
           'Cannot deploy functions with declarative security in codebase "default"',
         );
-        expect(error!.message).to.include("iam.googleapis.com");
-        expect(error!.message).to.include("cloudresourcemanager.googleapis.com");
-        expect(error!.message).to.include(
+        expect(error?.message).to.include("iam.googleapis.com");
+        expect(error?.message).to.include("cloudresourcemanager.googleapis.com");
+        expect(error?.message).to.include(
           "gcloud services enable iam.googleapis.com cloudresourcemanager.googleapis.com --project test-project",
         );
-        expect(error!.message).to.include(
+        expect(error?.message).to.include(
           "https://console.cloud.google.com/apis/library/iam.googleapis.com?project=test-project",
         );
-        expect(error!.message).to.include(
+        expect(error?.message).to.include(
           "https://console.cloud.google.com/apis/library/cloudresourcemanager.googleapis.com?project=test-project",
         );
         expect(testIamPermissionsStub).to.not.have.been.called;
@@ -1738,12 +1738,12 @@ describe("prepare", () => {
         }
 
         expect(error).to.be.instanceOf(FirebaseError);
-        expect(error!.message).to.include("iam.googleapis.com");
-        expect(error!.message).to.not.include("cloudresourcemanager.googleapis.com");
-        expect(error!.message).to.include(
+        expect(error?.message).to.include("iam.googleapis.com");
+        expect(error?.message).to.not.include("cloudresourcemanager.googleapis.com");
+        expect(error?.message).to.include(
           "gcloud services enable iam.googleapis.com --project test-project",
         );
-        expect(error!.message).to.include(
+        expect(error?.message).to.include(
           "https://console.cloud.google.com/apis/library/iam.googleapis.com?project=test-project",
         );
       });
@@ -1771,12 +1771,12 @@ describe("prepare", () => {
         }
 
         expect(error).to.be.instanceOf(FirebaseError);
-        expect(error!.message).to.include("cloudresourcemanager.googleapis.com");
-        expect(error!.message).to.not.include("iam.googleapis.com");
-        expect(error!.message).to.include(
+        expect(error?.message).to.include("cloudresourcemanager.googleapis.com");
+        expect(error?.message).to.not.include("iam.googleapis.com");
+        expect(error?.message).to.include(
           "gcloud services enable cloudresourcemanager.googleapis.com --project test-project",
         );
-        expect(error!.message).to.include(
+        expect(error?.message).to.include(
           "https://console.cloud.google.com/apis/library/cloudresourcemanager.googleapis.com?project=test-project",
         );
       });
@@ -1833,7 +1833,6 @@ describe("prepare", () => {
         );
         expect(e.serviceAccount).to.be.null;
       });
-
     });
   });
 });
