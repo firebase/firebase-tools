@@ -3,20 +3,21 @@ import * as sinon from "sinon";
 import { batch_get_events, list_events } from "./events";
 import * as crashlyticsEvents from "../../../crashlytics/events";
 import { Event, Frame } from "../../../crashlytics/types";
+import { McpContext } from "../../types";
 
 describe("crashlytics events tools", () => {
   const appId = "1:123456789:android:abcdef";
-  const ctx = {} as any;
+  const ctx = { projectId: "test-project" } as McpContext;
 
   function eventWithFrames(count: number): Event {
     const frames: Frame[] = Array.from({ length: count }, (_, i) => ({
       symbol: `frame${i + 1}`,
       file: "Main.kt",
       line: i + 1,
-    })) as Frame[];
+    }));
     return {
       exceptions: [{ type: "java.lang.RuntimeException", exceptionMessage: "boom", frames }],
-    } as unknown as Event;
+    };
   }
 
   afterEach(() => {
