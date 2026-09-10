@@ -433,6 +433,21 @@ const throttlerTest = (ThrottlerConstructor: ThrottlerConstructorType): void => 
     expect(q.success).to.equal(1);
     expect(q.errored).to.equal(1);
   });
+  it("should release waiters once they are settled", async () => {
+    const handler = sinon.stub().rejects(TEST_ERROR);
+    const q = new ThrottlerConstructor({ handler, retries: 0 });
+    q.add(1);
+    q.close();
+
+    let err;
+    try {
+      await q.wait();
+    } catch (e: any) {
+      err = e;
+    }
+    expect(err).to.be.instanceOf(RetriesExhaustedError);
+    expect(q.waits).to.have.length(0);
+  });
 };
 
 describe("Throttler", () => {
