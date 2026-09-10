@@ -412,6 +412,7 @@ export async function updateFunction(
         queryParams: {
           updateMask: fieldMasks.join(","),
         },
+        retryOnPrematureClose: false,
       },
     );
     return {
