@@ -585,23 +585,33 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
     (e) => "value" in e,
   ) as [PlaintextEnvVar[], SecretEnvVar[]];
 
-  const id =
+  const platform =
+    service.labels?.[CLIENT_NAME_LABEL] === "cloud-functions" ||
+    service.labels?.[CLIENT_NAME_LABEL] === "cloudfunctions"
+      ? "gcfv2"
+      : "run";
+
+  const rawId =
     metadata.functionId ||
     service.annotations?.[FUNCTION_ID_ANNOTATION] ||
     service.annotations?.[FUNCTION_TARGET_ANNOTATION] ||
     env.find((e) => e.name === FUNCTION_TARGET_ENV)?.value ||
     svcId;
+  // GCF v2 API normalizes function IDs by replacing dots with dashes (e.g. 'v2.helloWorld'
+  // -> 'v2-helloWorld') because GCF resource names do not allow dots.
+  // We must normalize IDs loaded from Cloud Run services for GCF v2 to match this behavior,
+  // preventing duplicate endpoints in the existing backend. We do NOT normalize for 'run'
+  // platform (like Dart functions) because their local specs preserve the original IDs.
+  // Note: GCF v2 does support underscores, so we only normalize dots.
+  const id = (platform === "gcfv2" ? rawId?.replace(/\./g, "-") : rawId) ?? "";
+
   const memory = mebibytes(service.template.containers![0]!.resources!.limits!.memory!);
   if (!backend.isValidMemoryOption(memory)) {
     logger.debug("Converting a service to an endpoint with an invalid memory option", memory);
   }
   const cpu = Number(service.template.containers![0]!.resources!.limits!.cpu);
   const endpoint: backend.Endpoint = {
-    platform:
-      service.labels?.[CLIENT_NAME_LABEL] === "cloud-functions" ||
-      service.labels?.[CLIENT_NAME_LABEL] === "cloudfunctions"
-        ? "gcfv2"
-        : "run",
+    platform,
     id,
     project,
     labels: { ...service.labels, "deployment-tool": "cli-firebase" },
