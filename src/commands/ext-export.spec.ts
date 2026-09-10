@@ -1,3 +1,4 @@
+import * as mockfs from "mock-fs";
 import { expect } from "chai";
 import * as sinon from "sinon";
 
@@ -60,5 +61,85 @@ describe("ext:export secret ejection", () => {
       .resolves({ success: ["foo/bar"], fail: ["baz/qux"] });
     await expect(exportCmd.handleSecretEjection(fakeOptions(true), fakeInstance())).to.not.be
       .rejected;
+  });
+});
+
+describe("hasNonEmptyProjectEnv", () => {
+  afterEach(() => {
+    mockfs.restore();
+  });
+
+  it("returns false if no env files exist in the directory", () => {
+    mockfs({
+      "/project/config": {},
+    });
+    const opts = {
+      functionsSource: "my-inst",
+      configDir: "/project/config",
+      projectId: "my-proj",
+      projectDir: "/project",
+    };
+    expect(exportCmd.hasNonEmptyProjectEnv(opts)).to.be.false;
+  });
+
+  it("returns false if .env.<projectId> exists but has 0 bytes (e.g. from kits:install --no-configure)", () => {
+    mockfs({
+      "/project/config": {
+        ".env.my-proj": "",
+      },
+    });
+    const opts = {
+      functionsSource: "my-inst",
+      configDir: "/project/config",
+      projectId: "my-proj",
+      projectDir: "/project",
+    };
+    expect(exportCmd.hasNonEmptyProjectEnv(opts)).to.be.false;
+  });
+
+  it("returns true if .env.<projectId> exists with non-zero size", () => {
+    mockfs({
+      "/project/config": {
+        ".env.my-proj": "FOO=bar\n",
+      },
+    });
+    const opts = {
+      functionsSource: "my-inst",
+      configDir: "/project/config",
+      projectId: "my-proj",
+      projectDir: "/project",
+    };
+    expect(exportCmd.hasNonEmptyProjectEnv(opts)).to.be.true;
+  });
+
+  it("returns true if .env.<projectAlias> exists with non-zero size", () => {
+    mockfs({
+      "/project/config": {
+        ".env.staging": "FOO=bar\n",
+      },
+    });
+    const opts = {
+      functionsSource: "my-inst",
+      configDir: "/project/config",
+      projectId: "my-proj",
+      projectAlias: "staging",
+      projectDir: "/project",
+    };
+    expect(exportCmd.hasNonEmptyProjectEnv(opts)).to.be.true;
+  });
+
+  it("ignores non-project .env file", () => {
+    mockfs({
+      "/project/config": {
+        ".env": "FOO=bar\n",
+      },
+    });
+    const opts = {
+      functionsSource: "my-inst",
+      configDir: "/project/config",
+      projectId: "my-proj",
+      projectDir: "/project",
+    };
+    expect(exportCmd.hasNonEmptyProjectEnv(opts)).to.be.false;
   });
 });
