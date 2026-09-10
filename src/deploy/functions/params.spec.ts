@@ -390,7 +390,12 @@ describe("resolveParams", () => {
           },
         },
       ];
-      const resolved = await params.resolveParams(paramsToResolve, fakeConfig, {}, "default");
+      const resolved = await params.resolveParams({
+        params: paramsToResolve,
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "default",
+      });
       expect(select.firstCall.args[0].default).to.equal("false");
       expect(resolved.paramValues.MAKE_PUBLIC).to.deep.equal(
         new params.ParamValue("false", false, { string: false, number: false, boolean: true }),
@@ -418,7 +423,12 @@ describe("resolveParams", () => {
           },
         },
       ];
-      const resolved = await params.resolveParams(paramsToResolve, fakeConfig, {}, "default");
+      const resolved = await params.resolveParams({
+        params: paramsToResolve,
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "default",
+      });
       expect(select.firstCall.args[0].default).to.equal("2");
       expect(resolved.paramValues.REPLICAS).to.deep.equal(
         new params.ParamValue("2", false, { string: false, number: true, boolean: false }),
