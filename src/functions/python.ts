@@ -65,14 +65,22 @@ export function killProcessTree(pid: number): void {
   if (IS_WINDOWS) {
     // taskkill /T walks the process tree by parent pid, so it doesn't rely on
     // the process group trick used below.
-    cp.spawnSync("taskkill", ["/pid", pid.toString(), "/T", "/F"]);
+    const result = cp.spawnSync("taskkill", ["/pid", pid.toString(), "/T", "/F"]);
+    if (result.error || result.status !== 0) {
+      logger.debug(
+        `taskkill on pid ${pid} exited with ${String(result.status)}: ` +
+          `${result.error?.message ?? result.stderr?.toString().trim() ?? ""}`,
+      );
+    }
     return;
   }
   try {
     // A negative pid signals the whole process group rather than just `pid`.
     process.kill(-pid, "SIGKILL");
-  } catch (e) {
-    // Group may already be gone (process exited on its own).
+  } catch (e: unknown) {
+    // Usually ESRCH: the group exited on its own. A real failure such as EPERM
+    // only ever surfaces as an orphaned server much later, so log it here.
+    logger.debug(`Failed to kill process group ${pid}: ${getErrMsg(e)}`);
   }
 }
 

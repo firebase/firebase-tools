@@ -7,6 +7,7 @@ import * as sinon from "sinon";
 
 import { killProcessTree, trackVirtualEnvChild, untrackVirtualEnvChild } from "./python";
 import { IS_WINDOWS } from "../utils";
+import { logger } from "../logger";
 
 // Process groups and POSIX signals do not exist on Windows, where killProcessTree
 // shells out to taskkill instead.
@@ -38,6 +39,15 @@ describe("killProcessTree", () => {
     killStub.throws(esrch);
 
     expect(() => killProcessTree(4242)).to.not.throw();
+  });
+
+  itPosix("records why a kill failed, since the only other symptom is an orphan", () => {
+    const debugStub = sandbox.stub(logger, "debug");
+    killStub.throws(Object.assign(new Error("kill EPERM"), { code: "EPERM" }));
+
+    killProcessTree(4242);
+
+    expect(debugStub).to.have.been.calledWithMatch(/EPERM/);
   });
 
   for (const pid of [0, -1, NaN]) {
