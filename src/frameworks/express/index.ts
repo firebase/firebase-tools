@@ -1,4 +1,4 @@
-import { execSync } from "child_process";
+import * as childProcess from "child_process";
 import { copy, pathExists } from "fs-extra";
 import { mkdir, readFile } from "fs/promises";
 import { join } from "path";
@@ -29,7 +29,7 @@ export async function discover(dir: string) {
 }
 
 export async function build(cwd: string): Promise<BuildResult> {
-  execSync(`npm run build`, { stdio: "inherit", cwd });
+  childProcess.execSync(`npm run build`, { stdio: "inherit", cwd });
   const wantsBackend = !!(await getBootstrapScript(cwd));
   return { wantsBackend };
 }
@@ -100,7 +100,7 @@ export async function ɵcodegenFunctionsDirectory(root: string, dest: string) {
 
   const { packageJson } = await getConfig(root);
 
-  const packResults = execSync(`npm pack ${root} --json`, { cwd: dest });
+  const packResults = childProcess.execFileSync("npm", ["pack", root, "--json"], { cwd: dest });
   const npmPackResults = JSON.parse(packResults.toString());
   const matchingPackResult = npmPackResults.find((it: any) => it.name === packageJson.name);
   const { filename } = matchingPackResult;
