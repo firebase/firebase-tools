@@ -10,6 +10,10 @@ const BINDING = {
 };
 
 describe("iam", () => {
+  afterEach(() => {
+    nock.cleanAll();
+  });
+
   describe("mergeBindings", () => {
     it("should not update the policy when the bindings are present", () => {
       const policy = {
@@ -106,10 +110,6 @@ describe("iam", () => {
     const EMAIL = `${ACCOUNT_ID}@${PROJECT_ID}.iam.gserviceaccount.com`;
     const DISPLAY_NAME = "Test Account";
     const DESCRIPTION = "Test Description";
-
-    afterEach(() => {
-      nock.cleanAll();
-    });
 
     describe("createServiceAccount", () => {
       it("should create a service account", async () => {

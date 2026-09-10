@@ -1,24 +1,8 @@
 import { logger } from "../logger";
+import { backoff } from "../utils";
 import RetriesExhaustedError from "./errors/retries-exhausted-error";
 import TimeoutError from "./errors/timeout-error";
 import TaskError from "./errors/task-error";
-
-/**
- * Creates a promise to wait for the nth backoff.
- */
-export function backoff(retryNumber: number, delay: number, maxDelay: number): Promise<void> {
-  return new Promise((resolve: () => void) => {
-    setTimeout(resolve, timeToWait(retryNumber, delay, maxDelay));
-  });
-}
-
-// Exported for unit testing.
-/**
- * time to wait between backoffs
- */
-export function timeToWait(retryNumber: number, delay: number, maxDelay: number): number {
-  return Math.min(delay * Math.pow(2, retryNumber), maxDelay);
-}
 
 function DEFAULT_HANDLER<R>(task: any): Promise<R> {
   return (task as () => Promise<R>)();
