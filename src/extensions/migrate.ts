@@ -26,6 +26,7 @@ export interface MigrateOptions {
   package?: string;
   extInstance?: string;
   extension?: string;
+  confirmBeforeUpdate?: boolean;
   nonInteractive?: boolean;
   force?: boolean;
 }
@@ -375,10 +376,30 @@ export async function ensureInstanceUpToDate(
     return instance;
   }
 
-  logLabeledBullet(
-    logPrefix,
-    `Upgrading extension instance ${clc.bold(instanceId)} from version ${clc.bold(currentVersion)} to ${clc.bold(latestVersion)} to ensure a smooth migration...`,
-  );
+  if (options?.confirmBeforeUpdate) {
+    const allowUpdate = await confirm({
+      message: `Extension update available: ${clc.bold(currentVersion)} to ${clc.bold(latestVersion)}. Update ${clc.bold(instanceId)}?`,
+      default: true,
+      nonInteractive: options?.nonInteractive,
+    });
+    if (!allowUpdate) {
+      if (options.force) {
+        logLabeledWarning(
+          logPrefix,
+          "Migrating an out-of-date Extension instance into a functions kit could result in instability.",
+        );
+        return instance;
+      }
+      throw new FirebaseError(
+        "Migrating an out-of-date Extension instance into a functions kit could result in instability. Run with --force if you're sure you want to do this.",
+      );
+    }
+  } else {
+    logLabeledBullet(
+      logPrefix,
+      `Upgrading extension instance ${clc.bold(instanceId)} from version ${clc.bold(currentVersion)} to ${clc.bold(latestVersion)} to ensure a smooth migration...`,
+    );
+  }
 
   const targetRef = `${baseRef}@${latestVersion}`;
   let finalParams: Record<string, string> = {
