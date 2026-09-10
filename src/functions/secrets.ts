@@ -237,8 +237,10 @@ export async function pruneSecrets(
   const pruneKey = (name: string, version: string) => `${name}@${version}`;
   const prunedSecrets: Set<string> = new Set();
 
-  // Collect all Firebase managed secret versions
-  const haveSecrets = await listSecrets(projectId, `labels.${FIREBASE_MANAGED}=true`);
+  // Collect all Firebase managed secret versions. Managed secrets carry either
+  // firebase-managed=true (older) or firebase-managed=functions, so match with
+  // isFunctionsManaged; a single-value server-side label filter misses one of them.
+  const haveSecrets = (await listSecrets(projectId)).filter(isFunctionsManaged);
   for (const secret of haveSecrets) {
     const versions = await listSecretVersions(projectId, secret.name, `NOT state: DESTROYED`);
     for (const version of versions) {
