@@ -1,4 +1,6 @@
 import { expect } from "chai";
+import { ChildProcess } from "child_process";
+import { EventEmitter } from "events";
 import * as fs from "fs/promises";
 import * as yaml from "yaml";
 import * as sinon from "sinon";
@@ -33,6 +35,24 @@ const YAML_OBJ = {
 const YAML_TEXT = yaml.stringify(YAML_OBJ);
 
 const BUILD: build.Build = build.of({ id: ENDPOINT });
+
+const TIMEOUT_ENV_VAR = "FUNCTIONS_DISCOVERY_TIMEOUT";
+let originalTimeoutEnv: string | undefined;
+
+// File level: an ambient FUNCTIONS_DISCOVERY_TIMEOUT changes the timeout every
+// detectFromPort test below relies on, not just the ones that set it.
+beforeEach(() => {
+  originalTimeoutEnv = process.env[TIMEOUT_ENV_VAR];
+  delete process.env[TIMEOUT_ENV_VAR];
+});
+
+afterEach(() => {
+  if (originalTimeoutEnv === undefined) {
+    delete process.env[TIMEOUT_ENV_VAR];
+  } else {
+    process.env[TIMEOUT_ENV_VAR] = originalTimeoutEnv;
+  }
+});
 
 describe("yamlToBuild", () => {
   it("Accepts a valid v1alpha1 spec", () => {
@@ -141,7 +161,7 @@ describe("detectFromPort", () => {
 
     const serverExited = Promise.reject(
       new FirebaseError("The functions process exited with code 1.\n\nOut of memory"),
-    ) as Promise<never>;
+    );
     serverExited.catch(() => {
       // Raced below; this only keeps the rejection from going unhandled first.
     });
@@ -154,24 +174,119 @@ describe("detectFromPort", () => {
   });
 });
 
+describe("watchDiscoveryProcess", () => {
+  function fakeChild(): ChildProcess {
+    const child = new EventEmitter() as EventEmitter & { stderr: EventEmitter };
+    child.stderr = new EventEmitter();
+    return child as unknown as ChildProcess;
+  }
+
+  /** Whether a promise is still unsettled, which is how a healthy server looks. */
+  async function isPending(p: Promise<unknown>): Promise<boolean> {
+    const pending = Symbol("pending");
+    const raced = await Promise.race([
+      p.then(
+        () => "settled",
+        () => "settled",
+      ),
+      new Promise((resolve) => setTimeout(() => resolve(pending), 50)),
+    ]);
+    return raced === pending;
+  }
+
+  it("reports the exit code and stderr of a crash", async () => {
+    const child = fakeChild();
+    const watched = discovery.watchDiscoveryProcess(child);
+
+    child.stderr?.emit("data", Buffer.from("FATAL ERROR: JavaScript heap out of memory\n"));
+    child.emit("exit", 134, null);
+    child.emit("close", 134, null);
+
+    await expect(watched.serverExited).to.eventually.be.rejectedWith(
+      FirebaseError,
+      /exited with code 134[\s\S]*heap out of memory/,
+    );
+  });
+
+  it("reports the signal when the process is killed", async () => {
+    const child = fakeChild();
+    const watched = discovery.watchDiscoveryProcess(child);
+
+    child.emit("close", null, "SIGKILL");
+
+    await expect(watched.serverExited).to.eventually.be.rejectedWith(FirebaseError, /SIGKILL/);
+  });
+
+  it("reports a failed spawn, which emits close but never exit", async () => {
+    const child = fakeChild();
+    const watched = discovery.watchDiscoveryProcess(child);
+
+    child.emit("error", new Error("spawn /no/such/binary ENOENT"));
+    child.emit("close", -2, null);
+
+    await expect(watched.serverExited).to.eventually.be.rejectedWith(
+      FirebaseError,
+      /failed to start: spawn \/no\/such\/binary ENOENT/,
+    );
+    await expect(watched.serverExited).to.eventually.be.rejectedWith(FirebaseError, /^((?!-2).)*$/);
+  });
+
+  it("quotes only the tail of a large stderr", async () => {
+    const child = fakeChild();
+    const watched = discovery.watchDiscoveryProcess(child);
+
+    child.stderr?.emit("data", Buffer.from("x".repeat(64 * 1024)));
+    child.stderr?.emit("data", Buffer.from("\nthe part that explains it"));
+    child.emit("close", 1, null);
+
+    const err = await watched.serverExited.catch((e: FirebaseError) => e);
+    expect(err.message).to.match(/the part that explains it$/);
+    expect(err.message.length).to.be.lessThan(9 * 1024);
+  });
+
+  it("stays silent about an exit once disarmed", async () => {
+    const child = fakeChild();
+    const watched = discovery.watchDiscoveryProcess(child);
+
+    watched.disarm();
+    child.emit("close", 0, null);
+
+    expect(await isPending(watched.serverExited)).to.be.true;
+  });
+
+  it("never settles while the server is healthy", async () => {
+    const watched = discovery.watchDiscoveryProcess(fakeChild());
+
+    expect(await isPending(watched.serverExited)).to.be.true;
+    expect(watched.hasEnded()).to.be.false;
+  });
+
+  it("ends on exit without waiting for close", async () => {
+    const child = fakeChild();
+    const watched = discovery.watchDiscoveryProcess(child);
+
+    child.emit("exit", 0, null);
+
+    await watched.ended;
+    expect(watched.hasEnded()).to.be.true;
+  });
+
+  it("ends rather than rejecting when the spawn failed", async () => {
+    const child = fakeChild();
+    const watched = discovery.watchDiscoveryProcess(child);
+
+    child.emit("error", new Error("spawn EACCES"));
+    child.emit("close", -13, null);
+
+    await watched.ended;
+    expect(watched.hasEnded()).to.be.true;
+  });
+});
+
 describe("getFunctionDiscoveryTimeout", () => {
-  const ENV_VAR = "FUNCTIONS_DISCOVERY_TIMEOUT";
-  let original: string | undefined;
-
-  beforeEach(() => {
-    original = process.env[ENV_VAR];
-  });
-
-  afterEach(() => {
-    if (original === undefined) {
-      delete process.env[ENV_VAR];
-    } else {
-      process.env[ENV_VAR] = original;
-    }
-  });
+  const ENV_VAR = TIMEOUT_ENV_VAR;
 
   it("returns 0 when unset", () => {
-    delete process.env[ENV_VAR];
     expect(discovery.getFunctionDiscoveryTimeout()).to.equal(0);
   });
 
@@ -193,6 +308,23 @@ describe("getFunctionDiscoveryTimeout", () => {
   it("ignores a value it cannot parse", () => {
     process.env[ENV_VAR] = "one minute";
     expect(discovery.getFunctionDiscoveryTimeout()).to.equal(0);
+  });
+
+  it("ignores a negative value rather than timing out instantly", () => {
+    process.env[ENV_VAR] = "-1";
+    expect(discovery.getFunctionDiscoveryTimeout()).to.equal(0);
+  });
+
+  it("parses once, so an emulator's per-worker calls do not repeat the warning", () => {
+    const warn = sinon.stub(logger, "warn");
+    try {
+      process.env[ENV_VAR] = "45000";
+      expect(discovery.getFunctionDiscoveryTimeout()).to.equal(45_000_000);
+      expect(discovery.getFunctionDiscoveryTimeout()).to.equal(45_000_000);
+      expect(warn).to.have.been.calledOnce;
+    } finally {
+      warn.restore();
+    }
   });
 
   it("warns when a bare value looks like milliseconds", () => {

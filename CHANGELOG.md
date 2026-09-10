@@ -1,4 +1,4 @@
 - [fixed] Clean up managed service accounts when opting out of declarative security alongside a filtered codebase deploy.
-- [fixed] Function discovery now reports the error from a discovery server that crashed while loading, instead of reporting a timeout (#7775).
+- [fixed] Function discovery for Node.js now reports the error from a discovery server that crashed while loading, instead of reporting a timeout (#7775).
 - [fixed] The function discovery timeout error now names `FUNCTIONS_DISCOVERY_TIMEOUT` and reports the elapsed time in seconds, the unit the variable accepts.
 - [fixed] `FUNCTIONS_DISCOVERY_TIMEOUT` no longer reads a millisecond value as seconds, and now accepts an explicit `s` or `ms` suffix. Values it cannot parse, including negative numbers and forms such as `1e3`, `.5` and `0x10`, are ignored with a warning so the default timeout applies.

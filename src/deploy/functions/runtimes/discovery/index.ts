@@ -9,6 +9,7 @@ import * as build from "../../build";
 import { Runtime } from "../supported";
 import * as v1alpha1 from "./v1alpha1";
 import { FirebaseError } from "../../../../error";
+import { sleep } from "../../../../utils";
 
 const TIMEOUT_OVERRIDE_ENV_VAR = "FUNCTIONS_DISCOVERY_TIMEOUT";
 
@@ -22,7 +23,13 @@ const RETRY_DELAY_MS = 100;
 // timeout rather than extending it.
 const SUSPICIOUS_SECONDS = 600;
 
-const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+// How much of a crashed server's stderr to quote back. The output has already been
+// streamed to the user, so only enough to identify the failure is worth repeating.
+const STDERR_TAIL_BYTES = 8 * 1024;
+
+// Keyed by the raw value so the warnings below are emitted once rather than once
+// per emulator worker, each of which asks for the timeout separately.
+const timeoutCache = new Map<string, number>();
 
 /**
  * The discovery timeout override, in ms, or 0 if unset.
@@ -36,7 +43,16 @@ export function getFunctionDiscoveryTimeout(): number {
   if (!raw) {
     return 0;
   }
+  const cached = timeoutCache.get(raw);
+  if (cached !== undefined) {
+    return cached;
+  }
+  const parsed = parseDiscoveryTimeout(raw);
+  timeoutCache.set(raw, parsed);
+  return parsed;
+}
 
+function parseDiscoveryTimeout(raw: string): number {
   const match = /^(\d+(?:\.\d+)?)\s*(ms|s)?$/i.exec(raw);
   if (!match) {
     logger.warn(
@@ -72,6 +88,104 @@ function timeoutMessage(timeoutMs: number): string {
     `(in seconds, e.g. ${TIMEOUT_OVERRIDE_ENV_VAR}=60). ` +
     `See https://firebase.google.com/docs/functions/tips#avoid_deployment_timeouts_during_initialization`
   );
+}
+
+/** A discovery server process being watched for an early exit. */
+export interface WatchedProcess {
+  /**
+   * Rejects if the process ends before disarm() is called, and otherwise never
+   * settles. Discovery races this so that a crash during module load is reported
+   * as itself rather than as a timeout.
+   */
+  serverExited: Promise<never>;
+  /** Resolves once the process has ended. Never rejects. */
+  ended: Promise<void>;
+  /** Whether the process has already ended. */
+  hasEnded: () => boolean;
+  /** Stops treating an exit as a crash, for once we have asked the server to quit. */
+  disarm: () => void;
+}
+
+function serverExitedError(
+  spawnError: Error | undefined,
+  code: number | null,
+  signal: NodeJS.Signals | null,
+  stderr: string,
+): FirebaseError {
+  let what: string;
+  if (spawnError) {
+    what = `The functions process failed to start: ${spawnError.message}`;
+  } else if (code === null) {
+    what = `The functions process was killed by signal ${String(signal)} before it could be analyzed.`;
+  } else {
+    what = `The functions process exited with code ${code} before it could be analyzed.`;
+  }
+  const details = stderr.trim();
+  return new FirebaseError(
+    `User code failed to load. Cannot determine backend specification. ${what}` +
+      (details ? `\n\n${details}` : ""),
+    { original: spawnError },
+  );
+}
+
+/**
+ * Watches a discovery server so that a process which dies while loading user code
+ * is reported as the crash it is rather than as a timeout.
+ *
+ * Listeners are attached here, at spawn time, rather than during shutdown: none of
+ * these events replay, so a server that died before shutdown began would otherwise
+ * leave a listener that can never fire.
+ */
+export function watchDiscoveryProcess(childProcess: ChildProcess): WatchedProcess {
+  // Only the tail is kept. Callers already stream stderr to the user as it arrives,
+  // so this copy exists to attach the end of the output to the error.
+  let stderr = "";
+  childProcess.stderr?.on("data", (chunk: Buffer) => {
+    stderr = (stderr + chunk.toString()).slice(-STDERR_TAIL_BYTES);
+  });
+
+  // A process that fails to spawn emits "error" and then "close", never "exit", and
+  // reports its errno as a negative exit code. Only the Error says what went wrong.
+  let spawnError: Error | undefined;
+  childProcess.once("error", (err) => {
+    spawnError = err;
+  });
+
+  let ended = false;
+  const endedPromise = new Promise<void>((resolve) => {
+    const finish = (): void => {
+      ended = true;
+      resolve();
+    };
+    // Whichever comes first: "close" can lag "exit" indefinitely when a surviving
+    // grandchild still holds the stdio pipes, and shutdown should not wait on that.
+    childProcess.once("exit", finish);
+    childProcess.once("close", finish);
+  });
+
+  let armed = true;
+  const serverExited = new Promise<never>((_resolve, reject) => {
+    // "close" rather than "exit": it is the only one a failed spawn emits, and it
+    // is the one that guarantees stderr has finished arriving.
+    childProcess.once("close", (code, signal) => {
+      if (!armed) {
+        return;
+      }
+      reject(serverExitedError(spawnError, code, signal, stderr));
+    });
+  });
+  serverExited.catch(() => {
+    // Discovery may finish before the server exits and never race this.
+  });
+
+  return {
+    serverExited,
+    ended: endedPromise,
+    hasEnded: () => ended,
+    disarm: () => {
+      armed = false;
+    },
+  };
 }
 
 /**

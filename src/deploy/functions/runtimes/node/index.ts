@@ -29,11 +29,7 @@ import { fileExistsSync } from "../../../../fsutils";
 interface AdminServer {
   /** Shuts the server down. Safe to call after it has already exited. */
   kill: () => Promise<void>;
-  /**
-   * Rejects if the server exits before discovery has finished, and otherwise
-   * never settles. Discovery races this so that a crash during module load is
-   * reported as itself rather than as a timeout.
-   */
+  /** See discovery.WatchedProcess.serverExited. */
   serverExited: Promise<never>;
 }
 
@@ -269,53 +265,11 @@ export class Delegate {
     port: string,
   ): Promise<AdminServer> {
     const childProcess = this.spawnFunctionsProcess(config, { ...envs, PORT: port });
-
-    // Attached at spawn time rather than in kill(): neither event replays, so a
-    // server that died before shutdown ran would leave a listener that can never
-    // fire and a kill() that never resolves.
-    let exited = false;
-    const exit = new Promise<void>((resolve, reject) => {
-      childProcess.once("exit", () => {
-        exited = true;
-        resolve();
-      });
-      childProcess.once("error", reject);
-    });
-    exit.catch(() => {
-      // kill() is the only intended consumer; it may never be called.
-    });
-
-    let stderr = "";
-    childProcess.stderr?.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString();
-    });
-
-    // Armed only while discovery is in flight. Once we have asked the server to
-    // quit, an exit is expected rather than a crash.
-    let armed = true;
-    const serverExited = new Promise<never>((_resolve, reject) => {
-      childProcess.once("exit", (code, signal) => {
-        if (!armed) {
-          return;
-        }
-        const how = code === null ? `signal ${String(signal)}` : `code ${code}`;
-        const details = stderr.trim();
-        reject(
-          new FirebaseError(
-            `User code failed to load. Cannot determine backend specification. ` +
-              `The functions process exited with ${how} before it could be analyzed.` +
-              (details ? `\n\n${details}` : ""),
-          ),
-        );
-      });
-    });
-    serverExited.catch(() => {
-      // Discovery may finish before the server exits and never race this.
-    });
+    const watched = discovery.watchDiscoveryProcess(childProcess);
 
     const kill = async (): Promise<void> => {
-      armed = false;
-      if (exited) {
+      watched.disarm();
+      if (watched.hasEnded()) {
         return;
       }
       try {
@@ -329,13 +283,15 @@ export class Delegate {
         }
       }, 10_000);
       try {
-        await exit;
+        // Deliberately never rejects: this runs in discoverBuild's finally, where
+        // throwing would replace whatever discovery failed with.
+        await watched.ended;
       } finally {
         clearTimeout(killTimer);
       }
     };
 
-    return Promise.resolve({ kill, serverExited });
+    return Promise.resolve({ kill, serverExited: watched.serverExited });
   }
 
   // eslint-disable-next-line require-await
