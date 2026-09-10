@@ -51,6 +51,8 @@ describe("PythonDelegate", () => {
     let child: ChildProcess;
     let runWithVirtualEnvStub: sinon.SinonStub;
     let killProcessTreeStub: sinon.SinonStub;
+    let trackChildStub: sinon.SinonStub;
+    let untrackChildStub: sinon.SinonStub;
     let fetchStub: sinon.SinonStub;
     let destroyStdoutStub: sinon.SinonStub;
     let destroyStderrStub: sinon.SinonStub;
@@ -73,9 +75,9 @@ describe("PythonDelegate", () => {
       });
       runWithVirtualEnvStub = sandbox.stub(pythonUtils, "runWithVirtualEnv").returns(child);
       killProcessTreeStub = sandbox.stub(pythonUtils, "killProcessTree");
-      // Tracking installs real process-level signal handlers; not under test here.
-      sandbox.stub(pythonUtils, "trackVirtualEnvChild");
-      sandbox.stub(pythonUtils, "untrackVirtualEnvChild");
+      // Stubbed because the real ones install process-level signal handlers.
+      trackChildStub = sandbox.stub(pythonUtils, "trackVirtualEnvChild");
+      untrackChildStub = sandbox.stub(pythonUtils, "untrackVirtualEnvChild");
       fetchStub = sandbox.stub(global, "fetch" as never);
       delegate = new python.Delegate(PROJECT_ID, SOURCE_DIR, "python312");
       sandbox.stub(delegate, "modulesDir").resolves("/some/site-packages/firebase_functions");
@@ -93,6 +95,12 @@ describe("PythonDelegate", () => {
       expect(spawnOpts.detached).to.equal(!IS_WINDOWS);
     });
 
+    it("tracks the child so the CLI's own exit can still reap it", async () => {
+      await delegate.serveAdmin(ADMIN_PORT, {});
+
+      expect(trackChildStub).to.have.been.calledOnceWithExactly(child);
+    });
+
     it("asks the server to quit and resolves once it exits", async () => {
       fetchStub.resolves(new Response("", { status: 200 }));
       const killProcess = await delegate.serveAdmin(ADMIN_PORT, {});
@@ -105,6 +113,8 @@ describe("PythonDelegate", () => {
         `http://127.0.0.1:${ADMIN_PORT}/__/quitquitquit`,
       );
       expect(killProcessTreeStub).to.not.have.been.called;
+      // Nothing left to reap, so the signal handlers must come back off.
+      expect(untrackChildStub).to.have.been.calledOnceWithExactly(child);
     });
 
     it("force-kills the process group when the server never answers quitquitquit", async () => {
@@ -135,6 +145,9 @@ describe("PythonDelegate", () => {
       await shutdown;
 
       expect(settled).to.be.true;
+      // A survivor must stay tracked: untracking it here would remove the exit
+      // handler that gets the last attempt at killing it, recreating the orphan.
+      expect(untrackChildStub).to.not.have.been.called;
     });
 
     it("releases the surviving child's handles so it cannot hold the CLI open", async () => {
