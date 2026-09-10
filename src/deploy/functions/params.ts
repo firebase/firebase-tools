@@ -383,6 +383,16 @@ function canSatisfyParam(param: Param, value: RawParamValue): boolean {
   assertExhaustive(param);
 }
 
+export interface ResolveParamOpts {
+  params: Param[];
+  firebaseConfig: FirebaseConfig;
+  userEnvs: Record<string, ParamValue>;
+  codebase: string;
+  nonInteractive?: boolean;
+  force?: boolean;
+  isEmulator?: boolean;
+}
+
 /**
  * A param defined by the SDK may resolve to:
  * - a reference to a secret in Cloud Secret Manager, which we validate the existence of and prompt for if missing
@@ -395,14 +405,17 @@ function canSatisfyParam(param: Param, value: RawParamValue): boolean {
  *   - after prompting, the resolved value of the param is written to the most specific .env file available
  */
 export async function resolveParams(
-  params: Param[],
-  firebaseConfig: FirebaseConfig,
-  userEnvs: Record<string, ParamValue>,
-  codebase: string,
-  nonInteractive?: boolean,
-  force?: boolean,
-  isEmulator = false,
+  opts: ResolveParamOpts,
 ): Promise<{ paramValues: Record<string, ParamValue>; secretRefs: Record<string, string> }> {
+  const {
+    params,
+    firebaseConfig,
+    userEnvs,
+    codebase,
+    nonInteractive = false,
+    force = false,
+    isEmulator = false,
+  } = opts;
   const paramValues: Record<string, ParamValue> = populateDefaultParams(firebaseConfig);
   const secretRefs: Record<string, string> = {};
 

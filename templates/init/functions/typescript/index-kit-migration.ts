@@ -18,6 +18,7 @@ import { defineString } from "firebase-functions/params";
 // the value to differ. Learn more at
 // https://firebase.google.com/docs/functions/config-env#params
 export const regionParam = defineString("FUNCTION_DEFAULT_REGION", {
+  input: { text: { nonEmpty: true } },
   description: "Global default region where functions should be deployed. Can be overriden per-function.",
 });
 
