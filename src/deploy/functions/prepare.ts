@@ -69,55 +69,6 @@ import * as resourcemanager from "../../gcp/resourceManager";
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 export const DECLARATIVE_SECURITY_ETAG_LABEL = "firebase-declarative-security-etag";
 
-const REQUIRED_SECURITY_APIS = [
-  "iam.googleapis.com",
-  "cloudresourcemanager.googleapis.com",
-] as const;
-
-/**
- * Validates that the Google Cloud APIs required for Declarative Security are enabled.
- * Fails fast with an actionable gcloud command and console URLs if either API is disabled.
- */
-export async function checkDeclarativeSecurityApisEnabled(
-  projectId: string,
-  codebase: string,
-): Promise<void> {
-  const checks = await Promise.all(
-    REQUIRED_SECURITY_APIS.map(async (api) => {
-      try {
-        return await ensureApiEnabled.check(projectId, api, "functions", /* silent= */ true);
-      } catch (err) {
-        logger.debug(`Silence error checking enablement for API ${api}: ${String(err)}`);
-        return true;
-      }
-    }),
-  );
-  const disabledApis = REQUIRED_SECURITY_APIS.filter((_, idx) => !checks[idx]);
-
-  if (disabledApis.length > 0) {
-    const apiBulletList = disabledApis.map((api) => `  - ${clc.bold(api)}`).join("\n");
-    const enableCmd = clc.bold(
-      `gcloud services enable ${disabledApis.join(" ")} --project ${projectId}`,
-    );
-    const consoleLinks = disabledApis
-      .map((api) => `  - ${api}: ${ensureApiEnabled.enableApiURI(projectId, api)}`)
-      .join("\n");
-
-    throw new FirebaseError(
-      `Cannot deploy functions with declarative security in codebase "${codebase}". ` +
-        `The following required Google Cloud API(s) are not enabled on project ${clc.bold(projectId)}:\n` +
-        apiBulletList +
-        `\n\nDeclarative security requires these APIs to provision and configure managed service accounts and IAM roles.\n` +
-        `To enable them, run:\n\n` +
-        `  ${enableCmd}\n\n` +
-        `Or ask a project owner to enable them in the Google Cloud Console:\n` +
-        consoleLinks +
-        `\n`,
-      { exit: 1 },
-    );
-  }
-}
-
 /**
  * Discovers and coordinates declarative security details for a codebase.
  * Mutates `want` Backend to populate managed service account and etag labels.
@@ -213,7 +164,7 @@ export async function discoverSecurityDetails(
     };
   }
 
-  await checkDeclarativeSecurityApisEnabled(projectId, codebase);
+  await ensure.checkDeclarativeSecurityApisEnabled(projectId, codebase);
 
   let managedSA = existingManagedSA;
   if (!managedSA) {

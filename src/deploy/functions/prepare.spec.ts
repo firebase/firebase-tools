@@ -1676,12 +1676,7 @@ describe("prepare", () => {
 
     describe("API enablement checks", () => {
       it("should throw actionable error when both iam and cloudresourcemanager APIs are disabled", async () => {
-        checkApiStub.callsFake((projectId: string, api: string) => {
-          if (api === "iam.googleapis.com" || api === "cloudresourcemanager.googleapis.com") {
-            return Promise.resolve(false);
-          }
-          return Promise.resolve(true);
-        });
+        checkApiStub.resolves(false);
 
         const e: backend.Endpoint = { ...ENDPOINT };
         const want = backend.of(e);
@@ -1698,30 +1693,16 @@ describe("prepare", () => {
         }
 
         expect(error).to.be.instanceOf(FirebaseError);
-        expect(error?.message).to.include(
-          'Cannot deploy functions with declarative security in codebase "default"',
-        );
         expect(error?.message).to.include("iam.googleapis.com");
         expect(error?.message).to.include("cloudresourcemanager.googleapis.com");
         expect(error?.message).to.include(
           "gcloud services enable iam.googleapis.com cloudresourcemanager.googleapis.com --project test-project",
         );
-        expect(error?.message).to.include(
-          "https://console.cloud.google.com/apis/library/iam.googleapis.com?project=test-project",
-        );
-        expect(error?.message).to.include(
-          "https://console.cloud.google.com/apis/library/cloudresourcemanager.googleapis.com?project=test-project",
-        );
         expect(testIamPermissionsStub).to.not.have.been.called;
       });
 
       it("should throw actionable error when only iam API is disabled", async () => {
-        checkApiStub.callsFake((projectId: string, api: string) => {
-          if (api === "iam.googleapis.com") {
-            return Promise.resolve(false);
-          }
-          return Promise.resolve(true);
-        });
+        checkApiStub.withArgs("test-project", "iam.googleapis.com").resolves(false);
 
         const e: backend.Endpoint = { ...ENDPOINT };
         const want = backend.of(e);
@@ -1743,18 +1724,12 @@ describe("prepare", () => {
         expect(error?.message).to.include(
           "gcloud services enable iam.googleapis.com --project test-project",
         );
-        expect(error?.message).to.include(
-          "https://console.cloud.google.com/apis/library/iam.googleapis.com?project=test-project",
-        );
       });
 
       it("should throw actionable error when only cloudresourcemanager API is disabled", async () => {
-        checkApiStub.callsFake((projectId: string, api: string) => {
-          if (api === "cloudresourcemanager.googleapis.com") {
-            return Promise.resolve(false);
-          }
-          return Promise.resolve(true);
-        });
+        checkApiStub
+          .withArgs("test-project", "cloudresourcemanager.googleapis.com")
+          .resolves(false);
 
         const e: backend.Endpoint = { ...ENDPOINT };
         const want = backend.of(e);
@@ -1775,9 +1750,6 @@ describe("prepare", () => {
         expect(error?.message).to.not.include("iam.googleapis.com");
         expect(error?.message).to.include(
           "gcloud services enable cloudresourcemanager.googleapis.com --project test-project",
-        );
-        expect(error?.message).to.include(
-          "https://console.cloud.google.com/apis/library/cloudresourcemanager.googleapis.com?project=test-project",
         );
       });
 
@@ -1809,6 +1781,19 @@ describe("prepare", () => {
 
         const result = await prepare.discoverSecurityDetails("default", want, have, "test-project");
         expect(result.managedSA).to.equal("firebase-fn-123@test-project.iam.gserviceaccount.com");
+      });
+
+      it("should rethrow unexpected non-permission errors when checking API enablement", async () => {
+        checkApiStub.rejects(new Error("Network timeout"));
+
+        const e: backend.Endpoint = { ...ENDPOINT };
+        const want = backend.of(e);
+        want.requiredRoles = ["roles/viewer"];
+        const have = backend.empty();
+
+        await expect(
+          prepare.discoverSecurityDetails("default", want, have, "test-project"),
+        ).to.be.rejectedWith(Error, "Network timeout");
       });
 
       it("should not block unenrollment even if security APIs are disabled", async () => {
