@@ -1,3 +1,4 @@
+import * as os from "os";
 import { ChildProcess } from "child_process";
 import { EventEmitter } from "events";
 
@@ -139,6 +140,20 @@ describe("virtual env child tracking", () => {
     } finally {
       process.removeListener("SIGTERM", coListener);
     }
+  });
+
+  itPosix("exits rather than throwing when the platform cannot re-raise the signal", () => {
+    const exitStub = sandbox.stub(process, "exit");
+    // Windows implements only SIGINT/SIGTERM/SIGKILL in process.kill and throws
+    // ENOSYS for the rest, yet raises SIGHUP itself when the console closes.
+    killStub
+      .withArgs(process.pid, "SIGHUP")
+      .throws(Object.assign(new Error("kill ENOSYS"), { code: "ENOSYS" }));
+
+    trackVirtualEnvChild(child);
+    process.emit("SIGHUP", "SIGHUP");
+
+    expect(exitStub).to.have.been.calledOnceWithExactly(128 + os.constants.signals.SIGHUP);
   });
 
   it("restores default signal behaviour once nothing is left to clean up", () => {

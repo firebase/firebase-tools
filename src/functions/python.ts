@@ -1,8 +1,10 @@
+import * as os from "os";
 import * as path from "path";
 import { spawn } from "cross-spawn";
 import * as cp from "child_process";
 import { logger } from "../logger";
 import { IS_WINDOWS } from "../utils";
+import { getErrMsg } from "../error";
 
 /**
  * Default directory for python virtual environment.
@@ -86,6 +88,21 @@ const CLEANUP_SIGNALS: NodeJS.Signals[] = ["SIGINT", "SIGTERM", "SIGHUP", "SIGQU
 const trackedChildren = new Set<cp.ChildProcess>();
 const signalHandlers = new Map<NodeJS.Signals, () => void>();
 
+/**
+ * Terminate as if the signal had never been handled. Windows only implements
+ * SIGINT, SIGTERM and SIGKILL in `process.kill`, and throws ENOSYS for the rest,
+ * so SIGHUP (raised there when the console window closes) has to fall back to
+ * the exit code a shell would have reported.
+ */
+function reRaise(signal: NodeJS.Signals): void {
+  try {
+    process.kill(process.pid, signal);
+  } catch (e: unknown) {
+    logger.debug(`Could not re-raise ${signal}, exiting instead: ${getErrMsg(e)}`);
+    process.exit(128 + (os.constants.signals[signal] ?? 0));
+  }
+}
+
 function killAllTrackedChildren(): void {
   for (const child of trackedChildren) {
     // A child that has already exited may have had its pid reaped and recycled
@@ -124,7 +141,7 @@ function addCleanupHandlers(): void {
       // listening and expecting to drive the exit itself.
       removeCleanupHandlers();
       if (process.listenerCount(signal) === 0) {
-        process.kill(process.pid, signal);
+        reRaise(signal);
       }
     };
     signalHandlers.set(signal, handler);
