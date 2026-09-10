@@ -297,6 +297,7 @@ export async function prepareFrameworks(
       projectId: project,
       site: options.site,
       hostingChannel: context?.hostingChannel,
+      wasm: options.wasm,
     };
 
     let codegenFunctionsDirectory: Framework["ɵcodegenFunctionsDirectory"];

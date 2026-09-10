@@ -1,0 +1,1 @@
+- Added a `--wasm` flag to `firebase deploy` to compile Flutter Web to WebAssembly when building for Hosting
