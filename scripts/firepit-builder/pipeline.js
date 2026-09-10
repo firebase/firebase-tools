@@ -82,7 +82,7 @@ if (styles.headless) {
 
   configTemplate.headless = true;
   echo(`module.exports = ` + JSON.stringify(configTemplate)).to("config.js");
-  npm("run", "pkg");
+  npm("run", "build:sea");
   ls("dist/firepit-*").forEach((file) => {
     mv(file, path.join("dist", path.basename(file).replace("firepit", "firebase-tools")));
   });
@@ -93,7 +93,7 @@ if (styles.headful) {
 
   configTemplate.headless = false;
   echo(`module.exports = ` + JSON.stringify(configTemplate)).to("config.js");
-  npm("run", "pkg");
+  npm("run", "build:sea");
 
   ls("dist/firepit-*").forEach((file) => {
     mv(file, path.join("dist", path.basename(file).replace("firepit", "firebase-tools-instant")));
@@ -123,11 +123,9 @@ if (isPublishing) {
 }
 
 echo("-- Artifacts");
-rm("-rf", "/tmp/firepit_artifacts");
-
 const outputDir = path.join(tempdir().toString(), "firepit_artifacts");
-echo(outputDir);
-mkdir(outputDir);
+rm("-rf", outputDir);
+mkdir("-p", outputDir);
 mv("dist/*", outputDir);
 cd(outputDir);
 console.log(

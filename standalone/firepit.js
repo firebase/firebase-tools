@@ -68,12 +68,85 @@
 
 const fs = require("fs");
 const path = require("path");
-const { fork, spawn } = require("child_process");
-const homePath = require("user-home");
+const os = require("os");
+const { fork, spawn, spawnSync, execSync } = require("child_process");
+const homePath = os.homedir();
 const chalk = require("chalk");
-const shell = require("shelljs");
-shell.config.silent = true;
 const version = require("./package.json").version;
+
+const shell = {
+  config: { silent: true },
+  mkdir: (flag, dirPath) => {
+    const target = dirPath || flag;
+    try { fs.mkdirSync(target, { recursive: true }); } catch (e) {}
+    return "";
+  },
+  rm: (flag, targetPath) => {
+    const target = targetPath || flag;
+    try { fs.rmSync(target, { recursive: true, force: true }); } catch (e) {}
+    return "";
+  },
+  cp: (flag, src, dest) => {
+    const actualSrc = dest ? src : flag;
+    const actualDest = dest ? dest : src;
+    try {
+      if (typeof actualSrc === "string" && actualSrc.endsWith("/*")) {
+        const baseSrc = actualSrc.slice(0, -2);
+        if (fs.existsSync(baseSrc)) {
+          fs.cpSync(baseSrc, actualDest, { recursive: true });
+        }
+      } else {
+        fs.cpSync(actualSrc, actualDest, { recursive: true });
+      }
+    } catch (e) {}
+    return "";
+  },
+  chmod: (mode, targetPath) => {
+    try { fs.chmodSync(targetPath, mode === "+x" ? 0o755 : mode); } catch (e) {}
+    return "";
+  },
+  ln: (flag, src, dest) => {
+    const actualSrc = dest ? src : flag;
+    const actualDest = dest ? dest : src;
+    try {
+      try { fs.unlinkSync(actualDest); } catch (e) {}
+      fs.symlinkSync(actualSrc, actualDest);
+    } catch (e) {
+      try { fs.copyFileSync(actualSrc, actualDest); } catch (e) {}
+    }
+    return "";
+  },
+  ls: (targetPath) => {
+    try {
+      if (!fs.existsSync(targetPath)) return Object.assign([], { code: 1 });
+      const stat = fs.statSync(targetPath);
+      if (stat.isFile()) return Object.assign([targetPath], { code: 0 });
+      const files = fs.readdirSync(targetPath);
+      return Object.assign(files, { code: 0 });
+    } catch (e) {
+      return Object.assign([], { code: 1 });
+    }
+  },
+  cat: (filePath) => {
+    try { return fs.readFileSync(filePath, "utf8"); } catch (e) { return ""; }
+  },
+  exec: (cmd) => {
+    try {
+      const result = spawnSync(cmd, { shell: true, stdio: ["ignore", "pipe", "pipe"], encoding: "utf8" });
+      return {
+        code: result.status !== null ? result.status : 1,
+        stdout: result.stdout || "",
+        stderr: result.stderr || ""
+      };
+    } catch (e) {
+      return {
+        code: e.status || 1,
+        stdout: e.stdout || "",
+        stderr: e.stderr || ""
+      };
+    }
+  }
+};
 
 /*
   Our only other require, the "./runtime.js" file, is worth discussing in detail. The script itself
@@ -301,7 +374,17 @@ debug(`Welcome to firepit v${version}!`);
     In this case, we're using process.argv[0] (always a reference to the node binary which spawned
     this script) and turning it safe so we have an invokable Node.js runtime for later.
    */
-  safeNodePath = await getSafeCrossPlatformPath(isWindows, process.argv[0]);
+  const extractedNodePath = path.join(installPath, "lib", "bin", isWindows ? "node.exe" : "node");
+  if (!fs.existsSync(extractedNodePath) && !flags["ignore-embedded-cache"]) {
+    debug("Initial run: setting up embedded firebase-tools...");
+    await SetupFirebaseTools();
+  }
+
+  if (fs.existsSync(extractedNodePath)) {
+    safeNodePath = await getSafeCrossPlatformPath(isWindows, extractedNodePath);
+  } else {
+    safeNodePath = await getSafeCrossPlatformPath(isWindows, process.argv[0]);
+  }
   /*
     If the user has ever had an older version of Firepit, clear it out and replace it with us.
    */
@@ -581,6 +664,7 @@ function ImitateNPM() {
   debug(args.join(" "));
   return new Promise(resolve => {
     const cmd = fork(FindTool("npm/bin/npm-cli")[0], args, {
+      execPath: safeNodePath,
       stdio: "inherit",
       env: process.env
     });
@@ -597,6 +681,7 @@ function ImitateNode() {
   const nodeArgs = [...process.argv.slice(breakerIndex)];
   return new Promise(resolve => {
     const cmd = fork(nodeArgs[0], nodeArgs.slice(1), {
+      execPath: safeNodePath,
       stdio: "inherit",
       env: process.env
     });
@@ -609,8 +694,10 @@ function ImitateNode() {
 
 function ImitateFirebaseTools(binPath) {
   debug("Detected no special flags, calling firebase-tools");
+  const targetScript = binPath.endsWith(".js") ? binPath : binPath + ".js";
   return new Promise(resolve => {
-    const cmd = fork(binPath, process.argv.slice(2), {
+    const cmd = fork(targetScript, process.argv.slice(2), {
+      execPath: safeNodePath,
       stdio: "inherit",
       env: { ...process.env, FIREPIT_VERSION: version }
     });
@@ -727,15 +814,50 @@ async function SetupFirebaseTools() {
 
   if (!flags["ignore-embedded-cache"]) {
     /*
-      When doing the embedded install, the setup is as simple as cp -R'ing the JavaScript files
-      to the right place then linking the script to a bin folder (see below).
+      When doing the embedded install with Node SEA, we retrieve the embedded vendor.tar.gz asset
+      and extract it to nodeModulesPath.
      */
     debug("Using embedded cache for quick install...");
-    debug(
-      shell
-        .cp("-R", path.join(__dirname, "vendor/*"), nodeModulesPath)
-        .toString()
-    );
+    let extracted = false;
+    try {
+      let sea;
+      try {
+        sea = require("node:sea");
+      } catch (e) {}
+
+      if (sea && (sea.getRawAsset || sea.getAsset)) {
+        let rawAsset;
+        try {
+          rawAsset = sea.getRawAsset ? sea.getRawAsset("vendor.tar.gz") : sea.getAsset("vendor.tar.gz");
+        } catch (e) {
+          debug("SEA asset read error:", e.message);
+        }
+        if (rawAsset) {
+          const assetBuf = Buffer.isBuffer(rawAsset) ? rawAsset : Buffer.from(rawAsset);
+          const tempTarPath = path.join(installPath, "vendor.tar.gz");
+          fs.mkdirSync(nodeModulesPath, { recursive: true });
+          fs.writeFileSync(tempTarPath, assetBuf);
+          debug(`Extracted vendor.tar.gz asset (${assetBuf.length} bytes), untarring into ${nodeModulesPath}...`);
+          const result = shell.exec(`tar -xzf "${tempTarPath}" -C "${nodeModulesPath}"`);
+          if (result.code === 0) {
+            shell.chmod("+x", path.join(installPath, "lib", "bin", "node"));
+            extracted = true;
+          } else {
+            console.error(`tar extraction failed with code ${result.code}:`, result.stderr || result.stdout);
+          }
+          try {
+            fs.unlinkSync(tempTarPath);
+          } catch (e) {}
+        }
+      }
+    } catch (err) {
+      console.error("SEA asset extraction exception:", err);
+    }
+
+    if (!extracted) {
+      debug("Using filesystem fallback from __dirname/vendor...");
+      shell.cp("-R", path.join(__dirname, "vendor/*"), nodeModulesPath);
+    }
   } else {
     /*
       When doing a remote install, we ImitateNPM and run a normal npm install. Note that we're
@@ -802,26 +924,9 @@ async function SetupFirebaseTools() {
  */
 
 function uninstallLegacyFirepit() {
-  /*
-    There are two situations where we should trash the Firepit install directory.
+  const cliDir = path.join(homePath, ".cache", "firebase", "cli");
+  const isLegacyFirepit = fs.existsSync(cliDir);
 
-    1) We're using an old firepit version where the "cli" folder exists
-    2) We're using an old firebase-tools version where the version is different than ours.
-   */
-
-  /*
-    To detect an old-style Firepit install, we look for the "cli" folder, a folder which has
-    been renmaed in new Firepit builds.
-   */
-  const isLegacyFirepit = !shell.ls(
-    path.join(homePath, ".cache", "firebase", "cli")
-  ).code;
-
-  /*
-    To check for mismatched firebase-tools versions, we find the package.json and read the version
-    manually then compare it to ours.
-   */
-  let installedFirebaseToolsPackage = {};
   const installedFirebaseToolsPackagePath = path.join(
     homePath,
     ".cache/firebase/tools/lib/node_modules/firebase-tools/package.json"
@@ -830,35 +935,31 @@ function uninstallLegacyFirepit() {
     __dirname,
     "vendor/node_modules/firebase-tools/package.json"
   );
-  debug(`Doing JSON parses for version checks at ${firepitFirebaseToolsPackagePath}`);
-  debug(shell.ls(path.join(__dirname, "vendor/node_modules/")));
-  const firepitFirebaseToolsPackage = JSON.parse(
-    shell.cat(firepitFirebaseToolsPackagePath)
-  );
-  try {
-    installedFirebaseToolsPackage = JSON.parse(
-      shell.cat(installedFirebaseToolsPackagePath)
-    );
-  } catch (err) {
-    debug("No existing firebase-tools install found.");
+
+  let firepitFirebaseToolsPackage = null;
+  if (fs.existsSync(firepitFirebaseToolsPackagePath)) {
+    try {
+      firepitFirebaseToolsPackage = JSON.parse(fs.readFileSync(firepitFirebaseToolsPackagePath, "utf8"));
+    } catch (e) {}
   }
 
-  debug(
-    `Installed ft@${installedFirebaseToolsPackage.version ||
-      "none"} and packaged ft@${firepitFirebaseToolsPackage.version}`
-  );
+  let installedFirebaseToolsPackage = null;
+  if (fs.existsSync(installedFirebaseToolsPackagePath)) {
+    try {
+      installedFirebaseToolsPackage = JSON.parse(fs.readFileSync(installedFirebaseToolsPackagePath, "utf8"));
+    } catch (e) {}
+  }
 
-  const isLegacyFirebaseTools =
-    installedFirebaseToolsPackage.version !==
-    firepitFirebaseToolsPackage.version;
-
-  /*
-    If either of these conditions are true, we just delete the whole cache and start over fresh.
-   */
+  let isLegacyFirebaseTools = false;
+  if (firepitFirebaseToolsPackage && installedFirebaseToolsPackage) {
+    isLegacyFirebaseTools = installedFirebaseToolsPackage.version !== firepitFirebaseToolsPackage.version;
+  }
 
   if (!isLegacyFirepit && !isLegacyFirebaseTools) return;
   debug("Legacy firepit / firebase-tools detected, clearing it out...");
-  debug(shell.rm("-rf", path.join(homePath, ".cache", "firebase")));
+  try {
+    fs.rmSync(path.join(homePath, ".cache", "firebase"), { recursive: true, force: true });
+  } catch (e) {}
 }
 
 async function getFirebaseToolsCommand() {
@@ -890,6 +991,10 @@ async function getFirebaseToolsCommand() {
 }
 
 async function VerifyNodePath(nodePath) {
+  const basename = path.basename(nodePath);
+  if (nodePath === process.execPath || basename.includes("firepit") || basename.includes("firebase-tools")) {
+    return false;
+  }
   /*
     VerifyNodePath invokes the firepit binary with two flags...
 
@@ -949,26 +1054,21 @@ async function VerifyNodePath(nodePath) {
 }
 
 function FindTool(bin) {
-  /*
-    This method returns a list of files which match the script name provided. We use this to
-    locate npm, firebase-tools, etc.
-   */
-
   const potentialPaths = [
     path.join(installPath, "lib/node_modules", bin),
+    path.join(installPath, "lib/node_modules/firebase-tools/standalone/node_modules", bin),
     path.join(installPath, "node_modules", bin),
+    path.join(installPath, "lib", bin),
     path.join(__dirname, "node_modules", bin)
   ];
 
   return potentialPaths
-    .map(path => {
-      debug(`Checking for ${bin} install at ${path}`);
-      if (shell.ls(path + ".js").code === 0) {
-        debug(`Found ${bin} install.`);
-        return path;
-      }
+    .map(p => {
+      debug(`Checking for ${bin} install at ${p}`);
+      if (fs.existsSync(p)) return p;
+      if (fs.existsSync(p + ".js")) return p + ".js";
     })
-    .filter(p => p);
+    .filter(Boolean);
 }
 
 function SetWindowTitle(title) {
