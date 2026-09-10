@@ -1,1 +1,2 @@
+- [fixed] Fixed `functions:secrets:set` and `functions:secrets:prune` never destroying unused secret versions.
 - [fixed] Clean up managed service accounts when opting out of declarative security alongside a filtered codebase deploy.

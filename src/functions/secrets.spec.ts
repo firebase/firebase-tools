@@ -227,10 +227,11 @@ describe("functions/secret", () => {
     let listSecretVersionsStub: sinon.SinonStub;
     let getSecretVersionStub: sinon.SinonStub;
 
+    // Secrets created before v13.6.1 carry firebase-managed=true.
     const secret1: secretManager.Secret = {
       projectId: "project",
       name: "MY_SECRET1",
-      labels: {},
+      labels: { [secretManager.FIREBASE_MANAGED]: "true" },
       replication: {},
     };
     const secretVersion11: secretManager.SecretVersion = {
@@ -247,8 +248,34 @@ describe("functions/secret", () => {
     const secret2: secretManager.Secret = {
       projectId: "project",
       name: "MY_SECRET2",
+      labels: { [secretManager.FIREBASE_MANAGED]: "functions" },
+      replication: {},
+    };
+
+    const unmanagedSecret: secretManager.Secret = {
+      projectId: "project",
+      name: "UNMANAGED",
       labels: {},
       replication: {},
+    };
+
+    const apphostingSecret: secretManager.Secret = {
+      projectId: "project",
+      name: "APPHOSTING_SECRET",
+      labels: { [secretManager.FIREBASE_MANAGED]: "apphosting" },
+      replication: {},
+    };
+
+    const unmanagedVersion: secretManager.SecretVersion = {
+      secret: unmanagedSecret,
+      versionId: "1",
+      createTime: "2024-03-28T19:43:26",
+    };
+
+    const apphostingVersion: secretManager.SecretVersion = {
+      secret: apphostingSecret,
+      versionId: "1",
+      createTime: "2024-03-28T19:43:26",
     };
     const secretVersion21: secretManager.SecretVersion = {
       secret: secret2,
@@ -287,6 +314,30 @@ describe("functions/secret", () => {
       await expect(
         secrets.pruneSecrets({ projectId: "project", projectNumber: "12345" }, []),
       ).to.eventually.deep.equal([]);
+    });
+
+    it("finds secrets managed under either label value and ignores the rest", async () => {
+      listSecretsStub.resolves([secret1, secret2, unmanagedSecret, apphostingSecret]);
+      // Keyed by name rather than call order so an unmanaged secret slipping through
+      // shows up as an extra pruned version instead of an exhausted stub.
+      listSecretVersionsStub.withArgs("project", secret1.name).resolves([secretVersion11]);
+      listSecretVersionsStub.withArgs("project", secret2.name).resolves([secretVersion21]);
+      listSecretVersionsStub.withArgs("project", unmanagedSecret.name).resolves([unmanagedVersion]);
+      listSecretVersionsStub
+        .withArgs("project", apphostingSecret.name)
+        .resolves([apphostingVersion]);
+
+      const pruned = await secrets.pruneSecrets(
+        { projectId: "project", projectNumber: "12345" },
+        [],
+      );
+
+      expect(pruned).to.have.deep.members([secretVersion11, secretVersion21].map(toSecretEnvVar));
+      expect(pruned).to.have.length(2);
+      // Deep-equal the full argument list: calledWith would still pass if a stale
+      // label filter were being sent as a second argument.
+      expect(listSecretsStub.firstCall.args).to.deep.equal(["project"]);
+      expect(listSecretVersionsStub).to.have.callCount(2);
     });
 
     it("returns all secrets given no endpoints", async () => {
