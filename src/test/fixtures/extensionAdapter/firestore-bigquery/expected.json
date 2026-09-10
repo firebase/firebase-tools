@@ -1,0 +1,151 @@
+{
+  "requiredAPIs": [
+    {
+      "api": "bigquery.googleapis.com",
+      "reason": "Needed to use BigQuery"
+    }
+  ],
+  "endpoints": {
+    "fsexportbigquery": {
+      "entryPoint": "fsexportbigquery",
+      "platform": "gcfv1",
+      "project": "test-project",
+      "runtime": "nodejs20",
+      "region": ["{{ params.LOCATION }}"],
+      "eventTrigger": {
+        "eventType": "providers/cloud.firestore/eventTypes/document.write",
+        "retry": false,
+        "eventFilters": {
+          "resource": "projects/{project}/databases/(default)/documents/{{ params.COLLECTION_PATH }}/{documentId}"
+        }
+      },
+      "availableMemoryMb": "{{ params.FUNCTION_MEMORY }}",
+      "timeoutSeconds": "{{ params.FUNCTION_TIMEOUT }}"
+    },
+    "syncBigQuery": {
+      "entryPoint": "syncBigQuery",
+      "platform": "gcfv1",
+      "project": "test-project",
+      "runtime": "nodejs20",
+      "region": ["{{ params.LOCATION }}"],
+      "taskQueueTrigger": {
+        "rateLimits": {
+          "maxDispatchesPerSecond": "{{ params.MAX_DISPATCHES_PER_SECOND }}"
+        }
+      },
+      "availableMemoryMb": "{{ params.FUNCTION_MEMORY }}",
+      "timeoutSeconds": 540
+    }
+  },
+  "params": [
+    {
+      "type": "string",
+      "name": "LOCATION",
+      "label": "Cloud Functions location",
+      "default": "us-central1",
+      "input": {
+        "select": {
+          "options": [
+            {
+              "label": "Iowa (us-central1)",
+              "value": "us-central1"
+            },
+            {
+              "label": "Belgium (europe-west1)",
+              "value": "europe-west1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "string",
+      "name": "COLLECTION_PATH",
+      "label": "Collection path",
+      "description": "The Firestore collection to export",
+      "input": {
+        "text": {
+          "validationRegex": "^[^/]+(/[^/]+/[^/]+)*$",
+          "example": "users"
+        }
+      }
+    },
+    {
+      "type": "string",
+      "name": "DATASET_ID",
+      "label": "BigQuery Dataset ID",
+      "input": {
+        "text": {
+          "validationRegex": "^[a-zA-Z][a-zA-Z0-9_]{0,1023}$",
+          "example": "firestore_export"
+        }
+      }
+    },
+    {
+      "type": "string",
+      "name": "TABLE_ID",
+      "label": "BigQuery Table ID",
+      "input": {
+        "text": {
+          "validationRegex": "^[a-zA-Z][a-zA-Z0-9_]{0,1023}$",
+          "example": "users_raw_changelog"
+        }
+      }
+    },
+    {
+      "type": "int",
+      "name": "FUNCTION_MEMORY",
+      "label": "Memory for the export function",
+      "default": 1024,
+      "input": {
+        "select": {
+          "options": [
+            {
+              "label": "512 MB",
+              "value": 512
+            },
+            {
+              "label": "1 GB",
+              "value": 1024
+            },
+            {
+              "label": "2 GB",
+              "value": 2048
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "string",
+      "name": "FUNCTION_TIMEOUT",
+      "label": "Function timeout",
+      "default": "540s",
+      "input": {
+        "select": {
+          "options": [
+            {
+              "label": "5 minutes",
+              "value": "300s"
+            },
+            {
+              "label": "9 minutes",
+              "value": "540s"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "string",
+      "name": "MAX_DISPATCHES_PER_SECOND",
+      "label": "Max dispatches per second",
+      "default": "10",
+      "input": {
+        "text": {
+          "validationRegex": "^\\d+$"
+        }
+      }
+    }
+  ]
+}
