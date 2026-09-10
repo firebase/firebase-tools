@@ -34,6 +34,9 @@ import {
   promptAndWriteKitParams,
   getKitPackagesToSave,
   resolveSdkSpecifierToSave,
+  safeRemove,
+  cleanUpEmptyDir,
+  revertFunctionsConfig,
   TemplateType,
 } from "./install";
 import * as env from "./env";
@@ -60,6 +63,8 @@ describe("functions/kits/install", () => {
   let loggerInfoStub: sinon.SinonStub;
   let loggerWarnStub: sinon.SinonStub;
   let statStub: sinon.SinonStub;
+  let fsRemoveStub: sinon.SinonStub;
+  let fsReaddirStub: sinon.SinonStub;
 
   beforeEach(() => {
     sinon.stub(experiments, "assertEnabled");
@@ -75,6 +80,8 @@ describe("functions/kits/install", () => {
     sinon.stub(fs, "readJson").resolves({});
     sinon.stub(fs, "writeJson").resolves();
     sinon.stub(fs, "writeFile").resolves();
+    fsRemoveStub = sinon.stub(fs, "remove").resolves();
+    fsReaddirStub = sinon.stub(fs, "readdir").resolves([]);
     seedKitInstanceEnvStub = sinon.stub(env, "seedKitInstanceEnv");
     loggerInfoStub = sinon.stub(logger, "info");
     loggerWarnStub = sinon.stub(logger, "warn");
@@ -3836,6 +3843,381 @@ describe("functions/kits/install", () => {
         ["run", "build"],
         "/mock/project/function-kits/custom-kit/source",
       );
+    });
+
+    it("should clean up package kit directory and revert config if npm install fails", async () => {
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: sinon.stub(),
+        askWriteProjectFile: sinon.stub().resolves(),
+      } as unknown as Config;
+
+      wrapSpawnStub.rejects(new Error("npm ERR! code ENOTFOUND"));
+
+      await expect(
+        installKitOrInstance({
+          config: mockConfig,
+          package: "@firebase-function-kits/firestore-bigquery-export@1.0.0",
+          nonInteractive: true,
+        }),
+      ).to.be.rejectedWith(FirebaseError, /NPM install failed/);
+
+      expect(fsRemoveStub).to.have.been.calledWith(
+        path.join("/mock/project", "function-kits/firestore-bigquery-export"),
+      );
+    });
+
+    it("should clean up package kit directory and empty function-kits dir if param resolution fails", async () => {
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: sinon.stub(),
+        askWriteProjectFile: sinon.stub().resolves(),
+      } as unknown as Config;
+
+      const paramList: params.Param[] = [{ name: "DATASET_NAME", type: "string" }];
+      const mockBuild: build.Build = {
+        requiredAPIs: [],
+        endpoints: {},
+        params: paramList,
+      };
+      const delegate = {
+        discoverBuild: sinon.stub().resolves(mockBuild),
+      };
+      sinon
+        .stub(runtimes, "getRuntimeDelegate")
+        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      sinon.stub(params, "resolveParams").rejects(new FirebaseError("Failed to resolve param"));
+
+      (fs.pathExists as sinon.SinonStub)
+        .withArgs(path.join("/mock/project", "function-kits"))
+        .resolves(true);
+      fsReaddirStub.withArgs(path.join("/mock/project", "function-kits")).resolves([]);
+
+      await expect(
+        installKitOrInstance({
+          config: mockConfig,
+          package: "@firebase-function-kits/firestore-bigquery-export@1.0.0",
+          nonInteractive: true,
+          projectId: "target-proj",
+        }),
+      ).to.be.rejectedWith(FirebaseError, "Failed to resolve param");
+
+      expect(fsRemoveStub).to.have.been.calledWith(
+        path.join("/mock/project", "function-kits/firestore-bigquery-export"),
+      );
+      expect(fsRemoveStub).to.have.been.calledWith(path.join("/mock/project", "function-kits"));
+    });
+
+    it("should clean up directory kit config directory without deleting user source when install fails", async () => {
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: sinon.stub(),
+        askWriteProjectFile: sinon.stub().resolves(),
+      } as unknown as Config;
+
+      (fs.pathExists as sinon.SinonStub).withArgs("/mock/project/my-functions").resolves(true);
+      (fs.pathExists as sinon.SinonStub)
+        .withArgs(path.join("/mock/project/my-functions", "package.json"))
+        .resolves(true);
+      (fs.stat as sinon.SinonStub)
+        .withArgs("/mock/project/my-functions")
+        .resolves({ isDirectory: () => true } as fs.Stats);
+      (fs.readJson as sinon.SinonStub)
+        .withArgs(path.join("/mock/project/my-functions", "package.json"))
+        .resolves({ scripts: { build: "tsc" } });
+
+      wrapSpawnStub.rejects(new Error("Build compilation error"));
+
+      await expect(
+        installKitOrInstance({
+          config: mockConfig,
+          directory: "./my-functions",
+          nonInteractive: true,
+        }),
+      ).to.be.rejectedWith(FirebaseError, /NPM install failed/);
+
+      expect(fsRemoveStub).to.have.been.calledWith(
+        path.join("/mock/project", "function-kits/my-functions/config-my-functions"),
+      );
+      expect(fsRemoveStub).to.not.have.been.calledWith("/mock/project/my-functions");
+    });
+
+    it("should revert firebase.json if modified before a failure in installKitOrInstance", async () => {
+      const initialFunctions = [
+        {
+          codebase: "default",
+          source: "functions",
+        },
+      ];
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [...initialFunctions] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: sinon.stub(),
+        askWriteProjectFile: sinon.stub().resolves(),
+      } as unknown as Config;
+
+      const mockBuild: build.Build = {
+        requiredAPIs: [],
+        endpoints: {},
+        params: [],
+        requiredRoles: ["roles/viewer"],
+      };
+      const delegate = {
+        discoverBuild: sinon.stub().resolves(mockBuild),
+      };
+      sinon
+        .stub(runtimes, "getRuntimeDelegate")
+        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      sinon.stub(iam, "getRoleName").rejects(new Error("Reporting error"));
+
+      await expect(
+        installKitOrInstance({
+          config: mockConfig,
+          package: "@firebase-function-kits/firestore-bigquery-export@1.0.0",
+          nonInteractive: true,
+          configure: true,
+        }),
+      ).to.be.rejectedWith("Reporting error");
+
+      expect(mockConfig.src.functions).to.deep.equal(initialFunctions);
+      expect((mockConfig.writeProjectFile as sinon.SinonStub).lastCall).to.have.been.calledWith(
+        "firebase.json",
+        mockConfig.src,
+      );
+    });
+  });
+
+  describe("addKitInstanceOrConfigureProject cleanup on failure", () => {
+    it("should clean up instance config dir and revert firebase.json if addInstance fails during params prompt", async () => {
+      const existingKit: ValidatedKitSingle = {
+        kit: "firestore-bigquery-export",
+        sourcePackage: { name: "@firebase-function-kits/firestore-bigquery-export" },
+        source: "function-kits/firestore-bigquery-export/source",
+        instances: {
+          inst1: "function-kits/firestore-bigquery-export/config-inst1",
+        },
+      };
+      const writeProjectFileStub = sinon.stub();
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [existingKit] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: writeProjectFileStub,
+        askWriteProjectFile: sinon.stub().resolves(),
+      } as unknown as Config;
+
+      const paramList: params.Param[] = [{ name: "PARAM_A", type: "string" }];
+      const mockBuild: build.Build = {
+        requiredAPIs: [],
+        endpoints: {},
+        params: paramList,
+      };
+      const delegate = {
+        discoverBuild: sinon.stub().resolves(mockBuild),
+      };
+      sinon
+        .stub(runtimes, "getRuntimeDelegate")
+        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      sinon.stub(params, "resolveParams").rejects(new FirebaseError("Required param missing"));
+
+      await expect(
+        addKitInstanceOrConfigureProject(
+          {
+            config: mockConfig,
+            instanceId: "inst2",
+            nonInteractive: true,
+            projectId: "my-project",
+          },
+          existingKit,
+          {
+            existingFunctions: [existingKit],
+            existingKitIds: ["firestore-bigquery-export"],
+            existingCodebases: [],
+            existingInstanceIds: ["inst1"],
+          },
+        ),
+      ).to.be.rejectedWith(FirebaseError, "Required param missing");
+
+      expect(fsRemoveStub).to.have.been.calledWith(
+        path.join("/mock/project", "function-kits/firestore-bigquery-export/config-inst2"),
+      );
+      expect(existingKit.instances).to.deep.equal({
+        inst1: "function-kits/firestore-bigquery-export/config-inst1",
+      });
+      expect(writeProjectFileStub.lastCall).to.have.been.calledWith(
+        "firebase.json",
+        mockConfig.src,
+      );
+    });
+
+    it("should clean up created project env file if addEnv fails during params prompt", async () => {
+      const existingKit: ValidatedKitSingle = {
+        kit: "firestore-bigquery-export",
+        sourcePackage: { name: "@firebase-function-kits/firestore-bigquery-export" },
+        source: "function-kits/firestore-bigquery-export/source",
+        instances: {
+          inst1: "function-kits/firestore-bigquery-export/config-inst1",
+        },
+      };
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [existingKit] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: sinon.stub(),
+        askWriteProjectFile: sinon.stub().resolves(),
+      } as unknown as Config;
+
+      (fs.pathExists as sinon.SinonStub)
+        .withArgs(
+          path.join(
+            "/mock/project",
+            "function-kits/firestore-bigquery-export/config-inst1/.env.my-project",
+          ),
+        )
+        .resolves(false);
+
+      const paramList: params.Param[] = [{ name: "PARAM_A", type: "string" }];
+      const mockBuild: build.Build = {
+        requiredAPIs: [],
+        endpoints: {},
+        params: paramList,
+      };
+      const delegate = {
+        discoverBuild: sinon.stub().resolves(mockBuild),
+      };
+      sinon
+        .stub(runtimes, "getRuntimeDelegate")
+        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      sinon.stub(params, "resolveParams").rejects(new FirebaseError("Required param missing"));
+
+      await expect(
+        addKitInstanceOrConfigureProject(
+          {
+            config: mockConfig,
+            instanceId: "inst1",
+            nonInteractive: true,
+            projectId: "my-project",
+          },
+          existingKit,
+          {
+            existingFunctions: [existingKit],
+            existingKitIds: ["firestore-bigquery-export"],
+            existingCodebases: [],
+            existingInstanceIds: ["inst1"],
+          },
+        ),
+      ).to.be.rejectedWith(FirebaseError, "Required param missing");
+
+      expect(fsRemoveStub).to.have.been.calledWith(
+        path.join(
+          "/mock/project",
+          "function-kits/firestore-bigquery-export/config-inst1/.env.my-project",
+        ),
+      );
+    });
+  });
+
+  describe("safeRemove", () => {
+    it("should call fs.remove with the provided path", async () => {
+      await safeRemove("/test/path");
+      expect(fsRemoveStub).to.have.been.calledOnceWith("/test/path");
+    });
+
+    it("should suppress errors thrown by fs.remove without rethrowing", async () => {
+      fsRemoveStub.rejects(new Error("EPERM"));
+      await expect(safeRemove("/test/path")).to.be.fulfilled;
+    });
+  });
+
+  describe("cleanUpEmptyDir", () => {
+    it("should do nothing if path does not exist", async () => {
+      (fs.pathExists as sinon.SinonStub).withArgs("/test/path").resolves(false);
+      await cleanUpEmptyDir("/test/path");
+      expect(fsReaddirStub).to.not.have.been.called;
+      expect(fsRemoveStub).to.not.have.been.called;
+    });
+
+    it("should delete directory if it exists and is empty", async () => {
+      (fs.pathExists as sinon.SinonStub).withArgs("/test/path").resolves(true);
+      fsReaddirStub.withArgs("/test/path").resolves([]);
+      await cleanUpEmptyDir("/test/path");
+      expect(fsRemoveStub).to.have.been.calledWith("/test/path");
+    });
+
+    it("should not delete directory if it contains files", async () => {
+      (fs.pathExists as sinon.SinonStub).withArgs("/test/path").resolves(true);
+      fsReaddirStub.withArgs("/test/path").resolves(["file.txt"]);
+      await cleanUpEmptyDir("/test/path");
+      expect(fsRemoveStub).to.not.have.been.called;
+    });
+
+    it("should do nothing if path is not a directory", async () => {
+      (fs.pathExists as sinon.SinonStub).withArgs("/test/file").resolves(true);
+      statStub.withArgs("/test/file").resolves({ isDirectory: () => false } as fs.Stats);
+      await cleanUpEmptyDir("/test/file");
+      expect(fsReaddirStub).to.not.have.been.called;
+      expect(fsRemoveStub).to.not.have.been.called;
+    });
+
+    it("should suppress errors gracefully without throwing", async () => {
+      (fs.pathExists as sinon.SinonStub).withArgs("/test/path").rejects(new Error("EACCES"));
+      await expect(cleanUpEmptyDir("/test/path")).to.be.fulfilled;
+    });
+  });
+
+  describe("revertFunctionsConfig", () => {
+    it("should revert functions and save when config was modified", () => {
+      const originalFunctions = [{ codebase: "default", source: "functions" }];
+      const writeProjectFileStub = sinon.stub();
+      const mockConfig = {
+        src: {
+          functions: [{ kit: "new-kit", source: "function-kits/new-kit" }],
+        },
+        writeProjectFile: writeProjectFileStub,
+      } as unknown as Config;
+
+      revertFunctionsConfig({ config: mockConfig, originalFunctions });
+
+      expect(mockConfig.src.functions).to.deep.equal(originalFunctions);
+      expect(writeProjectFileStub).to.have.been.calledOnceWith("firebase.json", mockConfig.src);
+    });
+
+    it("should delete functions and save when originally undefined", () => {
+      const writeProjectFileStub = sinon.stub();
+      const mockConfig = {
+        src: {
+          functions: [{ kit: "new-kit", source: "function-kits/new-kit" }],
+        },
+        writeProjectFile: writeProjectFileStub,
+      } as unknown as Config;
+
+      revertFunctionsConfig({ config: mockConfig, originalFunctions: undefined });
+
+      expect(mockConfig.src.functions).to.be.undefined;
+      expect("functions" in mockConfig.src).to.be.false;
+      expect(writeProjectFileStub).to.have.been.calledOnceWith("firebase.json", mockConfig.src);
+    });
+
+    it("should do nothing when config was not modified", () => {
+      const originalFunctions = [{ codebase: "default", source: "functions" }];
+      const writeProjectFileStub = sinon.stub();
+      const mockConfig = {
+        src: {
+          functions: [{ codebase: "default", source: "functions" }],
+        },
+        writeProjectFile: writeProjectFileStub,
+      } as unknown as Config;
+
+      revertFunctionsConfig({ config: mockConfig, originalFunctions });
+
+      expect(writeProjectFileStub).to.not.have.been.called;
     });
   });
 });
