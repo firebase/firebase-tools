@@ -54,36 +54,36 @@
   },
   "dataconnect": {
     "darwin": {
-      "version": "3.4.18",
-      "expectedSize": 33375408,
-      "expectedChecksum": "e38f131497fc43df55c3a47ee87e7fd4",
-      "expectedChecksumSHA256": "52518fefdd2e52581b0d8d035c6498f304ac493d3757f4fd35851b1f028a9460",
-      "remoteUrl": "https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-amd64-v3.4.18",
-      "downloadPathRelativeToCacheDir": "dataconnect-emulator-3.4.18"
+      "version": "3.4.19",
+      "expectedSize": 33412928,
+      "expectedChecksum": "5a65cd626d5c022eab4c2036b18f0314",
+      "expectedChecksumSHA256": "4a63243e720d26de7e2e5bd5060fc92768f09446ec42b3369fb6ddc06a9cdddf",
+      "remoteUrl": "https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-amd64-v3.4.19",
+      "downloadPathRelativeToCacheDir": "dataconnect-emulator-3.4.19"
     },
     "darwin_arm64": {
-      "version": "3.4.18",
-      "expectedSize": 31505922,
-      "expectedChecksum": "6a7cfdd68a7671bb660eb8489372a890",
-      "expectedChecksumSHA256": "96cdec1fd6561af5c10f915f6f3bfd59a7405bf5e9b8fabfedb40cd57d6d5d76",
-      "remoteUrl": "https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-arm64-v3.4.18",
-      "downloadPathRelativeToCacheDir": "dataconnect-emulator-3.4.18"
+      "version": "3.4.19",
+      "expectedSize": 31539602,
+      "expectedChecksum": "cd914718f705a9e614bc3024f443bb52",
+      "expectedChecksumSHA256": "dafb2e532c29d876cb30d5c2bf32b2e50a614386dc16ba82b0ed6a9fca2a6db3",
+      "remoteUrl": "https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-arm64-v3.4.19",
+      "downloadPathRelativeToCacheDir": "dataconnect-emulator-3.4.19"
     },
     "win32": {
-      "version": "3.4.18",
-      "expectedSize": 33414144,
-      "expectedChecksum": "d2504c643ac8355b90aa31be7575807c",
-      "expectedChecksumSHA256": "a92f2d01950af613d28b92c2cd7baa85e7629fa201b8ff8dddce73d5584dccc5",
-      "remoteUrl": "https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-windows-amd64-v3.4.18",
-      "downloadPathRelativeToCacheDir": "dataconnect-emulator-3.4.18.exe"
+      "version": "3.4.19",
+      "expectedSize": 33444864,
+      "expectedChecksum": "e2f84df8d6c536bea29d2ccc4cb21e79",
+      "expectedChecksumSHA256": "756e370334ef982547e7252b3f91fd75b35f85c5d3666e8f3773a4a19a00c8f8",
+      "remoteUrl": "https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-windows-amd64-v3.4.19",
+      "downloadPathRelativeToCacheDir": "dataconnect-emulator-3.4.19.exe"
     },
     "linux": {
-      "version": "3.4.18",
-      "expectedSize": 32510136,
-      "expectedChecksum": "c8b4640f3ea59c813a708814bd2c0f8c",
-      "expectedChecksumSHA256": "bb381de594485653812bee518ddae025c13e1050670d6fa186f6003c3c9b71ec",
-      "remoteUrl": "https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-amd64-v3.4.18",
-      "downloadPathRelativeToCacheDir": "dataconnect-emulator-3.4.18"
+      "version": "3.4.19",
+      "expectedSize": 32542904,
+      "expectedChecksum": "63f099c9b9dad6e7d2adddae8af884a3",
+      "expectedChecksumSHA256": "bc74b68cc4bafcccc57dbe659a74b4403c225f01f851b5a4a61dcea81e8b1310",
+      "remoteUrl": "https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-amd64-v3.4.19",
+      "downloadPathRelativeToCacheDir": "dataconnect-emulator-3.4.19"
     }
   }
 }
