@@ -1053,14 +1053,14 @@ export async function promptAndWriteKitParams(
   }
 
   const typedUserEnvs = build.envWithTypes(options.params, userEnvs);
-  const { paramValues: resolvedEnvs, secretRefs: resolvedSecretRefs } = await params.resolveParams(
-    options.params,
-    firebaseConfig,
-    typedUserEnvs,
-    options.instanceId,
-    options.nonInteractive,
-    options.force,
-  );
+  const { paramValues: resolvedEnvs, secretRefs: resolvedSecretRefs } = await params.resolveParams({
+    params: options.params,
+    firebaseConfig: firebaseConfig,
+    userEnvs: typedUserEnvs,
+    codebase: options.instanceId,
+    nonInteractive: options.nonInteractive,
+    force: options.force,
+  });
 
   functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
   if (experiments.isEnabled("secretEnvParams")) {
