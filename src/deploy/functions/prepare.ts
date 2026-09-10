@@ -411,8 +411,10 @@ export async function prepare(
     context.codebaseDeployEvents[codebase].runtime = wantBuild.runtime;
   }
 
-  // ===Phase 2.5. Before proceeding further, let's make sure that we don't have conflicting function names.
+  // ===Phase 2.5. Before proceeding further, let's make sure that we don't have conflicting function
+  // names, and that nothing is taking over a name that already exists as a newer generation.
   validate.endpointsAreUnique(wantBackends);
+  validate.noGenerationDowngrades(wantBackends, existingBackend);
 
   // ===Phase 3. Prepare source for upload.
   context.sources = {};
@@ -645,10 +647,7 @@ export function inferDetailsFromExisting(
       wantE.availableMemoryMb = haveE.availableMemoryMb;
     }
 
-    // cpu does not exist on gcfv1. Inheriting it from an existing gcfv2 function onto
-    // a gcfv1 endpoint fails CPU validation and masks the accurate "cannot be
-    // downgraded" error.
-    if (typeof wantE.cpu === "undefined" && haveE.cpu && wantE.platform !== "gcfv1") {
+    if (typeof wantE.cpu === "undefined" && haveE.cpu) {
       wantE.cpu = haveE.cpu;
     }
 

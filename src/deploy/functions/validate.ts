@@ -96,9 +96,6 @@ export function endpointsAreValid(
   validateLifecycleHooks(wantBackend, existingBackend);
   const endpoints = backend.allEndpoints(wantBackend);
   functionIdsAreValid(endpoints);
-  if (existingBackend) {
-    noGenerationDowngrades(wantBackend, existingBackend);
-  }
   validateTimeoutConfig(endpoints);
   for (const ep of endpoints) {
     validateScheduledTimeout(ep);
@@ -141,19 +138,22 @@ export function endpointsAreValid(
 }
 
 /**
- * Rejects an existing gcfv2 function or Cloud Run service being redeployed as gcfv1. The
- * release planner enforces this too, but only after the source has been uploaded.
+ * Rejects an existing gcfv2 function or Cloud Run service being redeployed as gcfv1. Runs
+ * before the source is prepared, and before inferDetailsFromExisting copies settings that
+ * are only legal on the existing generation onto the gcfv1 endpoint.
  */
-function noGenerationDowngrades(
-  wantBackend: backend.Backend,
+export function noGenerationDowngrades(
+  wantBackends: Record<string, backend.Backend>,
   existingBackend: backend.Backend,
 ): void {
   const msgs: string[] = [];
-  for (const want of backend.allEndpoints(wantBackend).sort(backend.compareFunctions)) {
-    const have = existingBackend.endpoints[want.region]?.[want.id];
-    const msg = have && generationDowngradeMessage(want, have);
-    if (msg) {
-      msgs.push(msg);
+  for (const wantBackend of Object.values(wantBackends)) {
+    for (const want of backend.allEndpoints(wantBackend).sort(backend.compareFunctions)) {
+      const have = existingBackend.endpoints[want.region]?.[want.id];
+      const msg = have && generationDowngradeMessage(want, have);
+      if (msg) {
+        msgs.push(msg);
+      }
     }
   }
   if (msgs.length) {

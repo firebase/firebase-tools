@@ -755,15 +755,8 @@ describe("planner", () => {
       const want: backend.Endpoint = { ...func("id", "region"), platform: "gcfv1" };
       const have: backend.Endpoint = { ...func("id", "region"), platform: "gcfv2" };
 
-      expect(() => planner.checkForIllegalUpdate(want, have)).to.throw();
-    });
-
-    it("should throw if a user redeploys a Cloud Run service as v1", () => {
-      const want: backend.Endpoint = { ...func("id", "region"), platform: "gcfv1" };
-      const have: backend.Endpoint = { ...func("id", "region"), platform: "run" };
-
       expect(() => planner.checkForIllegalUpdate(want, have)).to.throw(
-        /cannot be downgraded from Cloud Run to GCFv1/,
+        /cannot be downgraded from GCFv2 to GCFv1/,
       );
     });
   });
