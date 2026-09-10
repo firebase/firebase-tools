@@ -228,7 +228,9 @@ export abstract class Throttler<T, R> {
   }
 
   private finish(err?: TaskError): void {
-    this.waits.forEach((p) => {
+    const waits = this.waits;
+    this.waits = [];
+    waits.forEach((p) => {
       if (err) {
         return p.reject(err);
       }
