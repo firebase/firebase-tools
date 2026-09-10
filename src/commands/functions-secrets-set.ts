@@ -31,8 +31,11 @@ export const command = new Command("functions:secrets:set <KEY>")
   .before(requirePermissions, [
     "secretmanager.secrets.create",
     "secretmanager.secrets.get",
+    "secretmanager.secrets.list",
     "secretmanager.secrets.update",
     "secretmanager.versions.add",
+    "secretmanager.versions.destroy",
+    "secretmanager.versions.list",
   ])
   .option(
     "--data-file <dataFile>",
