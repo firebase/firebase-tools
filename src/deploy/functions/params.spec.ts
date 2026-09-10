@@ -391,7 +391,12 @@ describe("resolveParams", () => {
           },
         },
       ];
-      const resolved = await params.resolveParams(paramsToResolve, fakeConfig, {}, "default");
+      const resolved = await params.resolveParams({
+        params: paramsToResolve,
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "default",
+      });
       const choices = checkbox.firstCall.args[0].choices as { value: string; checked: boolean }[];
       expect(choices.map((c) => [c.value, c.checked])).to.deep.equal([
         ["a", false],
