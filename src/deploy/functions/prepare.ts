@@ -28,6 +28,7 @@ import {
   endpointMatchesAnyFilter,
   getEndpointFilters,
   groupEndpointsByCodebase,
+  isCodebasePartiallyFiltered,
   targetCodebases,
 } from "./functionsDeployHelper";
 import { logLabeledBullet, logLabeledWarning } from "../../utils";
@@ -107,12 +108,7 @@ export async function discoverSecurityDetails(
     (e) => !!e.labels?.[DECLARATIVE_SECURITY_ETAG_LABEL],
   )?.labels?.[DECLARATIVE_SECURITY_ETAG_LABEL];
 
-  const isPartiallyFiltered = !!(
-    filters &&
-    filters.some(
-      (f) => (!f.codebase || f.codebase === codebase) && f.idChunks && f.idChunks.length > 0,
-    )
-  );
+  const isPartiallyFiltered = isCodebasePartiallyFiltered(codebase, filters);
   const isEnrolling = !!requiredRoles && !existingManagedSA;
   const isUnenrolling = !requiredRoles && !!existingManagedSA && !!haveRolesEtag;
 

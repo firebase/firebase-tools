@@ -335,7 +335,7 @@ export type DynamicExtension = {
   labels?: Record<string, string>;
 };
 
-interface ResolveBackendOpts {
+export interface ResolveBackendOpts {
   build: Build;
   firebaseConfig: FirebaseConfig;
   userEnvs: Record<string, string>;
@@ -354,15 +354,15 @@ export async function resolveBackend(opts: ResolveBackendOpts): Promise<{
   envs: Record<string, params.ParamValue>;
   secretRefs: Record<string, string>;
 }> {
-  const { paramValues: paramValues, secretRefs: secretRefs } = await params.resolveParams(
-    opts.build.params,
-    opts.firebaseConfig,
-    envWithTypes(opts.build.params, opts.userEnvs),
-    opts.codebase,
-    opts.nonInteractive,
-    opts.force,
-    opts.isEmulator,
-  );
+  const { paramValues: paramValues, secretRefs: secretRefs } = await params.resolveParams({
+    params: opts.build.params,
+    firebaseConfig: opts.firebaseConfig,
+    userEnvs: envWithTypes(opts.build.params, opts.userEnvs),
+    codebase: opts.codebase,
+    nonInteractive: opts.nonInteractive,
+    force: opts.force,
+    isEmulator: opts.isEmulator,
+  });
 
   return { backend: toBackend(opts.build, paramValues), envs: paramValues, secretRefs: secretRefs };
 }
@@ -737,9 +737,9 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
 }
 
 /**
- * Prefixes all endpoint IDs and secret names in a build with a given prefix.
- * This ensures that functions and their associated secrets from different codebases
- * remain isolated and don't conflict when deployed to the same project.
+ * Prefixes all endpoint IDs in a build with a given prefix.
+ * This ensures that functions from different codebases or kits instances
+ * don't conflict when deployed to the same project.
  */
 export function applyPrefix(build: Build, prefix: string): void {
   if (!prefix) {
@@ -763,13 +763,6 @@ export function applyPrefix(build: Build, prefix: string): void {
     }
 
     newEndpoints[newId] = endpoint;
-
-    if (endpoint.secretEnvironmentVariables) {
-      endpoint.secretEnvironmentVariables = endpoint.secretEnvironmentVariables.map((secret) => ({
-        ...secret,
-        secret: `${prefix}-${secret.secret}`,
-      }));
-    }
   }
   build.endpoints = newEndpoints;
 
@@ -806,7 +799,7 @@ export interface ParsedSecretRef {
  * /version can be omitted and will cause the secret to resolve to whatever the latest version was at time of deploy.
  *
  * For each binding imported from the .env file,
- * 1) TODO: Check if a conflicting SecretParam with the same name exists. If so, override the param so that the prompting flow will look in the right place when deciding whether or not to create a new Secret.
+ * 1) Check if a conflicting SecretParam with the same name exists. If so, override the param so that the prompting flow will look in the right place when deciding whether or not to create a new Secret.
  * 2) Upsert the binding directly into the Build's SecretEnvVars, which will cause it to be actually available in process.ENV
  */
 export function applyEnvSecretBindings(
