@@ -11,6 +11,11 @@ import * as manifest from "../extensions/manifest";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { uninstallExtension } from "../extensions/migrate";
+import { getInstance } from "../extensions/extensionsApi";
+import { secretsNeedingEjection } from "../extensions/export";
+import { FirebaseError } from "../error";
+import { ExtensionInstance } from "../extensions/types";
+import { confirm } from "../prompt";
 
 export const command = new Command("ext:uninstall <extensionInstanceId>")
   .description("uninstall an extension that is installed in your Firebase project by instance ID")
@@ -33,6 +38,36 @@ export const command = new Command("ext:uninstall <extensionInstanceId>")
     }
     if (options.immediate) {
       const projectId = needProjectId(options);
+      let instance: ExtensionInstance | undefined;
+      try {
+        instance = await getInstance(projectId, instanceId);
+      } catch (err: unknown) {
+        if (err instanceof FirebaseError && err.status === 404) {
+          logLabeledWarning(
+            logPrefix,
+            "ext:uninstall called with --immediate, but no deployed GCP resources found for the extension.",
+          );
+          return;
+        }
+        throw err instanceof FirebaseError ? err : new FirebaseError(String(err));
+      }
+      if (typeof instance === "undefined") {
+        throw new FirebaseError(
+          `Failed to retrieve deployed GCP resources for extension instance ${instanceId}`,
+        );
+      }
+      const outstandingSecrets = await secretsNeedingEjection(instance);
+      if (outstandingSecrets.length > 0) {
+        const shouldContinue = await confirm({
+          message: `Extension instance ${instanceId} has secrets with the "firebase-extensions-managed" label:\n${outstandingSecrets.join(", ")}\nContinuing with extension uninstall will permanantly destroy these secrets.\nYou can keep these secrets by running ext:export, or by manually removing the label in the Cloud Console.\nContinue? (y/N)`,
+          default: false,
+          nonInteractive: options.nonInteractive,
+          force: options.force,
+        });
+        if (!shouldContinue) {
+          return;
+        }
+      }
       await uninstallExtension(projectId, instanceId, options, false);
       return;
     }
