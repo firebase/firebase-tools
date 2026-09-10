@@ -3,6 +3,7 @@ import {
   endpointMatchesAnyFilter,
   generationDowngradeMessage,
   getFunctionLabel,
+  isCodebasePartiallyFiltered,
 } from "../functionsDeployHelper";
 import { isFirebaseManaged } from "../../../deploymentTool";
 import { FirebaseError } from "../../../error";
@@ -178,11 +179,7 @@ export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan
   let serviceAccountToCreate: string | undefined;
   let serviceAccountToDelete: string | undefined;
 
-  const isFiltered = !!(
-    filters &&
-    filters.some((f) => f.idChunks && f.idChunks.length > 0) &&
-    !deleteAll
-  );
+  const isPartiallyFiltered = isCodebasePartiallyFiltered(codebase, filters);
 
   const hasWantEndpoints = backend.someEndpoint(wantBackend, () => true);
 
@@ -192,7 +189,7 @@ export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan
     if (!existingManagedSA && managedSA) {
       serviceAccountToCreate = managedSA;
     }
-  } else if (existingManagedSA && !isFiltered) {
+  } else if (existingManagedSA && (!isPartiallyFiltered || deleteAll)) {
     serviceAccountToDelete = existingManagedSA;
   }
 

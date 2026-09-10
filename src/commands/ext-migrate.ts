@@ -34,7 +34,7 @@ export interface ExtMigrateOptions extends Options {
 export const command = new Command("ext:migrate")
   .description("migrate an extension instance to a function kit")
   .option("-p, --package <package>", "optional kit package override to use")
-  .option("-i, --ext-instance <instanceId>", "extension instance ID to migrate")
+  .option("--ext-instance <instanceId>", "extension instance ID to migrate")
   .option("-e, --extension <extensionRef>", "extension reference or name to migrate")
   .option("-f, --force", "force update and migration without prompting")
   .before(requireConfig)
