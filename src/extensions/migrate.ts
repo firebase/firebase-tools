@@ -379,23 +379,18 @@ export async function ensureInstanceUpToDate(
     return instance;
   }
 
-  if (options?.force) {
-    logLabeledWarning(
-      logPrefix,
-      `Migrating extension instance ${clc.bold(instanceId)} using outdated version ${clc.bold(currentVersion)} because --force was specified. Migration may fail or behave unexpectedly.`,
-    );
-    return instance;
-  }
-
   const shouldUpgrade = await confirm({
-    message: `Extension instance ${clc.bold(instanceId)} is on version ${clc.bold(currentVersion)}, but the latest version is ${clc.bold(latestVersion)}. Upgrading is required before migrating to avoid breaking changes. Upgrade it now?`,
+    message: `Extension instance ${clc.bold(instanceId)} is on version ${clc.bold(currentVersion)}, but the latest version is ${clc.bold(latestVersion)}. An upgrade is strongly recommended before migrating to avoid breaking changes. Upgrade it now?`,
     default: true,
     nonInteractive: options?.nonInteractive,
+    force: options?.force,
   });
   if (!shouldUpgrade) {
-    throw new FirebaseError(
-      `Extension instance ${clc.bold(instanceId)} must be upgraded to version ${clc.bold(latestVersion)} before migrating. To bypass this requirement and migrate with the current version, rerun with --force.`,
+    logLabeledWarning(
+      logPrefix,
+      `Continuing migration with extension instance ${clc.bold(instanceId)} on outdated version ${clc.bold(currentVersion)}.`,
     );
+    return instance;
   }
 
   logLabeledBullet(

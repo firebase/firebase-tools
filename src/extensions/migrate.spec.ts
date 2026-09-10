@@ -398,33 +398,43 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       expect(getExtVersionStub).to.have.been.called;
     });
 
-    it("should throw FirebaseError with instructions to rerun with --force if user declines upgrade", async () => {
+    it("should continue with current version if user declines upgrade", async () => {
       confirmStub.resolves(false);
       sandbox.stub(extensionsApi, "getExtension").resolves({
         latestVersion: "0.1.19",
       } as unknown as Extension);
+      const updateSpy = sandbox.spy(updateHelper, "update");
+      const warnSpy = sandbox.spy(utils, "logLabeledWarning");
 
-      await expect(
-        migrateModule.ensureInstanceUpToDate("test-project", mockInstance1),
-      ).to.be.rejectedWith(
-        FirebaseError,
-        /Extension instance email-1 must be upgraded to version 0.1.19 before migrating. To bypass this requirement and migrate with the current version, rerun with --force./,
+      const result = await migrateModule.ensureInstanceUpToDate("test-project", mockInstance1);
+
+      expect(result).to.equal(mockInstance1);
+      expect(updateSpy).to.not.have.been.called;
+      expect(warnSpy).to.have.been.calledWithMatch(
+        "extensions",
+        /Continuing migration with extension instance email-1 on outdated version 0\.1\.18\./,
       );
     });
 
-    it("should bypass upgrade with a warning if --force is specified", async () => {
+    it("should pass force option to confirm prompt when --force is specified", async () => {
       sandbox.stub(extensionsApi, "getExtension").resolves({
-        latestVersion: "0.1.19",
+        latestVersion: "0.1.15",
       } as unknown as Extension);
-      const updateSpy = sandbox.spy(updateHelper, "update");
+      sandbox.stub(extensionsApi, "getExtensionVersion").resolves({
+        name: "firebase/firestore-send-email@0.1.15",
+        ref: "firebase/firestore-send-email@0.1.15",
+        spec: { name: "firestore-send-email", version: "0.1.15", params: [] },
+      } as unknown as ExtensionVersion);
+      sandbox.stub(updateHelper, "update").resolves({} as unknown as ExtensionInstance);
+      sandbox.stub(extensionsApi, "getInstance").resolves(mockInstance1);
 
-      const result = await migrateModule.ensureInstanceUpToDate("test-project", mockInstance1, {
+      await migrateModule.ensureInstanceUpToDate("test-project", mockInstance1, {
         force: true,
       });
 
-      expect(result).to.equal(mockInstance1);
-      expect(confirmStub).to.not.have.been.called;
-      expect(updateSpy).to.not.have.been.called;
+      expect(confirmStub).to.have.been.calledWithMatch({
+        force: true,
+      });
     });
 
     it("should resolve currentVersion from instance.config.extensionVersion if spec version is missing", async () => {
