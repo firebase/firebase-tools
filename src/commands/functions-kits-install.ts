@@ -17,6 +17,7 @@ export const command = new Command("functions:kits:install")
   .description("install a function kit into your project")
   .before(requireConfig)
   .before(requireAuth)
+  .withForce()
   .option("--package <package>", "NPM package name or specifier to install as a function kit")
   .option(
     "--directory <directory>",
