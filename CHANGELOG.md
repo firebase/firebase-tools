@@ -5,3 +5,4 @@
 - Improved the error shown when deploying to a Google Cloud project that does not have Firebase enabled (#10379)
 - [Added] Add -f, --force option to `firebase ext:migrate`.
 - [Fixed] Fix parameter type preservation and optional system parameter handling during extension updates in `firebase ext:migrate`.
+- [fixed] Clean up managed service accounts when opting out of declarative security alongside a filtered codebase deploy.

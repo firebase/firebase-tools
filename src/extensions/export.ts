@@ -144,7 +144,7 @@ export function functionsEnvFromInstance(instance: ExtensionInstance): Record<st
       if (renamed === "EXT_MIGRATED_SYSTEM_LOCATION") {
         renamed = "FUNCTION_DEFAULT_REGION";
       }
-      envs[renamed] = specSystemParam.default ?? "";
+      envs[renamed] = String(specSystemParam.default ?? "");
     }
   }
 
