@@ -383,7 +383,7 @@ function canSatisfyParam(param: Param, value: RawParamValue): boolean {
   assertExhaustive(param);
 }
 
-interface ResolveParamOpts {
+export interface ResolveParamOpts {
   params: Param[];
   firebaseConfig: FirebaseConfig;
   userEnvs: Record<string, ParamValue>;

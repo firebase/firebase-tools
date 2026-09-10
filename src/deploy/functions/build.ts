@@ -335,7 +335,7 @@ export type DynamicExtension = {
   labels?: Record<string, string>;
 };
 
-interface ResolveBackendOpts {
+export interface ResolveBackendOpts {
   build: Build;
   firebaseConfig: FirebaseConfig;
   userEnvs: Record<string, string>;
@@ -738,7 +738,7 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
 
 /**
  * Prefixes all endpoint IDs in a build with a given prefix.
- * This ensures that functions from different codebases or Kits instances
+ * This ensures that functions from different codebases or kits instances
  * don't conflict when deployed to the same project.
  */
 export function applyPrefix(build: Build, prefix: string): void {
