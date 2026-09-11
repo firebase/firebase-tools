@@ -3,7 +3,7 @@ import { ReadStream } from "fs";
 import * as utils from "../utils";
 import * as operationPoller from "../operation-poller";
 import { Distribution } from "./distribution";
-import { FirebaseError, getErrMsg } from "../error";
+import { FirebaseError, getErrMsg, getErrStatus, getError } from "../error";
 import { Client, ClientResponse } from "../apiv2";
 import { appDistributionOrigin } from "../api";
 
@@ -301,7 +301,19 @@ export class AppDistributionClient {
       });
       return response.body;
     } catch (err: unknown) {
-      throw new FirebaseError(`Failed to create release test ${getErrMsg(err)}`);
+      const status = getErrStatus(err);
+      const msg = getErrMsg(err);
+      if (
+        status === 429 ||
+        msg.includes("RESOURCE_EXHAUSTED") ||
+        msg.includes("QUOTA_EXCEEDED")
+      ) {
+        throw new FirebaseError(
+          `Quota exceeded: Failed to request test execution due to quota limits (429 RESOURCE_EXHAUSTED). Please check your project's App Testing quota usage in the Firebase console. Details: ${msg}`,
+          { status: 429, original: getError(err) },
+        );
+      }
+      throw new FirebaseError(`Failed to create release test: ${msg}`, { original: getError(err) });
     }
   }
 
