@@ -23,7 +23,7 @@ export const command = new Command("ext:uninstall <extensionInstanceId>")
   .option("--local", "deprecated")
   .option(
     "--immediate",
-    "immediately destroy GCP resources instead of waiting on next deploy. Can be run outside a firebase project directory.",
+    "immediately destroy GCP resources instead of waiting on next deploy. Can be run outside a firebase project directory if --project is specified.",
   )
   .withForce()
   .before(requirePermissions, ["firebaseextensions.instances.delete"])
@@ -50,6 +50,7 @@ export const command = new Command("ext:uninstall <extensionInstanceId>")
           );
           const config = manifest.loadConfig(options);
           manifest.removeFromManifest(instanceId, config);
+          return;
         }
         throw new FirebaseError(
           `Failed to retrieve extension instance ${instanceId}: ${err instanceof Error ? err.message : String(err)}`,
@@ -72,6 +73,11 @@ export const command = new Command("ext:uninstall <extensionInstanceId>")
           force: options.force,
         });
         if (!shouldContinue) {
+          if (options.nonInteractive && !options.force) {
+            throw new FirebaseError(
+              `Extension instance ${instanceId} has managed secrets that would be permanently destroyed. Re-run with --force in non-interactive mode to confirm deletion.`,
+            );
+          }
           return;
         }
       }
