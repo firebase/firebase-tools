@@ -6,6 +6,7 @@ import * as utils from "../utils";
 import { Emulators, EmulatorInstance, EmulatorInfo, ListenSpec } from "./types";
 import { createServer } from "node:http";
 import { IPV4_UNSPECIFIED, IPV6_UNSPECIFIED } from "./dns";
+import { hostValidationMiddleware } from "./hostValidation";
 import { ListenOptions } from "node:net";
 
 export interface ExpressBasedEmulatorOptions {
@@ -32,6 +33,11 @@ export abstract class ExpressBasedEmulator implements EmulatorInstance {
 
   protected createExpressApp(): Promise<express.Express> {
     const app = express();
+
+    // Reject requests with an untrusted Host header to mitigate DNS-rebinding.
+    // Only enforced when bound to loopback (see hostValidationMiddleware).
+    app.use(hostValidationMiddleware(this.options.listen.map((s) => s.address)));
+
     if (!this.options.noCors) {
       // Enable CORS for all APIs, all origins (reflected), and all headers (reflected).
       // This is enabled by default since most emulators are cookieless.
