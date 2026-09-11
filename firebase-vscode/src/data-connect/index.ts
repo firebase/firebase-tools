@@ -22,7 +22,7 @@ import {
   dataConnectConfigs,
   registerDataConnectConfigs,
 } from "./config";
-import { locationToRange } from "../utils/graphql";
+import { locationToRange, unwrapTypeName } from "../utils/graphql";
 import { Result } from "../result";
 import { LanguageClient } from "vscode-languageclient/node";
 import { registerTerminalTasks } from "./terminal";
@@ -33,13 +33,16 @@ import { registerDiagnostics } from "./diagnostics";
 import { AnalyticsLogger } from "../analytics";
 import { registerFirebaseMCP } from "./ai-tools/firebase-mcp";
 import { ExecutionParamsService } from "./execution/execution-params";
+import { AllowDirectiveService } from "./allow-directive-service";
+import { AllowDirectiveCompletionProvider } from "./allow-directive-completion";
 
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
     private configs: Signal<
       Result<ResolvedDataConnectConfigs | undefined> | undefined
     >,
-  ) {}
+    private allowService: AllowDirectiveService,
+  ) { }
 
   provideCodeActions(
     document: vscode.TextDocument,
@@ -51,7 +54,12 @@ class CodeActionsProvider implements vscode.CodeActionProvider {
     const results: (vscode.CodeAction | vscode.Command)[] = [];
 
     // TODO: replace w/ online-parser to work with malformed documents
-    const documentNode = graphql.parse(documentText);
+    let documentNode;
+    try {
+      documentNode = graphql.parse(documentText);
+    } catch {
+      return null;
+    }
     let definitionAtRange: graphql.DefinitionNode | undefined;
     let definitionIndex: number | undefined;
 
@@ -85,7 +93,78 @@ class CodeActionsProvider implements vscode.CodeActionProvider {
       results,
     );
 
+    // Add @allow quick fix for mutations with _Data variables missing @allow.
+    if (definitionAtRange.kind === graphql.Kind.OPERATION_DEFINITION) {
+      this.addAllowQuickFix(
+        document,
+        definitionAtRange as graphql.OperationDefinitionNode,
+        results,
+      );
+    }
+
     return results;
+  }
+
+  private addAllowQuickFix(
+    document: vscode.TextDocument,
+    def: graphql.OperationDefinitionNode,
+    results: (vscode.CodeAction | vscode.Command)[],
+  ): void {
+    if (def.operation !== graphql.OperationTypeNode.MUTATION) {
+      return;
+    }
+
+    // Check each _Data variable for a missing @allow.
+    for (const varDef of def.variableDefinitions ?? []) {
+      const typeName = unwrapTypeName(varDef.type);
+      if (!typeName.endsWith("_Data")) {
+        continue;
+      }
+
+      const hasAllow = varDef.directives?.some(
+        (d) => d.name.value === "allow",
+      );
+      if (hasAllow) {
+        continue;
+      }
+
+      // Initialize service for this file's config.
+      try {
+        const serviceConfig =
+          this.configs.value?.tryReadValue?.findEnclosingServiceForPath(
+            document.uri.fsPath,
+          );
+        if (!serviceConfig) {
+          return;
+        }
+        this.allowService.initialize(serviceConfig);
+      } catch {
+        return;
+      }
+
+      const shallowFields = this.allowService.getShallowFields(typeName);
+      if (!shallowFields.length) {
+        continue;
+      }
+
+      const fieldsStr = shallowFields.join(" ");
+      const allowText = `\n  @allow(fields: "${fieldsStr}")`;
+
+      // Insert after the variable's type annotation.
+      if (!varDef.type.loc) {
+        continue;
+      }
+      const insertPos = document.positionAt(varDef.type.loc.end);
+
+      const action = new vscode.CodeAction(
+        `Add @allow with all DB columns for $${varDef.variable.name.value}`,
+        vscode.CodeActionKind.QuickFix,
+      );
+      action.edit = new vscode.WorkspaceEdit();
+      action.edit.insert(document.uri, insertPos, allowText);
+      action.isPreferred = true;
+      results.push(action);
+    }
   }
 
   private moveToConnector(
@@ -138,15 +217,62 @@ export function registerFdc(
 ): Disposable {
   registerDiagnostics(context, dataConnectConfigs);
   const dataConnectToolkit = new DataConnectToolkit(broker);
+  const allowService = new AllowDirectiveService();
+
+  // Register @allow directive completion provider.
+  const allowCompletionProvider =
+    vscode.languages.registerCompletionItemProvider(
+      [{ scheme: "file", language: "graphql" }],
+      new AllowDirectiveCompletionProvider(allowService),
+      '"',
+      " ",
+      "{",
+    );
+
+  // Watch for generated schema file changes to invalidate the allow service cache.
+  const generatedSchemaWatcher = vscode.workspace.createFileSystemWatcher(
+    "**/.dataconnect/schema/**/*.gql",
+  );
+  const invalidateAllowCache = () => allowService.invalidateCache();
+  generatedSchemaWatcher.onDidChange(invalidateAllowCache);
+  generatedSchemaWatcher.onDidCreate(invalidateAllowCache);
+  generatedSchemaWatcher.onDidDelete(invalidateAllowCache);
+
+  // Diagnostic collection for missing @allow on mutations.
+  const allowDiagnostics =
+    vscode.languages.createDiagnosticCollection("fdc-allow-directive");
+  const updateAllowDiagnostics = (document: vscode.TextDocument) => {
+    if (document.languageId !== "graphql") {
+      return;
+    }
+    computeAllowDiagnostics(document, allowService, allowDiagnostics);
+  };
+  // Update diagnostics on open, save, and change (debounced on change).
+  let diagnosticDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+  context.subscriptions.push(
+    vscode.workspace.onDidOpenTextDocument(updateAllowDiagnostics),
+    vscode.workspace.onDidSaveTextDocument(updateAllowDiagnostics),
+    vscode.workspace.onDidChangeTextDocument((e) => {
+      clearTimeout(diagnosticDebounceTimer);
+      diagnosticDebounceTimer = setTimeout(
+        () => updateAllowDiagnostics(e.document),
+        300,
+      );
+    }),
+    allowDiagnostics,
+  );
 
   const codeActions = vscode.languages.registerCodeActionsProvider(
     [
       { scheme: "file", language: "graphql" },
       { scheme: "untitled", language: "graphql" },
     ],
-    new CodeActionsProvider(dataConnectConfigs),
+    new CodeActionsProvider(dataConnectConfigs, allowService),
     {
-      providedCodeActionKinds: [vscode.CodeActionKind.Refactor],
+      providedCodeActionKinds: [
+        vscode.CodeActionKind.Refactor,
+        vscode.CodeActionKind.QuickFix,
+      ],
     },
   );
 
@@ -209,9 +335,8 @@ export function registerFdc(
     { dispose: sub1 },
     {
       dispose: effect(() => {
-        selectedProjectStatus.text = `$(mono-firebase) ${
-          currentProjectId.value ?? "<No project>"
-        }`;
+        selectedProjectStatus.text = `$(mono-firebase) ${currentProjectId.value ?? "<No project>"
+          }`;
         selectedProjectStatus.show();
       }),
     },
@@ -240,9 +365,9 @@ export function registerFdc(
       isTest
         ? [{ pattern: "/**/firebase-vscode/src/test/test_projects/**/*.gql" }]
         : [
-            { scheme: "file", language: "graphql" },
-            { scheme: "untitled", language: "graphql" },
-          ],
+          { scheme: "file", language: "graphql" },
+          { scheme: "untitled", language: "graphql" },
+        ],
       operationCodeLensProvider,
     ),
     schemaCodeLensProvider,
@@ -257,10 +382,85 @@ export function registerFdc(
       [{ scheme: "file", language: "yaml", pattern: "**/connector.yaml" }],
       configureSdkCodeLensProvider,
     ),
+    allowCompletionProvider,
+    generatedSchemaWatcher,
     {
       dispose: () => {
         client.stop();
       },
     },
   );
+}
+
+/**
+ * Compute diagnostics for mutations missing @allow directives.
+ * Shows an informational hint when a mutation has _Data variables but no @allow.
+ */
+function computeAllowDiagnostics(
+  document: vscode.TextDocument,
+  allowService: AllowDirectiveService,
+  collection: vscode.DiagnosticCollection,
+): void {
+  let ast;
+  try {
+    ast = graphql.parse(document.getText());
+  } catch {
+    // Can't parse — clear diagnostics for this file.
+    collection.delete(document.uri);
+    return;
+  }
+
+  // Initialize the service for this file if possible.
+  const configs = dataConnectConfigs.value?.tryReadValue;
+  if (!configs) {
+    collection.delete(document.uri);
+    return;
+  }
+  try {
+    const serviceConfig = configs.findEnclosingServiceForPath(
+      document.fileName,
+    );
+    allowService.initialize(serviceConfig);
+  } catch {
+    collection.delete(document.uri);
+    return;
+  }
+
+  const diagnostics: vscode.Diagnostic[] = [];
+  for (const def of ast.definitions) {
+    if (def.kind !== graphql.Kind.OPERATION_DEFINITION) {
+      continue;
+    }
+    if (def.operation !== graphql.OperationTypeNode.MUTATION) {
+      continue;
+    }
+
+    // Flag each _Data variable missing @allow.
+    for (const varDef of def.variableDefinitions ?? []) {
+      const typeName = unwrapTypeName(varDef.type);
+      if (!typeName.endsWith("_Data")) {
+        continue;
+      }
+      const hasAllow = varDef.directives?.some(
+        (d) => d.name.value === "allow",
+      );
+      if (hasAllow) {
+        continue;
+      }
+      if (!varDef.loc) {
+        continue;
+      }
+
+      const range = locationToRange(varDef.loc);
+      const diagnostic = new vscode.Diagnostic(
+        range,
+        `Missing @allow directive on $${varDef.variable.name.value}. Required for deployment (optional for local emulator).`,
+        vscode.DiagnosticSeverity.Information,
+      );
+      diagnostic.source = "Firebase SQL Connect";
+      diagnostics.push(diagnostic);
+    }
+  }
+
+  collection.set(document.uri, diagnostics);
 }
