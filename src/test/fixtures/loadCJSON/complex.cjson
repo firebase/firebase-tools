@@ -1,0 +1,11 @@
+{
+  // Line comment at start
+  "url": "https://example.com/foo",
+  "comment_in_string": "this is // not a comment",
+  "block_in_string": "this is /* not a block */ comment",
+  /* Multi-line
+     block comment */
+  "nested": {
+    "key": "value" // trailing line comment
+  }
+}
