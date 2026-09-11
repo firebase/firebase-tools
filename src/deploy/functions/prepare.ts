@@ -411,8 +411,10 @@ export async function prepare(
     context.codebaseDeployEvents[codebase].runtime = wantBuild.runtime;
   }
 
-  // ===Phase 2.5. Before proceeding further, let's make sure that we don't have conflicting function names.
+  // ===Phase 2.5. Before proceeding further, let's make sure that we don't have conflicting function
+  // names, and that nothing is taking over a name that already exists as a newer generation.
   validate.endpointsAreUnique(wantBackends);
+  validate.noGenerationDowngrades(wantBackends, existingBackend);
 
   // ===Phase 3. Prepare source for upload.
   context.sources = {};

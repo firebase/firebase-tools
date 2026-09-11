@@ -755,7 +755,9 @@ describe("planner", () => {
       const want: backend.Endpoint = { ...func("id", "region"), platform: "gcfv1" };
       const have: backend.Endpoint = { ...func("id", "region"), platform: "gcfv2" };
 
-      expect(() => planner.checkForIllegalUpdate(want, have)).to.throw();
+      expect(() => planner.checkForIllegalUpdate(want, have)).to.throw(
+        /cannot be downgraded from GCFv2 to GCFv1/,
+      );
     });
   });
 
