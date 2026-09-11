@@ -162,6 +162,13 @@ export interface PrintKitFirstDeployReportOptions {
   preDiscoveredBuild?: build.Build;
 }
 
+export interface PromptSecurityConfirmationOptions {
+  rawPkgName: string;
+  packageName: string;
+  nonInteractive?: boolean;
+  force?: boolean;
+}
+
 /**
  * Generates a unique identifier by appending a random 4-character hex suffix if a collision exists.
  * Ensures the candidate is truncated so the total length does not exceed 40 characters.
@@ -432,10 +439,9 @@ export async function promptKitId(
  * Warns about third-party packages or missing shrinkwrap, and prompts for user confirmation before installation.
  */
 export async function promptSecurityConfirmation(
-  rawPkgName: string,
-  packageName: string,
-  nonInteractive?: boolean,
+  options: PromptSecurityConfirmationOptions,
 ): Promise<boolean> {
+  const { rawPkgName, packageName, nonInteractive, force } = options;
   const isThirdParty = isThirdPartyPackage(packageName);
   if (isThirdParty) {
     logLabeledWarning(
@@ -465,6 +471,7 @@ export async function promptSecurityConfirmation(
       message: confirmMessage,
       default: false,
       nonInteractive,
+      force,
     });
     if (!confirmInstallation) {
       throw new FirebaseError("Installation cancelled.");
@@ -1053,14 +1060,14 @@ export async function promptAndWriteKitParams(
   }
 
   const typedUserEnvs = build.envWithTypes(options.params, userEnvs);
-  const { paramValues: resolvedEnvs, secretRefs: resolvedSecretRefs } = await params.resolveParams(
-    options.params,
-    firebaseConfig,
-    typedUserEnvs,
-    options.instanceId,
-    options.nonInteractive,
-    options.force,
-  );
+  const { paramValues: resolvedEnvs, secretRefs: resolvedSecretRefs } = await params.resolveParams({
+    params: options.params,
+    firebaseConfig: firebaseConfig,
+    userEnvs: typedUserEnvs,
+    codebase: options.instanceId,
+    nonInteractive: options.nonInteractive,
+    force: options.force,
+  });
 
   functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
   if (experiments.isEnabled("secretEnvParams")) {
@@ -1376,11 +1383,12 @@ export async function resolvePackageSource(
   validateNpmPackageName(rawPkgName);
   const { packageName } = parseNpmPackageSpecifier(rawPkgName);
 
-  const isThirdParty = await promptSecurityConfirmation(
+  const isThirdParty = await promptSecurityConfirmation({
     rawPkgName,
     packageName,
-    options.nonInteractive,
-  );
+    nonInteractive: options.nonInteractive,
+    force: options.force,
+  });
 
   return {
     defaultKitName: packageName,

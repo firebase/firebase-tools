@@ -591,6 +591,24 @@ describe("planner", () => {
       );
     });
 
+    it("deletes the service account when opting out with a full codebase deploy alongside a filtered deploy in another codebase", async () => {
+      const wantBackend = backend.empty();
+      const haveBackend = backend.of(func("id", "region"));
+
+      const plan = await planner.createDeploymentPlan({
+        wantBackend,
+        haveBackend,
+        codebase: "codebaseA",
+        projectId: "my-project",
+        filters: [{ codebase: "codebaseA" }, { codebase: "codebaseB", idChunks: ["funcB"] }],
+        existingManagedSA: "firebase-fn-123@my-project.iam.gserviceaccount.com",
+      });
+
+      expect(plan.serviceAccountToDelete).to.equal(
+        "firebase-fn-123@my-project.iam.gserviceaccount.com",
+      );
+    });
+
     it("deletes the service account when opting out during an unfiltered deploy", async () => {
       const wantBackend = backend.empty();
       const haveBackend = backend.of(func("id", "region"));
