@@ -217,6 +217,15 @@ export async function setEnqueuer(
   }
 }
 
+/**
+ * Whether a string is a legal Cloud Tasks queue ID.
+ * Notably narrower than a Cloud Functions function name, which also permits underscores.
+ * https://cloud.google.com/tasks/docs/reference/rest/v2/projects.locations.queues#Queue
+ */
+export function isValidQueueId(id: string): boolean {
+  return /^[a-zA-Z0-9-]{1,100}$/.test(id);
+}
+
 /** The name of the Task Queue we will use for this endpoint. */
 export function queueNameForEndpoint(
   endpoint: backend.Endpoint & backend.TaskQueueTriggered,
