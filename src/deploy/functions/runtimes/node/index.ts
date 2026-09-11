@@ -25,6 +25,14 @@ import * as versioning from "./versioning";
 
 import { fileExistsSync } from "../../../../fsutils";
 
+/** A running function discovery server. */
+interface AdminServer {
+  /** Shuts the server down. Safe to call after it has already exited. */
+  kill: () => Promise<void>;
+  /** See discovery.WatchedProcess.serverExited. */
+  serverExited: Promise<never>;
+}
+
 /**
  *
  */
@@ -255,28 +263,35 @@ export class Delegate {
     config: backend.RuntimeConfigValues,
     envs: backend.EnvironmentVariables,
     port: string,
-  ): Promise<() => Promise<void>> {
+  ): Promise<AdminServer> {
     const childProcess = this.spawnFunctionsProcess(config, { ...envs, PORT: port });
+    const watched = discovery.watchDiscoveryProcess(childProcess);
 
-    // TODO: Refactor return type to () => Promise<void> to simplify nested promises
-    return Promise.resolve(async () => {
-      const p = new Promise<void>((resolve, reject) => {
-        childProcess.once("exit", resolve);
-        childProcess.once("error", reject);
-      });
-
+    const kill = async (): Promise<void> => {
+      watched.disarm();
+      if (watched.hasEnded()) {
+        return;
+      }
       try {
         await fetch(`http://localhost:${port}/__/quitquitquit`);
       } catch (e) {
         logger.debug("Failed to call quitquitquit. This often means the server failed to start", e);
       }
-      setTimeout(() => {
+      const killTimer = setTimeout(() => {
         if (!childProcess.killed) {
           childProcess.kill("SIGKILL");
         }
       }, 10_000);
-      return p;
-    });
+      try {
+        // Deliberately never rejects: this runs in discoverBuild's finally, where
+        // throwing would replace whatever discovery failed with.
+        await watched.ended;
+      } finally {
+        clearTimeout(killTimer);
+      }
+    };
+
+    return Promise.resolve({ kill, serverExited: watched.serverExited });
   }
 
   // eslint-disable-next-line require-await
@@ -314,9 +329,16 @@ export class Delegate {
         // HTTP-based discovery (default)
         const basePort = 8000 + randomInt(0, 1000); // Add a jitter to reduce likelihood of race condition
         const port = await portfinder.getPortPromise({ port: basePort });
-        const kill = await this.serveAdmin(config, env, port.toString());
+        const { kill, serverExited } = await this.serveAdmin(config, env, port.toString());
         try {
-          discovered = await discovery.detectFromPort(port, this.projectId, this.runtime);
+          discovered = await discovery.detectFromPort(
+            port,
+            this.projectId,
+            this.runtime,
+            undefined,
+            undefined,
+            serverExited,
+          );
         } finally {
           await kill();
         }

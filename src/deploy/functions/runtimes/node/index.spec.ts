@@ -1,6 +1,9 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as path from "path";
+import { ChildProcess } from "child_process";
+import { EventEmitter } from "events";
+import nock from "../../../../test/helpers/nock";
 
 import * as node from ".";
 import * as versioning from "./versioning";
@@ -134,6 +137,93 @@ describe("NodeDelegate", () => {
       );
       await delegate.discoverBuild({}, {});
       expect(detectFromYamlMock).to.have.been.called;
+    });
+  });
+
+  describe("serveAdmin", () => {
+    const PORT = "8099";
+    let child: ChildProcess;
+    let delegate: node.Delegate;
+
+    beforeEach(() => {
+      const emitter = new EventEmitter() as EventEmitter & {
+        stderr: EventEmitter;
+        killed: boolean;
+        kill: () => boolean;
+      };
+      emitter.stderr = new EventEmitter();
+      emitter.killed = false;
+      emitter.kill = () => true;
+      child = emitter as unknown as ChildProcess;
+      delegate = new node.Delegate(PROJECT_ID, PROJECT_DIR, SOURCE_DIR, "nodejs16" as Runtime);
+      // spawnFunctionsProcess is private; serveAdmin is the seam under test.
+      sinon
+        .stub(
+          delegate as unknown as { spawnFunctionsProcess: () => ChildProcess },
+          "spawnFunctionsProcess",
+        )
+        .returns(child);
+    });
+
+    afterEach(() => {
+      sinon.verifyAndRestore();
+      nock.cleanAll();
+    });
+
+    it("reports a crash during module load rather than leaving discovery to time out", async () => {
+      const { serverExited } = await delegate.serveAdmin({}, {}, PORT);
+
+      child.stderr?.emit("data", Buffer.from("ReferenceError: db is not defined"));
+      child.emit("exit", 1, null);
+      child.emit("close", 1, null);
+
+      await expect(serverExited).to.eventually.be.rejectedWith(
+        FirebaseError,
+        /exited with code 1[\s\S]*ReferenceError: db is not defined/,
+      );
+    });
+
+    it("reports a spawn failure, which emits no exit at all", async () => {
+      const { serverExited } = await delegate.serveAdmin({}, {}, PORT);
+
+      child.emit("error", new Error("spawn ENOENT"));
+      child.emit("close", -2, null);
+
+      await expect(serverExited).to.eventually.be.rejectedWith(FirebaseError, /failed to start/);
+    });
+
+    it("shuts down without throwing after a spawn failure", async () => {
+      const { kill } = await delegate.serveAdmin({}, {}, PORT);
+
+      child.emit("error", new Error("spawn ENOENT"));
+      child.emit("close", -2, null);
+
+      // kill() runs in discoverBuild's finally, so anything it throws replaces the
+      // error discovery actually failed with.
+      await expect(kill()).to.eventually.be.fulfilled;
+    });
+
+    it("does not report the exit it asked for", async () => {
+      nock("http://localhost:8099").get("/__/quitquitquit").reply(200);
+      const { kill, serverExited } = await delegate.serveAdmin({}, {}, PORT);
+
+      const killed = kill();
+      const closing = setInterval(() => child.emit("close", 0, null), 5);
+      try {
+        await killed;
+      } finally {
+        clearInterval(closing);
+      }
+
+      const pending = Symbol("pending");
+      const settled = await Promise.race([
+        serverExited.then(
+          () => "settled",
+          () => "settled",
+        ),
+        new Promise((resolve) => setTimeout(() => resolve(pending), 50)),
+      ]);
+      expect(settled).to.equal(pending);
     });
   });
 });
