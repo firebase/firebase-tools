@@ -46,7 +46,7 @@ function formatFrames(origFrames: Frame[], maxFrames = 20): string[] {
 
 // Formats an event into more legible, token-efficient text content sections
 
-function toText(event: Event): Record<string, string> {
+function toText(event: Event, maxFrames?: number): Record<string, string> {
   if (!event) {
     return {};
   }
@@ -82,7 +82,7 @@ function toText(event: Event): Record<string, string> {
       }
       const threadStrings = threads.map((thread) => {
         const header = `Thread: ${thread.name || thread.threadId || ""}${thread.crashed ? " (crashed)" : ""}`;
-        const frameStrings = formatFrames(thread.frames || []);
+        const frameStrings = formatFrames(thread.frames || [], maxFrames);
         return [header, ...frameStrings].join("\n");
       });
       result["threads"] = threadStrings.join("\n\n");
@@ -94,7 +94,7 @@ function toText(event: Event): Record<string, string> {
       const exceptionStrings = exceptions.map((exception) => {
         const header = exception.nested ? "Caused by: " : "";
         const exceptionHeader = `${header}${exception.type || ""}: ${exception.exceptionMessage || ""}`;
-        const frameStrings = formatFrames(exception.frames || []);
+        const frameStrings = formatFrames(exception.frames || [], maxFrames);
         return [exceptionHeader, ...frameStrings].join("\n");
       });
       result["exceptions"] = exceptionStrings.join("\n\n");
@@ -105,7 +105,7 @@ function toText(event: Event): Record<string, string> {
       const errors = (value as Error[]) || [];
       const errorStrings = errors.map((error) => {
         const header = `Error: ${error.title || "error"}`;
-        const frameStrings = formatFrames(error.frames || []);
+        const frameStrings = formatFrames(error.frames || [], maxFrames);
         return [header, ...frameStrings].join("\n");
       });
       result["errors"] = errorStrings.join("\n\n");
@@ -131,6 +131,14 @@ export const list_events = tool(
       appId: ApplicationIdSchema,
       filter: EventFilterSchema,
       pageSize: z.number().describe("Number of rows to return").default(1),
+      maxFrames: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe(
+          "Maximum number of stack frames to include per thread, exception, or error. Defaults to 20; raise it when the frames you need are deeper in the trace.",
+        ),
     }),
     annotations: {
       title: "List Crashlytics Events",
@@ -140,7 +148,7 @@ export const list_events = tool(
       requiresAuth: true,
     },
   },
-  async ({ appId, filter, pageSize }) => {
+  async ({ appId, filter, pageSize, maxFrames }) => {
     const result: CallToolResult = { content: [] };
     if (!appId) {
       result.isError = true;
@@ -160,7 +168,7 @@ export const list_events = tool(
     }
     // Otherwise continue and list events
     const response: ListEventsResponse = await listEvents(appId, filter, pageSize);
-    const eventsContent = response.events?.map((e) => toText(e)) || [];
+    const eventsContent = response.events?.map((e) => toText(e, maxFrames)) || [];
     return {
       content: [{ type: "text", text: dump(eventsContent, DUMP_OPTIONS) }],
     };
@@ -183,6 +191,14 @@ export const batch_get_events = tool(
         .describe(
           "An array of the event resource names, as found in the sampleEvent field in reports.",
         ),
+      maxFrames: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe(
+          "Maximum number of stack frames to include per thread, exception, or error. Defaults to 20; raise it when the frames you need are deeper in the trace.",
+        ),
     }),
     annotations: {
       title: "Batch Get Crashlytics Events",
@@ -192,7 +208,7 @@ export const batch_get_events = tool(
       requiresAuth: true,
     },
   },
-  async ({ appId, names }) => {
+  async ({ appId, names, maxFrames }) => {
     const result: CallToolResult = { content: [] };
     if (!appId) {
       result.isError = true;
@@ -212,7 +228,7 @@ export const batch_get_events = tool(
     }
     // Otherwise continue and get events
     const response: BatchGetEventsResponse = await batchGetEvents(appId, names);
-    const eventsContent = response.events?.map((e) => toText(e)) || [];
+    const eventsContent = response.events?.map((e) => toText(e, maxFrames)) || [];
     return {
       content: [{ type: "text", text: dump(eventsContent, DUMP_OPTIONS) }],
     };

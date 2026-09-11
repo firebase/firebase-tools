@@ -1,2 +1,3 @@
 - Updated Pub/Sub emulator to version 0.8.36.
 - [fixed] Clean up managed service accounts when opting out of declarative security alongside a filtered codebase deploy.
+- Added an optional `maxFrames` parameter to the `crashlytics_list_events` and `crashlytics_batch_get_events` MCP tools to include more than 20 stack frames per trace.
