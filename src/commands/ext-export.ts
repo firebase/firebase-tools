@@ -30,6 +30,7 @@ import { Config } from "../config";
 import { normalizeAndValidate, isKitConfig } from "../functions/projectConfig";
 import { FirebaseError } from "../error";
 import * as experiments from "../experiments";
+import { ensureInstanceUpToDate } from "../extensions/migrate";
 
 export const command = new Command("ext:export")
   .description("export Extension instances installed on a project to a local Firebase directory")
@@ -152,7 +153,7 @@ async function fnHandler(options: Options): Promise<void> {
     return;
   }
   const projectId = needProjectId(options);
-  const instance = await getInstance(projectId, options.instance as string);
+  let instance = await getInstance(projectId, options.instance as string);
   if (typeof instance === "undefined") {
     logger.info(`No extension matching instance ID ${options.instance} found`);
     return;
@@ -162,6 +163,10 @@ async function fnHandler(options: Options): Promise<void> {
       `Extension ${options.instance} is in state ${instance.state}. To export a non-ACTIVE extension, use the --force option.`,
     );
   }
+  instance = await ensureInstanceUpToDate(projectId, instance, {
+    nonInteractive: options.nonInteractive,
+    force: options.force,
+  });
 
   const instanceId = last(instance.name.split("/")) ?? "";
   if (instanceId !== options.instance) {
