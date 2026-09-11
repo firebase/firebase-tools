@@ -62,20 +62,37 @@ const currentTemplate: RemoteConfigTemplate = createTemplate("6");
 
 describe("Remote Config Deploy", () => {
   let sandbox: sinon.SinonSandbox;
-  let templateStub: sinon.SinonStub;
-  let etagStub: sinon.SinonStub;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    templateStub = sandbox.stub(remoteconfig, "getTemplate");
-    etagStub = sandbox.stub(rcDeploy, "getEtag");
   });
 
   afterEach(() => {
     sandbox.restore();
   });
 
+  describe("getEtag", () => {
+    it("should get etag with templateType", async () => {
+      nock(remoteConfigApiOrigin())
+        .get(`/v1/projects/${PROJECT_NUMBER}/remoteConfig`)
+        .query({ templateType: "firebase-server" })
+        .reply(200, {}, { etag: "server-etag" });
+
+      const etag = await rcDeploy.getEtag(PROJECT_NUMBER, undefined, "firebase-server");
+      expect(etag).to.equal("server-etag");
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
   describe("Publish the updated template", () => {
+    let templateStub: sinon.SinonStub;
+    let etagStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      templateStub = sandbox.stub(remoteconfig, "getTemplate");
+      etagStub = sandbox.stub(rcDeploy, "getEtag");
+    });
+
     it("should publish the latest template", async () => {
       const ETAG = header.etag;
       templateStub.withArgs(PROJECT_NUMBER).returns(currentTemplate);
@@ -106,6 +123,25 @@ describe("Remote Config Deploy", () => {
         etag,
         options,
       );
+
+      expect(RCtemplate).to.deep.equal(expectedTemplateInfo);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should publish the latest template with templateType", async () => {
+      const ETAG = header.etag;
+      const templateType = "firebase-server";
+      templateStub.withArgs(PROJECT_NUMBER).returns(currentTemplate);
+      nock(remoteConfigApiOrigin())
+        .put(`/v1/projects/${PROJECT_NUMBER}/remoteConfig`)
+        .query({ templateType: templateType })
+        .matchHeader("If-Match", ETAG)
+        .reply(200, expectedTemplateInfo);
+
+      const RCtemplate = await rcDeploy.publishTemplate(PROJECT_NUMBER, currentTemplate, ETAG, {
+        force: false,
+        templateType,
+      });
 
       expect(RCtemplate).to.deep.equal(expectedTemplateInfo);
       expect(nock.isDone()).to.be.true;
