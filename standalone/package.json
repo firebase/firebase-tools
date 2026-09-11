@@ -1,36 +1,22 @@
 {
   "name": "firepit",
   "version": "1.1.0",
-  "description": "",
+  "description": "Standalone executable builder for Firebase CLI using Node Single Executable Applications (SEAs)",
   "main": "index.js",
   "scripts": {
     "fmt": "prettier --write *.js",
-    "pkg": "pkg -c package.json firepit.js --out-path dist/ && shx chmod +x dist/firepit-*",
+    "build:sea": "node build-sea.js",
+    "pkg": "node build-sea.js",
     "ship": "gcloud storage cp dist/* gs://fir-tools-builds/firepit/ && gcloud storage buckets add-iam-policy-binding gs://fir-tools-builds --member=allUsers --role=objectViewer"
   },
   "author": "",
   "license": "MIT",
   "dependencies": {
     "chalk": "^2.4.2",
-    "npm": "^8.19.0",
-    "shelljs": "^0.8.3",
-    "shx": "^0.3.2",
-    "user-home": "^2.0.0"
-  },
-  "pkg": {
-    "scripts": [
-      "node_modules/npm/lib/*.js",
-      "node_modules/npm/lib/**/*.js"
-    ],
-    "assets": [
-      "node_modules/.bin/**",
-      "node_modules/npm/bin/**/*",
-      "node_modules/npm/node_modules/node-gyp/**/*",
-      "vendor/**"
-    ]
+    "npm": "^8.19.0"
   },
   "devDependencies": {
-    "@yao-pkg/pkg": "~6.4.1",
+    "esbuild": "^0.25.0",
     "prettier": "^1.15.3"
   }
 }
