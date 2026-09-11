@@ -4,6 +4,7 @@ import {
   ensureExtensionsApiEnabled,
   diagnoseAndFixProject,
   logPrefix,
+  ensureInstanceSpec,
 } from "../extensions/extensionsHelper";
 import { requirePermissions } from "../requirePermissions";
 import { logLabeledWarning } from "../utils";
@@ -47,19 +48,25 @@ export const command = new Command("ext:uninstall <extensionInstanceId>")
             logPrefix,
             "ext:uninstall called with --immediate, but no deployed GCP resources found for the extension.",
           );
-          return;
+          const config = manifest.loadConfig(options);
+          manifest.removeFromManifest(instanceId, config);
         }
-        throw err instanceof FirebaseError ? err : new FirebaseError(String(err));
-      }
-      if (typeof instance === "undefined") {
         throw new FirebaseError(
-          `Failed to retrieve deployed GCP resources for extension instance ${instanceId}`,
+          `Failed to retrieve extension instance ${instanceId}: ${err instanceof Error ? err.message : String(err)}`,
+          {
+            original: err instanceof Error ? err : undefined,
+            exit: 1,
+          },
         );
       }
+      if (!instance) {
+        throw new FirebaseError(`Failed to retrieve extension instance ${instanceId}`);
+      }
+      instance = await ensureInstanceSpec(instance);
       const outstandingSecrets = await secretsNeedingEjection(instance);
       if (outstandingSecrets.length > 0) {
         const shouldContinue = await confirm({
-          message: `Extension instance ${instanceId} has secrets with the "firebase-extensions-managed" label:\n${outstandingSecrets.join(", ")}\nContinuing with extension uninstall will permanantly destroy these secrets.\nYou can keep these secrets by running ext:export, or by manually removing the label in the Cloud Console.\nContinue? (y/N)`,
+          message: `Extension instance ${instanceId} has secrets with the "firebase-extensions-managed" label:\n${outstandingSecrets.join(", ")}\nContinuing with extension uninstall will permanently destroy these secrets.\nYou can keep these secrets by running ext:export, or by manually removing the label in the Cloud Console.\nContinue?`,
           default: false,
           nonInteractive: options.nonInteractive,
           force: options.force,
