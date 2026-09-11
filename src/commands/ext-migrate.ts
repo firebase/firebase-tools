@@ -2,6 +2,7 @@ import * as clc from "colorette";
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { needProjectId } from "../projectUtils";
+import * as experiments from "../experiments";
 import {
   ensureExtensionsApiEnabled,
   ensureInstanceSpec,
@@ -37,6 +38,14 @@ export const command = new Command("ext:migrate")
   .option("--ext-instance <instanceId>", "extension instance ID to migrate")
   .option("-e, --extension <extensionRef>", "extension reference or name to migrate")
   .option("-f, --force", "force update and migration without prompting")
+  .before(() => {
+    experiments.assertEnabled(
+      "extMigrationFeatures",
+      "migrate an extension instance to a function kit",
+    );
+    experiments.assertEnabled("kits", "migrate an extension instance to a function kit");
+    experiments.assertEnabled("secretEnvParams", "migrate an extension instance to a function kit");
+  })
   .before(requireConfig)
   .before(requirePermissions, [
     "firebaseextensions.instances.list",
@@ -67,19 +76,19 @@ export const command = new Command("ext:migrate")
       `Selected instance ${clc.bold(plan.instanceId)} (${plan.kitPackage}) for migration.`,
     );
 
+    plan.instance = await ensureInstanceSpec(plan.instance);
+    if (!plan.instance.config?.source?.spec) {
+      throw new FirebaseError(
+        `Could not load extension specification for ${clc.bold(plan.instanceId)}. Unable to export configuration.`,
+      );
+    }
+
     plan.instance = await ensureInstanceUpToDate(projectId, plan.instance, options);
 
     if (plan.instance.state !== "ACTIVE") {
       logLabeledWarning(
         logPrefix,
         `Extension instance ${clc.bold(plan.instanceId)} is in state ${plan.instance.state}. Migration may not function as expected.`,
-      );
-    }
-
-    plan.instance = await ensureInstanceSpec(plan.instance);
-    if (!plan.instance.config?.source?.spec) {
-      throw new FirebaseError(
-        `Could not load extension specification for ${clc.bold(plan.instanceId)}. Unable to export configuration.`,
       );
     }
 
@@ -129,7 +138,7 @@ export const command = new Command("ext:migrate")
 
     const shouldUninstall = await confirm({
       message: `Functions kit ${kitInstanceId} successfully deployed. After checking function logs to verify that your backend is performing correctly, you should uninstall extension instance ${plan.instanceId}. Uninstall it now?`,
-      default: true,
+      default: false,
       nonInteractive: options.nonInteractive,
       force: options.force,
     });
