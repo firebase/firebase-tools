@@ -74,6 +74,7 @@ export async function detectFromPort(
   runtime: Runtime,
   initialDelay = 0,
   timeout = 10_000 /* 10s to boot up */,
+  childProcess?: ChildProcess,
 ): Promise<build.Build> {
   let res: Response;
   const discoveryTimeout = getFunctionDiscoveryTimeout() || timeout;
@@ -85,6 +86,28 @@ export async function detectFromPort(
     }, discoveryTimeout);
   });
 
+  // If the admin server's process exits before we've finished discovery, surface
+  // its exit code (or the fact that it was killed by a signal) and any stderr it
+  // produced instead of retrying blindly until the generic timeout above fires.
+  // Any exit here is unexpected: the admin server is a long-lived HTTP server
+  // that should never go away on its own while we're still waiting on it.
+  let stderrBuffer = "";
+  childProcess?.stderr?.on("data", (chunk: Buffer) => {
+    stderrBuffer += chunk.toString();
+  });
+  const exitedWithError = new Promise<never>((resolve, reject) => {
+    childProcess?.once("exit", (code: number | null) => {
+      const message = stderrBuffer.trim();
+      const exitStatus = code === null ? "via a signal" : `with code ${code}`;
+      reject(
+        new FirebaseError(
+          `User code failed to load. Cannot determine backend specification.\n` +
+            `Process exited ${exitStatus}.${message ? `\n${message}` : ""}`,
+        ),
+      );
+    });
+  });
+
   // Initial delay to wait for admin server to boot.
   if (initialDelay > 0) {
     await new Promise((resolve) => setTimeout(resolve, initialDelay));
@@ -93,18 +116,22 @@ export async function detectFromPort(
   const url = `http://127.0.0.1:${port}/__/functions.yaml`;
   while (true) {
     try {
-      res = await Promise.race([fetch(url), timedOut]);
+      res = await Promise.race([fetch(url), timedOut, exitedWithError]);
       break;
     } catch (err: any) {
-      const realErr = err?.cause || err;
-      if (
-        err?.name === "FetchError" ||
-        realErr?.name === "FetchError" ||
-        ["ECONNREFUSED", "ECONNRESET", "ETIMEDOUT"].includes(realErr?.code)
-      ) {
-        continue;
+      // `timedOut` and `exitedWithError` are the only two conditions that should end the
+      // retry loop early; both reject with a FirebaseError. Everything else is assumed to
+      // be a transient network-layer failure while the admin server is still booting (or
+      // tearing down) and gets retried. This is intentionally not narrowed to specific
+      // error names/codes (e.g. ECONNREFUSED): the exact shape of a "the process we were
+      // talking to just died" error varies (e.g. undici's SocketError/UND_ERR_SOCKET when
+      // the admin server accepts a connection and is then killed mid-request), and
+      // guessing at that shape previously caused this loop to give up with a cryptic raw
+      // fetch error instead of looping back to let exitedWithError report the real cause.
+      if (err instanceof FirebaseError) {
+        throw err;
       }
-      throw err;
+      continue;
     }
   }
 
