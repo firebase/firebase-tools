@@ -15,6 +15,9 @@ export interface FunctionsKitsInstallOptions extends Options {
 
 export const command = new Command("functions:kits:install")
   .description("install a function kit into your project")
+  .before(() => {
+    experiments.assertEnabled("kits", "install a function kit");
+  })
   .before(requireConfig)
   .before(requireAuth)
   .withForce()
@@ -29,8 +32,6 @@ export const command = new Command("functions:kits:install")
   )
   .option("--no-configure", "skip parameter prompting and configuration during installation")
   .action(async (options: FunctionsKitsInstallOptions): Promise<void> => {
-    experiments.assertEnabled("kits", "install a function kit");
-
     if (!options.config) {
       throw new FirebaseError("Not in a Firebase project directory (firebase.json not found).");
     }
