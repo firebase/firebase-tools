@@ -10,6 +10,10 @@ import { logBullet, logWarning } from "../utils";
 const FUNCTIONS_EMULATOR_DOTENV = ".env.local";
 
 const RESERVED_PREFIXES = ["X_GOOGLE_", "FIREBASE_", "EXT_", "KIT_"];
+// Keys beginning with these prefixes are not rejected for violating RESERVED_PREFIXES.
+// If a key ends with _, it is an error for there to be no suffix; if a key does not
+// end with _, it is an error for there to be a suffix.
+// For example, "FIREBASE_SECRET_REF_" and "EXT_SELECTED_EVENTS_FOO" will both throw.
 const RESERVED_PREFIX_ALLOWLIST = [
   "FIREBASE_SECRET_REF_",
   "EXT_MIGRATED_SYSTEM_",
@@ -187,19 +191,35 @@ export function validateKey(key: string): void {
       `Key ${key} starts with a reserved prefix (${RESERVED_PREFIXES.join(" ")})`,
     );
   }
-  if (RESERVED_PREFIX_ALLOWLIST.some((prefix) => key === prefix)) {
-    throw new KeyValidationError(key, `Key ${key} is a known prefix with an empty suffix`);
-  }
 }
 
 /**
- * @return true if the key begins with a prefix on the reserved list and is not a known usage.
+ * Returns true if the key begins with a prefix on the reserved list and is not a known allowlisted usage.
+ * Returns false if the key does not begin with a prefix on the reserved list
+ * Throws if the key is a known allowlisted usage but is malformed:
+ * For example, "FIREBASE_SECRET_REF_" and "EXT_SELECTED_EVENTS_FOO" will both throw.
  */
 function keyConflictsWithReservedPrefixes(key: string): boolean {
   return RESERVED_PREFIXES.some(
     (prefix) =>
-      key.startsWith(prefix) && !RESERVED_PREFIX_ALLOWLIST.some((known) => key.startsWith(known)),
+      key.startsWith(prefix) &&
+      !RESERVED_PREFIX_ALLOWLIST.some((allowedPrefix) =>
+        keyPermittedByKnownPrefix(key, allowedPrefix),
+      ),
   );
+}
+
+function keyPermittedByKnownPrefix(key: string, prefix: string): boolean {
+  if (!key.startsWith(prefix)) {
+    return false;
+  }
+  if (prefix.endsWith("_") && key === prefix) {
+    throw new KeyValidationError(key, `Key ${key} is a known prefix that requires a suffix`);
+  }
+  if (!prefix.endsWith("_") && key !== prefix) {
+    throw new KeyValidationError(key, `Key ${key} is a known prefix with an unexpected suffix`);
+  }
+  return true;
 }
 
 /**

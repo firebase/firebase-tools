@@ -295,7 +295,16 @@ FOO=foo
         }).to.not.throw();
         expect(() => {
           env.validateKey("FIREBASE_SECRET_REF_");
-        }).to.throw("empty suffix");
+        }).to.throw("requires a suffix");
+        expect(() => {
+          env.validateKey("EXT_SELECTED_EVENTS");
+        }).to.not.throw();
+        expect(() => {
+          env.validateKey("EXT_SELECTED_EVENTS_");
+        }).to.throw("unexpected suffix");
+        expect(() => {
+          env.validateKey("EXT_SELECTED_EVENTS_FOO");
+        }).to.throw("unexpected suffix");
       });
     });
   });
