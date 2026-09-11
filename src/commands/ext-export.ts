@@ -10,7 +10,7 @@ import {
   ejectSecretsFromInstance,
   secretsNeedingEjection,
 } from "../extensions/export";
-import { ensureExtensionsApiEnabled } from "../extensions/extensionsHelper";
+import { ensureExtensionsApiEnabled, ensureInstanceSpec } from "../extensions/extensionsHelper";
 import * as manifest from "../extensions/manifest";
 import { buildBindingOptionsWithBaseValue } from "../extensions/paramHelper";
 import { partition } from "../functional";
@@ -161,6 +161,12 @@ async function fnHandler(options: Options): Promise<void> {
   if (instance.state !== "ACTIVE" && !options.force) {
     throw new FirebaseError(
       `Extension ${options.instance} is in state ${instance.state}. To export a non-ACTIVE extension, use the --force option.`,
+    );
+  }
+  instance = await ensureInstanceSpec(instance);
+  if (!instance.config?.source?.spec) {
+    throw new FirebaseError(
+      `Could not load extension specification for ${options.instance}. Unable to export configuration.`,
     );
   }
   instance = await ensureInstanceUpToDate(projectId, instance, {
