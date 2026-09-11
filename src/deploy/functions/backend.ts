@@ -26,6 +26,7 @@ export interface ScheduleTrigger {
   schedule?: string;
   timeZone?: string | null;
   retryConfig?: ScheduleRetryConfig | null;
+  attemptDeadlineSeconds?: number | null;
 }
 
 /** Something that has a ScheduleTrigger */
