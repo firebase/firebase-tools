@@ -1072,9 +1072,6 @@ export async function addInstanceToKit(
 
     return { configDirPath, absConfigDirPath };
   } catch (err: unknown) {
-    if (target.instances) {
-      delete target.instances[options.instanceId];
-    }
     await safeRemove(absConfigDirPath);
     await cleanUpEmptyDir(options.config.path(path.join(FUNCTION_KITS_DIR, options.kitId)));
     await cleanUpEmptyDir(options.config.path(FUNCTION_KITS_DIR));
@@ -1303,7 +1300,6 @@ export async function addKitInstanceOrConfigureProject(
   let absConfigDirPath: string;
 
   let createdConfigDir: string | undefined;
-  let createdInstanceId: string | undefined;
   let createdProjectEnvFile: string | undefined;
   let createdAliasEnvFile: string | undefined;
 
@@ -1317,7 +1313,6 @@ export async function addKitInstanceOrConfigureProject(
         options.nonInteractive,
         options.instanceId,
       );
-      createdInstanceId = instanceId;
 
       const expectedConfigDirPath = path.join(
         FUNCTION_KITS_DIR,
@@ -1442,9 +1437,6 @@ export async function addKitInstanceOrConfigureProject(
       await safeRemove(createdConfigDir);
       await cleanUpEmptyDir(options.config.path(path.join(FUNCTION_KITS_DIR, existingKit.kit)));
       await cleanUpEmptyDir(options.config.path(FUNCTION_KITS_DIR));
-    }
-    if (createdInstanceId && existingKit.instances) {
-      delete existingKit.instances[createdInstanceId];
     }
     if (createdProjectEnvFile) {
       await safeRemove(createdProjectEnvFile);

@@ -3955,11 +3955,14 @@ describe("functions/kits/install", () => {
           source: "functions",
         },
       ];
+      const writtenSnapshots: string[] = [];
       const mockConfig = {
         projectDir: "/mock/project",
         src: { functions: [...initialFunctions] },
         path: (p: string) => path.join("/mock/project", p),
-        writeProjectFile: sinon.stub(),
+        writeProjectFile: sinon.stub().callsFake((_file: string, content: unknown) => {
+          writtenSnapshots.push(JSON.stringify(content));
+        }),
         askWriteProjectFile: sinon.stub().resolves(),
       } as unknown as Config;
 
@@ -3987,10 +3990,11 @@ describe("functions/kits/install", () => {
       ).to.be.rejectedWith("Reporting error");
 
       expect(mockConfig.src.functions).to.deep.equal(initialFunctions);
-      expect((mockConfig.writeProjectFile as sinon.SinonStub).lastCall).to.have.been.calledWith(
-        "firebase.json",
-        mockConfig.src,
-      );
+      // Verify the revert was actually persisted, not just applied in memory.
+      expect(writtenSnapshots).to.not.be.empty;
+      expect(JSON.parse(writtenSnapshots[writtenSnapshots.length - 1])).to.deep.equal({
+        functions: initialFunctions,
+      });
     });
   });
 
@@ -4004,7 +4008,13 @@ describe("functions/kits/install", () => {
           inst1: "function-kits/firestore-bigquery-export/config-inst1",
         },
       };
-      const writeProjectFileStub = sinon.stub();
+      // Snapshot what is actually serialized on each write. Asserting against a live
+      // `mockConfig.src` reference would pass trivially, since sinon records the object
+      // by reference and later mutations would be reflected in the recorded call.
+      const writtenSnapshots: string[] = [];
+      const writeProjectFileStub = sinon.stub().callsFake((_file: string, content: unknown) => {
+        writtenSnapshots.push(JSON.stringify(content));
+      });
       const mockConfig = {
         projectDir: "/mock/project",
         src: { functions: [existingKit] },
@@ -4048,13 +4058,19 @@ describe("functions/kits/install", () => {
       expect(fsRemoveStub).to.have.been.calledWith(
         path.join("/mock/project", "function-kits/firestore-bigquery-export/config-inst2"),
       );
-      expect(existingKit.instances).to.deep.equal({
+      // The in-memory config must no longer reference the failed instance.
+      expect((mockConfig.src.functions as ValidatedKitSingle[])[0].instances).to.deep.equal({
         inst1: "function-kits/firestore-bigquery-export/config-inst1",
       });
-      expect(writeProjectFileStub.lastCall).to.have.been.calledWith(
-        "firebase.json",
-        mockConfig.src,
-      );
+      // The last thing persisted to disk must also be free of the failed instance,
+      // otherwise firebase.json is left pointing at a config dir that was deleted.
+      expect(writtenSnapshots).to.not.be.empty;
+      const lastWritten = JSON.parse(writtenSnapshots[writtenSnapshots.length - 1]) as {
+        functions: ValidatedKitSingle[];
+      };
+      expect(lastWritten.functions[0].instances).to.deep.equal({
+        inst1: "function-kits/firestore-bigquery-export/config-inst1",
+      });
     });
 
     it("should clean up created project env file if addEnv fails during params prompt", async () => {
