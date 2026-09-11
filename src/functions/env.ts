@@ -10,9 +10,9 @@ import { logBullet, logWarning } from "../utils";
 const FUNCTIONS_EMULATOR_DOTENV = ".env.local";
 
 const RESERVED_PREFIXES = ["X_GOOGLE_", "FIREBASE_", "EXT_", "KIT_"];
-// Keys beginning with these prefixes are not rejected for violating RESERVED_PREFIXES.
-// If a key ends with _, it is an error for there to be no suffix; if a key does not
-// end with _, it is an error for there to be a suffix.
+// Allow list for keys & key prefixes within the reserved prefixes that should not be rejected for violating RESERVED_PREFIXES.
+// If an allow list entry ends with _, it is a prefix and it is an error for there to be no suffix in the key.
+// If an allow list entry does not end with _, it is a whole key and it is an error for there to be a suffix in the key.
 // For example, "FIREBASE_SECRET_REF_" and "EXT_SELECTED_EVENTS_FOO" will both throw.
 const RESERVED_PREFIX_ALLOWLIST = [
   "FIREBASE_SECRET_REF_",
@@ -219,7 +219,10 @@ function keyPermittedByKnownPrefix(key: string, prefix: string): boolean {
     throw new KeyValidationError(key, `Key ${key} is a known prefix that requires a suffix`);
   }
   if (!prefix.endsWith("_") && key !== prefix) {
-    throw new KeyValidationError(key, `Key ${key} is a known prefix with an unexpected suffix`);
+    throw new KeyValidationError(
+      key,
+      `Key ${key} conflicts with known key ${prefix} that does not permit a suffix`,
+    );
   }
   return true;
 }

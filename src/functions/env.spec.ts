@@ -301,10 +301,10 @@ FOO=foo
         }).to.not.throw();
         expect(() => {
           env.validateKey("EXT_SELECTED_EVENTS_");
-        }).to.throw("unexpected suffix");
+        }).to.throw("conflicts with known key");
         expect(() => {
           env.validateKey("EXT_SELECTED_EVENTS_FOO");
-        }).to.throw("unexpected suffix");
+        }).to.throw("conflicts with known key");
       });
     });
   });
