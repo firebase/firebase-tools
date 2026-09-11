@@ -372,6 +372,50 @@ describe("resolveParams", () => {
     ).to.eventually.be.rejected;
   });
 
+  it("preselects the default values in a multi-select prompt", async () => {
+    const checkbox = sinon.stub(prompt, "checkbox").resolves(["b", "c"]);
+    try {
+      const paramsToResolve: params.Param[] = [
+        {
+          name: "REGIONS",
+          type: "list",
+          default: ["b", "c"],
+          input: {
+            multiSelect: {
+              options: [
+                { label: "A", value: "a" },
+                { label: "B", value: "b" },
+                { label: "C", value: "c" },
+              ],
+            },
+          },
+        },
+      ];
+      const resolved = await params.resolveParams({
+        params: paramsToResolve,
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "default",
+      });
+      const choices = checkbox.firstCall.args[0].choices as { value: string; checked: boolean }[];
+      expect(choices.map((c) => [c.value, c.checked])).to.deep.equal([
+        ["a", false],
+        ["b", true],
+        ["c", true],
+      ]);
+      expect(resolved.paramValues.REGIONS).to.deep.equal(
+        new params.ParamValue("b,c", false, {
+          string: false,
+          number: false,
+          boolean: false,
+          list: true,
+        }),
+      );
+    } finally {
+      checkbox.restore();
+    }
+  });
+
   it("does not throw in non-interactive mode if secret exists in cloud", async () => {
     const paramsToResolve: params.Param[] = [{ name: "MY_SECRET", type: "secret" }];
     const getSecretMetadataStub = sinon.stub(secretManager, "getSecretMetadata").resolves({

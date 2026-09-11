@@ -1,2 +1,3 @@
 - Updated Pub/Sub emulator to version 0.8.36.
 - [fixed] Clean up managed service accounts when opting out of declarative security alongside a filtered codebase deploy.
+- [fixed] Preselect the default values of list function params in multi-select prompts.
