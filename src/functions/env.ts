@@ -200,13 +200,15 @@ export function validateKey(key: string): void {
  * For example, "FIREBASE_SECRET_REF_" and "EXT_SELECTED_EVENTS_FOO" will both throw.
  */
 function keyConflictsWithReservedPrefixes(key: string): boolean {
-  return RESERVED_PREFIXES.some(
-    (prefix) =>
-      key.startsWith(prefix) &&
-      !RESERVED_PREFIX_ALLOWLIST.some((allowedPrefix) =>
-        keyPermittedByKnownPrefix(key, allowedPrefix),
-      ),
-  );
+  if (!RESERVED_PREFIXES.some((prefix) => key.startsWith(prefix))) {
+    return false;
+  }
+  for (const allowedPrefix of RESERVED_PREFIX_ALLOWLIST) {
+    if (keyPermittedByKnownPrefix(key, allowedPrefix)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function keyPermittedByKnownPrefix(key: string, prefix: string): boolean {
