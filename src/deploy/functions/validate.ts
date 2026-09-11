@@ -324,7 +324,7 @@ export function functionIdsAreValid(functions: { id: string; platform: string }[
   if (invalidIds.length !== 0) {
     const msg =
       `${invalidIds.map((f) => f.id).join(", ")} function name(s) can only contain letters, ` +
-      `numbers, hyphens, and not exceed 62 characters in length`;
+      `numbers, underscores, hyphens, and not exceed 63 characters in length`;
     throw new FirebaseError(msg);
   }
 }
