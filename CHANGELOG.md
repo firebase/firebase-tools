@@ -1,1 +1,2 @@
 - [fixed] Clean up managed service accounts when opting out of declarative security alongside a filtered codebase deploy.
+- Fixed `firebase deploy` leaving the Python discovery admin server (`serving.py`) running after a killed or wedged deploy, which caused later deploys to hang indefinitely on `connect ETIMEDOUT` (#10847).
