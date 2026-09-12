@@ -10,6 +10,10 @@ import { logBullet, logWarning } from "../utils";
 const FUNCTIONS_EMULATOR_DOTENV = ".env.local";
 
 const RESERVED_PREFIXES = ["X_GOOGLE_", "FIREBASE_", "EXT_", "KIT_"];
+// Allow list for keys & key prefixes within the reserved prefixes that should not be rejected for violating RESERVED_PREFIXES.
+// If an allow list entry ends with _, it is a prefix and it is an error for there to be no suffix in the key.
+// If an allow list entry does not end with _, it is a whole key and it is an error for there to be a suffix in the key.
+// For example, "FIREBASE_SECRET_REF_" and "EXT_SELECTED_EVENTS_FOO" will both throw.
 const RESERVED_PREFIX_ALLOWLIST = [
   "FIREBASE_SECRET_REF_",
   "EXT_MIGRATED_SYSTEM_",
@@ -187,19 +191,40 @@ export function validateKey(key: string): void {
       `Key ${key} starts with a reserved prefix (${RESERVED_PREFIXES.join(" ")})`,
     );
   }
-  if (RESERVED_PREFIX_ALLOWLIST.some((prefix) => key === prefix)) {
-    throw new KeyValidationError(key, `Key ${key} is a known prefix with an empty suffix`);
-  }
 }
 
 /**
- * @return true if the key begins with a prefix on the reserved list and is not a known usage.
+ * Returns true if the key begins with a prefix on the reserved list and is not a known allowlisted usage.
+ * Returns false if the key does not begin with a prefix on the reserved list
+ * Throws if the key is a known allowlisted usage but is malformed:
+ * For example, "FIREBASE_SECRET_REF_" and "EXT_SELECTED_EVENTS_FOO" will both throw.
  */
 function keyConflictsWithReservedPrefixes(key: string): boolean {
-  return RESERVED_PREFIXES.some(
-    (prefix) =>
-      key.startsWith(prefix) && !RESERVED_PREFIX_ALLOWLIST.some((known) => key.startsWith(known)),
-  );
+  if (!RESERVED_PREFIXES.some((prefix) => key.startsWith(prefix))) {
+    return false;
+  }
+  for (const allowedPrefix of RESERVED_PREFIX_ALLOWLIST) {
+    if (keyPermittedByKnownPrefix(key, allowedPrefix)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function keyPermittedByKnownPrefix(key: string, prefix: string): boolean {
+  if (!key.startsWith(prefix)) {
+    return false;
+  }
+  if (prefix.endsWith("_") && key === prefix) {
+    throw new KeyValidationError(key, `Key ${key} is a known prefix that requires a suffix`);
+  }
+  if (!prefix.endsWith("_") && key !== prefix) {
+    throw new KeyValidationError(
+      key,
+      `Key ${key} conflicts with known key ${prefix} that does not permit a suffix`,
+    );
+  }
+  return true;
 }
 
 /**
