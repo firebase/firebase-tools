@@ -2,3 +2,4 @@
 - Updated Pub/Sub emulator to version 0.8.36.
 - [fixed] Clean up managed service accounts when opting out of declarative security alongside a filtered codebase deploy.
 - ext:uninstall --immediate now warns about secrets bound to the extension that will be deleted and offers a migration path.
+- [fixed] The Functions emulator no longer repeats the "External network resource requested!" and "Google API requested!" warnings for a URL it has already reported. (#4939)
