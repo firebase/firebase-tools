@@ -9,7 +9,7 @@ import { logWarning } from "../utils";
 export const command = new Command("apphosting:builds:create <backendId>")
   .description("create a build for an App Hosting backend")
   .option("-l, --location <location>", "specify the region of the backend")
-  .option("-i, --id <buildId>", "id of the build (defaults to autogenerating a random id)", "")
+  .option("--id <buildId>", "id of the build (defaults to autogenerating a random id)", "")
   .option("-b, --branch <branch>", "repository branch to deploy (defaults to 'main')", "main")
   .before(requireAuth)
   .before(apphosting.ensureApiEnabled)
@@ -20,6 +20,7 @@ export const command = new Command("apphosting:builds:create <backendId>")
     }
     const location = (options.location as string) ?? "us-central1";
     const buildId =
+      (options.id as string) ||
       (options.buildId as string) ||
       (await apphosting.getNextRolloutId(projectId, location, backendId));
     const branch = (options.branch as string | undefined) ?? "main";
