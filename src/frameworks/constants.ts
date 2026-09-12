@@ -73,6 +73,17 @@ export const ALLOWED_SSR_REGIONS = [
 
 export const I18N_ROOT = "/";
 
+/**
+ * Prefix of the Cloud Functions codebase that the web frameworks integration
+ * generates for a site's SSR function. See generateSSRCodebaseId.
+ */
+export const FIREBASE_FRAMEWORKS_CODEBASE_PREFIX = "firebase-frameworks-";
+
+/** Whether a codebase is one the web frameworks integration manages for SSR. */
+export function isFrameworksManagedCodebase(codebase: string | undefined): boolean {
+  return !!codebase?.startsWith(FIREBASE_FRAMEWORKS_CODEBASE_PREFIX);
+}
+
 export function GET_DEFAULT_BUILD_TARGETS() {
   return Promise.resolve(["production", "development"]);
 }

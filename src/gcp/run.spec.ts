@@ -270,6 +270,79 @@ describe("run", () => {
       });
     });
   });
+  describe("ensureInvokerPublic", () => {
+    let sandbox: sinon.SinonSandbox;
+    let getIamPolicyStub: sinon.SinonStub;
+    let setIamPolicyStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      getIamPolicyStub = sandbox.stub(run, "getIamPolicy");
+      setIamPolicyStub = sandbox.stub(run, "setIamPolicy").resolves();
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should add allUsers when the service has no policy", async () => {
+      getIamPolicyStub.resolves({});
+
+      await run.ensureInvokerPublic("service");
+
+      expect(setIamPolicyStub).to.be.calledOnceWith("service", {
+        bindings: [{ role: "roles/run.invoker", members: ["allUsers"] }],
+        etag: "",
+        version: 3,
+      });
+    });
+
+    it("should add allUsers additively, preserving other members and roles", async () => {
+      getIamPolicyStub.resolves({
+        bindings: [
+          { role: "random-role", members: ["user:pineapple"] },
+          {
+            role: "roles/run.invoker",
+            members: ["serviceAccount:sa@project.iam.gserviceaccount.com"],
+          },
+        ],
+        etag: "1234",
+        version: 3,
+      });
+
+      await run.ensureInvokerPublic("service");
+
+      expect(setIamPolicyStub).to.be.calledOnceWith("service", {
+        bindings: [
+          { role: "random-role", members: ["user:pineapple"] },
+          {
+            role: "roles/run.invoker",
+            members: ["serviceAccount:sa@project.iam.gserviceaccount.com", "allUsers"],
+          },
+        ],
+        etag: "1234",
+        version: 3,
+      });
+    });
+
+    it("should be a no-op when allUsers already has the invoker role", async () => {
+      getIamPolicyStub.resolves({
+        bindings: [
+          {
+            role: "roles/run.invoker",
+            members: ["serviceAccount:sa@project.iam.gserviceaccount.com", "allUsers"],
+          },
+        ],
+        etag: "1234",
+        version: 3,
+      });
+
+      await run.ensureInvokerPublic("service");
+
+      expect(setIamPolicyStub).to.not.be.called;
+    });
+  });
+
   describe("updateService", () => {
     let service: run.Service;
     let serviceIsResolved: sinon.SinonStub;
