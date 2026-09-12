@@ -1514,6 +1514,30 @@ describe("prepare", () => {
       expect(e.labels?.["firebase-declarative-security-etag"]).to.equal(result.newEtag);
     });
 
+    it("should skip permission checks when haveRolesEtag matches newEtag", async () => {
+      const etag = iam.computeRolesEtag(["roles/viewer"]);
+      const e: backend.Endpoint = {
+        ...ENDPOINT,
+        serviceAccount: "firebase-fn-123@project.iam.gserviceaccount.com",
+        labels: {
+          "firebase-declarative-security-etag": etag,
+        },
+      };
+      const want = backend.of(e);
+      want.requiredRoles = ["roles/viewer"];
+      const have = backend.of({
+        ...e,
+        labels: { ...e.labels },
+      });
+
+      testIamPermissionsStub.rejects(new Error("Should not be called"));
+      const result = await prepare.discoverSecurityDetails("default", want, have, "project");
+
+      expect(result.haveRolesEtag).to.equal(etag);
+      expect(result.newEtag).to.equal(etag);
+      expect(testIamPermissionsStub).to.not.have.been.called;
+    });
+
     it("should reset endpoints to default service account when unenrolling (opting out)", async () => {
       const e: backend.Endpoint = {
         ...ENDPOINT,
