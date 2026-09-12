@@ -6,8 +6,20 @@
  * TODO(samstern): Audit dependencies of functionsEmulatorShared
  */
 
+import { URL } from "url";
+
 const wildcardRegex = new RegExp("{[^/{}]*}");
 const wildcardKeyRegex = new RegExp("^{(.+)}$");
+
+export function formatFunctionUrlForDisplay(url: string): string {
+  const parsedUrl = new URL(url);
+
+  if (parsedUrl.hostname === "0.0.0.0" || parsedUrl.hostname === "127.0.0.1") {
+    parsedUrl.hostname = "localhost";
+  }
+
+  return parsedUrl.toString();
+}
 
 export interface ModuleVersion {
   major: number;

@@ -6,6 +6,7 @@ import {
   compareVersionStrings,
   parseRuntimeVersion,
   isLocalHost,
+  formatFunctionUrlForDisplay,
 } from "./functionsEmulatorUtils";
 
 describe("FunctionsEmulatorUtils", () => {
@@ -182,5 +183,29 @@ describe("FunctionsEmulatorUtils", () => {
         expect(isLocalHost(t.href)).to.eq(t.expected);
       });
     }
+  });
+
+  describe("formatFunctionUrlForDisplay", () => {
+    it("should display localhost instead of the IPv4 wildcard address", () => {
+      const url = "http://0.0.0.0:5001/demo-project/us-central1/testFunction";
+
+      expect(formatFunctionUrlForDisplay(url)).to.equal(
+        "http://localhost:5001/demo-project/us-central1/testFunction",
+      );
+    });
+
+    it("should display localhost instead of the IPv4 loopback address", () => {
+      const url = "http://127.0.0.1:5001/demo-project/us-central1/testFunction";
+
+      expect(formatFunctionUrlForDisplay(url)).to.equal(
+        "http://localhost:5001/demo-project/us-central1/testFunction",
+      );
+    });
+
+    it("should preserve non-loopback hosts", () => {
+      const url = "http://192.168.1.10:5001/demo-project/us-central1/testFunction";
+
+      expect(formatFunctionUrlForDisplay(url)).to.equal(url);
+    });
   });
 });
