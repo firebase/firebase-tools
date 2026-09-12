@@ -1,1 +1,2 @@
 - [fixed] Clean up managed service accounts when opting out of declarative security alongside a filtered codebase deploy.
+- ext:uninstall --immediate now warns about secrets bound to the extension that will be deleted and offers a migration path.
