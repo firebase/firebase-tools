@@ -98,7 +98,8 @@ async function packageSource(
     flags: "w",
     encoding: "binary",
   });
-  const archive = exportType === "tar.gz" ? archiver("tar", { gzip: true }) : archiver("zip");
+  const archive =
+    exportType === "tar.gz" ? new archiver.TarArchive({ gzip: true }) : new archiver.ZipArchive();
   const hashes: string[] = [];
   let configHash = "";
 

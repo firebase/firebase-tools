@@ -17,14 +17,14 @@ export async function archiveFile(filePath: string, options?: ArchiveOptions): P
     flags: "w",
     encoding: "binary",
   });
-  const archive = archiver("zip");
+  const archive = new archiver.ZipArchive();
   const name = options?.archivedFileName ?? path.basename(filePath);
   archive.file(filePath, { name });
   await pipeAsync(archive, fileStream);
   return tmpFile;
 }
 
-async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream): Promise<void> {
+async function pipeAsync(from: archiver.ZipArchive, to: fs.WriteStream): Promise<void> {
   return new Promise((resolve, reject) => {
     to.on("finish", resolve);
     to.on("error", reject);

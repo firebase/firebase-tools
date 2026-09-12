@@ -52,7 +52,7 @@ describe("remoteSource", () => {
       files: { [path: string]: string },
       topLevelDir?: string,
     ): Promise<Buffer> {
-      const archive = archiver("zip", { zlib: { level: 9 } });
+      const archive = new archiver.ZipArchive({ zlib: { level: 9 } });
       const chunks: Buffer[] = [];
       const output = new Writable({
         write(chunk, _encoding, callback) {
