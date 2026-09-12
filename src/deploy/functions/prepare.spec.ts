@@ -1483,6 +1483,7 @@ describe("prepare", () => {
 
   describe("discoverSecurityDetails", () => {
     let testIamPermissionsStub: sinon.SinonStub;
+    let checkApiStub: sinon.SinonStub;
 
     beforeEach(() => {
       testIamPermissionsStub = sinon
@@ -1490,6 +1491,7 @@ describe("prepare", () => {
         .resolves({ passed: true } as any);
       sinon.stub(iam, "generateManagedServiceAccountName").resolves("firebase-fn-123");
       sinon.stub(resourcemanager, "getServiceAccountRoles").resolves([]);
+      checkApiStub = sinon.stub(ensureApiEnabled, "check").resolves(true);
     });
 
     afterEach(() => {
@@ -1670,6 +1672,152 @@ describe("prepare", () => {
         FirebaseError,
         /To ensure a whole codebase is migrated cleanly, you may not deploy only part of a codebase when opting into or out of declarative security/,
       );
+    });
+
+    describe("API enablement checks", () => {
+      it("should throw actionable error when both iam and cloudresourcemanager APIs are disabled", async () => {
+        checkApiStub.resolves(false);
+
+        const e: backend.Endpoint = { ...ENDPOINT };
+        const want = backend.of(e);
+        want.requiredRoles = ["roles/viewer"];
+        const have = backend.empty();
+
+        let error: FirebaseError | undefined;
+        try {
+          await prepare.discoverSecurityDetails("default", want, have, "test-project");
+        } catch (err) {
+          if (err instanceof FirebaseError) {
+            error = err;
+          }
+        }
+
+        expect(error).to.be.instanceOf(FirebaseError);
+        expect(error?.message).to.include("iam.googleapis.com");
+        expect(error?.message).to.include("cloudresourcemanager.googleapis.com");
+        expect(error?.message).to.include(
+          "gcloud services enable iam.googleapis.com cloudresourcemanager.googleapis.com --project test-project",
+        );
+        expect(testIamPermissionsStub).to.not.have.been.called;
+      });
+
+      it("should throw actionable error when only iam API is disabled", async () => {
+        checkApiStub.withArgs("test-project", "iam.googleapis.com").resolves(false);
+
+        const e: backend.Endpoint = { ...ENDPOINT };
+        const want = backend.of(e);
+        want.requiredRoles = ["roles/viewer"];
+        const have = backend.empty();
+
+        let error: FirebaseError | undefined;
+        try {
+          await prepare.discoverSecurityDetails("default", want, have, "test-project");
+        } catch (err) {
+          if (err instanceof FirebaseError) {
+            error = err;
+          }
+        }
+
+        expect(error).to.be.instanceOf(FirebaseError);
+        expect(error?.message).to.include("iam.googleapis.com");
+        expect(error?.message).to.not.include("cloudresourcemanager.googleapis.com");
+        expect(error?.message).to.include(
+          "gcloud services enable iam.googleapis.com --project test-project",
+        );
+      });
+
+      it("should throw actionable error when only cloudresourcemanager API is disabled", async () => {
+        checkApiStub
+          .withArgs("test-project", "cloudresourcemanager.googleapis.com")
+          .resolves(false);
+
+        const e: backend.Endpoint = { ...ENDPOINT };
+        const want = backend.of(e);
+        want.requiredRoles = ["roles/viewer"];
+        const have = backend.empty();
+
+        let error: FirebaseError | undefined;
+        try {
+          await prepare.discoverSecurityDetails("default", want, have, "test-project");
+        } catch (err) {
+          if (err instanceof FirebaseError) {
+            error = err;
+          }
+        }
+
+        expect(error).to.be.instanceOf(FirebaseError);
+        expect(error?.message).to.include("cloudresourcemanager.googleapis.com");
+        expect(error?.message).to.not.include("iam.googleapis.com");
+        expect(error?.message).to.include(
+          "gcloud services enable cloudresourcemanager.googleapis.com --project test-project",
+        );
+      });
+
+      it("should not check security APIs when codebase does not use declarative security", async () => {
+        const e: backend.Endpoint = { ...ENDPOINT };
+        const want = backend.of(e);
+        const have = backend.empty();
+
+        await prepare.discoverSecurityDetails("default", want, have, "test-project");
+
+        expect(checkApiStub).to.not.have.been.calledWith("test-project", "iam.googleapis.com");
+        expect(checkApiStub).to.not.have.been.calledWith(
+          "test-project",
+          "cloudresourcemanager.googleapis.com",
+        );
+      });
+
+      it("should not block deployment if caller lacks permission to check API enablement", async () => {
+        checkApiStub.rejects(
+          new FirebaseError("HTTP Error: 403, PERMISSION_DENIED on serviceusage.services.get", {
+            status: 403,
+          }),
+        );
+
+        const e: backend.Endpoint = { ...ENDPOINT };
+        const want = backend.of(e);
+        want.requiredRoles = ["roles/viewer"];
+        const have = backend.empty();
+
+        const result = await prepare.discoverSecurityDetails("default", want, have, "test-project");
+        expect(result.managedSA).to.equal("firebase-fn-123@test-project.iam.gserviceaccount.com");
+      });
+
+      it("should rethrow unexpected non-permission errors when checking API enablement", async () => {
+        checkApiStub.rejects(new Error("Network timeout"));
+
+        const e: backend.Endpoint = { ...ENDPOINT };
+        const want = backend.of(e);
+        want.requiredRoles = ["roles/viewer"];
+        const have = backend.empty();
+
+        await expect(
+          prepare.discoverSecurityDetails("default", want, have, "test-project"),
+        ).to.be.rejectedWith(Error, "Network timeout");
+      });
+
+      it("should not block unenrollment even if security APIs are disabled", async () => {
+        checkApiStub.resolves(false);
+
+        const e: backend.Endpoint = {
+          ...ENDPOINT,
+          serviceAccount: "firebase-fn-123@project.iam.gserviceaccount.com",
+          labels: {
+            "firebase-declarative-security-etag": "salt-etag",
+          },
+        };
+        const want = backend.of(e);
+        const have = backend.of({
+          ...e,
+          labels: { ...e.labels },
+        });
+
+        const result = await prepare.discoverSecurityDetails("default", want, have, "project");
+        expect(result.existingManagedSA).to.equal(
+          "firebase-fn-123@project.iam.gserviceaccount.com",
+        );
+        expect(e.serviceAccount).to.be.null;
+      });
     });
   });
 });

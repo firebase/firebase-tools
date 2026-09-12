@@ -160,6 +160,8 @@ export async function discoverSecurityDetails(
     };
   }
 
+  await ensure.checkDeclarativeSecurityApisEnabled(projectId, codebase);
+
   let managedSA = existingManagedSA;
   if (!managedSA) {
     const saToCreate = await iam.generateManagedServiceAccountName(projectId, "firebase-fn");

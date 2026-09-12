@@ -3239,6 +3239,11 @@ describe("functions/kits/install", () => {
           },
         ],
       });
+
+      const tsconfig = JSON.parse(
+        writtenFiles["function-kits/firestore-bigquery-export/source/tsconfig.json"] as string,
+      ) as { compilerOptions?: { skipLibCheck?: boolean } };
+      expect(tsconfig.compilerOptions?.skipLibCheck).to.be.true;
     });
 
     it("should accept custom kitId and instanceId for package kit", async () => {
