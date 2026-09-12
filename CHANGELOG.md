@@ -1,2 +1,4 @@
+- [fixed] Fail fast with an actionable error and remediation instructions when declarative security APIs (IAM and Cloud Resource Manager) are disabled on the project.
+- Updated Pub/Sub emulator to version 0.8.36.
 - [fixed] Clean up managed service accounts when opting out of declarative security alongside a filtered codebase deploy.
 - ext:uninstall --immediate now warns about secrets bound to the extension that will be deleted and offers a migration path.
