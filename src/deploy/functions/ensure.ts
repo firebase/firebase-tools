@@ -1,6 +1,6 @@
 import * as clc from "colorette";
 
-import { ensure } from "../../ensureApiEnabled";
+import * as ensureApiEnabled from "../../ensureApiEnabled";
 import { FirebaseError, isBillingError } from "../../error";
 import { logLabeledBullet, logLabeledSuccess } from "../../utils";
 import { checkServiceAgentRole, ensureServiceAgentRole } from "../../gcp/secretManager";
@@ -9,6 +9,7 @@ import { assertExhaustive } from "../../functional";
 import { cloudbuildOrigin } from "../../api";
 import * as backend from "./backend";
 import { getDefaultServiceAccount } from "../../gcp/computeEngine";
+import { logger } from "../../logger";
 
 const FAQ_URL = "https://firebase.google.com/support/faq#functions-runtime";
 
@@ -73,7 +74,7 @@ function isPermissionError(e: { context?: { body?: { error?: { status?: string }
  */
 export async function cloudBuildEnabled(projectId: string): Promise<void> {
   try {
-    await ensure(projectId, cloudbuildOrigin(), "functions");
+    await ensureApiEnabled.ensure(projectId, cloudbuildOrigin(), "functions");
   } catch (e: any) {
     if (isBillingError(e)) {
       throw nodeBillingError(projectId);
@@ -185,4 +186,59 @@ export async function grantSecretAccess(args: {
     "functions",
     `ensured ${clc.bold(serviceAccounts.join(", "))} access to ${clc.bold(secret)}.`,
   );
+}
+
+export const REQUIRED_SECURITY_APIS = [
+  "iam.googleapis.com",
+  "cloudresourcemanager.googleapis.com",
+] as const;
+
+/**
+ * Validates that the Google Cloud APIs required for Declarative Security are enabled.
+ * Fails fast with an actionable gcloud command and console URLs if either API is disabled.
+ */
+export async function checkDeclarativeSecurityApisEnabled(
+  projectId: string,
+  codebase: string,
+): Promise<void> {
+  const checks = await Promise.all(
+    REQUIRED_SECURITY_APIS.map(async (api) => {
+      try {
+        return await ensureApiEnabled.check(projectId, api, "functions", /* silent= */ true);
+      } catch (err: unknown) {
+        const isPermissionDenied =
+          (err as { status?: number })?.status === 403 ||
+          isPermissionError(err as { context?: { body?: { error?: { status?: string } } } });
+        if (isPermissionDenied) {
+          logger.debug(`Silencing permission error checking enablement for API ${api}:`, err);
+          return true;
+        }
+        throw err;
+      }
+    }),
+  );
+  const disabledApis = REQUIRED_SECURITY_APIS.filter((_, idx) => !checks[idx]);
+
+  if (disabledApis.length > 0) {
+    const apiBulletList = disabledApis.map((api) => `  - ${clc.bold(api)}`).join("\n");
+    const enableCmd = clc.bold(
+      `gcloud services enable ${disabledApis.join(" ")} --project ${projectId}`,
+    );
+    const consoleLinks = disabledApis
+      .map((api) => `  - ${api}: ${ensureApiEnabled.enableApiURI(projectId, api)}`)
+      .join("\n");
+
+    throw new FirebaseError(
+      `Cannot deploy functions with declarative security in codebase "${codebase}". ` +
+        `The following required Google Cloud API(s) are not enabled on project ${clc.bold(projectId)}:\n` +
+        apiBulletList +
+        `\n\nDeclarative security requires these APIs to provision and configure managed service accounts and IAM roles.\n` +
+        `To enable them, run:\n\n` +
+        `  ${enableCmd}\n\n` +
+        `Or ask a project owner to enable them in the Google Cloud Console:\n` +
+        consoleLinks +
+        `\n`,
+      { exit: 1 },
+    );
+  }
 }
