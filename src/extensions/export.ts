@@ -231,6 +231,8 @@ export function functionsEnvFromInstance(instance: ExtensionInstance): Record<st
   }
 
   // Also pull in ALLOWED_EVENTS and EVENTARC_CHANNEL
+  // The Extensions backend was translating ALLOWED_EVENTS into process.env.EXT_SELECTED_EVENTS,
+  // so a kits environment has to duplicate that behavior.
   if (typeof instance.config.allowedEventTypes !== "undefined") {
     envs["EXT_SELECTED_EVENTS"] = instance.config.allowedEventTypes.toString();
   }

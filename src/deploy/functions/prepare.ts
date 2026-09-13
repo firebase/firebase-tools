@@ -160,14 +160,15 @@ export async function discoverSecurityDetails(
     };
   }
 
+  await ensure.checkDeclarativeSecurityApisEnabled(projectId, codebase);
+
   let managedSA = existingManagedSA;
   if (!managedSA) {
     const saToCreate = await iam.generateManagedServiceAccountName(projectId, "firebase-fn");
     managedSA = `${saToCreate}@${projectId}.iam.gserviceaccount.com`;
   }
 
-  const existingSalt = haveRolesEtag ? haveRolesEtag.split("-")[0] : undefined;
-  const newEtag = iam.computeRolesEtag(requiredRoles!, existingSalt);
+  const newEtag = iam.computeRolesEtag(requiredRoles!);
 
   for (const endpoint of backend.allEndpoints(want)) {
     endpoint.serviceAccount = managedSA;
