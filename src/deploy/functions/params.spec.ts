@@ -446,4 +446,145 @@ describe("resolveParams", () => {
       loggerInfoStub.calledWith(sinon.match(/Prompting for parameters for codebase.*my-codebase/)),
     ).to.be.true;
   });
+
+  it("should log bold label and description when description is present", async () => {
+    const paramsToResolve: params.Param[] = [
+      {
+        name: "foo",
+        label: "Foo Label",
+        description: "A helpful description",
+        type: "string",
+        input: { text: {} },
+      },
+    ];
+    input.resolves("bar");
+    await params.resolveParams({
+      params: paramsToResolve,
+      firebaseConfig: fakeConfig,
+      userEnvs: {},
+      codebase: "my-codebase",
+    });
+    expect(loggerInfoStub.calledWith(sinon.match(/Foo Label.*A helpful description/))).to.be.true;
+    expect(input).to.have.been.calledWith(
+      sinon.match({ message: "Enter a string value for Foo Label:" }),
+    );
+  });
+
+  it("should log empty newline and prompt without description when description is absent", async () => {
+    const paramsToResolve: params.Param[] = [
+      {
+        name: "foo",
+        type: "string",
+        input: { text: {} },
+      },
+    ];
+    input.resolves("bar");
+    await params.resolveParams({
+      params: paramsToResolve,
+      firebaseConfig: fakeConfig,
+      userEnvs: {},
+      codebase: "my-codebase",
+    });
+    expect(loggerInfoStub.calledWith("")).to.be.true;
+    expect(input).to.have.been.calledWith(
+      sinon.match({ message: "Enter a string value for foo:" }),
+    );
+  });
+
+  it("should pass clear text instructions to select", async () => {
+    const selectStub = sinon.stub(prompt, "select").resolves("opt1");
+    const paramsToResolve: params.Param[] = [
+      {
+        name: "choice",
+        type: "string",
+        input: {
+          select: {
+            options: [{ label: "Option 1", value: "opt1" }],
+          },
+        },
+      },
+    ];
+    try {
+      await params.resolveParams({
+        params: paramsToResolve,
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "my-codebase",
+      });
+      expect(selectStub.firstCall.args[0].message).to.eq("Select a value for choice:");
+      expect(selectStub.firstCall.args[0].instructions).to.eq(
+        "(Use arrow keys to navigate, and Enter to confirm your choice)",
+      );
+    } finally {
+      selectStub.restore();
+    }
+  });
+
+  it("should pass clear text instructions to checkbox for multi-select", async () => {
+    const checkboxStub = sinon.stub(prompt, "checkbox").resolves(["opt1"]);
+    const paramsToResolve: params.Param[] = [
+      {
+        name: "choices",
+        type: "list",
+        input: {
+          multiSelect: {
+            options: [{ label: "Option 1", value: "opt1" }],
+          },
+        },
+      },
+    ];
+    try {
+      await params.resolveParams({
+        params: paramsToResolve,
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "my-codebase",
+      });
+      expect(checkboxStub.firstCall.args[0].message).to.eq("Select values for choices:");
+      expect(checkboxStub.firstCall.args[0].instructions).to.eq(
+        "(Press Space to select, and Enter to confirm your choices)",
+      );
+    } finally {
+      checkboxStub.restore();
+    }
+  });
+
+  it("should log bold label, description, and notice, and prompt for secret value", async () => {
+    const passwordStub = sinon.stub(prompt, "password").resolves("secret-val");
+    const getSecretMetadataStub = sinon.stub(secretManager, "getSecretMetadata").resolves({
+      secret: undefined,
+    });
+    const createSecretStub = sinon.stub(secretManager, "createSecret").resolves();
+    const addVersionStub = sinon.stub(secretManager, "addVersion").resolves();
+    const paramsToResolve: params.Param[] = [
+      {
+        name: "API_KEY",
+        label: "API Key",
+        description: "Key used to authenticate with 3rd party API.",
+        type: "secret",
+        resourceId: "API_KEY",
+      },
+    ];
+    try {
+      await params.resolveParams({
+        params: paramsToResolve,
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "my-codebase",
+      });
+      expect(
+        loggerInfoStub.calledWith(
+          sinon.match(/API Key.*Key used to authenticate.*Cloud Secret Manager/),
+        ),
+      ).to.be.true;
+      expect(passwordStub).to.have.been.calledWith(
+        sinon.match({ message: "Enter a value for API Key:" }),
+      );
+    } finally {
+      passwordStub.restore();
+      getSecretMetadataStub.restore();
+      createSecretStub.restore();
+      addVersionStub.restore();
+    }
+  });
 });
