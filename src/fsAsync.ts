@@ -19,7 +19,19 @@ export interface ReaddirRecursiveOpts {
   include?: string[];
   // Maximum depth to recurse.
   maxDepth?: number;
-  // Ignore symlinked files or directories when traversing.
+  /**
+   * Ignore symlinked files or directories when traversing.
+   *
+   * **Defaults to `true`** for security: following symlinks during deploy/upload
+   * lets a path inside the source tree leak the contents of an arbitrary path
+   * outside it (including secrets like `/proc/self/environ`, SSH keys, or other
+   * credentials reachable from the deploy process). Pass `false` only if you
+   * have an audited reason to follow symlinks.
+   *
+   * If a symlink is encountered while this is `true`, the entry is silently
+   * dropped from the recursion (matching the prior `ignoreSymlinks: true`
+   * behavior). A `debug`-level log entry is emitted to aid debugging.
+   */
   ignoreSymlinks?: boolean;
 }
 
@@ -68,7 +80,16 @@ async function readdirRecursiveHelper(options: {
     }
   }
   const fullPaths = dirContents
-    .filter((n) => !options.ignoreSymlinks || !n.isSymbolicLink())
+    .filter((n) => {
+      if (options.ignoreSymlinks && n.isSymbolicLink()) {
+        logger.debug(
+          `[fsAsync] dropping symlink ${join(options.path, n.name)} ` +
+            `(set ignoreSymlinks:false to include it)`,
+        );
+        return false;
+      }
+      return true;
+    })
     .map((n) => join(options.path, n.name));
   const filteredPaths = fullPaths.filter((p) => !options.filter(p, currentGitIgnoreStack));
   const filePromises: Array<Promise<ReaddirRecursiveFile | ReaddirRecursiveFile[]>> = [];
@@ -102,6 +123,15 @@ async function readdirRecursiveHelper(options: {
 
 /**
  * Recursively read a directory.
+ *
+ * **Security note:** `ignoreSymlinks` defaults to `true`. Callers that
+ * upload, archive, or otherwise transport the resulting file list across
+ * a trust boundary (e.g. Cloud Functions deploy, App Hosting deploy,
+ * Hosting upload) MUST keep this default. Passing `false` causes the
+ * recursion to follow symlinks and may include arbitrary attacker-controlled
+ * targets in the produced file list (e.g. `/proc/self/environ`,
+ * `~/.ssh/id_rsa`, GCP application-default-credentials JSON).
+ *
  * @param options options object.
  * @return array of files that match.
  */
@@ -146,11 +176,15 @@ export async function readdirRecursive(
   }
 
   const maxDepth = options.maxDepth && options.maxDepth > 0 ? options.maxDepth : Infinity;
+  // Default `ignoreSymlinks` to `true`. See JSDoc above for security rationale.
+  const ignoreSymlinks = options.ignoreSymlinks !== false;
   return await readdirRecursiveHelper({
     path: options.path,
     filter: filter,
     maxDepth,
-    ignoreSymlinks: !!options.ignoreSymlinks,
+    // Use the secure default computed above (true unless explicitly false),
+    // not `!!options.ignoreSymlinks` which would default to following symlinks.
+    ignoreSymlinks,
     supportGitIgnore: options.supportGitIgnore,
     gitIgnoreStack: initialGitIgnoreStack,
   });
