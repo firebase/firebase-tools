@@ -1010,7 +1010,7 @@ export async function addInstanceToKit(
  * Discovers the build manifest from the compiled kit source directory.
  */
 export async function discoverKitBuild(
-  options: { config?: Config; project?: string; projectId?: string },
+  options: { config?: Config; project?: string; projectId?: string; instanceId?: string },
   absSourcePath: string,
 ): Promise<build.Build> {
   const projectId = getProjectId(options) || "";
@@ -1021,7 +1021,8 @@ export async function discoverKitBuild(
     runtime: supported.latest("nodejs"),
   };
   const runtimeDelegate = await runtimes.getRuntimeDelegate(delegateContext);
-  return runtimeDelegate.discoverBuild({}, {});
+  const firebaseEnvs = functionsEnv.loadFirebaseEnvs({ projectId }, projectId, options.instanceId);
+  return runtimeDelegate.discoverBuild({}, firebaseEnvs);
 }
 
 /**
@@ -1281,7 +1282,7 @@ export async function addKitInstanceOrConfigureProject(
   const shouldConfigure = options.configure !== false;
   if (shouldConfigure) {
     try {
-      discoveredBuild = await discoverKitBuild(options, absSourcePath);
+      discoveredBuild = await discoverKitBuild({ ...options, instanceId }, absSourcePath);
     } catch (err: unknown) {
       logger.debug(`Could not discover kit build for params prompting: ${getErrMsg(err)}`);
     }
@@ -1511,7 +1512,7 @@ export async function installKitOrInstance(
   const shouldConfigure = options.configure !== false;
   if (shouldConfigure) {
     try {
-      discoveredBuild = await discoverKitBuild(options, absSourcePath);
+      discoveredBuild = await discoverKitBuild({ ...options, instanceId }, absSourcePath);
     } catch (err: unknown) {
       logger.debug(`Could not discover kit build for params prompting: ${getErrMsg(err)}`);
     }

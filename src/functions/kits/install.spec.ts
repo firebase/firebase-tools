@@ -28,6 +28,7 @@ import {
   findExistingKit,
   resolvePackageSource,
   resolveDirectorySource,
+  discoverKitBuild,
   printKitFirstDeployReport,
   addKitInstanceOrConfigureProject,
   installKitOrInstance,
@@ -1936,6 +1937,47 @@ describe("functions/kits/install", () => {
     });
   });
 
+  describe("discoverKitBuild", () => {
+    it("should pass firebase envs including FIREBASE_KIT_INSTANCE_ID to discoverBuild when instanceId is provided", async () => {
+      const delegate = {
+        discoverBuild: sinon.stub().resolves(build.empty()),
+      };
+      sinon
+        .stub(runtimes, "getRuntimeDelegate")
+        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+
+      await discoverKitBuild({ instanceId: "my-inst", projectId: "test-proj" }, "/mock/source");
+
+      expect(delegate.discoverBuild).to.have.been.calledOnceWithExactly(
+        {},
+        {
+          FIREBASE_CONFIG: JSON.stringify({ projectId: "test-proj" }),
+          GCLOUD_PROJECT: "test-proj",
+          FIREBASE_KIT_INSTANCE_ID: "my-inst",
+        },
+      );
+    });
+
+    it("should omit FIREBASE_KIT_INSTANCE_ID from discoverBuild envs when instanceId is omitted", async () => {
+      const delegate = {
+        discoverBuild: sinon.stub().resolves(build.empty()),
+      };
+      sinon
+        .stub(runtimes, "getRuntimeDelegate")
+        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+
+      await discoverKitBuild({ projectId: "test-proj" }, "/mock/source");
+
+      expect(delegate.discoverBuild).to.have.been.calledOnceWithExactly(
+        {},
+        {
+          FIREBASE_CONFIG: JSON.stringify({ projectId: "test-proj" }),
+          GCLOUD_PROJECT: "test-proj",
+        },
+      );
+    });
+  });
+
   describe("printKitFirstDeployReport", () => {
     it("should report functions when present with bolded base names", async () => {
       const mockBuild: build.Build = {
@@ -2513,6 +2555,10 @@ describe("functions/kits/install", () => {
       );
 
       expect(res.action).to.equal("addedInstance");
+      expect(delegate.discoverBuild).to.have.been.calledWith(
+        {},
+        sinon.match({ FIREBASE_KIT_INSTANCE_ID: "inst2" }),
+      );
       expect(resolveParamsStub).to.have.been.calledOnce;
       expect(writeResolvedParamsStub).to.have.been.calledOnce;
     });
