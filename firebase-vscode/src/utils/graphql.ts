@@ -10,3 +10,14 @@ export function locationToRange(location: graphql.Location): vscode.Range {
     location.endToken.column - 1
   );
 }
+
+/** Unwrap NonNull / List type wrappers to get the named type string. */
+export function unwrapTypeName(type: graphql.TypeNode): string {
+  if (type.kind === graphql.Kind.NON_NULL_TYPE) {
+    return unwrapTypeName(type.type);
+  }
+  if (type.kind === graphql.Kind.LIST_TYPE) {
+    return unwrapTypeName(type.type);
+  }
+  return type.name.value;
+}
