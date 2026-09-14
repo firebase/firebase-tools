@@ -1,0 +1,1 @@
+- [changed] Improve formatting and user experience for Cloud Functions parameter and secret prompts.
