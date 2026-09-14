@@ -1,7 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync } from "fs";
 import * as path from "path";
-import { FirebaseError } from "./error";
-import { moveSync } from "fs-extra";
+import * as fs from "fs-extra";
+import { FirebaseError, getErrMsg } from "./error";
+import { logger } from "./logger";
 
 export function fileExistsSync(path: string): boolean {
   try {
@@ -50,6 +51,37 @@ export function moveAll(srcDir: string, destDir: string) {
   for (const f of files) {
     const srcPath = path.join(srcDir, f);
     if (srcPath === destDir) continue;
-    moveSync(srcPath, path.join(destDir, f));
+    fs.moveSync(srcPath, path.join(destDir, f));
+  }
+}
+
+/**
+ * Safely removes a file or directory, suppressing any errors and logging to debug.
+ */
+export async function safeRemove(targetPath: string): Promise<void> {
+  try {
+    await fs.remove(targetPath);
+  } catch (err: unknown) {
+    logger.debug(`Failed to remove path '${targetPath}': ${getErrMsg(err)}`);
+  }
+}
+
+/**
+ * Removes an empty directory if it exists and contains no files or subdirectories,
+ * suppressing any errors and logging to debug.
+ */
+export async function removeDirectoryIfEmpty(absDirPath: string): Promise<void> {
+  try {
+    if (await fs.pathExists(absDirPath)) {
+      const stat = await fs.stat(absDirPath);
+      if (stat.isDirectory()) {
+        const entries = await fs.readdir(absDirPath);
+        if (entries.length === 0) {
+          await fs.remove(absDirPath);
+        }
+      }
+    }
+  } catch (err: unknown) {
+    logger.debug(`Failed to remove empty directory '${absDirPath}': ${getErrMsg(err)}`);
   }
 }

@@ -35,8 +35,6 @@ import {
   promptAndWriteKitParams,
   getKitPackagesToSave,
   resolveSdkSpecifierToSave,
-  safeRemove,
-  cleanUpEmptyDir,
   revertFunctionsConfig,
   TemplateType,
 } from "./install";
@@ -2481,19 +2479,17 @@ describe("functions/kits/install", () => {
       sinon.stub(prompt, "select").resolves("addInstance");
       sinon.stub(prompt, "input").resolves("inst2");
 
-      const res = await addKitInstanceOrConfigureProject(
-        {
-          config: mockConfig,
-          project: "my-project",
-        },
+      const res = await addKitInstanceOrConfigureProject({
+        config: mockConfig,
+        project: "my-project",
         existingKit,
-        {
+        existingFunctionsInfo: {
           existingFunctions: [existingKit],
           existingKitIds: ["firestore-bigquery-export"],
           existingCodebases: [],
           existingInstanceIds: ["inst1"],
         },
-      );
+      });
 
       expect(res).to.deep.equal({
         action: "addedInstance",
@@ -2547,19 +2543,17 @@ describe("functions/kits/install", () => {
       });
       const writeResolvedParamsStub = sinon.stub(functionsEnv, "writeResolvedParams");
 
-      const res = await addKitInstanceOrConfigureProject(
-        {
-          config: mockConfig,
-          project: "my-project",
-        },
+      const res = await addKitInstanceOrConfigureProject({
+        config: mockConfig,
+        project: "my-project",
         existingKit,
-        {
+        existingFunctionsInfo: {
           existingFunctions: [existingKit],
           existingKitIds: ["firestore-bigquery-export"],
           existingCodebases: [],
           existingInstanceIds: ["inst1"],
         },
-      );
+      });
 
       expect(res.action).to.equal("addedInstance");
       expect(delegate.discoverBuild).to.have.been.calledWith(
@@ -2587,19 +2581,17 @@ describe("functions/kits/install", () => {
 
       sinon.stub(prompt, "select").resolves("addEnv");
 
-      const res = await addKitInstanceOrConfigureProject(
-        {
-          config: mockConfig,
-          project: "my-project",
-        },
+      const res = await addKitInstanceOrConfigureProject({
+        config: mockConfig,
+        project: "my-project",
         existingKit,
-        {
+        existingFunctionsInfo: {
           existingFunctions: [existingKit],
           existingKitIds: ["firestore-bigquery-export"],
           existingCodebases: [],
           existingInstanceIds: ["inst1"],
         },
-      );
+      });
 
       expect(res).to.deep.equal({
         action: "configuredEnv",
@@ -2627,25 +2619,23 @@ describe("functions/kits/install", () => {
 
       sinon.stub(prompt, "select").resolves("addEnv");
 
-      const res = await addKitInstanceOrConfigureProject(
-        {
-          config: mockConfig,
-          project: "my-project",
-          seedEnv: {
-            projectId: "my-project",
-            envs: {
-              FOO: "bar",
-            },
+      const res = await addKitInstanceOrConfigureProject({
+        config: mockConfig,
+        project: "my-project",
+        seedEnv: {
+          projectId: "my-project",
+          envs: {
+            FOO: "bar",
           },
         },
         existingKit,
-        {
+        existingFunctionsInfo: {
           existingFunctions: [existingKit],
           existingKitIds: ["firestore-bigquery-export"],
           existingCodebases: [],
           existingInstanceIds: ["inst1"],
         },
-      );
+      });
 
       expect(seedKitInstanceEnvStub).to.have.been.calledOnceWith({
         configDir: path.join(
@@ -2702,19 +2692,17 @@ describe("functions/kits/install", () => {
       });
       const writeResolvedParamsStub = sinon.stub(functionsEnv, "writeResolvedParams");
 
-      const res = await addKitInstanceOrConfigureProject(
-        {
-          config: mockConfig,
-          project: "my-project",
-        },
+      const res = await addKitInstanceOrConfigureProject({
+        config: mockConfig,
+        project: "my-project",
         existingKit,
-        {
+        existingFunctionsInfo: {
           existingFunctions: [existingKit],
           existingKitIds: ["firestore-bigquery-export"],
           existingCodebases: [],
           existingInstanceIds: ["inst1"],
         },
-      );
+      });
 
       expect(res).to.deep.equal({
         action: "configuredEnv",
@@ -2746,21 +2734,19 @@ describe("functions/kits/install", () => {
 
       const resolveParamsStub = sinon.stub(params, "resolveParams");
 
-      const res = await addKitInstanceOrConfigureProject(
-        {
-          config: mockConfig,
-          project: "my-project",
-          projectId: "my-project",
-          configure: false,
-        },
+      const res = await addKitInstanceOrConfigureProject({
+        config: mockConfig,
+        project: "my-project",
+        projectId: "my-project",
+        configure: false,
         existingKit,
-        {
+        existingFunctionsInfo: {
           existingFunctions: [existingKit],
           existingKitIds: ["firestore-bigquery-export"],
           existingCodebases: [],
           existingInstanceIds: ["inst1"],
         },
-      );
+      });
 
       expect(res).to.deep.equal({
         action: "configuredEnv",
@@ -2813,20 +2799,18 @@ describe("functions/kits/install", () => {
 
       const selectStub = sinon.stub(prompt, "select").resolves("addEnv");
 
-      const res = await addKitInstanceOrConfigureProject(
-        {
-          config: mockConfig,
-          project: "my-project",
-          configure: false,
-        },
+      const res = await addKitInstanceOrConfigureProject({
+        config: mockConfig,
+        project: "my-project",
+        configure: false,
         existingKit,
-        {
+        existingFunctionsInfo: {
           existingFunctions: [existingKit],
           existingKitIds: ["firestore-bigquery-export"],
           existingCodebases: [],
           existingInstanceIds: ["inst1", "inst2"],
         },
-      );
+      });
 
       expect(selectStub).to.have.been.calledOnceWith({
         message:
@@ -2875,20 +2859,18 @@ describe("functions/kits/install", () => {
       const selectStub = sinon.stub(prompt, "select");
       sinon.stub(prompt, "input").resolves("inst3");
 
-      const res = await addKitInstanceOrConfigureProject(
-        {
-          config: mockConfig,
-          project: "my-project",
-          configure: false,
-        },
+      const res = await addKitInstanceOrConfigureProject({
+        config: mockConfig,
+        project: "my-project",
+        configure: false,
         existingKit,
-        {
+        existingFunctionsInfo: {
           existingFunctions: [existingKit],
           existingKitIds: ["firestore-bigquery-export"],
           existingCodebases: [],
           existingInstanceIds: ["inst1", "inst2"],
         },
-      );
+      });
 
       expect(selectStub).to.not.have.been.called;
       expect(res.action).to.equal("addedInstance");
@@ -2929,22 +2911,20 @@ describe("functions/kits/install", () => {
 
       const selectStub = sinon.stub(prompt, "select");
 
-      const res = await addKitInstanceOrConfigureProject(
-        {
-          config: mockConfig,
-          project: "my-project",
-          configure: false,
-          instanceId: "inst2",
-          nonInteractive: true,
-        },
+      const res = await addKitInstanceOrConfigureProject({
+        config: mockConfig,
+        project: "my-project",
+        configure: false,
+        instanceId: "inst2",
+        nonInteractive: true,
         existingKit,
-        {
+        existingFunctionsInfo: {
           existingFunctions: [existingKit],
           existingKitIds: ["firestore-bigquery-export"],
           existingCodebases: [],
           existingInstanceIds: ["inst1", "inst2"],
         },
-      );
+      });
 
       expect(selectStub).to.not.have.been.called;
       expect(res.action).to.equal("configuredEnv");
@@ -2976,21 +2956,19 @@ describe("functions/kits/install", () => {
       } as unknown as Config;
 
       await expect(
-        addKitInstanceOrConfigureProject(
-          {
-            config: mockConfig,
-            project: "my-project",
-            configure: false,
-            instanceId: "inst1",
-          },
+        addKitInstanceOrConfigureProject({
+          config: mockConfig,
+          project: "my-project",
+          configure: false,
+          instanceId: "inst1",
           existingKit,
-          {
+          existingFunctionsInfo: {
             existingFunctions: [existingKit],
             existingKitIds: ["firestore-bigquery-export"],
             existingCodebases: [],
             existingInstanceIds: ["inst1"],
           },
-        ),
+        }),
       ).to.be.rejectedWith(
         FirebaseError,
         "Instance 'inst1' is already configured for this project.",
@@ -3015,21 +2993,19 @@ describe("functions/kits/install", () => {
 
       const selectStub = sinon.stub(prompt, "select");
 
-      const res = await addKitInstanceOrConfigureProject(
-        {
-          config: mockConfig,
-          project: "my-project",
-          configure: false,
-          instanceId: "inst1",
-        },
+      const res = await addKitInstanceOrConfigureProject({
+        config: mockConfig,
+        project: "my-project",
+        configure: false,
+        instanceId: "inst1",
         existingKit,
-        {
+        existingFunctionsInfo: {
           existingFunctions: [existingKit],
           existingKitIds: ["firestore-bigquery-export"],
           existingCodebases: [],
           existingInstanceIds: ["inst1"],
         },
-      );
+      });
 
       expect(selectStub).to.not.have.been.called;
       expect(res.action).to.equal("configuredEnv");
@@ -3058,21 +3034,19 @@ describe("functions/kits/install", () => {
 
       const selectStub = sinon.stub(prompt, "select");
 
-      const res = await addKitInstanceOrConfigureProject(
-        {
-          config: mockConfig,
-          project: "my-project",
-          configure: false,
-          instanceId: "inst-new",
-        },
+      const res = await addKitInstanceOrConfigureProject({
+        config: mockConfig,
+        project: "my-project",
+        configure: false,
+        instanceId: "inst-new",
         existingKit,
-        {
+        existingFunctionsInfo: {
           existingFunctions: [existingKit],
           existingKitIds: ["firestore-bigquery-export"],
           existingCodebases: [],
           existingInstanceIds: ["inst1"],
         },
-      );
+      });
 
       expect(selectStub).to.not.have.been.called;
       expect(res.action).to.equal("addedInstance");
@@ -3096,21 +3070,19 @@ describe("functions/kits/install", () => {
       } as unknown as Config;
 
       await expect(
-        addKitInstanceOrConfigureProject(
-          {
-            config: mockConfig,
-            project: "my-project",
-            configure: false,
-            instanceId: "other-kit-inst",
-          },
+        addKitInstanceOrConfigureProject({
+          config: mockConfig,
+          project: "my-project",
+          configure: false,
+          instanceId: "other-kit-inst",
           existingKit,
-          {
+          existingFunctionsInfo: {
             existingFunctions: [existingKit],
             existingKitIds: ["firestore-bigquery-export", "other-kit"],
             existingCodebases: [],
             existingInstanceIds: ["inst1", "other-kit-inst"],
           },
-        ),
+        }),
       ).to.be.rejectedWith(
         FirebaseError,
         "functions kit instance ID must be unique across all kits, but 'other-kit-inst' was used more than once.",
@@ -4049,7 +4021,7 @@ describe("functions/kits/install", () => {
     });
   });
 
-  describe("addKitInstanceOrConfigureProject cleanup on failure", () => {
+  describe("existing kit cleanup on failure in installKitOrInstance", () => {
     it("should clean up instance config dir and revert firebase.json if addInstance fails during params prompt", async () => {
       const existingKit: ValidatedKitSingle = {
         kit: "firestore-bigquery-export",
@@ -4089,21 +4061,13 @@ describe("functions/kits/install", () => {
       sinon.stub(params, "resolveParams").rejects(new FirebaseError("Required param missing"));
 
       await expect(
-        addKitInstanceOrConfigureProject(
-          {
-            config: mockConfig,
-            instanceId: "inst2",
-            nonInteractive: true,
-            projectId: "my-project",
-          },
-          existingKit,
-          {
-            existingFunctions: [existingKit],
-            existingKitIds: ["firestore-bigquery-export"],
-            existingCodebases: [],
-            existingInstanceIds: ["inst1"],
-          },
-        ),
+        installKitOrInstance({
+          config: mockConfig,
+          package: "@firebase-function-kits/firestore-bigquery-export",
+          instanceId: "inst2",
+          nonInteractive: true,
+          projectId: "my-project",
+        }),
       ).to.be.rejectedWith(FirebaseError, "Required param missing");
 
       expect(fsRemoveStub).to.have.been.calledWith(
@@ -4165,21 +4129,13 @@ describe("functions/kits/install", () => {
       sinon.stub(params, "resolveParams").rejects(new FirebaseError("Required param missing"));
 
       await expect(
-        addKitInstanceOrConfigureProject(
-          {
-            config: mockConfig,
-            instanceId: "inst1",
-            nonInteractive: true,
-            projectId: "my-project",
-          },
-          existingKit,
-          {
-            existingFunctions: [existingKit],
-            existingKitIds: ["firestore-bigquery-export"],
-            existingCodebases: [],
-            existingInstanceIds: ["inst1"],
-          },
-        ),
+        installKitOrInstance({
+          config: mockConfig,
+          package: "@firebase-function-kits/firestore-bigquery-export",
+          instanceId: "inst1",
+          nonInteractive: true,
+          projectId: "my-project",
+        }),
       ).to.be.rejectedWith(FirebaseError, "Required param missing");
 
       expect(fsRemoveStub).to.have.been.calledWith(
@@ -4188,54 +4144,6 @@ describe("functions/kits/install", () => {
           "function-kits/firestore-bigquery-export/config-inst1/.env.my-project",
         ),
       );
-    });
-  });
-
-  describe("safeRemove", () => {
-    it("should call fs.remove with the provided path", async () => {
-      await safeRemove("/test/path");
-      expect(fsRemoveStub).to.have.been.calledOnceWith("/test/path");
-    });
-
-    it("should suppress errors thrown by fs.remove without rethrowing", async () => {
-      fsRemoveStub.rejects(new Error("EPERM"));
-      await expect(safeRemove("/test/path")).to.be.fulfilled;
-    });
-  });
-
-  describe("cleanUpEmptyDir", () => {
-    it("should do nothing if path does not exist", async () => {
-      (fs.pathExists as sinon.SinonStub).withArgs("/test/path").resolves(false);
-      await cleanUpEmptyDir("/test/path");
-      expect(fsReaddirStub).to.not.have.been.called;
-      expect(fsRemoveStub).to.not.have.been.called;
-    });
-
-    it("should delete directory if it exists and is empty", async () => {
-      (fs.pathExists as sinon.SinonStub).withArgs("/test/path").resolves(true);
-      fsReaddirStub.withArgs("/test/path").resolves([]);
-      await cleanUpEmptyDir("/test/path");
-      expect(fsRemoveStub).to.have.been.calledWith("/test/path");
-    });
-
-    it("should not delete directory if it contains files", async () => {
-      (fs.pathExists as sinon.SinonStub).withArgs("/test/path").resolves(true);
-      fsReaddirStub.withArgs("/test/path").resolves(["file.txt"]);
-      await cleanUpEmptyDir("/test/path");
-      expect(fsRemoveStub).to.not.have.been.called;
-    });
-
-    it("should do nothing if path is not a directory", async () => {
-      (fs.pathExists as sinon.SinonStub).withArgs("/test/file").resolves(true);
-      statStub.withArgs("/test/file").resolves({ isDirectory: () => false } as fs.Stats);
-      await cleanUpEmptyDir("/test/file");
-      expect(fsReaddirStub).to.not.have.been.called;
-      expect(fsRemoveStub).to.not.have.been.called;
-    });
-
-    it("should suppress errors gracefully without throwing", async () => {
-      (fs.pathExists as sinon.SinonStub).withArgs("/test/path").rejects(new Error("EACCES"));
-      await expect(cleanUpEmptyDir("/test/path")).to.be.fulfilled;
     });
   });
 
