@@ -15,7 +15,7 @@ describe("apphosting:builds:create", () => {
 
   beforeEach(() => {
     command = apphostingBuildsCreate;
-    (command as unknown as { befores: unknown[] }).befores = []; // Bypass pre-action hooks for unit testing action
+    command["befores"] = []; // Bypass pre-action hooks for unit testing action
     getNextRolloutIdStub = sinon.stub(apphosting, "getNextRolloutId").resolves("autogen-build-id");
     createBuildStub = sinon
       .stub(apphosting, "createBuild")
@@ -27,8 +27,8 @@ describe("apphosting:builds:create", () => {
   });
 
   it("should not register -i short flag to avoid collision with global --interactive", () => {
-    const options = (command as unknown as { options: string[][] }).options;
-    const hasConflictingShortFlag = options.some((opt) => opt[0].startsWith("-i,"));
+    const options = command["options"] as string[][];
+    const hasConflictingShortFlag = options.some((opt) => /(?:^|\s)-i\b/.test(opt[0]));
     expect(hasConflictingShortFlag).to.be.false;
   });
 
