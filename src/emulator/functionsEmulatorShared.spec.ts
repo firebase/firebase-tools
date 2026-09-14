@@ -295,4 +295,75 @@ describe("FunctionsEmulatorShared", () => {
       });
     }
   });
+
+  describe("validateFirestoreTriggerPath", () => {
+    it("should accept a valid path with matched brackets", () => {
+      expect(() =>
+        functionsEmulatorShared.validateFirestoreTriggerPath(
+          "myFunc",
+          "users/{userId}/posts/{postId}",
+        ),
+      ).not.to.throw();
+    });
+
+    it("should accept a path with no brackets", () => {
+      expect(() =>
+        functionsEmulatorShared.validateFirestoreTriggerPath("myFunc", "users/all/posts/all"),
+      ).not.to.throw();
+    });
+
+    it("should accept a full v1 resource path with brackets", () => {
+      expect(() =>
+        functionsEmulatorShared.validateFirestoreTriggerPath(
+          "myFunc",
+          "projects/my-project/databases/(default)/documents/washingRoutine/{routineId}",
+        ),
+      ).not.to.throw();
+    });
+
+    it("should reject a path with a missing closing bracket", () => {
+      expect(() =>
+        functionsEmulatorShared.validateFirestoreTriggerPath(
+          "myFunc",
+          "washingRoutine/{routineId",
+        ),
+      ).to.throw(/without a matching closing/i);
+    });
+
+    it("should reject a path with an extra closing bracket", () => {
+      expect(() =>
+        functionsEmulatorShared.validateFirestoreTriggerPath(
+          "myFunc",
+          "washingRoutine/{routineId}}",
+        ),
+      ).to.throw(/without a matching opening/i);
+    });
+
+    it("should reject a path with nested brackets", () => {
+      expect(() =>
+        functionsEmulatorShared.validateFirestoreTriggerPath(
+          "myFunc",
+          "washingRoutine/{{routineId}}",
+        ),
+      ).to.throw(/Nested curly brackets/i);
+    });
+
+    it("should include the function key in the error message", () => {
+      expect(() =>
+        functionsEmulatorShared.validateFirestoreTriggerPath(
+          "my-broken-func",
+          "collection/{broken",
+        ),
+      ).to.throw(/my-broken-func/);
+    });
+
+    it("should include the invalid path in the error message", () => {
+      expect(() =>
+        functionsEmulatorShared.validateFirestoreTriggerPath(
+          "myFunc",
+          "collection/{broken",
+        ),
+      ).to.throw(/collection\/\{broken/);
+    });
+  });
 });
