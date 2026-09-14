@@ -3,4 +3,5 @@
 - [fixed] Clean up managed service accounts when opting out of declarative security alongside a filtered codebase deploy.
 - ext:uninstall --immediate now warns about secrets bound to the extension that will be deleted and offers a migration path.
 - [fixed] Generate deterministic unsalted ETags for declarative security roles.
+- [changed] Improve formatting and user experience for Cloud Functions parameter and secret prompts.
 - [fixed] Honor boolean and integer defaults in `select` prompts for function params instead of preselecting the first option.

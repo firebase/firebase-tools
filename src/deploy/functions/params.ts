@@ -11,6 +11,7 @@ import { isCelExpression, resolveExpression } from "./cel";
 import { FirebaseConfig } from "./args";
 import { labels as secretLabels } from "../../gcp/secretManager";
 import * as experiments from "../../experiments";
+import { marked } from "marked";
 
 // A convenience type containing options for Prompt's select
 interface ListItem {
@@ -542,9 +543,11 @@ async function ensureSecret(
       }
       return ensureSecret(secretParam, projectId, nonInteractive, force);
     }
-    const promptMessage = `The value for this secret (${secretParam.name}) will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${resourceId}. Enter ${secretParam.format === "json" ? "a JSON value" : "a value"} for ${
-      secretParam.label || secretParam.name
-    }:`;
+    const label = secretParam.label || secretParam.name;
+    const notice = `The value for this secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${resourceId}.`;
+    const desc = secretParam.description ? `${secretParam.description} ${notice}` : notice;
+    logger.info(`\n${clc.bold(label)}: ${(await marked(desc)).trim()}`);
+    const promptMessage = `Enter ${secretParam.format === "json" ? "a JSON value" : "a value"} for ${label}:`;
     const secretValue = await password({
       message: promptMessage,
     });
@@ -596,6 +599,14 @@ async function promptParam(
   projectId: string,
   resolvedDefault?: RawParamValue,
 ): Promise<ParamValue> {
+  const label = param.label || param.name;
+  if (param.description) {
+    logger.info(`\n${clc.bold(label)}: ${(await marked(param.description)).trim()}`);
+  } else {
+    // Provide newline spacing between successive parameter prompts when there is no description to display.
+    logger.info("");
+  }
+
   if (param.type === "string") {
     const provided = await promptStringParam(
       param,
@@ -629,46 +640,32 @@ async function promptList(
     const defaultToText: TextInput<string> = { text: {} };
     param.input = defaultToText;
   }
-  let prompt: string;
+  const label = param.label || param.name;
 
   if (isSelectInput(param.input)) {
     throw new FirebaseError("List params cannot have non-list selector inputs");
   } else if (isMultiSelectInput(param.input)) {
-    prompt = `Select a value for ${param.label || param.name}:`;
-    if (param.description) {
-      prompt += ` \n(${param.description})`;
-    }
-    prompt += "\nSelect an option with the arrow keys, and use Enter to confirm your choice. ";
     return promptSelectMultiple<string>(
-      prompt,
+      `Select values for ${label}:`,
       param.input,
       resolvedDefault,
       param.input.multiSelect.nonEmpty,
       (res: string[]) => res,
     );
   } else if (isTextInput(param.input)) {
-    prompt = `Enter a list of strings (delimiter: ${param.delimiter ? param.delimiter : ","}) for ${
-      param.label || param.name
-    }:`;
-    if (param.description) {
-      prompt += ` \n(${param.description})`;
-    }
+    const delimiter = param.delimiter ? param.delimiter : ",";
     return promptText<string[]>(
-      prompt,
+      `Enter a list of strings (delimiter: ${delimiter}) for ${label}:`,
       param.input,
       resolvedDefault,
       param.input.text.nonEmpty,
       (res: string): string[] => {
-        return res.split(param.delimiter || ",");
+        return res.split(delimiter);
       },
     );
   } else if (isResourceInput(param.input)) {
     // N.B: The type system in the SDK currently doesn't allow a ResourceInput to be assigned to a ListParam, so this path is unreachable.
-    prompt = `Select values for ${param.label || param.name}:`;
-    if (param.description) {
-      prompt += ` \n(${param.description})`;
-    }
-    return promptResourceStrings(prompt, param.input, projectId, false);
+    return promptResourceStrings(`Select values for ${label}:`, param.input, projectId, false);
   } else {
     assertExhaustive(param.input);
   }
@@ -683,24 +680,20 @@ async function promptBooleanParam(
     param.input = defaultToText;
   }
   const isTruthyInput = (res: string) => ["true", "y", "yes", "1"].includes(res.toLowerCase());
-  let prompt: string;
+  const label = param.label || param.name;
 
   if (isSelectInput(param.input)) {
-    prompt = `Select a value for ${param.label || param.name}:`;
-    if (param.description) {
-      prompt += ` \n(${param.description})`;
-    }
-    prompt += "\nSelect an option with the arrow keys, and use Enter to confirm your choice. ";
-    return promptSelect<boolean>(prompt, param.input, resolvedDefault, isTruthyInput);
+    return promptSelect<boolean>(
+      `Select a value for ${label}:`,
+      param.input,
+      resolvedDefault,
+      isTruthyInput,
+    );
   } else if (isMultiSelectInput(param.input)) {
     throw new FirebaseError("Non-list params cannot have multi selector inputs");
   } else if (isTextInput(param.input)) {
-    prompt = `Enter a boolean value for ${param.label || param.name}:`;
-    if (param.description) {
-      prompt += ` \n(${param.description})`;
-    }
     return promptText<boolean>(
-      prompt,
+      `Enter a boolean value for ${label}:`,
       param.input,
       resolvedDefault,
       false, // enforceNonEmpty
@@ -722,30 +715,27 @@ async function promptStringParam(
     const defaultToText: TextInput<string> = { text: {} };
     param.input = defaultToText;
   }
-  let prompt: string;
+  const label = param.label || param.name;
 
   if (isResourceInput(param.input)) {
-    prompt = `Select a value for ${param.label || param.name}:`;
-    if (param.description) {
-      prompt += ` \n(${param.description})`;
-    }
-    return promptResourceString(prompt, param.input, projectId, resolvedDefault);
+    return promptResourceString(
+      `Select a value for ${label}:`,
+      param.input,
+      projectId,
+      resolvedDefault,
+    );
   } else if (isMultiSelectInput(param.input)) {
     throw new FirebaseError("Non-list params cannot have multi selector inputs");
   } else if (isSelectInput(param.input)) {
-    prompt = `Select a value for ${param.label || param.name}:`;
-    if (param.description) {
-      prompt += ` \n(${param.description})`;
-    }
-    prompt += "\nSelect an option with the arrow keys, and use Enter to confirm your choice. ";
-    return promptSelect<string>(prompt, param.input, resolvedDefault, (res: string) => res);
+    return promptSelect<string>(
+      `Select a value for ${label}:`,
+      param.input,
+      resolvedDefault,
+      (res: string) => res,
+    );
   } else if (isTextInput(param.input)) {
-    prompt = `Enter a string value for ${param.label || param.name}:`;
-    if (param.description) {
-      prompt += ` \n(${param.description})`;
-    }
     return promptText<string>(
-      prompt,
+      `Enter a string value for ${label}:`,
       param.input,
       resolvedDefault,
       param.input.text.nonEmpty,
@@ -761,32 +751,28 @@ async function promptIntParam(param: IntParam, resolvedDefault?: number): Promis
     const defaultToText: TextInput<number> = { text: {} };
     param.input = defaultToText;
   }
-  let prompt: string;
+  const label = param.label || param.name;
 
   if (isSelectInput(param.input)) {
-    prompt = `Select a value for ${param.label || param.name}:`;
-    if (param.description) {
-      prompt += ` \n(${param.description})`;
-    }
-    prompt += "\nSelect an option with the arrow keys, and use Enter to confirm your choice. ";
-    return promptSelect(prompt, param.input, resolvedDefault, (res: string) => {
-      if (isNaN(+res)) {
-        return { message: `"${res}" could not be converted to a number.` };
-      }
-      if (res.includes(".")) {
-        return { message: `${res} is not an integer value.` };
-      }
-      return +res;
-    });
+    return promptSelect(
+      `Select a value for ${label}:`,
+      param.input,
+      resolvedDefault,
+      (res: string) => {
+        if (isNaN(+res)) {
+          return { message: `"${res}" could not be converted to a number.` };
+        }
+        if (res.includes(".")) {
+          return { message: `${res} is not an integer value.` };
+        }
+        return +res;
+      },
+    );
   } else if (isMultiSelectInput(param.input)) {
     throw new FirebaseError("Non-list params cannot have multi selector inputs");
   } else if (isTextInput(param.input)) {
-    prompt = `Enter an integer value for ${param.label || param.name}:`;
-    if (param.description) {
-      prompt += ` \n(${param.description})`;
-    }
     return promptText<number>(
-      prompt,
+      `Enter an integer value for ${label}:`,
       param.input,
       resolvedDefault,
       param.input.text.nonEmpty,
@@ -935,6 +921,7 @@ async function promptSelect<T extends RawParamValue>(
     // boolean/number default never matches and the first option is preselected.
     default: resolvedDefault?.toString(),
     message: prompt,
+    instructions: "(Use arrow keys to navigate, and Enter to confirm your choice)",
     choices: input.select.options.map((option: SelectOptions<T>): ListItem => {
       return {
         checked: false,
@@ -961,6 +948,7 @@ async function promptSelectMultiple<T extends string>(
   const response = await checkbox({
     default: resolvedDefault,
     message: prompt,
+    instructions: "(Press Space to select, and Enter to confirm your choices)",
     choices: input.multiSelect.options.map((option: SelectOptions<string>): ListItem => {
       return {
         checked: false,
