@@ -528,7 +528,6 @@ async function ensureSecret(
   if (secretParam.unset) {
     return "";
   }
-  secretParam.optional = true;
   const resourceId = secretParam.resourceId || secretParam.name;
   const version = secretParam.version || "latest";
   let secretAlreadyExisted = false;
