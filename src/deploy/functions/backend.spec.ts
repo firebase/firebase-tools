@@ -702,3 +702,28 @@ describe("Backend", () => {
     });
   });
 });
+
+describe("unbindMissingOptionalSecrets", () => {
+  it("removes secrets with a bound reference of '' from SecretEnvVars of a Backend", () => {
+    const testBackend = backend.of({
+      id: "id",
+      region: "region",
+      project: "project",
+      platform: "gcfv2",
+      httpsTrigger: {},
+      entryPoint: "function",
+      runtime: "nodejs16",
+      codebase: projectConfig.DEFAULT_CODEBASE,
+      state: "ACTIVE",
+      secretEnvironmentVariables: [
+        { key: "foo", secret: "foo", projectId: "project" },
+        { key: "bar", secret: "bar", projectId: "project" },
+        { key: "baz", secret: "baz", projectId: "project" },
+      ],
+    });
+    backend.unbindMissingOptionalSecrets(testBackend, { foo: "", bar: "bar:2", baz: "" });
+    expect(testBackend.endpoints["region"]["id"].secretEnvironmentVariables).to.deep.equal([
+      { key: "bar", secret: "bar", projectId: "project" },
+    ]);
+  });
+});

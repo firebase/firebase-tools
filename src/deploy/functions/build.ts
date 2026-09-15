@@ -787,11 +787,12 @@ export function applyPrefix(build: Build, prefix: string): void {
   }
 }
 
-export interface ParsedSecretRef {
+export type ParsedSecretRef = {
   projectId?: string;
   secretId: string;
   version?: string;
-}
+  unset?: boolean;
+};
 
 /**
  * Applies overrides from the .env file binding Secrets to a different Cloud Secret Manager resource.
@@ -801,6 +802,9 @@ export interface ParsedSecretRef {
  * For each binding imported from the .env file,
  * 1) Check if a conflicting SecretParam with the same name exists. If so, override the param so that the prompting flow will look in the right place when deciding whether or not to create a new Secret.
  * 2) Upsert the binding directly into the Build's SecretEnvVars, which will cause it to be actually available in process.ENV
+ *
+ * As a special case, explicitly unset secret bindings instead remove themselves from the SecretEnvVars, preventing
+ * deploy errors from attempting to reference secrets that don't exist.
  */
 export function applyEnvSecretBindings(
   build: Build,
@@ -820,13 +824,18 @@ export function applyEnvSecretBindings(
 
   for (const key of Object.keys(envSecrets)) {
     const secretRef = envSecrets[key];
-    const { projectId, secretId, version } = secretRef;
+    const { projectId, secretId, version, unset } = secretRef;
 
     for (const param of build.params) {
       if (param.type === "secret" && param.name.toUpperCase() === key) {
         param.resourceId = secretId;
-        param.version = version;
         param.inLocalEnvironment = true;
+        if (version) {
+          param.version = version;
+        }
+        if (unset) {
+          param.unset = true;
+        }
       }
     }
 
@@ -836,6 +845,12 @@ export function applyEnvSecretBindings(
         throw new FirebaseError(
           `Secret binding ${key} referenced unsupported cross-project secret in '${projectId}'`,
         );
+      }
+      if (unset && Array.isArray(endpoint.secretEnvironmentVariables)) {
+        endpoint.secretEnvironmentVariables = endpoint.secretEnvironmentVariables?.filter(
+          (sev) => sev.key !== key,
+        );
+        continue;
       }
       let notFound = true;
       for (const envVar of endpoint.secretEnvironmentVariables ?? []) {
@@ -860,6 +875,7 @@ export function applyEnvSecretBindings(
 
 /**
  * Parses any of the supported formats used to refer to a Secret in .env:
+ * API_KEY= (denotes an intentionally unset secret, which should not be prompted for or bound to SecretEnvVars)
  * API_KEY=<secret-id>
  * API_KEY=<secret-id>:<version>
  * API_KEY=projects/<project-id>/secrets/<secret-id>
@@ -868,6 +884,9 @@ export function applyEnvSecretBindings(
  * @return An object populated with project id, secret id, and version, with a field undefined if not provided.
  */
 export function parseSecretRef(ref: string): ParsedSecretRef {
+  if (ref === "") {
+    return { secretId: "", unset: true };
+  }
   const shortMatch = SECRET_REF_SHORT_RE.exec(ref);
   if (shortMatch) {
     const output: ParsedSecretRef = {

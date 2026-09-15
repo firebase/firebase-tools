@@ -232,6 +232,10 @@ interface SecretParam {
   // provide a description of the parameter
   description?: string;
 
+  // If true, allows the user to decline creating a backing Cloud Secret Mangager resource.
+  // The runtime value of the param in this case is undefined.
+  optional?: boolean;
+
   // The format of the secret, e.g. "json"
   format?: string;
 
@@ -247,6 +251,10 @@ interface SecretParam {
   // Internal use only. Populated with whether or not a corresponding FIREBASE_SECRET_REF_
   // key was found in the local .env files.
   inLocalEnvironment?: boolean;
+
+  // Internal use only. If true, skip prompting and accept that value of secret may be
+  // undefined at runtime. Currently available only for Extensions exports.
+  unset?: boolean;
 }
 
 export type Param = StringParam | IntParam | BooleanParam | ListParam | SecretParam;
@@ -502,15 +510,24 @@ function populateDefaultParams(config: FirebaseConfig): Record<string, ParamValu
 /**
  * Handles a SecretParam by checking for the presence of a corresponding secret
  * in Cloud Secrets Manager. Assist the user with secret creation if not present.
+ *
+ * Params with unset=true are skipped, since they correspond to cases where the
+ * user has intentionally chosen not to create a Cloud Secret and it's okay that
+ * the value of corresponding param might be undefined.
  * @return a Functions-formatted reference (e.g "foo:latest") to a Secret
- * resource which has been verified to exist/have just been created
+ * resource which has been verified to exist/have just been created; Returns ""
+ * in the specific case where the user has refused to create an optional secret.
  */
 async function ensureSecret(
   secretParam: SecretParam,
   projectId: string,
-  nonInteractive?: boolean,
-  force?: boolean,
+  nonInteractive: boolean,
+  force: boolean,
+  recursive = false,
 ): Promise<string> {
+  if (secretParam.unset) {
+    return "";
+  }
   const resourceId = secretParam.resourceId || secretParam.name;
   const version = secretParam.version || "latest";
   let secretAlreadyExisted = false;
@@ -524,16 +541,28 @@ async function ensureSecret(
           `\tfirebase functions:secrets:set ${resourceId}${secretParam.format === "json" ? " --format=json --data-file <file.json>" : ""}`,
       );
     }
+    let label = secretParam.label || secretParam.name;
+    if (!recursive) {
+      if (secretParam.optional) {
+        label += " (Optional)";
+      }
+      const notice = `The value for this secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${resourceId}.`;
+      const desc = secretParam.description ? `${secretParam.description} ${notice}` : notice;
+      logger.info(`\n${clc.bold(label)}: ${(await marked(desc)).trim()}`);
+    }
+
     if (experiments.isEnabled("secretEnvParams") && typeof secretParam.resourceId === "undefined") {
       if (force) {
         logger.info(`--force: Using default resource ID for secret ${secretParam.name}`);
         secretParam.resourceId = secretParam.name;
       } else {
-        // TODO: Move the explanation and link to Cloud Secret Manager in the next prompt here once this makes it out of experimental.
         secretParam.resourceId = await input({
           default: secretParam.name,
           message: `What resource ID do you want to use for the backing Secret resource for secret param ${secretParam.name}?`,
           validate: (id) => {
+            if (secretParam.optional && id === "") {
+              return true;
+            }
             if (new RegExp(`^${build.GCP_SECRET_ID_PATTERN}$`).test(id)) {
               return true;
             }
@@ -541,18 +570,22 @@ async function ensureSecret(
           },
         });
       }
-      return ensureSecret(secretParam, projectId, nonInteractive, force);
+      if (secretParam.optional && secretParam.resourceId === "") {
+        return "";
+      }
+      return ensureSecret(secretParam, projectId, nonInteractive, force, true);
     }
-    const label = secretParam.label || secretParam.name;
-    const notice = `The value for this secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${resourceId}.`;
-    const desc = secretParam.description ? `${secretParam.description} ${notice}` : notice;
-    logger.info(`\n${clc.bold(label)}: ${(await marked(desc)).trim()}`);
-    const promptMessage = `Enter ${secretParam.format === "json" ? "a JSON value" : "a value"} for ${label}:`;
+
+    const skipMessage = secretParam.optional ? "; enter nothing to skip" : "";
+    const promptMessage = `Enter ${secretParam.format === "json" ? "a JSON value" : "a value"} for ${label}${skipMessage}:`;
     const secretValue = await password({
       message: promptMessage,
     });
     if (secretParam.format === "json") {
       validateJsonSecret(secretParam.name, secretValue);
+    }
+    if (secretValue === "" && secretParam.optional) {
+      return "";
     }
     await secretManager.createSecret(projectId, resourceId, secretLabels());
     await secretManager.addVersion(projectId, resourceId, secretValue);

@@ -587,4 +587,40 @@ describe("resolveParams", () => {
       addVersionStub.restore();
     }
   });
+
+  it("should have special text for optional secrets", async () => {
+    const passwordStub = sinon.stub(prompt, "password").resolves("secret-val");
+    const getSecretMetadataStub = sinon.stub(secretManager, "getSecretMetadata").resolves({
+      secret: undefined,
+    });
+    const createSecretStub = sinon.stub(secretManager, "createSecret").resolves();
+    const addVersionStub = sinon.stub(secretManager, "addVersion").resolves();
+    const paramsToResolve: params.Param[] = [
+      {
+        name: "API_KEY",
+        label: "API Key",
+        description: "Key used to authenticate with 3rd party API.",
+        type: "secret",
+        resourceId: "API_KEY",
+        optional: true,
+      },
+    ];
+    try {
+      await params.resolveParams({
+        params: paramsToResolve,
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "my-codebase",
+      });
+      expect(loggerInfoStub.calledWith(sinon.match(/Optional/))).to.be.true;
+      expect(passwordStub).to.have.been.calledWith(
+        sinon.match({ message: "Enter a value for API Key (Optional); enter nothing to skip:" }),
+      );
+    } finally {
+      passwordStub.restore();
+      getSecretMetadataStub.restore();
+      createSecretStub.restore();
+      addVersionStub.restore();
+    }
+  });
 });

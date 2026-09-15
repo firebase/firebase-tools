@@ -4,6 +4,10 @@ import { ParamValue, Param } from "./params";
 import { FirebaseError } from "../../error";
 
 describe("parseSecretRef", () => {
+  it("can parse deliberately unset secrets", () => {
+    expect(build.parseSecretRef("")).to.deep.equal({ secretId: "", unset: true });
+  });
+
   it("can parse short form secrets", () => {
     expect(build.parseSecretRef("foo")).to.deep.equal({ secretId: "foo" });
     expect(build.parseSecretRef("foo:11")).to.deep.equal({ secretId: "foo", version: "11" });
@@ -37,9 +41,6 @@ describe("parseSecretRef", () => {
   });
 
   it("errors on bad formats", () => {
-    expect(() => {
-      build.parseSecretRef("");
-    }).to.throw(FirebaseError, /Unknown format/);
     expect(() => {
       build.parseSecretRef("b@d:characters");
     }).to.throw(FirebaseError, /Unknown format/);
@@ -606,6 +607,47 @@ describe("applyEnvSecretBindings", () => {
         key: "baz",
         secret: "baz",
         projectId: "test-project",
+      },
+    ]);
+  });
+
+  it("should remove a binding from SecretEnvVars if corresponding to a deliberately unset secret", () => {
+    const testBuild: build.Build = {
+      endpoints: {
+        func: {
+          region: "us-central1",
+          project: "test-project",
+          platform: "gcfv2",
+          runtime: "nodejs18",
+          entryPoint: "func1",
+          httpsTrigger: {},
+          secretEnvironmentVariables: [
+            {
+              key: "FOO",
+              secret: "foo",
+              projectId: "test-project",
+            },
+          ],
+        },
+      },
+      params: [{ type: "secret", name: "foo" }],
+      requiredAPIs: [],
+    };
+    const testSecretRefs: Record<string, build.ParsedSecretRef> = {
+      FOO: {
+        secretId: "",
+        unset: true,
+      },
+    };
+    build.applyEnvSecretBindings(testBuild, testSecretRefs);
+    expect(testBuild.endpoints["func"].secretEnvironmentVariables).to.deep.equal([]);
+    expect(testBuild.params).to.deep.equal([
+      {
+        type: "secret",
+        name: "foo",
+        resourceId: "",
+        unset: true,
+        inLocalEnvironment: true,
       },
     ]);
   });

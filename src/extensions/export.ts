@@ -185,11 +185,12 @@ export function functionsEnvFromInstance(instance: ExtensionInstance): Record<st
 
   const envs: Record<string, string> = {};
 
-  // Every user param must be available, so we replicate the spec's default behavior if not present
+  // We replicate the spec's default param for unset params, if available.
+  // Secrets that are unset (because Extensions allows optional secrets) are special-cased to empty string.
   specParams.forEach((specParam) => {
     if (specParam.type === "SECRET") {
       const renamed = "FIREBASE_SECRET_REF_" + specParam.param;
-      envs[renamed] = liveParams[specParam.param];
+      envs[renamed] = liveParams[specParam.param] || "";
     } else if (specParam.param in liveParams) {
       envs[specParam.param] = liveParams[specParam.param];
     } else {
@@ -258,12 +259,8 @@ export async function secretsNeedingEjection(instance: ExtensionInstance): Promi
     const secretName = specParam.param;
     const resourceName = liveParams[secretName];
     if (!resourceName) {
-      throw new FirebaseError(
-        "Secret " +
-          secretName +
-          " was defined in the extension spec, but is missing in live deployed secrets.",
-        { exit: 1 },
-      );
+      // Unset optional secret
+      return undefined;
     }
     const match = resourceName.match(SECRET_VERSION_NAME_REGEX);
     if (!match?.groups) {
@@ -298,10 +295,8 @@ export async function ejectSecretsFromInstance(
     const secretName = specParam.param;
     const resourceName = liveParams[secretName];
     if (!resourceName) {
-      throw new FirebaseError(
-        `Secret ${secretName} was defined in the extension spec, but is missing in live deployed secrets.`,
-        { exit: 1 },
-      );
+      // Unbound optional secret
+      continue;
     }
     const match = resourceName.match(SECRET_VERSION_NAME_REGEX);
     if (!match?.groups) {

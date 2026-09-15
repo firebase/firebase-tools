@@ -324,6 +324,11 @@ describe("functionsEnvFromInstance", () => {
                 param: "PASSWORD",
                 label: "gcp secret binding",
               },
+              {
+                type: ParamType.SECRET,
+                param: "API_KEY",
+                label: "deliberately unset by extension",
+              },
             ],
             systemParams: [],
           },
@@ -336,6 +341,7 @@ describe("functionsEnvFromInstance", () => {
       bar: "bar",
       baz: "",
       FIREBASE_SECRET_REF_PASSWORD: "projects/1234/secrets/PASSWORD/versions/latest",
+      FIREBASE_SECRET_REF_API_KEY: "",
     });
   });
 

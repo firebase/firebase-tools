@@ -195,6 +195,9 @@ export function isValidMemoryOption(mem: unknown): mem is MemoryOptions {
   return allMemoryOptions.includes(mem as MemoryOptions);
 }
 
+/**
+ * Is a given VpcEgressSetting a valid enum option?
+ */
 export function isValidEgressSetting(egress: unknown): egress is VpcEgressSettings {
   return egress === "PRIVATE_RANGES_ONLY" || egress === "ALL_TRAFFIC";
 }
@@ -465,7 +468,7 @@ export interface Backend {
 }
 
 /**
-
+ 
  * A helper utility to create an empty backend.
  * Tests that verify the behavior of one possible resource in a Backend can use
  * this method to avoid compiler errors when new fields are added to Backend.
@@ -873,4 +876,32 @@ export function maybeDeterministicCloudRunUri(httpsFunc: Endpoint, projectNumber
     return httpsFunc.uri!;
   }
   return `https://${serviceName}-${projectNumber}.${httpsFunc.region}.run.app`;
+}
+
+/**
+ * Removes any Secret Params with a resolved reference of "", corresponding to an Optional secret that the user has declined to create,
+ * from the SecretEnvironmentVariables that the Functions backend will be provided.
+ */
+export function unbindMissingOptionalSecrets(
+  backend: Backend,
+  resolvedSecretRefs: Record<string, string>,
+) {
+  const missingSecrets: string[] = [];
+  for (const [secretName, secretBinding] of Object.entries(resolvedSecretRefs)) {
+    if (secretBinding === "") {
+      missingSecrets.push(secretName);
+    }
+  }
+  logger.debug(`Unbinding optional unset secrets: ${missingSecrets.join(", ")}`);
+  for (const region of Object.keys(backend.endpoints)) {
+    const regionalEndpoints = backend.endpoints[region];
+    for (const endpointName of Object.keys(regionalEndpoints)) {
+      const endpoint = regionalEndpoints[endpointName];
+      if (Array.isArray(endpoint.secretEnvironmentVariables)) {
+        endpoint.secretEnvironmentVariables = endpoint.secretEnvironmentVariables.filter(
+          (secretEnvVar) => !missingSecrets.includes(secretEnvVar.key),
+        );
+      }
+    }
+  }
 }
