@@ -1,0 +1,54 @@
+name: storage-resize
+version: 1.0.0
+specVersion: v1beta
+
+apis:
+  - apiName: storage.googleapis.com
+    reason: Needed to use Cloud Storage
+
+roles:
+  - role: storage.admin
+    reason: Allows the extension to store resized images
+
+resources:
+  - name: generateResizedImage
+    type: firebaseextensions.v1beta.function
+    description: Listens for new images and resizes them
+    properties:
+      runtime: nodejs20
+      availableMemoryMb: 1024
+      timeout: 540s
+      eventTrigger:
+        eventType: google.storage.object.finalize
+        resource: projects/_/buckets/${param:IMG_BUCKET}
+
+  - name: backfillImages
+    type: firebaseextensions.v1beta.function
+    description: Backfill existing images
+    properties:
+      runtime: nodejs20
+      availableMemoryMb: 2048
+      taskQueueTrigger:
+        rateLimits:
+          maxConcurrentDispatches: 10
+          maxDispatchesPerSecond: 5
+
+params:
+  - param: IMG_BUCKET
+    label: Cloud Storage bucket for images
+    description: The bucket to watch for images
+    type: selectResource
+    resourceType: storage.googleapis.com/Bucket
+    default: my-bucket
+    required: true
+    validationRegex: ^([0-9a-z_.-]*)$
+    validationErrorMessage: Invalid storage bucket
+
+  - param: IMG_SIZES
+    label: Sizes of resized images
+    description: Comma-separated list of sizes
+    type: string
+    default: 200x200,400x400
+    validationRegex: ^\d+x\d+(,\d+x\d+)*$
+    validationErrorMessage: Must be comma-separated WIDTHxHEIGHT
+    example: 200x200,400x400,800x800

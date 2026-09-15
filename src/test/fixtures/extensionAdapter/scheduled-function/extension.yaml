@@ -1,0 +1,22 @@
+name: scheduled-function
+version: 1.0.0
+specVersion: v1beta
+
+resources:
+  - name: dailyCleanup
+    type: firebaseextensions.v1beta.function
+    description: Runs daily cleanup tasks
+    properties:
+      runtime: nodejs20
+      scheduleTrigger:
+        schedule: every day 02:00
+        timeZone: America/New_York
+      timeout: 300s
+
+  - name: hourlySync
+    type: firebaseextensions.v1beta.function
+    description: Syncs data every hour
+    properties:
+      runtime: nodejs20
+      scheduleTrigger:
+        schedule: "0 * * * *"
