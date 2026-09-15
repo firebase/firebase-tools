@@ -351,6 +351,7 @@ export async function prepare(
       isEmulator: false,
     });
 
+    backend.unbindMissingOptionalSecrets(wantBackend, resolvedSecretRefs);
     functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
     if (experiments.isEnabled("secretEnvParams")) {
       functionsEnv.writeResolvedSecretRefs(resolvedSecretRefs, secretRefs, userEnvOpt);

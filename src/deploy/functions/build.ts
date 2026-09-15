@@ -874,6 +874,29 @@ export function applyEnvSecretBindings(
 }
 
 /**
+ *
+ */
+export function unbindMissingOptionalSecrets(
+  build: Build,
+  resolvedSecretRefs: Record<string, string>,
+) {
+  const missingSecrets: string[] = [];
+  for (const [secretName, secretBinding] of Object.entries(resolvedSecretRefs)) {
+    if (secretBinding === "") {
+      missingSecrets.push(secretName);
+    }
+  }
+  for (const endpointName of Object.keys(build.endpoints)) {
+    const endpoint = build.endpoints[endpointName];
+    if (Array.isArray(endpoint.secretEnvironmentVariables)) {
+      endpoint.secretEnvironmentVariables = endpoint.secretEnvironmentVariables.filter(
+        (secretEnvVar) => !missingSecrets.includes(secretEnvVar.key),
+      );
+    }
+  }
+}
+
+/**
  * Parses any of the supported formats used to refer to a Secret in .env:
  * API_KEY= (denotes an intentionally unset secret, which should not be prompted for or bound to SecretEnvVars)
  * API_KEY=<secret-id>
