@@ -23,7 +23,6 @@
         "async-lock": "1.4.1",
         "body-parser": "^1.19.0",
         "chokidar": "^3.6.0",
-        "cjson": "^0.3.1",
         "cli-table3": "0.6.5",
         "colorette": "^2.0.19",
         "commander": "^5.1.0",
@@ -7794,17 +7793,6 @@
       "resolved": "https://registry.npmjs.org/ci-info/-/ci-info-2.0.0.tgz",
       "integrity": "sha512-5tK7EtrZ0N+OLFMthtqOj4fI2Jeb88C4CAZPu25LDVUgXJ0A3Js4PMGqrn0JU1W0Mh1/Z8wZzYPxqUrXeBboCQ=="
     },
-    "node_modules/cjson": {
-      "version": "0.3.3",
-      "resolved": "https://registry.npmjs.org/cjson/-/cjson-0.3.3.tgz",
-      "integrity": "sha1-qS2ceG5b+bkwgGMp7gXV0yYbSvo=",
-      "dependencies": {
-        "json-parse-helpfulerror": "^1.0.3"
-      },
-      "engines": {
-        "node": ">= 0.3.0"
-      }
-    },
     "node_modules/clean-stack": {
       "version": "2.2.0",
       "resolved": "https://registry.npmjs.org/clean-stack/-/clean-stack-2.2.0.tgz",
@@ -13059,11 +13047,6 @@
         "@pkgjs/parseargs": "^0.11.0"
       }
     },
-    "node_modules/jju": {
-      "version": "1.4.0",
-      "resolved": "https://registry.npmjs.org/jju/-/jju-1.4.0.tgz",
-      "integrity": "sha1-o6vicYryQaKykE+EpiWXDzia4yo="
-    },
     "node_modules/join-path": {
       "version": "1.1.1",
       "resolved": "https://registry.npmjs.org/join-path/-/join-path-1.1.1.tgz",
@@ -13240,14 +13223,6 @@
       "resolved": "https://registry.npmjs.org/json-parse-even-better-errors/-/json-parse-even-better-errors-2.3.1.tgz",
       "integrity": "sha512-xyFwyhro/JEof6Ghe2iz2NcXoj2sloNsWr/XsERDK/oiPCfaNhl5ONfp+jQdAZRQQ0IJWNzH9zIZF7li91kh2w==",
       "dev": true
-    },
-    "node_modules/json-parse-helpfulerror": {
-      "version": "1.0.3",
-      "resolved": "https://registry.npmjs.org/json-parse-helpfulerror/-/json-parse-helpfulerror-1.0.3.tgz",
-      "integrity": "sha1-E/FM4C7tTpgSl7ZOueO5MuLdE9w=",
-      "dependencies": {
-        "jju": "^1.1.0"
-      }
     },
     "node_modules/json-ptr": {
       "version": "3.0.1",
@@ -27501,14 +27476,6 @@
       "resolved": "https://registry.npmjs.org/ci-info/-/ci-info-2.0.0.tgz",
       "integrity": "sha512-5tK7EtrZ0N+OLFMthtqOj4fI2Jeb88C4CAZPu25LDVUgXJ0A3Js4PMGqrn0JU1W0Mh1/Z8wZzYPxqUrXeBboCQ=="
     },
-    "cjson": {
-      "version": "0.3.3",
-      "resolved": "https://registry.npmjs.org/cjson/-/cjson-0.3.3.tgz",
-      "integrity": "sha1-qS2ceG5b+bkwgGMp7gXV0yYbSvo=",
-      "requires": {
-        "json-parse-helpfulerror": "^1.0.3"
-      }
-    },
     "clean-stack": {
       "version": "2.2.0",
       "resolved": "https://registry.npmjs.org/clean-stack/-/clean-stack-2.2.0.tgz",
@@ -31349,11 +31316,6 @@
         "@pkgjs/parseargs": "^0.11.0"
       }
     },
-    "jju": {
-      "version": "1.4.0",
-      "resolved": "https://registry.npmjs.org/jju/-/jju-1.4.0.tgz",
-      "integrity": "sha1-o6vicYryQaKykE+EpiWXDzia4yo="
-    },
     "join-path": {
       "version": "1.1.1",
       "resolved": "https://registry.npmjs.org/join-path/-/join-path-1.1.1.tgz",
@@ -31478,14 +31440,6 @@
       "resolved": "https://registry.npmjs.org/json-parse-even-better-errors/-/json-parse-even-better-errors-2.3.1.tgz",
       "integrity": "sha512-xyFwyhro/JEof6Ghe2iz2NcXoj2sloNsWr/XsERDK/oiPCfaNhl5ONfp+jQdAZRQQ0IJWNzH9zIZF7li91kh2w==",
       "dev": true
-    },
-    "json-parse-helpfulerror": {
-      "version": "1.0.3",
-      "resolved": "https://registry.npmjs.org/json-parse-helpfulerror/-/json-parse-helpfulerror-1.0.3.tgz",
-      "integrity": "sha1-E/FM4C7tTpgSl7ZOueO5MuLdE9w=",
-      "requires": {
-        "jju": "^1.1.0"
-      }
     },
     "json-ptr": {
       "version": "3.0.1",

@@ -12,6 +12,19 @@ describe("loadCJSON", () => {
     expect(result).to.deep.equal({ key: "value" });
   });
 
+  it("should correctly parse comments inside string values and block comments", () => {
+    const filePath = path.join(fixturesDir, "complex.cjson");
+    const result = loadCJSON(filePath);
+    expect(result).to.deep.equal({
+      url: "https://example.com/foo",
+      comment_in_string: "this is // not a comment",
+      block_in_string: "this is /* not a block */ comment",
+      nested: {
+        key: "value",
+      },
+    });
+  });
+
   it("should throw FirebaseError on ENOENT", () => {
     const filePath = path.join(fixturesDir, "nonexistent.cjson");
     expect(() => loadCJSON(filePath)).to.throw(
