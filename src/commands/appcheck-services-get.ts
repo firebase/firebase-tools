@@ -55,7 +55,7 @@ For example:
 
     if (isMandatoryFrom(serviceId) && result.enforcementMode !== "ENFORCED") {
       logWarning(
-        `Starting ${AI_LOGIC_ENFORCEMENT_DATE}, Firebase will automatically enforce App Check for all Gemini API requests via Firebase AI Logic, and App Check cannot be un-enforced for AI Logic. Implement App Check before this date to avoid service interruptions: ${AI_LOGIC_APP_CHECK_DOCS}`,
+        `Starting ${AI_LOGIC_ENFORCEMENT_DATE}, Firebase will automatically enforce App Check for all Gemini API requests via Firebase AI Logic, and App Check cannot be unenforced for AI Logic. Implement App Check before this date to avoid service interruptions: ${AI_LOGIC_APP_CHECK_DOCS}`,
       );
     }
 
