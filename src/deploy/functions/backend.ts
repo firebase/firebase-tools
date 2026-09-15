@@ -892,7 +892,7 @@ export function unbindMissingOptionalSecrets(
       missingSecrets.push(secretName);
     }
   }
-  logger.debug(`Unbinding optional unset secrets: ${missingSecrets.join(", ")}`)
+  logger.debug(`Unbinding optional unset secrets: ${missingSecrets.join(", ")}`);
   for (const region of Object.keys(backend.endpoints)) {
     const regionalEndpoints = backend.endpoints[region];
     for (const endpointName of Object.keys(regionalEndpoints)) {

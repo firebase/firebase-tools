@@ -705,14 +705,12 @@ describe("Backend", () => {
 
 describe("unbindMissingOptionalSecrets", () => {
   it("removes secrets with a bound reference of '' from SecretEnvVars of a Backend", () => {
-    const fn: backend.TargetIds = {
+    const testBackend = backend.of({
       id: "id",
       region: "region",
       project: "project",
-    };
-    const ep: Omit<backend.Endpoint, "httpsTrigger"> = {
-      platform: "gcfv1",
-      ...fn,
+      platform: "gcfv2",
+      httpsTrigger: {},
       entryPoint: "function",
       runtime: "nodejs16",
       codebase: projectConfig.DEFAULT_CODEBASE,
@@ -722,11 +720,6 @@ describe("unbindMissingOptionalSecrets", () => {
         { key: "bar", secret: "bar", projectId: "project" },
         { key: "baz", secret: "baz", projectId: "project" },
       ],
-    };
-    const testBackend = backend.of({
-      ...ep,
-      platform: "gcfv2",
-      httpsTrigger: {},
     });
     backend.unbindMissingOptionalSecrets(testBackend, { foo: "", bar: "bar:2", baz: "" });
     expect(testBackend.endpoints["region"]["id"].secretEnvironmentVariables).to.deep.equal([
