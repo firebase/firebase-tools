@@ -8,7 +8,6 @@ import {
   readFile,
   listFiles,
   moveAll,
-  safeRemove,
   removeDirectoryIfEmpty,
 } from "./fsutils";
 
@@ -130,34 +129,6 @@ describe("fsutils", () => {
 
       expect(fs.existsSync(path.join(destDir, "file1.txt"))).to.be.true;
       expect(fs.existsSync(path.join(destDir, "dest"))).to.be.false;
-    });
-  });
-
-  describe("safeRemove", () => {
-    it("should remove an existing file", async () => {
-      const filePath = path.join(tmpDir.name, "to-remove.txt");
-      fs.writeFileSync(filePath, "hello");
-      expect(fs.existsSync(filePath)).to.be.true;
-
-      await safeRemove(filePath);
-
-      expect(fs.existsSync(filePath)).to.be.false;
-    });
-
-    it("should remove an existing directory and its contents", async () => {
-      const dirPath = path.join(tmpDir.name, "to-remove-dir");
-      fs.mkdirSync(dirPath);
-      fs.writeFileSync(path.join(dirPath, "subfile.txt"), "hello");
-      expect(fs.existsSync(dirPath)).to.be.true;
-
-      await safeRemove(dirPath);
-
-      expect(fs.existsSync(dirPath)).to.be.false;
-    });
-
-    it("should do nothing and not throw if path does not exist", async () => {
-      const nonExistent = path.join(tmpDir.name, "does-not-exist");
-      await expect(safeRemove(nonExistent)).to.be.fulfilled;
     });
   });
 

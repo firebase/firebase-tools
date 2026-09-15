@@ -42,7 +42,7 @@ import { FirebaseConfig } from "../../deploy/functions/args";
 import { hasProjectEnv } from "../env";
 import { RC } from "../../rc";
 import { KitInstanceEnvSeed, seedKitInstanceEnv } from "./env";
-import { safeRemove, removeDirectoryIfEmpty } from "../../fsutils";
+import { removeDirectoryIfEmpty } from "../../fsutils";
 
 export const TEMPLATES = {
   installation: "init/functions/typescript/index-kit.ts",
@@ -1305,12 +1305,6 @@ export async function addKitInstanceOrConfigureProject(
         createdPaths.push(envPath);
       }
     }
-    if (projectAlias) {
-      const aliasEnvPath = path.join(absConfigDirPath, `.env.${projectAlias}`);
-      if (!(await fs.pathExists(aliasEnvPath))) {
-        createdPaths.push(aliasEnvPath);
-      }
-    }
 
     if (options.seedEnv?.envs && Object.keys(options.seedEnv.envs).length > 0) {
       await fs.ensureDir(absConfigDirPath);
@@ -1634,7 +1628,13 @@ export async function installKitOrInstance(
       configDirPath,
     };
   } catch (err: unknown) {
-    await Promise.all(createdPaths.map(safeRemove));
+    await Promise.all(
+      createdPaths.map((targetPath) =>
+        fs.remove(targetPath).catch((cleanupErr: unknown) => {
+          logger.debug(`Failed to clean up path '${targetPath}': ${getErrMsg(cleanupErr)}`);
+        }),
+      ),
+    );
     if (kitId) {
       await removeDirectoryIfEmpty(options.config.path(path.join(FUNCTION_KITS_DIR, kitId)));
     }

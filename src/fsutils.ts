@@ -56,17 +56,6 @@ export function moveAll(srcDir: string, destDir: string) {
 }
 
 /**
- * Safely removes a file or directory, suppressing any errors and logging to debug.
- */
-export async function safeRemove(targetPath: string): Promise<void> {
-  try {
-    await fs.remove(targetPath);
-  } catch (err: unknown) {
-    logger.debug(`Failed to remove path '${targetPath}': ${getErrMsg(err)}`);
-  }
-}
-
-/**
  * Removes an empty directory if it exists and contains no files or subdirectories,
  * suppressing any errors and logging to debug.
  */
@@ -82,6 +71,6 @@ export async function removeDirectoryIfEmpty(absDirPath: string): Promise<void> 
       }
     }
   } catch (err: unknown) {
-    logger.debug(`Failed to remove empty directory '${absDirPath}': ${getErrMsg(err)}`);
+    logger.debug(`Failed to clean up directory '${absDirPath}' if empty: ${getErrMsg(err)}`);
   }
 }
