@@ -247,6 +247,10 @@ interface SecretParam {
   // Internal use only. Populated with whether or not a corresponding FIREBASE_SECRET_REF_
   // key was found in the local .env files.
   inLocalEnvironment?: boolean;
+
+  // Internal use only. If true, skip prompting and accept that value of secret may be
+  // undefined at runtime. Currently available only for Extensions exports.
+  unset?: boolean;
 }
 
 export type Param = StringParam | IntParam | BooleanParam | ListParam | SecretParam;
@@ -502,6 +506,11 @@ function populateDefaultParams(config: FirebaseConfig): Record<string, ParamValu
 /**
  * Handles a SecretParam by checking for the presence of a corresponding secret
  * in Cloud Secrets Manager. Assist the user with secret creation if not present.
+ *
+ * Params with unset=true are skipped, since they correspond to cases where the
+ * user has intentionally chosen not to create a Cloud Secret and it's okay that
+ * the value of corresponding param might be undefined.
+ *
  * @return a Functions-formatted reference (e.g "foo:latest") to a Secret
  * resource which has been verified to exist/have just been created
  */
@@ -511,6 +520,9 @@ async function ensureSecret(
   nonInteractive?: boolean,
   force?: boolean,
 ): Promise<string> {
+  if (secretParam.unset) {
+    return "";
+  }
   const resourceId = secretParam.resourceId || secretParam.name;
   const version = secretParam.version || "latest";
   let secretAlreadyExisted = false;
