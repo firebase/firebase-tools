@@ -612,13 +612,9 @@ describe("resolveParams", () => {
         userEnvs: {},
         codebase: "my-codebase",
       });
-      expect(
-        loggerInfoStub.calledWith(
-          sinon.match(/Optional/),
-        ),
-      ).to.be.true;
+      expect(loggerInfoStub.calledWith(sinon.match(/Optional/))).to.be.true;
       expect(passwordStub).to.have.been.calledWith(
-        sinon.match({ message: "(Optional); enter nothing to skip:" }),
+        sinon.match({ message: "Enter a value for API Key (Optional); enter nothing to skip:" }),
       );
     } finally {
       passwordStub.restore();
