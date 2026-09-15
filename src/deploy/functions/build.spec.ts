@@ -34,6 +34,11 @@ describe("parseSecretRef", () => {
     expect(
       build.parseSecretRef("projects/my-project-1234/secrets/foo/versions/latest"),
     ).to.deep.equal({ projectId: "my-project-1234", secretId: "foo", version: "latest" });
+    expect(build.parseSecretRef("projects/725885452845/secrets/foo/versions/1")).to.deep.equal({
+      projectId: "725885452845",
+      secretId: "foo",
+      version: "1",
+    });
   });
 
   it("errors on bad formats", () => {
@@ -447,7 +452,7 @@ describe("envWithType", () => {
   });
 });
 
-describe("applyEnvSecretBindings", () => {
+describe("applyEnvSecretBindingsToBuild", () => {
   it("throws an error if the secret explicitly references a different project ID", () => {
     const testBuild: build.Build = {
       endpoints: {
@@ -469,7 +474,7 @@ describe("applyEnvSecretBindings", () => {
         secretId: "bar",
       },
     };
-    expect(() => build.applyEnvSecretBindings(testBuild, testSecretRefs)).to.throw(
+    expect(() => build.applyEnvSecretBindingsToBuild(testBuild, testSecretRefs)).to.throw(
       /unsupported cross-project secret/,
     );
   });
@@ -503,13 +508,54 @@ describe("applyEnvSecretBindings", () => {
         version: "2",
       },
     };
-    build.applyEnvSecretBindings(testBuild, testSecretRefs);
+    build.applyEnvSecretBindingsToBuild(testBuild, testSecretRefs);
     expect(testBuild.params).to.deep.equal([
       {
         type: "secret",
         name: "FOO",
         resourceId: "bar",
         version: "2",
+        inLocalEnvironment: true,
+      },
+    ]);
+  });
+
+  it("allows numeric project numbers in secret references without treating as cross-project", () => {
+    const testBuild: build.Build = {
+      endpoints: {
+        func: {
+          region: "us-central1",
+          project: "test-project",
+          platform: "gcfv2",
+          runtime: "nodejs18",
+          entryPoint: "func1",
+          httpsTrigger: {},
+          secretEnvironmentVariables: [
+            {
+              key: "foo",
+              secret: "foo",
+              projectId: "test-project",
+            },
+          ],
+        },
+      },
+      params: [{ type: "secret", name: "FOO" }],
+      requiredAPIs: [],
+    };
+    const testSecretRefs: Record<string, build.ParsedSecretRef> = {
+      FOO: {
+        projectId: "725885452845",
+        secretId: "bar",
+        version: "1",
+      },
+    };
+    expect(() => build.applyEnvSecretBindingsToBuild(testBuild, testSecretRefs)).to.not.throw();
+    expect(testBuild.params).to.deep.equal([
+      {
+        type: "secret",
+        name: "FOO",
+        resourceId: "bar",
+        version: "1",
         inLocalEnvironment: true,
       },
     ]);
@@ -544,7 +590,7 @@ describe("applyEnvSecretBindings", () => {
         version: "2",
       },
     };
-    build.applyEnvSecretBindings(testBuild, testSecretRefs);
+    build.applyEnvSecretBindingsToBuild(testBuild, testSecretRefs);
     expect(testBuild.params).to.deep.equal([
       {
         type: "secret",
@@ -598,9 +644,9 @@ describe("applyEnvSecretBindings", () => {
         secretId: "bar",
       },
     };
-    build.applyEnvSecretBindings(testBuildEmpty, testSecretRefs);
+    build.applyEnvSecretBindingsToBuild(testBuildEmpty, testSecretRefs);
     expect(testBuildEmpty.endpoints["func"].secretEnvironmentVariables).to.be.undefined;
-    build.applyEnvSecretBindings(testBuildDifferent, testSecretRefs);
+    build.applyEnvSecretBindingsToBuild(testBuildDifferent, testSecretRefs);
     expect(testBuildDifferent.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
       {
         key: "baz",
@@ -638,7 +684,7 @@ describe("applyEnvSecretBindings", () => {
         secretId: "bar",
       },
     };
-    build.applyEnvSecretBindings(testBuild, testSecretRefs);
+    build.applyEnvSecretBindingsToBuild(testBuild, testSecretRefs);
     expect(testBuild.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
       {
         key: "foo",
@@ -677,7 +723,7 @@ describe("applyEnvSecretBindings", () => {
         version: "4",
       },
     };
-    build.applyEnvSecretBindings(testBuild, testSecretRefs);
+    build.applyEnvSecretBindingsToBuild(testBuild, testSecretRefs);
     expect(testBuild.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
       {
         key: "foo",
@@ -685,6 +731,35 @@ describe("applyEnvSecretBindings", () => {
         projectId: "test-project",
         version: "4",
         allowVersionPinning: true,
+      },
+    ]);
+  });
+});
+
+describe("applyEnvSecretBindingsToParams", () => {
+  it("merges resourceId and version into matching SecretParams case-insensitively", () => {
+    const testParams: Param[] = [
+      { type: "secret", name: "foo" },
+      { type: "string", name: "other" },
+    ];
+    const testSecretRefs: Record<string, build.ParsedSecretRef> = {
+      FOO: {
+        secretId: "bar",
+        version: "3",
+      },
+    };
+    build.applyEnvSecretBindingsToParams(testParams, testSecretRefs);
+    expect(testParams).to.deep.equal([
+      {
+        type: "secret",
+        name: "foo",
+        resourceId: "bar",
+        version: "3",
+        inLocalEnvironment: true,
+      },
+      {
+        type: "string",
+        name: "other",
       },
     ]);
   });
