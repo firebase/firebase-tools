@@ -64,6 +64,15 @@ jobs:
           cache: npm
           cache-dependency-path: firebase-vscode/package-lock.json
 
+      - name: Cache VS Code test binary
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # ratchet:actions/cache@v4
+        with:
+          path: firebase-vscode/.vscode-test
+          key: ${{ runner.os }}-vscode-test-${{ hashFiles('firebase-vscode/src/test/constants.ts') }}
+          restore-keys: |
+            ${{ runner.os }}-vscode-test-
+        continue-on-error: true
+
       - run: npm i -g npm@9.5
       - run: npm ci
       - run: npm install
