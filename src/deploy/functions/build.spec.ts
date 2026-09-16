@@ -823,7 +823,7 @@ describe("applyEnvSecretBindingsToParams", () => {
   });
 });
 
-describe("applyPrefix", () => {
+describe("applyEndpointPrefix", () => {
   const createTestBuild = (): build.Build => ({
     endpoints: {
       func1: {

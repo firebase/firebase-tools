@@ -9,6 +9,7 @@ import { Runtime } from "./runtimes/supported";
 import { ExprParseError } from "./cel";
 import { defineSecret } from "firebase-functions/params";
 import * as projects from "../../management/projects";
+import { addKitPrefix } from "../../functions/projectConfig";
 
 export const REGION_TBD = "REGION_TBD";
 export const SECRET_REF_PREFIX = "FIREBASE_SECRET_REF_";
@@ -748,7 +749,7 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
  */
 export function applyKitSecretRefPrefix(build: Build, instanceId: string): void {
   for (const secretParam of build.params.filter((p) => p.type === "secret")) {
-    secretParam.resourceId = `${instanceId}-${secretParam.name}`;
+    secretParam.resourceId = `${addKitPrefix(instanceId)}-${secretParam.name}`;
   }
 }
 
