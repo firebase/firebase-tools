@@ -8,6 +8,7 @@ import { FirebaseConfig } from "./args";
 import { Runtime } from "./runtimes/supported";
 import { ExprParseError } from "./cel";
 import { defineSecret } from "firebase-functions/params";
+import * as projects from "../../management/projects";
 
 export const REGION_TBD = "REGION_TBD";
 export const SECRET_REF_PREFIX = "FIREBASE_SECRET_REF_";
@@ -800,7 +801,6 @@ export interface ParsedSecretRef {
  * overrides its resourceId, version, and sets inLocalEnvironment to true so that downstream
  * parameter resolution and prompting flows check the backing Secret in Secret Manager instead
  * of prompting for a new value.
- *
  * @param params Array of declared parameters to update.
  * @param envSecrets Map of environment variable names to their parsed secret references.
  */
@@ -829,10 +829,10 @@ export function applyEnvSecretBindingsToParams(
  * 1) Check if a conflicting SecretParam with the same name exists. If so, override the param so that the prompting flow will look in the right place when deciding whether or not to create a new Secret.
  * 2) Upsert the binding directly into the Build's SecretEnvVars, which will cause it to be actually available in process.ENV
  */
-export function applyEnvSecretBindingsToBuild(
+export async function applyEnvSecretBindingsToBuild(
   build: Build,
   envSecrets: Record<string, ParsedSecretRef>,
-): void {
+): Promise<void> {
   if (envSecrets.empty) {
     return;
   }
@@ -847,13 +847,24 @@ export function applyEnvSecretBindingsToBuild(
 
   applyEnvSecretBindingsToParams(build.params, envSecrets);
 
+  const projectNumberToId = new Map<string, string>();
   for (const key of Object.keys(envSecrets)) {
     const secretRef = envSecrets[key];
-    const { projectId, secretId, version } = secretRef;
+    let { projectId } = secretRef;
+    const { secretId, version } = secretRef;
+    if (projectId && /^\d+$/.test(projectId)) {
+      let resolvedId = projectNumberToId.get(projectId);
+      if (!resolvedId) {
+        const project = await projects.getProject(projectId);
+        resolvedId = project.projectId;
+        projectNumberToId.set(projectId, resolvedId);
+      }
+      projectId = resolvedId;
+    }
 
     for (const endpointName of Object.keys(build.endpoints)) {
       const endpoint = build.endpoints[endpointName];
-      if (projectId && !/^\d+$/.test(projectId) && projectId !== endpoint.project) {
+      if (projectId && projectId !== endpoint.project) {
         throw new FirebaseError(
           `Secret binding ${key} referenced unsupported cross-project secret in '${projectId}'`,
         );

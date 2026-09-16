@@ -1,7 +1,9 @@
 import { expect } from "chai";
+import * as sinon from "sinon";
 import * as build from "./build";
 import { ParamValue, Param } from "./params";
 import { FirebaseError } from "../../error";
+import * as projects from "../../management/projects";
 
 describe("parseSecretRef", () => {
   it("can parse short form secrets", () => {
@@ -453,7 +455,17 @@ describe("envWithType", () => {
 });
 
 describe("applyEnvSecretBindingsToBuild", () => {
-  it("throws an error if the secret explicitly references a different project ID", () => {
+  let sandbox: sinon.SinonSandbox;
+
+  beforeEach(() => {
+    sandbox = sinon.createSandbox();
+  });
+
+  afterEach(() => {
+    sandbox.restore();
+  });
+
+  it("throws an error if the secret explicitly references a different project ID", async () => {
     const testBuild: build.Build = {
       endpoints: {
         func: {
@@ -474,12 +486,13 @@ describe("applyEnvSecretBindingsToBuild", () => {
         secretId: "bar",
       },
     };
-    expect(() => build.applyEnvSecretBindingsToBuild(testBuild, testSecretRefs)).to.throw(
+    await expect(build.applyEnvSecretBindingsToBuild(testBuild, testSecretRefs)).to.be.rejectedWith(
+      FirebaseError,
       /unsupported cross-project secret/,
     );
   });
 
-  it("merges resourceID and version fields into the SecretParam", () => {
+  it("merges resourceID and version fields into the SecretParam", async () => {
     const testBuild: build.Build = {
       endpoints: {
         func: {
@@ -508,7 +521,7 @@ describe("applyEnvSecretBindingsToBuild", () => {
         version: "2",
       },
     };
-    build.applyEnvSecretBindingsToBuild(testBuild, testSecretRefs);
+    await build.applyEnvSecretBindingsToBuild(testBuild, testSecretRefs);
     expect(testBuild.params).to.deep.equal([
       {
         type: "secret",
@@ -520,7 +533,15 @@ describe("applyEnvSecretBindingsToBuild", () => {
     ]);
   });
 
-  it("allows numeric project numbers in secret references without treating as cross-project", () => {
+  it("converts numeric project numbers to project IDs and allows same-project secret references", async () => {
+    const getProjectStub = sandbox.stub(projects, "getProject").resolves({
+      projectId: "test-project",
+      projectNumber: "725885452845",
+      lifecycleState: "ACTIVE",
+      name: "projects/test-project",
+      createTime: "2026-01-01T00:00:00Z",
+      parent: { type: "organization", id: "123" },
+    });
     const testBuild: build.Build = {
       endpoints: {
         func: {
@@ -549,7 +570,8 @@ describe("applyEnvSecretBindingsToBuild", () => {
         version: "1",
       },
     };
-    expect(() => build.applyEnvSecretBindingsToBuild(testBuild, testSecretRefs)).to.not.throw();
+    await build.applyEnvSecretBindingsToBuild(testBuild, testSecretRefs);
+    expect(getProjectStub).to.have.been.calledOnceWithExactly("725885452845");
     expect(testBuild.params).to.deep.equal([
       {
         type: "secret",
@@ -561,7 +583,43 @@ describe("applyEnvSecretBindingsToBuild", () => {
     ]);
   });
 
-  it("is case-insensitive when matching SecretParam name and .env file key", () => {
+  it("throws an error if a numeric project number resolves to a different project ID", async () => {
+    const getProjectStub = sandbox.stub(projects, "getProject").resolves({
+      projectId: "other-project",
+      projectNumber: "725885452845",
+      lifecycleState: "ACTIVE",
+      name: "projects/other-project",
+      createTime: "2026-01-01T00:00:00Z",
+      parent: { type: "organization", id: "123" },
+    });
+    const testBuild: build.Build = {
+      endpoints: {
+        func: {
+          region: "us-central1",
+          project: "test-project",
+          platform: "gcfv2",
+          runtime: "nodejs18",
+          entryPoint: "func1",
+          httpsTrigger: {},
+        },
+      },
+      params: [],
+      requiredAPIs: [],
+    };
+    const testSecretRefs: Record<string, build.ParsedSecretRef> = {
+      foo: {
+        projectId: "725885452845",
+        secretId: "bar",
+      },
+    };
+    await expect(build.applyEnvSecretBindingsToBuild(testBuild, testSecretRefs)).to.be.rejectedWith(
+      FirebaseError,
+      "Secret binding foo referenced unsupported cross-project secret in 'other-project'",
+    );
+    expect(getProjectStub).to.have.been.calledOnceWithExactly("725885452845");
+  });
+
+  it("is case-insensitive when matching SecretParam name and .env file key", async () => {
     const testBuild: build.Build = {
       endpoints: {
         func: {
@@ -590,7 +648,7 @@ describe("applyEnvSecretBindingsToBuild", () => {
         version: "2",
       },
     };
-    build.applyEnvSecretBindingsToBuild(testBuild, testSecretRefs);
+    await build.applyEnvSecretBindingsToBuild(testBuild, testSecretRefs);
     expect(testBuild.params).to.deep.equal([
       {
         type: "secret",
@@ -602,7 +660,7 @@ describe("applyEnvSecretBindingsToBuild", () => {
     ]);
   });
 
-  it("should not add the referenced secret to secretEnvironmentVariables if not present", () => {
+  it("should not add the referenced secret to secretEnvironmentVariables if not present", async () => {
     const testBuildEmpty: build.Build = {
       endpoints: {
         func: {
@@ -644,9 +702,9 @@ describe("applyEnvSecretBindingsToBuild", () => {
         secretId: "bar",
       },
     };
-    build.applyEnvSecretBindingsToBuild(testBuildEmpty, testSecretRefs);
+    await build.applyEnvSecretBindingsToBuild(testBuildEmpty, testSecretRefs);
     expect(testBuildEmpty.endpoints["func"].secretEnvironmentVariables).to.be.undefined;
-    build.applyEnvSecretBindingsToBuild(testBuildDifferent, testSecretRefs);
+    await build.applyEnvSecretBindingsToBuild(testBuildDifferent, testSecretRefs);
     expect(testBuildDifferent.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
       {
         key: "baz",
@@ -656,7 +714,7 @@ describe("applyEnvSecretBindingsToBuild", () => {
     ]);
   });
 
-  it("should override a secret in secretEnvironmentVariables with the .env reference with the same key", () => {
+  it("should override a secret in secretEnvironmentVariables with the .env reference with the same key", async () => {
     const testBuild: build.Build = {
       endpoints: {
         func: {
@@ -684,7 +742,7 @@ describe("applyEnvSecretBindingsToBuild", () => {
         secretId: "bar",
       },
     };
-    build.applyEnvSecretBindingsToBuild(testBuild, testSecretRefs);
+    await build.applyEnvSecretBindingsToBuild(testBuild, testSecretRefs);
     expect(testBuild.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
       {
         key: "foo",
@@ -694,7 +752,7 @@ describe("applyEnvSecretBindingsToBuild", () => {
     ]);
   });
 
-  it("should override a secret in secretEnvironmentVariables with the .env reference/version with the same key", () => {
+  it("should override a secret in secretEnvironmentVariables with the .env reference/version with the same key", async () => {
     const testBuild: build.Build = {
       endpoints: {
         func: {
@@ -723,7 +781,7 @@ describe("applyEnvSecretBindingsToBuild", () => {
         version: "4",
       },
     };
-    build.applyEnvSecretBindingsToBuild(testBuild, testSecretRefs);
+    await build.applyEnvSecretBindingsToBuild(testBuild, testSecretRefs);
     expect(testBuild.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
       {
         key: "foo",
