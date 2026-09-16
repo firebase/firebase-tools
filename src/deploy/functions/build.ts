@@ -749,7 +749,9 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
  */
 export function applyKitSecretRefPrefix(build: Build, instanceId: string): void {
   const kitPrefix = addKitPrefix(instanceId);
-  for (const secretParam of build.params.filter((p) => params.isSecretParam(p))) {
+  for (const secretParam of build.params.filter((p): p is params.SecretParam =>
+    params.isSecretParam(p),
+  )) {
     secretParam.resourceId = `${kitPrefix}-${secretParam.name}`;
   }
 

@@ -1090,7 +1090,7 @@ export async function promptAndWriteKitParams(
     build.parseSecretRef(unparsed),
   );
   for (const secretParam of options.params.filter((p) => params.isSecretParam(p))) {
-    secretParam.resourceId = `${options.instanceId}-${secretParam.name}`;
+    secretParam.resourceId = `kit-${options.instanceId}-${secretParam.name}`;
   }
   build.applyEnvSecretBindingsToParams(options.params, parsedSecretRefs);
 
