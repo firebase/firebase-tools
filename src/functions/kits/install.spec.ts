@@ -2411,6 +2411,29 @@ describe("functions/kits/install", () => {
       );
     });
 
+    it("should apply secretRefs from loaded user envs to matching secret params", async () => {
+      const mockConfig = { projectDir: "/mock/project" } as Config;
+      const secretParam: params.Param = { name: "MY_SECRET", type: "secret" };
+      loadUserEnvsStub.returns({
+        FIREBASE_SECRET_REF_MY_SECRET: "projects/12345/secrets/my-secret-id/versions/2",
+      });
+
+      await promptAndWriteKitParams({
+        config: mockConfig,
+        projectId: "my-project",
+        absConfigDirPath: "/mock/project/config-inst",
+        absSourcePath: "/mock/project/source",
+        instanceId: "inst",
+        params: [secretParam],
+      });
+
+      if (secretParam.type === "secret") {
+        expect(secretParam.resourceId).to.equal("my-secret-id");
+        expect(secretParam.version).to.equal("2");
+        expect(secretParam.inLocalEnvironment).to.be.true;
+      }
+    });
+
     it("should handle getFirebaseConfig failure gracefully and still resolve params", async () => {
       getFirebaseConfigStub.rejects(new Error("API network error"));
       const mockConfig = { projectDir: "/mock/project" } as Config;
