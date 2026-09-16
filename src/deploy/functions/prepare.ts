@@ -853,6 +853,9 @@ export async function loadCodebases(
       ? addKitPrefix(codebase)
       : codebaseConfig.prefix || "";
     build.applyEndpointPrefix(discoveredBuild, prefix);
+    if (isKitConfig(codebaseConfig)) {
+      build.applyKitSecretRefPrefix(discoveredBuild, codebase)
+    }
     wantBuilds[codebase] = discoveredBuild;
   }
   return wantBuilds;
