@@ -852,7 +852,10 @@ export async function loadCodebases(
     const prefix = isKitConfig(codebaseConfig)
       ? addKitPrefix(codebase)
       : codebaseConfig.prefix || "";
-    build.applyPrefix(discoveredBuild, prefix);
+    build.applyEndpointPrefix(discoveredBuild, prefix);
+    if (isKitConfig(codebaseConfig)) {
+      build.applyKitSecretRefPrefix(discoveredBuild, codebase)
+    }
     wantBuilds[codebase] = discoveredBuild;
   }
   return wantBuilds;
