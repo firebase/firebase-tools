@@ -38,6 +38,7 @@ import * as iam from "../../gcp/iam";
 import * as functionsEnv from "../env";
 import * as functionsConfig from "../../functionsConfig";
 import { partitionUserEnvs } from "../../deploy/functions/prepare";
+import { mapObject } from "../../functional";
 import { FirebaseConfig } from "../../deploy/functions/args";
 import { hasProjectEnv } from "../env";
 import { RC } from "../../rc";
@@ -1084,6 +1085,11 @@ export async function promptAndWriteKitParams(
 
   const rawUserEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
   const { userEnvs, secretRefs } = partitionUserEnvs(rawUserEnvs);
+
+  const parsedSecretRefs = mapObject<string, build.ParsedSecretRef>(secretRefs, (unparsed) =>
+    build.parseSecretRef(unparsed),
+  );
+  build.applyEnvSecretBindingsToParams(options.params, parsedSecretRefs);
 
   let firebaseConfig: FirebaseConfig = { projectId: options.projectId };
   try {

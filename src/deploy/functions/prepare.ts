@@ -335,7 +335,7 @@ export async function prepare(
     const parsedSecretRefs = mapObject<string, build.ParsedSecretRef>(secretRefs, (unparsed) =>
       build.parseSecretRef(unparsed),
     );
-    build.applyEnvSecretBindings(wantBuild, parsedSecretRefs);
+    await build.applyEnvSecretBindingsToBuild(wantBuild, parsedSecretRefs);
 
     const {
       backend: wantBackend,
