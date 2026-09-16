@@ -716,7 +716,7 @@ describe("applyPrefix", () => {
 
   it("should update endpoint keys with prefix", () => {
     const testBuild = createTestBuild();
-    build.applyPrefix(testBuild, "test");
+    build.applyEndpointPrefix(testBuild, "test");
     expect(Object.keys(testBuild.endpoints).sort()).to.deep.equal(["test-func1", "test-func2"]);
     expect(testBuild.endpoints["test-func1"].entryPoint).to.equal("func1");
     expect(testBuild.endpoints["test-func2"].entryPoint).to.equal("func2");
@@ -724,7 +724,7 @@ describe("applyPrefix", () => {
 
   it("should do nothing for an empty prefix", () => {
     const testBuild = createTestBuild();
-    build.applyPrefix(testBuild, "");
+    build.applyEndpointPrefix(testBuild, "");
     expect(Object.keys(testBuild.endpoints).sort()).to.deep.equal(["func1", "func2"]);
   });
 
@@ -741,7 +741,7 @@ describe("applyPrefix", () => {
       },
     });
     const longPrefix = "p".repeat(30);
-    expect(() => build.applyPrefix(testBuild, longPrefix)).to.throw(/exceeds 63 characters/);
+    expect(() => build.applyEndpointPrefix(testBuild, longPrefix)).to.throw(/exceeds 63 characters/);
   });
 
   it("throws if prefix makes function id invalid (must start with a letter)", () => {
@@ -755,7 +755,7 @@ describe("applyPrefix", () => {
         httpsTrigger: {},
       },
     });
-    expect(() => build.applyPrefix(testBuild, "1abc")).to.throw(
+    expect(() => build.applyEndpointPrefix(testBuild, "1abc")).to.throw(
       /Function names must start with a letter/,
     );
   });
@@ -789,7 +789,7 @@ describe("applyPrefix", () => {
       },
     };
 
-    build.applyPrefix(testBuild, "staging");
+    build.applyEndpointPrefix(testBuild, "staging");
 
     expect(testBuild.lifecycleHooks).to.deep.equal({
       afterFirstDeploy: {

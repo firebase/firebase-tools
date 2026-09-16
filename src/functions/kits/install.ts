@@ -1122,7 +1122,7 @@ export async function printKitFirstDeployReport(
     discoveredBuild = options.preDiscoveredBuild
       ? cloneDeep(options.preDiscoveredBuild)
       : await discoverKitBuild(options, options.absSourcePath);
-    build.applyPrefix(discoveredBuild, prefix);
+    build.applyEndpointPrefix(discoveredBuild, prefix);
   } catch (err: unknown) {
     logger.debug(`Could not discover kit build for reporting: ${getErrMsg(err)}`);
     return;
