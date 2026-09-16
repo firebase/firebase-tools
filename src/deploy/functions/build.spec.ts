@@ -807,7 +807,7 @@ describe("applyKitSecretRefPrefix", () => {
           httpsTrigger: {},
           secretEnvironmentVariables: [
             { key: "API_KEY", secret: "API_KEY", projectId: "test-project" },
-            { key: "SMTP_ADDRESS", secret: " SMTP_ADDRESS", projectId: "test-project" },
+            { key: "SMTP_ADDRESS", secret: "SMTP_ADDRESS", projectId: "test-project" },
           ],
         },
       },
