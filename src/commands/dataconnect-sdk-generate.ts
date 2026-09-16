@@ -15,6 +15,7 @@ import * as dataconnectSdkInit from "../init/features/dataconnect/sdk";
 import { FirebaseError } from "../error";
 import { postInitSaves } from "./init";
 import { EmulatorHub } from "../emulator/hub";
+import { nativeSqlInferEnv } from "../dataconnect/nativeSqlInfer";
 
 type GenerateOptions = Options & { watch?: boolean; service?: string; location?: string };
 
@@ -33,6 +34,16 @@ export const command = new Command("dataconnect:sdk:generate")
     "watch for changes to your connector GQL files and regenerate your SDKs when updates occur",
   )
   .action(async (options: GenerateOptions) => {
+    // `fdc sdk generate` must stay offline so codegen is reproducible from committed
+    // sources. Withhold the connection string so it never rewrites _inferred_types.gql.
+    const extraEnv: Record<string, string> = nativeSqlInferEnv(options.config);
+    if (Object.keys(extraEnv).length) {
+      extraEnv.FIREBASE_DATACONNECT_POSTGRESQL_STRING = "";
+      logWarning(
+        `Native SQL type inference is enabled. This command consumes the existing '${clc.bold("_inferred_types.gql")}' file as-is and does not refresh it. Run '${clc.bold("firebase dataconnect:sql:infer")}' to regenerate it after changing your native SQL queries.`,
+      );
+    }
+
     const projectId = getProjectId(options);
 
     let justRanInit = false;
@@ -93,7 +104,7 @@ export const command = new Command("dataconnect:sdk:generate")
       serviceInfosWithSDKs = await loadAllWithSDKs(projectId, config, options);
     }
 
-    await generateSDKsInAll(options, serviceInfosWithSDKs, justRanInit);
+    await generateSDKsInAll(options, serviceInfosWithSDKs, justRanInit, extraEnv);
   });
 
 async function loadAllWithSDKs(
@@ -124,12 +135,14 @@ async function generateSDKsInAll(
   options: GenerateOptions,
   serviceInfosWithSDKs: ServiceInfo[],
   justRanInit: boolean,
+  extraEnv: Record<string, string> = {},
 ): Promise<void> {
   async function generateSDK(serviceInfo: ServiceInfo): Promise<void> {
     return DataConnectEmulator.generate({
       configDir: serviceInfo.sourceDirectory,
       watch: options.watch,
       account: getProjectDefaultAccount(options.projectRoot),
+      extraEnv,
     });
   }
   if (options.watch) {

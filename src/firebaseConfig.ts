@@ -348,6 +348,7 @@ export type ExtensionsConfig = Record<string, string>;
 export type DataConnectSingle = {
   // The directory containing dataconnect.yaml for this service
   source: string;
+  nativeSqlInferMode?: string;
 } & Deployable;
 
 export type DataConnectMultiple = DataConnectSingle[];

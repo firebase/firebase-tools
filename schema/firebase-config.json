@@ -92,6 +92,9 @@
         "DataConnectSingle": {
             "additionalProperties": false,
             "properties": {
+                "nativeSqlInferMode": {
+                    "type": "string"
+                },
                 "postdeploy": {
                     "anyOf": [
                         {

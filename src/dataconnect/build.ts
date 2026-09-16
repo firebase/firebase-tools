@@ -7,6 +7,7 @@ import { getProjectDefaultAccount } from "../auth";
 import { DeployOptions } from "../deploy";
 import { DeployStats } from "../deploy/dataconnect/context";
 import { DeploymentMetadata, GraphqlError } from "./types";
+import { nativeSqlInferEnv } from "./nativeSqlInfer";
 
 /**
  * Builds the SQL Connect service (Validate Schema/Connectors + Generate metadata).
@@ -21,7 +22,13 @@ export async function build(
   deployStats: DeployStats,
 ): Promise<DeploymentMetadata> {
   const account = getProjectDefaultAccount(options.projectRoot);
-  const args: DataConnectBuildArgs = { configDir, account };
+  // `fdc build` must stay offline so that deploys are reproducible from committed
+  // sources. Withhold the connection string so it never rewrites _inferred_types.gql.
+  const extraEnv: Record<string, string> = nativeSqlInferEnv(options.config);
+  if (Object.keys(extraEnv).length) {
+    extraEnv.FIREBASE_DATACONNECT_POSTGRESQL_STRING = "";
+  }
+  const args: DataConnectBuildArgs = { configDir, account, extraEnv };
   if (options.projectId) {
     args.projectId = options.projectId;
   }

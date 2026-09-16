@@ -320,6 +320,7 @@ export function load(client: CLIClient): CLIClient {
   client.dataconnect.sql.migrate = loadCommand("dataconnect-sql-migrate");
   client.dataconnect.sql.grant = loadCommand("dataconnect-sql-grant");
   client.dataconnect.sql.shell = loadCommand("dataconnect-sql-shell");
+  client.dataconnect.sql.infer = loadCommand("dataconnect-sql-infer");
   client.dataconnect.compile = loadCommand("dataconnect-compile");
   client.dataconnect.sdk = {};
   client.dataconnect.sdk.generate = loadCommand("dataconnect-sdk-generate");

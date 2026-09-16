@@ -185,6 +185,12 @@ export const ALL_EXPERIMENTS = experiments({
     fullDescription: "Deprecated. Previously, enabled SQL Connect related features.",
     public: false,
   },
+  fdcnativesqlinfer: {
+    shortDescription: "Enable native SQL type inference for Firebase Data Connect.",
+    fullDescription: "Infers GraphQL types from native SQL queries and writes _inferred_types.gql.",
+    public: true,
+    default: false,
+  },
 
   genkit: {
     shortDescription: "Enable Genkit related features.",

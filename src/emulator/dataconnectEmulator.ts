@@ -30,6 +30,7 @@ import { connectableHostname } from "../utils";
 import { Account } from "../types/auth";
 import { ensure } from "../ensureApiEnabled";
 import { getCredentialPathAsync } from "../defaultCredentials";
+import { nativeSqlInferEnv } from "../dataconnect/nativeSqlInfer";
 
 export interface DataConnectEmulatorArgs {
   projectId: string;
@@ -51,12 +52,22 @@ export interface DataConnectGenerateArgs {
   configDir: string;
   watch?: boolean;
   account?: Account;
+  extraEnv?: Record<string, string>;
 }
 
 export interface DataConnectBuildArgs {
   configDir: string;
   projectId?: string;
   account?: Account;
+  extraEnv?: Record<string, string>;
+}
+
+export interface DataConnectSqlInferArgs {
+  configDir: string;
+  connectorId?: string;
+  connectionString?: string;
+  account?: Account;
+  extraEnv?: Record<string, string>;
 }
 
 // TODO: More concrete typing for events. Can we use string unions?
@@ -74,11 +85,16 @@ export class DataConnectEmulator implements EmulatorInstance {
 
   async start(): Promise<void> {
     let resolvedConfigDir;
+    const extraEnv: Record<string, string> = {
+      ...(this.args.extraEnv || {}),
+      ...nativeSqlInferEnv(this.args.config),
+    };
     try {
       resolvedConfigDir = this.args.config.path(this.args.configDir);
       const info = await DataConnectEmulator.build({
         configDir: resolvedConfigDir,
         account: this.args.account,
+        extraEnv,
       });
       if (requiresVector(info.metadata)) {
         if (Constants.isDemoProject(this.args.projectId)) {
@@ -99,7 +115,7 @@ export class DataConnectEmulator implements EmulatorInstance {
     } catch (err: unknown) {
       this.logger.log("DEBUG", `'fdc build' failed with error: ${getErrMsg(err)}`);
     }
-    const env = await DataConnectEmulator.getEnv(this.args.account, this.args.extraEnv);
+    const env = await DataConnectEmulator.getEnv(this.args.account, extraEnv);
     await start(
       Emulators.DATACONNECT,
       {
@@ -242,7 +258,7 @@ export class DataConnectEmulator implements EmulatorInstance {
     if (args.watch) {
       cmd.push("--watch");
     }
-    const env = await DataConnectEmulator.getEnv(args.account);
+    const env = await DataConnectEmulator.getEnv(args.account, args.extraEnv);
     return new Promise((resolve, reject) => {
       try {
         const proc = childProcess.spawn(commandInfo.binary, cmd, { stdio: "inherit", env });
@@ -282,7 +298,7 @@ export class DataConnectEmulator implements EmulatorInstance {
     if (args.projectId) {
       cmd.push(`--project_id=${args.projectId}`);
     }
-    const env = await DataConnectEmulator.getEnv(args.account);
+    const env = await DataConnectEmulator.getEnv(args.account, args.extraEnv);
     const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8", env });
     if (isIncomaptibleArchError(res.error)) {
       throw new FirebaseError(
@@ -312,6 +328,50 @@ export class DataConnectEmulator implements EmulatorInstance {
       // JSON parse errors are unreadable.
       throw new FirebaseError(`Unable to parse 'fdc build' output: ${res.stdout ?? res.stderr}`);
     }
+  }
+
+  static async sqlInfer(args: DataConnectSqlInferArgs): Promise<void> {
+    const commandInfo = await downloadIfNecessary(Emulators.DATACONNECT);
+    const cmd = ["--logtostderr", "sql", "infer", `--config_dir=${args.configDir}`];
+    if (args.connectorId) {
+      cmd.push(`--connector_id=${args.connectorId}`);
+    }
+
+    const extraEnv: Record<string, string> = {
+      ...(args.extraEnv || {}),
+    };
+    if (args.connectionString) {
+      extraEnv.FIREBASE_DATACONNECT_POSTGRESQL_STRING = args.connectionString;
+    }
+
+    const env = await DataConnectEmulator.getEnv(args.account, extraEnv);
+    return new Promise((resolve, reject) => {
+      try {
+        const proc = childProcess.spawn(commandInfo.binary, cmd, { stdio: "inherit", env });
+        proc.on("close", (code) => {
+          if (code === 0) {
+            resolve();
+          } else {
+            reject(new FirebaseError(`'fdc sql infer' failed with exit code ${code}`));
+          }
+        });
+        proc.on("error", (err) => {
+          reject(err);
+        });
+      } catch (e: unknown) {
+        if (isIncomaptibleArchError(e as Error)) {
+          reject(
+            new FirebaseError(
+              `Unknown system error when running the SQL Connect toolkit. ` +
+                `You may be able to fix this by installing Rosetta: ` +
+                `softwareupdate --install-rosetta`,
+            ),
+          );
+        } else {
+          reject(e);
+        }
+      }
+    });
   }
 
   public async connectToPostgres(
@@ -371,6 +431,7 @@ export class DataConnectEmulator implements EmulatorInstance {
         credsEnv.GOOGLE_APPLICATION_CREDENTIALS = defaultCredPath;
       }
     }
+
     return { ...process.env, ...extraEnv, ...credsEnv };
   }
 }
