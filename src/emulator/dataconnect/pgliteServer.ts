@@ -70,8 +70,16 @@ export class PostgresServer {
             yield message;
           }
 
-          // Extended query patch removes the extra Ready for Query messages that
-          // pglite wrongly sends.
+          // Returning an empty Uint8Array ensures pg-gateway sets skipProcessing = true
+          // even when PGlite produces 0 backend messages (such as on Flush 'H', or when
+          // PGlite discards Describe messages following a Parse error).
+          //
+          // This avoids:
+          // 1. Error overriding: Prevents pg-gateway from injecting a fake "Message code not yet implemented"
+          //    error that overwrites the real PostgreSQL error (e.g. syntax or table not found errors).
+          // 2. Connection poisoning: Prevents emitting a premature ReadyForQuery that leaves unconsumed
+          //    messages in the client socket buffer and desynchronizes subsequent queries.
+          return new Uint8Array(0);
         },
       });
 
