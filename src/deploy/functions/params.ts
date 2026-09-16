@@ -252,6 +252,10 @@ interface SecretParam {
 export type Param = StringParam | IntParam | BooleanParam | ListParam | SecretParam;
 type RawParamValue = string | number | boolean | string[];
 
+export function isSecretParam(param: Param): param is SecretParam {
+  return param.type === "secret";
+}
+
 /**
  * A type which contains the resolved value of a param, and metadata ensuring
  * that it's used in the correct way:
