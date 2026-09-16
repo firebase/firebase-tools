@@ -16,6 +16,7 @@ import * as api from "../api";
 import * as utils from "../utils";
 import { build as dataconnectBuild } from "../dataconnect/build";
 import { nativeSqlInferEnv } from "../dataconnect/nativeSqlInfer";
+import * as cloudSqlProxy from "../dataconnect/cloudSqlProxy";
 
 describe("DataConnectEmulator Native SQL Type Inference", () => {
   let sandbox: sinon.SinonSandbox;
@@ -483,6 +484,38 @@ describe("DataConnectEmulator Native SQL Type Inference", () => {
       expect(pickStub.calledOnce).to.be.true;
       expect(pickStub.firstCall.args[0]).to.equal(EmulatorHub.MISSING_PROJECT_PLACEHOLDER);
       expect(sqlInferStub.calledOnce).to.be.true;
+    });
+
+    it("should not start the Cloud SQL proxy when --cloud-sql is not passed", async () => {
+      experiments.setEnabled("fdcnativesqlinfer", true);
+      sandbox.stub(load, "pickOneService").resolves({
+        sourceDirectory: "dataconnect",
+        dataConnectYaml: {
+          serviceId: "myservice",
+          schema: {
+            datasource: {
+              postgresql: { database: "testdb" },
+            },
+          },
+        },
+      } as any);
+      sandbox.stub(api, "dataConnectLocalConnString").returns("postgres://127.0.0.1:5432/testdb");
+      const proxyStub = sandbox.stub(cloudSqlProxy, "startLocalProxyForService");
+      const sqlInferStub = sandbox.stub(DataConnectEmulator, "sqlInfer").resolves();
+
+      const options: any = {
+        projectId: "test-proj",
+        config: {
+          get: (key: string) => (key === "dataconnect.nativeSqlInferMode" ? "db" : undefined),
+        },
+      };
+
+      await (sqlInferCommand as any).actionFn(options);
+
+      expect(proxyStub.called).to.be.false;
+      expect(sqlInferStub.firstCall.args[0].connectionString).to.equal(
+        "postgres://127.0.0.1:5432/testdb",
+      );
     });
   });
 

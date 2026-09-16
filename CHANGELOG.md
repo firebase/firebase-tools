@@ -1,2 +1,3 @@
+- [added] `dataconnect:sql:infer --cloud-sql` runs native SQL type inference against the linked Cloud SQL instance via a local Cloud SQL Auth Proxy.
 - [changed] Improve formatting and user experience for Cloud Functions parameter and secret prompts.
 - Updated the Firebase SQL Connect local toolkit to v3.4.20.

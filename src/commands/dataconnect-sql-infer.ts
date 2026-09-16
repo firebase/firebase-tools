@@ -12,10 +12,12 @@ import { EmulatorHubClient } from "../emulator/hubClient";
 import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { nativeSqlInferEnv, nativeSqlInferMode } from "../dataconnect/nativeSqlInfer";
+import { LocalProxy, startLocalProxyForService } from "../dataconnect/cloudSqlProxy";
 
 export type SqlInferOptions = Options & {
   service?: string;
   connector?: string;
+  cloudSql?: boolean;
 };
 
 /**
@@ -51,6 +53,7 @@ export const command = new Command("dataconnect:sql:infer")
   .description("infer GraphQL types from native SQL queries in your connectors")
   .option("--service <serviceId>", "the serviceId of the Data Connect service")
   .option("--connector <connectorId>", "optional connectorId to scope inference")
+  .option("--cloud-sql", "connect to the linked Cloud SQL instance instead of a local database")
   .action(async (options: SqlInferOptions) => {
     // 1. Enforce hard gating rule
     experiments.assertEnabled("fdcnativesqlinfer", "use native SQL type inference");
@@ -68,26 +71,37 @@ export const command = new Command("dataconnect:sql:infer")
       );
     }
 
-    let connStr: string | undefined = dataConnectLocalConnString() || undefined;
-    if (!connStr) {
-      connStr = await getRunningPostgresConnStr(projectId, serviceId);
-      if (connStr) {
-        logger.info(
-          `Using active database connection from running Data Connect emulator: ${connStr}`,
-        );
+    let proxy: LocalProxy | undefined;
+    try {
+      let connStr: string | undefined;
+      if (options.cloudSql) {
+        proxy = await startLocalProxyForService(options, serviceInfo);
+        connStr = proxy.connectionString;
+      } else {
+        connStr = dataConnectLocalConnString() || undefined;
+        if (!connStr) {
+          connStr = await getRunningPostgresConnStr(projectId, serviceId);
+          if (connStr) {
+            logger.info(
+              `Using active database connection from running Data Connect emulator: ${connStr}`,
+            );
+          }
+        }
+        if (!connStr) {
+          throw new FirebaseError(
+            "Cannot run type inference in db mode without an active database connection. Start the Data Connect emulator in a separate terminal ('firebase emulators:start') or set the database connection string via FIREBASE_DATACONNECT_POSTGRESQL_STRING.",
+          );
+        }
       }
-    }
-    if (!connStr) {
-      throw new FirebaseError(
-        "Cannot run type inference in db mode without an active database connection. Start the Data Connect emulator in a separate terminal ('firebase emulators:start') or set the database connection string via FIREBASE_DATACONNECT_POSTGRESQL_STRING.",
-      );
-    }
 
-    await DataConnectEmulator.sqlInfer({
-      configDir,
-      connectorId: options.connector,
-      connectionString: connStr,
-      account: getProjectDefaultAccount(options.projectRoot),
-      extraEnv: nativeSqlInferEnv(options.config),
-    });
+      await DataConnectEmulator.sqlInfer({
+        configDir,
+        connectorId: options.connector,
+        connectionString: connStr,
+        account: getProjectDefaultAccount(options.projectRoot),
+        extraEnv: nativeSqlInferEnv(options.config),
+      });
+    } finally {
+      await proxy?.close();
+    }
   });
