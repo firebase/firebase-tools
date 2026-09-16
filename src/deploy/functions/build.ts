@@ -748,8 +748,15 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
  * applyEnvSecretBindings will get run later in deploy prepare.
  */
 export function applyKitSecretRefPrefix(build: Build, instanceId: string): void {
+  const kitPrefix = addKitPrefix(instanceId);
   for (const secretParam of build.params.filter((p) => params.isSecretParam(p))) {
-    secretParam.resourceId = `${addKitPrefix(instanceId)}-${secretParam.name}`;
+    secretParam.resourceId = `${kitPrefix}-${secretParam.name}`;
+  }
+
+  for (const endpoint of Object.values(build.endpoints)) {
+    for (const envVar of endpoint.secretEnvironmentVariables ?? []) {
+      envVar.secret = `${kitPrefix}-${envVar.secret}`;
+    }
   }
 }
 

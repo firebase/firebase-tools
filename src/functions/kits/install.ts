@@ -1089,6 +1089,9 @@ export async function promptAndWriteKitParams(
   const parsedSecretRefs = mapObject<string, build.ParsedSecretRef>(secretRefs, (unparsed) =>
     build.parseSecretRef(unparsed),
   );
+  for (const secretParam of options.params.filter((p) => params.isSecretParam(p))) {
+    secretParam.resourceId = `${options.instanceId}-${secretParam.name}`;
+  }
   build.applyEnvSecretBindingsToParams(options.params, parsedSecretRefs);
 
   let firebaseConfig: FirebaseConfig = { projectId: options.projectId };

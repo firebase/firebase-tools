@@ -794,6 +794,69 @@ describe("applyEnvSecretBindingsToBuild", () => {
   });
 });
 
+describe("applyKitSecretRefPrefix", () => {
+  it("prefixes only the secret params with a kit instance id", () => {
+    const testBuild: build.Build = {
+      endpoints: {
+        func: {
+          region: "us-central1",
+          project: "test-project",
+          platform: "gcfv2",
+          runtime: "nodejs18",
+          entryPoint: "func1",
+          httpsTrigger: {},
+          secretEnvironmentVariables: [
+            { key: "API_KEY", secret: "API_KEY", projectId: "test-project" },
+            { key: "SMTP_ADDRESS", secret: " SMTP_ADDRESS", projectId: "test-project" },
+          ],
+        },
+      },
+      params: [
+        { type: "secret", name: "API_KEY" },
+        { type: "int", name: "PORT" },
+        { type: "secret", name: "SMTP_ADDRESS" },
+      ],
+      requiredAPIs: [],
+    };
+    build.applyKitSecretRefPrefix(testBuild, "foo");
+    expect(testBuild.params).to.deep.equal([
+      { type: "secret", name: "API_KEY", resourceId: "kit-foo-API_KEY" },
+      { type: "int", name: "PORT" },
+      { type: "secret", name: "SMTP_ADDRESS", resourceId: "kit-foo-SMTP_ADDRESS" },
+    ]);
+  });
+
+  it("prefixes all of the secretEnvVars", () => {
+    const testBuild: build.Build = {
+      endpoints: {
+        func: {
+          region: "us-central1",
+          project: "test-project",
+          platform: "gcfv2",
+          runtime: "nodejs18",
+          entryPoint: "func1",
+          httpsTrigger: {},
+          secretEnvironmentVariables: [
+            { key: "API_KEY", secret: "API_KEY", projectId: "test-project" },
+            { key: "SMTP_ADDRESS", secret: "SMTP_ADDRESS", projectId: "test-project" },
+          ],
+        },
+      },
+      params: [
+        { type: "secret", name: "API_KEY" },
+        { type: "int", name: "PORT" },
+        { type: "secret", name: "SMTP_ADDRESS" },
+      ],
+      requiredAPIs: [],
+    };
+    build.applyKitSecretRefPrefix(testBuild, "foo");
+    expect(testBuild.endpoints.func.secretEnvironmentVariables).to.deep.equal([
+      { key: "API_KEY", secret: "kit-foo-API_KEY", projectId: "test-project" },
+      { key: "SMTP_ADDRESS", secret: "kit-foo-SMTP_ADDRESS", projectId: "test-project" },
+    ]);
+  });
+});
+
 describe("applyEnvSecretBindingsToParams", () => {
   it("merges resourceId and version into matching SecretParams case-insensitively", () => {
     const testParams: Param[] = [
