@@ -741,11 +741,11 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
  * instance id of the kits instance being deployed. This ensures that secrets
  * associated with different instances of the same kit don't collide unless
  * explicitly configured to via .env file.
- * 
- * These will be overwritten if the secret is defined in .envs, since 
+ *
+ * These will be overwritten if the secret is defined in .envs, since
  * applyEnvSecretBindings will get run later in deploy prepare.
  */
-export function applyKitSecretRefPrefix(build: Build, instanceId: string) {
+export function applyKitSecretRefPrefix(build: Build, instanceId: string): void {
   for (const secretParam of build.params.filter((p) => p.type === "secret")) {
     secretParam.resourceId = `${instanceId}-${secretParam.name}`;
   }

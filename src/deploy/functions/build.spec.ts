@@ -741,7 +741,9 @@ describe("applyPrefix", () => {
       },
     });
     const longPrefix = "p".repeat(30);
-    expect(() => build.applyEndpointPrefix(testBuild, longPrefix)).to.throw(/exceeds 63 characters/);
+    expect(() => build.applyEndpointPrefix(testBuild, longPrefix)).to.throw(
+      /exceeds 63 characters/,
+    );
   });
 
   it("throws if prefix makes function id invalid (must start with a letter)", () => {
