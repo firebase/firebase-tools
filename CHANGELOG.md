@@ -1,0 +1,1 @@
+- [fixed] Improved error message with a link to the Firebase console when `projects:addfirebase` fails due to unaccepted Firebase Terms of Service.

@@ -411,6 +411,39 @@ describe("Project management", () => {
           operationResourceName: OPERATION_RESOURCE_NAME_2,
         });
       });
+
+      it("should reject with a link to the Firebase console if TOS has not been accepted", async () => {
+        nock(api.firebaseApiOrigin())
+          .post(`/v1beta1/projects/${PROJECT_ID}:addFirebase`)
+          .reply(403, {
+            error: {
+              code: 403,
+              message: "The caller does not have permission",
+              status: "PERMISSION_DENIED",
+              details: [
+                {
+                  "@type": "type.googleapis.com/google.rpc.DebugInfo",
+                  detail: "[ORIGINAL ERROR] generic::permission_denied: Firebase Tos Not Accepted",
+                },
+              ],
+            },
+          });
+
+        let err: FirebaseError | undefined;
+        try {
+          await projectManager.addFirebaseToCloudProject(PROJECT_ID);
+        } catch (e: unknown) {
+          err = e as FirebaseError;
+        }
+
+        expect(err).to.be.an.instanceOf(FirebaseError);
+        expect(err?.message).to.equal(
+          `Failed to add Firebase to Google Cloud Platform project because your account has not accepted the Firebase Terms of Service. Please accept the Terms of Service in the Firebase console at ${api.consoleOrigin()} and try again.`,
+        );
+        expect(err?.original).to.be.an.instanceOf(FirebaseError);
+        expect(nock.isDone()).to.be.true;
+        expect(pollOperationStub).to.be.not.called;
+      });
     });
 
     describe("getAvailableCloudProjectPage", () => {
