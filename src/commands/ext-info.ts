@@ -101,6 +101,12 @@ export const command = new Command("ext:info <extensionName>")
         lines.push(`* ${resource.name} (${resource.type})`);
       }
     }
+    if (spec.events && spec.events.length > 0) {
+      lines.push("", "**Events Emitted:**");
+      for (const event of spec.events) {
+        lines.push(`* ${event.type}` + (event.description ? `: ${event.description}` : ""));
+      }
+    }
     if (spec.apis) {
       lines.push("", "**APIs Used**:");
       for (const api of spec.apis) {
