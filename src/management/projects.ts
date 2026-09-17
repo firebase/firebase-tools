@@ -329,6 +329,21 @@ export async function createCloudProject(
   }
 }
 
+function isTosNotAcceptedError(err: unknown): boolean {
+  if (!(err instanceof FirebaseError) || !err.context) {
+    return false;
+  }
+  const body = (err.context as { body?: { error?: { details?: Array<{ detail?: unknown }> } } })
+    .body;
+  const details = body?.error?.details;
+  if (!Array.isArray(details)) {
+    return false;
+  }
+  return details.some(
+    (d) => typeof d?.detail === "string" && d.detail.includes("Firebase Tos Not Accepted"),
+  );
+}
+
 /**
  * Send an API request to add Firebase to the Google Cloud Platform project and poll the LRO
  * to get the new Firebase project information.
@@ -352,6 +367,12 @@ export async function addFirebaseToCloudProject(
     return projectInfo;
   } catch (err: any) {
     logger.debug(err.message);
+    if (isTosNotAcceptedError(err)) {
+      throw new FirebaseError(
+        `Failed to add Firebase to Google Cloud Platform project because your account has not accepted the Firebase Terms of Service. Please accept the Terms of Service in the Firebase console at ${api.consoleOrigin()} and try again.`,
+        { exit: 2, original: err },
+      );
+    }
     throw new FirebaseError(
       "Failed to add Firebase to Google Cloud Platform project. See firebase-debug.log for more info.",
       { exit: 2, original: err },

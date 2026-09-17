@@ -1,2 +1,3 @@
 - [changed] Improve formatting and user experience for Cloud Functions parameter and secret prompts.
 - Updated the Firebase SQL Connect local toolkit to v3.4.20.
+- [fixed] Improved error message with a link to the Firebase console when `projects:addfirebase` fails due to unaccepted Firebase Terms of Service.
