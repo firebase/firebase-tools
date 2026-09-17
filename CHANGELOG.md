@@ -5,3 +5,4 @@
 - ext:uninstall --immediate now warns about secrets bound to the extension that will be deleted and offers a migration path.
 - [fixed] Generate deterministic unsalted ETags for declarative security roles.
 - [fixed] Preselect the default values of list function params in multi-select prompts.
+- Updated the Firebase SQL Connect local toolkit to v3.4.20.

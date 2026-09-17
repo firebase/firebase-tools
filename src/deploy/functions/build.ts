@@ -8,11 +8,12 @@ import { FirebaseConfig } from "./args";
 import { Runtime } from "./runtimes/supported";
 import { ExprParseError } from "./cel";
 import { defineSecret } from "firebase-functions/params";
+import * as projects from "../../management/projects";
 
 export const REGION_TBD = "REGION_TBD";
 export const SECRET_REF_PREFIX = "FIREBASE_SECRET_REF_";
 // prettier-ignore
-const GCP_PROJECT_ID_PATTERN = "([a-z][-a-z0-9]{4,28}[a-z0-9])";
+const GCP_PROJECT_ID_OR_NUM_PATTERN = "((?:\\d+)|(?:[a-z][-a-z0-9]{4,28}[a-z0-9]))";
 export const GCP_SECRET_ID_PATTERN = "([a-zA-Z0-9-_]+)";
 export const SECRET_REF_SHORT_RE = new RegExp(
   "^" + // start of string
@@ -24,7 +25,7 @@ export const SECRET_REF_SHORT_RE = new RegExp(
 export const SECRET_REF_LONG_RE = new RegExp(
   "^" + // start of string
     "projects/" + // projects/
-    GCP_PROJECT_ID_PATTERN + // capture project ID
+    GCP_PROJECT_ID_OR_NUM_PATTERN + // capture project ID or number
     "/secrets/" + // /secrets/
     GCP_SECRET_ID_PATTERN + // capture secret ID
     "(?:(?:/versions/|:|#|@)" + // optionally: a group starting with ":", "/versions/", or a mistake (#/@) to warn for
@@ -794,6 +795,32 @@ export interface ParsedSecretRef {
 }
 
 /**
+ * Merges parsed secret references from .env files into declared SecretParams.
+ *
+ * For each binding, if a SecretParam with the matching name exists (matched case-insensitively),
+ * overrides its resourceId, version, and sets inLocalEnvironment to true so that downstream
+ * parameter resolution and prompting flows check the backing Secret in Secret Manager instead
+ * of prompting for a new value.
+ * @param params Array of declared parameters to update.
+ * @param envSecrets Map of environment variable names to their parsed secret references.
+ */
+export function applyEnvSecretBindingsToParams(
+  params: params.Param[],
+  envSecrets: Record<string, ParsedSecretRef>,
+): void {
+  for (const key of Object.keys(envSecrets)) {
+    const { secretId, version } = envSecrets[key];
+    for (const param of params) {
+      if (param.type === "secret" && param.name.toUpperCase() === key.toUpperCase()) {
+        param.resourceId = secretId;
+        param.version = version;
+        param.inLocalEnvironment = true;
+      }
+    }
+  }
+}
+
+/**
  * Applies overrides from the .env file binding Secrets to a different Cloud Secret Manager resource.
  * Secrets references are of the form csm://secretName/version, referencing a Secret in the same project as the Endpoint.
  * /version can be omitted and will cause the secret to resolve to whatever the latest version was at time of deploy.
@@ -802,10 +829,10 @@ export interface ParsedSecretRef {
  * 1) Check if a conflicting SecretParam with the same name exists. If so, override the param so that the prompting flow will look in the right place when deciding whether or not to create a new Secret.
  * 2) Upsert the binding directly into the Build's SecretEnvVars, which will cause it to be actually available in process.ENV
  */
-export function applyEnvSecretBindings(
+export async function applyEnvSecretBindingsToBuild(
   build: Build,
   envSecrets: Record<string, ParsedSecretRef>,
-): void {
+): Promise<void> {
   if (envSecrets.empty) {
     return;
   }
@@ -818,16 +845,21 @@ export function applyEnvSecretBindings(
     );
   }
 
+  applyEnvSecretBindingsToParams(build.params, envSecrets);
+
+  const projectNumberToId = new Map<string, string>();
   for (const key of Object.keys(envSecrets)) {
     const secretRef = envSecrets[key];
-    const { projectId, secretId, version } = secretRef;
-
-    for (const param of build.params) {
-      if (param.type === "secret" && param.name.toUpperCase() === key) {
-        param.resourceId = secretId;
-        param.version = version;
-        param.inLocalEnvironment = true;
+    let { projectId } = secretRef;
+    const { secretId, version } = secretRef;
+    if (projectId && /^\d+$/.test(projectId)) {
+      let resolvedId = projectNumberToId.get(projectId);
+      if (!resolvedId) {
+        const project = await projects.getProject(projectId);
+        resolvedId = project.projectId;
+        projectNumberToId.set(projectId, resolvedId);
       }
+      projectId = resolvedId;
     }
 
     for (const endpointName of Object.keys(build.endpoints)) {
