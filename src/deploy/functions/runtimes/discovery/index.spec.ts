@@ -1,5 +1,7 @@
 import { expect } from "chai";
 import * as fs from "fs/promises";
+import { EventEmitter } from "events";
+import { ChildProcess } from "child_process";
 import * as yaml from "yaml";
 import * as sinon from "sinon";
 import nock from "../../../../test/helpers/nock";
@@ -119,5 +121,86 @@ describe("detectFromPort", () => {
 
     const parsed = await discovery.detectFromPort(8080, "project", "nodejs16", 0, 500);
     expect(parsed).to.deep.equal(BUILD);
+  });
+
+  it("surfaces the admin process's exit code and stderr instead of waiting out the timeout", async () => {
+    // In case the first fetch attempt happens to land before the process-exit branch
+    // wins the race, resolve it successfully so it doesn't produce an unhandled rejection.
+    nock("http://127.0.0.1:8082").get("/__/functions.yaml").reply(200, YAML_TEXT);
+
+    const fakeStderr = new EventEmitter();
+    const fakeChildProcess = new EventEmitter() as unknown as ChildProcess;
+    (fakeChildProcess as unknown as { stderr: EventEmitter }).stderr = fakeStderr;
+
+    // Set a long overall timeout; the exit event should short-circuit well before it fires.
+    const detectPromise = discovery.detectFromPort(
+      8082,
+      "project",
+      "nodejs16",
+      0,
+      60_000,
+      fakeChildProcess,
+    );
+
+    // Emitted synchronously, before the event loop gets a chance to settle the in-flight
+    // fetch, so this deterministically wins the Promise.race in detectFromPort.
+    fakeStderr.emit("data", Buffer.from("ReferenceError: SOME_VAR is not defined"));
+    fakeChildProcess.emit("exit", 1);
+
+    await expect(detectPromise).to.eventually.be.rejectedWith(
+      FirebaseError,
+      /Process exited with code 1[\s\S]*ReferenceError: SOME_VAR is not defined/,
+    );
+  });
+
+  it("fails fast when the admin process exits cleanly before discovery completes", async () => {
+    // In case the first fetch attempt happens to land before the process-exit branch
+    // wins the race, resolve it successfully so it doesn't produce an unhandled rejection.
+    nock("http://127.0.0.1:8083").get("/__/functions.yaml").reply(200, YAML_TEXT);
+
+    const fakeChildProcess = new EventEmitter() as unknown as ChildProcess;
+    (fakeChildProcess as unknown as { stderr: EventEmitter }).stderr = new EventEmitter();
+
+    // Set a long overall timeout; the exit event should short-circuit well before it fires.
+    const detectPromise = discovery.detectFromPort(
+      8083,
+      "project",
+      "nodejs16",
+      0,
+      60_000,
+      fakeChildProcess,
+    );
+
+    // A code-0 (or signal, i.e. null) exit is just as unexpected as a non-zero one: the
+    // admin server should never go away on its own while discovery is still in flight.
+    fakeChildProcess.emit("exit", 0);
+
+    await expect(detectPromise).to.eventually.be.rejectedWith(
+      FirebaseError,
+      /Process exited with code 0/,
+    );
+  });
+
+  it("fails fast when the admin process is killed by a signal before discovery completes", async () => {
+    nock("http://127.0.0.1:8084").get("/__/functions.yaml").reply(200, YAML_TEXT);
+
+    const fakeChildProcess = new EventEmitter() as unknown as ChildProcess;
+    (fakeChildProcess as unknown as { stderr: EventEmitter }).stderr = new EventEmitter();
+
+    const detectPromise = discovery.detectFromPort(
+      8084,
+      "project",
+      "nodejs16",
+      0,
+      60_000,
+      fakeChildProcess,
+    );
+
+    fakeChildProcess.emit("exit", null);
+
+    await expect(detectPromise).to.eventually.be.rejectedWith(
+      FirebaseError,
+      /Process exited via a signal/,
+    );
   });
 });
