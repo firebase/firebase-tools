@@ -181,8 +181,9 @@ steps:
           echo "Skipping for preview version."
         fi
 
-  # Publish the Firebase docker image
-  - name: "gcr.io/cloud-builders/docker"
+  # Build and publish the Firebase docker image to staging
+  - id: "docker-build-push-staging"
+    name: "gcr.io/cloud-builders/docker"
     entrypoint: "bash"
     args:
       - "-c"
@@ -190,15 +191,107 @@ steps:
         if [ "${_VERSION}" != "preview" ]; then
           set -e
           VERSION_NUM="$$(cat /workspace/version_number.txt)"
-          REPO="us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase"
-          docker build -t "$${REPO}:$${VERSION_NUM}" -t "$${REPO}:latest" -f ./firebase-docker-image/Dockerfile ./firebase-docker-image
-          docker push "$${REPO}:$${VERSION_NUM}"
+          STAGING_REPO="us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/staging/firebase"
+          echo "Building Docker image for version $${VERSION_NUM}..."
+          docker build \
+            -t "$${STAGING_REPO}:$${VERSION_NUM}" \
+            -t "$${STAGING_REPO}:latest" \
+            -f ./firebase-docker-image/Dockerfile ./firebase-docker-image
+          echo "Pushing Docker image to staging repository..."
+          docker push "$${STAGING_REPO}:$${VERSION_NUM}"
+
+          DIGEST="$$(docker inspect "$${STAGING_REPO}:$${VERSION_NUM}" --format='{{range .RepoDigests}}{{println .}}{{end}}' | grep "/staging/firebase@" | head -n 1 | cut -d'@' -f2)"
+          if [ -z "$${DIGEST}" ]; then
+            echo "Fallback: fetching digest via RepoDigests index 0..."
+            DIGEST="$$(docker inspect --format='{{index .RepoDigests 0}}' "$${STAGING_REPO}:$${VERSION_NUM}" | cut -d'@' -f2)"
+          fi
+          echo "Staging image digest: $${DIGEST}"
+          echo "$${DIGEST}" > /workspace/docker_digest.txt
         else
           echo "Skipping docker build for preview version."
         fi
 
-images:
-  - "us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase"
+  # Promote image to production through Artifact Registry Exit Gate
+  - id: "promote-docker-image-to-prod"
+    name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
+    waitFor: ["docker-build-push-staging"]
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        if [ "${_VERSION}" != "preview" ]; then
+          set -e
+          VERSION_NUM="$$(cat /workspace/version_number.txt)"
+          DIGEST="$$(cat /workspace/docker_digest.txt)"
+          if [ -z "$${DIGEST}" ]; then
+            echo "Error: docker_digest.txt is empty or missing" >&2
+            exit 1
+          fi
+
+          LOCATION="us"
+          PROD_PROJECT="${_ARTIFACT_REGISTRY_PROJECT}"
+          STAGING_REPO="staging"
+          PROD_REPO="us"
+          PACKAGE_NAME="firebase"
+
+          echo "Promoting image $${PACKAGE_NAME}@$${DIGEST} from $${STAGING_REPO} to $${PROD_REPO} via Exit Gate..."
+          ACCESS_TOKEN="$$(gcloud auth print-access-token)"
+
+          PAYLOAD=$$(cat <<EOF
+          {
+            "source_repository": "projects/$${PROD_PROJECT}/locations/$${LOCATION}/repositories/$${STAGING_REPO}",
+            "source_version": "projects/$${PROD_PROJECT}/locations/$${LOCATION}/repositories/$${STAGING_REPO}/packages/$${PACKAGE_NAME}/versions/$${DIGEST}",
+            "attachment_behavior": "PUBLIC_BCID_VSA_ONLY"
+          }
+          EOF
+          )
+
+          RESP=$$(curl -s -S -f -X POST \
+            -H "Authorization: Bearer $${ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            "https://artifactregistry.googleapis.com/v1/projects/$${PROD_PROJECT}/locations/$${LOCATION}/repositories/$${PROD_REPO}:promoteArtifact" \
+            -d "$${PAYLOAD}")
+
+          OP_NAME=$$(python3 -c "import sys, json; print(json.loads(sys.stdin.read()).get('name', ''))" <<< "$${RESP}")
+          if [ -z "$${OP_NAME}" ]; then
+            echo "Error: Failed to initiate promotion operation. Response: $${RESP}" >&2
+            exit 1
+          fi
+
+          echo "Waiting for promotion operation $${OP_NAME} to complete..."
+          IS_DONE="False"
+          for i in $$(seq 1 60); do
+            OP_STATUS=$$(curl -s -S -H "Authorization: Bearer $${ACCESS_TOKEN}" \
+              "https://artifactregistry.googleapis.com/v1/$${OP_NAME}")
+            IS_DONE=$$(python3 -c "import sys, json; print(json.loads(sys.stdin.read()).get('done', False))" <<< "$${OP_STATUS}")
+            if [ "$${IS_DONE}" = "True" ]; then
+              HAS_ERROR=$$(python3 -c "import sys, json; print(json.loads(sys.stdin.read()).get('error', {}).get('message', ''))" <<< "$${OP_STATUS}")
+              if [ -n "$${HAS_ERROR}" ]; then
+                echo "Error: Artifact promotion failed: $${HAS_ERROR}" >&2
+                exit 1
+              fi
+              echo "Artifact promotion completed successfully!"
+              break
+            fi
+            sleep 5
+          done
+
+          if [ "$${IS_DONE}" != "True" ]; then
+            echo "Error: Timed out waiting for artifact promotion operation." >&2
+            exit 1
+          fi
+
+          echo "Adding production tags to promoted image in $${PROD_REPO}..."
+          gcloud artifacts docker tags add \
+            "us-docker.pkg.dev/$${PROD_PROJECT}/$${PROD_REPO}/$${PACKAGE_NAME}@$${DIGEST}" \
+            "us-docker.pkg.dev/$${PROD_PROJECT}/$${PROD_REPO}/$${PACKAGE_NAME}:$${VERSION_NUM}"
+          gcloud artifacts docker tags add \
+            "us-docker.pkg.dev/$${PROD_PROJECT}/$${PROD_REPO}/$${PACKAGE_NAME}@$${DIGEST}" \
+            "us-docker.pkg.dev/$${PROD_PROJECT}/$${PROD_REPO}/$${PACKAGE_NAME}:latest"
+          echo "Production tags added successfully."
+        else
+          echo "Skipping docker promotion for preview version."
+        fi
 
 timeout: 2400s # 40 minutes
 
