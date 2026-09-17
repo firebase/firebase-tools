@@ -1,2 +1,3 @@
 - [changed] Improve formatting and user experience for Cloud Functions parameter and secret prompts.
 - Updated the Firebase SQL Connect local toolkit to v3.4.20.
+- [fixed] Include emitted events in ext:info output.
