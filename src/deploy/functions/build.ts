@@ -362,7 +362,6 @@ export async function resolveBackend(opts: ResolveBackendOpts): Promise<{
     userEnvs: envWithTypes(opts.build.params, opts.userEnvs),
     codebase: opts.codebase,
     nonInteractive: opts.nonInteractive,
-    force: opts.force,
     isEmulator: opts.isEmulator,
   });
 

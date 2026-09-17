@@ -1111,7 +1111,6 @@ export async function promptAndWriteKitParams(
     userEnvs: typedUserEnvs,
     codebase: options.instanceId,
     nonInteractive: options.nonInteractive,
-    force: options.force,
   });
 
   functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);

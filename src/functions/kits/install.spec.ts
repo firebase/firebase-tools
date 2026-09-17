@@ -2369,7 +2369,6 @@ describe("functions/kits/install", () => {
         userEnvs: sinon.match.object,
         codebase: "inst",
         nonInteractive: false,
-        force: false,
       });
 
       expect(writeResolvedParamsStub).to.have.been.calledWith(
@@ -2415,7 +2414,6 @@ describe("functions/kits/install", () => {
         userEnvs: sinon.match.object,
         codebase: "inst",
         nonInteractive: false,
-        force: false,
       });
 
       expect(writeResolvedSecretRefsStub).to.have.been.calledWith(
@@ -2468,7 +2466,6 @@ describe("functions/kits/install", () => {
         userEnvs: sinon.match.object,
         codebase: "inst",
         nonInteractive: undefined,
-        force: undefined,
       });
     });
 
