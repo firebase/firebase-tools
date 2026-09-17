@@ -849,10 +849,16 @@ export async function loadCodebases(
       GOOGLE_CLOUD_QUOTA_PROJECT: projectId,
     });
     discoveredBuild.runtime = codebaseConfig.runtime;
+    // Mutate discoveredBuild to prevent collisions:
+    // - Endpoint names are prefixed with a kits instance ID, or a configured codebase prefix
+    // - The default resource ID a secret expects to find its backing Cloud Secret is prefixed with kits instance ID
     const prefix = isKitConfig(codebaseConfig)
       ? addKitPrefix(codebase)
       : codebaseConfig.prefix || "";
-    build.applyPrefix(discoveredBuild, prefix);
+    build.applyEndpointPrefix(discoveredBuild, prefix);
+    if (isKitConfig(codebaseConfig)) {
+      build.applyKitSecretRefPrefix(discoveredBuild, codebase);
+    }
     wantBuilds[codebase] = discoveredBuild;
   }
   return wantBuilds;

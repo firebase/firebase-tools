@@ -1089,6 +1089,10 @@ export async function promptAndWriteKitParams(
   const parsedSecretRefs = mapObject<string, build.ParsedSecretRef>(secretRefs, (unparsed) =>
     build.parseSecretRef(unparsed),
   );
+  const secretPrefixForInstance = addKitPrefix(options.instanceId);
+  for (const secretParam of options.params.filter((p) => params.isSecretParam(p))) {
+    secretParam.resourceId = `${secretPrefixForInstance}-${secretParam.name}`;
+  }
   build.applyEnvSecretBindingsToParams(options.params, parsedSecretRefs);
 
   let firebaseConfig: FirebaseConfig = { projectId: options.projectId };
@@ -1128,7 +1132,7 @@ export async function printKitFirstDeployReport(
     discoveredBuild = options.preDiscoveredBuild
       ? cloneDeep(options.preDiscoveredBuild)
       : await discoverKitBuild(options, options.absSourcePath);
-    build.applyPrefix(discoveredBuild, prefix);
+    build.applyEndpointPrefix(discoveredBuild, prefix);
   } catch (err: unknown) {
     logger.debug(`Could not discover kit build for reporting: ${getErrMsg(err)}`);
     return;

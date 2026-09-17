@@ -9,6 +9,7 @@ import { Runtime } from "./runtimes/supported";
 import { ExprParseError } from "./cel";
 import { defineSecret } from "firebase-functions/params";
 import * as projects from "../../management/projects";
+import { addKitPrefix } from "../../functions/projectConfig";
 
 export const REGION_TBD = "REGION_TBD";
 export const SECRET_REF_PREFIX = "FIREBASE_SECRET_REF_";
@@ -738,11 +739,35 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
 }
 
 /**
+ * Prefixes the resource IDs of any secret params in a build with the provided
+ * instance id of the kits instance being deployed. This ensures that secrets
+ * associated with different instances of the same kit don't collide unless
+ * explicitly configured to via .env file.
+ *
+ * These will be overwritten if the secret is defined in .envs, since
+ * applyEnvSecretBindings will get run later in deploy prepare.
+ */
+export function applyKitSecretRefPrefix(build: Build, instanceId: string): void {
+  const kitPrefix = addKitPrefix(instanceId);
+  for (const secretParam of build.params.filter((p): p is params.SecretParam =>
+    params.isSecretParam(p),
+  )) {
+    secretParam.resourceId = `${kitPrefix}-${secretParam.name}`;
+  }
+
+  for (const endpoint of Object.values(build.endpoints)) {
+    for (const envVar of endpoint.secretEnvironmentVariables ?? []) {
+      envVar.secret = `${kitPrefix}-${envVar.secret}`;
+    }
+  }
+}
+
+/**
  * Prefixes all endpoint IDs in a build with a given prefix.
  * This ensures that functions from different codebases or kits instances
  * don't conflict when deployed to the same project.
  */
-export function applyPrefix(build: Build, prefix: string): void {
+export function applyEndpointPrefix(build: Build, prefix: string): void {
   if (!prefix) {
     return;
   }

@@ -636,7 +636,13 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
         await this.loadDynamicExtensionBackends();
       }
-      build.applyPrefix(discoveredBuild, emulatableBackend.prefix || "");
+      build.applyEndpointPrefix(discoveredBuild, emulatableBackend.prefix || "");
+      if (emulatableBackend.env?.FIREBASE_KIT_INSTANCE_ID) {
+        build.applyKitSecretRefPrefix(
+          discoveredBuild,
+          emulatableBackend.env.FIREBASE_KIT_INSTANCE_ID,
+        );
+      }
       const resolution = await resolveBackend({
         build: discoveredBuild,
         firebaseConfig: JSON.parse(firebaseConfig),
