@@ -35,6 +35,7 @@ describe("cloudFunctions", () => {
         .reply(200, {});
 
       nock(functionsUrl)
+        .matchHeader("content-type", /application\/cloudevents\+json/)
         .post("/functions/projects/project-foo/trigger_multicast", {
           specversion: "1.0",
           id: /.*/,
@@ -70,6 +71,7 @@ describe("cloudFunctions", () => {
         .reply(200, {});
 
       nock(functionsUrl)
+        .matchHeader("content-type", /application\/cloudevents\+json/)
         .post("/functions/projects/project-foo/trigger_multicast", {
           specversion: "1.0",
           id: /.*/,
@@ -103,6 +105,7 @@ describe("cloudFunctions", () => {
         .replyWithError("v1 network error");
 
       nock(functionsUrl)
+        .matchHeader("content-type", /application\/cloudevents\+json/)
         .post("/functions/projects/project-foo/trigger_multicast", {
           specversion: "1.0",
           id: /.*/,

@@ -364,13 +364,14 @@ export class FunctionsEmulator implements EmulatorInstance {
       const triggers = this.multicastTriggers[triggerKey] || [];
 
       const { host, port } = this.getInfo();
+      const eventTenantId = getEventTenantId(event);
       for (const triggerId of triggers) {
         const record = this.getTriggerRecordByKey(triggerId);
 
         // If the trigger has a tenant filter ({ tenantId: "..." }),
         // ensure the event matches the expected tenant.
         const filterTenantId = record?.def?.eventTrigger?.eventFilters?.tenantid;
-        if (filterTenantId && filterTenantId !== getEventTenantId(event)) {
+        if (filterTenantId && filterTenantId !== eventTenantId) {
           continue;
         }
         const work: Work = () => {

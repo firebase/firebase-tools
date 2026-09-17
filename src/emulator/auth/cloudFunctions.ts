@@ -19,6 +19,8 @@ type CreateEvent = EventContext & {
   data: UserInfoPayload;
 };
 
+type AuthCloudEventData = { value: UserInfoPayload } | { oldValue: UserInfoPayload };
+
 export class AuthCloudFunction {
   private logger = EmulatorLogger.forEmulator(Emulators.AUTH);
   private enabled = false;
@@ -105,9 +107,9 @@ export class AuthCloudFunction {
   private createCloudEventRequestBody(
     action: AuthCloudFunctionAction,
     userInfoPayload: UserInfoPayload,
-  ): CloudEvent<Record<string, UserInfoPayload>> & { tenantid?: string } {
+  ): CloudEvent<AuthCloudEventData> & { tenantid?: string } {
     const ceAction = AUTH_V2_ACTION_MAP[action];
-    const cloudEvent: CloudEvent<Record<string, UserInfoPayload>> & { tenantid?: string } = {
+    const cloudEvent: CloudEvent<AuthCloudEventData> & { tenantid?: string } = {
       specversion: "1.0",
       id: randomUUID(),
       time: new Date().toISOString(),

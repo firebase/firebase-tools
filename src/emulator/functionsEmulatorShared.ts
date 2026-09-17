@@ -30,9 +30,10 @@ const V2_EVENTS = [
 ];
 
 /**
- * Extracts the tenant ID from an event payload or CloudEvent attribute.
- * Checks both top-level CloudEvent attributes (event.tenantid) and nested
- * payload properties (event.data.tenantId or event.data.value.tenantId).
+ * Extracts the tenant ID from an Auth event payload.
+ *
+ * For 2nd Gen Auth events, CloudEvents v1.0 extension attributes are stored at the top level
+ * using lowercase attribute names (`event.tenantid`), matching Eventarc's attribute-based filtering.
  */
 export function getEventTenantId(
   eventPayload: Record<string, unknown> | null | undefined,
@@ -40,28 +41,14 @@ export function getEventTenantId(
   if (!eventPayload || typeof eventPayload !== "object") {
     return undefined;
   }
+
+  // 2nd Gen Eventarc CloudEvent top-level context attribute (`tenantid`).
+  // Per CloudEvents v1.0 specification, extension attribute names must be lowercase.
+  // In Firebase Auth 2nd Gen triggers, tenant filtering matches against this attribute.
   if (typeof eventPayload.tenantid === "string") {
     return eventPayload.tenantid;
   }
-  const data = eventPayload.data;
-  if (data && typeof data === "object") {
-    const dataObj = data as Record<string, unknown>;
-    if (typeof dataObj.tenantId === "string") {
-      return dataObj.tenantId;
-    }
-    if (dataObj.value && typeof dataObj.value === "object") {
-      const valObj = dataObj.value as Record<string, unknown>;
-      if (typeof valObj.tenantId === "string") {
-        return valObj.tenantId;
-      }
-    }
-    if (dataObj.oldValue && typeof dataObj.oldValue === "object") {
-      const oldObj = dataObj.oldValue as Record<string, unknown>;
-      if (typeof oldObj.tenantId === "string") {
-        return oldObj.tenantId;
-      }
-    }
-  }
+
   return undefined;
 }
 
