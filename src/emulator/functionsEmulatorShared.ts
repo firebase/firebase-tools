@@ -26,7 +26,44 @@ const V2_EVENTS = [
   ...events.v2.STORAGE_EVENTS,
   ...events.v2.DATABASE_EVENTS,
   ...events.v2.FIRESTORE_EVENTS,
+  ...events.v2.AUTH_EVENTS,
 ];
+
+/**
+ * Extracts the tenant ID from an event payload or CloudEvent attribute.
+ * Checks both top-level CloudEvent attributes (event.tenantid) and nested
+ * payload properties (event.data.tenantId or event.data.value.tenantId).
+ */
+export function getEventTenantId(
+  eventPayload: Record<string, unknown> | null | undefined,
+): string | undefined {
+  if (!eventPayload || typeof eventPayload !== "object") {
+    return undefined;
+  }
+  if (typeof eventPayload.tenantid === "string") {
+    return eventPayload.tenantid;
+  }
+  const data = eventPayload.data;
+  if (data && typeof data === "object") {
+    const dataObj = data as Record<string, unknown>;
+    if (typeof dataObj.tenantId === "string") {
+      return dataObj.tenantId;
+    }
+    if (dataObj.value && typeof dataObj.value === "object") {
+      const valObj = dataObj.value as Record<string, unknown>;
+      if (typeof valObj.tenantId === "string") {
+        return valObj.tenantId;
+      }
+    }
+    if (dataObj.oldValue && typeof dataObj.oldValue === "object") {
+      const oldObj = dataObj.oldValue as Record<string, unknown>;
+      if (typeof oldObj.tenantId === "string") {
+        return oldObj.tenantId;
+      }
+    }
+  }
+  return undefined;
+}
 
 /**
  * Label for eventarc event sources.
@@ -213,7 +250,7 @@ export function emulatedFunctionsFromEndpoints(
           resource: eventTrigger.eventFilters!.resource,
         };
       } else {
-        // TODO(colerogers): v2 events implemented are pubsub, storage, rtdb, and custom events
+        // v2 events implemented are pubsub, storage, rtdb, firestore, alerts, auth, and custom events
         if (!eventServiceImplemented(eventTrigger.eventType) && !eventTrigger.channel) {
           continue;
         }
@@ -385,12 +422,12 @@ export function getServiceFromEventType(eventType: string): string {
   if (eventType.includes("firebasealerts")) {
     return Constants.SERVICE_FIREALERTS;
   }
+  if (eventType.includes("auth")) {
+    return Constants.SERVICE_AUTH;
+  }
   // Below this point are services that do not have a emulator.
   if (eventType.includes("analytics")) {
     return Constants.SERVICE_ANALYTICS;
-  }
-  if (eventType.includes("auth")) {
-    return Constants.SERVICE_AUTH;
   }
   if (eventType.includes("crashlytics")) {
     return Constants.SERVICE_CRASHLYTICS;

@@ -295,4 +295,61 @@ describe("FunctionsEmulatorShared", () => {
       });
     }
   });
+
+  describe(`${functionsEmulatorShared.eventServiceImplemented.name}`, () => {
+    it("should return true for v2 auth events", () => {
+      expect(
+        functionsEmulatorShared.eventServiceImplemented("google.firebase.auth.user.v2.created"),
+      ).to.be.true;
+      expect(
+        functionsEmulatorShared.eventServiceImplemented("google.firebase.auth.user.v2.deleted"),
+      ).to.be.true;
+    });
+  });
+
+  describe(`${functionsEmulatorShared.getEventTenantId.name}`, () => {
+    it("should extract tenant ID from top-level CloudEvent attribute", () => {
+      const event = {
+        specversion: "1.0",
+        type: "google.firebase.auth.user.v2.created",
+        tenantid: "tenant-top-level",
+        data: { value: { uid: "user-1" } },
+      };
+      expect(functionsEmulatorShared.getEventTenantId(event)).to.equal("tenant-top-level");
+    });
+
+    it("should extract tenant ID from legacy v1 event payload", () => {
+      const event = {
+        eventType: "providers/firebase.auth/eventTypes/user.create",
+        data: { uid: "user-1", tenantId: "tenant-v1" },
+      };
+      expect(functionsEmulatorShared.getEventTenantId(event)).to.equal("tenant-v1");
+    });
+
+    it("should extract tenant ID from v2 user created event payload", () => {
+      const event = {
+        type: "google.firebase.auth.user.v2.created",
+        data: { value: { uid: "user-1", tenantId: "tenant-v2-created" } },
+      };
+      expect(functionsEmulatorShared.getEventTenantId(event)).to.equal("tenant-v2-created");
+    });
+
+    it("should extract tenant ID from v2 user deleted event payload", () => {
+      const event = {
+        type: "google.firebase.auth.user.v2.deleted",
+        data: { oldValue: { uid: "user-1", tenantId: "tenant-v2-deleted" } },
+      };
+      expect(functionsEmulatorShared.getEventTenantId(event)).to.equal("tenant-v2-deleted");
+    });
+
+    it("should return undefined when no tenant ID is present", () => {
+      const event = {
+        type: "google.firebase.auth.user.v2.created",
+        data: { value: { uid: "user-1" } },
+      };
+      expect(functionsEmulatorShared.getEventTenantId(event)).to.be.undefined;
+      expect(functionsEmulatorShared.getEventTenantId(null)).to.be.undefined;
+      expect(functionsEmulatorShared.getEventTenantId(undefined)).to.be.undefined;
+    });
+  });
 });

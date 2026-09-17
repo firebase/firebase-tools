@@ -6,8 +6,14 @@ import { Emulators } from "../types";
 import { EmulatorLogger } from "../emulatorLogger";
 import { EmulatorRegistry } from "../registry";
 import { UserInfo, ProviderUserInfo } from "./state";
+import { CloudEvent } from "../events/types";
 
 type AuthCloudFunctionAction = "create" | "delete";
+
+const AUTH_V2_ACTION_MAP: Record<AuthCloudFunctionAction, string> = {
+  create: "created",
+  delete: "deleted",
+};
 
 type CreateEvent = EventContext & {
   data: UserInfoPayload;
@@ -25,21 +31,46 @@ export class AuthCloudFunction {
     if (!this.enabled) return;
 
     const userInfoPayload = this.createUserInfoPayload(user);
-    const multicastEventBody = this.createEventRequestBody(action, userInfoPayload);
+
+    // 1. Prepare legacy 1st Gen Auth event payload (e.g. functions.auth.user().onCreate)
+    const legacyEventBody = this.createEventRequestBody(action, userInfoPayload);
+
+    // 2. Prepare modern 2nd Gen CloudEvent payload (e.g. onUserCreated / onUserDeleted)
+    const v2CloudEventBody = this.createCloudEventRequestBody(action, userInfoPayload);
 
     const c = EmulatorRegistry.client(Emulators.FUNCTIONS);
-    let res;
+    const errStatus: number[] = [];
     let err: Error | undefined;
+    // Dispatch 1st Gen event to Functions Emulator
     try {
-      res = await c.post(
+      const legacyRes = await c.post(
         `/functions/projects/${this.projectId}/trigger_multicast`,
-        multicastEventBody,
+        legacyEventBody,
       );
-    } catch (e: any) {
-      err = e;
+      if (legacyRes.status !== 200) {
+        errStatus.push(legacyRes.status);
+      }
+    } catch (e: unknown) {
+      err = e instanceof Error ? e : new Error(String(e));
     }
 
-    if (err || res?.status !== 200) {
+    // Dispatch 2nd Gen Eventarc CloudEvent to Functions Emulator
+    try {
+      const v2Res = await c.post(
+        `/functions/projects/${this.projectId}/trigger_multicast`,
+        v2CloudEventBody,
+        {
+          headers: { "Content-Type": "application/cloudevents+json; charset=UTF-8" },
+        },
+      );
+      if (v2Res.status !== 200) {
+        errStatus.push(v2Res.status);
+      }
+    } catch (e: unknown) {
+      err = e instanceof Error ? e : new Error(String(e));
+    }
+
+    if (err || errStatus.length > 0) {
       this.logger.logLabeled(
         "WARN",
         "functions",
@@ -63,6 +94,32 @@ export class AuthCloudFunction {
       timestamp: new Date().toISOString(),
       data: userInfoPayload,
     };
+  }
+
+  /**
+   * Constructs an Eventarc CloudEvents v1.0 payload for 2nd Gen Auth triggers:
+   * - type: "google.firebase.auth.user.v2.created" or "...deleted"
+   * - data: protobuf envelope ({ value: user } on create, { oldValue: user } on delete)
+   * - tenantid: top-level CloudEvent attribute used for tenant-scoped filtering
+   */
+  private createCloudEventRequestBody(
+    action: AuthCloudFunctionAction,
+    userInfoPayload: UserInfoPayload,
+  ): CloudEvent<Record<string, UserInfoPayload>> & { tenantid?: string } {
+    const ceAction = AUTH_V2_ACTION_MAP[action];
+    const cloudEvent: CloudEvent<Record<string, UserInfoPayload>> & { tenantid?: string } = {
+      specversion: "1.0",
+      id: randomUUID(),
+      time: new Date().toISOString(),
+      type: `google.firebase.auth.user.v2.${ceAction}`,
+      source: `//identitytoolkit.googleapis.com/projects/${this.projectId}`,
+      subject: `users/${userInfoPayload.uid}`,
+      data: action === "create" ? { value: userInfoPayload } : { oldValue: userInfoPayload },
+    };
+    if (userInfoPayload.tenantId) {
+      cloudEvent.tenantid = userInfoPayload.tenantId;
+    }
+    return cloudEvent;
   }
 
   private createUserInfoPayload(user: UserInfo): UserInfoPayload {
