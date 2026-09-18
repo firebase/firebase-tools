@@ -344,7 +344,6 @@ export interface ResolveBackendOpts {
   codebase: string;
   nonInteractive?: boolean;
   isEmulator?: boolean;
-  force?: boolean;
 }
 
 /**

@@ -2351,7 +2351,6 @@ describe("functions/kits/install", () => {
         absSourcePath: "/mock/project/source",
         instanceId: "inst",
         nonInteractive: false,
-        force: false,
         params: paramList,
       });
 
@@ -2404,7 +2403,6 @@ describe("functions/kits/install", () => {
         absSourcePath: "/mock/project/source",
         instanceId: "inst",
         nonInteractive: false,
-        force: false,
         params: paramList,
       });
 

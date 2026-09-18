@@ -160,7 +160,6 @@ export interface PromptAndWriteKitParamsOptions {
   absSourcePath: string;
   instanceId: string;
   nonInteractive?: boolean;
-  force?: boolean;
   params?: params.Param[];
 }
 
@@ -1354,7 +1353,6 @@ export async function addKitInstanceOrConfigureProject(
         absSourcePath,
         instanceId,
         nonInteractive: options.nonInteractive,
-        force: options.force,
         params: discoveredBuild.params,
       });
     }
@@ -1604,7 +1602,6 @@ export async function installKitOrInstance(
           absSourcePath,
           instanceId,
           nonInteractive: options.nonInteractive,
-          force: options.force,
           params: discoveredBuild.params,
         });
       }
