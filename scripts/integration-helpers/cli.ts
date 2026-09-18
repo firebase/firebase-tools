@@ -103,18 +103,24 @@ export class CLIProcess {
 
       return Promise.race([exitPromise, timeoutPromise]).then(() => {
         clearTimeout(timeoutId);
-        this.process = undefined;
+        if (this.process === p) {
+          this.process = undefined;
+        }
       });
     }
 
     const pid = p.pid;
     if (!pid || pid <= 0) {
-      this.process = undefined;
+      if (this.process === p) {
+        this.process = undefined;
+      }
       return Promise.resolve();
     }
 
     if (p.exitCode !== null || p.signalCode !== null) {
-      this.process = undefined;
+      if (this.process === p) {
+        this.process = undefined;
+      }
       return Promise.resolve();
     }
 
@@ -148,7 +154,9 @@ export class CLIProcess {
 
     return exitPromise.then(() => {
       clearTimeout(timeoutId);
-      this.process = undefined;
+      if (this.process === p) {
+        this.process = undefined;
+      }
     });
   }
 }
