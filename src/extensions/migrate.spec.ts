@@ -782,7 +782,7 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       expect(confirmStub).to.have.been.calledOnceWith(
         sinon.match({
           message: sinon.match(
-            /Functions kit email-1 successfully deployed.*uninstall extension instance email-1/,
+            /Functions kit email-1 successfully deployed.*uninstall extension instance email-1.*Eventarc/,
           ),
           default: false,
         }),
