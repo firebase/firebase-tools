@@ -239,6 +239,31 @@ export function validateNpmPackageName(packageNameOrSpecifier: string): void {
 }
 
 /**
+ * Validates that an npm package or package@version specifier has a valid name format
+ * and exists in the npm registry.
+ */
+export async function validateNpmPackageExists(rawPkgName: string): Promise<void> {
+  validateNpmPackageName(rawPkgName);
+  try {
+    const output = await spawnWithOutput("npm", ["view", rawPkgName, "version"]);
+    if (!output.trim()) {
+      throw new Error(`No version found for '${rawPkgName}'`);
+    }
+  } catch (err: unknown) {
+    const errMsg = getErrMsg(err);
+    if (errMsg.includes("E404") || errMsg.includes("404") || errMsg.includes("No version found")) {
+      throw new FirebaseError(
+        `NPM package '${rawPkgName}' could not be found in the npm registry. Please verify the package name and version.`,
+        { original: err instanceof Error ? err : undefined },
+      );
+    }
+    throw new FirebaseError(`Failed to verify if NPM package '${rawPkgName}' exists: ${errMsg}`, {
+      original: err instanceof Error ? err : undefined,
+    });
+  }
+}
+
+/**
  * Sanitizes an npm package name or specifier into a valid kit identifier.
  * e.g., "@firebase-function-kits/firestore-bigquery-export@1.0.0" -> "firestore-bigquery-export"
  * e.g., "my-kit@next" -> "my-kit"
@@ -1440,7 +1465,6 @@ export async function resolvePackageSource(
     throw new FirebaseError("Set the --package option to a valid NPM package and try again.");
   }
 
-  validateNpmPackageName(rawPkgName);
   const { packageName } = parseNpmPackageSpecifier(rawPkgName);
 
   const isThirdParty = await promptSecurityConfirmation({
@@ -1511,6 +1535,10 @@ export async function installKitOrInstance(
   }
   if (options.directory && options.template) {
     throw new FirebaseError("Cannot specify --template with --directory.");
+  }
+
+  if (options.package) {
+    await validateNpmPackageExists(options.package);
   }
 
   const originalFunctions = cloneDeep(options.config.src.functions);
