@@ -3,7 +3,11 @@ import * as sinon from "sinon";
 import * as checkIam from "./checkIam";
 import * as storage from "../../gcp/storage";
 import * as rm from "../../gcp/resourceManager";
+import * as iam from "../../gcp/iam";
 import * as backend from "./backend";
+import * as args from "./args";
+import { Options } from "../../options";
+import { FirebaseError } from "../../error";
 
 const projectId = "my-project";
 const projectNumber = "123456789";
@@ -72,6 +76,166 @@ describe("checkIam", () => {
           members: [`serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`],
         },
       ]);
+    });
+  });
+
+  describe("checkServiceAccountIam", () => {
+    let getServiceAccountStub: sinon.SinonStub;
+    let testResourceIamPermissionsStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      getServiceAccountStub = sinon
+        .stub(iam, "getServiceAccount")
+        .throws("unexpected call to iam.getServiceAccount");
+      testResourceIamPermissionsStub = sinon.stub(iam, "testResourceIamPermissions").resolves({
+        allowed: ["iam.serviceAccounts.actAs"],
+        missing: [],
+        passed: true,
+      });
+    });
+
+    afterEach(() => {
+      getServiceAccountStub.restore();
+      testResourceIamPermissionsStub.restore();
+    });
+
+    it("should pass when actAs is granted", async () => {
+      await expect(checkIam.checkServiceAccountIam(projectId)).to.not.be.rejected;
+    });
+
+    it("should throw if actAs permission is missing", async () => {
+      testResourceIamPermissionsStub.resolves({
+        allowed: [],
+        missing: ["iam.serviceAccounts.actAs"],
+        passed: false,
+      });
+
+      await expect(checkIam.checkServiceAccountIam(projectId)).to.be.rejectedWith(
+        FirebaseError,
+        /Missing permissions required for functions deploy/,
+      );
+    });
+  });
+
+  describe("checkDefaultServiceAccountEnabled", () => {
+    let getServiceAccountStub: sinon.SinonStub;
+    const saEmail = `${projectId}@appspot.gserviceaccount.com`;
+    const context: args.Context = { projectId };
+    const options = {} as Options;
+
+    const gcfv1EndpointWithDefaultSA: backend.Endpoint = {
+      id: "gcfv1fn",
+      entryPoint: "gcfv1fn",
+      platform: "gcfv1",
+      httpsTrigger: {},
+      ...SPEC,
+    };
+    const gcfv1EndpointWithCustomSA: backend.Endpoint = {
+      id: "gcfv1fnCustomSA",
+      entryPoint: "gcfv1fnCustomSA",
+      platform: "gcfv1",
+      serviceAccount: "custom@my-project.iam.gserviceaccount.com",
+      httpsTrigger: {},
+      ...SPEC,
+    };
+    const gcfv2Endpoint: backend.Endpoint = {
+      id: "gcfv2fn",
+      entryPoint: "gcfv2fn",
+      platform: "gcfv2",
+      httpsTrigger: {},
+      ...SPEC,
+    };
+
+    function payloadFor(...endpoints: backend.Endpoint[]): args.Payload {
+      return {
+        functions: {
+          codebase: {
+            wantBackend: backend.of(...endpoints),
+            haveBackend: backend.empty(),
+          },
+        },
+      };
+    }
+
+    beforeEach(() => {
+      getServiceAccountStub = sinon.stub(iam, "getServiceAccount");
+    });
+
+    afterEach(() => {
+      getServiceAccountStub.restore();
+    });
+
+    it("should not look up the service account when there are no 1st gen endpoints", async () => {
+      await expect(
+        checkIam.checkDefaultServiceAccountEnabled(context, options, payloadFor(gcfv2Endpoint)),
+      ).to.not.be.rejected;
+      expect(getServiceAccountStub).to.not.have.been.called;
+    });
+
+    it("should not look up the service account when the 1st gen endpoint has a custom service account", async () => {
+      await expect(
+        checkIam.checkDefaultServiceAccountEnabled(
+          context,
+          options,
+          payloadFor(gcfv1EndpointWithCustomSA),
+        ),
+      ).to.not.be.rejected;
+      expect(getServiceAccountStub).to.not.have.been.called;
+    });
+
+    it("should pass if the default service account exists and is enabled", async () => {
+      getServiceAccountStub.resolves({ disabled: false } as iam.ServiceAccount);
+
+      await expect(
+        checkIam.checkDefaultServiceAccountEnabled(
+          context,
+          options,
+          payloadFor(gcfv1EndpointWithDefaultSA),
+        ),
+      ).to.not.be.rejected;
+      expect(getServiceAccountStub).to.have.been.calledWith(projectId, saEmail);
+    });
+
+    it("should throw a helpful error if the default service account is disabled", async () => {
+      getServiceAccountStub.resolves({ disabled: true } as iam.ServiceAccount);
+
+      await expect(
+        checkIam.checkDefaultServiceAccountEnabled(
+          context,
+          options,
+          payloadFor(gcfv1EndpointWithDefaultSA),
+        ),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        new RegExp(
+          `${saEmail}.*is disabled[\\s\\S]*` +
+            `https://console.cloud.google.com/iam-admin/serviceaccounts\\?project=${projectId}`,
+        ),
+      );
+    });
+
+    it("should throw a helpful error if the default service account does not exist", async () => {
+      getServiceAccountStub.rejects({ status: 404 });
+
+      await expect(
+        checkIam.checkDefaultServiceAccountEnabled(
+          context,
+          options,
+          payloadFor(gcfv1EndpointWithDefaultSA),
+        ),
+      ).to.be.rejectedWith(FirebaseError, new RegExp(`${saEmail}.*does not exist`));
+    });
+
+    it("should fail open if the lookup errors for a reason other than a missing account", async () => {
+      getServiceAccountStub.rejects({ status: 403 });
+
+      await expect(
+        checkIam.checkDefaultServiceAccountEnabled(
+          context,
+          options,
+          payloadFor(gcfv1EndpointWithDefaultSA),
+        ),
+      ).to.not.be.rejected;
     });
   });
 
