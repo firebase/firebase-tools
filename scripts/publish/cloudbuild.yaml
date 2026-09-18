@@ -262,16 +262,31 @@ steps:
           IS_DONE="False"
           for i in $$(seq 1 60); do
             OP_STATUS=$$(curl -s -S -H "Authorization: Bearer $${ACCESS_TOKEN}" \
-              "https://artifactregistry.googleapis.com/v1/$${OP_NAME}")
-            IS_DONE=$$(python3 -c "import sys, json; print(json.loads(sys.stdin.read()).get('done', False))" <<< "$${OP_STATUS}")
-            if [ "$${IS_DONE}" = "True" ]; then
-              HAS_ERROR=$$(python3 -c "import sys, json; print(json.loads(sys.stdin.read()).get('error', {}).get('message', ''))" <<< "$${OP_STATUS}")
-              if [ -n "$${HAS_ERROR}" ]; then
-                echo "Error: Artifact promotion failed: $${HAS_ERROR}" >&2
+              "https://artifactregistry.googleapis.com/v1/$${OP_NAME}" || echo "")
+            if [ -n "$${OP_STATUS}" ]; then
+              PARSE_RESULT=$$(python3 -c "
+        import sys, json
+        try:
+            data = json.loads(sys.stdin.read())
+            if data.get('done', False):
+                error = data.get('error')
+                if error:
+                    print('ERROR:' + error.get('message', 'Unknown error'))
+                else:
+                    print('DONE')
+            else:
+                print('PENDING')
+        except Exception:
+            print('PENDING')
+        " <<< "$${OP_STATUS}")
+              if [ "$${PARSE_RESULT}" = "DONE" ]; then
+                IS_DONE="True"
+                echo "Artifact promotion completed successfully!"
+                break
+              elif [[ "$${PARSE_RESULT}" == ERROR:* ]]; then
+                echo "Error: Artifact promotion failed: $${PARSE_RESULT#ERROR:}" >&2
                 exit 1
               fi
-              echo "Artifact promotion completed successfully!"
-              break
             fi
             sleep 5
           done
