@@ -113,7 +113,7 @@ function printEmulatorOverview(options: any): void {
           uiLink = stylizeLink(url.toString());
         }
 
-        return [emulatorName, listen, uiLink];
+        return [emulatorName, `http://${listen}`, uiLink];
       })
       .map((col) => col.slice(0, head.length))
       .filter((v) => v),
