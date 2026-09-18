@@ -27,13 +27,26 @@ process.on("unhandledRejection", (error) => {
   throw error;
 });
 
+let suiteFakes = new Set();
+
 /**
  * Global teardown hook executed after every test case.
- * Hermetically restores Sinon stubs, spies, and mocks, resets standard Nock
- * HTTP interceptors, and resets custom Undici Nock interceptors if loaded.
+ * Hermetically restores Sinon stubs, spies, and mocks created during the test,
+ * resets standard Nock HTTP interceptors, and resets custom Undici Nock interceptors if loaded.
  */
 function cleanup() {
-  sinon.restore();
+  if (typeof sinon.getFakes === "function") {
+    for (const fake of sinon.getFakes()) {
+      if (!suiteFakes.has(fake)) {
+        if (typeof fake.restore === "function") {
+          fake.restore();
+        }
+      }
+    }
+  } else {
+    sinon.restore();
+  }
+
   nock.cleanAll();
 
   // Safely clean up custom nock (src/test/helpers/nock.ts) if required by tests
@@ -55,5 +68,8 @@ function cleanup() {
 }
 
 exports.mochaHooks = {
+  beforeEach() {
+    suiteFakes = new Set(typeof sinon.getFakes === "function" ? sinon.getFakes() : []);
+  },
   afterEach: cleanup,
 };
