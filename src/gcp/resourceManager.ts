@@ -1,7 +1,8 @@
-import { findIndex } from "lodash";
 import { resourceManagerOrigin } from "../api";
 import { Client } from "../apiv2";
-import { Binding, getServiceAccount, Policy } from "./iam";
+import { getErrMsg, getErrStatus } from "../error";
+import * as utils from "../utils";
+import { Binding, getServiceAccount, mergeBindings, Policy } from "./iam";
 
 const API_VERSION = "v1";
 
@@ -54,11 +55,42 @@ export async function setIamPolicy(
 }
 
 /**
+ * Determines whether an IAM policy modification error is transient and safe to retry.
+ *
+ * Retried errors:
+ * 1. HTTP 409 (ABORTED): Policy update conflict ("There were concurrent policy changes.").
+ *    Occurs when another operation updates the IAM policy concurrently, invalidating the etag.
+ *    Retrying re-fetches the latest policy with a fresh etag and reapplies the desired bindings.
+ * 2. HTTP 400 (INVALID_ARGUMENT) with message like "Service account ... does not exist":
+ *    Occurs due to cross-region IAM eventual consistency lag immediately after service account creation.
+ *    Retrying absorbs this replication window.
+ *
+ * Fast-failed errors (returns false):
+ * - Always returns false for all non-4xx status codes (such as 5xx server errors or non-HTTP errors).
+ * - Returns false for all other 4xx status codes (e.g. 403, 404), as well as non-retryable 400 errors
+ *   (such as "Role roles/<name> does not exist.") which represent permanent configuration or permission
+ *   failures that will not resolve on retry.
+ */
+function isRetryableIamError(err: unknown): boolean {
+  const status = getErrStatus(err);
+  if (status === 409) {
+    return true;
+  }
+  const msg = getErrMsg(err).toLowerCase();
+  const hasSa = msg.includes("service account") || msg.includes("serviceaccount");
+  if (status === 400 && hasSa && msg.includes("does not exist")) {
+    return true;
+  }
+  return false;
+}
+
+/**
  * Update the IAM Policy of a project to include a service account in a role.
  *
  * @param projectId the id of the project whose IAM Policy you want to set
  * @param serviceAccountName the name of the service account
  * @param roles the new roles of the service account
+ * @param skipAccountLookup whether to skip fetching the full service account details
  */
 export async function addServiceAccountToRoles(
   projectId: string,
@@ -66,44 +98,39 @@ export async function addServiceAccountToRoles(
   roles: string[],
   skipAccountLookup = false,
 ): Promise<Policy> {
-  const [{ name: fullServiceAccountName }, projectPolicy] = await Promise.all([
-    skipAccountLookup
-      ? Promise.resolve({ name: serviceAccountName })
-      : getServiceAccount(projectId, serviceAccountName),
-    getIamPolicy(projectId),
-  ]);
-
-  projectPolicy.bindings = projectPolicy.bindings || [];
+  const { name: fullServiceAccountName } = skipAccountLookup
+    ? { name: serviceAccountName }
+    : await getServiceAccount(projectId, serviceAccountName);
 
   // The way the service account name is formatted in the Policy object
   // https://cloud.google.com/iam/docs/reference/rest/v1/Policy
   // serviceAccount:my-project-id@appspot.gserviceaccount.com
   const newMemberName = `serviceAccount:${fullServiceAccountName.split("/").pop()}`;
 
-  roles.forEach((roleName) => {
-    let bindingIndex = findIndex(
-      projectPolicy.bindings,
-      (binding: Binding) => binding.role === roleName,
-    );
+  // Service accounts are typically assigned roles immediately after creation. Due to cross-region
+  // IAM replication delay, Cloud Resource Manager setIamPolicy can transiently fail with HTTP 400
+  // ("Service account ... does not exist"). Retrying absorbs this replication window and also
+  // handles HTTP 409 concurrency conflicts by re-fetching the latest policy and fresh etag.
+  return await utils.retryWithBackoff(
+    async () => {
+      const projectPolicy = await getIamPolicy(projectId);
+      projectPolicy.bindings = projectPolicy.bindings || [];
 
-    // create a new binding if the role doesn't exist in the policy yet
-    if (bindingIndex === -1) {
-      bindingIndex =
-        projectPolicy.bindings.push({
-          role: roleName,
-          members: [],
-        }) - 1;
-    }
+      const requiredBindings: Binding[] = roles.map((role) => ({
+        role,
+        members: [newMemberName],
+      }));
+      mergeBindings(projectPolicy, requiredBindings);
 
-    const binding = projectPolicy.bindings[bindingIndex];
-
-    // No need to update if service account already has role
-    if (!binding.members.includes(newMemberName)) {
-      binding.members.push(newMemberName);
-    }
-  });
-
-  return setIamPolicy(projectId, projectPolicy, "bindings");
+      return await setIamPolicy(projectId, projectPolicy, "bindings");
+    },
+    {
+      retries: 6,
+      delay: 1000,
+      maxDelay: 5000,
+      retryPredicate: isRetryableIamError,
+    },
+  );
 }
 
 export async function serviceAccountHasRoles(
