@@ -1,7 +1,9 @@
 import { ChildProcess, execSync } from "child_process";
 import * as spawn from "cross-spawn";
 
-const SHUTDOWN_TIMEOUT_MS = 3000;
+// Allow up to 10 seconds for graceful CLI and emulator shutdown (export-on-exit + 4000ms JVM kill timeout).
+const SHUTDOWN_TIMEOUT_MS = 10000;
+// Wait up to 2 seconds for Windows taskkill /T /F process-tree termination.
 const WINDOWS_KILL_TIMEOUT_MS = 2000;
 
 export class CLIProcess {
@@ -80,6 +82,7 @@ export class CLIProcess {
     if (!p) {
       return Promise.resolve();
     }
+    this.process = undefined;
 
     if (process.platform === "win32" && p.pid) {
       const exitPromise = new Promise<void>((resolve) => {
@@ -103,26 +106,50 @@ export class CLIProcess {
 
       return Promise.race([exitPromise, timeoutPromise]).then(() => {
         clearTimeout(timeoutId);
-        if (this.process === p) {
-          this.process = undefined;
-        }
       });
     }
 
     const pid = p.pid;
     if (!pid || pid <= 0) {
-      if (this.process === p) {
-        this.process = undefined;
-      }
       return Promise.resolve();
     }
 
     if (p.exitCode !== null || p.signalCode !== null) {
-      if (this.process === p) {
-        this.process = undefined;
-      }
       return Promise.resolve();
     }
+
+    const killProcessTree = (sig: NodeJS.Signals): void => {
+      try {
+        const children = execSync(`ps -o pid= --ppid ${pid}`, { stdio: ["pipe", "pipe", "ignore"] })
+          .toString()
+          .trim()
+          .split(/\s+/)
+          .filter(Boolean)
+          .map(Number);
+        for (const childPid of children) {
+          try {
+            process.kill(-childPid, sig);
+          } catch {
+            try {
+              process.kill(childPid, sig);
+            } catch {
+              // Child already exited.
+            }
+          }
+        }
+      } catch {
+        // No child processes found.
+      }
+      try {
+        process.kill(-pid, sig);
+      } catch {
+        try {
+          p.kill(sig);
+        } catch {
+          // Process already exited.
+        }
+      }
+    };
 
     const exitPromise = new Promise<void>((resolve) => {
       p.once("exit", () => {
@@ -131,31 +158,21 @@ export class CLIProcess {
     });
 
     const timeoutId = setTimeout(() => {
-      try {
-        process.kill(-pid, "SIGKILL");
-      } catch {
-        try {
-          p.kill("SIGKILL");
-        } catch {
-          // Process or process group may already have exited.
-        }
-      }
+      killProcessTree("SIGKILL");
     }, SHUTDOWN_TIMEOUT_MS);
 
     try {
-      process.kill(-pid, "SIGINT");
+      p.kill("SIGINT");
     } catch {
-      try {
-        p.kill("SIGINT");
-      } catch {
-        // Process or process group may already have exited.
-      }
+      // Process already exited.
     }
 
     return exitPromise.then(() => {
       clearTimeout(timeoutId);
-      if (this.process === p) {
-        this.process = undefined;
+      try {
+        process.kill(-pid, "SIGKILL");
+      } catch {
+        // Process group already exited.
       }
     });
   }
