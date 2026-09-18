@@ -5,6 +5,7 @@ import * as os from "os";
 import * as path from "path";
 import * as build from "./build";
 import * as prepare from "./prepare";
+import * as params from "./params";
 import * as experiments from "../../experiments";
 import * as runtimes from "./runtimes";
 import * as backend from "./backend";
@@ -630,6 +631,69 @@ describe("prepare", () => {
           expect(want.endpoints["onDocumentCreate"].region).to.deep.equal([expectedRegion]);
         });
       });
+
+      it("resolves region when database location is eur3 with parameterized database", async () => {
+        const want = build.of({
+          onDocumentCreate: {
+            platform: "gcfv2",
+            entryPoint: "entry",
+            project: "project",
+            runtime: latest("nodejs"),
+            eventTrigger: {
+              eventType: "google.cloud.firestore.document.v1.created",
+              eventFilters: { database: "{{ params.DATABASE }}" },
+              retry: false,
+            },
+            region: [build.REGION_TBD],
+          },
+        });
+        const have = backend.empty();
+        const paramValues = {
+          DATABASE: new params.ParamValue("custom-db", false, { string: true }),
+        };
+
+        getDatabaseStub.resolves({ locationId: "eur3" });
+
+        await prepare.resolveDefaultRegionsForBuild(want, have, paramValues);
+
+        const ep = want.endpoints["onDocumentCreate"];
+        expect(ep.region).to.deep.equal(["europe-west1"]);
+        expect(getDatabaseStub).to.have.been.calledWith("project", "custom-db");
+        expect(build.isEventTriggered(ep)).to.be.true;
+        if (build.isEventTriggered(ep)) {
+          expect(ep.eventTrigger.eventFilters).to.deep.equal({ database: "{{ params.DATABASE }}" });
+          expect(ep.eventTrigger.eventFilters?.database).to.equal("{{ params.DATABASE }}");
+        }
+      });
+
+      it("falls back to us-central1 if parameterized trigger database resolution fails", async () => {
+        const want = build.of({
+          onDocumentCreate: {
+            platform: "gcfv2",
+            entryPoint: "entry",
+            project: "project",
+            runtime: latest("nodejs"),
+            eventTrigger: {
+              eventType: "google.cloud.firestore.document.v1.created",
+              eventFilters: { database: "{{ params.UNDEFINED_DB }}" },
+              retry: false,
+            },
+            region: [build.REGION_TBD],
+          },
+        });
+        const have = backend.empty();
+
+        await prepare.resolveDefaultRegionsForBuild(want, have, {});
+
+        const ep = want.endpoints["onDocumentCreate"];
+        expect(ep.region).to.deep.equal(["us-central1"]);
+        expect(build.isEventTriggered(ep)).to.be.true;
+        if (build.isEventTriggered(ep)) {
+          expect(ep.eventTrigger.eventFilters).to.deep.equal({
+            database: "{{ params.UNDEFINED_DB }}",
+          });
+        }
+      });
     });
 
     describe("Storage event triggers", () => {
@@ -664,6 +728,40 @@ describe("prepare", () => {
 
           expect(want.endpoints["onArchive"].region).to.deep.equal([expectedRegion]);
         });
+      });
+
+      it("resolves region when bucket location is eu with parameterized bucket", async () => {
+        const want = build.of({
+          onArchive: {
+            platform: "gcfv2",
+            entryPoint: "entry",
+            project: "project",
+            runtime: latest("nodejs"),
+            eventTrigger: {
+              eventType: "google.cloud.storage.object.v1.archived",
+              eventFilters: { bucket: "{{ params.BUCKET }}" },
+              retry: false,
+            },
+            region: [build.REGION_TBD],
+          },
+        });
+        const have = backend.empty();
+        const paramValues = {
+          BUCKET: new params.ParamValue("custom-bucket", false, { string: true }),
+        };
+
+        getBucketStub.resolves({ location: "eu" });
+
+        await prepare.resolveDefaultRegionsForBuild(want, have, paramValues);
+
+        const ep = want.endpoints["onArchive"];
+        expect(ep.region).to.deep.equal(["europe-west1"]);
+        expect(getBucketStub).to.have.been.calledWith("custom-bucket");
+        expect(build.isEventTriggered(ep)).to.be.true;
+        if (build.isEventTriggered(ep)) {
+          expect(ep.eventTrigger.eventFilters).to.deep.equal({ bucket: "{{ params.BUCKET }}" });
+          expect(ep.eventTrigger.eventFilters?.bucket).to.equal("{{ params.BUCKET }}");
+        }
       });
     });
 
