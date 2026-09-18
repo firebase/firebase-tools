@@ -27,16 +27,33 @@ process.on("unhandledRejection", (error) => {
   throw error;
 });
 
+/**
+ * Global teardown hook executed after every test case.
+ * Hermetically restores Sinon stubs, spies, and mocks, resets standard Nock
+ * HTTP interceptors, and resets custom Undici Nock interceptors if loaded.
+ */
 function cleanup() {
   sinon.restore();
   nock.cleanAll();
-}
 
-if (typeof afterEach === "function") {
-  afterEach(cleanup);
+  // Safely clean up custom nock (src/test/helpers/nock.ts) if required by tests
+  for (const key of Object.keys(require.cache)) {
+    if (key.endsWith("test/helpers/nock.ts") || key.endsWith("test/helpers/nock.js")) {
+      try {
+        const mod = require.cache[key];
+        if (mod && mod.exports) {
+          const customNock = mod.exports.default || mod.exports;
+          if (typeof customNock.cleanAll === "function") {
+            customNock.cleanAll();
+          }
+        }
+      } catch {
+        // Ignore cleanup errors from custom nock
+      }
+    }
+  }
 }
 
 exports.mochaHooks = {
   afterEach: cleanup,
 };
-
