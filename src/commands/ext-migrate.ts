@@ -18,7 +18,7 @@ import {
 } from "../extensions/migrate";
 import { functionsEnvFromInstance } from "../extensions/export";
 import { installKitOrInstance } from "../functions/kits/install";
-import { validateNpmPackageName } from "../functions/kits";
+import { validateNpmPackageExists } from "../functions/kits";
 import { Options } from "../options";
 import { logLabeledBullet, logLabeledWarning } from "../utils";
 import { FirebaseError } from "../error";
@@ -61,7 +61,7 @@ export const command = new Command("ext:migrate")
   .action(async (options: ExtMigrateOptions) => {
     const projectId = needProjectId(options);
     if (options.package) {
-      validateNpmPackageName(options.package);
+      await validateNpmPackageExists(options.package);
     }
     const plan = await createMigrationPlan(projectId, {
       package: options.package,

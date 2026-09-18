@@ -738,6 +738,40 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       ).to.be.rejectedWith(FirebaseError, /Could not load extension specification for/);
     });
 
+    it("should throw npm resolution error before migration steps when --package version is unavailable", async () => {
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+      } as unknown as Config;
+
+      sandbox
+        .stub(kitInstallModule, "validateNpmPackageExists")
+        .withArgs("@firebase-function-kits/firestore-send-email@999.0.0")
+        .rejects(
+          new FirebaseError(
+            "NPM package '@firebase-function-kits/firestore-send-email@999.0.0' could not be found in the npm registry. Please verify the package name and version.",
+          ),
+        );
+
+      await expect(
+        extMigrateCommand.runner()({
+          project: "test-project",
+          projectId: "test-project",
+          extInstance: "email-1",
+          package: "@firebase-function-kits/firestore-send-email@999.0.0",
+          config: mockConfig,
+          nonInteractive: true,
+        } as unknown as ExtMigrateOptions),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        /NPM package '@firebase-function-kits\/firestore-send-email@999.0.0' could not be found in the npm registry/,
+      );
+
+      expect(ensureSpecStub).to.not.have.been.called;
+      expect(migrateSecretsStub).to.not.have.been.called;
+      expect(installKitOrInstanceStub).to.not.have.been.called;
+    });
+
     it("should deploy function kit and uninstall extension when confirmed", async () => {
       const mockConfig = {
         projectDir: "/mock/project",
