@@ -1845,3 +1845,17 @@ describe("prepare", () => {
     });
   });
 });
+
+describe("removeDefaultSecretBindingsFromRefs", () => {
+  it("removes secret bindings from resolved refs if the resource name is just the same as the secret name", () => {
+    const resolvedSecretRefs = {
+      FOO: "FOO",
+      WITH_VERSION: "WITH_VERSION:22",
+      CASE_INSENSITIVE: "case_insensitive",
+      NONDEFAULT: "BAR:latest",
+    };
+    expect(prepare.removeDefaultSecretBindingsFromRefs(resolvedSecretRefs)).to.deep.equal({
+      NONDEFAULT: "BAR:latest",
+    });
+  });
+});
