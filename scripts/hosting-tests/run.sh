@@ -80,7 +80,6 @@ function poll_url() {
   while [ "$attempts" -lt "$max_attempts" ]; do
     response="$(curl -s -L --connect-timeout 5 "$url" 2>/dev/null || true)"
     if [ "$response" = "$expected_body" ]; then
-      VALUE="$response"
       return 0
     fi
     attempts=$((attempts + 1))
