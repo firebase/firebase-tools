@@ -1,5 +1,6 @@
 const chai = require("chai");
 const chaiAsPromised = require("chai-as-promised");
+const sinon = require("sinon");
 const sinonChai = require("sinon-chai");
 const nock = require("nock");
 const nodeFetch = require("node-fetch");
@@ -25,3 +26,17 @@ chai.use(sinonChai);
 process.on("unhandledRejection", (error) => {
   throw error;
 });
+
+function cleanup() {
+  sinon.restore();
+  nock.cleanAll();
+}
+
+if (typeof afterEach === "function") {
+  afterEach(cleanup);
+}
+
+exports.mochaHooks = {
+  afterEach: cleanup,
+};
+
