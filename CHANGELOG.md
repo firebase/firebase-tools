@@ -1,3 +1,0 @@
-- [changed] Improve formatting and user experience for Cloud Functions parameter and secret prompts.
-- Updated the Firebase SQL Connect local toolkit to v3.4.20.
-- [fixed] Support 2nd Gen Firebase Authentication triggers (`onUserCreated` and `onUserDeleted`) in the local Functions and Auth Emulators.
