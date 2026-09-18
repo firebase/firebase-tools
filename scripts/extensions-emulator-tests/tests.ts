@@ -97,9 +97,9 @@ describe("CF3 and Extensions emulator", () => {
 
   after(async function (this) {
     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
-    await Promise.all(admin.apps.map((app) => app?.delete()));
+    await Promise.allSettled(admin.apps.map((app) => app?.delete()));
     cleanUpExtensionsCache();
-    await test.stopEmulators();
+    await test?.stopEmulators();
   });
 
   it("should call a CF3 HTTPS function to write to the default Storage bucket, then trigger the resize images extension", async function (this) {
