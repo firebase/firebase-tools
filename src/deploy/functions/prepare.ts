@@ -59,7 +59,7 @@ import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
 import { applyBackendHashToBackends } from "./cache/applyHash";
 import { allEndpoints, Backend } from "./backend";
-import { assertExhaustive, partition, mapObject } from "../../functional";
+import { assertExhaustive, partition, mapObject, partitionRecord } from "../../functional";
 import { prepareDynamicExtensions } from "../extensions/prepare";
 import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args";
 import { DeployOptions } from "..";
@@ -337,7 +337,7 @@ export async function prepare(
     );
     await build.applyEnvSecretBindingsToBuild(wantBuild, parsedSecretRefs);
 
-    const {
+    let {
       backend: wantBackend,
       envs: resolvedEnvs,
       secretRefs: resolvedSecretRefs,
@@ -353,6 +353,9 @@ export async function prepare(
 
     functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
     if (experiments.isEnabled("secretEnvParams")) {
+      if (experiments.isEnabled("hideDefaultSecretBindings")) {
+        resolvedSecretRefs = removeDefaultSecretBindingsFromRefs(resolvedSecretRefs);
+      }
       functionsEnv.writeResolvedSecretRefs(resolvedSecretRefs, secretRefs, userEnvOpt);
     }
 
@@ -1120,4 +1123,19 @@ export function checkKitForGen1(
       `Function kit "${localCfg.kit}" contains gen1 functions, which are not supported in kits. Please remove this kit or upgrade these functions to gen2.`,
     );
   }
+}
+
+/**
+ * Removes secret ref bindings from the set about to be written to disk if
+ * bind to a resource ID equal to the name of the secret, since that's what
+ * the params resolution process would assume by default anyway.
+ */
+export function removeDefaultSecretBindingsFromRefs(
+  refs: Record<string, string>,
+): Record<string, string> {
+  const [, nonDefault] = partitionRecord(refs, (secretName, secretBinding) => {
+    const resourceId = secretBinding.split(":")[0];
+    return secretName.toUpperCase() === resourceId.toUpperCase();
+  });
+  return nonDefault;
 }
