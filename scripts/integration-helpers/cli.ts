@@ -1,6 +1,9 @@
 import { ChildProcess, execSync } from "child_process";
 import * as spawn from "cross-spawn";
 
+const SHUTDOWN_TIMEOUT_MS = 3000;
+const WINDOWS_KILL_TIMEOUT_MS = 2000;
+
 export class CLIProcess {
   process?: ChildProcess;
 
@@ -25,6 +28,7 @@ export class CLIProcess {
     const p = spawn("firebase", args, {
       cwd: this.workdir,
       env: env ? { ...process.env, ...env } : process.env,
+      detached: process.platform !== "win32",
     });
     if (!p) {
       throw new Error("Failed to start firebase CLI");
@@ -88,7 +92,7 @@ export class CLIProcess {
 
       let timeoutId: NodeJS.Timeout;
       const timeoutPromise = new Promise<void>((resolve) => {
-        timeoutId = setTimeout(resolve, 2000);
+        timeoutId = setTimeout(resolve, WINDOWS_KILL_TIMEOUT_MS);
       });
 
       try {
@@ -103,14 +107,48 @@ export class CLIProcess {
       });
     }
 
-    const stopped = new Promise<void>((resolve) => {
-      p.once("exit", (/* exitCode, signal */) => {
-        this.process = undefined;
+    const pid = p.pid;
+    if (!pid || pid <= 0) {
+      this.process = undefined;
+      return Promise.resolve();
+    }
+
+    if (p.exitCode !== null || p.signalCode !== null) {
+      this.process = undefined;
+      return Promise.resolve();
+    }
+
+    const exitPromise = new Promise<void>((resolve) => {
+      p.once("exit", () => {
         resolve();
       });
-    }).then(() => undefined); // Fixes return type.
+    });
 
-    p.kill("SIGINT");
-    return stopped;
+    const timeoutId = setTimeout(() => {
+      try {
+        process.kill(-pid, "SIGKILL");
+      } catch {
+        try {
+          p.kill("SIGKILL");
+        } catch {
+          // Process or process group may already have exited.
+        }
+      }
+    }, SHUTDOWN_TIMEOUT_MS);
+
+    try {
+      process.kill(-pid, "SIGINT");
+    } catch {
+      try {
+        p.kill("SIGINT");
+      } catch {
+        // Process or process group may already have exited.
+      }
+    }
+
+    return exitPromise.then(() => {
+      clearTimeout(timeoutId);
+      this.process = undefined;
+    });
   }
 }
