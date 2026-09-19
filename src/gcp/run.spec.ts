@@ -129,14 +129,14 @@ describe("run", () => {
       });
 
       it("should reject on emtpy invoker array", async () => {
-        await expect(run.setInvokerUpdate("project", "service", [])).to.be.rejected;
+        await expect(run.setInvokerUpdate("project", "service", [], false)).to.be.rejected;
       });
 
       it("should reject if the getting the IAM policy fails", async () => {
         apiGetStub.onFirstCall().throws("Error calling get api.");
 
         await expect(
-          run.setInvokerUpdate("project", "service", ["public"], client),
+          run.setInvokerUpdate("project", "service", ["public"], false, client),
         ).to.be.rejectedWith("Failed to get the IAM Policy on the Service service");
 
         expect(apiGetStub).to.be.called;
@@ -147,7 +147,7 @@ describe("run", () => {
         apiPostStub.throws("Error calling set api.");
 
         await expect(
-          run.setInvokerUpdate("project", "service", ["public"], client),
+          run.setInvokerUpdate("project", "service", ["public"], false, client),
         ).to.be.rejectedWith("Failed to set the IAM Policy on the Service service");
         expect(apiGetStub).to.be.calledOnce;
         expect(apiPostStub).to.be.calledOnce;
@@ -170,8 +170,8 @@ describe("run", () => {
           return Promise.resolve();
         });
 
-        await expect(run.setInvokerUpdate("project", "service", ["public"], client)).to.not.be
-          .rejected;
+        await expect(run.setInvokerUpdate("project", "service", ["public"], false, client)).to.not
+          .be.rejected;
         expect(apiGetStub).to.be.calledOnce;
         expect(apiPostStub).to.be.calledOnce;
       });
@@ -200,8 +200,8 @@ describe("run", () => {
           return Promise.resolve();
         });
 
-        await expect(run.setInvokerUpdate("project", "service", ["private"], client)).to.not.be
-          .rejected;
+        await expect(run.setInvokerUpdate("project", "service", ["private"], false, client)).to.not
+          .be.rejected;
         expect(apiGetStub).to.be.calledOnce;
         expect(apiPostStub).to.be.calledOnce;
       });
@@ -228,6 +228,7 @@ describe("run", () => {
               "service-account2@project.iam.gserviceaccount.com",
               "service-account3@",
             ],
+            false,
             client,
           ),
         ).to.not.be.rejected;
@@ -262,11 +263,46 @@ describe("run", () => {
               "service-account3@",
               "service-account1@",
             ],
+            false,
             client,
           ),
         ).to.not.be.rejected;
         expect(apiGetStub).to.be.calledOnce;
         expect(apiPostStub).to.not.be.called;
+      });
+
+      it("should leave an existing binding alone when onlyIfUnset is true", async () => {
+        apiGetStub.onFirstCall().resolves({
+          body: {
+            bindings: [
+              {
+                role: "roles/run.invoker",
+                members: ["serviceAccount:service-account1@project.iam.gserviceaccount.com"],
+              },
+            ],
+            etag: "1234",
+            version: 3,
+          },
+        });
+
+        await expect(run.setInvokerUpdate("project", "service", ["public"], true, client)).to.not.be
+          .rejected;
+        expect(apiGetStub).to.be.calledOnce;
+        expect(apiPostStub).to.not.be.called;
+      });
+
+      it("should write the binding when onlyIfUnset is true and no binding exists", async () => {
+        apiGetStub.onFirstCall().resolves({ body: {} });
+        apiPostStub.onFirstCall().callsFake((path: string, json: any) => {
+          expect(json.policy.bindings).to.deep.eq([
+            { role: "roles/run.invoker", members: ["allUsers"] },
+          ]);
+          return Promise.resolve();
+        });
+
+        await expect(run.setInvokerUpdate("project", "service", ["public"], true, client)).to.not.be
+          .rejected;
+        expect(apiPostStub).to.be.calledOnce;
       });
     });
   });
