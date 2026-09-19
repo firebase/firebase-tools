@@ -26,8 +26,7 @@
     },
     "firebase/firestore-shorten-urls-bitly": {
       "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/main/firestore-shorten-urls-bitly/README.md",
-      "npmPackage": "@firebase/firestore-shorten-urls-bitly"
+      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/main/firestore-shorten-urls-bitly/README.md"
     },
     "firebase/firestore-translate-text": {
       "status": "REPLACEMENT_AVAILABLE",
