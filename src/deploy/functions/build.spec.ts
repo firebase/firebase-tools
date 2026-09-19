@@ -794,6 +794,69 @@ describe("applyEnvSecretBindingsToBuild", () => {
   });
 });
 
+describe("applyKitSecretRefPrefix", () => {
+  it("prefixes only the secret params with a kit instance id", () => {
+    const testBuild: build.Build = {
+      endpoints: {
+        func: {
+          region: "us-central1",
+          project: "test-project",
+          platform: "gcfv2",
+          runtime: "nodejs18",
+          entryPoint: "func1",
+          httpsTrigger: {},
+          secretEnvironmentVariables: [
+            { key: "API_KEY", secret: "API_KEY", projectId: "test-project" },
+            { key: "SMTP_ADDRESS", secret: "SMTP_ADDRESS", projectId: "test-project" },
+          ],
+        },
+      },
+      params: [
+        { type: "secret", name: "API_KEY" },
+        { type: "int", name: "PORT" },
+        { type: "secret", name: "SMTP_ADDRESS" },
+      ],
+      requiredAPIs: [],
+    };
+    build.applyKitSecretRefPrefix(testBuild, "foo");
+    expect(testBuild.params).to.deep.equal([
+      { type: "secret", name: "API_KEY", resourceId: "kit-foo-API_KEY" },
+      { type: "int", name: "PORT" },
+      { type: "secret", name: "SMTP_ADDRESS", resourceId: "kit-foo-SMTP_ADDRESS" },
+    ]);
+  });
+
+  it("prefixes all of the secretEnvVars", () => {
+    const testBuild: build.Build = {
+      endpoints: {
+        func: {
+          region: "us-central1",
+          project: "test-project",
+          platform: "gcfv2",
+          runtime: "nodejs18",
+          entryPoint: "func1",
+          httpsTrigger: {},
+          secretEnvironmentVariables: [
+            { key: "API_KEY", secret: "API_KEY", projectId: "test-project" },
+            { key: "SMTP_ADDRESS", secret: "SMTP_ADDRESS", projectId: "test-project" },
+          ],
+        },
+      },
+      params: [
+        { type: "secret", name: "API_KEY" },
+        { type: "int", name: "PORT" },
+        { type: "secret", name: "SMTP_ADDRESS" },
+      ],
+      requiredAPIs: [],
+    };
+    build.applyKitSecretRefPrefix(testBuild, "foo");
+    expect(testBuild.endpoints.func.secretEnvironmentVariables).to.deep.equal([
+      { key: "API_KEY", secret: "kit-foo-API_KEY", projectId: "test-project" },
+      { key: "SMTP_ADDRESS", secret: "kit-foo-SMTP_ADDRESS", projectId: "test-project" },
+    ]);
+  });
+});
+
 describe("applyEnvSecretBindingsToParams", () => {
   it("merges resourceId and version into matching SecretParams case-insensitively", () => {
     const testParams: Param[] = [
@@ -823,7 +886,7 @@ describe("applyEnvSecretBindingsToParams", () => {
   });
 });
 
-describe("applyPrefix", () => {
+describe("applyEndpointPrefix", () => {
   const createTestBuild = (): build.Build => ({
     endpoints: {
       func1: {
@@ -849,7 +912,7 @@ describe("applyPrefix", () => {
 
   it("should update endpoint keys with prefix", () => {
     const testBuild = createTestBuild();
-    build.applyPrefix(testBuild, "test");
+    build.applyEndpointPrefix(testBuild, "test");
     expect(Object.keys(testBuild.endpoints).sort()).to.deep.equal(["test-func1", "test-func2"]);
     expect(testBuild.endpoints["test-func1"].entryPoint).to.equal("func1");
     expect(testBuild.endpoints["test-func2"].entryPoint).to.equal("func2");
@@ -857,7 +920,7 @@ describe("applyPrefix", () => {
 
   it("should do nothing for an empty prefix", () => {
     const testBuild = createTestBuild();
-    build.applyPrefix(testBuild, "");
+    build.applyEndpointPrefix(testBuild, "");
     expect(Object.keys(testBuild.endpoints).sort()).to.deep.equal(["func1", "func2"]);
   });
 
@@ -874,7 +937,9 @@ describe("applyPrefix", () => {
       },
     });
     const longPrefix = "p".repeat(30);
-    expect(() => build.applyPrefix(testBuild, longPrefix)).to.throw(/exceeds 63 characters/);
+    expect(() => build.applyEndpointPrefix(testBuild, longPrefix)).to.throw(
+      /exceeds 63 characters/,
+    );
   });
 
   it("throws if prefix makes function id invalid (must start with a letter)", () => {
@@ -888,7 +953,7 @@ describe("applyPrefix", () => {
         httpsTrigger: {},
       },
     });
-    expect(() => build.applyPrefix(testBuild, "1abc")).to.throw(
+    expect(() => build.applyEndpointPrefix(testBuild, "1abc")).to.throw(
       /Function names must start with a letter/,
     );
   });
@@ -922,7 +987,7 @@ describe("applyPrefix", () => {
       },
     };
 
-    build.applyPrefix(testBuild, "staging");
+    build.applyEndpointPrefix(testBuild, "staging");
 
     expect(testBuild.lifecycleHooks).to.deep.equal({
       afterFirstDeploy: {

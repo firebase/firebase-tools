@@ -1,3 +1,1 @@
-- [changed] Improve formatting and user experience for Cloud Functions parameter and secret prompts.
-- Updated the Firebase SQL Connect local toolkit to v3.4.20.
 - [fixed] Resolve nested ternary CEL expressions in function parameters, which previously failed to load or selected the wrong branch. (#7755)
