@@ -32,6 +32,7 @@ import {
   DEFAULT_REGION,
   DEFAULT_SHOULD_USE_DEV_MODE_HANDLE,
   FIREBASE_ADMIN_VERSION,
+  FIREBASE_FRAMEWORKS_CODEBASE_PREFIX,
   FIREBASE_FRAMEWORKS_VERSION,
   FIREBASE_FUNCTIONS_VERSION,
   GET_DEFAULT_BUILD_TARGETS,
@@ -111,7 +112,7 @@ function memoizeBuild(
  * during hosting deploy.
  */
 export function generateSSRCodebaseId(site: string) {
-  return `firebase-frameworks-${site}`;
+  return `${FIREBASE_FRAMEWORKS_CODEBASE_PREFIX}${site}`;
 }
 
 /**
