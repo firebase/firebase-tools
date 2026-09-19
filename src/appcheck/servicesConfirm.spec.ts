@@ -60,7 +60,7 @@ describe("appcheck services confirmation", () => {
           mode,
         );
         expect(q).to.include(AI_LOGIC_ENFORCEMENT_DATE);
-        expect(q).to.match(/cannot be un-enforced for AI Logic/);
+        expect(q).to.match(/cannot be unenforced for AI Logic/);
       }
     });
 
