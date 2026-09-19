@@ -140,7 +140,6 @@ describe("ensureApiEnabled", () => {
         await expect(ensure(FAKE_PROJECT_ID, prefix + FAKE_API, "", true)).to.not.be.rejected;
 
         expect(nock.isDone()).to.be.true;
-        expect(configstoreSetMock.calledWith(FAKE_PROJECT_ID, FAKE_API));
       });
 
       it("should retry enabling the API if it does not enable in time", async () => {
