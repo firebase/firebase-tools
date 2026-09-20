@@ -59,6 +59,8 @@ export function validateInputRemoteConfigTemplate(
  * @param template Remote Config template to deploy
  * @param etag Remote Config Template's etag value
  * @param options Optional force and validateOnly boolean options
+ * @param options.force If `true`, the etag value will be set to `*` to circumvent the etag check.
+ * @param options.validateOnly If `true`, the template is validated server-side without publishing.
  * @return Returns a Promise of a Remote Config template
  */
 export async function deployTemplate(
@@ -97,6 +99,8 @@ export async function deployTemplate(
  * @param template The Remote Config template to be published
  * @param etag Remote Config Template's etag value
  * @param options Optional force and validateOnly boolean options
+ * @param options.force See deployTemplate.
+ * @param options.validateOnly See deployTemplate.
  * @return Returns a Promise that fulfills with the published (or validated) Remote Config template
  */
 export function publishTemplate(

@@ -151,7 +151,7 @@ describe("Remote Config Deploy", () => {
 
       await expect(
         rcDeploy.publishTemplate(PROJECT_NUMBER, currentTemplate, ETAG, { validateOnly: true }),
-      ).to.eventually.be.rejectedWith(FirebaseError);
+      ).to.eventually.be.rejectedWith(FirebaseError, "Invalid condition expression");
       expect(nock.isDone()).to.be.true;
     });
   });

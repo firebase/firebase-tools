@@ -18,13 +18,14 @@ export default async function (context: any, options: DeployOptions): Promise<vo
   const projectNumber = await needProjectNumber(options);
   template.etag = await getEtag(projectNumber);
 
-  // The release phase (the only place a real deploy's template PUT happens) never runs
-  // during --dry-run, and is not the only target running before release in a multi-target
-  // deploy. Validate against the Remote Config API here, in prepare, so condition expression
-  // syntax errors are caught before any target's release runs, matching the unconditional
-  // validation database's prepare phase performs for realtime database rules.
+  // Release never runs during --dry-run, and in a multi-target deploy other targets'
+  // releases run before ours. Validate here so expression errors surface before any
+  // target publishes (same as database's unconditional rules check).
   utils.logBullet(clc.bold(clc.cyan("remoteconfig: ")) + "validating template...");
-  await publishTemplate(projectNumber, template, template.etag, { validateOnly: true });
+  await publishTemplate(projectNumber, template, template.etag, {
+    force: !!options.force,
+    validateOnly: true,
+  });
   utils.logSuccess(clc.bold(clc.green("remoteconfig: ")) + "template is valid");
 
   context.remoteconfigTemplate = template;

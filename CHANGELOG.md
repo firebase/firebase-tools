@@ -1,1 +1,1 @@
-- Fixed `firebase deploy --only remoteconfig --dry-run` silently accepting Remote Config templates with invalid condition expression syntax by validating against the Remote Config API's `validate_only` mode during dry-run.
+- Fixed `firebase deploy --only remoteconfig` (including `--dry-run`) silently accepting Remote Config templates with invalid condition expression syntax. Templates are now validated server-side during the prepare phase.
