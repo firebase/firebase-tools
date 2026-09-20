@@ -5,6 +5,9 @@ import * as path from "path";
 import * as tmp from "tmp";
 import * as crypto from "crypto";
 
+import { detectMonorepo } from "detect-monorepo";
+import type { IsolateExports } from "isolate-package";
+import { dynamicImport } from "../../dynamicImport";
 import { FirebaseError } from "../../error";
 import { logger } from "../../logger";
 import { getSourceHash } from "./cache/hash";
@@ -181,6 +184,48 @@ export async function prepareFunctionsUpload(
   options?: { exportType: "zip" | "tar.gz"; executablePaths?: string[] },
 ): Promise<PackagedSourceInfo | undefined> {
   return packageSource(projectDir, sourceDir, config, additionalSources, runtimeConfig, options);
+}
+
+/**
+ * Check whether the given absolute source directory sits inside a monorepo
+ * workspace (pnpm, npm/yarn/bun workspaces, or Rush). Used as a cheap gate
+ * before invoking isolate-package.
+ */
+export function isMonorepoSource(absoluteSourceDir: string): boolean {
+  return detectMonorepo(absoluteSourceDir) !== null;
+}
+
+/**
+ * Isolate the given absolute source directory and return the absolute path to
+ * the isolated directory.
+ */
+export async function runIsolate(sourceDir: string): Promise<string> {
+  try {
+    utils.logLabeledBullet("isolate", "Isolating the source");
+    /**
+     * Use a dynamic import because isolate-package depends on ESM. A normal
+     * "await import()" gets transpiled to require() so we use the dynamicImport
+     * function which was created to get around that exact problem. Unfortunately,
+     * when using it we lose all type information so IsolateExports was created to
+     * be able to cast the result.
+     */
+    const { isolate } = (await dynamicImport("isolate-package")) as IsolateExports;
+
+    /**
+     * Passing the absolute source directory keeps isolation independent of the
+     * directory the CLI was invoked from; isolate-package auto-detects the
+     * workspace root by walking upward from it.
+     */
+    const isolateDir = await isolate({ targetPackagePath: sourceDir });
+
+    utils.logLabeledBullet("isolate", `Finished isolation at ${clc.bold(isolateDir)}`);
+    return isolateDir;
+  } catch (err: any) {
+    throw new FirebaseError(`Failed to isolate the functions source: ${err.message}`, {
+      original: err,
+      exit: 1,
+    });
+  }
 }
 
 export function convertToSortedKeyValueArray(config: any): SortedConfig {

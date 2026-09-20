@@ -1,0 +1,1 @@
+- Added monorepo support to functions deploy. When the functions source directory sits inside a pnpm, npm/yarn/bun workspaces, or Rush monorepo, the source is automatically isolated with internal workspace dependencies included and the lockfile pruned, so deploys work without manual workarounds. Standalone projects are unaffected. (#653)
