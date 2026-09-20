@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { promisify } from "util";
+import { ChildProcess } from "child_process";
 
 import * as portfinder from "portfinder";
 
@@ -149,7 +150,10 @@ export class Delegate implements runtimes.RuntimeDelegate {
     return Promise.resolve();
   }
 
-  async serveAdmin(port: number, envs: backend.EnvironmentVariables) {
+  async serveAdmin(
+    port: number,
+    envs: backend.EnvironmentVariables,
+  ): Promise<{ process: ChildProcess; kill: () => Promise<void> }> {
     const modulesDir = await this.modulesDir();
     const envWithAdminPort = {
       ...envs,
@@ -168,23 +172,36 @@ export class Delegate implements runtimes.RuntimeDelegate {
     childProcess.stderr?.on("data", (chunk: Buffer) => {
       logger.error(chunk.toString("utf8"));
     });
-    return Promise.resolve(async () => {
+    const kill = async (): Promise<void> => {
       try {
         await fetch(`http://127.0.0.1:${port}/__/quitquitquit`);
       } catch (e) {
         logger.debug("Failed to call quitquitquit. This often means the server failed to start", e);
+      }
+      // The process may have already exited (e.g. it crashed while discovery was
+      // still running) before kill() is called. In that case the 'exit' event has
+      // already fired and a listener registered now would never see it, hanging
+      // this function forever.
+      if (childProcess.exitCode !== null || childProcess.signalCode !== null) {
+        return;
       }
       const quitTimeout = setTimeout(() => {
         if (!childProcess.killed) {
           childProcess.kill("SIGKILL");
         }
       }, 10_000);
-      clearTimeout(quitTimeout);
       return new Promise<void>((resolve, reject) => {
-        childProcess.once("exit", resolve);
-        childProcess.once("error", reject);
+        childProcess.once("exit", () => {
+          clearTimeout(quitTimeout);
+          resolve();
+        });
+        childProcess.once("error", (err) => {
+          clearTimeout(quitTimeout);
+          reject(err);
+        });
       });
-    });
+    };
+    return Promise.resolve({ process: childProcess, kill });
   }
 
   async discoverBuild(
@@ -196,16 +213,18 @@ export class Delegate implements runtimes.RuntimeDelegate {
       const adminPort = await portfinder.getPortPromise({
         port: 8081,
       });
-      const killProcess = await this.serveAdmin(adminPort, envs);
+      const { process: adminProcess, kill } = await this.serveAdmin(adminPort, envs);
       try {
         discovered = await discovery.detectFromPort(
           adminPort,
           this.projectId,
           this.runtime,
           500 /* initialDelay, python startup is slow */,
+          10_000 /* timeout */,
+          adminProcess,
         );
       } finally {
-        await killProcess();
+        await kill();
       }
     }
     return discovered;
