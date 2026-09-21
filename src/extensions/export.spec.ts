@@ -9,6 +9,7 @@ import {
   resolveMigratedMemory,
   setSecretParamsToLatest,
   ejectSecretsFromInstance,
+  secretsNeedingEjection,
 } from "./export";
 import { DeploymentInstanceSpec } from "../deploy/extensions/planner";
 import { ExtensionInstance, ParamType } from "./types";
@@ -337,6 +338,101 @@ describe("functionsEnvFromInstance", () => {
       baz: "",
       FIREBASE_SECRET_REF_PASSWORD: "projects/1234/secrets/PASSWORD/versions/latest",
     });
+  });
+
+  it("does not export optional secrets with no value", () => {
+    const instance: ExtensionInstance = {
+      name: "",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      config: {
+        name: "",
+        createTime: "",
+        params: {
+          SET_OPTIONAL_SECRET: "projects/1234/secrets/SET_OPTIONAL_SECRET/versions/latest",
+          EMPTY_OPTIONAL_SECRET: "",
+        },
+        systemParams: {},
+        source: {
+          name: "",
+          state: "ACTIVE",
+          packageUri: "",
+          hash: "",
+          spec: {
+            name: "",
+            version: "1",
+            resources: [],
+            params: [
+              {
+                type: ParamType.SECRET,
+                param: "SET_OPTIONAL_SECRET",
+                label: "optional secret with value",
+                required: false,
+              },
+              {
+                type: ParamType.SECRET,
+                param: "EMPTY_OPTIONAL_SECRET",
+                label: "optional secret with empty string",
+                required: false,
+              },
+              {
+                type: ParamType.SECRET,
+                param: "MISSING_OPTIONAL_SECRET",
+                label: "optional secret omitted from live params",
+              },
+            ],
+            systemParams: [],
+          },
+        },
+      },
+    };
+    const output = functionsEnvFromInstance(instance);
+    expect(output).to.deep.equal({
+      FIREBASE_SECRET_REF_SET_OPTIONAL_SECRET:
+        "projects/1234/secrets/SET_OPTIONAL_SECRET/versions/latest",
+    });
+  });
+
+  it("throws when a required secret has no value", () => {
+    const instance: ExtensionInstance = {
+      name: "",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      config: {
+        name: "",
+        createTime: "",
+        params: {},
+        systemParams: {},
+        source: {
+          name: "",
+          state: "ACTIVE",
+          packageUri: "",
+          hash: "",
+          spec: {
+            name: "",
+            version: "1",
+            resources: [],
+            params: [
+              {
+                type: ParamType.SECRET,
+                param: "REQUIRED_SECRET",
+                label: "required secret missing from live params",
+                required: true,
+              },
+            ],
+            systemParams: [],
+          },
+        },
+      },
+    };
+    expect(() => functionsEnvFromInstance(instance)).to.throw(
+      FirebaseError,
+      /Secret REQUIRED_SECRET was defined in the extension spec, but is missing in live deployed secrets/,
+    );
   });
 
   it("system params", () => {
@@ -745,5 +841,209 @@ describe("ejectSecretsFromInstance", () => {
 
     const changed = await ejectSecretsFromInstance(instance);
     expect(changed).to.deep.equal({ success: [], fail: ["my-proj/API_KEY"] });
+  });
+
+  it("should skip optional secrets with no value", async () => {
+    const instance: ExtensionInstance = {
+      name: "projects/my-proj/instances/my-inst",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      config: {
+        name: "projects/my-proj/instances/my-inst/configurations/1",
+        createTime: "",
+        params: {
+          API_KEY: "projects/my-proj/secrets/API_KEY/versions/1",
+          EMPTY_OPTIONAL_SECRET: "",
+        },
+        systemParams: {},
+        source: {
+          name: "sources/1",
+          state: "ACTIVE",
+          packageUri: "",
+          hash: "",
+          spec: {
+            name: "my-ext",
+            version: "1.0.0",
+            resources: [],
+            params: [
+              {
+                param: "API_KEY",
+                label: "API Key",
+                type: ParamType.SECRET,
+                required: true,
+              },
+              {
+                param: "EMPTY_OPTIONAL_SECRET",
+                label: "Empty Optional Secret",
+                type: ParamType.SECRET,
+                required: false,
+              },
+              {
+                param: "MISSING_OPTIONAL_SECRET",
+                label: "Missing Optional Secret",
+                type: ParamType.SECRET,
+              },
+            ],
+            systemParams: [],
+          },
+        },
+      },
+    };
+
+    transferSecretToKitsStub.resolves();
+    const changed = await ejectSecretsFromInstance(instance);
+    expect(changed).to.deep.equal({ success: ["my-proj/API_KEY"], fail: [] });
+    expect(transferSecretToKitsStub).to.have.been.calledOnceWithExactly("my-proj", "API_KEY");
+  });
+
+  it("should throw when a required secret is missing in live params", async () => {
+    const instance: ExtensionInstance = {
+      name: "projects/my-proj/instances/my-inst",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      config: {
+        name: "projects/my-proj/instances/my-inst/configurations/1",
+        createTime: "",
+        params: {},
+        systemParams: {},
+        source: {
+          name: "sources/1",
+          state: "ACTIVE",
+          packageUri: "",
+          hash: "",
+          spec: {
+            name: "my-ext",
+            version: "1.0.0",
+            resources: [],
+            params: [
+              {
+                param: "REQUIRED_SECRET",
+                label: "Required Secret",
+                type: ParamType.SECRET,
+                required: true,
+              },
+            ],
+            systemParams: [],
+          },
+        },
+      },
+    };
+
+    await expect(ejectSecretsFromInstance(instance)).to.be.rejectedWith(
+      FirebaseError,
+      /Secret REQUIRED_SECRET was defined in the extension spec, but is missing in live deployed secrets/,
+    );
+  });
+});
+
+describe("secretsNeedingEjection", () => {
+  let secretHasExtensionsLabelStub: sinon.SinonStub;
+
+  beforeEach(() => {
+    secretHasExtensionsLabelStub = sinon.stub(secretsModule, "secretHasExtensionsLabel");
+  });
+
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it("should skip optional secrets with no value", async () => {
+    const instance: ExtensionInstance = {
+      name: "projects/my-proj/instances/my-inst",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      config: {
+        name: "projects/my-proj/instances/my-inst/configurations/1",
+        createTime: "",
+        params: {
+          API_KEY: "projects/my-proj/secrets/API_KEY/versions/1",
+          EMPTY_OPTIONAL_SECRET: "",
+        },
+        systemParams: {},
+        source: {
+          name: "sources/1",
+          state: "ACTIVE",
+          packageUri: "",
+          hash: "",
+          spec: {
+            name: "my-ext",
+            version: "1.0.0",
+            resources: [],
+            params: [
+              {
+                param: "API_KEY",
+                label: "API Key",
+                type: ParamType.SECRET,
+                required: true,
+              },
+              {
+                param: "EMPTY_OPTIONAL_SECRET",
+                label: "Empty Optional Secret",
+                type: ParamType.SECRET,
+                required: false,
+              },
+              {
+                param: "MISSING_OPTIONAL_SECRET",
+                label: "Missing Optional Secret",
+                type: ParamType.SECRET,
+              },
+            ],
+            systemParams: [],
+          },
+        },
+      },
+    };
+
+    secretHasExtensionsLabelStub.resolves(true);
+    const needingEjection = await secretsNeedingEjection(instance);
+    expect(needingEjection).to.deep.equal(["my-proj/API_KEY"]);
+    expect(secretHasExtensionsLabelStub).to.have.been.calledOnceWithExactly("my-proj", "API_KEY");
+  });
+
+  it("should throw when a required secret is missing in live params", async () => {
+    const instance: ExtensionInstance = {
+      name: "projects/my-proj/instances/my-inst",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      config: {
+        name: "projects/my-proj/instances/my-inst/configurations/1",
+        createTime: "",
+        params: {},
+        systemParams: {},
+        source: {
+          name: "sources/1",
+          state: "ACTIVE",
+          packageUri: "",
+          hash: "",
+          spec: {
+            name: "my-ext",
+            version: "1.0.0",
+            resources: [],
+            params: [
+              {
+                param: "REQUIRED_SECRET",
+                label: "Required Secret",
+                type: ParamType.SECRET,
+                required: true,
+              },
+            ],
+            systemParams: [],
+          },
+        },
+      },
+    };
+
+    await expect(secretsNeedingEjection(instance)).to.be.rejectedWith(
+      FirebaseError,
+      /Secret REQUIRED_SECRET was defined in the extension spec, but is missing in live deployed secrets/,
+    );
   });
 });
