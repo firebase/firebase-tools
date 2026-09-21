@@ -10,7 +10,22 @@ source scripts/set-default-credentials.sh
 # Prepare the storage emulator rules runtime
 firebase setup:emulators:storage
 
-# Poll until emulators release their ports or timeout is reached.
+# Determine port check method once globally.
+if command -v nc >/dev/null 2>&1; then
+  is_port_in_use() {
+    nc -z 127.0.0.1 "$1" >/dev/null 2>&1
+  }
+elif (: > "/dev/tcp/127.0.0.1/1") 2>/dev/null || true; then
+  is_port_in_use() {
+    (: > "/dev/tcp/127.0.0.1/$1") >/dev/null 2>&1
+  }
+elif command -v node >/dev/null 2>&1; then
+  is_port_in_use() {
+    node -e "const net = require(\"net\"); const s = net.createConnection({port: $1, host: \"127.0.0.1\"}, () => { s.end(); process.exit(0); }).on(\"error\", () => process.exit(1));" >/dev/null 2>&1
+  }
+fi
+
+# Poll until emulators release their ports or overall timeout is reached.
 wait_for_emulators_shutdown() {
   local timeout=${1:-5}
   local ports=("${@:2}")
@@ -18,26 +33,9 @@ wait_for_emulators_shutdown() {
     ports=(9199 4400 4000 9099)
   fi
 
+  local end=$((SECONDS + timeout))
   for port in "${ports[@]}"; do
-    local end=$((SECONDS + timeout))
-    while :; do
-      local in_use=0
-      if command -v nc >/dev/null 2>&1; then
-        if nc -z 127.0.0.1 "$port" >/dev/null 2>&1; then
-          in_use=1
-        fi
-      elif (: > "/dev/tcp/127.0.0.1/$port") >/dev/null 2>&1; then
-        in_use=1
-      elif command -v node >/dev/null 2>&1; then
-        if node -e "const net = require(\"net\"); const s = net.createConnection({port: $port, host: \"127.0.0.1\"}, () => { s.end(); process.exit(0); }).on(\"error\", () => process.exit(1));" >/dev/null 2>&1; then
-          in_use=1
-        fi
-      fi
-
-      if [ "$in_use" -eq 0 ]; then
-        break
-      fi
-
+    while is_port_in_use "$port"; do
       if [ "$SECONDS" -ge "$end" ]; then
         echo "Warning: Port $port did not release within ${timeout}s" >&2
         break
