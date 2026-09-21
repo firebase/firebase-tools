@@ -111,6 +111,7 @@ export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], s
     "run.services.get",
     "run.services.create",
     "run.services.update",
+    "run.services.setIamPolicy",
     "run.operations.get",
     "cloudbuild.builds.create",
     "cloudbuild.builds.get",
@@ -122,7 +123,7 @@ export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], s
     "artifactregistry.repositories.get",
     "artifactregistry.repositories.create",
     "artifactregistry.repositories.downloadArtifacts",
-    "artifactregistry.repositories.uploadArtifacts",
+    "iam.serviceAccounts.actAs",
   ],
 };
 

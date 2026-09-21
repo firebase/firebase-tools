@@ -283,7 +283,7 @@ function buildUpdatedServiceDefinition(
   newService.template.annotations["client.knative.dev/user-image"] = imageUri;
   newService.template.annotations["run.googleapis.com/deployed-at"] = new Date().toISOString();
   if (message) {
-    newService.template.annotations["run.googleapis.com/description"] = message;
+    newService.template.annotations["firebase.google.com/deploy-message"] = message;
   }
 
   const runtimeEnvMap = splitEnvVars(service.appHostingConfig?.env || {}).runtime;
@@ -334,7 +334,11 @@ function buildNewServiceDefinition(
             : {}),
         },
       ],
-      annotations: message ? { "run.googleapis.com/description": message } : {},
+      annotations: message
+        ? {
+          "firebase.google.com/deploy-message": message,
+        }
+        : {},
       ...(service.serviceAccount ? { serviceAccount: service.serviceAccount } : {}),
     },
     client: "cli-firebase",

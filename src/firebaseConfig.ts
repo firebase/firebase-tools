@@ -372,6 +372,7 @@ export interface RunSingle extends Deployable {
   rootDir?: string;
   ignore?: string[];
   serviceAccount?: string;
+  localBuild?: boolean;
 }
 
 export type RunMultiple = RunSingle[];

@@ -57,18 +57,18 @@ describe("init features run", () => {
       const regionCall = inputStub.firstCall.args[0];
       expect(regionCall.message).to.equal("Which region should this service be deployed to?");
       expect(regionCall.default).to.equal("us-central1");
-      expect(regionCall.validate("INVALID REGION")).to.be.a("string");
-      expect(regionCall.validate("us-central1")).to.be.true;
+      expect(regionCall.validate!("INVALID REGION")).to.be.a("string");
+      expect(regionCall.validate!("us-central1")).to.be.true;
 
       // Verify prompt 2: Service ID (no default)
       const serviceCall = inputStub.secondCall.args[0];
       expect(serviceCall.message).to.equal("Please enter a unique ID for your service");
       expect(serviceCall.default).to.be.undefined;
-      expect(serviceCall.validate("ab")).to.be.a("string");
-      expect(serviceCall.validate("my-service-")).to.be.a("string");
-      expect(serviceCall.validate("My-Service")).to.be.a("string");
-      expect(serviceCall.validate("a".repeat(64))).to.be.a("string");
-      expect(serviceCall.validate("custom-service")).to.be.true;
+      expect(serviceCall.validate!("ab")).to.be.a("string");
+      expect(serviceCall.validate!("my-service-")).to.be.a("string");
+      expect(serviceCall.validate!("My-Service")).to.be.a("string");
+      expect(serviceCall.validate!("a".repeat(64))).to.be.a("string");
+      expect(serviceCall.validate!("custom-service")).to.be.true;
 
       // Verify prompt 3: Root directory (defaults to /)
       const rootDirCall = inputStub.thirdCall.args[0];
@@ -76,7 +76,7 @@ describe("init features run", () => {
         "Specify your app's root directory relative to your firebase.json directory",
       );
       expect(rootDirCall.default).to.equal("/");
-      expect(rootDirCall.validate("/")).to.be.true;
+      expect(rootDirCall.validate!("/")).to.be.true;
     });
 
     it("should allow linking to an existing Cloud Run service", async () => {
@@ -146,8 +146,8 @@ describe("init features run", () => {
       await runFeature.askQuestions(setup, config);
 
       const rootDirCall = inputStub.thirdCall.args[0];
-      expect(rootDirCall.validate("non-existent-folder")).to.include("does not exist");
-      expect(rootDirCall.validate("valid-folder")).to.be.true;
+      expect(rootDirCall.validate!("non-existent-folder")).to.include("does not exist");
+      expect(rootDirCall.validate!("valid-folder")).to.be.true;
     });
 
     it("should throw FirebaseError if projectId is missing", async () => {
