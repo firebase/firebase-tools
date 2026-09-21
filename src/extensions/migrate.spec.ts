@@ -157,7 +157,9 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       const migratable = migrateModule.getMigratableInstances([mockInstance1, mockUnknownInstance]);
       expect(migratable).to.have.lengthOf(1);
       expect(migratable[0].instanceId).to.equal("email-1");
-      expect(migratable[0].kitPackage).to.equal("@firebase-function-kits/firestore-bigquery-export");
+      expect(migratable[0].kitPackage).to.equal(
+        "@firebase-function-kits/firestore-bigquery-export",
+      );
     });
   });
 
