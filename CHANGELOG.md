@@ -1,1 +1,2 @@
+- [fixed] Fixed `firebase deploy` leaving the Python discovery admin server (`serving.py`) running after a killed or wedged deploy, which caused later deploys to hang indefinitely on `connect ETIMEDOUT` (#10847).
 - [fixed] Resolve nested ternary CEL expressions in function parameters, which previously failed to load or selected the wrong branch. (#7755)
