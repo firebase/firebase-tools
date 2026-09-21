@@ -23,15 +23,12 @@ import { Build } from "../../build";
 import { assertExhaustive } from "../../../../functional";
 import { IS_WINDOWS } from "../../../../utils";
 
-// How long to wait for the admin server to shut down in response to
-// /__/quitquitquit before force-killing it.
+// Grace period after /__/quitquitquit before the process group is force-killed.
 const FORCE_KILL_DELAY_MS = 10_000;
-// Cap on how long to keep waiting for the child once the shutdown request has
-// settled. A wedged server that survives even SIGKILL of its process group must
-// not be able to hang the deploy.
+// Overall cap, so a server that survives even SIGKILL cannot hang the deploy.
 const SHUTDOWN_TIMEOUT_MS = 15_000;
-// A server that is bound but not accepting connections will never answer, so the
-// shutdown request needs its own timeout rather than relying on the socket layer.
+// A server that is bound but not accepting connections never answers, and the
+// socket layer will not time that out on its own.
 const QUITQUITQUIT_TIMEOUT_MS = 5_000;
 
 /**
@@ -248,8 +245,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
       clearTimeout(forceKill);
       clearTimeout(giveUp);
       // A detached child and its pipes hold the CLI's event loop open, moving the
-      // hang to process exit. The pipes do so after a clean exit too, if code run
-      // during discovery left a background process holding their write end.
+      // hang to process exit. Pipes can outlive a clean exit, so release both here.
       childProcess.stdout?.destroy();
       childProcess.stderr?.destroy();
       childProcess.unref();

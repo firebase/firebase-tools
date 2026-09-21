@@ -47,10 +47,9 @@ export function runWithVirtualEnv(
 }
 
 /**
- * Force-kill a process spawned by runWithVirtualEnv, including its Python
- * grandchild. runWithVirtualEnv spawns through a shell, so its pid is the
- * shell's; callers must pass `detached: true` so that shell leads a process
- * group, which is what gets killed here.
+ * Force-kill a process spawned by runWithVirtualEnv, including the Python
+ * process under its shell wrapper. Callers must pass `detached: true` so that
+ * shell leads the process group this kills.
  */
 export function killProcessTree(pid: number): void {
   // process.kill(-0, ...) would signal the CLI's own process group.
@@ -145,10 +144,9 @@ function addCleanupHandlers(): void {
 }
 
 /**
- * Track a detached child so it is force-killed if the CLI goes away before the
- * caller's normal cleanup runs. `detached: true` takes the child out of the
- * CLI's process group, so it no longer dies with the CLI on Ctrl-C; this
- * restores that and extends it to SIGTERM and SIGHUP.
+ * Track a detached child so it is force-killed if the CLI goes away first.
+ * `detached: true` takes the child out of the CLI's process group, so it no
+ * longer dies with it on Ctrl-C; this restores that, and adds SIGTERM and SIGHUP.
  */
 export function trackVirtualEnvChild(child: cp.ChildProcess): void {
   trackedChildren.add(child);

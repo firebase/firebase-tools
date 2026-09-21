@@ -122,8 +122,7 @@ describe("PythonDelegate", () => {
       const killProcess = await delegate.serveAdmin(ADMIN_PORT, {});
 
       const shutdown = killProcess();
-      // "exit" fires when the shell is reaped, which does not close pipes that a
-      // process started during discovery inherited and is still holding open.
+      // "exit" fires when the shell is reaped, which does not close its pipes.
       child.emit("exit", 0);
       await shutdown;
 

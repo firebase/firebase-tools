@@ -9,8 +9,7 @@ import { killProcessTree, trackVirtualEnvChild, untrackVirtualEnvChild } from ".
 import { IS_WINDOWS } from "../utils";
 import { logger } from "../logger";
 
-// Process groups and POSIX signals do not exist on Windows, where killProcessTree
-// shells out to taskkill instead.
+// Windows has no process groups; killProcessTree shells out to taskkill there.
 const itPosix = IS_WINDOWS ? it.skip : it;
 
 describe("killProcessTree", () => {
@@ -95,8 +94,8 @@ describe("virtual env child tracking", () => {
   });
 
   itPosix("force-kills tracked children on SIGTERM, the signal CI sends on cancellation", () => {
-    // A co-listener keeps process.listenerCount() above zero after our handler
-    // removes itself, so the handler does not re-raise and end the test run.
+    // A co-listener keeps listenerCount above zero, so the handler does not
+    // re-raise SIGQUIT and end the test run.
     const coListener = (): void => undefined;
     process.on("SIGTERM", coListener);
     try {
@@ -149,8 +148,8 @@ describe("virtual env child tracking", () => {
 
   itPosix("exits rather than throwing when the platform cannot re-raise the signal", () => {
     const exitStub = sandbox.stub(process, "exit");
-    // Windows implements only SIGINT/SIGTERM/SIGKILL in process.kill and throws
-    // ENOSYS for the rest, yet raises SIGHUP itself when the console closes.
+    // Windows throws ENOSYS for SIGHUP in process.kill, yet raises it when the
+    // console window closes.
     killStub
       .withArgs(process.pid, "SIGHUP")
       .throws(Object.assign(new Error("kill ENOSYS"), { code: "ENOSYS" }));
