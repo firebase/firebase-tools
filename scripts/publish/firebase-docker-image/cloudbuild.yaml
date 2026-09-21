@@ -32,6 +32,7 @@ steps:
           -f ./Dockerfile .
         echo "Pushing image to staging repository..."
         docker push "$${STAGING_REPO}:$${VERSION_NUM}"
+        docker push "$${STAGING_REPO}:latest"
         docker push "$${STAGING_REPO}:$${EXTRA_TAG}"
 
         # Capture the image digest for promotion
@@ -40,6 +41,12 @@ steps:
           echo "Fallback: fetching digest via RepoDigests index 0..."
           DIGEST="$$(docker inspect --format='{{index .RepoDigests 0}}' "$${STAGING_REPO}:$${VERSION_NUM}" | cut -d'@' -f2)"
         fi
+
+        if ! echo "$${DIGEST}" | grep -Eq '^sha256:[a-f0-9]{64}$$'; then
+          echo "Error: Invalid image digest extracted: $${DIGEST}" >&2
+          exit 1
+        fi
+
         echo "Staging image digest: $${DIGEST}"
         echo "$${DIGEST}" > /workspace/image_digest.txt
 

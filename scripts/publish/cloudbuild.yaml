@@ -188,28 +188,31 @@ steps:
     args:
       - "-c"
       - |
-        if [ "${_VERSION}" != "preview" ]; then
-          set -e
-          VERSION_NUM="$$(cat /workspace/version_number.txt)"
-          STAGING_REPO="us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/staging/firebase"
-          echo "Building Docker image for version $${VERSION_NUM}..."
-          docker build \
-            -t "$${STAGING_REPO}:$${VERSION_NUM}" \
-            -t "$${STAGING_REPO}:latest" \
-            -f ./firebase-docker-image/Dockerfile ./firebase-docker-image
-          echo "Pushing Docker image to staging repository..."
-          docker push "$${STAGING_REPO}:$${VERSION_NUM}"
+        set -e
+        VERSION_NUM="$$(cat /workspace/version_number.txt)"
+        STAGING_REPO="us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/staging/firebase"
+        echo "Building Docker image for version $${VERSION_NUM}..."
+        docker build \
+          -t "$${STAGING_REPO}:$${VERSION_NUM}" \
+          -t "$${STAGING_REPO}:latest" \
+          -f ./firebase-docker-image/Dockerfile ./firebase-docker-image
+        echo "Pushing Docker image to staging repository..."
+        docker push "$${STAGING_REPO}:$${VERSION_NUM}"
+        docker push "$${STAGING_REPO}:latest"
 
-          DIGEST="$$(docker inspect "$${STAGING_REPO}:$${VERSION_NUM}" --format='{{range .RepoDigests}}{{println .}}{{end}}' | grep "/staging/firebase@" | head -n 1 | cut -d'@' -f2)"
-          if [ -z "$${DIGEST}" ]; then
-            echo "Fallback: fetching digest via RepoDigests index 0..."
-            DIGEST="$$(docker inspect --format='{{index .RepoDigests 0}}' "$${STAGING_REPO}:$${VERSION_NUM}" | cut -d'@' -f2)"
-          fi
-          echo "Staging image digest: $${DIGEST}"
-          echo "$${DIGEST}" > /workspace/docker_digest.txt
-        else
-          echo "Skipping docker build for preview version."
+        DIGEST="$$(docker inspect "$${STAGING_REPO}:$${VERSION_NUM}" --format='{{range .RepoDigests}}{{println .}}{{end}}' | grep "/staging/firebase@" | head -n 1 | cut -d'@' -f2)"
+        if [ -z "$${DIGEST}" ]; then
+          echo "Fallback: fetching digest via RepoDigests index 0..."
+          DIGEST="$$(docker inspect --format='{{index .RepoDigests 0}}' "$${STAGING_REPO}:$${VERSION_NUM}" | cut -d'@' -f2)"
         fi
+
+        if ! echo "$${DIGEST}" | grep -Eq '^sha256:[a-f0-9]{64}$$'; then
+          echo "Error: Invalid image digest extracted: $${DIGEST}" >&2
+          exit 1
+        fi
+
+        echo "Staging image digest: $${DIGEST}"
+        echo "$${DIGEST}" > /workspace/docker_digest.txt
 
   # Promote image to production through Artifact Registry Exit Gate
   - id: "promote-docker-image-to-prod"
@@ -303,6 +306,9 @@ steps:
           gcloud artifacts docker tags add \
             "us-docker.pkg.dev/$${PROD_PROJECT}/$${PROD_REPO}/$${PACKAGE_NAME}@$${DIGEST}" \
             "us-docker.pkg.dev/$${PROD_PROJECT}/$${PROD_REPO}/$${PACKAGE_NAME}:latest"
+          gcloud artifacts docker tags add \
+            "us-docker.pkg.dev/$${PROD_PROJECT}/$${PROD_REPO}/$${PACKAGE_NAME}@$${DIGEST}" \
+            "us-docker.pkg.dev/$${PROD_PROJECT}/$${PROD_REPO}/$${PACKAGE_NAME}:public-image-$${VERSION_NUM}"
           echo "Production tags added successfully."
         else
           echo "Skipping docker promotion for preview version."
