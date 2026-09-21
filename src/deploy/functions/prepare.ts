@@ -347,7 +347,6 @@ export async function prepare(
       userEnvs,
       codebase,
       nonInteractive: options.nonInteractive,
-      force: options.force,
       isEmulator: false,
     });
 
