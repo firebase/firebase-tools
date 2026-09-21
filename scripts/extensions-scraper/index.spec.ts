@@ -120,5 +120,33 @@ Standard documentation and configuration details.
           "https://github.com/firebase/extensions/tree/main/firestore-send-email/README.md",
       });
     });
+
+    it("should revert to PENDING_PUBLISHER and remove npmPackage when tag is removed from README", () => {
+      const readmes = {
+        "firebase/firestore-send-email": "# Readme without any replacement tag",
+      };
+      const initialRegistry: ReplacementRegistrySchema = {
+        replacements: {
+          "firebase/firestore-send-email": {
+            status: "REPLACEMENT_AVAILABLE",
+            npmPackage: "@firebase-function-kits/firestore-send-email",
+            extensionRepositoryUrl:
+              "https://github.com/firebase/extensions/tree/main/firestore-send-email/README.md",
+          },
+        },
+      };
+
+      const { updatedRegistry, results } = processExtensionReadmes(readmes, initialRegistry);
+      expect(results[0].status).to.equal("PENDING_PUBLISHER");
+      expect(results[0].detectedPackage).to.be.undefined;
+      expect(updatedRegistry.replacements["firebase/firestore-send-email"]).to.deep.equal({
+        status: "PENDING_PUBLISHER",
+        extensionRepositoryUrl:
+          "https://github.com/firebase/extensions/tree/main/firestore-send-email/README.md",
+      });
+      expect(updatedRegistry.replacements["firebase/firestore-send-email"]).to.not.have.property(
+        "npmPackage",
+      );
+    });
   });
 });

@@ -88,17 +88,6 @@ export function processExtensionReadmes(
         detectedPackage,
         status: "REPLACEMENT_AVAILABLE",
       });
-    } else if (
-      existingEntry &&
-      existingEntry.status === "REPLACEMENT_AVAILABLE" &&
-      existingEntry.npmPackage
-    ) {
-      // Preserve existing verified / pre-seeded replacement
-      results.push({
-        extensionRef,
-        detectedPackage: existingEntry.npmPackage,
-        status: "REPLACEMENT_AVAILABLE",
-      });
     } else {
       const updatedInfo: ReplacementInfo = {
         status: "PENDING_PUBLISHER",

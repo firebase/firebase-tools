@@ -94,15 +94,15 @@ async function runLiveScan(): Promise<void> {
       console.log(`  Error:   ${errReason}\n`);
     } else {
       pendingCount++;
+      delete registry.replacements[extRef].npmPackage;
+      registry.replacements[extRef].status = "PENDING_PUBLISHER";
       console.log(`[• PENDING] ${extRef}`);
       console.log(`  Web URL: ${webUrl} (README active, no replacement tag yet)\n`);
     }
   }
 
-  if (detectedCount > 0) {
-    fs.writeFileSync(replacementsPath, JSON.stringify(registry, null, 2) + "\n");
-    console.log(`[Scraper] Successfully updated ${replacementsPath}\n`);
-  }
+  fs.writeFileSync(replacementsPath, JSON.stringify(registry, null, 2) + "\n");
+  console.log(`[Scraper] Successfully updated ${replacementsPath}\n`);
 
   console.log("=======================================================");
   console.log("   SCAN SUMMARY                                        ");
