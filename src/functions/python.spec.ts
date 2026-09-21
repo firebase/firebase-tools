@@ -29,8 +29,7 @@ describe("killProcessTree", () => {
   itPosix("signals the whole process group, not just the shell pid", () => {
     killProcessTree(4242);
 
-    // A negative pid is what makes this reach the Python process underneath the
-    // `. venv/bin/activate && python ...` shell wrapper.
+    // The negative pid is what reaches Python under the venv shell wrapper.
     expect(killStub).to.have.been.calledOnceWithExactly(-4242, "SIGKILL");
   });
 
@@ -52,8 +51,7 @@ describe("killProcessTree", () => {
 
   for (const pid of [0, -1, NaN]) {
     it(`refuses to signal anything for a pid of ${pid}`, () => {
-      // process.kill(-0, ...) would signal the CLI's own process group, i.e.
-      // kill the very process trying to do the cleanup.
+      // process.kill(-0, ...) would signal the CLI's own process group.
       killProcessTree(pid);
 
       expect(killStub).to.not.have.been.called;
@@ -76,10 +74,8 @@ describe("virtual env child tracking", () => {
     // A live ChildProcess reports null for both, not undefined.
     Object.assign(child, { pid: 4242, exitCode: null, signalCode: null });
 
-    // The re-raise is gated on nothing else listening for the signal, and the
-    // test runner brings its own listeners: nyc registers one per signal to
-    // flush coverage. Detach them so these tests see a bare process, and so a
-    // synthetic process.emit does not reach them.
+    // The re-raise is gated on nothing else listening, and nyc registers a
+    // listener per signal to flush coverage. Detach them for a bare process.
     foreignListeners = new Map();
     for (const signal of CLEANUP_SIGNALS) {
       foreignListeners.set(signal, process.listeners(signal) as NodeJS.SignalsListener[]);
@@ -123,8 +119,7 @@ describe("virtual env child tracking", () => {
   });
 
   itPosix("force-kills tracked children on SIGQUIT", () => {
-    // Ctrl-\ reaches the foreground process group only, and a detached child is
-    // in its own group, so nothing kills it unless this handler does.
+    // Ctrl-\ reaches the foreground process group only; a detached child is not in it.
     const coListener = (): void => undefined;
     process.on("SIGQUIT", coListener);
     try {

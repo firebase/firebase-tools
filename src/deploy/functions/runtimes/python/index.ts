@@ -181,9 +181,8 @@ export class Delegate implements runtimes.RuntimeDelegate {
         envWithAdminPort,
       )} in ${this.sourceDir}`,
     );
-    // detached so the shell runWithVirtualEnv spawns becomes the leader of its
-    // own process group: that lets killProcessTree() force-kill the shell *and*
-    // the Python process underneath it, instead of just the shell.
+    // detached so the shell becomes its own process group leader, which is what
+    // lets killProcessTree() reach the Python process underneath it.
     const childProcess = runWithVirtualEnv(args, this.sourceDir, envWithAdminPort, {
       detached: !IS_WINDOWS,
     });
@@ -193,10 +192,8 @@ export class Delegate implements runtimes.RuntimeDelegate {
     childProcess.stderr?.on("data", (chunk: Buffer) => {
       logger.error(chunk.toString("utf8"));
     });
-    // Attached here rather than in shutdownAdmin() because 'exit' and 'error' do
-    // not replay: a server that dies before shutdown is called (a venv that fails
-    // to activate, a missing interpreter) would otherwise leave a listener that
-    // never fires and stall the whole shutdown until SHUTDOWN_TIMEOUT_MS.
+    // Attached at spawn, not in shutdownAdmin(): 'exit' and 'error' do not replay,
+    // so a server that dies first would never resolve a listener attached later.
     const exited = new Promise<void>((resolve) => {
       childProcess.once("exit", () => resolve());
       childProcess.once("error", () => resolve());
@@ -207,10 +204,8 @@ export class Delegate implements runtimes.RuntimeDelegate {
 
   /**
    * Shut down a discovery admin server, escalating from an HTTP request to a
-   * force-kill of its process group. Bounded by QUITQUITQUIT_TIMEOUT_MS followed
-   * by SHUTDOWN_TIMEOUT_MS, since the timers only start once the request settles.
-   *
-   * `exited` must have been attached at spawn time; see serveAdmin().
+   * force-kill of its process group. `exited` must have been attached at spawn
+   * time; see serveAdmin().
    */
   private async shutdownAdmin(
     childProcess: ChildProcess,
@@ -225,9 +220,8 @@ export class Delegate implements runtimes.RuntimeDelegate {
       logger.debug("Failed to call quitquitquit. This often means the server failed to start", e);
     }
     const forceKill = setTimeout(() => {
-      // No childProcess.killed check: that flag only reflects calls to .kill()
-      // on this object, and killProcessTree() is already a no-op for a process
-      // group that has gone away.
+      // No childProcess.killed check: it only reflects .kill() calls on this
+      // object, and killProcessTree() is already a no-op for a dead group.
       if (childProcess.pid) {
         logger.debug(
           `Discovery admin server on port ${port} did not shut down when asked. Force-killing it.`,
@@ -244,10 +238,8 @@ export class Delegate implements runtimes.RuntimeDelegate {
       if (exitedCleanly) {
         untrackVirtualEnvChild(childProcess);
       } else {
-        // A detached child and its pipes both hold the CLI's event loop open, so
-        // leaving it alive would hang the deploy at process exit instead of here.
-        // Releasing them is also what lets the 'exit' handler run at all, and the
-        // child stays tracked so that handler gets one last attempt at it.
+        // A detached child and its pipes hold the CLI's event loop open, moving
+        // the hang to process exit. It stays tracked so 'exit' retries the kill.
         childProcess.stdout?.destroy();
         childProcess.stderr?.destroy();
         childProcess.unref();

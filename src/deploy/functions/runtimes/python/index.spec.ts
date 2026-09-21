@@ -135,8 +135,7 @@ describe("PythonDelegate", () => {
       fetchStub.rejects(Object.assign(new Error("connect ETIMEDOUT"), { code: "ETIMEDOUT" }));
       const killProcess = await delegate.serveAdmin(ADMIN_PORT, {});
 
-      // The child never emits "exit". Before the fix this awaited forever, which
-      // is what left CI deploys hanging until the job timeout.
+      // The child never emits "exit".
       const shutdown = killProcess();
       let settled = false;
       void shutdown.then(() => (settled = true));
@@ -145,8 +144,7 @@ describe("PythonDelegate", () => {
       await shutdown;
 
       expect(settled).to.be.true;
-      // A survivor must stay tracked: untracking it here would remove the exit
-      // handler that gets the last attempt at killing it, recreating the orphan.
+      // Untracking a survivor would drop the exit handler's last attempt at it.
       expect(untrackChildStub).to.not.have.been.called;
     });
 
@@ -158,8 +156,6 @@ describe("PythonDelegate", () => {
       await clock.tickAsync(SHUTDOWN_TIMEOUT_MS);
       await shutdown;
 
-      // A detached child and its pipes each keep the event loop alive, which
-      // would move the hang from the deploy to process exit rather than fix it.
       expect(destroyStdoutStub).to.have.been.called;
       expect(destroyStderrStub).to.have.been.called;
       expect(unrefStub).to.have.been.called;
@@ -180,8 +176,6 @@ describe("PythonDelegate", () => {
       const killProcess = await delegate.serveAdmin(ADMIN_PORT, {});
 
       // A server that failed to start, e.g. a venv that could not be activated.
-      // "exit" does not replay, so a listener attached at shutdown time would
-      // never fire and the deploy would stall for SHUTDOWN_TIMEOUT_MS.
       child.emit("exit", 1);
 
       const shutdown = killProcess();
@@ -192,8 +186,7 @@ describe("PythonDelegate", () => {
       expect(settled).to.be.true;
       await shutdown;
 
-      // Nothing left alive, so we must not signal a pid that has been reaped
-      // and possibly recycled.
+      // The pid may have been reaped and recycled by now.
       await clock.tickAsync(FORCE_KILL_DELAY_MS);
       expect(killProcessTreeStub).to.not.have.been.called;
     });
@@ -202,8 +195,7 @@ describe("PythonDelegate", () => {
       fetchStub.rejects(new Error("connect ECONNREFUSED"));
       const killProcess = await delegate.serveAdmin(ADMIN_PORT, {});
 
-      // A spawn failure leaves exitCode and signalCode null, so checking those
-      // is not enough on its own to notice the process is gone.
+      // A spawn failure leaves exitCode and signalCode null.
       child.emit("error", new Error("spawn ENOENT"));
 
       const shutdown = killProcess();
