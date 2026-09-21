@@ -72,8 +72,22 @@ export function processExtensionReadmes(
   ) as ReplacementRegistrySchema;
 
   for (const [extensionRef, content] of Object.entries(readmes)) {
-    const detectedPackage = extractReplacementFromReadme(content);
     const existingEntry = updatedRegistry.replacements[extensionRef];
+    // Guard against uncataloged extensions in the READMEs map
+    if (!existingEntry) {
+      continue;
+    }
+
+    // Preserve extensions that are explicitly marked as having no replacement planned
+    if (existingEntry.status === "CONFIRMED_NO_REPLACEMENT") {
+      results.push({
+        extensionRef,
+        status: "CONFIRMED_NO_REPLACEMENT",
+      });
+      continue;
+    }
+
+    const detectedPackage = extractReplacementFromReadme(content);
     const repoUrl = getRepoUrlForExtension(existingEntry);
 
     if (detectedPackage) {

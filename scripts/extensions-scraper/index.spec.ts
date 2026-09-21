@@ -148,5 +148,46 @@ Standard documentation and configuration details.
         "npmPackage",
       );
     });
+
+    it("should preserve CONFIRMED_NO_REPLACEMENT entries without altering their status or properties", () => {
+      const readmes = {
+        "moralis/moralis-streams": "# Readme without replacement tag",
+      };
+      const initialRegistry: ReplacementRegistrySchema = {
+        replacements: {
+          "moralis/moralis-streams": {
+            status: "CONFIRMED_NO_REPLACEMENT",
+            extensionRepositoryUrl:
+              "https://github.com/moralisweb3/moralis-firebase-extensions/tree/main/moralis-streams/README.md",
+          },
+        },
+      };
+
+      const { updatedRegistry, results } = processExtensionReadmes(readmes, initialRegistry);
+      expect(results).to.have.lengthOf(1);
+      expect(results[0]).to.deep.equal({
+        extensionRef: "moralis/moralis-streams",
+        status: "CONFIRMED_NO_REPLACEMENT",
+      });
+      expect(updatedRegistry.replacements["moralis/moralis-streams"]).to.deep.equal({
+        status: "CONFIRMED_NO_REPLACEMENT",
+        extensionRepositoryUrl:
+          "https://github.com/moralisweb3/moralis-firebase-extensions/tree/main/moralis-streams/README.md",
+      });
+    });
+
+    it("should ignore extensions in readmes that do not exist in registry", () => {
+      const readmes = {
+        "uncataloged/nonexistent-extension":
+          '<!-- FIREBASE_EXTENSION_REPLACEMENT: package="@test/pkg" -->',
+      };
+      const initialRegistry: ReplacementRegistrySchema = {
+        replacements: {},
+      };
+
+      const { updatedRegistry, results } = processExtensionReadmes(readmes, initialRegistry);
+      expect(results).to.have.lengthOf(0);
+      expect(updatedRegistry.replacements).to.deep.equal({});
+    });
   });
 });

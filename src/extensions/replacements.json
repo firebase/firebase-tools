@@ -6,8 +6,8 @@
     },
     "firebase/firestore-bigquery-export": {
       "status": "REPLACEMENT_AVAILABLE",
-      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/kits/firestore-bigquery-export/README.md",
-      "npmPackage": "@firebase-function-kits/firestore-bigquery-export"
+      "npmPackage": "@firebase-function-kits/firestore-bigquery-export",
+      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/kits/firestore-bigquery-export/README.md"
     },
     "firebase/firestore-bundle-builder": {
       "status": "PENDING_PUBLISHER",
