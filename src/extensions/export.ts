@@ -189,10 +189,10 @@ export function functionsEnvFromInstance(instance: ExtensionInstance): Record<st
   for (const specParam of specParams) {
     if (specParam.type === "SECRET") {
       const val = liveParams[specParam.param];
+      if (!val && !specParam.required) {
+        continue;
+      }
       if (!val) {
-        if (!specParam.required) {
-          continue;
-        }
         throw new FirebaseError(
           `Secret ${specParam.param} was defined in the extension spec, but is missing in live deployed secrets.`,
           { exit: 1 },
@@ -267,10 +267,10 @@ export async function secretsNeedingEjection(instance: ExtensionInstance): Promi
   const checks = secretParams.map(async (specParam) => {
     const secretName = specParam.param;
     const resourceName = liveParams[secretName];
+    if (!resourceName && !specParam.required) {
+      return undefined;
+    }
     if (!resourceName) {
-      if (!specParam.required) {
-        return undefined;
-      }
       throw new FirebaseError(
         "Secret " +
           secretName +
@@ -310,10 +310,10 @@ export async function ejectSecretsFromInstance(
     }
     const secretName = specParam.param;
     const resourceName = liveParams[secretName];
+    if (!resourceName && !specParam.required) {
+      continue;
+    }
     if (!resourceName) {
-      if (!specParam.required) {
-        continue;
-      }
       throw new FirebaseError(
         `Secret ${secretName} was defined in the extension spec, but is missing in live deployed secrets.`,
         { exit: 1 },
