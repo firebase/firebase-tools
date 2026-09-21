@@ -69,20 +69,31 @@ function kill_port() {
   fi
 }
 
+function cleanup() {
+  if [ -n "${PID:-}" ]; then
+    kill "$PID" 2>/dev/null || true
+    if command -v taskkill &> /dev/null; then
+      taskkill //pid "$PID" //T //F 2>/dev/null || true
+    fi
+  fi
+  kill_port "${PORT:-8685}"
+  kill_port "5000"
+}
+trap cleanup EXIT
+
 function poll_url() {
   local url="$1"
   local expected_body="$2"
-  local max_attempts="${3:-60}"
+  local timeout_secs="${3:-30}"
   local delay_secs="${4:-0.5}"
-  local attempts=0
+  local end=$((SECONDS + timeout_secs))
   local response=""
 
-  while [ "$attempts" -lt "$max_attempts" ]; do
-    response="$(curl -s -L --connect-timeout 5 "$url" 2>/dev/null || true)"
+  while [ "$SECONDS" -lt "$end" ]; do
+    response="$(curl -s -L --connect-timeout 2 --max-time 3 "$url" 2>/dev/null || true)"
     if [ "$response" = "$expected_body" ]; then
       return 0
     fi
-    attempts=$((attempts + 1))
     sleep "$delay_secs"
   done
 
@@ -102,6 +113,7 @@ if command -v taskkill &> /dev/null; then
   taskkill //pid "$PID" //T //F 2>/dev/null || true
 fi
 kill_port "${PORT}"
+PID=""
 echo "Tested local serve."
 
 echo "Testing local hosting emulator..."
@@ -125,6 +137,7 @@ if command -v taskkill &> /dev/null; then
 fi
 kill_port "${PORT}"
 kill_port "5000"
+PID=""
 echo "Tested local hosting emulator."
 
 echo "Testing hosting deployment..."
