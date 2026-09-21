@@ -117,6 +117,21 @@ describe("PythonDelegate", () => {
       expect(untrackChildStub).to.have.been.calledOnceWithExactly(child);
     });
 
+    it("releases the child's handles after a clean exit too", async () => {
+      fetchStub.resolves(new Response("", { status: 200 }));
+      const killProcess = await delegate.serveAdmin(ADMIN_PORT, {});
+
+      const shutdown = killProcess();
+      // "exit" fires when the shell is reaped, which does not close pipes that a
+      // process started during discovery inherited and is still holding open.
+      child.emit("exit", 0);
+      await shutdown;
+
+      expect(destroyStdoutStub).to.have.been.called;
+      expect(destroyStderrStub).to.have.been.called;
+      expect(unrefStub).to.have.been.called;
+    });
+
     it("force-kills the process group when the server never answers quitquitquit", async () => {
       // A wedged server: bound to the port but not accepting connections.
       fetchStub.rejects(Object.assign(new Error("connect ETIMEDOUT"), { code: "ETIMEDOUT" }));

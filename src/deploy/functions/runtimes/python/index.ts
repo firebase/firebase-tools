@@ -238,11 +238,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
       if (exitedCleanly) {
         untrackVirtualEnvChild(childProcess);
       } else {
-        // A detached child and its pipes hold the CLI's event loop open, moving
-        // the hang to process exit. It stays tracked so 'exit' retries the kill.
-        childProcess.stdout?.destroy();
-        childProcess.stderr?.destroy();
-        childProcess.unref();
+        // The survivor stays tracked so the 'exit' handler retries the kill.
         logger.debug(
           `Discovery admin server on port ${port} survived being force-killed. ` +
             `Continuing without it; it may need to be cleaned up manually.`,
@@ -251,6 +247,12 @@ export class Delegate implements runtimes.RuntimeDelegate {
     } finally {
       clearTimeout(forceKill);
       clearTimeout(giveUp);
+      // A detached child and its pipes hold the CLI's event loop open, moving the
+      // hang to process exit. The pipes do so after a clean exit too, if code run
+      // during discovery left a background process holding their write end.
+      childProcess.stdout?.destroy();
+      childProcess.stderr?.destroy();
+      childProcess.unref();
     }
   }
 
