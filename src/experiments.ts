@@ -261,9 +261,8 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: false,
   },
-  hideDefaultSecretBindings: {
-    shortDescription:
-      "Do not write Cloud Secret Manager bindings to the default resource ID to .env.",
+  writeDefaultSecretBindings: {
+    shortDescription: "Write Cloud Secret Manager bindings to the default resource ID to .env.",
     default: false,
     public: false,
   },

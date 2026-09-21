@@ -6,6 +6,7 @@ import * as params from "./params";
 import * as secretManager from "../../gcp/secretManager";
 import { FirebaseError } from "../../error";
 import * as utils from "../../utils";
+import * as experiments from "../../experiments";
 import { logger } from "../../logger";
 
 const expect = chai.expect;
@@ -585,6 +586,66 @@ describe("resolveParams", () => {
       getSecretMetadataStub.restore();
       createSecretStub.restore();
       addVersionStub.restore();
+    }
+  });
+
+  it("logs Onetime existing secret reference message only when both secretEnvParams and writeDefaultSecretBindings are enabled", async () => {
+    const paramsToResolve: params.Param[] = [{ name: "MY_SECRET", type: "secret" }];
+    const mockSecret = { name: "MY_SECRET", projectId: "foo", labels: {}, replication: {} };
+    const getSecretMetadataStub = sinon.stub(secretManager, "getSecretMetadata").resolves({
+      secret: mockSecret,
+      secretVersion: { versionId: "1", state: "ENABLED", secret: mockSecret },
+    });
+    const isEnabledStub = sinon.stub(experiments, "isEnabled");
+
+    try {
+      isEnabledStub.withArgs("secretEnvParams").returns(true);
+      isEnabledStub.withArgs("writeDefaultSecretBindings").returns(false);
+
+      await params.resolveParams({
+        params: paramsToResolve,
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "default",
+      });
+      expect(
+        loggerInfoStub.calledWith(
+          sinon.match(/Onetime.*storing a reference to existing secret MY_SECRET=MY_SECRET:latest/),
+        ),
+      ).to.be.false;
+
+      isEnabledStub.withArgs("secretEnvParams").returns(false);
+      isEnabledStub.withArgs("writeDefaultSecretBindings").returns(true);
+
+      await params.resolveParams({
+        params: paramsToResolve,
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "default",
+      });
+      expect(
+        loggerInfoStub.calledWith(
+          sinon.match(/Onetime.*storing a reference to existing secret MY_SECRET=MY_SECRET:latest/),
+        ),
+      ).to.be.false;
+
+      isEnabledStub.withArgs("secretEnvParams").returns(true);
+      isEnabledStub.withArgs("writeDefaultSecretBindings").returns(true);
+
+      await params.resolveParams({
+        params: paramsToResolve,
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "default",
+      });
+      expect(
+        loggerInfoStub.calledWith(
+          sinon.match(/Onetime.*storing a reference to existing secret MY_SECRET=MY_SECRET:latest/),
+        ),
+      ).to.be.true;
+    } finally {
+      getSecretMetadataStub.restore();
+      isEnabledStub.restore();
     }
   });
 });

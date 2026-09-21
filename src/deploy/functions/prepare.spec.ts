@@ -26,6 +26,9 @@ import { ValidatedConfig } from "../../functions/projectConfig";
 import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1";
 import { latest } from "./runtimes/supported";
 import * as functionsEnv from "../../functions/env";
+import * as ensure from "./ensure";
+import * as functionsConfig from "../../functionsConfig";
+import * as args from "./args";
 
 describe("partition env helper", () => {
   it("splits a Record into two based on which keys begin with FIREBASE_SECRET_REF", () => {
@@ -1844,18 +1847,88 @@ describe("prepare", () => {
       });
     });
   });
-});
 
-describe("removeDefaultSecretBindingsFromRefs", () => {
-  it("removes secret bindings from resolved refs if the resource name is just the same as the secret name", () => {
-    const resolvedSecretRefs = {
-      FOO: "FOO",
-      WITH_VERSION: "WITH_VERSION:22",
-      CASE_INSENSITIVE: "case_insensitive",
-      NONDEFAULT: "BAR:latest",
-    };
-    expect(prepare.removeDefaultSecretBindingsFromRefs(resolvedSecretRefs)).to.deep.equal({
-      NONDEFAULT: "BAR:latest",
+  describe("writeResolvedSecretRefs gating", () => {
+    let sandbox: sinon.SinonSandbox;
+    let isEnabledStub: sinon.SinonStub;
+    let writeResolvedSecretRefsStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      isEnabledStub = sandbox.stub(experiments, "isEnabled");
+      sandbox.stub(ensureApiEnabled, "ensure").resolves();
+      sandbox.stub(ensureApiEnabled, "check").resolves(false);
+      sandbox.stub(ensure, "cloudBuildEnabled").resolves();
+      sandbox.stub(functionsConfig, "getFirebaseConfig").resolves({ projectId: "test-project" });
+      sandbox.stub(backend, "existingBackend").resolves(backend.empty());
+      sandbox.stub(backend, "checkAvailability").resolves();
+      sandbox.stub(runtimes, "getRuntimeDelegate").resolves({
+        language: "nodejs",
+        runtime: latest("nodejs"),
+        bin: "node",
+        validate: sandbox.stub().resolves(),
+        build: sandbox.stub().resolves(),
+        watch: sandbox.stub().resolves(() => Promise.resolve()),
+        discoverBuild: sandbox.stub().resolves(build.empty()),
+      });
+      sandbox.stub(functionsEnv, "loadUserEnvs").returns({});
+      sandbox.stub(functionsEnv, "writeResolvedParams");
+      writeResolvedSecretRefsStub = sandbox.stub(functionsEnv, "writeResolvedSecretRefs");
+      sandbox.stub(functionsEnv, "hasUserEnvs").returns(false);
+      sandbox.stub(build, "resolveBackend").resolves({
+        backend: backend.empty(),
+        envs: {},
+        secretRefs: { MY_SECRET: "MY_SECRET:latest" },
+      });
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    function createDeployOptions(): Options {
+      return {
+        project: "test-project",
+        projectNumber: "123456789",
+        config: {
+          src: {
+            functions: [{ source: "functions", codebase: "default" }],
+          },
+          path: (p: string) => `/mock/project/${p}`,
+          projectDir: "/mock/project",
+        },
+      } as unknown as Options;
+    }
+
+    it("writes resolved secret refs when both secretEnvParams and writeDefaultSecretBindings are enabled", async () => {
+      isEnabledStub.withArgs("secretEnvParams").returns(true);
+      isEnabledStub.withArgs("writeDefaultSecretBindings").returns(true);
+
+      await prepare.prepare({} as args.Context, createDeployOptions(), {} as args.Payload);
+
+      expect(writeResolvedSecretRefsStub).to.have.been.calledOnceWith(
+        { MY_SECRET: "MY_SECRET:latest" },
+        {},
+        sinon.match.object,
+      );
+    });
+
+    it("does not write resolved secret refs when writeDefaultSecretBindings is disabled", async () => {
+      isEnabledStub.withArgs("secretEnvParams").returns(true);
+      isEnabledStub.withArgs("writeDefaultSecretBindings").returns(false);
+
+      await prepare.prepare({} as args.Context, createDeployOptions(), {} as args.Payload);
+
+      expect(writeResolvedSecretRefsStub).to.not.have.been.called;
+    });
+
+    it("does not write resolved secret refs when secretEnvParams is disabled", async () => {
+      isEnabledStub.withArgs("secretEnvParams").returns(false);
+      isEnabledStub.withArgs("writeDefaultSecretBindings").returns(true);
+
+      await prepare.prepare({} as args.Context, createDeployOptions(), {} as args.Payload);
+
+      expect(writeResolvedSecretRefsStub).to.not.have.been.called;
     });
   });
 });
