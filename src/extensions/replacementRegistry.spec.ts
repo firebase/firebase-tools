@@ -86,10 +86,10 @@ describe("replacementRegistry", () => {
 
   describe("getExtensionReplacement", () => {
     it("should return replacement info for a known 1P extension", () => {
-      const rep = getExtensionReplacement("firebase/storage-resize-images");
+      const rep = getExtensionReplacement("firebase/firestore-bigquery-export");
       expect(rep).to.not.be.undefined;
       expect(rep?.status).to.equal("REPLACEMENT_AVAILABLE");
-      expect(rep?.npmPackage).to.equal("@firebase-function-kits/storage-resize-images");
+      expect(rep?.npmPackage).to.equal("@firebase-function-kits/firestore-bigquery-export");
       expect(rep?.extensionRepositoryUrl).to.be.a("string").that.is.not.empty;
     });
 
@@ -113,8 +113,8 @@ describe("replacementRegistry", () => {
 
   describe("getReplacementPackageName", () => {
     it("should return npmPackage when replacement is available for extensionRef", () => {
-      const pkg = getReplacementPackageName("firebase/storage-resize-images");
-      expect(pkg).to.equal("@firebase-function-kits/storage-resize-images");
+      const pkg = getReplacementPackageName("firebase/firestore-bigquery-export");
+      expect(pkg).to.equal("@firebase-function-kits/firestore-bigquery-export");
     });
 
     it("should return undefined when extension has no replacement", () => {

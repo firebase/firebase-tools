@@ -80,7 +80,7 @@ async function runLiveScan(): Promise<void> {
       console.log(`[✓ DETECTED] ${extRef}`);
       console.log(`  Package: ${discoveredPackage}`);
       console.log(`  Web URL: ${webUrl}\n`);
-    } else if (!fetchResult.ok && failedExtensions.length < 50) {
+    } else if (!fetchResult.ok) {
       const errReason =
         fetchResult.error ??
         (fetchResult.statusCode ? `HTTP ${fetchResult.statusCode}` : "Unreachable");
@@ -89,13 +89,15 @@ async function runLiveScan(): Promise<void> {
         url: webUrl,
         reason: errReason,
       });
-      console.log(`[✗ UNREACHABLE] ${extRef}`);
+      console.log(`[✗ UNREACHABLE] ${extRef} (Skipped registry update due to fetch failure)`);
       console.log(`  Web URL: ${webUrl}`);
       console.log(`  Error:   ${errReason}\n`);
     } else {
       pendingCount++;
-      delete registry.replacements[extRef].npmPackage;
-      registry.replacements[extRef].status = "PENDING_PUBLISHER";
+      registry.replacements[extRef] = {
+        status: "PENDING_PUBLISHER",
+        extensionRepositoryUrl: webUrl,
+      };
       console.log(`[• PENDING] ${extRef}`);
       console.log(`  Web URL: ${webUrl} (README active, no replacement tag yet)\n`);
     }
