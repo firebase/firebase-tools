@@ -160,7 +160,6 @@ export interface PromptAndWriteKitParamsOptions {
   absSourcePath: string;
   instanceId: string;
   nonInteractive?: boolean;
-  force?: boolean;
   params?: params.Param[];
 }
 
@@ -1111,11 +1110,13 @@ export async function promptAndWriteKitParams(
     userEnvs: typedUserEnvs,
     codebase: options.instanceId,
     nonInteractive: options.nonInteractive,
-    force: options.force,
   });
 
   functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
-  if (experiments.isEnabled("secretEnvParams")) {
+  if (
+    experiments.isEnabled("secretEnvParams") &&
+    experiments.isEnabled("writeDefaultSecretBindings")
+  ) {
     functionsEnv.writeResolvedSecretRefs(resolvedSecretRefs, secretRefs, userEnvOpt);
   }
 }
@@ -1355,7 +1356,6 @@ export async function addKitInstanceOrConfigureProject(
         absSourcePath,
         instanceId,
         nonInteractive: options.nonInteractive,
-        force: options.force,
         params: discoveredBuild.params,
       });
     }
@@ -1605,7 +1605,6 @@ export async function installKitOrInstance(
           absSourcePath,
           instanceId,
           nonInteractive: options.nonInteractive,
-          force: options.force,
           params: discoveredBuild.params,
         });
       }
