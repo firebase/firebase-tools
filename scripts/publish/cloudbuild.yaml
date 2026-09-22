@@ -194,11 +194,15 @@ steps:
         echo "Building Docker image for version $${VERSION_NUM}..."
         docker build \
           -t "$${STAGING_REPO}:$${VERSION_NUM}" \
-          -t "$${STAGING_REPO}:latest" \
           -f ./firebase-docker-image/Dockerfile ./firebase-docker-image
         echo "Pushing Docker image to staging repository..."
         docker push "$${STAGING_REPO}:$${VERSION_NUM}"
-        docker push "$${STAGING_REPO}:latest"
+        if [ "${_VERSION}" != "preview" ]; then
+          docker tag "$${STAGING_REPO}:$${VERSION_NUM}" "$${STAGING_REPO}:latest"
+          docker push "$${STAGING_REPO}:latest"
+        else
+          echo "Preview build: leaving the staging 'latest' tag untouched."
+        fi
 
         DIGEST="$$(docker inspect "$${STAGING_REPO}:$${VERSION_NUM}" --format='{{range .RepoDigests}}{{println .}}{{end}}' | grep "/staging/firebase@" | head -n 1 | cut -d'@' -f2)"
         if [ -z "$${DIGEST}" ]; then
@@ -246,11 +250,18 @@ steps:
             "$${SOURCE_REPOSITORY}" \
             "$${SOURCE_VERSION}")
 
-          RESP=$$(curl -s -S -f -X POST \
+          RESP_FILE="$$(mktemp)"
+          HTTP_CODE=$$(curl -s -S -o "$${RESP_FILE}" -w '%{http_code}' -X POST \
             -H "Authorization: Bearer $${ACCESS_TOKEN}" \
             -H "Content-Type: application/json" \
             "https://artifactregistry.googleapis.com/v1/projects/$${PROD_PROJECT}/locations/$${LOCATION}/repositories/$${PROD_REPO}:promoteArtifact" \
-            -d "$${PAYLOAD}")
+            -d "$${PAYLOAD}") || true
+          RESP="$$(cat "$${RESP_FILE}")"
+          rm -f "$${RESP_FILE}"
+          if [ "$${HTTP_CODE}" != "200" ]; then
+            echo "Error: promoteArtifact request failed with HTTP status $${HTTP_CODE}. Response: $${RESP}" >&2
+            exit 1
+          fi
 
           OP_NAME=$$(python3 -c "import sys, json; print(json.loads(sys.stdin.read()).get('name', ''))" <<< "$${RESP}")
           if [ -z "$${OP_NAME}" ]; then
