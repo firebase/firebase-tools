@@ -170,7 +170,8 @@ export interface ListParam extends ParamBase<string[]> {
   delimiter?: string;
 }
 
-export interface TextInput<T> { // eslint-disable-line
+export interface TextInput<T> {
+  // eslint-disable-line
   text: {
     example?: string;
 
@@ -785,7 +786,7 @@ async function promptResourceString(
 ): Promise<string> {
   const notFound = new FirebaseError(`No instances of ${input.resource.type} found.`);
   switch (input.resource.type) {
-    case "storage.googleapis.com/Bucket":
+    case "storage.googleapis.com/Bucket": {
       const buckets = (await listBuckets(projectId)).map((b) => b.name);
       if (buckets.length === 0) {
         throw notFound;
@@ -798,6 +799,7 @@ async function promptResourceString(
         },
       };
       return promptSelect<string>(prompt, forgedInput, resolvedDefault, (res: string) => res);
+    }
     default:
       logger.warn(
         `Warning: unknown resource type ${input.resource.type}; defaulting to raw text input...`,
@@ -820,7 +822,7 @@ async function promptResourceStrings(
 ): Promise<string[]> {
   const notFound = new FirebaseError(`No instances of ${input.resource.type} found.`);
   switch (input.resource.type) {
-    case "storage.googleapis.com/Bucket":
+    case "storage.googleapis.com/Bucket": {
       const buckets = (await listBuckets(projectId)).map((b) => b.name);
       if (buckets.length === 0) {
         throw notFound;
@@ -839,6 +841,7 @@ async function promptResourceStrings(
         enforceNonEmpty,
         (res: string[]) => res,
       );
+    }
     default:
       logger.warn(
         `Warning: unknown resource type ${input.resource.type}; defaulting to raw text input...`,
