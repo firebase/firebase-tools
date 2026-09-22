@@ -172,6 +172,27 @@ export function resolveMigratedMemory(
 }
 
 /**
+ * Resolves the deployed value of a secret parameter from liveParams.
+ * Returns undefined if the secret is optional and has no value, or throws a FirebaseError if it is required and missing/empty.
+ */
+function resolveLiveSecret(
+  specParam: Param,
+  liveParams: Record<string, string>,
+): string | undefined {
+  const val = liveParams[specParam.param];
+  if (!val && !specParam.required) {
+    return undefined;
+  }
+  if (!val) {
+    throw new FirebaseError(
+      `Secret ${specParam.param} was defined in the extension spec, but is missing in live deployed secrets.`,
+      { exit: 1 },
+    );
+  }
+  return val;
+}
+
+/**
  * Translates a currently deployed Extension instance into a Functions environment.
  * This includes setting any default params not set in the deployed instance to their
  * default value, writing any system params under the reserved EXT_MIGRATED_SYSTEM_ prefix,
@@ -188,15 +209,9 @@ export function functionsEnvFromInstance(instance: ExtensionInstance): Record<st
   // Every user param must be available, so we replicate the spec's default behavior if not present
   for (const specParam of specParams) {
     if (specParam.type === "SECRET") {
-      const val = liveParams[specParam.param];
-      if (!val && !specParam.required) {
-        continue;
-      }
+      const val = resolveLiveSecret(specParam, liveParams);
       if (!val) {
-        throw new FirebaseError(
-          `Secret ${specParam.param} was defined in the extension spec, but is missing in live deployed secrets.`,
-          { exit: 1 },
-        );
+        continue;
       }
       const renamed = "FIREBASE_SECRET_REF_" + specParam.param;
       envs[renamed] = val;
@@ -265,18 +280,9 @@ export async function secretsNeedingEjection(instance: ExtensionInstance): Promi
   );
 
   const checks = secretParams.map(async (specParam) => {
-    const secretName = specParam.param;
-    const resourceName = liveParams[secretName];
-    if (!resourceName && !specParam.required) {
-      return undefined;
-    }
+    const resourceName = resolveLiveSecret(specParam, liveParams);
     if (!resourceName) {
-      throw new FirebaseError(
-        "Secret " +
-          secretName +
-          " was defined in the extension spec, but is missing in live deployed secrets.",
-        { exit: 1 },
-      );
+      return undefined;
     }
     const match = resourceName.match(SECRET_VERSION_NAME_REGEX);
     if (!match?.groups) {
@@ -308,16 +314,9 @@ export async function ejectSecretsFromInstance(
     if (specParam.type !== "SECRET") {
       continue;
     }
-    const secretName = specParam.param;
-    const resourceName = liveParams[secretName];
-    if (!resourceName && !specParam.required) {
-      continue;
-    }
+    const resourceName = resolveLiveSecret(specParam, liveParams);
     if (!resourceName) {
-      throw new FirebaseError(
-        `Secret ${secretName} was defined in the extension spec, but is missing in live deployed secrets.`,
-        { exit: 1 },
-      );
+      continue;
     }
     const match = resourceName.match(SECRET_VERSION_NAME_REGEX);
     if (!match?.groups) {

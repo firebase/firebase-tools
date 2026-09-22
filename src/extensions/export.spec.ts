@@ -396,43 +396,45 @@ describe("functionsEnvFromInstance", () => {
   });
 
   it("throws when a required secret has no value", () => {
-    const instance: ExtensionInstance = {
-      name: "",
-      createTime: "",
-      updateTime: "",
-      state: "ACTIVE",
-      serviceAccountEmail: "",
-      config: {
+    for (const params of [{}, { REQUIRED_SECRET: "" }]) {
+      const instance: ExtensionInstance = {
         name: "",
         createTime: "",
-        params: {},
-        systemParams: {},
-        source: {
+        updateTime: "",
+        state: "ACTIVE",
+        serviceAccountEmail: "",
+        config: {
           name: "",
-          state: "ACTIVE",
-          packageUri: "",
-          hash: "",
-          spec: {
+          createTime: "",
+          params,
+          systemParams: {},
+          source: {
             name: "",
-            version: "1",
-            resources: [],
-            params: [
-              {
-                type: ParamType.SECRET,
-                param: "REQUIRED_SECRET",
-                label: "required secret missing from live params",
-                required: true,
-              },
-            ],
-            systemParams: [],
+            state: "ACTIVE",
+            packageUri: "",
+            hash: "",
+            spec: {
+              name: "",
+              version: "1",
+              resources: [],
+              params: [
+                {
+                  type: ParamType.SECRET,
+                  param: "REQUIRED_SECRET",
+                  label: "required secret missing from live params",
+                  required: true,
+                },
+              ],
+              systemParams: [],
+            },
           },
         },
-      },
-    };
-    expect(() => functionsEnvFromInstance(instance)).to.throw(
-      FirebaseError,
-      /Secret REQUIRED_SECRET was defined in the extension spec, but is missing in live deployed secrets/,
-    );
+      };
+      expect(() => functionsEnvFromInstance(instance)).to.throw(
+        FirebaseError,
+        /Secret REQUIRED_SECRET was defined in the extension spec, but is missing in live deployed secrets/,
+      );
+    }
   });
 
   it("system params", () => {
