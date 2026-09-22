@@ -557,7 +557,10 @@ async function ensureSecret(
   }
 
   const secretRefString = typeof version === "undefined" ? resourceId : `${resourceId}:${version}`;
-  if (experiments.isEnabled("secretEnvParams")) {
+  if (
+    experiments.isEnabled("secretEnvParams") &&
+    experiments.isEnabled("writeDefaultSecretBindings")
+  ) {
     if (!secretParam.inLocalEnvironment && secretAlreadyExisted) {
       logger.info(
         `Onetime (firebase-tools x.y.z+): storing a reference to existing secret ${secretParam.name}=${secretRefString} in .env files.`,

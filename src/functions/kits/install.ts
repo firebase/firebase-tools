@@ -1113,7 +1113,10 @@ export async function promptAndWriteKitParams(
   });
 
   functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
-  if (experiments.isEnabled("secretEnvParams")) {
+  if (
+    experiments.isEnabled("secretEnvParams") &&
+    experiments.isEnabled("writeDefaultSecretBindings")
+  ) {
     functionsEnv.writeResolvedSecretRefs(resolvedSecretRefs, secretRefs, userEnvOpt);
   }
 }
