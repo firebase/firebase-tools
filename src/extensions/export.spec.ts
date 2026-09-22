@@ -396,7 +396,8 @@ describe("functionsEnvFromInstance", () => {
   });
 
   it("throws when a required secret has no value", () => {
-    for (const params of [{}, { REQUIRED_SECRET: "" }]) {
+    const paramCases: Record<string, string>[] = [{}, { REQUIRED_SECRET: "" }];
+    for (const params of paramCases) {
       const instance: ExtensionInstance = {
         name: "",
         createTime: "",
