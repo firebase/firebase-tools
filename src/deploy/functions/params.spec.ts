@@ -596,41 +596,10 @@ describe("resolveParams", () => {
       secret: mockSecret,
       secretVersion: { versionId: "1", state: "ENABLED", secret: mockSecret },
     });
-    const isEnabledStub = sinon.stub(experiments, "isEnabled");
 
     try {
-      isEnabledStub.withArgs("secretEnvParams").returns(true);
-      isEnabledStub.withArgs("writeDefaultSecretBindings").returns(false);
-
-      await params.resolveParams({
-        params: paramsToResolve,
-        firebaseConfig: fakeConfig,
-        userEnvs: {},
-        codebase: "default",
-      });
-      expect(
-        loggerInfoStub.calledWith(
-          sinon.match(/Onetime.*storing a reference to existing secret MY_SECRET=MY_SECRET:latest/),
-        ),
-      ).to.be.false;
-
-      isEnabledStub.withArgs("secretEnvParams").returns(false);
-      isEnabledStub.withArgs("writeDefaultSecretBindings").returns(true);
-
-      await params.resolveParams({
-        params: paramsToResolve,
-        firebaseConfig: fakeConfig,
-        userEnvs: {},
-        codebase: "default",
-      });
-      expect(
-        loggerInfoStub.calledWith(
-          sinon.match(/Onetime.*storing a reference to existing secret MY_SECRET=MY_SECRET:latest/),
-        ),
-      ).to.be.false;
-
-      isEnabledStub.withArgs("secretEnvParams").returns(true);
-      isEnabledStub.withArgs("writeDefaultSecretBindings").returns(true);
+      experiments.setEnabled("secretEnvParams", true);
+      experiments.setEnabled("writeDefaultSecretBindings", true);
 
       await params.resolveParams({
         params: paramsToResolve,
@@ -643,9 +612,42 @@ describe("resolveParams", () => {
           sinon.match(/Onetime.*storing a reference to existing secret MY_SECRET=MY_SECRET:latest/),
         ),
       ).to.be.true;
+
+      loggerInfoStub.resetHistory();
+      experiments.setEnabled("secretEnvParams", true);
+      experiments.setEnabled("writeDefaultSecretBindings", false);
+
+      await params.resolveParams({
+        params: paramsToResolve,
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "default",
+      });
+      expect(
+        loggerInfoStub.calledWith(
+          sinon.match(/Onetime.*storing a reference to existing secret MY_SECRET=MY_SECRET:latest/),
+        ),
+      ).to.be.false;
+
+      loggerInfoStub.resetHistory();
+      experiments.setEnabled("secretEnvParams", false);
+      experiments.setEnabled("writeDefaultSecretBindings", true);
+
+      await params.resolveParams({
+        params: paramsToResolve,
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "default",
+      });
+      expect(
+        loggerInfoStub.calledWith(
+          sinon.match(/Onetime.*storing a reference to existing secret MY_SECRET=MY_SECRET:latest/),
+        ),
+      ).to.be.false;
     } finally {
+      experiments.setEnabled("secretEnvParams", null);
+      experiments.setEnabled("writeDefaultSecretBindings", null);
       getSecretMetadataStub.restore();
-      isEnabledStub.restore();
     }
   });
 });

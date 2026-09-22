@@ -1850,12 +1850,10 @@ describe("prepare", () => {
 
   describe("writeResolvedSecretRefs gating", () => {
     let sandbox: sinon.SinonSandbox;
-    let isEnabledStub: sinon.SinonStub;
     let writeResolvedSecretRefsStub: sinon.SinonStub;
 
     beforeEach(() => {
       sandbox = sinon.createSandbox();
-      isEnabledStub = sandbox.stub(experiments, "isEnabled");
       sandbox.stub(ensureApiEnabled, "ensure").resolves();
       sandbox.stub(ensureApiEnabled, "check").resolves(false);
       sandbox.stub(ensure, "cloudBuildEnabled").resolves();
@@ -1883,6 +1881,8 @@ describe("prepare", () => {
     });
 
     afterEach(() => {
+      experiments.setEnabled("secretEnvParams", null);
+      experiments.setEnabled("writeDefaultSecretBindings", null);
       sandbox.restore();
     });
 
@@ -1901,8 +1901,8 @@ describe("prepare", () => {
     }
 
     it("writes resolved secret refs when both secretEnvParams and writeDefaultSecretBindings are enabled", async () => {
-      isEnabledStub.withArgs("secretEnvParams").returns(true);
-      isEnabledStub.withArgs("writeDefaultSecretBindings").returns(true);
+      experiments.setEnabled("secretEnvParams", true);
+      experiments.setEnabled("writeDefaultSecretBindings", true);
 
       await prepare.prepare({} as args.Context, createDeployOptions(), {} as args.Payload);
 
@@ -1914,8 +1914,8 @@ describe("prepare", () => {
     });
 
     it("does not write resolved secret refs when writeDefaultSecretBindings is disabled", async () => {
-      isEnabledStub.withArgs("secretEnvParams").returns(true);
-      isEnabledStub.withArgs("writeDefaultSecretBindings").returns(false);
+      experiments.setEnabled("secretEnvParams", true);
+      experiments.setEnabled("writeDefaultSecretBindings", false);
 
       await prepare.prepare({} as args.Context, createDeployOptions(), {} as args.Payload);
 
@@ -1923,8 +1923,8 @@ describe("prepare", () => {
     });
 
     it("does not write resolved secret refs when secretEnvParams is disabled", async () => {
-      isEnabledStub.withArgs("secretEnvParams").returns(false);
-      isEnabledStub.withArgs("writeDefaultSecretBindings").returns(true);
+      experiments.setEnabled("secretEnvParams", false);
+      experiments.setEnabled("writeDefaultSecretBindings", true);
 
       await prepare.prepare({} as args.Context, createDeployOptions(), {} as args.Payload);
 
