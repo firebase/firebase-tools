@@ -199,9 +199,18 @@ describe("secrets", () => {
       );
       gcsm.getSecret.withArgs("project", "secret").rejects(original);
 
-      await expect(secrets.upsertSecret("project", "secret")).to.be.rejectedWith(
+      let err;
+      try {
+        await secrets.upsertSecret("project", "secret");
+      } catch (e: any) {
+        err = e;
+      }
+
+      expect(err.message).to.equal(
         "Unexpected error loading secret: HTTP Error: 403, This API method requires billing to be enabled.",
       );
+      expect(err.status).to.equal(403);
+      expect(err.original).to.equal(original);
       expect(gcsm.createSecret).to.not.have.been.called;
     });
   });
