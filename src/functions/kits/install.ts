@@ -249,16 +249,10 @@ export async function validateNpmPackageExists(rawPkgName: string): Promise<void
       throw new Error(`No version found for '${rawPkgName}'`);
     }
   } catch (err: unknown) {
-    const errMsg = getErrMsg(err);
-    if (errMsg.includes("E404") || errMsg.includes("404") || errMsg.includes("No version found")) {
-      throw new FirebaseError(
-        `NPM package '${rawPkgName}' could not be found in the npm registry. Please verify the package name and version.`,
-        { original: err instanceof Error ? err : undefined },
-      );
-    }
-    throw new FirebaseError(`Failed to verify if NPM package '${rawPkgName}' exists: ${errMsg}`, {
-      original: err instanceof Error ? err : undefined,
-    });
+    throw new FirebaseError(
+      `NPM package '${rawPkgName}' could not be found in the npm registry. Please verify the package name and version.`,
+      { original: err instanceof Error ? err : undefined },
+    );
   }
 }
 

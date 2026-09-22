@@ -320,25 +320,18 @@ describe("functions/kits/install", () => {
         .not.be.rejected;
     });
 
-    it("should throw FirebaseError when npm view fails with 404", async () => {
+    it("should throw FirebaseError when npm view fails", async () => {
       spawnWithOutputStub
         .withArgs("npm", ["view", "@firebase/my-silly-package", "version"])
-        .rejects(new Error("npm error code E404"));
+        .rejects(
+          new Error(
+            "Error: spawn(npm, [view, @firebase/my-silly-package, version]) \n exited with code: 1",
+          ),
+        );
 
       await expect(validateNpmPackageExists("@firebase/my-silly-package")).to.be.rejectedWith(
         FirebaseError,
         "NPM package '@firebase/my-silly-package' could not be found in the npm registry. Please verify the package name and version.",
-      );
-    });
-
-    it("should throw non-404 FirebaseError when npm view fails due to transient/system error", async () => {
-      spawnWithOutputStub
-        .withArgs("npm", ["view", "@firebase/offline-package", "version"])
-        .rejects(new Error("ENOTFOUND registry.npmjs.org"));
-
-      await expect(validateNpmPackageExists("@firebase/offline-package")).to.be.rejectedWith(
-        FirebaseError,
-        "Failed to verify if NPM package '@firebase/offline-package' exists: ENOTFOUND registry.npmjs.org",
       );
     });
 
