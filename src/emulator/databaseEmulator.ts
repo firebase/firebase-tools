@@ -97,7 +97,11 @@ export class DatabaseEmulator implements EmulatorInstance {
     }
   }
 
-  stop(): Promise<void> {
+  async stop(): Promise<void> {
+    if (this.rulesWatcher) {
+      await this.rulesWatcher.close();
+      this.rulesWatcher = undefined;
+    }
     return downloadableEmulators.stop(Emulators.DATABASE);
   }
 
