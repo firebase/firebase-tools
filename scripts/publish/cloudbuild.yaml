@@ -240,14 +240,11 @@ steps:
           echo "Promoting image $${PACKAGE_NAME}@$${DIGEST} from $${STAGING_REPO} to $${PROD_REPO} via Exit Gate..."
           ACCESS_TOKEN="$$(gcloud auth print-access-token)"
 
-          PAYLOAD=$$(cat <<EOF
-          {
-            "source_repository": "projects/$${PROD_PROJECT}/locations/$${LOCATION}/repositories/$${STAGING_REPO}",
-            "source_version": "projects/$${PROD_PROJECT}/locations/$${LOCATION}/repositories/$${STAGING_REPO}/packages/$${PACKAGE_NAME}/versions/$${DIGEST}",
-            "attachment_behavior": "PUBLIC_BCID_VSA_ONLY"
-          }
-          EOF
-          )
+          SOURCE_REPOSITORY="projects/$${PROD_PROJECT}/locations/$${LOCATION}/repositories/$${STAGING_REPO}"
+          SOURCE_VERSION="$${SOURCE_REPOSITORY}/packages/$${PACKAGE_NAME}/versions/$${DIGEST}"
+          PAYLOAD=$$(printf '{"source_repository":"%s","source_version":"%s","attachment_behavior":"PUBLIC_BCID_VSA_ONLY"}' \
+            "$${SOURCE_REPOSITORY}" \
+            "$${SOURCE_VERSION}")
 
           RESP=$$(curl -s -S -f -X POST \
             -H "Authorization: Bearer $${ACCESS_TOKEN}" \
