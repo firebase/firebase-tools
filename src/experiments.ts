@@ -261,6 +261,11 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: false,
   },
+  writeDefaultSecretBindings: {
+    shortDescription: "Write Cloud Secret Manager bindings to the default resource ID to .env.",
+    default: false,
+    public: false,
+  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;
