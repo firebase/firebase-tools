@@ -23,6 +23,14 @@ echo "Creating temp directory..."
 TEMP_DIR="$(mktemp -d)"
 echo "Created temp directory: ${TEMP_DIR}"
 
+function cleanup() {
+  cd "${CWD}"
+  if [ -n "${TEMP_DIR:-}" ] && [ -d "${TEMP_DIR}" ]; then
+    rm -rf "${TEMP_DIR}"
+  fi
+}
+trap cleanup EXIT
+
 echo "Installing firebase-tools..."
 ./scripts/clean-install.sh
 echo "Installed firebase-tools: $(which firebase)"
