@@ -488,6 +488,11 @@ export function normalizeFileName(fileName: string): string {
   return fileName.replaceAll(/\//g, "-");
 }
 
+function isAlreadyExistsError(e: FirebaseError): boolean {
+  const errorText = `${e.message} ${JSON.stringify(e.context ?? "")}`;
+  return e.status === 400 && /already[\s_]+exists/i.test(errorText);
+}
+
 /**
  * Submits resource descriptors to the Firebase Telemetry API to register completed source maps.
  */
@@ -498,16 +503,34 @@ export async function registerSourceMap(sourceMap: SourceMap): Promise<void> {
     apiVersion: "v1alpha",
   });
 
-  try {
+  const patchSourceMap = async (): Promise<void> => {
     await client.patch(sourceMap.name, sourceMap, { queryParams: { allowMissing: "true" } });
     logger.debug(
       `Registered source map ${sourceMap.obfuscatedFilePath} with Firebase Telemetry service`,
     );
+  };
+
+  try {
+    await patchSourceMap();
   } catch (e) {
     if (e instanceof FirebaseError) {
       // Ignore 409 errors, as they indicate the source map was recently uploaded
       if (e.status === 409) {
         return;
+      }
+      if (isAlreadyExistsError(e)) {
+        try {
+          logger.debug(
+            `Source map ${sourceMap.obfuscatedFilePath} already exists, deleting and re-registering`,
+          );
+          await client.delete(sourceMap.name);
+          await patchSourceMap();
+          return;
+        } catch (retryErr) {
+          throw new FirebaseError(
+            `Failed to register source map ${sourceMap.obfuscatedFilePath} with Firebase Telemetry service:\n${retryErr instanceof Error ? retryErr.message : String(retryErr)}`,
+          );
+        }
       }
     }
     throw new FirebaseError(
