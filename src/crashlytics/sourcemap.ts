@@ -422,9 +422,15 @@ export async function uploadSourceMaps(
  */
 export async function uploadMap(request: UploadRequest, attemptsRemaining = 0): Promise<boolean> {
   const { projectId, mappingFile, obfuscatedFilePath, bucketName, appVersion, options } = request;
-  const filePath = path.relative(options.projectRoot ?? process.cwd(), mappingFile);
-  const obfuscatedPath = obfuscatedFilePath
-    .split(path.sep)
+  const relativeToRoot = path.relative(options.projectRoot ?? process.cwd(), mappingFile);
+  const filePath =
+    !fs.existsSync(relativeToRoot) && fs.existsSync(mappingFile) ? mappingFile : relativeToRoot;
+  const pathSegments = obfuscatedFilePath.split(path.sep);
+  const browserIndex = pathSegments.lastIndexOf("browser");
+  const isAngularBuildDir = filePath.split(path.sep).some((seg) => ["dist"].includes(seg));
+  const normalizedSegments =
+    isAngularBuildDir && browserIndex !== -1 ? pathSegments.slice(browserIndex + 1) : pathSegments;
+  const obfuscatedPath = normalizedSegments
     .map((p) => (p === ".next" ? "_next" : p))
     // TODO(andrewbrook): add flag to allow uploading dev maps
     .filter((p) => p !== "dev")

@@ -745,6 +745,29 @@ describe("crashlytics:sourcemap helpers", () => {
       );
     });
 
+    it("should strip Angular browser build directory prefix from obfuscatedFilePath", async () => {
+      const request = mockUploadRequest({
+        mappingFile: "/mock-root/dist/apps/ecp/browser/chunk-GNZJHBSG.js.map",
+        obfuscatedFilePath: path.join("apps", "ecp", "browser", "chunk-GNZJHBSG.js"),
+        options: mockCommandOptions({
+          app: "1:12345:web:abc",
+          projectRoot: "/mock-root",
+        }),
+      });
+
+      const result = await uploadMap(request);
+
+      expect(result).to.be.true;
+      const patchArg = clientPatchStub.firstCall.args[1] as {
+        obfuscatedFilePath: string;
+        fileUri: string;
+      };
+      expect(patchArg.obfuscatedFilePath).to.equal("/chunk-GNZJHBSG.js");
+      expect(patchArg.fileUri).to.equal(
+        "gs://test-bucket/1:12345:web:abc-1.0.0-chunk-GNZJHBSG.js.zip",
+      );
+    });
+
     it("should return false and log a warning when upload fails with attemptsRemaining === 0", async () => {
       uploadObjectStub.rejects(new Error("upload failed"));
       const request = mockUploadRequest();

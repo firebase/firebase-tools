@@ -64,7 +64,8 @@ export const command = new Command("crashlytics:sourcemap:upload [mappingFiles]"
         maxDepth: 20,
       });
 
-      const mappings = await findSourceMapMappings(files, rootDir);
+      const baseDir = path.basename(filePath) === ".next" ? path.dirname(filePath) : filePath;
+      const mappings = await findSourceMapMappings(files, baseDir);
 
       const result = await uploadSourceMaps(mappings, {
         projectId,
