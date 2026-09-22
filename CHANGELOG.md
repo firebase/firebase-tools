@@ -1,1 +1,3 @@
 - Fixed `firebase deploy --only remoteconfig` (including `--dry-run`) silently accepting Remote Config templates with invalid condition expression syntax. Templates are now validated server-side during the prepare phase.
+- Improved error message with a link to the Firebase console when `projects:addfirebase` fails due to unaccepted Firebase Terms of Service.
+- [fixed] Fixed `firebase deploy` leaving the Python discovery admin server (`serving.py`) running after a killed or wedged deploy, which caused later deploys to hang indefinitely on `connect ETIMEDOUT` (#10847).
