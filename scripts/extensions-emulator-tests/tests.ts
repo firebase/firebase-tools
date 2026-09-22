@@ -13,9 +13,10 @@ const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
  * parallel emulator subprocesses.
  */
 const TEST_SETUP_TIMEOUT = 120000;
-const EMULATORS_WRITE_DELAY_MS = 5000;
 const EMULATORS_SHUTDOWN_DELAY_MS = 25000;
-const EMULATOR_TEST_TIMEOUT = EMULATORS_WRITE_DELAY_MS * 2;
+const EMULATOR_TEST_TIMEOUT = 30000;
+const EXTENSION_POLL_INTERVAL_MS = 100;
+const EXTENSION_POLL_TIMEOUT_MS = 15000;
 const STORAGE_FILE_NAME = "test.png";
 const STORAGE_RESIZED_FILE_NAME = "test_200x200.png";
 
@@ -32,6 +33,34 @@ function cleanUpExtensionsCache(): void {
   ) {
     rmSync(process.env.FIREBASE_EXTENSIONS_CACHE_PATH, { recursive: true });
   }
+}
+
+async function pollForExtensionOutput(): Promise<{
+  fileResized: boolean;
+  eventFired: FirebaseFirestore.DocumentSnapshot;
+}> {
+  const start = Date.now();
+  while (Date.now() - start < EXTENSION_POLL_TIMEOUT_MS) {
+    try {
+      const [exists] = await admin.storage().bucket().file(STORAGE_RESIZED_FILE_NAME).exists();
+      if (exists) {
+        const doc = await admin
+          .firestore()
+          .collection("resizedImages")
+          .doc(STORAGE_FILE_NAME)
+          .get();
+        if (doc.exists && doc.data()?.eventHandlerFired) {
+          return { fileResized: true, eventFired: doc };
+        }
+      }
+    } catch {
+      // Retrying until timeout or success
+    }
+    await new Promise((resolve) => setTimeout(resolve, EXTENSION_POLL_INTERVAL_MS));
+  }
+  throw new Error(
+    `Timed out after ${EXTENSION_POLL_TIMEOUT_MS}ms waiting for resized file and firestore document`,
+  );
 }
 
 function readConfig(): FrameworkOptions {
@@ -68,8 +97,9 @@ describe("CF3 and Extensions emulator", () => {
 
   after(async function (this) {
     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
+    await Promise.allSettled(admin.apps.map((app) => app?.delete()));
     cleanUpExtensionsCache();
-    await test.stopEmulators();
+    await test?.stopEmulators();
   });
 
   it("should call a CF3 HTTPS function to write to the default Storage bucket, then trigger the resize images extension", async function (this) {
@@ -78,18 +108,8 @@ describe("CF3 and Extensions emulator", () => {
     const response = await test.writeToDefaultStorage();
     expect(response.status).to.equal(200);
 
-    /*
-     * We delay here so that the functions have time to write and trigger -
-     * this is happening in real time in a different process, so we have to wait like this.
-     */
-    await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
-    const fileResized = await admin.storage().bucket().file(STORAGE_RESIZED_FILE_NAME).exists();
-    expect(fileResized[0]).to.be.true;
-    const eventFired = await admin
-      .firestore()
-      .collection("resizedImages")
-      .doc(STORAGE_FILE_NAME)
-      .get();
+    const { fileResized, eventFired } = await pollForExtensionOutput();
+    expect(fileResized).to.be.true;
     expect(eventFired.exists).to.be.true;
     expect(eventFired.data()?.eventHandlerFired).to.be.true;
   });

@@ -32,7 +32,7 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
     config: {
       name: "projects/test-project/instances/email-1/configurations/1",
       createTime: "2025-01-01T00:00:00Z",
-      extensionRef: "firebase/firestore-send-email",
+      extensionRef: "firebase/firestore-bigquery-export",
       params: {},
       systemParams: {},
       source: {
@@ -41,7 +41,7 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
         packageUri: "https://gcs...",
         hash: "abc",
         spec: {
-          name: "firestore-send-email",
+          name: "firestore-bigquery-export",
           version: "0.1.18",
           resources: [],
           params: [],
@@ -60,7 +60,7 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
     config: {
       name: "projects/test-project/instances/email-2/configurations/1",
       createTime: "2025-01-02T00:00:00Z",
-      extensionRef: "firebase/firestore-send-email",
+      extensionRef: "firebase/firestore-bigquery-export",
       params: {},
       systemParams: {},
       source: {
@@ -69,7 +69,7 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
         packageUri: "https://gcs...",
         hash: "def",
         spec: {
-          name: "firestore-send-email",
+          name: "firestore-bigquery-export",
           version: "0.1.18",
           resources: [],
           params: [],
@@ -123,11 +123,11 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
     });
 
     it("should return mapped kit package for known extension ref", () => {
-      expect(migrateModule.getKitPackage("firestore-send-email")).to.equal(
-        "@firebase-function-kits/firestore-send-email",
+      expect(migrateModule.getKitPackage("firestore-bigquery-export")).to.equal(
+        "@firebase-function-kits/firestore-bigquery-export",
       );
-      expect(migrateModule.getKitPackage("firebase/firestore-send-email")).to.equal(
-        "@firebase-function-kits/firestore-send-email",
+      expect(migrateModule.getKitPackage("firebase/firestore-bigquery-export")).to.equal(
+        "@firebase-function-kits/firestore-bigquery-export",
       );
     });
 
@@ -145,10 +145,10 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
     it("should format table of installed extensions correctly", () => {
       const { rows } = migrateModule.formatExtensionsTable([mockInstance1, mockInstance2]);
       expect(rows).to.have.lengthOf(1);
-      expect(rows[0].extension).to.equal("firebase/firestore-send-email");
+      expect(rows[0].extension).to.equal("firebase/firestore-bigquery-export");
       expect(rows[0].publisher).to.equal("firebase");
       expect(rows[0].instances).to.deep.equal(["email-1", "email-2"]);
-      expect(rows[0].kitPackage).to.equal("@firebase-function-kits/firestore-send-email");
+      expect(rows[0].kitPackage).to.equal("@firebase-function-kits/firestore-bigquery-export");
     });
   });
 
@@ -157,7 +157,9 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       const migratable = migrateModule.getMigratableInstances([mockInstance1, mockUnknownInstance]);
       expect(migratable).to.have.lengthOf(1);
       expect(migratable[0].instanceId).to.equal("email-1");
-      expect(migratable[0].kitPackage).to.equal("@firebase-function-kits/firestore-send-email");
+      expect(migratable[0].kitPackage).to.equal(
+        "@firebase-function-kits/firestore-bigquery-export",
+      );
     });
   });
 
@@ -175,9 +177,9 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       const choices = opts.choices as prompt.Choice<migrateModule.ExtensionMigrationPlan>[];
       expect(opts.message).to.equal("Which extension instance would you like to migrate?");
       expect(choices).to.have.lengthOf(2);
-      expect(choices[0].name).to.equal("email-1 (firebase/firestore-send-email)");
+      expect(choices[0].name).to.equal("email-1 (firebase/firestore-bigquery-export)");
       expect(choices[0].value).to.equal(migratable[0]);
-      expect(choices[1].name).to.equal("email-2 (firebase/firestore-send-email)");
+      expect(choices[1].name).to.equal("email-2 (firebase/firestore-bigquery-export)");
       expect(choices[1].value).to.equal(migratable[1]);
     });
   });
@@ -219,8 +221,8 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       expect(plan).to.deep.equal({
         instance: mockInstance1,
         instanceId: "email-1",
-        extensionRef: "firebase/firestore-send-email",
-        kitPackage: "@firebase-function-kits/firestore-send-email",
+        extensionRef: "firebase/firestore-bigquery-export",
+        kitPackage: "@firebase-function-kits/firestore-bigquery-export",
       });
     });
   });
@@ -252,14 +254,14 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
         ...mockInstance1,
         config: {
           ...mockInstance1.config,
-          extensionRef: "otherpublisher/firestore-send-email",
+          extensionRef: "otherpublisher/firestore-bigquery-export",
         },
       };
       sandbox.stub(extensionsApi, "listInstances").resolves([mockThirdPartyInstance]);
 
       await expect(
         migrateModule.createMigrationPlan("test-project", {
-          extension: "firestore-send-email",
+          extension: "firestore-bigquery-export",
         }),
       ).to.be.rejectedWith(
         FirebaseError,
@@ -287,14 +289,14 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       sandbox.stub(extensionsApi, "listInstances").resolves([mockInstance1]);
 
       const plan = await migrateModule.createMigrationPlan("test-project", {
-        extension: "firestore-send-email",
+        extension: "firestore-bigquery-export",
       });
 
       expect(plan).to.deep.equal({
         instance: mockInstance1,
         instanceId: "email-1",
-        extensionRef: "firebase/firestore-send-email",
-        kitPackage: "@firebase-function-kits/firestore-send-email",
+        extensionRef: "firebase/firestore-bigquery-export",
+        kitPackage: "@firebase-function-kits/firestore-bigquery-export",
       });
     });
 
@@ -308,7 +310,7 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       );
 
       const plan = await migrateModule.createMigrationPlan("test-project", {
-        extension: "firestore-send-email",
+        extension: "firestore-bigquery-export",
       });
 
       expect(selectStub).to.be.calledOnce;
@@ -316,8 +318,8 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
         .args[0] as prompt.SelectOptions<migrateModule.ExtensionMigrationPlan>;
       const choices = opts.choices as prompt.Choice<migrateModule.ExtensionMigrationPlan>[];
       expect(choices).to.have.lengthOf(2);
-      expect(choices[0].name).to.equal("email-1 (firebase/firestore-send-email)");
-      expect(choices[1].name).to.equal("email-2 (firebase/firestore-send-email)");
+      expect(choices[0].name).to.equal("email-1 (firebase/firestore-bigquery-export)");
+      expect(choices[1].name).to.equal("email-2 (firebase/firestore-bigquery-export)");
       expect(plan?.instanceId).to.equal("email-2");
     });
   });
@@ -352,8 +354,8 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       expect(plan).to.deep.equal({
         instance: mockInstance1,
         instanceId: "email-1",
-        extensionRef: "firebase/firestore-send-email",
-        kitPackage: "@firebase-function-kits/firestore-send-email",
+        extensionRef: "firebase/firestore-bigquery-export",
+        kitPackage: "@firebase-function-kits/firestore-bigquery-export",
       });
     });
   });
@@ -366,9 +368,9 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
 
     it("should return original instance when instance is already up to date", async () => {
       sandbox.stub(extensionsApi, "getExtensionVersion").resolves({
-        name: "firebase/firestore-send-email@0.1.14",
-        ref: "firebase/firestore-send-email@0.1.14",
-        spec: { name: "firestore-send-email", version: "0.1.14" },
+        name: "firebase/firestore-bigquery-export@0.1.14",
+        ref: "firebase/firestore-bigquery-export@0.1.14",
+        spec: { name: "firestore-bigquery-export", version: "0.1.14" },
       } as unknown as ExtensionVersion);
 
       const updated = await migrateModule.ensureInstanceUpToDate("test-project", mockInstance1);
@@ -382,9 +384,9 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
         latestVersion: "0.1.15",
       } as unknown as Extension);
       const getExtVersionStub = sandbox.stub(extensionsApi, "getExtensionVersion").resolves({
-        name: "firebase/firestore-send-email@0.1.15",
-        ref: "firebase/firestore-send-email@0.1.15",
-        spec: { name: "firestore-send-email", version: "0.1.15", params: [] },
+        name: "firebase/firestore-bigquery-export@0.1.15",
+        ref: "firebase/firestore-bigquery-export@0.1.15",
+        spec: { name: "firestore-bigquery-export", version: "0.1.15", params: [] },
       } as unknown as ExtensionVersion);
       sandbox.stub(updateHelper, "update").resolves({} as unknown as ExtensionInstance);
       sandbox.stub(extensionsApi, "getInstance").resolves(mockInstance1);
@@ -421,9 +423,9 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
         latestVersion: "0.1.15",
       } as unknown as Extension);
       sandbox.stub(extensionsApi, "getExtensionVersion").resolves({
-        name: "firebase/firestore-send-email@0.1.15",
-        ref: "firebase/firestore-send-email@0.1.15",
-        spec: { name: "firestore-send-email", version: "0.1.15", params: [] },
+        name: "firebase/firestore-bigquery-export@0.1.15",
+        ref: "firebase/firestore-bigquery-export@0.1.15",
+        spec: { name: "firestore-bigquery-export", version: "0.1.15", params: [] },
       } as unknown as ExtensionVersion);
       sandbox.stub(updateHelper, "update").resolves({} as unknown as ExtensionInstance);
       sandbox.stub(extensionsApi, "getInstance").resolves(mockInstance1);
@@ -450,9 +452,9 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
         latestVersion: "0.1.15",
       } as unknown as Extension);
       sandbox.stub(extensionsApi, "getExtensionVersion").resolves({
-        name: "firebase/firestore-send-email@0.1.15",
-        ref: "firebase/firestore-send-email@0.1.15",
-        spec: { name: "firestore-send-email", version: "0.1.15", params: [] },
+        name: "firebase/firestore-bigquery-export@0.1.15",
+        ref: "firebase/firestore-bigquery-export@0.1.15",
+        spec: { name: "firestore-bigquery-export", version: "0.1.15", params: [] },
       } as unknown as ExtensionVersion);
       sandbox.stub(updateHelper, "update").resolves({} as unknown as ExtensionInstance);
       sandbox.stub(extensionsApi, "getInstance").resolves(mockInstance1);
@@ -469,9 +471,9 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
         latestVersion: "0.1.15",
       } as unknown as Extension);
       sandbox.stub(extensionsApi, "getExtensionVersion").resolves({
-        name: "firebase/firestore-send-email@0.1.15",
-        ref: "firebase/firestore-send-email@0.1.15",
-        spec: { name: "firestore-send-email", version: "0.1.15", params: [] },
+        name: "firebase/firestore-bigquery-export@0.1.15",
+        ref: "firebase/firestore-bigquery-export@0.1.15",
+        spec: { name: "firestore-bigquery-export", version: "0.1.15", params: [] },
       } as unknown as ExtensionVersion);
       const promptStub = sandbox
         .stub(paramHelper, "promptForNewParams")
@@ -503,9 +505,9 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
         latestVersion: "0.1.15",
       } as unknown as Extension);
       sandbox.stub(extensionsApi, "getExtensionVersion").resolves({
-        name: "firebase/firestore-send-email@0.1.15",
-        ref: "firebase/firestore-send-email@0.1.15",
-        spec: { name: "firestore-send-email", version: "0.1.15", params: [] },
+        name: "firebase/firestore-bigquery-export@0.1.15",
+        ref: "firebase/firestore-bigquery-export@0.1.15",
+        spec: { name: "firestore-bigquery-export", version: "0.1.15", params: [] },
       } as unknown as ExtensionVersion);
       sandbox.stub(updateHelper, "update").rejects(new Error("API rate limit exceeded"));
 
@@ -696,10 +698,10 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       sandbox.stub(migrateModule, "ensureInstanceUpToDate").resolves(mockInstance1);
       installKitOrInstanceStub = sandbox.stub(kitInstallModule, "installKitOrInstance").resolves({
         action: "installedKit",
-        kitId: "firestore-send-email",
+        kitId: "firestore-bigquery-export",
         instanceId: "email-1",
         sourcePath: "/mock/path",
-        configDirPath: "functions/kits/firestore-send-email/email-1",
+        configDirPath: "functions/kits/firestore-bigquery-export/email-1",
       });
       migrateSecretsStub = sandbox
         .stub(migrateModule, "migrateSecrets")
@@ -758,7 +760,7 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       expect(installKitOrInstanceStub).to.have.been.calledOnceWith(
         sinon.match({
           config: mockConfig,
-          package: "@firebase-function-kits/firestore-send-email",
+          package: "@firebase-function-kits/firestore-bigquery-export",
           template: "migration",
           defaultInstanceId: "email-1",
           seedEnv: {
