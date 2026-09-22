@@ -351,7 +351,10 @@ export async function prepare(
     });
 
     functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
-    if (experiments.isEnabled("secretEnvParams")) {
+    if (
+      experiments.isEnabled("secretEnvParams") &&
+      experiments.isEnabled("writeDefaultSecretBindings")
+    ) {
       functionsEnv.writeResolvedSecretRefs(resolvedSecretRefs, secretRefs, userEnvOpt);
     }
 
