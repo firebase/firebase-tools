@@ -84,28 +84,28 @@ describe("replacementRegistry", () => {
     });
   });
 
-  describe("getExtensionReplacement", () => {
-    const mockRegistry: ReplacementRegistrySchema = {
-      replacements: {
-        "firebase/firestore-send-email": {
-          status: "REPLACEMENT_AVAILABLE",
-          npmPackage: "@firebase-function-kits/firestore-send-email",
-          extensionRepositoryUrl:
-            "https://github.com/firebase/extensions/tree/main/firestore-send-email/README.md",
-        },
-        "moralis/moralis-streams": {
-          status: "CONFIRMED_NO_REPLACEMENT",
-          extensionRepositoryUrl:
-            "https://github.com/moralisweb3/moralis-firebase-extensions/tree/main/moralis-streams/README.md",
-        },
-        "firebase/firestore-bundle-builder": {
-          status: "PENDING_PUBLISHER",
-          extensionRepositoryUrl:
-            "https://github.com/firebase/firestore-bundle-builder/blob/master/README.md",
-        },
+  const mockRegistry: ReplacementRegistrySchema = {
+    replacements: {
+      "firebase/firestore-send-email": {
+        status: "REPLACEMENT_AVAILABLE",
+        npmPackage: "@firebase-function-kits/firestore-send-email",
+        extensionRepositoryUrl:
+          "https://github.com/firebase/extensions/tree/main/firestore-send-email/README.md",
       },
-    };
+      "moralis/moralis-streams": {
+        status: "CONFIRMED_NO_REPLACEMENT",
+        extensionRepositoryUrl:
+          "https://github.com/moralisweb3/moralis-firebase-extensions/tree/main/moralis-streams/README.md",
+      },
+      "firebase/firestore-bundle-builder": {
+        status: "PENDING_PUBLISHER",
+        extensionRepositoryUrl:
+          "https://github.com/firebase/firestore-bundle-builder/blob/master/README.md",
+      },
+    },
+  };
 
+  describe("getExtensionReplacement", () => {
     it("should return replacement info for a known 1P extension", () => {
       const rep = getExtensionReplacement("firebase/firestore-send-email", mockRegistry);
       expect(rep).to.not.be.undefined;
@@ -133,22 +133,6 @@ describe("replacementRegistry", () => {
   });
 
   describe("getReplacementPackageName", () => {
-    const mockRegistry: ReplacementRegistrySchema = {
-      replacements: {
-        "firebase/firestore-send-email": {
-          status: "REPLACEMENT_AVAILABLE",
-          npmPackage: "@firebase-function-kits/firestore-send-email",
-          extensionRepositoryUrl:
-            "https://github.com/firebase/extensions/tree/main/firestore-send-email/README.md",
-        },
-        "moralis/moralis-streams": {
-          status: "CONFIRMED_NO_REPLACEMENT",
-          extensionRepositoryUrl:
-            "https://github.com/moralisweb3/moralis-firebase-extensions/tree/main/moralis-streams/README.md",
-        },
-      },
-    };
-
     it("should return npmPackage when replacement is available for extensionRef", () => {
       const pkg = getReplacementPackageName("firebase/firestore-send-email", mockRegistry);
       expect(pkg).to.equal("@firebase-function-kits/firestore-send-email");
@@ -166,27 +150,6 @@ describe("replacementRegistry", () => {
   });
 
   describe("getDeprecationWarningMessage", () => {
-    const mockRegistry: ReplacementRegistrySchema = {
-      replacements: {
-        "firebase/firestore-send-email": {
-          status: "REPLACEMENT_AVAILABLE",
-          npmPackage: "@firebase-function-kits/firestore-send-email",
-          extensionRepositoryUrl:
-            "https://github.com/firebase/extensions/tree/main/firestore-send-email/README.md",
-        },
-        "moralis/moralis-streams": {
-          status: "CONFIRMED_NO_REPLACEMENT",
-          extensionRepositoryUrl:
-            "https://github.com/moralisweb3/moralis-firebase-extensions/tree/main/moralis-streams/README.md",
-        },
-        "firebase/firestore-bundle-builder": {
-          status: "PENDING_PUBLISHER",
-          extensionRepositoryUrl:
-            "https://github.com/firebase/firestore-bundle-builder/blob/master/README.md",
-        },
-      },
-    };
-
     it("should format deprecation message for known extension", () => {
       const msg = getDeprecationWarningMessage("firebase/firestore-send-email", mockRegistry);
       expect(msg).to.include("firebase/firestore-send-email");
