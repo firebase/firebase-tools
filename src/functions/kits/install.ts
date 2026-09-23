@@ -1459,6 +1459,7 @@ export async function resolvePackageSource(
     throw new FirebaseError("Set the --package option to a valid NPM package and try again.");
   }
 
+  await validateNpmPackageExists(rawPkgName);
   const { packageName } = parseNpmPackageSpecifier(rawPkgName);
 
   const isThirdParty = await promptSecurityConfirmation({
@@ -1532,7 +1533,7 @@ export async function installKitOrInstance(
   }
 
   if (options.package) {
-    await validateNpmPackageExists(options.package);
+    validateNpmPackageName(options.package);
   }
 
   const originalFunctions = cloneDeep(options.config.src.functions);

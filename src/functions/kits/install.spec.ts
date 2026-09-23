@@ -3336,46 +3336,6 @@ describe("functions/kits/install", () => {
       expect(writeProjectFileStub).to.not.have.been.called;
     });
 
-    it("should throw an error if package version does not exist in npm registry even when package matches an existing kit", async () => {
-      const writeProjectFileStub = sinon.stub();
-      const askWriteProjectFileStub = sinon.stub().resolves();
-      const existingKit: ValidatedKitSingle = {
-        kit: "firestore-bigquery-export",
-        sourcePackage: { name: "@firebase-function-kits/firestore-bigquery-export" },
-        source: "function-kits/firestore-bigquery-export/source",
-        instances: {
-          inst1: "function-kits/firestore-bigquery-export/config-inst1",
-        },
-      };
-      const mockConfig = {
-        projectDir: "/mock/project",
-        src: { functions: [existingKit] },
-        path: (p: string) => path.join("/mock/project", p),
-        writeProjectFile: writeProjectFileStub,
-        askWriteProjectFile: askWriteProjectFileStub,
-      } as unknown as Config;
-
-      spawnWithOutputStub
-        .withArgs("npm", [
-          "view",
-          "@firebase-function-kits/firestore-bigquery-export@999.0.0",
-          "version",
-        ])
-        .rejects(new Error("npm error code E404"));
-
-      await expect(
-        installKitOrInstance({
-          config: mockConfig,
-          package: "@firebase-function-kits/firestore-bigquery-export@999.0.0",
-        }),
-      ).to.be.rejectedWith(
-        FirebaseError,
-        /NPM package '@firebase-function-kits\/firestore-bigquery-export@999.0.0' could not be found in the npm registry/,
-      );
-
-      expect(writeProjectFileStub).to.not.have.been.called;
-    });
-
     it("should throw an error if template has an invalid template name", async () => {
       const mockConfig = {
         projectDir: "/mock/project",
