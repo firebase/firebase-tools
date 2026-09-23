@@ -1,2 +1,5 @@
 - Improved error message with a link to the Firebase console when `projects:addfirebase` fails due to unaccepted Firebase Terms of Service.
 - [fixed] Fixed `firebase deploy` leaving the Python discovery admin server (`serving.py`) running after a killed or wedged deploy, which caused later deploys to hang indefinitely on `connect ETIMEDOUT` (#10847).
+- SQL Connect generated Admin Node SDKs now support `firebase-admin` v14.
+- Allow pre-existing Crashlytics source maps to be overwritten instead of returning an error.
+- Fixed Crashlytics source map uploads for Angular builds to strip out leading directory paths (e.g., `/dist/angular/browser/`).
