@@ -504,6 +504,15 @@ export function normalizeFileName(fileName: string): string {
   return fileName.replaceAll(/\//g, "-");
 }
 
+function isAlreadyExistsError(e: FirebaseError): boolean {
+  if (e.status !== 400) {
+    return false;
+  }
+  const message = e.message.toLowerCase();
+  const bodyMessage = ((e.context as any)?.body?.error?.message ?? "").toLowerCase();
+  return message.includes("already exists") || bodyMessage.includes("already exists");
+}
+
 /**
  * Submits resource descriptors to the Firebase Telemetry API to register completed source maps.
  */
@@ -514,20 +523,40 @@ export async function registerSourceMap(sourceMap: SourceMap): Promise<void> {
     apiVersion: "v1alpha",
   });
 
-  try {
+  const patchSourceMap = async (): Promise<void> => {
     await client.patch(sourceMap.name, sourceMap, { queryParams: { allowMissing: "true" } });
     logger.debug(
       `Registered source map ${sourceMap.obfuscatedFilePath} with Firebase Telemetry service`,
     );
+  };
+
+  try {
+    await patchSourceMap();
   } catch (e) {
     if (e instanceof FirebaseError) {
       // Ignore 409 errors, as they indicate the source map was recently uploaded
       if (e.status === 409) {
         return;
       }
+      if (isAlreadyExistsError(e)) {
+        try {
+          logger.debug(
+            `Source map ${sourceMap.obfuscatedFilePath} already exists, deleting and re-registering`,
+          );
+          await client.delete(sourceMap.name);
+          await patchSourceMap();
+          return;
+        } catch (retryErr) {
+          throw new FirebaseError(
+            `Failed to register source map ${sourceMap.obfuscatedFilePath} with Firebase Telemetry service:\n${retryErr instanceof Error ? retryErr.message : String(retryErr)}`,
+            { original: retryErr instanceof Error ? retryErr : undefined },
+          );
+        }
+      }
     }
     throw new FirebaseError(
       `Failed to register source map ${sourceMap.obfuscatedFilePath} with Firebase Telemetry service:\n${e instanceof Error ? e.message : String(e)}`,
+      { original: e instanceof Error ? e : undefined },
     );
   }
 }
