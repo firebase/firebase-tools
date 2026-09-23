@@ -347,12 +347,14 @@ export async function prepare(
       userEnvs,
       codebase,
       nonInteractive: options.nonInteractive,
-      force: options.force,
       isEmulator: false,
     });
 
     functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
-    if (experiments.isEnabled("secretEnvParams")) {
+    if (
+      experiments.isEnabled("secretEnvParams") &&
+      experiments.isEnabled("writeDefaultSecretBindings")
+    ) {
       functionsEnv.writeResolvedSecretRefs(resolvedSecretRefs, secretRefs, userEnvOpt);
     }
 
