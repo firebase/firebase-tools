@@ -689,7 +689,7 @@ describe("crashlytics:sourcemap helpers", () => {
 
       const result = await uploadMap(request);
 
-      const expectedUid = utils.murmurHashV3("1:12345:web:abc-1.0.0-path/to/file.js");
+      const expectedUid = utils.murmurHashV3("path/to/file.js");
       const expectedName = `projects/test-project/locations/global/mappingFiles/${expectedUid}`;
 
       expect(result).to.be.true;
@@ -702,7 +702,7 @@ describe("crashlytics:sourcemap helpers", () => {
       ]);
       expect(uploadObjectStub.callCount).to.equal(1);
       const uploadArg = uploadObjectStub.firstCall.args[0] as { file: string };
-      expect(uploadArg.file).to.equal("1:12345:web:abc-1.0.0-path-to-file.js.zip");
+      expect(uploadArg.file).to.equal("path-to-file.js.zip");
       expect(uploadObjectStub.firstCall.args[1]).to.equal("test-bucket");
       expect(clientPatchStub.callCount).to.equal(1);
       expect(clientPatchStub.firstCall.args[0]).to.match(
@@ -713,7 +713,7 @@ describe("crashlytics:sourcemap helpers", () => {
         appId: "1:12345:web:abc",
         version: "1.0.0",
         obfuscatedFilePath: "/path/to/file.js",
-        fileUri: "gs://test-bucket/1:12345:web:abc-1.0.0-path-to-file.js.zip",
+        fileUri: "gs://test-bucket/path-to-file.js.zip",
       });
       expect(clientPatchStub.firstCall.args[2]).to.deep.equal({
         queryParams: { allowMissing: "true" },
@@ -734,15 +734,13 @@ describe("crashlytics:sourcemap helpers", () => {
 
       expect(result).to.be.true;
       const uploadArg = uploadObjectStub.firstCall.args[0] as { file: string };
-      expect(uploadArg.file).to.equal("1:12345:web:abc-1.0.0-path-to-_next-file.js.zip");
+      expect(uploadArg.file).to.equal("path-to-_next-file.js.zip");
       const patchArg = clientPatchStub.firstCall.args[1] as {
         obfuscatedFilePath: string;
         fileUri: string;
       };
       expect(patchArg.obfuscatedFilePath).to.equal("/path/to/_next/file.js");
-      expect(patchArg.fileUri).to.equal(
-        "gs://test-bucket/1:12345:web:abc-1.0.0-path-to-_next-file.js.zip",
-      );
+      expect(patchArg.fileUri).to.equal("gs://test-bucket/path-to-_next-file.js.zip");
     });
 
     it("should return false and log a warning when upload fails with attemptsRemaining === 0", async () => {

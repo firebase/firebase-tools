@@ -430,9 +430,8 @@ export async function uploadMap(request: UploadRequest, attemptsRemaining = 0): 
     .filter((p) => p !== "dev")
     .join("/");
   const tmpArchive = await archiveFile(filePath, { archivedFileName: "mapping.js.map" });
-  const appId = options.app || "";
-  const gcsFile = `${appId}-${appVersion}-${normalizeFileName(obfuscatedPath)}.zip`;
-  const uid = murmurHashV3(`${appId}-${appVersion}-${obfuscatedPath}`);
+  const gcsFile = `${normalizeFileName(obfuscatedPath)}.zip`;
+  const uid = murmurHashV3(obfuscatedPath);
   const name = `projects/${projectId}/locations/global/mappingFiles/${uid}`;
 
   const stream = fs.createReadStream(tmpArchive);
@@ -453,7 +452,7 @@ export async function uploadMap(request: UploadRequest, attemptsRemaining = 0): 
 
     await registerSourceMap({
       name,
-      appId,
+      appId: options.app ?? "",
       version: appVersion,
       obfuscatedFilePath: `/${obfuscatedPath}`,
       fileUri,

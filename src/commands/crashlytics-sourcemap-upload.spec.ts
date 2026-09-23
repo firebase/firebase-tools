@@ -122,11 +122,9 @@ describe("crashlytics:sourcemap:upload", () => {
       .getCalls()
       .map((call) => call.args[0].file)
       .sort();
-    expect(uploadedFiles[0]).to.match(
-      /test-app-.*-src-test-fixtures-mapping-files-mock_mapping\.js\.map\.zip/,
-    );
-    expect(uploadedFiles[1]).to.match(
-      /test-app-.*-src-test-fixtures-mapping-files-subdir-subdir_mock_mapping\.js\.map\.zip/,
+    expect(uploadedFiles[0]).to.equal("src-test-fixtures-mapping-files-mock_mapping.js.map.zip");
+    expect(uploadedFiles[1]).to.equal(
+      "src-test-fixtures-mapping-files-subdir-subdir_mock_mapping.js.map.zip",
     );
   });
 
@@ -139,16 +137,12 @@ describe("crashlytics:sourcemap:upload", () => {
         .getCalls()
         .map((call) => call.args[0].file)
         .sort();
-      expect(uploadedFiles[0]).to.match(
-        /test-app-.*-fixtures-mapping-files-mock_mapping\.js\.map\.zip/,
+      expect(uploadedFiles[0]).to.equal("fixtures-mapping-files-mock_mapping.js.map.zip");
+      expect(uploadedFiles[1]).to.equal(
+        "fixtures-mapping-files-subdir-subdir_mock_mapping.js.map.zip",
       );
-      expect(uploadedFiles[1]).to.match(
-        /test-app-.*-fixtures-mapping-files-subdir-subdir_mock_mapping\.js\.map\.zip/,
-      );
-      expect(uploadedFiles[2]).to.match(/test-app-.*-fixtures-mapping-files-with-js-main\.js\.zip/);
-      expect(uploadedFiles[3]).to.match(
-        /test-app-.*-fixtures-mapping-files-with-js-other\.js\.map\.zip/,
-      );
+      expect(uploadedFiles[2]).to.equal("fixtures-mapping-files-with-js-main.js.zip");
+      expect(uploadedFiles[3]).to.equal("fixtures-mapping-files-with-js-other.js.map.zip");
     } finally {
       process.chdir(originalCwd);
     }
@@ -165,12 +159,8 @@ describe("crashlytics:sourcemap:upload", () => {
       .sort();
 
     // The zip name is based on the obfuscated path, so the first one is the "main.js.map" pretending to be the name
-    expect(uploadedFiles[0]).to.match(
-      /test-app-.*-src-test-fixtures-mapping-files-with-js-main\.js\.zip/,
-    );
-    expect(uploadedFiles[1]).to.match(
-      /test-app-.*-src-test-fixtures-mapping-files-with-js-other\.js\.map\.zip/,
-    );
+    expect(uploadedFiles[0]).to.equal("src-test-fixtures-mapping-files-with-js-main.js.zip");
+    expect(uploadedFiles[1]).to.equal("src-test-fixtures-mapping-files-with-js-other.js.map.zip");
 
     expect(clientPatchStub).to.be.calledTwice;
     const apiPayloads = clientPatchStub
@@ -198,7 +188,7 @@ describe("crashlytics:sourcemap:upload", () => {
 
       expect(gcsMock.uploadObject).to.be.calledOnce;
       const uploadedFiles = gcsMock.uploadObject.getCalls().map((call) => call.args[0].file);
-      expect(uploadedFiles[0]).to.match(/test-app-.*-index\.js\.zip/);
+      expect(uploadedFiles[0]).to.match(/index\.js\.zip$/);
 
       expect(clientPatchStub).to.be.calledOnce;
       const apiPayload = clientPatchStub.firstCall.args[1] as SourceMap;
@@ -254,26 +244,16 @@ describe("crashlytics:sourcemap:upload", () => {
       app: "test-app",
       appVersion: "1.0.0",
     });
-    const uploadedFiles = gcsMock.uploadObject
-      .getCalls()
-      .map((call) => call.args[0].file)
-      .sort();
-    expect(uploadedFiles[0]).to.eq(
-      "test-app-1.0.0-src-test-fixtures-mapping-files-mock_mapping.js.map.zip",
-    );
+    const payloads = clientPatchStub.getCalls().map((call) => call.args[1] as SourceMap);
+    expect(payloads[0].version).to.eq("1.0.0");
   });
 
   it("should fall back to the git commit for app version", async () => {
     await command.runner()(DIR_PATH, {
       app: "test-app",
     });
-    const uploadedFiles = gcsMock.uploadObject
-      .getCalls()
-      .map((call) => call.args[0].file)
-      .sort();
-    expect(uploadedFiles[0]).to.match(
-      /test-app-a{40}-src-test-fixtures-mapping-files-mock_mapping.js.map.zip/,
-    );
+    const payloads = clientPatchStub.getCalls().map((call) => call.args[1] as SourceMap);
+    expect(payloads[0].version).to.eq("a".repeat(40));
   });
 
   it("should fall back to the package version for app version", async () => {
@@ -285,13 +265,8 @@ describe("crashlytics:sourcemap:upload", () => {
     await command.runner()(DIR_PATH, {
       app: "test-app",
     });
-    const uploadedFiles = gcsMock.uploadObject
-      .getCalls()
-      .map((call) => call.args[0].file)
-      .sort();
-    expect(uploadedFiles[0]).to.eq(
-      "test-app-1.2.3-src-test-fixtures-mapping-files-mock_mapping.js.map.zip",
-    );
+    const payloads = clientPatchStub.getCalls().map((call) => call.args[1] as SourceMap);
+    expect(payloads[0].version).to.eq("1.2.3");
   });
 
   it("should fall back to the 'unset' for app version", async () => {
@@ -301,13 +276,8 @@ describe("crashlytics:sourcemap:upload", () => {
     await command.runner()(DIR_PATH, {
       app: "test-app",
     });
-    const uploadedFiles = gcsMock.uploadObject
-      .getCalls()
-      .map((call) => call.args[0].file)
-      .sort();
-    expect(uploadedFiles[0]).to.eq(
-      "test-app-unset-src-test-fixtures-mapping-files-mock_mapping.js.map.zip",
-    );
+    const payloads = clientPatchStub.getCalls().map((call) => call.args[1] as SourceMap);
+    expect(payloads[0].version).to.eq("unset");
   });
 
   it("should register the source map after upload", async () => {
@@ -319,11 +289,12 @@ describe("crashlytics:sourcemap:upload", () => {
       .getCalls()
       .map((call) => call.args[1] as SourceMap)
       .sort((a, b) => a.obfuscatedFilePath.localeCompare(b.obfuscatedFilePath));
-    expect(payloads[0].name).to.match(
-      /projects\/test-project\/locations\/global\/mappingFiles\/2906062618/,
+    const expectedUid = utils.murmurHashV3("src/test/fixtures/mapping-files/mock_mapping.js.map");
+    expect(payloads[0].name).to.equal(
+      `projects/test-project/locations/global/mappingFiles/${expectedUid}`,
     );
     expect(payloads[0]).to.deep.equal({
-      name: "projects/test-project/locations/global/mappingFiles/2906062618",
+      name: `projects/test-project/locations/global/mappingFiles/${expectedUid}`,
       appId: "test-app",
       version: "a".repeat(40),
       obfuscatedFilePath: "/src/test/fixtures/mapping-files/mock_mapping.js.map",
