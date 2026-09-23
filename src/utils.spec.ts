@@ -206,6 +206,7 @@ describe("utils", () => {
     it("should settle all promises", async () => {
       const result = await utils.promiseAllSettled([
         Promise.resolve("foo"),
+        // eslint-disable-next-line prefer-promise-reject-errors
         Promise.reject("bar"),
         Promise.resolve("baz"),
       ]);
@@ -322,6 +323,7 @@ describe("utils", () => {
 
     it("waits for all settled", async () => {
       // Intetionally failing with a non-error to make matching easier
+      // eslint-disable-next-line prefer-promise-reject-errors
       const reject = Promise.reject("fail fast");
       const resolve = new Promise((res) => {
         setTimeout(() => res(42), 20);
