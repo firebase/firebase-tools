@@ -138,32 +138,53 @@ describe("showDeprecationWarningBefore & showDeprecationWarningAfter", () => {
     }
   });
 
-  it("should hard-error and exit 1 on ext:dev:register", () => {
-    expect(() => warnings.showDeprecationWarningBefore("ext:dev:register", {})).to.throw(
+  it("should hard-error and exit 1 on ext:dev:register", async () => {
+    await expect(warnings.showDeprecationWarningBefore("ext:dev:register", {})).to.be.rejectedWith(
       FirebaseError,
       /ext:dev:register is disabled/,
     );
   });
 
-  it("should show concise warning for Category 1 commands", () => {
-    warnings.showDeprecationWarningBefore("ext:install", {});
+  it("should show prominent banner with fallback for Category 1 commands without ref", async () => {
+    await warnings.showDeprecationWarningBefore("ext:install", {});
     expect(warnStub).to.have.been.calledWithMatch(
-      /You will not be able to install or edit extensions/,
+      /We recommend migrating active instances to Function-kits\./,
+    );
+    expect(warnStub).to.have.been.calledWithMatch(/Learn more & view migration steps:/);
+  });
+
+  it("should show prominent banner with replacement package for Category 1 commands when kit is available", async () => {
+    await warnings.showDeprecationWarningBefore(
+      "ext:install",
+      {},
+      "firebase/firestore-bigquery-export",
+    );
+    expect(warnStub).to.have.been.calledWithMatch(
+      /Recommended replacement: @firebase-function-kits\/firestore-bigquery-export/,
+    );
+    expect(warnStub).to.have.been.calledWithMatch(/Learn more & view migration steps:/);
+  });
+
+  it("should resolve shorthand extension ref without publisher for replacement warning", async () => {
+    await warnings.showDeprecationWarningBefore("ext:install", {}, "firestore-bigquery-export");
+    expect(warnStub).to.have.been.calledWithMatch(
+      /Recommended replacement: @firebase-function-kits\/firestore-bigquery-export/,
     );
   });
 
-  it("should show prominent banner for Category 4 commands", () => {
-    warnings.showDeprecationWarningBefore("ext:dev:upload", {});
+  it("should show prominent banner for Category 4 commands", async () => {
+    await warnings.showDeprecationWarningBefore("ext:dev:upload", {});
     expect(warnStub).to.have.been.calledWithMatch(
       /Notice for Publishers: Firebase Extensions will shut down/,
     );
+    expect(warnStub).to.have.been.calledWithMatch(/Learn more & view migration steps:/);
   });
 
-  it("should silence warnings when isSilenced returns true", () => {
-    warnings.showDeprecationWarningBefore("ext:install", { json: true });
+  it("should silence warnings when isSilenced returns true", async () => {
+    await warnings.showDeprecationWarningBefore("ext:install", { json: true });
     expect(warnStub).to.not.have.been.called;
 
-    warnings.showDeprecationWarningBefore("ext:install", { nonInteractive: true });
+    await warnings.showDeprecationWarningBefore("ext:install", { nonInteractive: true });
     expect(warnStub).to.not.have.been.called;
 
     warnings.showDeprecationWarningAfter("ext:list", { quiet: true });
@@ -173,12 +194,16 @@ describe("showDeprecationWarningBefore & showDeprecationWarningAfter", () => {
   it("should show footer warning in showDeprecationWarningAfter for Category 2 commands", () => {
     warnings.showDeprecationWarningAfter("ext:list", {});
     expect(warnStub).to.have.been.calledWithMatch(/Notice: Firebase Extensions will shut down/);
+    expect(warnStub).to.have.been.calledWithMatch(/Learn more & view migration steps:/);
+
+    warnings.showDeprecationWarningAfter("ext:export", {});
+    expect(warnStub).to.have.been.calledTwice;
   });
 
-  it("should hard-error on ext:dev:register even if json flag is true", () => {
-    expect(() =>
+  it("should hard-error on ext:dev:register even if json flag is true", async () => {
+    await expect(
       warnings.showDeprecationWarningBefore("ext:dev:register", { json: true }),
-    ).to.throw(FirebaseError, /ext:dev:register is disabled/);
+    ).to.be.rejectedWith(FirebaseError, /ext:dev:register is disabled/);
   });
 
   it("should silence warnings when CI or GITHUB_ACTIONS environment variables are set", () => {
@@ -209,10 +234,9 @@ describe("showDeprecationWarningBefore & showDeprecationWarningAfter", () => {
     }
   });
 
-  it("should not warn on Category 3 commands", () => {
-    warnings.showDeprecationWarningBefore("ext:export", {});
-    warnings.showDeprecationWarningAfter("ext:export", {});
-    warnings.showDeprecationWarningBefore("ext:uninstall", {});
+  it("should not warn on Category 3 commands", async () => {
+    await warnings.showDeprecationWarningBefore("ext:uninstall", {});
+    await warnings.showDeprecationWarningBefore("ext:dev:deprecate", {});
     expect(warnStub).to.not.have.been.called;
   });
 });
