@@ -31,9 +31,9 @@ export function convertInputToValue(inputValue: any): FirestoreValue {
   } else if (typeof inputValue === "object") {
     // Check for LatLng structure
     if (
-      inputValue.hasOwnProperty("latitude") &&
+      Object.prototype.hasOwnProperty.call(inputValue, "latitude") &&
       typeof inputValue.latitude === "number" &&
-      inputValue.hasOwnProperty("longitude") &&
+      Object.prototype.hasOwnProperty.call(inputValue, "longitude") &&
       typeof inputValue.longitude === "number"
     ) {
       return { geoPointValue: inputValue as { latitude: number; longitude: number } };
