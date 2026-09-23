@@ -175,7 +175,7 @@ export async function showDeprecationWarningBefore(
   }
 
   if (WARN_BEFORE_COMMANDS.has(commandName)) {
-    let actionLine = "We recommend migrating active instances to Function-kits.";
+    let actionLine = "We recommend migrating active instances to function kits.";
 
     const ref = resolveExtensionRef(commandName, options, extensionRefOrArgs);
     if (ref) {
@@ -187,11 +187,6 @@ export async function showDeprecationWarningBefore(
 
         if (replacement?.status === "REPLACEMENT_AVAILABLE" && replacement.npmPackage) {
           actionLine = `Recommended replacement: ${replacement.npmPackage}`;
-        } else if (replacement?.status === "CONFIRMED_NO_REPLACEMENT") {
-          actionLine = `No replacement package is planned for this extension.`;
-        } else {
-          // PENDING_PUBLISHER or unmapped (not in catalog)
-          actionLine = `No replacement package has been announced for this extension.`;
         }
       } catch (err) {
         logger.debug(`Failed to resolve replacement info for warning: ${String(err)}`);

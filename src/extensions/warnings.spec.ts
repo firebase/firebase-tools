@@ -148,7 +148,7 @@ describe("showDeprecationWarningBefore & showDeprecationWarningAfter", () => {
   it("should show prominent banner with fallback for Category 1 commands without ref", async () => {
     await warnings.showDeprecationWarningBefore("ext:install", {});
     expect(warnStub).to.have.been.calledWithMatch(
-      /We recommend migrating active instances to Function-kits\./,
+      /We recommend migrating active instances to function kits\./,
     );
     expect(warnStub).to.have.been.calledWithMatch(/Learn more & view migration steps:/);
   });
@@ -172,44 +172,43 @@ describe("showDeprecationWarningBefore & showDeprecationWarningAfter", () => {
     );
   });
 
-  it("should show banner indicating no replacement is planned for confirmed no replacement extension", async () => {
+  it("should show general fallback banner for extension without replacement or unmapped extension", async () => {
     await warnings.showDeprecationWarningBefore("ext:install", {}, "moralis/moralis-streams");
     expect(warnStub).to.have.been.calledWithMatch(
-      /No replacement package is planned for this extension\./,
+      /We recommend migrating active instances to function kits\./,
     );
     expect(warnStub).to.have.been.calledWithMatch(/Learn more & view migration steps:/);
-  });
 
-  it("should show banner indicating no replacement announced for pending or unmapped extension", async () => {
+    warnStub.resetHistory();
     await warnings.showDeprecationWarningBefore(
       "ext:install",
       {},
       "firebase/firestore-bundle-builder",
     );
     expect(warnStub).to.have.been.calledWithMatch(
-      /No replacement package has been announced for this extension\./,
+      /We recommend migrating active instances to function kits\./,
     );
 
     warnStub.resetHistory();
     await warnings.showDeprecationWarningBefore("ext:install", {}, "custom/unmapped-extension");
     expect(warnStub).to.have.been.calledWithMatch(
-      /No replacement package has been announced for this extension\./,
+      /We recommend migrating active instances to function kits\./,
     );
   });
 
   it("should show general fallback banner for local extension paths without misleading replacement text", async () => {
     await warnings.showDeprecationWarningBefore("ext:install", {}, "./my-local-extension");
     expect(warnStub).to.have.been.calledWithMatch(
-      /We recommend migrating active instances to Function-kits\./,
+      /We recommend migrating active instances to function kits\./,
     );
-    expect(warnStub).to.not.have.been.calledWithMatch(/No replacement package/);
+    expect(warnStub).to.not.have.been.calledWithMatch(/Recommended replacement:/);
 
     warnStub.resetHistory();
     await warnings.showDeprecationWarningBefore("ext:install", {}, ["../relative/extension"]);
     expect(warnStub).to.have.been.calledWithMatch(
-      /We recommend migrating active instances to Function-kits\./,
+      /We recommend migrating active instances to function kits\./,
     );
-    expect(warnStub).to.not.have.been.calledWithMatch(/No replacement package/);
+    expect(warnStub).to.not.have.been.calledWithMatch(/Recommended replacement:/);
   });
 
   it("should show prominent banner for Category 4 commands", async () => {
