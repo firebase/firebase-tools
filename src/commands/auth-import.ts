@@ -108,7 +108,7 @@ export const command = new Command("auth:import [dataFile]")
           inStream,
           pick.withParser({ filter: /^users$/ }),
           streamArray(),
-          ({ value }: any) => {
+          ({ value }: { value: Record<string, unknown> }) => {
             counter++;
             const user = validateUserJson(value);
             // TODO: Remove this casst once user can have an error.
@@ -123,7 +123,12 @@ export const command = new Command("auth:import [dataFile]")
             }
           },
         ]);
+        let completed = false;
         const onDone = () => {
+          if (completed) {
+            return;
+          }
+          completed = true;
           if (currentBatch.length) {
             batches.push(currentBatch);
             currentBatch = [];
