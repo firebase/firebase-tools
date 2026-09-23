@@ -1,9 +1,9 @@
 import { parse } from "csv-parse";
-import * as Chain from "stream-chain";
+import { chain } from "stream-chain";
 import * as clc from "colorette";
 import * as fs from "fs-extra";
-import * as Pick from "stream-json/filters/Pick";
-import * as StreamArray from "stream-json/streamers/StreamArray";
+import { pick } from "stream-json/filters/pick.js";
+import { streamArray } from "stream-json/streamers/stream-array.js";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
@@ -104,10 +104,11 @@ export const command = new Command("auth:import [dataFile]")
       });
     } else {
       userListArr = await new Promise<any[]>((resolve, reject) => {
-        const pipeline = new Chain([
-          Pick.withParser({ filter: /^users$/ }),
-          StreamArray.streamArray(),
-          ({ value }) => {
+        const pipeline = chain([
+          inStream,
+          pick.withParser({ filter: /^users$/ }),
+          streamArray(),
+          ({ value }: any) => {
             counter++;
             const user = validateUserJson(value);
             // TODO: Remove this casst once user can have an error.
@@ -122,14 +123,17 @@ export const command = new Command("auth:import [dataFile]")
             }
           },
         ]);
-        pipeline.once("error", reject);
-        pipeline.on("finish", () => {
+        const onDone = () => {
           if (currentBatch.length) {
             batches.push(currentBatch);
+            currentBatch = [];
           }
           resolve(batches);
-        });
-        inStream.pipe(pipeline);
+        };
+        pipeline.once("error", reject);
+        pipeline.once("finish", onDone);
+        pipeline.once("end", onDone);
+        pipeline.resume();
       });
     }
 

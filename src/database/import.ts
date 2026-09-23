@@ -1,8 +1,8 @@
-import * as Chain from "stream-chain";
+import { chain } from "stream-chain";
 import * as clc from "colorette";
-import * as Filter from "stream-json/filters/Filter";
+import { filter } from "stream-json/filters/filter.js";
 import * as stream from "stream";
-import * as StreamObject from "stream-json/streamers/StreamObject";
+import { streamObject } from "stream-json/streamers/stream-object.js";
 
 import { URL } from "url";
 import { Client, ClientResponse } from "../apiv2";
@@ -195,13 +195,13 @@ export default class DatabaseImporter {
 
     return new Promise((resolve, reject) => {
       const responses: ClientResponse<JsonType>[] = [];
-      const pipeline = new Chain([
+      const pipeline = chain([
         this.inStream,
-        Filter.withParser({
+        filter.withParser({
           filter: this.computeFilterString(this.dataPath) || (() => true),
           pathSeparator: "/",
         }),
-        StreamObject.streamObject(),
+        streamObject(),
       ]);
       pipeline
         .on("error", (err: Error) =>
