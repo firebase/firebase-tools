@@ -5,6 +5,7 @@
  */
 
 import { setGlobalOptions } from "firebase-functions";
+import type { GlobalOptions } from "firebase-functions/v2/options";
 import * as params from "firebase-functions/params";
 
 // This is how you create a "param". A param is a placeholder for a value
@@ -16,11 +17,25 @@ export const regionParam = params.defineString("FUNCTION_DEFAULT_REGION", {
   description: "Global default region where functions should be deployed. Can be overriden per-function.",
 });
 
+let defaultOptions: GlobalOptions = {};
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  defaultOptions =
+    (require("{{PACKAGE_NAME}}/default-options") as { defaultOptions?: GlobalOptions })
+      .defaultOptions ?? {};
+} catch (err) {
+  // The kit package may not export default-options; fall back to empty defaults.
+  const code = (err as NodeJS.ErrnoException).code;
+  if (code !== "ERR_PACKAGE_PATH_NOT_EXPORTED" && code !== "MODULE_NOT_FOUND") {
+    throw err;
+  }
+}
 
 // This allows you to set default options that apply to all functions in this
 // kit. Learn more about these options and additional configurations at:
 // https://firebase.google.com/docs/reference/functions/2nd-gen/node/firebase-functions.globaloptions
 setGlobalOptions({
+  ...defaultOptions,
   // If you pass a parameter, you will be prompted for new values on each instance.
   region: regionParam,
   // If you want the same value for all instances across your kit, you can pass a
@@ -29,7 +44,7 @@ setGlobalOptions({
   // running at the same time. This helps mitigate the impact of unexpected
   // traffic spikes by instead downgrading performance. This limit is a
   // per-function limit.
-  maxInstances: 10,
+  maxInstances: defaultOptions.maxInstances ?? 10,
 });
 
 // Exports the functions located in the kit.

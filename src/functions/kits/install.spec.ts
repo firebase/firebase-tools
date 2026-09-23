@@ -1085,6 +1085,44 @@ describe("functions/kits/install", () => {
         name: "my-kit-wrapper",
         dependencies: {},
       });
+      const indexTs = writtenFiles["function-kits/my-kit/source/src/index.ts"] as string;
+      expect(indexTs).to.include('require("@scope/pkg/default-options")');
+      expect(indexTs).to.include("ERR_PACKAGE_PATH_NOT_EXPORTED");
+      expect(indexTs.indexOf("...defaultOptions")).to.be.lessThan(
+        indexTs.indexOf("maxInstances: defaultOptions.maxInstances ?? 10"),
+      );
+      expect(indexTs).to.include("maxInstances: defaultOptions.maxInstances ?? 10");
+      expect(indexTs).to.include('export * from "@scope/pkg";');
+    });
+
+    it("should scaffold migration index.ts with default-options fallback when templateType is migration", async () => {
+      const writtenFiles: Record<string, unknown> = {};
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: {},
+        path: (rel: string) => path.join("/mock/project", rel),
+        askWriteProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+          return Promise.resolve();
+        },
+        writeProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+        },
+      } as unknown as Config;
+
+      await scaffoldKit({
+        config: mockConfig,
+        kitId: "my-kit",
+        instanceId: "inst1",
+        packageName: "@scope/pkg",
+        templateType: "migration",
+      });
+
+      const indexTs = writtenFiles["function-kits/my-kit/source/src/index.ts"] as string;
+      expect(indexTs).to.include('require("@scope/pkg/default-options")');
+      expect(indexTs).to.include("ERR_PACKAGE_PATH_NOT_EXPORTED");
+      expect(indexTs).to.include(": defaultOptions.maxInstances");
+      expect(indexTs).to.include('export * from "@scope/pkg";');
     });
 
     it("should scaffold files, seed .env.<project-id>, and add kit to config when seedEnv is provided", async () => {

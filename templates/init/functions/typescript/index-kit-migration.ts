@@ -10,7 +10,12 @@
  */
 
 import { setGlobalOptions } from "firebase-functions";
-import { MemoryOption, VpcEgressSetting, IngressSetting } from "firebase-functions/v2/options";
+import type {
+  GlobalOptions,
+  MemoryOption,
+  VpcEgressSetting,
+  IngressSetting,
+} from "firebase-functions/v2/options";
 import { defineString } from "firebase-functions/params";
 
 // This is how you create a "param". A param is a placeholder for a value
@@ -22,28 +27,45 @@ export const regionParam = defineString("FUNCTION_DEFAULT_REGION", {
   description: "Global default region where functions should be deployed. Can be overriden per-function.",
 });
 
+let defaultOptions: GlobalOptions = {};
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  defaultOptions =
+    (require("{{PACKAGE_NAME}}/default-options") as { defaultOptions?: GlobalOptions })
+      .defaultOptions ?? {};
+} catch (err) {
+  // The kit package may not export default-options; fall back to empty defaults.
+  const code = (err as NodeJS.ErrnoException).code;
+  if (code !== "ERR_PACKAGE_PATH_NOT_EXPORTED" && code !== "MODULE_NOT_FOUND") {
+    throw err;
+  }
+}
+
 // This allows you to set default options that apply to all functions in this
 // kit. Learn more about these options and additional configurations at:
 // https://firebase.google.com/docs/reference/functions/2nd-gen/node/firebase-functions.globaloptions
 setGlobalOptions({
+  ...defaultOptions,
   region: regionParam,
-  memory: (process.env.EXT_MIGRATED_SYSTEM_MEMORY as MemoryOption) ?? undefined,
+  memory: (process.env.EXT_MIGRATED_SYSTEM_MEMORY as MemoryOption) || defaultOptions.memory,
   timeoutSeconds: process.env.EXT_MIGRATED_SYSTEM_TIMEOUTSECONDS
     ? Number(process.env.EXT_MIGRATED_SYSTEM_TIMEOUTSECONDS)
-    : undefined,
+    : defaultOptions.timeoutSeconds,
   vpcConnectorEgressSettings:
     process.env.EXT_MIGRATED_SYSTEM_VPCCONNECTOREGRESSSETTINGS &&
     process.env.EXT_MIGRATED_SYSTEM_VPCCONNECTOREGRESSSETTINGS !== "VPC_CONNECTOR_EGRESS_SETTINGS_UNSPECIFIED"
       ? (process.env.EXT_MIGRATED_SYSTEM_VPCCONNECTOREGRESSSETTINGS as VpcEgressSetting)
-      : undefined,
-  vpcConnector: process.env.EXT_MIGRATED_SYSTEM_VPCCONNECTOR ?? undefined,
+      : defaultOptions.vpcConnectorEgressSettings,
+  vpcConnector: process.env.EXT_MIGRATED_SYSTEM_VPCCONNECTOR || defaultOptions.vpcConnector,
   maxInstances: process.env.EXT_MIGRATED_SYSTEM_MAXINSTANCES
     ? Number(process.env.EXT_MIGRATED_SYSTEM_MAXINSTANCES)
-    : undefined,
+    : defaultOptions.maxInstances,
   minInstances: process.env.EXT_MIGRATED_SYSTEM_MININSTANCES
     ? Number(process.env.EXT_MIGRATED_SYSTEM_MININSTANCES)
-    : undefined,
-  ingressSettings: (process.env.EXT_MIGRATED_SYSTEM_INGRESSSETTINGS as IngressSetting) ?? undefined,
+    : defaultOptions.minInstances,
+  ingressSettings:
+    (process.env.EXT_MIGRATED_SYSTEM_INGRESSSETTINGS as IngressSetting) ||
+    defaultOptions.ingressSettings,
   // Parses a comma-separated string of key:value pairs into a key-value object
   // (e.g. "key1:value1,key2:value2" -> { key1: "value1", key2: "value2" }).
   labels: process.env.EXT_MIGRATED_SYSTEM_LABELS
@@ -60,8 +82,8 @@ setGlobalOptions({
           return acc;
         },
         undefined,
-      )
-    : undefined,
+      ) ?? defaultOptions.labels
+    : defaultOptions.labels,
 });
 
 // Exports the functions located in the kit.
