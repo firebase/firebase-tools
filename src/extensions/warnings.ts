@@ -61,6 +61,7 @@ export function outOfBandChangesWarning(instanceIds: string[], isDynamic: boolea
 }
 
 const FAQ_URL = "https://firebase.google.com/docs/extensions/faq-and-troubleshooting";
+const BANNER_BORDER = "=".repeat(80);
 
 /** Commands that trigger a standard deprecation warning before execution. */
 const WARN_BEFORE_COMMANDS = new Set([
@@ -117,13 +118,13 @@ export function isSilenced(options: Options | Record<string, unknown>): boolean 
 function resolveExtensionRef(
   commandName: string,
   options: Options | Record<string, unknown>,
-  extensionRefOrArgs?: string | unknown[],
+  extensionRefOrArgs?: string | readonly unknown[],
 ): string | undefined {
   if (typeof extensionRefOrArgs === "string" && extensionRefOrArgs.length > 0) {
     return extensionRefOrArgs.split("@")[0];
   }
   if (Array.isArray(extensionRefOrArgs) && extensionRefOrArgs.length > 0) {
-    const firstArg = extensionRefOrArgs[0];
+    const firstArg: unknown = extensionRefOrArgs[0];
     if (typeof firstArg === "string" && firstArg.length > 0) {
       if (commandName === "ext:install" || commandName === "ext:sdk:install") {
         return firstArg.split("@")[0];
@@ -151,7 +152,7 @@ function resolveExtensionRef(
 export async function showDeprecationWarningBefore(
   commandName: string,
   options: Options | Record<string, unknown>,
-  extensionRefOrArgs?: string | unknown[],
+  extensionRefOrArgs?: string | readonly unknown[],
 ): Promise<void> {
   if (commandName === "ext:dev:register") {
     throw new FirebaseError(
@@ -167,7 +168,7 @@ export async function showDeprecationWarningBefore(
   }
 
   if (WARN_BEFORE_COMMANDS.has(commandName)) {
-    let replacementPackage: string | undefined;
+    let actionLine = "We recommend migrating active instances to Function-kits.";
 
     const ref = resolveExtensionRef(commandName, options, extensionRefOrArgs);
     if (ref) {
@@ -176,34 +177,36 @@ export async function showDeprecationWarningBefore(
         const replacement =
           getExtensionReplacement(ref, registry) ||
           (!ref.includes("/") ? getExtensionReplacement(`firebase/${ref}`, registry) : undefined);
+
         if (replacement?.status === "REPLACEMENT_AVAILABLE" && replacement.npmPackage) {
-          replacementPackage = replacement.npmPackage;
+          actionLine = `Recommended replacement: ${replacement.npmPackage}`;
+        } else if (replacement?.status === "CONFIRMED_NO_REPLACEMENT") {
+          actionLine = `No replacement package is planned for this extension.`;
+        } else {
+          // PENDING_PUBLISHER or unmapped (not in catalog)
+          actionLine = `No replacement package has been announced for this extension.`;
         }
       } catch (err) {
         logger.debug(`Failed to resolve replacement info for warning: ${String(err)}`);
       }
     }
 
-    const actionLine = replacementPackage
-      ? `Recommended replacement: ${replacementPackage}`
-      : `We recommend migrating active instances to Function-kits.`;
-
     logger.warn(
       clc.yellow(
-        `================================================================================\n` +
+        `${BANNER_BORDER}\n` +
           `⚠ Firebase Extensions will shut down on March 31, 2027.\n` +
           `${actionLine}\n` +
           `Learn more & view migration steps: ${FAQ_URL}\n` +
-          `================================================================================`,
+          `${BANNER_BORDER}`,
       ),
     );
   } else if (WARN_STRONGLY_BEFORE_COMMANDS.has(commandName)) {
     logger.warn(
       clc.yellow(
-        `================================================================================\n` +
+        `${BANNER_BORDER}\n` +
           `⚠ Notice for Publishers: Firebase Extensions will shut down on March 31, 2027.\n` +
           `Learn more & view migration steps: ${FAQ_URL}\n` +
-          `================================================================================`,
+          `${BANNER_BORDER}`,
       ),
     );
   }

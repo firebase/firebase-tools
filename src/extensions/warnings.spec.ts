@@ -172,6 +172,31 @@ describe("showDeprecationWarningBefore & showDeprecationWarningAfter", () => {
     );
   });
 
+  it("should show banner indicating no replacement is planned for confirmed no replacement extension", async () => {
+    await warnings.showDeprecationWarningBefore("ext:install", {}, "moralis/moralis-streams");
+    expect(warnStub).to.have.been.calledWithMatch(
+      /No replacement package is planned for this extension\./,
+    );
+    expect(warnStub).to.have.been.calledWithMatch(/Learn more & view migration steps:/);
+  });
+
+  it("should show banner indicating no replacement announced for pending or unmapped extension", async () => {
+    await warnings.showDeprecationWarningBefore(
+      "ext:install",
+      {},
+      "firebase/firestore-bundle-builder",
+    );
+    expect(warnStub).to.have.been.calledWithMatch(
+      /No replacement package has been announced for this extension\./,
+    );
+
+    warnStub.resetHistory();
+    await warnings.showDeprecationWarningBefore("ext:install", {}, "custom/unmapped-extension");
+    expect(warnStub).to.have.been.calledWithMatch(
+      /No replacement package has been announced for this extension\./,
+    );
+  });
+
   it("should show prominent banner for Category 4 commands", async () => {
     await warnings.showDeprecationWarningBefore("ext:dev:upload", {});
     expect(warnStub).to.have.been.calledWithMatch(
