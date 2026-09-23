@@ -11,6 +11,7 @@ import * as utils from "../utils";
 import { getReplacementsRegistry, getExtensionReplacement } from "./replacementRegistry";
 import * as manifest from "./manifest";
 import * as refs from "./refs";
+import { isLocalPath } from "./extensionsHelper";
 
 const toListEntry = (i: InstanceSpec) => {
   const idAndRef = humanReadable(i);
@@ -121,12 +122,18 @@ function resolveExtensionRef(
   extensionRefOrArgs?: string | readonly unknown[],
 ): string | undefined {
   if (typeof extensionRefOrArgs === "string" && extensionRefOrArgs.length > 0) {
+    if (isLocalPath(extensionRefOrArgs)) {
+      return undefined;
+    }
     return extensionRefOrArgs.split("@")[0];
   }
   if (Array.isArray(extensionRefOrArgs) && extensionRefOrArgs.length > 0) {
     const firstArg: unknown = extensionRefOrArgs[0];
     if (typeof firstArg === "string" && firstArg.length > 0) {
       if (commandName === "ext:install" || commandName === "ext:sdk:install") {
+        if (isLocalPath(firstArg)) {
+          return undefined;
+        }
         return firstArg.split("@")[0];
       }
       if (commandName === "ext:configure" || commandName === "ext:update") {

@@ -197,6 +197,21 @@ describe("showDeprecationWarningBefore & showDeprecationWarningAfter", () => {
     );
   });
 
+  it("should show general fallback banner for local extension paths without misleading replacement text", async () => {
+    await warnings.showDeprecationWarningBefore("ext:install", {}, "./my-local-extension");
+    expect(warnStub).to.have.been.calledWithMatch(
+      /We recommend migrating active instances to Function-kits\./,
+    );
+    expect(warnStub).to.not.have.been.calledWithMatch(/No replacement package/);
+
+    warnStub.resetHistory();
+    await warnings.showDeprecationWarningBefore("ext:install", {}, ["../relative/extension"]);
+    expect(warnStub).to.have.been.calledWithMatch(
+      /We recommend migrating active instances to Function-kits\./,
+    );
+    expect(warnStub).to.not.have.been.calledWithMatch(/No replacement package/);
+  });
+
   it("should show prominent banner for Category 4 commands", async () => {
     await warnings.showDeprecationWarningBefore("ext:dev:upload", {});
     expect(warnStub).to.have.been.calledWithMatch(
