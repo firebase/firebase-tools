@@ -124,5 +124,35 @@ describe("Remote Config Deploy", () => {
       ).to.eventually.be.rejectedWith(FirebaseError, "Unknown Error");
       expect(nock.isDone()).to.be.true;
     });
+
+    it("should send validateOnly=true as a query param when validateOnly is set", async () => {
+      const ETAG = header.etag;
+      nock(remoteConfigApiOrigin())
+        .put(`/v1/projects/${PROJECT_NUMBER}/remoteConfig`)
+        .query({ validateOnly: "true" })
+        .matchHeader("If-Match", ETAG)
+        .reply(200, expectedTemplateInfo);
+
+      const RCtemplate = await rcDeploy.publishTemplate(PROJECT_NUMBER, currentTemplate, ETAG, {
+        validateOnly: true,
+      });
+
+      expect(RCtemplate).to.deep.equal(expectedTemplateInfo);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should reject when the api rejects a validateOnly request", async () => {
+      const ETAG = header.etag;
+      nock(remoteConfigApiOrigin())
+        .put(`/v1/projects/${PROJECT_NUMBER}/remoteConfig`)
+        .query({ validateOnly: "true" })
+        .matchHeader("If-Match", ETAG)
+        .reply(400, { error: { message: "Invalid condition expression" } });
+
+      await expect(
+        rcDeploy.publishTemplate(PROJECT_NUMBER, currentTemplate, ETAG, { validateOnly: true }),
+      ).to.eventually.be.rejectedWith(FirebaseError, "Invalid condition expression");
+      expect(nock.isDone()).to.be.true;
+    });
   });
 });

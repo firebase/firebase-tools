@@ -1,7 +1,7 @@
 import { needProjectNumber } from "../../projectUtils";
 import { loadCJSON } from "../../loadCJSON";
-import { getEtag } from "./functions";
-import { validateInputRemoteConfigTemplate } from "./functions";
+import * as utils from "../../utils";
+import { getEtag, publishTemplate } from "./functions";
 import { DeployOptions } from "../";
 
 export default async function (context: any, options: DeployOptions): Promise<void> {
@@ -15,7 +15,17 @@ export default async function (context: any, options: DeployOptions): Promise<vo
   const template = loadCJSON(filePath);
   const projectNumber = await needProjectNumber(options);
   template.etag = await getEtag(projectNumber);
-  validateInputRemoteConfigTemplate(template);
+
+  // Release never runs during --dry-run, and in a multi-target deploy other targets'
+  // releases run before ours. Validate here so expression errors surface before any
+  // target publishes (same as database's unconditional rules check).
+  utils.logLabeledBullet("remoteconfig", "validating template...");
+  await publishTemplate(projectNumber, template, template.etag, {
+    force: !!options.force,
+    validateOnly: true,
+  });
+  utils.logLabeledSuccess("remoteconfig", "template is valid");
+
   context.remoteconfigTemplate = template;
   return;
 }

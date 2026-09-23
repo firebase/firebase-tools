@@ -13,5 +13,5 @@ export default async function (context: ReleaseContext, options: any) {
   const template = context.remoteconfigTemplate;
   const projectNumber = await needProjectNumber(options);
   const etag = await getEtag(projectNumber);
-  return publishTemplate(projectNumber, template, etag, options);
+  return publishTemplate(projectNumber, template, etag, { force: options.force });
 }

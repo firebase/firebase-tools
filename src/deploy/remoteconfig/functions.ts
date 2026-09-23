@@ -52,27 +52,35 @@ export function validateInputRemoteConfigTemplate(
 
 /**
  * Deploys a Remote Config template information based on the Firebase Project Id
- * If force option is passed, etag value will be set to *. Otherwise, the etag will be created
+ * If force option is passed, etag value will be set to *. Otherwise, the etag will be created.
+ * If validateOnly option is passed, the template is validated server-side (including condition
+ * expression syntax) without actually publishing it.
  * @param projectNumber Input is the Project number string
  * @param template Remote Config template to deploy
  * @param etag Remote Config Template's etag value
- * @param options Optional object when publishing a Remote Config template. If the
- * force {boolean} is `true` the Remote Config template is forced to update and circumvent the Etag
+ * @param options Optional force and validateOnly boolean options
+ * @param options.force If `true`, the etag value will be set to `*` to circumvent the etag check.
+ * @param options.validateOnly If `true`, the template is validated server-side without publishing.
  * @return Returns a Promise of a Remote Config template
  */
 export async function deployTemplate(
   projectNumber: string,
   template: RemoteConfigTemplate,
   etag: string,
-  options?: { force: boolean },
+  options?: { force?: boolean; validateOnly?: boolean },
 ): Promise<RemoteConfigTemplate> {
   const reqPath = `/projects/${projectNumber}/remoteConfig`;
   if (options?.force) {
     etag = "*";
   }
+  const queryParams: { validateOnly?: string } = {};
+  if (options?.validateOnly) {
+    queryParams.validateOnly = "true";
+  }
   const response = await client.request<any, RemoteConfigTemplate>({
     method: "PUT",
     path: reqPath,
+    queryParams,
     headers: { "If-Match": etag },
     body: {
       conditions: template.conditions,
@@ -85,18 +93,21 @@ export async function deployTemplate(
 }
 
 /**
- * Publishes a valid Remote Config template based on the Firebase Project Id using the deployTemplate function
+ * Publishes a valid Remote Config template based on the Firebase Project Id using the deployTemplate function.
+ * See deployTemplate for the meaning of the force and validateOnly options.
  * @param projectNumber Input is the Project number of the Firebase Project
  * @param template The Remote Config template to be published
  * @param etag Remote Config Template's etag value
- * @param options Force boolean option
- * @return Returns a Promise that fulfills with the published Remote Config template
+ * @param options Optional force and validateOnly boolean options
+ * @param options.force See deployTemplate.
+ * @param options.validateOnly See deployTemplate.
+ * @return Returns a Promise that fulfills with the published (or validated) Remote Config template
  */
 export function publishTemplate(
   projectNumber: string,
   template: RemoteConfigTemplate,
   etag: string,
-  options?: { force: boolean },
+  options?: { force?: boolean; validateOnly?: boolean },
 ): Promise<RemoteConfigTemplate> {
   const temporaryTemplate = {
     conditions: template.conditions,
