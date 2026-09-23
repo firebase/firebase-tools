@@ -46,6 +46,10 @@ export interface UploadRequest {
 
 export const CONCURRENCY = 25;
 
+// Special directory names used for Angular client-side build assets
+const ANGULAR_DIST_DIR = "dist";
+const ANGULAR_BROWSER_DIR = "browser";
+
 /**
  * Checks if the Google App ID is provided in command options.
  * Throws a FirebaseError if it is missing.
@@ -422,12 +426,17 @@ export async function uploadSourceMaps(
  */
 export async function uploadMap(request: UploadRequest, attemptsRemaining = 0): Promise<boolean> {
   const { projectId, mappingFile, obfuscatedFilePath, bucketName, appVersion, options } = request;
-  const relativeToRoot = path.relative(options.projectRoot ?? process.cwd(), mappingFile);
+  const rootDir = options.projectRoot ?? process.cwd();
+  const relativeToRoot = path.relative(rootDir, mappingFile);
+  const resolvedCheckPath = path.resolve(rootDir, relativeToRoot);
   const filePath =
-    !fs.existsSync(relativeToRoot) && fs.existsSync(mappingFile) ? mappingFile : relativeToRoot;
+    !fs.existsSync(resolvedCheckPath) && fs.existsSync(mappingFile) ? mappingFile : relativeToRoot;
+
+  // Perform special handling for Angular to adjust source map file path since source
+  // files are served at root (`/`) and the maps reference them with an absolute path.
   const pathSegments = obfuscatedFilePath.split(path.sep);
-  const browserIndex = pathSegments.lastIndexOf("browser");
-  const isAngularBuildDir = filePath.split(path.sep).some((seg) => ["dist"].includes(seg));
+  const browserIndex = pathSegments.lastIndexOf(ANGULAR_BROWSER_DIR);
+  const isAngularBuildDir = filePath.split(path.sep).includes(ANGULAR_DIST_DIR);
   const normalizedSegments =
     isAngularBuildDir && browserIndex !== -1 ? pathSegments.slice(browserIndex + 1) : pathSegments;
   const obfuscatedPath = normalizedSegments
@@ -435,6 +444,7 @@ export async function uploadMap(request: UploadRequest, attemptsRemaining = 0): 
     // TODO(andrewbrook): add flag to allow uploading dev maps
     .filter((p) => p !== "dev")
     .join("/");
+
   const tmpArchive = await archiveFile(filePath, { archivedFileName: "mapping.js.map" });
   const appId = options.app || "";
   const gcsFile = `${appId}-${appVersion}-${normalizeFileName(obfuscatedPath)}.zip`;
