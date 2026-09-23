@@ -1985,7 +1985,7 @@ function grantToken(
   };
 }
 
-function deleteAllAccountsInProject(state: ProjectState): {} {
+function deleteAllAccountsInProject(state: ProjectState): Record<string, never> {
   state.deleteAllAccounts();
   return {};
 }
