@@ -489,8 +489,12 @@ export function normalizeFileName(fileName: string): string {
 }
 
 function isAlreadyExistsError(e: FirebaseError): boolean {
-  const errorText = `${e.message} ${JSON.stringify(e.context ?? "")}`;
-  return e.status === 400 && /already[\s_]+exists/i.test(errorText);
+  if (e.status !== 400) {
+    return false;
+  }
+  const message = e.message.toLowerCase();
+  const bodyMessage = ((e.context as any)?.body?.error?.message ?? "").toLowerCase();
+  return message.includes("already exists") || bodyMessage.includes("already exists");
 }
 
 /**
@@ -529,12 +533,14 @@ export async function registerSourceMap(sourceMap: SourceMap): Promise<void> {
         } catch (retryErr) {
           throw new FirebaseError(
             `Failed to register source map ${sourceMap.obfuscatedFilePath} with Firebase Telemetry service:\n${retryErr instanceof Error ? retryErr.message : String(retryErr)}`,
+            { original: retryErr instanceof Error ? retryErr : undefined },
           );
         }
       }
     }
     throw new FirebaseError(
       `Failed to register source map ${sourceMap.obfuscatedFilePath} with Firebase Telemetry service:\n${e instanceof Error ? e.message : String(e)}`,
+      { original: e instanceof Error ? e : undefined },
     );
   }
 }
