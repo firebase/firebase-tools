@@ -173,7 +173,7 @@ async function tripFirebasePostinstall(
     if (
       dependency.name === "@firebase/util" &&
       semverGte(dependency.version, "1.11.0") &&
-      firebaseUtilPaths.indexOf(dependency.path) === -1
+      !firebaseUtilPaths.includes(dependency.path)
     ) {
       firebaseUtilPaths.push(dependency.path);
     }
