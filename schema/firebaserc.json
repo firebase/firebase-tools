@@ -1,0 +1,133 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Firebase Runtime Configuration",
+  "description": "Schema for the Firebase Runtime Configuration file (.firebaserc).",
+  "type": "object",
+  "additionalProperties": false,
+  "definitions": {
+    "projectTargets": {
+      "type": "object",
+      "description": "Resource target configurations for a specific Firebase project ID.",
+      "properties": {
+        "hosting": {
+          "type": "object",
+          "description": "Maps hosting target names (specified in firebase.json) to an array containing the Firebase Hosting site name.",
+          "additionalProperties": {
+            "type": "array",
+            "description": "Array of Firebase Hosting site name(s) associated with this target name.",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "storage": {
+          "type": "object",
+          "description": "Maps storage target names (specified in firebase.json) to an array of Cloud Storage bucket names.",
+          "additionalProperties": {
+            "type": "array",
+            "description": "Array of Cloud Storage bucket name(s) associated with this target name.",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "database": {
+          "type": "object",
+          "description": "Maps Realtime Database target names (specified in firebase.json) to an array of Realtime Database instance names.",
+          "additionalProperties": {
+            "type": "array",
+            "description": "Array of Realtime Database instance name(s) associated with this target name.",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "firestore": {
+          "type": "object",
+          "description": "Maps Firestore target names (specified in firebase.json) to an array of Firestore database IDs.",
+          "additionalProperties": {
+            "type": "array",
+            "description": "Array of Firestore database ID(s) associated with this target name.",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": {
+        "type": "object",
+        "description": "Resource targets for additional target types, mapping target names to an array of resource identifiers.",
+        "additionalProperties": {
+          "type": "array",
+          "description": "Array of resource identifiers associated with this target name.",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "projectEtags": {
+      "type": "object",
+      "description": "ETags for resources within a specific Firebase project.",
+      "properties": {
+        "extensionInstances": {
+          "type": "object",
+          "description": "Maps deployed Firebase Extension instance IDs to their deployed ETag hash.",
+          "additionalProperties": {
+            "type": "string",
+            "description": "The ETag string returned by the Firebase Extensions API for this instance."
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "projects": {
+      "type": "object",
+      "description": "Maps project aliases (such as 'default', 'staging', or 'production') to Firebase Project IDs.",
+      "properties": {
+        "default": {
+          "type": "string",
+          "description": "The default Firebase Project ID used when no project or alias is explicitly specified."
+        }
+      },
+      "additionalProperties": {
+        "type": "string",
+        "description": "The Firebase Project ID associated with this alias."
+      }
+    },
+    "targets": {
+      "type": "object",
+      "description": "Maps Firebase project IDs to named resource targets for multi-resource deployments.",
+      "additionalProperties": {
+        "$ref": "#/definitions/projectTargets"
+      }
+    },
+    "etags": {
+      "type": "object",
+      "description": "Stores resource ETags per project to detect drift and out-of-band updates during extension deployments.",
+      "additionalProperties": {
+        "$ref": "#/definitions/projectEtags"
+      }
+    },
+    "dataconnectEmulatorConfig": {
+      "type": "object",
+      "description": "Deprecated configuration for the Firebase Data Connect emulator.",
+      "properties": {
+        "postgres": {
+          "type": "object",
+          "description": "PostgreSQL database configuration for the emulator.",
+          "properties": {
+            "localConnectionString": {
+              "type": "string",
+              "description": "Connection string to a local PostgreSQL instance."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
