@@ -18,11 +18,14 @@ import { deleteFunctionsByEndpointFilters } from "../deploy/functions/delete";
 import { Context } from "../deploy/functions/args";
 
 export const command = new Command("functions:kits:uninstall")
-  .description("uninstall a function kit or kit instance from your project")
+  .description(
+    "uninstall a function kit or kit instance from your project. Deletes all running resources and the associated managed service account.",
+  )
   .before(requireConfig)
   .before(requireAuth)
   .option("--kit <kitId>", "")
   .option("--instance <instanceId>", "")
+  .withForce()
   .action(async (options: Options): Promise<void> => {
     const firebaseConfig = options.config;
     if (options.instance && options.kit) {

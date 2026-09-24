@@ -278,5 +278,31 @@ describe("iam", () => {
         expect(nock.isDone()).to.be.true;
       });
     });
+
+    describe("computeRolesEtag", () => {
+      it("should return a 32-character base38 hash starting with [a-z]", () => {
+        const etag = iam.computeRolesEtag(["roles/viewer"]);
+        expect(etag).to.have.lengthOf(32);
+        expect(etag).to.match(/^[a-z][a-z0-9_-]{31}$/);
+      });
+
+      it("should be deterministic regardless of role order", () => {
+        const etag1 = iam.computeRolesEtag(["roles/viewer", "roles/editor"]);
+        const etag2 = iam.computeRolesEtag(["roles/editor", "roles/viewer"]);
+        expect(etag1).to.equal(etag2);
+      });
+
+      it("should be deterministic regardless of duplicate roles", () => {
+        const etag1 = iam.computeRolesEtag(["roles/viewer"]);
+        const etag2 = iam.computeRolesEtag(["roles/viewer", "roles/viewer"]);
+        expect(etag1).to.equal(etag2);
+      });
+
+      it("should produce different etags for different role sets", () => {
+        const etag1 = iam.computeRolesEtag(["roles/viewer"]);
+        const etag2 = iam.computeRolesEtag(["roles/editor"]);
+        expect(etag1).to.not.equal(etag2);
+      });
+    });
   });
 });
