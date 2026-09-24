@@ -73,7 +73,7 @@ import * as iam from "../../gcp/iam";
 import * as resourcemanager from "../../gcp/resourceManager";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
-export const DECLARATIVE_SECURITY_ETAG_LABEL = "firebase-declarative-security-etag";
+export const DECLARATIVE_SECURITY_ETAG_LABEL = backend.DECLARATIVE_SECURITY_ETAG_LABEL;
 
 /**
  * Discovers and coordinates declarative security details for a codebase.

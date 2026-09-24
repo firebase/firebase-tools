@@ -6,6 +6,7 @@ import * as planner from "./planner";
 import * as deploymentTool from "../../../deploymentTool";
 import * as utils from "../../../utils";
 import * as v2events from "../../../functions/events/v2";
+import { GENKIT_MONITORING_ROLES } from "../checkIam";
 
 describe("planner", () => {
   let logLabeledBullet: sinon.SinonStub;
@@ -226,6 +227,59 @@ describe("planner", () => {
       expect(result.region.endpointsToSkip).to.have.lengthOf(0);
       expect(result.region.endpointsToUpdate).to.have.lengthOf(1);
       expect(result.region.endpointsToUpdate[0].endpoint.id).to.equal("func");
+    });
+
+    it("should skip functions carrying the declarative security etag they were deployed with", () => {
+      const funcWant = func("func", "region");
+      const funcHave = func("func", "region");
+      funcWant.hash = "same-hash";
+      funcHave.hash = "same-hash";
+      funcWant.labels = { [backend.DECLARATIVE_SECURITY_ETAG_LABEL]: "etag" };
+      funcHave.labels = { [backend.DECLARATIVE_SECURITY_ETAG_LABEL]: "etag" };
+
+      const result = planner.calculateChangesets(
+        { func: funcWant },
+        { func: funcHave },
+        (e) => e.region,
+      );
+
+      expect(result.region.endpointsToSkip).to.have.lengthOf(1);
+    });
+
+    it("should not skip functions whose declarative security etag changed", () => {
+      const funcWant = func("func", "region");
+      const funcHave = func("func", "region");
+      funcWant.hash = "same-hash";
+      funcHave.hash = "same-hash";
+      funcWant.labels = { [backend.DECLARATIVE_SECURITY_ETAG_LABEL]: "new-etag" };
+      funcHave.labels = { [backend.DECLARATIVE_SECURITY_ETAG_LABEL]: "old-etag" };
+
+      const result = planner.calculateChangesets(
+        { func: funcWant },
+        { func: funcHave },
+        (e) => e.region,
+      );
+
+      expect(result.region.endpointsToSkip).to.have.lengthOf(0);
+      expect(result.region.endpointsToUpdate).to.have.lengthOf(1);
+      expect(result.region.endpointsToUpdate[0].endpoint.id).to.equal("func");
+    });
+
+    it("should not skip functions that are dropping the declarative security etag", () => {
+      const funcWant = func("func", "region");
+      const funcHave = func("func", "region");
+      funcWant.hash = "same-hash";
+      funcHave.hash = "same-hash";
+      funcHave.labels = { [backend.DECLARATIVE_SECURITY_ETAG_LABEL]: "old-etag" };
+
+      const result = planner.calculateChangesets(
+        { func: funcWant },
+        { func: funcHave },
+        (e) => e.region,
+      );
+
+      expect(result.region.endpointsToSkip).to.have.lengthOf(0);
+      expect(result.region.endpointsToUpdate).to.have.lengthOf(1);
     });
   });
 
@@ -461,6 +515,46 @@ describe("planner", () => {
           endpointsToSkip: [],
         },
       });
+    });
+
+    it("does not revoke the Genkit monitoring roles on a later deploy", async () => {
+      const managedSA = "firebase-fn-123@my-project.iam.gserviceaccount.com";
+      const genkitFn = func("genkit", "region", { callableTrigger: { genkitAction: "flow" } });
+      const wantBackend = backend.of(genkitFn);
+      wantBackend.requiredRoles = ["roles/viewer", ...GENKIT_MONITORING_ROLES];
+
+      const plan = await planner.createDeploymentPlan({
+        wantBackend,
+        haveBackend: backend.of(genkitFn),
+        codebase,
+        projectId: "my-project",
+        haveRoles: ["roles/viewer", ...GENKIT_MONITORING_ROLES],
+        existingManagedSA: managedSA,
+        managedSA,
+      });
+
+      expect(plan.rolesToRemove).to.deep.equal([]);
+      expect(plan.rolesToAdd).to.deep.equal([]);
+    });
+
+    it("adds the Genkit monitoring roles a managed service account is missing", async () => {
+      const managedSA = "firebase-fn-123@my-project.iam.gserviceaccount.com";
+      const genkitFn = func("genkit", "region", { callableTrigger: { genkitAction: "flow" } });
+      const wantBackend = backend.of(genkitFn);
+      wantBackend.requiredRoles = ["roles/viewer", ...GENKIT_MONITORING_ROLES];
+
+      const plan = await planner.createDeploymentPlan({
+        wantBackend,
+        haveBackend: backend.of(genkitFn),
+        codebase,
+        projectId: "my-project",
+        haveRoles: ["roles/viewer"],
+        existingManagedSA: managedSA,
+        managedSA,
+      });
+
+      expect(plan.rolesToAdd).to.deep.equal([...GENKIT_MONITORING_ROLES]);
+      expect(plan.rolesToRemove).to.deep.equal([]);
     });
 
     it("applies filters", async () => {

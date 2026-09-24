@@ -84,15 +84,9 @@ export function calculateChangesets(
     keyFn,
   );
 
-  // If the hashes are matching, that means the local function is the same as the server copy.
+  // A function whose deployed copy already matches is left alone, unless --only named it.
   const toSkipPredicate = (id: string): boolean =>
-    !!(
-      !want[id].targetedByOnly && // Don't skip the function if its --only targeted.
-      have[id].state === "ACTIVE" && // Only skip the function if its in a known good state
-      have[id].hash &&
-      want[id].hash &&
-      want[id].hash === have[id].hash
-    );
+    !want[id].targetedByOnly && backend.endpointUpToDate(want[id], have[id]);
 
   const toSkipEndpointsMap = Object.keys(want)
     .filter((id) => have[id])
