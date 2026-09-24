@@ -185,20 +185,20 @@ export async function obtainDefaultComputeServiceAgentBindings(
 /**
  * Checks and sets the roles for any genkit deployed functions that are required
  * for Firebase Genkit Monitoring.
+ *
+ * Must run after any managed service account referenced by the endpoints exists:
+ * the project IAM policy rejects members that do not exist yet.
  * @param projectId human readable project id
  * @param projectNumber project number
- * @param want backend that we want to deploy
- * @param have backend that we have currently deployed
+ * @param createdEndpoints endpoints being created by this deploy
  */
 export async function ensureGenkitMonitoringRoles(
   projectId: string,
   projectNumber: string,
-  want: backend.Backend,
-  have: backend.Backend,
+  createdEndpoints: backend.Endpoint[],
   dryRun?: boolean,
 ): Promise<void> {
-  const wantEndpoints = backend.allEndpoints(want).filter(isGenkitEndpoint);
-  const newEndpoints = wantEndpoints.filter(backend.missingEndpoint(have));
+  const newEndpoints = createdEndpoints.filter(isGenkitEndpoint);
 
   if (newEndpoints.length === 0) {
     return;

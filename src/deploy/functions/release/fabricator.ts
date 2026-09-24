@@ -8,6 +8,7 @@ import {
   parseErrorCode,
 } from "./executor";
 import * as ensure from "../ensure";
+import * as checkIam from "../checkIam";
 import { FirebaseError } from "../../../error";
 
 import { SourceTokenScraper } from "./sourceTokenScraper";
@@ -243,6 +244,19 @@ export class Fabricator {
       await this.grantNewRoles(codebasePlan, codebase);
     }
 
+    // Accumulate all regional changesets across all codebases
+    const allChangesets: planner.Changeset[] = [];
+    for (const codebasePlan of Object.values(plan)) {
+      allChangesets.push(...Object.values(codebasePlan.regionalChangesets));
+    }
+
+    // Also a project IAM policy update, so it stays sequential with grantNewRoles.
+    await checkIam.ensureGenkitMonitoringRoles(
+      this.projectId,
+      this.projectNumber,
+      allChangesets.flatMap((changes) => changes.endpointsToCreate),
+    );
+
     const secretAccessPromises = Object.values(plan).flatMap((codebasePlan) =>
       Object.entries(codebasePlan.secretAccessPlan || {}).map(([secret, serviceAccounts]) =>
         this.executor.run(
@@ -259,12 +273,6 @@ export class Fabricator {
       ),
     );
     await Promise.all(secretAccessPromises);
-
-    // Accumulate all regional changesets across all codebases
-    const allChangesets: planner.Changeset[] = [];
-    for (const codebasePlan of Object.values(plan)) {
-      allChangesets.push(...Object.values(codebasePlan.regionalChangesets));
-    }
 
     // Phase 1: Creates and Updates
     const createAndUpdatePromises = allChangesets.map((changes) => {

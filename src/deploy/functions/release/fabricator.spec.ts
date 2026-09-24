@@ -26,6 +26,7 @@ import { deepCopy } from "@angular-devkit/core";
 import * as gce from "../../../gcp/computeEngine";
 import * as iam from "../../../gcp/iam";
 import * as resourcemanager from "../../../gcp/resourceManager";
+import * as checkIam from "../checkIam";
 
 describe("Fabricator", () => {
   // Stub all GCP APIs to make sure this test is hermetic
@@ -2230,6 +2231,38 @@ describe("Fabricator", () => {
         "test-project",
         "firebase-fn-123@my-proj.iam.gserviceaccount.com",
       );
+    });
+
+    it("should grant Genkit monitoring roles after creating the SA in applyPlan", async () => {
+      const ensureGenkitRolesStub = sinon.stub(checkIam, "ensureGenkitMonitoringRoles").resolves();
+      const genkitEndpoint = endpoint(
+        { callableTrigger: { genkitAction: "flow" } },
+        { serviceAccount: "firebase-fn-123@my-proj.iam.gserviceaccount.com" },
+      );
+      const deploymentPlan: planner.DeploymentPlan = {
+        default: {
+          plannedBackend: backend.of(genkitEndpoint),
+          regionalChangesets: {
+            "us-central1": {
+              endpointsToCreate: [genkitEndpoint],
+              endpointsToUpdate: [],
+              endpointsToDelete: [],
+              endpointsToSkip: [],
+            },
+          },
+          serviceAccountToCreate: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+          managedServiceAccount: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        },
+      };
+      sinon.stub(fab, "applyUpserts").resolves([{ endpoint: genkitEndpoint, durationMs: 100 }]);
+
+      await fab.applyPlan(deploymentPlan);
+
+      expect(createServiceAccountStub).to.have.been.calledOnce;
+      expect(ensureGenkitRolesStub).to.have.been.calledOnceWithExactly("test-project", "1234567", [
+        genkitEndpoint,
+      ]);
+      expect(ensureGenkitRolesStub).to.have.been.calledAfter(createServiceAccountStub);
     });
 
     it("should clean up newly created SA on 100% deployment failure", async () => {

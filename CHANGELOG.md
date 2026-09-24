@@ -1,0 +1,1 @@
+- [fixed] Grant Genkit monitoring roles after the managed service account is created when a codebase first opts into declarative security. (#11123)

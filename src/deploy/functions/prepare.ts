@@ -538,15 +538,15 @@ export async function prepare(
     haveBackend,
     options.dryRun,
   );
-  await ensureGenkitMonitoringRoles(
-    projectId,
-    projectNumber,
-    matchingBackend,
-    haveBackend,
-    options.dryRun,
-  );
-  // Actual granting of secret access permissions has been moved to the fabricator in release because declarative security may mean that the desired service account hasn't been created
+  // Genkit monitoring roles and secret access are granted by the fabricator in release because
+  // declarative security may mean that the desired service account hasn't been created yet.
   if (options.dryRun) {
+    await ensureGenkitMonitoringRoles(
+      projectId,
+      projectNumber,
+      backend.allEndpoints(matchingBackend).filter(backend.missingEndpoint(haveBackend)),
+      options.dryRun,
+    );
     const secretAccessDelta = await ensure.secretsAccessDelta({
       projectId,
       wantBackend: matchingBackend,

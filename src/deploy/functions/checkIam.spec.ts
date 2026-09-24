@@ -246,64 +246,13 @@ describe("checkIam", () => {
 
   describe("ensureGenkitMonitoringRoles", () => {
     it("should return early if we do not have new endpoints", async () => {
-      const fn1: backend.Endpoint = {
-        id: "genkitFn1",
-        platform: "gcfv2",
-        entryPoint: "genkitFn1",
-        callableTrigger: {
-          genkitAction: "action",
-        },
-        ...SPEC,
-      };
-      const fn2: backend.Endpoint = {
-        id: "genkitFn2",
-        platform: "gcfv2",
-        entryPoint: "genkitFn2",
-        callableTrigger: {
-          genkitAction: "action",
-        },
-        ...SPEC,
-      };
-      const wantFn: backend.Endpoint = {
-        id: "wantGenkitFnFn",
-        entryPoint: "wantGenkitFn",
-        platform: "gcfv2",
-        callableTrigger: {
-          genkitAction: "action",
-        },
-        ...SPEC,
-      };
-
-      await checkIam.ensureGenkitMonitoringRoles(
-        projectId,
-        projectNumber,
-        backend.of(wantFn),
-        backend.of(fn1, fn2, wantFn),
-      );
+      await checkIam.ensureGenkitMonitoringRoles(projectId, projectNumber, []);
 
       expect(getIamStub).to.not.have.been.called;
       expect(setIamStub).to.not.have.been.called;
     });
 
     it("should return early if none of the new endpoints are genkit", async () => {
-      const fn1: backend.Endpoint = {
-        id: "genkitFn1",
-        platform: "gcfv2",
-        entryPoint: "genkitFn1",
-        callableTrigger: {
-          genkitAction: "action",
-        },
-        ...SPEC,
-      };
-      const fn2: backend.Endpoint = {
-        id: "genkitFn2",
-        platform: "gcfv2",
-        entryPoint: "genkitFn2",
-        callableTrigger: {
-          genkitAction: "action",
-        },
-        ...SPEC,
-      };
       const wantFn1: backend.Endpoint = {
         id: "wantFn1",
         entryPoint: "wantFn1",
@@ -323,12 +272,7 @@ describe("checkIam", () => {
         ...SPEC,
       };
 
-      await checkIam.ensureGenkitMonitoringRoles(
-        projectId,
-        projectNumber,
-        backend.of(wantFn1, wantFn2),
-        backend.of(fn1, fn2),
-      );
+      await checkIam.ensureGenkitMonitoringRoles(projectId, projectNumber, [wantFn1, wantFn2]);
 
       expect(getIamStub).to.not.have.been.called;
       expect(setIamStub).to.not.have.been.called;
@@ -346,14 +290,8 @@ describe("checkIam", () => {
         ...SPEC,
       };
 
-      await expect(
-        checkIam.ensureGenkitMonitoringRoles(
-          projectId,
-          projectNumber,
-          backend.of(wantFn),
-          backend.empty(),
-        ),
-      ).to.not.be.rejected;
+      await expect(checkIam.ensureGenkitMonitoringRoles(projectId, projectNumber, [wantFn])).to.not
+        .be.rejected;
       expect(getIamStub).to.have.been.calledOnce;
       expect(getIamStub).to.have.been.calledWith(projectNumber);
       expect(setIamStub).to.not.have.been.called;
@@ -376,12 +314,7 @@ describe("checkIam", () => {
       };
 
       await expect(
-        checkIam.ensureGenkitMonitoringRoles(
-          projectId,
-          projectNumber,
-          backend.of(wantFn),
-          backend.empty(),
-        ),
+        checkIam.ensureGenkitMonitoringRoles(projectId, projectNumber, [wantFn]),
       ).to.be.rejectedWith(
         "We failed to modify the IAM policy for the project. The functions " +
           "deployment requires specific roles to be granted to service agents," +
@@ -425,12 +358,7 @@ describe("checkIam", () => {
         ...SPEC,
       };
 
-      await checkIam.ensureGenkitMonitoringRoles(
-        projectId,
-        projectNumber,
-        backend.of(wantFn),
-        backend.empty(),
-      );
+      await checkIam.ensureGenkitMonitoringRoles(projectId, projectNumber, [wantFn]);
 
       expect(getIamStub).to.have.been.calledOnce;
       expect(getIamStub).to.have.been.calledWith(projectNumber);
@@ -467,12 +395,7 @@ describe("checkIam", () => {
         ...SPEC,
       };
 
-      await checkIam.ensureGenkitMonitoringRoles(
-        projectId,
-        projectNumber,
-        backend.of(wantFn),
-        backend.empty(),
-      );
+      await checkIam.ensureGenkitMonitoringRoles(projectId, projectNumber, [wantFn]);
 
       expect(getIamStub).to.have.been.calledOnce;
       expect(getIamStub).to.have.been.calledWith(projectNumber);
@@ -554,12 +477,7 @@ describe("checkIam", () => {
         ...SPEC,
       };
 
-      await checkIam.ensureGenkitMonitoringRoles(
-        projectId,
-        projectNumber,
-        backend.of(fn1, fn2, fn3, fn4),
-        backend.empty(),
-      );
+      await checkIam.ensureGenkitMonitoringRoles(projectId, projectNumber, [fn1, fn2, fn3, fn4]);
 
       expect(getIamStub).to.have.been.calledOnce;
       expect(getIamStub).to.have.been.calledWith(projectNumber);
