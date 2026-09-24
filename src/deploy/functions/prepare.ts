@@ -40,7 +40,12 @@ import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import { needProjectId, needProjectNumber } from "../../projectUtils";
 import { logger } from "../../logger";
 import { ensureTriggerRegions } from "./triggerRegionHelper";
-import { ensureServiceAgentRoles, ensureGenkitMonitoringRoles } from "./checkIam";
+import {
+  ensureServiceAgentRoles,
+  ensureGenkitMonitoringRoles,
+  isGenkitEndpoint,
+  GENKIT_MONITORING_ROLES,
+} from "./checkIam";
 import { FirebaseError, getErrStack } from "../../error";
 
 import {
@@ -93,6 +98,12 @@ export async function discoverSecurityDetails(
   managedSA?: string;
   newEtag?: string;
 }> {
+  // Genkit Monitoring needs these roles on whichever account runs a Genkit function. Folding
+  // them into requiredRoles keeps them in the etag and the plan, so the fabricator grants them
+  // once the managed service account exists and later deploys do not revoke them.
+  if (want.requiredRoles && backend.someEndpoint(want, isGenkitEndpoint)) {
+    want.requiredRoles = Array.from(new Set([...want.requiredRoles, ...GENKIT_MONITORING_ROLES]));
+  }
   const requiredRoles = want.requiredRoles;
   // Note: On partial first rollouts (where at least one function successfully deployed),
   // haveBackend contains all active endpoints in GCP from list calls. firstHave.serviceAccount
@@ -538,15 +549,15 @@ export async function prepare(
     haveBackend,
     options.dryRun,
   );
-  // Genkit monitoring roles and secret access are granted by the fabricator in release because
-  // declarative security may mean that the desired service account hasn't been created yet.
+  await ensureGenkitMonitoringRoles(
+    projectId,
+    projectNumber,
+    matchingBackend,
+    haveBackend,
+    options.dryRun,
+  );
+  // Actual granting of secret access permissions has been moved to the fabricator in release because declarative security may mean that the desired service account hasn't been created
   if (options.dryRun) {
-    await ensureGenkitMonitoringRoles(
-      projectId,
-      projectNumber,
-      backend.allEndpoints(matchingBackend).filter(backend.missingEndpoint(haveBackend)),
-      options.dryRun,
-    );
     const secretAccessDelta = await ensure.secretsAccessDelta({
       projectId,
       wantBackend: matchingBackend,

@@ -141,9 +141,17 @@ function reduceEventsToServices(services: Array<Service>, endpoint: backend.Endp
 }
 
 /** Checks whether the given endpoint is a Genkit callable function. */
-function isGenkitEndpoint(endpoint: backend.Endpoint): boolean {
+export function isGenkitEndpoint(endpoint: backend.Endpoint): boolean {
   return (
     backend.isCallableTriggered(endpoint) && endpoint.callableTrigger.genkitAction !== undefined
+  );
+}
+
+/** Checks whether the endpoint runs as a service account managed by declarative security. */
+function usesManagedServiceAccount(endpoint: backend.Endpoint): boolean {
+  return (
+    typeof endpoint.serviceAccount === "string" &&
+    endpoint.serviceAccount.startsWith("firebase-fn-")
   );
 }
 
@@ -185,20 +193,25 @@ export async function obtainDefaultComputeServiceAgentBindings(
 /**
  * Checks and sets the roles for any genkit deployed functions that are required
  * for Firebase Genkit Monitoring.
- *
- * Must run after any managed service account referenced by the endpoints exists:
- * the project IAM policy rejects members that do not exist yet.
  * @param projectId human readable project id
  * @param projectNumber project number
- * @param createdEndpoints endpoints being created by this deploy
+ * @param want backend that we want to deploy
+ * @param have backend that we have currently deployed
  */
 export async function ensureGenkitMonitoringRoles(
   projectId: string,
   projectNumber: string,
-  createdEndpoints: backend.Endpoint[],
+  want: backend.Backend,
+  have: backend.Backend,
   dryRun?: boolean,
 ): Promise<void> {
-  const newEndpoints = createdEndpoints.filter(isGenkitEndpoint);
+  // A managed service account may not exist until release, so its Genkit roles are part of the
+  // codebase's required roles and are granted with them in the fabricator.
+  const wantEndpoints = backend
+    .allEndpoints(want)
+    .filter(isGenkitEndpoint)
+    .filter((endpoint) => !usesManagedServiceAccount(endpoint));
+  const newEndpoints = wantEndpoints.filter(backend.missingEndpoint(have));
 
   if (newEndpoints.length === 0) {
     return;

@@ -1,1 +1,1 @@
-- [fixed] Grant Genkit monitoring roles after the managed service account is created when a codebase first opts into declarative security. (#11123)
+- [fixed] Fixed the first deploy of a codebase using `requiresRole` failing when it contains a Genkit function, and kept the Genkit monitoring roles on the managed service account across later deploys. (#11123)
