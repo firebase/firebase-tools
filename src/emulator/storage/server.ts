@@ -8,6 +8,7 @@ import { RulesConfig, StorageEmulator } from "./index";
 import { createFirebaseEndpoints } from "./apis/firebase";
 import { InvalidArgumentError } from "../auth/errors";
 import { SourceFile } from "./rules/types";
+import { hostValidationMiddleware } from "../hostValidation";
 
 /**
  * @param defaultProjectId
@@ -24,6 +25,10 @@ export function createApp(
     "DEBUG",
     `Temp file directory for storage emulator: ${storageLayer.dirPath}`,
   );
+
+  // Reject requests with an untrusted Host header to mitigate DNS-rebinding.
+  // Only enforced when bound to loopback (see hostValidationMiddleware).
+  app.use(hostValidationMiddleware([emulator.getInfo().host]));
 
   // Return access-control-allow-private-network header if requested
   // Enables accessing locahost when site is exposed via tunnel see https://github.com/firebase/firebase-tools/issues/4227

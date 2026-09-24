@@ -9,6 +9,7 @@ import { CloudEvent } from "./events/types";
 import { EmulatorRegistry } from "./registry";
 import { FirebaseError } from "../error";
 import { cloudEventFromProtoToJson } from "./eventarcEmulatorUtils";
+import { hostValidationMiddleware } from "./hostValidation";
 import * as cors from "cors";
 
 interface EmulatedEventTrigger {
@@ -148,6 +149,7 @@ export class EventarcEmulator implements EmulatorInstance {
     };
 
     const hub = express();
+    hub.use(hostValidationMiddleware([this.getInfo().host]));
     hub.post([registerTriggerRoute], dataMiddleware, registerTriggerHandler);
     hub.post([publishEventsRoute], dataMiddleware, publishEventsHandler);
     hub.post(
