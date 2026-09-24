@@ -340,6 +340,19 @@ describe("functions/secret", () => {
       expect(listSecretVersionsStub).to.have.callCount(2);
     });
 
+    it("only considers enabled versions", async () => {
+      listSecretsStub.resolves([secret2]);
+      listSecretVersionsStub.resolves([secretVersion21]);
+
+      await secrets.pruneSecrets({ projectId: "project", projectNumber: "12345" }, []);
+
+      expect(listSecretVersionsStub.firstCall.args).to.deep.equal([
+        "project",
+        secret2.name,
+        "state: ENABLED",
+      ]);
+    });
+
     it("returns all secrets given no endpoints", async () => {
       listSecretsStub.resolves([secret1, secret2]);
       listSecretVersionsStub.onFirstCall().resolves([secretVersion11, secretVersion12]);
@@ -484,6 +497,50 @@ describe("functions/secret", () => {
           ],
         }),
       ).to.be.false;
+    });
+  });
+
+  describe("destroySecretVersions", () => {
+    let destroySecretVersionStub: sinon.SinonStub;
+
+    const version1: secrets.SecretForPruning = {
+      projectId: "project",
+      key: "MY_SECRET",
+      secret: "MY_SECRET",
+      version: "1",
+    };
+    const version2: secrets.SecretForPruning = { ...version1, version: "2" };
+
+    beforeEach(() => {
+      destroySecretVersionStub = sinon
+        .stub(secretManager, "destroySecretVersion")
+        .rejects("Unexpected call");
+    });
+
+    afterEach(() => {
+      destroySecretVersionStub.restore();
+    });
+
+    it("destroys every version and reports them", async () => {
+      destroySecretVersionStub.resolves();
+
+      await expect(secrets.destroySecretVersions([version1, version2])).to.eventually.deep.equal({
+        destroyed: [version1, version2],
+        erred: [],
+      });
+      expect(destroySecretVersionStub).to.have.been.calledWithExactly("project", "MY_SECRET", "1");
+      expect(destroySecretVersionStub).to.have.been.calledWithExactly("project", "MY_SECRET", "2");
+    });
+
+    it("keeps destroying after a failure and reports both outcomes", async () => {
+      destroySecretVersionStub.withArgs("project", "MY_SECRET", "1").rejects({ message: "boom" });
+      destroySecretVersionStub.withArgs("project", "MY_SECRET", "2").resolves();
+
+      await expect(secrets.destroySecretVersions([version1, version2])).to.eventually.deep.equal({
+        destroyed: [version2],
+        erred: [{ message: "boom" }],
+      });
+      expect(destroySecretVersionStub).to.have.callCount(2);
     });
   });
 

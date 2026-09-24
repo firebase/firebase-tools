@@ -237,12 +237,11 @@ export async function pruneSecrets(
   const pruneKey = (name: string, version: string) => `${name}@${version}`;
   const prunedSecrets: Set<string> = new Set();
 
-  // Collect all Firebase managed secret versions. Managed secrets carry either
-  // firebase-managed=true (older) or firebase-managed=functions, so match with
-  // isFunctionsManaged; a single-value server-side label filter misses one of them.
+  // A server-side label filter matches one value; isFunctionsManaged accepts both managed values.
   const haveSecrets = (await listSecrets(projectId)).filter(isFunctionsManaged);
   for (const secret of haveSecrets) {
-    const versions = await listSecretVersions(projectId, secret.name, `NOT state: DESTROYED`);
+    // Disabled versions are a user's recoverable safety net; only functions:secrets:destroy removes them.
+    const versions = await listSecretVersions(projectId, secret.name, `state: ENABLED`);
     for (const version of versions) {
       prunedSecrets.add(pruneKey(secret.name, version.versionId));
     }
@@ -289,10 +288,34 @@ export async function pruneSecrets(
     .map(([secret, version]) => ({ projectId, version, secret, key: secret }));
 }
 
-type PruneResult = {
+export type PruneResult = {
   destroyed: backend.SecretEnvVar[];
   erred: { message: string }[];
 };
+
+/**
+ * Destroys the given secret versions, continuing past individual failures so callers
+ * can report exactly which versions were destroyed and which were not.
+ */
+export async function destroySecretVersions(versions: SecretForPruning[]): Promise<PruneResult> {
+  const destroyed: PruneResult["destroyed"] = [];
+  const erred: PruneResult["erred"] = [];
+  const destroyResults = await utils.allSettled<backend.SecretEnvVar>(
+    versions.map(async (sev) => {
+      await destroySecretVersion(sev.projectId, sev.secret, sev.version);
+      return sev;
+    }),
+  );
+
+  for (const result of destroyResults) {
+    if (result.status === "fulfilled") {
+      destroyed.push(result.value);
+    } else {
+      erred.push(result.reason as { message: string });
+    }
+  }
+  return { destroyed, erred };
+}
 
 /**
  * Prune and destroy all unused secret versions. Only Firebase managed secrets will be scanned.
@@ -313,25 +336,9 @@ export async function pruneAndDestroySecrets(
     return { destroyed: [], erred: [] };
   }
 
-  const destroyed: PruneResult["destroyed"] = [];
-  const erred: PruneResult["erred"] = [];
   const msg = unusedSecrets.map((s) => `${s.secret}@${s.version}`);
   logger.debug(`Found unused secret versions: ${msg}. Destroying them...`);
-  const destroyResults = await utils.allSettled<backend.SecretEnvVar>(
-    unusedSecrets.map(async (sev) => {
-      await destroySecretVersion(sev.projectId, sev.secret, sev.version);
-      return sev;
-    }),
-  );
-
-  for (const result of destroyResults) {
-    if (result.status === "fulfilled") {
-      destroyed.push(result.value);
-    } else {
-      erred.push(result.reason as { message: string });
-    }
-  }
-  return { destroyed, erred };
+  return destroySecretVersions(unusedSecrets);
 }
 
 /**
