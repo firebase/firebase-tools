@@ -3,10 +3,12 @@ import * as sinon from "sinon";
 import * as checkIam from "./checkIam";
 import * as storage from "../../gcp/storage";
 import * as rm from "../../gcp/resourceManager";
+import * as gce from "../../gcp/computeEngine";
 import * as backend from "./backend";
 
 const projectId = "my-project";
 const projectNumber = "123456789";
+const defaultComputeServiceAccount = `${projectNumber}-compute@developer.gserviceaccount.com`;
 
 const STORAGE_RES = {
   email_address: "service-123@gs-project-accounts.iam.gserviceaccount.com",
@@ -30,6 +32,9 @@ describe("checkIam", () => {
   let setIamStub: sinon.SinonStub;
 
   beforeEach(() => {
+    // Unstubbed, this reaches the Compute API over the network and each test that
+    // needs the default service account races mocha's 2s timeout.
+    sinon.stub(gce, "getDefaultServiceAccount").resolves(defaultComputeServiceAccount);
     storageStub = sinon
       .stub(storage, "getServiceAccount")
       .throws("unexpected call to storage.getServiceAccount");
