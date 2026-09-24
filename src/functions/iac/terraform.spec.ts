@@ -151,7 +151,7 @@ describe("terraform iac", () => {
     expect(tf.blockToString(block)).to.equal(`resource "google_cloudfunctions_function" "my_func" {
   count = other_resource.count
 
-  name = "test"
+  name    = "test"
   runtime = "nodejs20"
 
   depends_on = [other_resource]
