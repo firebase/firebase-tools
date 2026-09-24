@@ -29,7 +29,7 @@ setGlobalOptions({
   // running at the same time. This helps mitigate the impact of unexpected
   // traffic spikes by instead downgrading performance. This limit is a
   // per-function limit.
-  maxInstances: 10,
+  // maxInstances: 100,
 });
 
 // Exports the functions located in the kit.
