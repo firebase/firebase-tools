@@ -26,6 +26,9 @@ import { ValidatedConfig } from "../../functions/projectConfig";
 import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1";
 import { latest } from "./runtimes/supported";
 import * as functionsEnv from "../../functions/env";
+import * as ensure from "./ensure";
+import * as functionsConfig from "../../functionsConfig";
+import * as args from "./args";
 
 describe("partition env helper", () => {
   it("splits a Record into two based on which keys begin with FIREBASE_SECRET_REF", () => {
@@ -1483,6 +1486,7 @@ describe("prepare", () => {
 
   describe("discoverSecurityDetails", () => {
     let testIamPermissionsStub: sinon.SinonStub;
+    let checkApiStub: sinon.SinonStub;
 
     beforeEach(() => {
       testIamPermissionsStub = sinon
@@ -1490,6 +1494,7 @@ describe("prepare", () => {
         .resolves({ passed: true } as any);
       sinon.stub(iam, "generateManagedServiceAccountName").resolves("firebase-fn-123");
       sinon.stub(resourcemanager, "getServiceAccountRoles").resolves([]);
+      checkApiStub = sinon.stub(ensureApiEnabled, "check").resolves(true);
     });
 
     afterEach(() => {
@@ -1510,6 +1515,30 @@ describe("prepare", () => {
       expect(result.newEtag).to.be.a("string");
       expect(e.serviceAccount).to.equal("firebase-fn-123@project.iam.gserviceaccount.com");
       expect(e.labels?.["firebase-declarative-security-etag"]).to.equal(result.newEtag);
+    });
+
+    it("should skip permission checks when haveRolesEtag matches newEtag", async () => {
+      const etag = iam.computeRolesEtag(["roles/viewer"]);
+      const e: backend.Endpoint = {
+        ...ENDPOINT,
+        serviceAccount: "firebase-fn-123@project.iam.gserviceaccount.com",
+        labels: {
+          "firebase-declarative-security-etag": etag,
+        },
+      };
+      const want = backend.of(e);
+      want.requiredRoles = ["roles/viewer"];
+      const have = backend.of({
+        ...e,
+        labels: { ...e.labels },
+      });
+
+      testIamPermissionsStub.rejects(new Error("Should not be called"));
+      const result = await prepare.discoverSecurityDetails("default", want, have, "project");
+
+      expect(result.haveRolesEtag).to.equal(etag);
+      expect(result.newEtag).to.equal(etag);
+      expect(testIamPermissionsStub).to.not.have.been.called;
     });
 
     it("should reset endpoints to default service account when unenrolling (opting out)", async () => {
@@ -1670,6 +1699,236 @@ describe("prepare", () => {
         FirebaseError,
         /To ensure a whole codebase is migrated cleanly, you may not deploy only part of a codebase when opting into or out of declarative security/,
       );
+    });
+
+    describe("API enablement checks", () => {
+      it("should throw actionable error when both iam and cloudresourcemanager APIs are disabled", async () => {
+        checkApiStub.resolves(false);
+
+        const e: backend.Endpoint = { ...ENDPOINT };
+        const want = backend.of(e);
+        want.requiredRoles = ["roles/viewer"];
+        const have = backend.empty();
+
+        let error: FirebaseError | undefined;
+        try {
+          await prepare.discoverSecurityDetails("default", want, have, "test-project");
+        } catch (err) {
+          if (err instanceof FirebaseError) {
+            error = err;
+          }
+        }
+
+        expect(error).to.be.instanceOf(FirebaseError);
+        expect(error?.message).to.include("iam.googleapis.com");
+        expect(error?.message).to.include("cloudresourcemanager.googleapis.com");
+        expect(error?.message).to.include(
+          "gcloud services enable iam.googleapis.com cloudresourcemanager.googleapis.com --project test-project",
+        );
+        expect(testIamPermissionsStub).to.not.have.been.called;
+      });
+
+      it("should throw actionable error when only iam API is disabled", async () => {
+        checkApiStub.withArgs("test-project", "iam.googleapis.com").resolves(false);
+
+        const e: backend.Endpoint = { ...ENDPOINT };
+        const want = backend.of(e);
+        want.requiredRoles = ["roles/viewer"];
+        const have = backend.empty();
+
+        let error: FirebaseError | undefined;
+        try {
+          await prepare.discoverSecurityDetails("default", want, have, "test-project");
+        } catch (err) {
+          if (err instanceof FirebaseError) {
+            error = err;
+          }
+        }
+
+        expect(error).to.be.instanceOf(FirebaseError);
+        expect(error?.message).to.include("iam.googleapis.com");
+        expect(error?.message).to.not.include("cloudresourcemanager.googleapis.com");
+        expect(error?.message).to.include(
+          "gcloud services enable iam.googleapis.com --project test-project",
+        );
+      });
+
+      it("should throw actionable error when only cloudresourcemanager API is disabled", async () => {
+        checkApiStub
+          .withArgs("test-project", "cloudresourcemanager.googleapis.com")
+          .resolves(false);
+
+        const e: backend.Endpoint = { ...ENDPOINT };
+        const want = backend.of(e);
+        want.requiredRoles = ["roles/viewer"];
+        const have = backend.empty();
+
+        let error: FirebaseError | undefined;
+        try {
+          await prepare.discoverSecurityDetails("default", want, have, "test-project");
+        } catch (err) {
+          if (err instanceof FirebaseError) {
+            error = err;
+          }
+        }
+
+        expect(error).to.be.instanceOf(FirebaseError);
+        expect(error?.message).to.include("cloudresourcemanager.googleapis.com");
+        expect(error?.message).to.not.include("iam.googleapis.com");
+        expect(error?.message).to.include(
+          "gcloud services enable cloudresourcemanager.googleapis.com --project test-project",
+        );
+      });
+
+      it("should not check security APIs when codebase does not use declarative security", async () => {
+        const e: backend.Endpoint = { ...ENDPOINT };
+        const want = backend.of(e);
+        const have = backend.empty();
+
+        await prepare.discoverSecurityDetails("default", want, have, "test-project");
+
+        expect(checkApiStub).to.not.have.been.calledWith("test-project", "iam.googleapis.com");
+        expect(checkApiStub).to.not.have.been.calledWith(
+          "test-project",
+          "cloudresourcemanager.googleapis.com",
+        );
+      });
+
+      it("should not block deployment if caller lacks permission to check API enablement", async () => {
+        checkApiStub.rejects(
+          new FirebaseError("HTTP Error: 403, PERMISSION_DENIED on serviceusage.services.get", {
+            status: 403,
+          }),
+        );
+
+        const e: backend.Endpoint = { ...ENDPOINT };
+        const want = backend.of(e);
+        want.requiredRoles = ["roles/viewer"];
+        const have = backend.empty();
+
+        const result = await prepare.discoverSecurityDetails("default", want, have, "test-project");
+        expect(result.managedSA).to.equal("firebase-fn-123@test-project.iam.gserviceaccount.com");
+      });
+
+      it("should rethrow unexpected non-permission errors when checking API enablement", async () => {
+        checkApiStub.rejects(new Error("Network timeout"));
+
+        const e: backend.Endpoint = { ...ENDPOINT };
+        const want = backend.of(e);
+        want.requiredRoles = ["roles/viewer"];
+        const have = backend.empty();
+
+        await expect(
+          prepare.discoverSecurityDetails("default", want, have, "test-project"),
+        ).to.be.rejectedWith(Error, "Network timeout");
+      });
+
+      it("should not block unenrollment even if security APIs are disabled", async () => {
+        checkApiStub.resolves(false);
+
+        const e: backend.Endpoint = {
+          ...ENDPOINT,
+          serviceAccount: "firebase-fn-123@project.iam.gserviceaccount.com",
+          labels: {
+            "firebase-declarative-security-etag": "salt-etag",
+          },
+        };
+        const want = backend.of(e);
+        const have = backend.of({
+          ...e,
+          labels: { ...e.labels },
+        });
+
+        const result = await prepare.discoverSecurityDetails("default", want, have, "project");
+        expect(result.existingManagedSA).to.equal(
+          "firebase-fn-123@project.iam.gserviceaccount.com",
+        );
+        expect(e.serviceAccount).to.be.null;
+      });
+    });
+  });
+
+  describe("writeResolvedSecretRefs gating", () => {
+    let sandbox: sinon.SinonSandbox;
+    let writeResolvedSecretRefsStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      sandbox.stub(ensureApiEnabled, "ensure").resolves();
+      sandbox.stub(ensureApiEnabled, "check").resolves(false);
+      sandbox.stub(ensure, "cloudBuildEnabled").resolves();
+      sandbox.stub(functionsConfig, "getFirebaseConfig").resolves({ projectId: "test-project" });
+      sandbox.stub(backend, "existingBackend").resolves(backend.empty());
+      sandbox.stub(backend, "checkAvailability").resolves();
+      sandbox.stub(runtimes, "getRuntimeDelegate").resolves({
+        language: "nodejs",
+        runtime: latest("nodejs"),
+        bin: "node",
+        validate: sandbox.stub().resolves(),
+        build: sandbox.stub().resolves(),
+        watch: sandbox.stub().resolves(() => Promise.resolve()),
+        discoverBuild: sandbox.stub().resolves(build.empty()),
+      });
+      sandbox.stub(functionsEnv, "loadUserEnvs").returns({});
+      sandbox.stub(functionsEnv, "writeResolvedParams");
+      writeResolvedSecretRefsStub = sandbox.stub(functionsEnv, "writeResolvedSecretRefs");
+      sandbox.stub(functionsEnv, "hasUserEnvs").returns(false);
+      sandbox.stub(build, "resolveBackend").resolves({
+        backend: backend.empty(),
+        envs: {},
+        secretRefs: { MY_SECRET: "MY_SECRET:latest" },
+      });
+    });
+
+    afterEach(() => {
+      experiments.setEnabled("secretEnvParams", null);
+      experiments.setEnabled("writeDefaultSecretBindings", null);
+      sandbox.restore();
+    });
+
+    function createDeployOptions(): Options {
+      return {
+        project: "test-project",
+        projectNumber: "123456789",
+        config: {
+          src: {
+            functions: [{ source: "functions", codebase: "default" }],
+          },
+          path: (p: string) => `/mock/project/${p}`,
+          projectDir: "/mock/project",
+        },
+      } as unknown as Options;
+    }
+
+    it("writes resolved secret refs when both secretEnvParams and writeDefaultSecretBindings are enabled", async () => {
+      experiments.setEnabled("secretEnvParams", true);
+      experiments.setEnabled("writeDefaultSecretBindings", true);
+
+      await prepare.prepare({} as args.Context, createDeployOptions(), {} as args.Payload);
+
+      expect(writeResolvedSecretRefsStub).to.have.been.calledOnceWith(
+        { MY_SECRET: "MY_SECRET:latest" },
+        {},
+        sinon.match.object,
+      );
+    });
+
+    it("does not write resolved secret refs when writeDefaultSecretBindings is disabled", async () => {
+      experiments.setEnabled("secretEnvParams", true);
+      experiments.setEnabled("writeDefaultSecretBindings", false);
+
+      await prepare.prepare({} as args.Context, createDeployOptions(), {} as args.Payload);
+
+      expect(writeResolvedSecretRefsStub).to.not.have.been.called;
+    });
+
+    it("does not write resolved secret refs when secretEnvParams is disabled", async () => {
+      experiments.setEnabled("secretEnvParams", false);
+      experiments.setEnabled("writeDefaultSecretBindings", true);
+
+      await prepare.prepare({} as args.Context, createDeployOptions(), {} as args.Payload);
+
+      expect(writeResolvedSecretRefsStub).to.not.have.been.called;
     });
   });
 });

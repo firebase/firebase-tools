@@ -258,7 +258,12 @@ export const ALL_EXPERIMENTS = experiments({
   fdcapimigration: {
     shortDescription: "Enable the FDC API schema migration path.",
     fullDescription: "API based Schema Migration behind experimental flag.",
-    default: true,
+    default: false,
+    public: false,
+  },
+  writeDefaultSecretBindings: {
+    shortDescription: "Write Cloud Secret Manager bindings to the default resource ID to .env.",
+    default: false,
     public: false,
   },
 });

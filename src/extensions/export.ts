@@ -7,10 +7,11 @@ import {
   SECRET_VERSION_NAME_REGEX,
 } from "../gcp/secretManager";
 import { getActiveSecrets } from "./secretsUtils";
-import { ExtensionInstance } from "./types";
+import { ExtensionInstance, Param } from "./types";
 import { transferSecretToKits, secretHasExtensionsLabel } from "../deploy/extensions/secrets";
 import { FirebaseError } from "../error";
 import { logLabeledError } from "../utils";
+import { MemoryOption } from "firebase-functions/v2/options";
 
 /**
  * parameterizeProject searchs spec.params for any param that include projectId or projectNumber,
@@ -97,6 +98,100 @@ function displaySpecs(specs: DeploymentInstanceSpec[]): void {
   }
 }
 
+const GIB_REGEX = /^\d+(?:\.\d+)?(?:Gi|GiB|G|GB)$/i;
+const MIB_REGEX = /^\d+(?:\.\d+)?(?:Mi|MiB|M|MB)?$/i;
+
+/**
+ * Converts a memory string (e.g. "256", "512Mi", "1Gi", "1024") to megabytes (MB) for comparison.
+ */
+export function memoryToMb(memory?: string): number {
+  if (!memory) {
+    return 0;
+  }
+  const trimmed = memory.trim();
+  if (GIB_REGEX.test(trimmed)) {
+    return Math.round(parseFloat(trimmed) * 1024);
+  }
+  if (MIB_REGEX.test(trimmed)) {
+    const parsed = parseFloat(trimmed);
+    return isNaN(parsed) || parsed < 0 ? 0 : parsed;
+  }
+  return 0;
+}
+
+const MB_TO_MEMORY_OPTION: Partial<Record<number, MemoryOption>> = {
+  128: "128MiB",
+  256: "256MiB",
+  512: "512MiB",
+  1024: "1GiB",
+  2048: "2GiB",
+  4096: "4GiB",
+  8192: "8GiB",
+  16384: "16GiB",
+  32768: "32GiB",
+};
+
+/**
+ * Normalizes a memory string (e.g. "512Mi", "1Gi", "256", "1024") into a valid MemoryOption (e.g. "512MiB", "1GiB").
+ */
+export function parseMemory(raw?: string): MemoryOption | undefined {
+  if (!raw) {
+    return undefined;
+  }
+  const mb = memoryToMb(raw);
+  return MB_TO_MEMORY_OPTION[mb];
+}
+
+const V1_MEMORY_PARAM = "firebaseextensions.v1beta.function/memory";
+const V2_MEMORY_PARAM = "firebaseextensions.v1beta.v2function/memory";
+const MEMORY_PARAMS = new Set([V1_MEMORY_PARAM, V2_MEMORY_PARAM]);
+
+/**
+ * Resolves the memory configuration for a migrated Extension instance.
+ * If both V1 and V2 memory parameters are present, picks the one with the highest memory value.
+ */
+export function resolveMigratedMemory(
+  liveSystemParams: Record<string, string> = {},
+  specSystemParams: readonly Param[] = [],
+): string | undefined {
+  const getParam = (paramName: string): string | undefined => {
+    if (paramName in liveSystemParams) {
+      return liveSystemParams[paramName];
+    }
+    const defaultVal = specSystemParams.find((p) => p.param === paramName)?.default;
+    return defaultVal !== undefined ? String(defaultVal) : undefined;
+  };
+
+  const v1 = getParam(V1_MEMORY_PARAM);
+  const v2 = getParam(V2_MEMORY_PARAM);
+
+  if (v1 && v2) {
+    return memoryToMb(v1) > memoryToMb(v2) ? v1 : v2;
+  }
+  return v2 ?? v1;
+}
+
+/**
+ * Resolves the deployed value of a secret parameter from liveParams.
+ * Returns undefined if the secret is optional and has no value, or throws a FirebaseError if it is required and missing/empty.
+ */
+function resolveLiveSecret(
+  specParam: Param,
+  liveParams: Record<string, string>,
+): string | undefined {
+  const val = liveParams[specParam.param];
+  if (!val && !specParam.required) {
+    return undefined;
+  }
+  if (!val) {
+    throw new FirebaseError(
+      `Secret ${specParam.param} was defined in the extension spec, but is missing in live deployed secrets.`,
+      { exit: 1 },
+    );
+  }
+  return val;
+}
+
 /**
  * Translates a currently deployed Extension instance into a Functions environment.
  * This includes setting any default params not set in the deployed instance to their
@@ -112,19 +207,26 @@ export function functionsEnvFromInstance(instance: ExtensionInstance): Record<st
   const envs: Record<string, string> = {};
 
   // Every user param must be available, so we replicate the spec's default behavior if not present
-  specParams.forEach((specParam) => {
+  for (const specParam of specParams) {
     if (specParam.type === "SECRET") {
+      const val = resolveLiveSecret(specParam, liveParams);
+      if (!val) {
+        continue;
+      }
       const renamed = "FIREBASE_SECRET_REF_" + specParam.param;
-      envs[renamed] = liveParams[specParam.param];
+      envs[renamed] = val;
     } else if (specParam.param in liveParams) {
       envs[specParam.param] = liveParams[specParam.param];
     } else {
       envs[specParam.param] = specParam.default ?? "";
     }
-  });
+  }
 
   // System params aren't necessarily defined in the spec, but we do respect any defaults
   for (const [sysParamName, sysParamValue] of Object.entries(liveSystemParams)) {
+    if (MEMORY_PARAMS.has(sysParamName)) {
+      continue;
+    }
     let renamed = sysParamName
       .replace(/^firebaseextensions\.v1beta\.(v2)?function\//, "EXT_MIGRATED_SYSTEM_")
       .toUpperCase();
@@ -134,7 +236,7 @@ export function functionsEnvFromInstance(instance: ExtensionInstance): Record<st
     envs[renamed] = sysParamValue;
   }
   for (const specSystemParam of specSystemParams) {
-    if (specSystemParam.param in liveSystemParams) {
+    if (specSystemParam.param in liveSystemParams || MEMORY_PARAMS.has(specSystemParam.param)) {
       continue;
     }
     if ("default" in specSystemParam) {
@@ -148,7 +250,14 @@ export function functionsEnvFromInstance(instance: ExtensionInstance): Record<st
     }
   }
 
+  const memory = resolveMigratedMemory(liveSystemParams, specSystemParams);
+  if (memory) {
+    envs["EXT_MIGRATED_SYSTEM_MEMORY"] = parseMemory(memory) ?? memory;
+  }
+
   // Also pull in ALLOWED_EVENTS and EVENTARC_CHANNEL
+  // The Extensions backend was translating ALLOWED_EVENTS into process.env.EXT_SELECTED_EVENTS,
+  // so a kits environment has to duplicate that behavior.
   if (typeof instance.config.allowedEventTypes !== "undefined") {
     envs["EXT_SELECTED_EVENTS"] = instance.config.allowedEventTypes.toString();
   }
@@ -171,15 +280,9 @@ export async function secretsNeedingEjection(instance: ExtensionInstance): Promi
   );
 
   const checks = secretParams.map(async (specParam) => {
-    const secretName = specParam.param;
-    const resourceName = liveParams[secretName];
+    const resourceName = resolveLiveSecret(specParam, liveParams);
     if (!resourceName) {
-      throw new FirebaseError(
-        "Secret " +
-          secretName +
-          " was defined in the extension spec, but is missing in live deployed secrets.",
-        { exit: 1 },
-      );
+      return undefined;
     }
     const match = resourceName.match(SECRET_VERSION_NAME_REGEX);
     if (!match?.groups) {
@@ -211,13 +314,9 @@ export async function ejectSecretsFromInstance(
     if (specParam.type !== "SECRET") {
       continue;
     }
-    const secretName = specParam.param;
-    const resourceName = liveParams[secretName];
+    const resourceName = resolveLiveSecret(specParam, liveParams);
     if (!resourceName) {
-      throw new FirebaseError(
-        `Secret ${secretName} was defined in the extension spec, but is missing in live deployed secrets.`,
-        { exit: 1 },
-      );
+      continue;
     }
     const match = resourceName.match(SECRET_VERSION_NAME_REGEX);
     if (!match?.groups) {
