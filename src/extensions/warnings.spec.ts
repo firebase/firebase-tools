@@ -13,6 +13,9 @@ import { DeploymentInstanceSpec } from "../deploy/extensions/planner";
 import * as utils from "../utils";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
+import { Config } from "../config";
+import * as replacementRegistry from "./replacementRegistry";
+import * as manifest from "./manifest";
 
 const testExtensionVersion = (listingState: ListingState): ExtensionVersion => {
   return {
@@ -106,12 +109,26 @@ describe("displayWarningsForDeploy", () => {
 
 describe("showDeprecationWarningBefore & showDeprecationWarningAfter", () => {
   let warnStub: sinon.SinonStub;
+  let registryStub: sinon.SinonStub;
   let originalIsTTY: boolean;
 
   let originalEnv: Record<string, string | undefined>;
 
   beforeEach(() => {
     warnStub = sinon.stub(logger, "warn");
+    registryStub = sinon.stub(replacementRegistry, "getReplacementsRegistry").resolves({
+      replacements: {
+        "firebase/firestore-bigquery-export": {
+          status: "REPLACEMENT_AVAILABLE",
+          npmPackage: "@firebase-function-kits/firestore-bigquery-export",
+          extensionRepositoryUrl: "https://github.com/firebase/extensions",
+        },
+        "moralis/moralis-streams": {
+          status: "CONFIRMED_NO_REPLACEMENT",
+          extensionRepositoryUrl: "https://github.com/moralisweb3/moralis-firebase-extensions",
+        },
+      },
+    });
     originalIsTTY = process.stdout.isTTY;
     Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
     originalEnv = {
@@ -128,6 +145,8 @@ describe("showDeprecationWarningBefore & showDeprecationWarningAfter", () => {
 
   afterEach(() => {
     warnStub.restore();
+    registryStub.restore();
+    sinon.restore();
     Object.defineProperty(process.stdout, "isTTY", { value: originalIsTTY, configurable: true });
     for (const [k, v] of Object.entries(originalEnv)) {
       if (v !== undefined) {
@@ -146,7 +165,7 @@ describe("showDeprecationWarningBefore & showDeprecationWarningAfter", () => {
   });
 
   it("should show prominent banner with fallback for Category 1 commands without ref", async () => {
-    await warnings.showDeprecationWarningBefore("ext:install", {});
+    await warnings.showDeprecationWarningBefore("ext:install", {}, []);
     expect(warnStub).to.have.been.calledWithMatch(
       /We recommend migrating active instances to function kits\./,
     );
@@ -154,50 +173,53 @@ describe("showDeprecationWarningBefore & showDeprecationWarningAfter", () => {
   });
 
   it("should show prominent banner with replacement package for Category 1 commands when kit is available", async () => {
-    await warnings.showDeprecationWarningBefore(
-      "ext:install",
-      {},
+    await warnings.showDeprecationWarningBefore("ext:install", {}, [
       "firebase/firestore-bigquery-export",
-    );
+    ]);
     expect(warnStub).to.have.been.calledWithMatch(
       /Recommended replacement: @firebase-function-kits\/firestore-bigquery-export/,
     );
     expect(warnStub).to.have.been.calledWithMatch(/Learn more & view migration steps:/);
   });
 
-  it("should resolve shorthand extension ref without publisher for replacement warning", async () => {
-    await warnings.showDeprecationWarningBefore("ext:install", {}, "firestore-bigquery-export");
+  it("should resolve extension ref from manifest for ext:configure and ext:update", async () => {
+    sinon.stub(manifest, "loadConfig").returns(new Config({}, {}));
+    sinon.stub(manifest, "getInstanceRef").returns({
+      publisherId: "firebase",
+      extensionId: "firestore-bigquery-export",
+      version: "0.1.0",
+    });
+
+    await warnings.showDeprecationWarningBefore("ext:configure", {}, ["my-instance"]);
     expect(warnStub).to.have.been.calledWithMatch(
       /Recommended replacement: @firebase-function-kits\/firestore-bigquery-export/,
     );
   });
 
   it("should show general fallback banner for extension without replacement or unmapped extension", async () => {
-    await warnings.showDeprecationWarningBefore("ext:install", {}, "moralis/moralis-streams");
+    await warnings.showDeprecationWarningBefore("ext:install", {}, ["moralis/moralis-streams"]);
     expect(warnStub).to.have.been.calledWithMatch(
       /We recommend migrating active instances to function kits\./,
     );
     expect(warnStub).to.have.been.calledWithMatch(/Learn more & view migration steps:/);
 
     warnStub.resetHistory();
-    await warnings.showDeprecationWarningBefore(
-      "ext:install",
-      {},
+    await warnings.showDeprecationWarningBefore("ext:install", {}, [
       "firebase/firestore-bundle-builder",
-    );
+    ]);
     expect(warnStub).to.have.been.calledWithMatch(
       /We recommend migrating active instances to function kits\./,
     );
 
     warnStub.resetHistory();
-    await warnings.showDeprecationWarningBefore("ext:install", {}, "custom/unmapped-extension");
+    await warnings.showDeprecationWarningBefore("ext:install", {}, ["custom/unmapped-extension"]);
     expect(warnStub).to.have.been.calledWithMatch(
       /We recommend migrating active instances to function kits\./,
     );
   });
 
   it("should show general fallback banner for local extension paths without misleading replacement text", async () => {
-    await warnings.showDeprecationWarningBefore("ext:install", {}, "./my-local-extension");
+    await warnings.showDeprecationWarningBefore("ext:install", {}, ["./my-local-extension"]);
     expect(warnStub).to.have.been.calledWithMatch(
       /We recommend migrating active instances to function kits\./,
     );
@@ -237,6 +259,10 @@ describe("showDeprecationWarningBefore & showDeprecationWarningAfter", () => {
 
     warnings.showDeprecationWarningAfter("ext:export", {});
     expect(warnStub).to.have.been.calledTwice;
+
+    warnStub.resetHistory();
+    warnings.showDeprecationWarningAfter("ext:export", { mode: "functions" });
+    expect(warnStub).to.not.have.been.called;
   });
 
   it("should hard-error on ext:dev:register even if json flag is true", async () => {
