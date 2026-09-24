@@ -29,7 +29,11 @@ export interface GetTosStatusResponse {
  * Fetches the Terms of Service status for the logged in user.
  */
 export async function getTosStatus(): Promise<GetTosStatusResponse> {
-  const res = await client.get<GetTosStatusResponse>("accessmanagement/tos:getStatus");
+  const res = await client.request<void, GetTosStatusResponse>({
+    method: "GET",
+    path: "accessmanagement/tos:getStatus",
+    ignoreQuotaProject: true,
+  });
   return res.body;
 }
 

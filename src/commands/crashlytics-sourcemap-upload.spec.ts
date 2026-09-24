@@ -1,6 +1,8 @@
 import * as chai from "chai";
 import * as sinon from "sinon";
 import * as fs from "fs";
+import * as path from "path";
+import * as tmp from "tmp";
 
 import { command } from "./crashlytics-sourcemap-upload";
 import * as gcs from "../gcp/storage";
@@ -57,7 +59,7 @@ describe("crashlytics:sourcemap:upload", () => {
     execSyncStub.withArgs("git rev-parse HEAD").returns(Buffer.from("a".repeat(40)));
     clientPatchStub = sandbox.stub(Client.prototype, "patch").resolves({
       status: 200,
-      response: {} as unknown as import("node-fetch").Response,
+      response: {} as unknown as Response,
       body: {},
     });
   });
@@ -120,12 +122,8 @@ describe("crashlytics:sourcemap:upload", () => {
       .getCalls()
       .map((call) => call.args[0].file)
       .sort();
-    expect(uploadedFiles[0]).to.match(
-      /test-app-.*-src-test-fixtures-mapping-files-mock_mapping\.js\.map\.zip/,
-    );
-    expect(uploadedFiles[1]).to.match(
-      /test-app-.*-src-test-fixtures-mapping-files-subdir-subdir_mock_mapping\.js\.map\.zip/,
-    );
+    expect(uploadedFiles[0]).to.match(/test-app-.*-mock_mapping\.js\.map\.zip/);
+    expect(uploadedFiles[1]).to.match(/test-app-.*-subdir-subdir_mock_mapping\.js\.map\.zip/);
   });
 
   it("should find and upload mapping files in the current directory if no path is provided", async () => {
@@ -163,12 +161,8 @@ describe("crashlytics:sourcemap:upload", () => {
       .sort();
 
     // The zip name is based on the obfuscated path, so the first one is the "main.js.map" pretending to be the name
-    expect(uploadedFiles[0]).to.match(
-      /test-app-.*-src-test-fixtures-mapping-files-with-js-main\.js\.zip/,
-    );
-    expect(uploadedFiles[1]).to.match(
-      /test-app-.*-src-test-fixtures-mapping-files-with-js-other\.js\.map\.zip/,
-    );
+    expect(uploadedFiles[0]).to.match(/test-app-.*-main\.js\.zip/);
+    expect(uploadedFiles[1]).to.match(/test-app-.*-other\.js\.map\.zip/);
 
     expect(clientPatchStub).to.be.calledTwice;
     const apiPayloads = clientPatchStub
@@ -176,8 +170,125 @@ describe("crashlytics:sourcemap:upload", () => {
       .map((call) => (call.args[1] as SourceMap).obfuscatedFilePath)
       .sort();
 
-    expect(apiPayloads[0]).to.equal("/src/test/fixtures/mapping-files-with-js/main.js");
-    expect(apiPayloads[1]).to.equal("/src/test/fixtures/mapping-files-with-js/other.js.map");
+    expect(apiPayloads[0]).to.equal("/main.js");
+    expect(apiPayloads[1]).to.equal("/other.js.map");
+  });
+
+  it("should strip build directory prefix when uploading from a build subdirectory while preserving .next", async () => {
+    const tmpDir = tmp.dirSync({ unsafeCleanup: true });
+    const angularBrowserDir = path.join(tmpDir.name, "dist", "apps", "ecp", "browser");
+    const nextDir = path.join(tmpDir.name, ".next");
+    const nextChunksDir = path.join(nextDir, "static", "chunks");
+    fs.mkdirSync(angularBrowserDir, { recursive: true });
+    fs.mkdirSync(nextChunksDir, { recursive: true });
+
+    fs.writeFileSync(
+      path.join(angularBrowserDir, "chunk-GNZJHBSG.js"),
+      "console.log('app');\n//# sourceMappingURL=chunk-GNZJHBSG.js.map",
+    );
+    fs.writeFileSync(
+      path.join(angularBrowserDir, "chunk-GNZJHBSG.js.map"),
+      JSON.stringify({ version: 3, file: "chunk-GNZJHBSG.js", sources: [] }),
+    );
+
+    fs.writeFileSync(
+      path.join(nextChunksDir, "main-123.js"),
+      "console.log('next');\n//# sourceMappingURL=main-123.js.map",
+    );
+    fs.writeFileSync(
+      path.join(nextChunksDir, "main-123.js.map"),
+      JSON.stringify({ version: 3, file: "main-123.js", sources: [] }),
+    );
+
+    try {
+      await command.runner()(angularBrowserDir, {
+        app: "test-app",
+        projectRoot: tmpDir.name,
+      });
+      expect(clientPatchStub).to.be.calledOnce;
+      expect((clientPatchStub.firstCall.args[1] as SourceMap).obfuscatedFilePath).to.equal(
+        "/chunk-GNZJHBSG.js",
+      );
+
+      clientPatchStub.resetHistory();
+      await command.runner()(nextDir, {
+        app: "test-app",
+        projectRoot: tmpDir.name,
+      });
+      expect(clientPatchStub).to.be.calledOnce;
+      expect((clientPatchStub.firstCall.args[1] as SourceMap).obfuscatedFilePath).to.equal(
+        "/_next/static/chunks/main-123.js",
+      );
+    } finally {
+      tmpDir.removeCallback();
+    }
+  });
+
+  it("should find and upload hidden mapping files without sourceMappingURL in a directory", async () => {
+    const tmpDir = tmp.dirSync({ unsafeCleanup: true });
+    const jsFile = path.join(tmpDir.name, "index.js");
+    const mapFile = path.join(tmpDir.name, "index.js.map");
+
+    // No sourceMappingURL comment in JS file
+    fs.writeFileSync(jsFile, "console.log('hidden');");
+    fs.writeFileSync(mapFile, JSON.stringify({ version: 3, file: "index.js", sources: [] }));
+
+    try {
+      await command.runner()(tmpDir.name, {
+        app: "test-app",
+      });
+
+      expect(gcsMock.uploadObject).to.be.calledOnce;
+      const uploadedFiles = gcsMock.uploadObject.getCalls().map((call) => call.args[0].file);
+      expect(uploadedFiles[0]).to.match(/test-app-.*-index\.js\.zip/);
+
+      expect(clientPatchStub).to.be.calledOnce;
+      const apiPayload = clientPatchStub.firstCall.args[1] as SourceMap;
+      expect(apiPayload.obfuscatedFilePath).to.match(/index\.js$/);
+      expect(apiPayload.obfuscatedFilePath).to.not.include(".js.map");
+    } finally {
+      tmpDir.removeCallback();
+    }
+  });
+
+  it("should support mixed directories with traditional, hidden, and unlinked mapping files", async () => {
+    const tmpDir = tmp.dirSync({ unsafeCleanup: true });
+
+    // 1. Traditional sourcemap
+    const tradJs = path.join(tmpDir.name, "trad.js");
+    const tradMap = path.join(tmpDir.name, "trad.js.map");
+    fs.writeFileSync(tradJs, "console.log('trad');\n//# sourceMappingURL=trad.js.map");
+    fs.writeFileSync(tradMap, JSON.stringify({ version: 3, sources: [] }));
+
+    // 2. Hidden sourcemap
+    const hiddenJs = path.join(tmpDir.name, "hidden.js");
+    const hiddenMap = path.join(tmpDir.name, "hidden.js.map");
+    fs.writeFileSync(hiddenJs, "console.log('hidden');");
+    fs.writeFileSync(hiddenMap, JSON.stringify({ version: 3, file: "hidden.js", sources: [] }));
+
+    // 3. Standalone unlinked map file
+    const unlinkedMap = path.join(tmpDir.name, "unlinked.js.map");
+    fs.writeFileSync(unlinkedMap, JSON.stringify({ version: 3, sources: [] }));
+
+    try {
+      await command.runner()(tmpDir.name, {
+        app: "test-app",
+      });
+
+      expect(gcsMock.uploadObject).to.be.calledThrice;
+      expect(clientPatchStub).to.be.calledThrice;
+
+      const apiPayloads = clientPatchStub
+        .getCalls()
+        .map((call) => (call.args[1] as SourceMap).obfuscatedFilePath)
+        .sort();
+
+      expect(apiPayloads.some((p) => p.endsWith("hidden.js"))).to.be.true;
+      expect(apiPayloads.some((p) => p.endsWith("trad.js"))).to.be.true;
+      expect(apiPayloads.some((p) => p.endsWith("unlinked.js.map"))).to.be.true;
+    } finally {
+      tmpDir.removeCallback();
+    }
   });
 
   it("should use the provided app version", async () => {
@@ -189,9 +300,7 @@ describe("crashlytics:sourcemap:upload", () => {
       .getCalls()
       .map((call) => call.args[0].file)
       .sort();
-    expect(uploadedFiles[0]).to.eq(
-      "test-app-1.0.0-src-test-fixtures-mapping-files-mock_mapping.js.map.zip",
-    );
+    expect(uploadedFiles[0]).to.eq("test-app-1.0.0-mock_mapping.js.map.zip");
   });
 
   it("should fall back to the git commit for app version", async () => {
@@ -202,9 +311,7 @@ describe("crashlytics:sourcemap:upload", () => {
       .getCalls()
       .map((call) => call.args[0].file)
       .sort();
-    expect(uploadedFiles[0]).to.match(
-      /test-app-a{40}-src-test-fixtures-mapping-files-mock_mapping.js.map.zip/,
-    );
+    expect(uploadedFiles[0]).to.match(/test-app-a{40}-mock_mapping\.js\.map\.zip/);
   });
 
   it("should fall back to the package version for app version", async () => {
@@ -220,9 +327,7 @@ describe("crashlytics:sourcemap:upload", () => {
       .getCalls()
       .map((call) => call.args[0].file)
       .sort();
-    expect(uploadedFiles[0]).to.eq(
-      "test-app-1.2.3-src-test-fixtures-mapping-files-mock_mapping.js.map.zip",
-    );
+    expect(uploadedFiles[0]).to.eq("test-app-1.2.3-mock_mapping.js.map.zip");
   });
 
   it("should fall back to the 'unset' for app version", async () => {
@@ -236,9 +341,7 @@ describe("crashlytics:sourcemap:upload", () => {
       .getCalls()
       .map((call) => call.args[0].file)
       .sort();
-    expect(uploadedFiles[0]).to.eq(
-      "test-app-unset-src-test-fixtures-mapping-files-mock_mapping.js.map.zip",
-    );
+    expect(uploadedFiles[0]).to.eq("test-app-unset-mock_mapping.js.map.zip");
   });
 
   it("should register the source map after upload", async () => {
@@ -251,13 +354,13 @@ describe("crashlytics:sourcemap:upload", () => {
       .map((call) => call.args[1] as SourceMap)
       .sort((a, b) => a.obfuscatedFilePath.localeCompare(b.obfuscatedFilePath));
     expect(payloads[0].name).to.match(
-      /projects\/test-project\/locations\/global\/mappingFiles\/2906062618/,
+      /projects\/test-project\/locations\/global\/mappingFiles\/35370827/,
     );
     expect(payloads[0]).to.deep.equal({
-      name: "projects/test-project/locations/global/mappingFiles/2906062618",
+      name: "projects/test-project/locations/global/mappingFiles/35370827",
       appId: "test-app",
       version: "a".repeat(40),
-      obfuscatedFilePath: "/src/test/fixtures/mapping-files/mock_mapping.js.map",
+      obfuscatedFilePath: "/mock_mapping.js.map",
       fileUri: `gs://${BUCKET_NAME}/test-object`,
     });
     expect(

@@ -1,6 +1,7 @@
+import * as clc from "colorette";
 import { expect } from "chai";
 import * as sinon from "sinon";
-import * as nock from "nock";
+import nock from "../test/helpers/nock";
 
 import * as api from "../api";
 import * as projectManager from "./projects";
@@ -410,6 +411,74 @@ describe("Project management", () => {
           apiVersion: "v1beta1",
           operationResourceName: OPERATION_RESOURCE_NAME_2,
         });
+      });
+
+      it("should reject with a link to the Firebase console if TOS has not been accepted", async () => {
+        nock(api.firebaseApiOrigin())
+          .post(`/v1beta1/projects/${PROJECT_ID}:addFirebase`)
+          .reply(403, {
+            error: {
+              code: 403,
+              message: "The caller does not have permission",
+              status: "PERMISSION_DENIED",
+              details: [
+                {
+                  "@type": "type.googleapis.com/google.rpc.DebugInfo",
+                  detail: "[ORIGINAL ERROR] generic::permission_denied: Firebase Tos Not Accepted",
+                },
+              ],
+            },
+          });
+
+        let err: FirebaseError | undefined;
+        try {
+          await projectManager.addFirebaseToCloudProject(PROJECT_ID);
+        } catch (e: unknown) {
+          err = e as FirebaseError;
+        }
+
+        expect(err).to.be.an.instanceOf(FirebaseError);
+        expect(err?.message).to.equal(
+          `Failed to add Firebase to Google Cloud Platform project ${clc.bold(PROJECT_ID)} because your account has not accepted the Firebase Terms of Service. Please accept the Terms of Service in the Firebase console at ${api.consoleOrigin()} and try again.`,
+        );
+        expect(err?.original).to.be.an.instanceOf(FirebaseError);
+        expect(nock.isDone()).to.be.true;
+        expect(pollOperationStub).to.be.not.called;
+      });
+
+      it("should reject with the generic error if a 403 is not caused by unaccepted TOS", async () => {
+        nock(api.firebaseApiOrigin())
+          .post(`/v1beta1/projects/${PROJECT_ID}:addFirebase`)
+          .reply(403, {
+            error: {
+              code: 403,
+              message:
+                "Permission 'firebase.projects.update' denied on resource (or it may not exist).",
+              status: "PERMISSION_DENIED",
+              details: [
+                {
+                  "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+                  reason: "IAM_PERMISSION_DENIED",
+                  domain: "firebase.googleapis.com",
+                },
+              ],
+            },
+          });
+
+        let err: FirebaseError | undefined;
+        try {
+          await projectManager.addFirebaseToCloudProject(PROJECT_ID);
+        } catch (e: unknown) {
+          err = e as FirebaseError;
+        }
+
+        expect(err).to.be.an.instanceOf(FirebaseError);
+        expect(err?.message).to.equal(
+          "Failed to add Firebase to Google Cloud Platform project. See firebase-debug.log for more info.",
+        );
+        expect(err?.original).to.be.an.instanceOf(FirebaseError);
+        expect(nock.isDone()).to.be.true;
+        expect(pollOperationStub).to.be.not.called;
       });
     });
 

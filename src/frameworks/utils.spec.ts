@@ -1,9 +1,25 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as fs from "fs";
+import * as http from "http";
+import * as express from "express";
+import * as nock from "nock";
+import * as supertest from "supertest";
+import { once } from "events";
+import { AddressInfo } from "net";
+import { Readable } from "stream";
 import { resolve, join } from "path";
 
-import { warnIfCustomBuildScript, isUrl, getNodeModuleBin, conjoinOptions } from "./utils";
+import {
+  warnIfCustomBuildScript,
+  isUrl,
+  getNodeModuleBin,
+  conjoinOptions,
+  simpleProxy,
+  bufferRequestBody,
+  MAX_REQUEST_BODY_BYTES,
+} from "./utils";
+import { FirebaseError } from "../error";
 
 describe("Frameworks utils", () => {
   describe("getNodeModuleBin", () => {
@@ -133,6 +149,176 @@ describe("Frameworks utils", () => {
       expect(conjoinOptions(options, customConjuntion, defaultSeparator)).to.equal(
         `${options[0]}${defaultSeparator} ${options[1]}${defaultSeparator} ${customConjuntion} ${options[2]}`,
       );
+    });
+  });
+
+  describe("bufferRequestBody", () => {
+    it("buffers a body within the byte limit", async () => {
+      const body = await bufferRequestBody(Readable.from([Buffer.from("hello")]));
+      expect(body.toString()).to.equal("hello");
+    });
+
+    it("concatenates multiple chunks", async () => {
+      const body = await bufferRequestBody(
+        Readable.from([Buffer.from("chunked-"), Buffer.from("payload")]),
+      );
+      expect(body.toString()).to.equal("chunked-payload");
+    });
+
+    it("throws a 413 once the body exceeds the limit", async () => {
+      let error: unknown;
+      try {
+        await bufferRequestBody(Readable.from([Buffer.alloc(MAX_REQUEST_BODY_BYTES + 1)]));
+      } catch (err) {
+        error = err;
+      }
+      expect(error).to.be.instanceOf(FirebaseError);
+      expect(error).to.have.property("status", 413);
+    });
+  });
+
+  describe("simpleProxy", () => {
+    afterEach(() => {
+      nock.cleanAll();
+    });
+
+    it("should destroy the response when the body errors and the client is gone", async () => {
+      // A client disconnecting mid-upload makes bufferRequestBody reject with
+      // ECONNRESET and leaves the response un-writable. Writing to the dead socket
+      // throws EPIPE and crashes the emulator, so simpleProxy attaches a response
+      // error handler and destroys the response instead of writing to it.
+      const req = new Readable({ read: () => undefined });
+      Object.assign(req, { method: "POST", url: "/api", headers: {} });
+      let errorHandlerAttached = false;
+      let ended = false;
+      let destroyed = false;
+      const res = {
+        writable: false,
+        statusCode: 200,
+        on: (event: string) => {
+          if (event === "error") errorHandlerAttached = true;
+          return res;
+        },
+        end: () => {
+          ended = true;
+        },
+        destroy: () => {
+          destroyed = true;
+        },
+      };
+
+      const done = simpleProxy("http://127.0.0.1:59999")(req as any, res as any, () => undefined);
+      process.nextTick(() =>
+        req.destroy(Object.assign(new Error("aborted"), { code: "ECONNRESET" })),
+      );
+      await done;
+
+      expect(errorHandlerAttached).to.equal(true);
+      expect(destroyed).to.equal(true);
+      expect(ended).to.equal(false);
+    });
+
+    it("should respond 400 when the body errors but the client is still connected", async () => {
+      // A malformed/truncated body errors while the socket is still writable — the
+      // client can receive a proper 400 rather than a silent teardown.
+      const req = new Readable({ read: () => undefined });
+      Object.assign(req, { method: "POST", url: "/api", headers: {} });
+      let ended = false;
+      let destroyed = false;
+      const res = {
+        writable: true,
+        statusCode: 200,
+        on: () => res,
+        end: () => {
+          ended = true;
+        },
+        destroy: () => {
+          destroyed = true;
+        },
+      };
+
+      const done = simpleProxy("http://127.0.0.1:59999")(req as any, res as any, () => undefined);
+      process.nextTick(() => req.destroy(new Error("malformed body")));
+      await done;
+
+      expect(res.statusCode).to.equal(400);
+      expect(ended).to.equal(true);
+      expect(destroyed).to.equal(false);
+    });
+
+    it("should buffer the request body and expose it on req.rawBody when cascading", async () => {
+      // Regression test for https://github.com/firebase/firebase-tools/issues/5986
+      // When the dev server 404s, simpleProxy cascades (calls next) and the
+      // consumed POST body must remain available on req.rawBody for the next
+      // handler (e.g. a Cloud Functions rewrite).
+      nock("http://localhost:8999").post("/api", "payload").reply(404);
+
+      const app = express();
+      app.use(simpleProxy("http://localhost:8999"));
+      app.use((req, res) => {
+        res.json({ rawBody: (req as any).rawBody?.toString() });
+      });
+
+      return supertest(app).post("/api").send("payload").expect(200, { rawBody: "payload" });
+    });
+
+    it("should pipe through a non-404 response without cascading", async () => {
+      nock("http://localhost:8999").post("/api", "payload").reply(200, "handled");
+
+      const app = express();
+      app.use(simpleProxy("http://localhost:8999"));
+      app.use((_req, res) => {
+        res.status(500).send("should not cascade");
+      });
+
+      return supertest(app).post("/api").send("payload").expect(200, "handled");
+    });
+
+    it("should also buffer a chunked (unknown-length) body for replay", async () => {
+      // A chunked request (no content-length) is buffered too, so it remains
+      // replayable via req.rawBody when the dev server 404s and we cascade, and
+      // it is forwarded to the dev server as a fixed-length body. See issue #5986.
+      nock("http://localhost:8999")
+        .post("/api", "chunked-payload")
+        .matchHeader("content-length", "15")
+        .reply(404);
+
+      const app = express();
+      app.use(simpleProxy("http://localhost:8999"));
+      app.use((req, res) => {
+        res.json({ rawBody: (req as any).rawBody?.toString() });
+      });
+
+      const server = http.createServer(app).listen(0);
+      await once(server, "listening");
+      const { port } = server.address() as AddressInfo;
+      try {
+        const responseBody = await new Promise<string>((resolveBody, rejectBody) => {
+          const clientReq = http.request(
+            {
+              host: "127.0.0.1",
+              port,
+              method: "POST",
+              path: "/api",
+              headers: { "Transfer-Encoding": "chunked" },
+            },
+            (res) => {
+              const chunks: Buffer[] = [];
+              res.on("data", (c: Buffer) => chunks.push(c));
+              res.on("end", () => resolveBody(Buffer.concat(chunks).toString()));
+            },
+          );
+          clientReq.on("error", rejectBody);
+          // Two writes => chunked transfer with no content-length.
+          clientReq.write("chunked-");
+          clientReq.write("payload");
+          clientReq.end();
+        });
+        expect(JSON.parse(responseBody)).to.deep.equal({ rawBody: "chunked-payload" });
+        expect(nock.isDone()).to.equal(true);
+      } finally {
+        server.close();
+      }
     });
   });
 });

@@ -5,6 +5,9 @@ import * as prompt from "../../prompt";
 import * as params from "./params";
 import * as secretManager from "../../gcp/secretManager";
 import { FirebaseError } from "../../error";
+import * as utils from "../../utils";
+import * as experiments from "../../experiments";
+import { logger } from "../../logger";
 
 const expect = chai.expect;
 const fakeConfig = {
@@ -78,21 +81,35 @@ describe("CEL resolution", () => {
 
 describe("resolveParams", () => {
   let input: sinon.SinonStub;
+  let logBulletStub: sinon.SinonStub;
+
+  let loggerInfoStub: sinon.SinonStub;
 
   beforeEach(() => {
     input = sinon.stub(prompt, "input");
+    logBulletStub = sinon.stub(utils, "logBullet");
+    loggerInfoStub = sinon.stub(logger, "info");
   });
 
   afterEach(() => {
     input.restore();
+    logBulletStub.restore();
+    loggerInfoStub.restore();
   });
 
   it("always contains the precanned internal param values", async () => {
     const paramsToResolve: params.Param[] = [];
     const userEnv: Record<string, params.ParamValue> = {};
-    await expect(
-      params.resolveParams(paramsToResolve, fakeConfig, userEnv),
-    ).to.eventually.deep.equal(expectedInternalParams);
+    expect(
+      (
+        await params.resolveParams({
+          params: paramsToResolve,
+          firebaseConfig: fakeConfig,
+          userEnvs: userEnv,
+          codebase: "default",
+        })
+      ).paramValues,
+    ).to.deep.equal(expectedInternalParams);
   });
 
   it("can pull a literal value out of the dotenvs", async () => {
@@ -111,9 +128,16 @@ describe("resolveParams", () => {
       bar: new params.ParamValue("24", false, { string: false, number: true, boolean: false }),
       baz: new params.ParamValue("true", false, { string: false, number: false, boolean: true }),
     };
-    await expect(
-      params.resolveParams(paramsToResolve, fakeConfig, userEnv),
-    ).to.eventually.deep.equal(
+    expect(
+      (
+        await params.resolveParams({
+          params: paramsToResolve,
+          firebaseConfig: fakeConfig,
+          userEnvs: userEnv,
+          codebase: "default",
+        })
+      ).paramValues,
+    ).to.deep.equal(
       Object.assign(
         {
           foo: new params.ParamValue("bar", false, { string: true, number: false, boolean: false }),
@@ -138,9 +162,16 @@ describe("resolveParams", () => {
         boolean: false,
       }),
     };
-    await expect(
-      params.resolveParams(paramsToResolve, fakeConfig, userEnv),
-    ).to.eventually.deep.equal({
+    expect(
+      (
+        await params.resolveParams({
+          params: paramsToResolve,
+          firebaseConfig: fakeConfig,
+          userEnvs: userEnv,
+          codebase: "default",
+        })
+      ).paramValues,
+    ).to.deep.equal({
       DATABASE_URL: new params.ParamValue(fakeConfig.databaseURL, true, {
         string: true,
         boolean: false,
@@ -167,13 +198,16 @@ describe("resolveParams", () => {
   it("does not create the corresponding internal params if database url/storage bucket are not configured", async () => {
     const paramsToResolve: params.Param[] = [];
     const userEnv: Record<string, params.ParamValue> = {};
-    await expect(
-      params.resolveParams(
-        paramsToResolve,
-        { locationId: "", projectId: "foo", storageBucket: "", databaseURL: "" },
-        userEnv,
-      ),
-    ).to.eventually.deep.equal({
+    expect(
+      (
+        await params.resolveParams({
+          params: paramsToResolve,
+          firebaseConfig: { locationId: "", projectId: "foo", storageBucket: "", databaseURL: "" },
+          userEnvs: userEnv,
+          codebase: "default",
+        })
+      ).paramValues,
+    ).to.deep.equal({
       GCLOUD_PROJECT: expectedInternalParams.GCLOUD_PROJECT,
       PROJECT_ID: expectedInternalParams.PROJECT_ID,
     });
@@ -189,7 +223,16 @@ describe("resolveParams", () => {
       },
     ];
     input.resolves("bar");
-    await expect(params.resolveParams(paramsToResolve, fakeConfig, {})).to.eventually.deep.equal(
+    expect(
+      (
+        await params.resolveParams({
+          params: paramsToResolve,
+          firebaseConfig: fakeConfig,
+          userEnvs: {},
+          codebase: "default",
+        })
+      ).paramValues,
+    ).to.deep.equal(
       Object.assign(
         {
           foo: new params.ParamValue("bar", false, { string: true }),
@@ -215,7 +258,12 @@ describe("resolveParams", () => {
       },
     ];
     input.resolves("baz");
-    await params.resolveParams(paramsToResolve, fakeConfig, {});
+    await params.resolveParams({
+      params: paramsToResolve,
+      firebaseConfig: fakeConfig,
+      userEnvs: {},
+      codebase: "default",
+    });
     expect(input.getCall(1).args[0].default).to.eq("baz");
   });
 
@@ -235,7 +283,12 @@ describe("resolveParams", () => {
       },
     ];
     input.resolves("baz");
-    await params.resolveParams(paramsToResolve, fakeConfig, {});
+    await params.resolveParams({
+      params: paramsToResolve,
+      firebaseConfig: fakeConfig,
+      userEnvs: {},
+      codebase: "default",
+    });
     expect(input.getCall(1).args[0].default).to.eq("baz/quox");
   });
 
@@ -261,7 +314,12 @@ describe("resolveParams", () => {
       },
     ];
     input.resolves("baz");
-    await params.resolveParams(paramsToResolve, fakeConfig, {});
+    await params.resolveParams({
+      params: paramsToResolve,
+      firebaseConfig: fakeConfig,
+      userEnvs: {},
+      codebase: "default",
+    });
     expect(input.getCall(0).args[0].default).to.eq("https://foo.firebaseio.com/quox");
     expect(input.getCall(1).args[0].default).to.eq("projectID: foo");
     expect(input.getCall(2).args[0].default).to.eq(
@@ -279,7 +337,14 @@ describe("resolveParams", () => {
       },
     ];
     input.resolves("");
-    await expect(params.resolveParams(paramsToResolve, fakeConfig, {})).to.eventually.be.rejected;
+    await expect(
+      params.resolveParams({
+        params: paramsToResolve,
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "default",
+      }),
+    ).to.eventually.be.rejected;
   });
 
   it("errors when the default is a CEL expression that resolves to the wrong type", async () => {
@@ -298,7 +363,14 @@ describe("resolveParams", () => {
       },
     ];
     input.resolves("22");
-    await expect(params.resolveParams(paramsToResolve, fakeConfig, {})).to.eventually.be.rejected;
+    await expect(
+      params.resolveParams({
+        params: paramsToResolve,
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "default",
+      }),
+    ).to.eventually.be.rejected;
   });
 
   it("does not throw in non-interactive mode if secret exists in cloud", async () => {
@@ -308,7 +380,15 @@ describe("resolveParams", () => {
       secretVersion: { versionId: "1", state: "ENABLED", secret: {} as any },
     });
 
-    await expect(params.resolveParams(paramsToResolve, fakeConfig, {}, true)).to.be.fulfilled;
+    await expect(
+      params.resolveParams({
+        params: paramsToResolve,
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "default",
+        nonInteractive: true,
+      }),
+    ).to.be.fulfilled;
 
     getSecretMetadataStub.restore();
   });
@@ -319,11 +399,255 @@ describe("resolveParams", () => {
       secret: undefined,
     });
 
-    await expect(params.resolveParams(paramsToResolve, fakeConfig, {}, true)).to.be.rejectedWith(
-      FirebaseError,
-      /In non-interactive mode but have no value for the secret/,
-    );
+    await expect(
+      params.resolveParams({
+        params: paramsToResolve,
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "default",
+        nonInteractive: true,
+      }),
+    ).to.be.rejectedWith(FirebaseError, /In non-interactive mode but have no value for the secret/);
 
     getSecretMetadataStub.restore();
+  });
+
+  it("never calls ensureSecret if running in the emulator", async () => {
+    const paramsToResolve: params.Param[] = [{ name: "MY_SECRET", type: "secret" }];
+    const getSecretMetadataSpy = sinon.spy(secretManager, "getSecretMetadata");
+
+    await params.resolveParams({
+      params: paramsToResolve,
+      firebaseConfig: fakeConfig,
+      userEnvs: {},
+      codebase: "default",
+      isEmulator: true,
+    });
+    expect(getSecretMetadataSpy.called).to.be.false;
+
+    getSecretMetadataSpy.restore();
+  });
+
+  it("should print a header when prompting for a codebase", async () => {
+    const paramsToResolve: params.Param[] = [
+      {
+        name: "foo",
+        type: "string",
+        input: { text: {} },
+      },
+    ];
+    input.resolves("bar");
+    await params.resolveParams({
+      params: paramsToResolve,
+      firebaseConfig: fakeConfig,
+      userEnvs: {},
+      codebase: "my-codebase",
+    });
+    expect(
+      loggerInfoStub.calledWith(sinon.match(/Prompting for parameters for codebase.*my-codebase/)),
+    ).to.be.true;
+  });
+
+  it("should log bold label and description when description is present", async () => {
+    const paramsToResolve: params.Param[] = [
+      {
+        name: "foo",
+        label: "Foo Label",
+        description: "A helpful description",
+        type: "string",
+        input: { text: {} },
+      },
+    ];
+    input.resolves("bar");
+    await params.resolveParams({
+      params: paramsToResolve,
+      firebaseConfig: fakeConfig,
+      userEnvs: {},
+      codebase: "my-codebase",
+    });
+    expect(loggerInfoStub.calledWith(sinon.match(/Foo Label.*A helpful description/))).to.be.true;
+    expect(input).to.have.been.calledWith(
+      sinon.match({ message: "Enter a string value for Foo Label:" }),
+    );
+  });
+
+  it("should log empty newline and prompt without description when description is absent", async () => {
+    const paramsToResolve: params.Param[] = [
+      {
+        name: "foo",
+        type: "string",
+        input: { text: {} },
+      },
+    ];
+    input.resolves("bar");
+    await params.resolveParams({
+      params: paramsToResolve,
+      firebaseConfig: fakeConfig,
+      userEnvs: {},
+      codebase: "my-codebase",
+    });
+    expect(loggerInfoStub.calledWith("")).to.be.true;
+    expect(input).to.have.been.calledWith(
+      sinon.match({ message: "Enter a string value for foo:" }),
+    );
+  });
+
+  it("should pass clear text instructions to select", async () => {
+    const selectStub = sinon.stub(prompt, "select").resolves("opt1");
+    const paramsToResolve: params.Param[] = [
+      {
+        name: "choice",
+        type: "string",
+        input: {
+          select: {
+            options: [{ label: "Option 1", value: "opt1" }],
+          },
+        },
+      },
+    ];
+    try {
+      await params.resolveParams({
+        params: paramsToResolve,
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "my-codebase",
+      });
+      expect(selectStub.firstCall.args[0].message).to.eq("Select a value for choice:");
+      expect(selectStub.firstCall.args[0].instructions).to.eq(
+        "(Use arrow keys to navigate, and Enter to confirm your choice)",
+      );
+    } finally {
+      selectStub.restore();
+    }
+  });
+
+  it("should pass clear text instructions to checkbox for multi-select", async () => {
+    const checkboxStub = sinon.stub(prompt, "checkbox").resolves(["opt1"]);
+    const paramsToResolve: params.Param[] = [
+      {
+        name: "choices",
+        type: "list",
+        input: {
+          multiSelect: {
+            options: [{ label: "Option 1", value: "opt1" }],
+          },
+        },
+      },
+    ];
+    try {
+      await params.resolveParams({
+        params: paramsToResolve,
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "my-codebase",
+      });
+      expect(checkboxStub.firstCall.args[0].message).to.eq("Select values for choices:");
+      expect(checkboxStub.firstCall.args[0].instructions).to.eq(
+        "(Press Space to select, and Enter to confirm your choices)",
+      );
+    } finally {
+      checkboxStub.restore();
+    }
+  });
+
+  it("should log bold label, description, and notice, and prompt for secret value", async () => {
+    const passwordStub = sinon.stub(prompt, "password").resolves("secret-val");
+    const getSecretMetadataStub = sinon.stub(secretManager, "getSecretMetadata").resolves({
+      secret: undefined,
+    });
+    const createSecretStub = sinon.stub(secretManager, "createSecret").resolves();
+    const addVersionStub = sinon.stub(secretManager, "addVersion").resolves();
+    const paramsToResolve: params.Param[] = [
+      {
+        name: "API_KEY",
+        label: "API Key",
+        description: "Key used to authenticate with 3rd party API.",
+        type: "secret",
+        resourceId: "API_KEY",
+      },
+    ];
+    try {
+      await params.resolveParams({
+        params: paramsToResolve,
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "my-codebase",
+      });
+      expect(
+        loggerInfoStub.calledWith(
+          sinon.match(/API Key.*Key used to authenticate.*Cloud Secret Manager/),
+        ),
+      ).to.be.true;
+      expect(passwordStub).to.have.been.calledWith(
+        sinon.match({ message: "Enter a value for API Key:" }),
+      );
+    } finally {
+      passwordStub.restore();
+      getSecretMetadataStub.restore();
+      createSecretStub.restore();
+      addVersionStub.restore();
+    }
+  });
+
+  it("logs Onetime existing secret reference message only when both secretEnvParams and writeDefaultSecretBindings are enabled", async () => {
+    const paramsToResolve: params.Param[] = [{ name: "MY_SECRET", type: "secret" }];
+    const mockSecret = { name: "MY_SECRET", projectId: "foo", labels: {}, replication: {} };
+    const getSecretMetadataStub = sinon.stub(secretManager, "getSecretMetadata").resolves({
+      secret: mockSecret,
+      secretVersion: { versionId: "1", state: "ENABLED", secret: mockSecret },
+    });
+
+    try {
+      experiments.setEnabled("secretEnvParams", true);
+      experiments.setEnabled("writeDefaultSecretBindings", true);
+
+      await params.resolveParams({
+        params: paramsToResolve,
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "default",
+      });
+      expect(
+        loggerInfoStub.calledWith(
+          sinon.match(/Onetime.*storing a reference to existing secret MY_SECRET=MY_SECRET:latest/),
+        ),
+      ).to.be.true;
+
+      loggerInfoStub.resetHistory();
+      experiments.setEnabled("secretEnvParams", true);
+      experiments.setEnabled("writeDefaultSecretBindings", false);
+
+      await params.resolveParams({
+        params: paramsToResolve,
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "default",
+      });
+      expect(
+        loggerInfoStub.calledWith(
+          sinon.match(/Onetime.*storing a reference to existing secret MY_SECRET=MY_SECRET:latest/),
+        ),
+      ).to.be.false;
+
+      loggerInfoStub.resetHistory();
+      experiments.setEnabled("secretEnvParams", false);
+      experiments.setEnabled("writeDefaultSecretBindings", true);
+
+      await params.resolveParams({
+        params: paramsToResolve,
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "default",
+      });
+      expect(
+        loggerInfoStub.calledWith(
+          sinon.match(/Onetime.*storing a reference to existing secret MY_SECRET=MY_SECRET:latest/),
+        ),
+      ).to.be.false;
+    } finally {
+      experiments.setEnabled("secretEnvParams", null);
+      experiments.setEnabled("writeDefaultSecretBindings", null);
+      getSecretMetadataStub.restore();
+    }
   });
 });

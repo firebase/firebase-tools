@@ -24,6 +24,8 @@ export const list_backends = tool(
       "  Every backend should have a `DEFAULT` domain. " +
       "  The actual domain that a user would use to connect to the backend is the last parameter of the domain resource name. " +
       "  If a custom domain is correctly set up, it will have statuses ending in `ACTIVE`.",
+    humanReadableDescription:
+      "List App Hosting backends, traffic configurations, and custom domains in your project.",
     inputSchema: z.object({
       location: z
         .string()

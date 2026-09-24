@@ -1,7 +1,6 @@
 import * as clc from "colorette";
 
 import * as args from "./args";
-import * as proto from "../../gcp/proto";
 import * as backend from "./backend";
 import * as build from "./build";
 import * as experiments from "../../experiments";
@@ -29,10 +28,13 @@ import {
   endpointMatchesAnyFilter,
   getEndpointFilters,
   groupEndpointsByCodebase,
+  isCodebasePartiallyFiltered,
   targetCodebases,
 } from "./functionsDeployHelper";
 import { logLabeledBullet, logLabeledWarning } from "../../utils";
 import { isDartEndpoint, classifyNonProductionEndpoints } from "./runtimes/dart/triggerSupport";
+import { DART_BUNDLE_EXECUTABLE_PATH, DART_COMPILE_EXE_PATH } from "./runtimes/dart";
+import { DartVersionFeatures } from "./runtimes/dart/features";
 import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import { needProjectId, needProjectNumber } from "../../projectUtils";
@@ -47,18 +49,180 @@ import {
   ValidatedConfig,
   requireLocal,
   shouldUseRuntimeConfig,
+  isKitConfig,
+  addKitPrefix,
+  resolveConfigDir,
+  ValidatedLocalSingle,
+  ValidatedKitSingle,
 } from "../../functions/projectConfig";
 import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
 import { applyBackendHashToBackends } from "./cache/applyHash";
 import { allEndpoints, Backend } from "./backend";
-import { assertExhaustive, partition } from "../../functional";
+import { assertExhaustive, partition, mapObject } from "../../functional";
 import { prepareDynamicExtensions } from "../extensions/prepare";
 import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args";
 import { DeployOptions } from "..";
 import * as prompt from "../../prompt";
+import * as iam from "../../gcp/iam";
+import * as resourcemanager from "../../gcp/resourceManager";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
+export const DECLARATIVE_SECURITY_ETAG_LABEL = "firebase-declarative-security-etag";
+
+/**
+ * Discovers and coordinates declarative security details for a codebase.
+ * Mutates `want` Backend to populate managed service account and etag labels.
+ *
+ * Returns security metadata based on deployment state:
+ * - **Enrolling / Active**: Returns `{ haveRoles, haveRolesEtag, existingManagedSA, managedSA, newEtag }`.
+ * - **Unenrolling (Opting Out)**: Returns `{ existingManagedSA, haveRolesEtag }` so planner can schedule role revocation.
+ * - **Deleting All Functions**: Returns `{ existingManagedSA, ...(haveRolesEtag ? { haveRolesEtag } : {}) }` so planner can delete the SA.
+ * - **Inactive**: Returns `{}` when declarative security is not used in `want` or `have`.
+ */
+export async function discoverSecurityDetails(
+  codebase: string,
+  want: backend.Backend,
+  have: backend.Backend,
+  projectId: string,
+  filters?: EndpointFilter[],
+): Promise<{
+  haveRoles?: string[];
+  haveRolesEtag?: string;
+  existingManagedSA?: string;
+  managedSA?: string;
+  newEtag?: string;
+}> {
+  const requiredRoles = want.requiredRoles;
+  // Note: On partial first rollouts (where at least one function successfully deployed),
+  // haveBackend contains all active endpoints in GCP from list calls. firstHave.serviceAccount
+  // will identify existingManagedSA on subsequent deploys. On 100% deployment failures,
+  // fabricator cleans up the unreferenced service account so no orphaned SA remains.
+  const existingManagedSA =
+    backend.findEndpoint(
+      have,
+      (e) => typeof e.serviceAccount === "string" && e.serviceAccount.startsWith("firebase-fn-"),
+    )?.serviceAccount ?? undefined;
+  const haveRolesEtag = backend.findEndpoint(
+    have,
+    (e) => !!e.labels?.[DECLARATIVE_SECURITY_ETAG_LABEL],
+  )?.labels?.[DECLARATIVE_SECURITY_ETAG_LABEL];
+
+  const isPartiallyFiltered = isCodebasePartiallyFiltered(codebase, filters);
+  const isEnrolling = !!requiredRoles && !existingManagedSA;
+  const isUnenrolling = !requiredRoles && !!existingManagedSA && !!haveRolesEtag;
+
+  if (isPartiallyFiltered && (isEnrolling || isUnenrolling)) {
+    throw new FirebaseError(
+      "To ensure a whole codebase is migrated cleanly, you may not deploy only part of a " +
+        "codebase when opting into or out of declarative security (starting or no longer using `requireRoles`)",
+    );
+  }
+
+  if (!backend.someEndpoint(want, () => true)) {
+    if (existingManagedSA) {
+      return {
+        existingManagedSA,
+        ...(haveRolesEtag ? { haveRolesEtag } : {}),
+      };
+    }
+    return {};
+  }
+
+  if (!requiredRoles && (!existingManagedSA || !haveRolesEtag)) {
+    return {};
+  }
+
+  if (
+    requiredRoles &&
+    backend.someEndpoint(
+      want,
+      (e) => typeof e.serviceAccount === "string" && !e.serviceAccount.startsWith("firebase-fn-"),
+    )
+  ) {
+    throw new FirebaseError(
+      `Cannot use explicit custom service accounts on functions while using declarative security in codebase ${codebase}.`,
+    );
+  }
+
+  if (!requiredRoles && existingManagedSA && haveRolesEtag) {
+    for (const endpoint of backend.allEndpoints(want)) {
+      if (!endpoint.serviceAccount || endpoint.serviceAccount === existingManagedSA) {
+        endpoint.serviceAccount = null;
+      }
+      if (endpoint.labels) {
+        delete endpoint.labels["firebase-declarative-security-etag"];
+      }
+    }
+    return {
+      haveRolesEtag,
+      existingManagedSA,
+    };
+  }
+
+  await ensure.checkDeclarativeSecurityApisEnabled(projectId, codebase);
+
+  let managedSA = existingManagedSA;
+  if (!managedSA) {
+    const saToCreate = await iam.generateManagedServiceAccountName(projectId, "firebase-fn");
+    managedSA = `${saToCreate}@${projectId}.iam.gserviceaccount.com`;
+  }
+
+  const newEtag = iam.computeRolesEtag(requiredRoles!);
+
+  for (const endpoint of backend.allEndpoints(want)) {
+    endpoint.serviceAccount = managedSA;
+    endpoint.labels = endpoint.labels || {};
+    endpoint.labels[DECLARATIVE_SECURITY_ETAG_LABEL] = newEtag;
+  }
+
+  if (haveRolesEtag && haveRolesEtag === newEtag) {
+    return {
+      haveRoles: requiredRoles,
+      haveRolesEtag,
+      existingManagedSA,
+      managedSA,
+      newEtag,
+    };
+  }
+
+  const permissionsToTest = ["resourcemanager.projects.setIamPolicy"];
+  if (!existingManagedSA) {
+    permissionsToTest.push("iam.serviceAccounts.create");
+  }
+  const iamResult = await iam.testIamPermissions(projectId, permissionsToTest);
+  if (!iamResult.passed) {
+    if (!existingManagedSA) {
+      throw new FirebaseError(
+        `Cannot enable declarative security because you do not have permissions necessary to create the service account. Please ask an IAM administrator to perform the next deploy.`,
+      );
+    } else {
+      throw new FirebaseError(
+        `You do not have access to make the policy changes required in codebase ${codebase} deploy. Please ask an IAM administrator to perform the next deploy.`,
+      );
+    }
+  }
+
+  let haveRoles: string[] = [];
+  if (existingManagedSA) {
+    try {
+      haveRoles = await resourcemanager.getServiceAccountRoles(projectId, managedSA);
+    } catch (err: any) {
+      throw new FirebaseError(
+        `The declarative security roles for codebase ${codebase} have changed, but you do not have access to see what has changed. Please ask an IAM administrator to perform the next deploy.`,
+        { original: err },
+      );
+    }
+  }
+
+  return {
+    haveRoles,
+    haveRolesEtag,
+    existingManagedSA,
+    managedSA,
+    newEtag,
+  };
+}
 
 /**
  * Prepare functions codebases for deploy.
@@ -99,7 +263,12 @@ export async function prepare(
   // ===Phase 1. Load codebases from source with optional runtime config.
   let runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
 
-  const targetedCodebaseConfigs = context.config!.filter((cfg) => codebases.includes(cfg.codebase));
+  const targetedCodebaseConfigs = context.config.filter((cfg) => {
+    if (isKitConfig(cfg)) {
+      return cfg.instances && Object.keys(cfg.instances).some((inst) => codebases.includes(inst));
+    }
+    return cfg.codebase && codebases.includes(cfg.codebase);
+  });
 
   // Load runtime config if API is enabled and at least one targeted codebase uses it
   if (checkAPIsEnabled[1] && targetedCodebaseConfigs.some(shouldUseRuntimeConfig)) {
@@ -134,15 +303,28 @@ export async function prepare(
   const wantBackends: Record<string, backend.Backend> = {};
   for (const [codebase, wantBuild] of Object.entries(wantBuilds)) {
     const config = configForCodebase(context.config, codebase);
-    const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
+    const firebaseEnvs = functionsEnv.loadFirebaseEnvs(
+      firebaseConfig,
+      projectId,
+      isKitConfig(config) ? codebase : undefined,
+    );
     const localCfg = requireLocal(config, "Remote sources are not supported.");
+
+    checkKitForGen1(localCfg, wantBuild);
+
     const userEnvOpt: functionsEnv.UserEnvsOpts = {
       functionsSource: options.config.path(localCfg.source),
       projectId: projectId,
       projectAlias: options.projectAlias,
+      projectDir: options.config.projectDir,
     };
-    proto.convertIfPresent(userEnvOpt, localCfg, "configDir", (cd) => options.config.path(cd));
-    const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
+    const configDir = resolveConfigDir(localCfg, codebase);
+    if (configDir) {
+      userEnvOpt.configDir = options.config.path(configDir);
+    }
+
+    const rawUserEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
+    const { userEnvs: userEnvs, secretRefs: secretRefs } = partitionUserEnvs(rawUserEnvs);
     const envs = { ...userEnvs, ...firebaseEnvs };
 
     const relevantEndpoints = backend
@@ -150,15 +332,31 @@ export async function prepare(
       .filter((e) => e.codebase === codebase || e.codebase === undefined);
     await resolveDefaultRegionsForBuild(wantBuild, backend.of(...relevantEndpoints));
 
-    const { backend: wantBackend, envs: resolvedEnvs } = await build.resolveBackend({
+    const parsedSecretRefs = mapObject<string, build.ParsedSecretRef>(secretRefs, (unparsed) =>
+      build.parseSecretRef(unparsed),
+    );
+    await build.applyEnvSecretBindingsToBuild(wantBuild, parsedSecretRefs);
+
+    const {
+      backend: wantBackend,
+      envs: resolvedEnvs,
+      secretRefs: resolvedSecretRefs,
+    } = await build.resolveBackend({
       build: wantBuild,
       firebaseConfig,
       userEnvs,
+      codebase,
       nonInteractive: options.nonInteractive,
       isEmulator: false,
     });
 
     functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
+    if (
+      experiments.isEnabled("secretEnvParams") &&
+      experiments.isEnabled("writeDefaultSecretBindings")
+    ) {
+      functionsEnv.writeResolvedSecretRefs(resolvedSecretRefs, secretRefs, userEnvOpt);
+    }
 
     let hasEnvsFromParams = false;
     wantBackend.environmentVariables = envs;
@@ -248,13 +446,17 @@ export async function prepare(
         ? "tar.gz"
         : "zip";
 
-      const isDart = supported.runtimeIsLanguage(wantBuilds[codebase].runtime!, "dart");
-      const executablePaths = isDart ? ["bin/server"] : [];
+      const executablePaths = await getExecutablePaths(wantBuilds[codebase].runtime, sourceDir);
+      const uploadCfg = await stripStaleDartBuildIgnore(
+        wantBuilds[codebase].runtime,
+        sourceDir,
+        localCfg,
+      );
 
       const packagedSource = await prepareFunctionsUpload(
         options.config.projectDir,
         sourceDir,
-        localCfg,
+        uploadCfg,
         [...schPathSet],
         undefined,
         { exportType, executablePaths },
@@ -290,14 +492,22 @@ export async function prepare(
   );
   for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
     const haveBackend = haveBackends[codebase] || backend.empty();
-    payload.functions[codebase] = { wantBackend, haveBackend };
+    const security = await discoverSecurityDetails(
+      codebase,
+      wantBackend,
+      haveBackend,
+      projectId,
+      context.filters,
+    );
+    payload.functions[codebase] = { wantBackend, haveBackend, ...security };
   }
+
   for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
     inferDetailsFromExisting(wantBackend, haveBackend, codebaseUsesEnvs.includes(codebase));
     await ensureTriggerRegions(wantBackend);
     resolveCpuAndConcurrency(wantBackend);
     resolveDefaultTimeout(wantBackend);
-    validate.endpointsAreValid(wantBackend);
+    validate.endpointsAreValid(wantBackend, existingBackend);
     inferBlockingDetails(wantBackend);
   }
 
@@ -335,7 +545,15 @@ export async function prepare(
     haveBackend,
     options.dryRun,
   );
-  await ensure.secretAccess(projectId, matchingBackend, haveBackend, options.dryRun);
+  // Actual granting of secret access permissions has been moved to the fabricator in release because declarative security may mean that the desired service account hasn't been created
+  if (options.dryRun) {
+    const secretAccessDelta = await ensure.secretsAccessDelta({
+      projectId,
+      wantBackend: matchingBackend,
+      haveBackend,
+    });
+    await ensure.checkSecretAccess(projectId, secretAccessDelta);
+  }
   /**
    * ===Phase 8 Generates the hashes for each of the functions now that secret versions have been resolved.
    * This must be called after `await validate.secretsAreValid`.
@@ -598,7 +816,23 @@ export async function loadCodebases(
     logger.debug(`Building ${runtimeDelegate.language} source`);
     await runtimeDelegate.build();
 
-    const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
+    const userEnvOpt: functionsEnv.UserEnvsOpts = {
+      functionsSource: sourceDir,
+      projectId: projectId,
+      projectAlias: options.projectAlias,
+      projectDir: options.config.projectDir,
+    };
+    const configDir = resolveConfigDir(codebaseConfig, codebase);
+    if (configDir) {
+      userEnvOpt.configDir = options.config.path(configDir);
+    }
+    const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
+
+    const firebaseEnvs = functionsEnv.loadFirebaseEnvs(
+      firebaseConfig,
+      projectId,
+      isKitConfig(codebaseConfig) ? codebase : undefined,
+    );
     logLabeledBullet(
       "functions",
       `Loading and analyzing source code for codebase ${codebase} to determine what to deploy`,
@@ -609,6 +843,7 @@ export async function loadCodebases(
       : { firebase: firebaseConfig };
 
     const discoveredBuild = await runtimeDelegate.discoverBuild(codebaseRuntimeConfig, {
+      ...userEnvs,
       ...firebaseEnvs,
       // Quota project is required when using GCP's Client-based APIs
       // Some GCP client SDKs, like Vertex AI, requires appropriate quota project setup
@@ -616,7 +851,16 @@ export async function loadCodebases(
       GOOGLE_CLOUD_QUOTA_PROJECT: projectId,
     });
     discoveredBuild.runtime = codebaseConfig.runtime;
-    build.applyPrefix(discoveredBuild, codebaseConfig.prefix || "");
+    // Mutate discoveredBuild to prevent collisions:
+    // - Endpoint names are prefixed with a kits instance ID, or a configured codebase prefix
+    // - The default resource ID a secret expects to find its backing Cloud Secret is prefixed with kits instance ID
+    const prefix = isKitConfig(codebaseConfig)
+      ? addKitPrefix(codebase)
+      : codebaseConfig.prefix || "";
+    build.applyEndpointPrefix(discoveredBuild, prefix);
+    if (isKitConfig(codebaseConfig)) {
+      build.applyKitSecretRefPrefix(discoveredBuild, codebase);
+    }
     wantBuilds[codebase] = discoveredBuild;
   }
   return wantBuilds;
@@ -645,9 +889,60 @@ function warnIfDartBackendHasUnsupportedTriggers(want: backend.Backend): void {
   }
 }
 
-// Genkit almost always requires an API key, so warn if the customer is about to deploy
-// a function and doesn't have one. To avoid repetitive nagging, only warn on the first
-// deploy of the function.
+/**
+ * Returns the executable paths to mark as executable when packaging a codebase's source,
+ * relative to the runtime in use. Dart codebases produce their executable at
+ * DART_BUNDLE_EXECUTABLE_PATH when their declared language version supports native
+ * build hooks while cross-compiling (see DartVersionFeatures.isNativeAssetsAvailable),
+ * or DART_COMPILE_EXE_PATH otherwise.
+ */
+export async function getExecutablePaths(
+  runtime: supported.Runtime | undefined,
+  sourceDir: string,
+): Promise<string[]> {
+  if (!supported.runtimeIsLanguage(runtime, "dart")) {
+    return [];
+  }
+  const features = await DartVersionFeatures.detect(sourceDir);
+  return features.isNativeAssetsAvailable ? [DART_BUNDLE_EXECUTABLE_PATH] : [DART_COMPILE_EXE_PATH];
+}
+
+/**
+ * Strips a stale "build" ignore entry from a Dart codebase's local config.
+ *
+ * Before the switch to `dart build cli`, `firebase init` seeded Dart codebases with
+ * `functions.ignore` including "build", which was harmless since the compiled executable
+ * lived at `bin/server`. For projects whose declared language version supports native
+ * build hooks while cross-compiling, the bundle now lives under `build/` (see
+ * DART_BUNDLE_EXECUTABLE_PATH), so honoring that stale entry for codebases configured
+ * before this fix would silently strip the executable from the deploy archive.
+ */
+export async function stripStaleDartBuildIgnore<T extends { ignore?: string[] }>(
+  runtime: supported.Runtime | undefined,
+  sourceDir: string,
+  localCfg: T,
+): Promise<T> {
+  if (
+    !supported.runtimeIsLanguage(runtime, "dart") ||
+    !localCfg.ignore?.some((i) => i === "build" || i === "build/")
+  ) {
+    return localCfg;
+  }
+  const features = await DartVersionFeatures.detect(sourceDir);
+  if (!features.isNativeAssetsAvailable) {
+    return localCfg;
+  }
+  return {
+    ...localCfg,
+    ignore: localCfg.ignore.filter((i) => i !== "build" && i !== "build/"),
+  };
+}
+
+/**
+ * Genkit almost always requires an API key, so warn if the customer is about to deploy
+ * a function and doesn't have one. To avoid repetitive nagging, only warn on the first
+ * deploy of the function.
+ */
 export async function warnIfNewGenkitFunctionIsMissingSecrets(
   have: backend.Backend,
   want: backend.Backend,
@@ -784,6 +1079,47 @@ export async function ensureAllRequiredAPIsEnabled(
       secretManagerOrigin(),
       "functions",
       /* silent=*/ false,
+    );
+  }
+}
+
+/**
+ * Divides the environment variables between normal envs and references to a Secret resource.
+ * Secret references begin with FIREBASE_SECRET_REF_ and are not provided directly in process.env,
+ * but the Cloud Secret Manager resource they reference is loaded through SecretEnvVars.
+ */
+export function partitionUserEnvs(allEnvs: Record<string, string>): {
+  userEnvs: Record<string, string>;
+  secretRefs: Record<string, string>;
+} {
+  const [secretRefs, userEnvs] = Object.entries(allEnvs).reduce(
+    (accumulatedSplit, [k, v]) => {
+      if (k.startsWith(build.SECRET_REF_PREFIX)) {
+        accumulatedSplit[0][k.replace(build.SECRET_REF_PREFIX, "")] = v;
+      } else {
+        accumulatedSplit[1][k] = v;
+      }
+      return accumulatedSplit;
+    },
+    [{}, {}] as [Record<string, string>, Record<string, string>],
+  );
+  return { userEnvs: userEnvs, secretRefs: secretRefs };
+}
+
+/**
+ * Validates that a function kit codebase does not contain any gen1 functions.
+ * Throws a FirebaseError if a gen1 function is found.
+ */
+export function checkKitForGen1(
+  localCfg: ValidatedLocalSingle | ValidatedKitSingle,
+  wantBuild: build.Build,
+): void {
+  if (
+    isKitConfig(localCfg) &&
+    Object.values(wantBuild.endpoints).some((e) => e.platform === "gcfv1")
+  ) {
+    throw new FirebaseError(
+      `Function kit "${localCfg.kit}" contains gen1 functions, which are not supported in kits. Please remove this kit or upgrade these functions to gen2.`,
     );
   }
 }

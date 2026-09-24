@@ -97,7 +97,7 @@ const extractEntriesFromBuffer = async (data: Buffer, outputDir: string): Promis
       logger.debug(`[unzip] mkdir: ${outputFilePath}`);
       await fs.promises.mkdir(outputFilePath, { recursive: true });
     } else {
-      const parentDir = outputFilePath.substring(0, outputFilePath.lastIndexOf(path.sep));
+      const parentDir = path.dirname(outputFilePath);
       logger.debug(`[unzip] else mkdir: ${parentDir}`);
       await fs.promises.mkdir(parentDir, { recursive: true });
 
@@ -123,13 +123,31 @@ const extractEntriesFromBuffer = async (data: Buffer, outputDir: string): Promis
   }
 };
 
-function isChildDir(parentDir: string, potentialChild: string): boolean {
+/**
+ * Validates whether potentialChild is a strict subdirectory or descendant file of parentDir.
+ * Protects against Zip Slip directory traversal vulnerabilities.
+ */
+export function isChildDir(parentDir: string, potentialChild: string): boolean {
   try {
     // 1. Resolve and normalize both paths to absolute paths
     const resolvedParent = path.resolve(parentDir);
     const resolvedChild = path.resolve(potentialChild);
-    // The child path must start with the parent path and not be the same path.
-    return resolvedChild.startsWith(resolvedParent) && resolvedChild !== resolvedParent;
+    // On Windows, file systems are case-insensitive (e.g. drive letters C: vs c:,
+    // or system paths like TEMP vs Temp). Comparing resolved paths directly with startsWith
+    // can fail when casing diverges between process.cwd() and archive entries, causing
+    // valid extraction paths to be falsely flagged as Zip Slip violations.
+    // Converting both paths to lowercase on win32 ensures robust prefix checking.
+    if (process.platform === "win32") {
+      const lowerParent = resolvedParent.toLowerCase();
+      const lowerChild = resolvedChild.toLowerCase();
+      const parentWithSep = lowerParent.endsWith(path.sep) ? lowerParent : lowerParent + path.sep;
+      return lowerChild.startsWith(parentWithSep) && lowerChild !== lowerParent;
+    }
+    // The child path must start with the parent path with separator and not be the same path.
+    const parentWithSep = resolvedParent.endsWith(path.sep)
+      ? resolvedParent
+      : resolvedParent + path.sep;
+    return resolvedChild.startsWith(parentWithSep) && resolvedChild !== resolvedParent;
   } catch (error) {
     // If either path does not exist, an error will be thrown.
     // In this case, the potential child cannot be a subdirectory.

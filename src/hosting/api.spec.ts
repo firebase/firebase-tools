@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "../test/helpers/nock";
 
 import { identityOrigin, hostingApiOrigin } from "../api";
 import { FirebaseError } from "../error";

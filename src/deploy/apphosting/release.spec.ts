@@ -6,6 +6,7 @@ import { RC } from "../../rc";
 import { Context } from "./args";
 import release from "./release";
 import { expect } from "chai";
+import { FirebaseError } from "../../error";
 
 const BASE_OPTS = {
   cwd: "/",
@@ -19,8 +20,6 @@ const BASE_OPTS = {
 };
 
 describe("apphosting", () => {
-  let orchestrateRolloutStub: sinon.SinonStub;
-
   afterEach(() => {
     sinon.verifyAndRestore();
   });
@@ -47,22 +46,40 @@ describe("apphosting", () => {
             rootDir: "/",
             ignore: [],
           },
+          bar: {
+            backendId: "bar",
+            rootDir: "/",
+            ignore: [],
+          },
         },
-        backendLocations: { foo: "us-central1" },
+        backendLocations: { foo: "us-central1", bar: "us-central1" },
         backendStorageUris: {
           foo: "gs://firebaseapphosting-sources-us-central1/foo-1234.zip",
+          bar: "gs://firebaseapphosting-sources-us-central1/bar-1234.zip",
         },
         backendLocalBuilds: {},
       };
 
-      orchestrateRolloutStub = sinon
+      const orchestrateRolloutStub = sinon
         .stub(rollout, "orchestrateRollout")
         .throws("Unexpected orchestrateRollout call");
 
-      orchestrateRolloutStub.onFirstCall().rejects();
+      orchestrateRolloutStub.onFirstCall().rejects(new Error("Build failed"));
       orchestrateRolloutStub.onSecondCall().resolves();
+      sinon.stub(backend, "getBackend").resolves({
+        name: "projects/my-project/locations/us-central1/backends/bar",
+        servingLocality: "GLOBAL_ACCESS",
+        labels: {},
+        createTime: "2023-01-01T00:00:00Z",
+        updateTime: "2023-01-01T00:00:00Z",
+        uri: "bar.apphosting.com",
+      });
 
-      await expect(release(context, opts)).to.eventually.not.rejected;
+      await expect(release(context, opts)).to.be.rejectedWith(
+        FirebaseError,
+        "One or more rollouts failed. Please review the errors above and try again.",
+      );
+      expect(orchestrateRolloutStub).to.have.been.calledTwice;
     });
 
     it("correctly passes buildInput for local builds", async () => {
@@ -118,6 +135,86 @@ describe("apphosting", () => {
               rootDirectory: "/root",
               runCommand: "npm run build",
               env: [{ variable: "VAR1", value: "VALUE1" }],
+            },
+          },
+        },
+      });
+    });
+
+    it("correctly passes runConfig in buildInput and locallyBuilt source", async () => {
+      const context: Context = {
+        backendConfigs: {
+          fooLocalBuild: {
+            backendId: "fooLocalBuild",
+            rootDir: "/root",
+            ignore: [],
+            localBuild: true,
+          },
+        },
+        backendLocations: { fooLocalBuild: "us-central1" },
+        backendStorageUris: {
+          fooLocalBuild: "gs://bucket/foo-local-build.tar.gz",
+        },
+        backendLocalBuilds: {
+          fooLocalBuild: {
+            outputFiles: ["./dist"],
+            localBuildScratchDir: "/root/.local_build_fooLocalBuild",
+            buildConfig: {
+              runCommand: "npm run build",
+              env: [{ variable: "VAR1", value: "VALUE1" }],
+              runConfig: {
+                cpu: 2,
+                memoryMib: 3072,
+                concurrency: 8,
+                minInstances: 1,
+                maxInstances: 10,
+              },
+            },
+          },
+        },
+      };
+
+      const orchestrateRolloutStub = sinon.stub(rollout, "orchestrateRollout").resolves();
+      sinon.stub(backend, "getBackend").resolves({
+        name: "projects/my-project/locations/us-central1/backends/fooLocalBuild",
+        servingLocality: "GLOBAL_ACCESS",
+        labels: {},
+        createTime: "2023-01-01T00:00:00Z",
+        updateTime: "2023-01-01T00:00:00Z",
+        uri: "foo.apphosting.com",
+      });
+
+      await release(context, opts);
+
+      expect(orchestrateRolloutStub).to.be.calledWith({
+        projectId: "my-project",
+        backendId: "fooLocalBuild",
+        location: "us-central1",
+        buildInput: {
+          config: {
+            runCommand: "npm run build",
+            env: [{ variable: "VAR1", value: "VALUE1" }],
+            runConfig: {
+              cpu: 2,
+              memoryMib: 3072,
+              concurrency: 8,
+              minInstances: 1,
+              maxInstances: 10,
+            },
+          },
+          source: {
+            locallyBuilt: {
+              userStorageUri: "gs://bucket/foo-local-build.tar.gz",
+              rootDirectory: "/root",
+              runCommand: "npm run build",
+              env: [{ variable: "VAR1", value: "VALUE1" }],
+              runConfig: {
+                cpu: 2,
+                memoryMib: 3072,
+                concurrency: 8,
+                minInstances: 1,
+                maxInstances: 10,
+              },
             },
           },
         },

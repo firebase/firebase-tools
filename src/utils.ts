@@ -12,7 +12,6 @@ import * as clc from "colorette";
 import * as open from "open";
 import * as ora from "ora";
 import * as process from "process";
-import { Readable } from "stream";
 import { AssertionError } from "assert";
 import { getPortPromise as getPort } from "portfinder";
 
@@ -309,34 +308,7 @@ export function explainStdin(): void {
   }
 }
 
-/**
- * Converts text input to a Readable stream.
- * @param text string to turn into a stream.
- * @return Readable stream, or undefined if text is empty.
- */
-export function stringToStream(text: string): Readable | undefined {
-  if (!text) {
-    return undefined;
-  }
-  const s = new Readable();
-  s.push(text);
-  s.push(null);
-  return s;
-}
-
-/**
- * Converts a Readable stream into a string.
- * @param s a readable stream.
- * @return a promise resolving to the string'd contents of the stream.
- */
-export function streamToString(s: NodeJS.ReadableStream): Promise<string> {
-  return new Promise((resolve, reject) => {
-    let b = "";
-    s.on("error", reject);
-    s.on("data", (d) => (b += `${d}`));
-    s.once("end", () => resolve(b));
-  });
-}
+export { stringToStream, streamToString } from "./streamUtils";
 
 /**
  * Sets the active project alias or id in the specified directory.
@@ -512,6 +484,59 @@ export async function promiseWithSpinner<T>(action: () => Promise<T>, message: s
 /** Creates a promise that resolves after a given timeout. await to "sleep". */
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Calculates the exponential backoff delay in milliseconds. */
+export function timeToWait(retryNumber: number, delay: number, maxDelay: number): number {
+  return Math.min(delay * Math.pow(2, retryNumber), maxDelay);
+}
+
+/** Creates a promise to wait for the nth exponential backoff delay. */
+export function backoff(retryNumber: number, delay: number, maxDelay: number): Promise<void> {
+  return sleep(timeToWait(retryNumber, delay, maxDelay));
+}
+
+export interface RetryWithBackoffOptions {
+  /**
+   * Predicate determining whether an error is retryable. Required so callers
+   * explicitly define expected transient error conditions rather than blindly retrying fatal errors.
+   */
+  retryPredicate: (err: unknown) => boolean;
+  /** Maximum number of retry attempts before giving up. Default: 0 (matches Throttler). */
+  retries?: number;
+  /** Initial delay in milliseconds for the first retry backoff. Default: 200ms (matches Throttler). */
+  delay?: number;
+  /** Maximum delay cap in milliseconds for any single backoff sleep. Default: 60000ms (matches Throttler). */
+  maxDelay?: number;
+}
+
+/**
+ * Runs an asynchronous operation and retries it with exponential backoff when errors match `retryPredicate`.
+ *
+ * Timing defaults:
+ * - `delay`: 200ms (matches Throttler).
+ * - `maxDelay`: 60000ms (matches Throttler).
+ * - `retries`: 0 (matches Throttler).
+ */
+export async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  options: RetryWithBackoffOptions,
+): Promise<T> {
+  const retries = options.retries ?? 0;
+  const delay = options.delay ?? 200;
+  const maxDelay = options.maxDelay ?? 60000;
+
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fn();
+    } catch (err: unknown) {
+      if (attempt < retries && options.retryPredicate(err)) {
+        await backoff(attempt, delay, maxDelay);
+        continue;
+      }
+      throw err;
+    }
+  }
 }
 
 /**

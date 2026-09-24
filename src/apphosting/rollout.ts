@@ -18,7 +18,7 @@ import { getBackend } from "./backend";
 const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: apphostingOrigin(),
   apiVersion: apphosting.API_VERSION,
-  masterTimeout: 25 * 60 * 1_000,
+  masterTimeout: 60 * 60 * 1_000,
   maxBackoff: 10_000,
 };
 

@@ -1,7 +1,7 @@
 import { cloneDeep } from "lodash";
 import { expect } from "chai";
 import * as express from "express";
-import * as nock from "nock";
+import nock from "../test/helpers/nock";
 import * as sinon from "sinon";
 import * as supertest from "supertest";
 

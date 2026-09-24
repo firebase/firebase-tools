@@ -13,6 +13,7 @@ export const get_issue = tool(
   {
     name: "get_issue",
     description: `Gets data for a Crashlytics issue, which can be used as a starting point for debugging.`,
+    humanReadableDescription: "Retrieve details and metadata for a specific Crashlytics issue.",
     inputSchema: z.object({
       appId: ApplicationIdSchema,
       issueId: IssueIdSchema,
@@ -50,6 +51,7 @@ export const update_issue = tool(
   {
     name: "update_issue",
     description: "Use this to update the state of Crashlytics issue.",
+    humanReadableDescription: "Update the state (OPEN or CLOSED) of a Crashlytics issue.",
     inputSchema: z.object({
       appId: ApplicationIdSchema,
       issueId: IssueIdSchema,

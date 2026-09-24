@@ -1,4 +1,3 @@
-import fetch, { Response } from "node-fetch";
 import * as fs from "fs";
 import * as path from "path";
 import * as yaml from "yaml";
@@ -97,9 +96,11 @@ export async function detectFromPort(
       res = await Promise.race([fetch(url), timedOut]);
       break;
     } catch (err: any) {
+      const realErr = err?.cause || err;
       if (
         err?.name === "FetchError" ||
-        ["ECONNREFUSED", "ECONNRESET", "ETIMEDOUT"].includes(err?.code)
+        realErr?.name === "FetchError" ||
+        ["ECONNREFUSED", "ECONNRESET", "ETIMEDOUT"].includes(realErr?.code)
       ) {
         continue;
       }

@@ -4,6 +4,7 @@ import { tool } from "../../tool";
 import { mcpError, toContent } from "../../util";
 import { getLatestRulesetName, getRulesetContent, listAllReleases } from "../../../gcp/rules";
 import { getDefaultDatabaseInstance } from "../../../getDefaultDatabaseInstance";
+import { streamToString } from "../../../streamUtils";
 
 export const get_security_rules = tool(
   "core",
@@ -12,6 +13,8 @@ export const get_security_rules = tool(
     description:
       "Use this to retrieve the security rules for a specified Firebase service. " +
       "If there are multiple instances of that service in the product, the rules for the default instance are returned.",
+    humanReadableDescription:
+      "Retrieve the active security rules for Firestore, Storage, or Realtime Database.",
     inputSchema: z.object({
       type: z.enum(["firestore", "rtdb", "storage"]).describe("The service to get rules for."),
       // TODO: Add a resourceID argument that lets you choose non default buckets/dbs.
@@ -42,7 +45,7 @@ export const get_security_rules = tool(
         return mcpError(`Failed to fetch current rules. Code: ${response.status}`);
       }
 
-      const rules = await response.response.text();
+      const rules = await streamToString(response.body);
       return toContent(rules);
     }
 

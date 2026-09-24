@@ -67,7 +67,7 @@ export function parseConnectionName(name: string): ConnectionNameParts | undefin
 const devConnectPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: developerConnectOrigin(),
   apiVersion: "v1",
-  masterTimeout: 25 * 60 * 1_000,
+  masterTimeout: 60 * 60 * 1_000,
   maxBackoff: 10_000,
 };
 

@@ -1,3 +1,4 @@
+import * as clc from "colorette";
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { checkbox, input, password, select } from "../../prompt";
@@ -9,6 +10,8 @@ import { listBuckets } from "../../gcp/storage";
 import { isCelExpression, resolveExpression } from "./cel";
 import { FirebaseConfig } from "./args";
 import { labels as secretLabels } from "../../gcp/secretManager";
+import * as experiments from "../../experiments";
+import { marked } from "marked";
 
 // A convenience type containing options for Prompt's select
 interface ListItem {
@@ -120,9 +123,6 @@ type ParamBase<T extends string | number | boolean | string[]> = {
   // Default value. If not provided, a param must be supplied.
   default?: T | build.Expression<T>;
 
-  // default: false
-  immutable?: boolean;
-
   // Defines how the CLI will prompt for the value of the param if it's not in .env files
   input?: ParamInput<T>;
 };
@@ -178,6 +178,9 @@ export interface TextInput<T> { // eslint-disable-line
     validationRegex?: string;
     // The error message to display if validationRegex is missing
     validationErrorMessage?: string;
+
+    // Reject the empty string as valid input.
+    nonEmpty?: boolean;
   };
 }
 
@@ -209,10 +212,13 @@ interface ResourceInput {
 interface MultiSelectInput {
   multiSelect: {
     options: Array<SelectOptions<string>>;
+
+    // Reject the empty string as valid input.
+    nonEmpty?: boolean;
   };
 }
 
-interface SecretParam {
+export interface SecretParam {
   type: "secret";
 
   // name of the param. Will be exposed as an environment variable with this name
@@ -228,10 +234,27 @@ interface SecretParam {
 
   // The format of the secret, e.g. "json"
   format?: string;
+
+  // The resource name of the backing Secret in Cloud Secret Manager.
+  // Defaults to `name` if not present.
+  resourceId?: string;
+
+  // The version of the backing Secret to use. Can be an index, "latest",
+  // or a previously configured version alias. Functions will resolve the version to
+  // the current latest version if not present.
+  version?: string;
+
+  // Internal use only. Populated with whether or not a corresponding FIREBASE_SECRET_REF_
+  // key was found in the local .env files.
+  inLocalEnvironment?: boolean;
 }
 
 export type Param = StringParam | IntParam | BooleanParam | ListParam | SecretParam;
 type RawParamValue = string | number | boolean | string[];
+
+export function isSecretParam(param: Param): param is SecretParam {
+  return param.type === "secret";
+}
 
 /**
  * A type which contains the resolved value of a param, and metadata ensuring
@@ -365,6 +388,15 @@ function canSatisfyParam(param: Param, value: RawParamValue): boolean {
   assertExhaustive(param);
 }
 
+export interface ResolveParamOpts {
+  params: Param[];
+  firebaseConfig: FirebaseConfig;
+  userEnvs: Record<string, ParamValue>;
+  codebase: string;
+  nonInteractive?: boolean;
+  isEmulator?: boolean;
+}
+
 /**
  * A param defined by the SDK may resolve to:
  * - a reference to a secret in Cloud Secret Manager, which we validate the existence of and prompt for if missing
@@ -377,13 +409,18 @@ function canSatisfyParam(param: Param, value: RawParamValue): boolean {
  *   - after prompting, the resolved value of the param is written to the most specific .env file available
  */
 export async function resolveParams(
-  params: Param[],
-  firebaseConfig: FirebaseConfig,
-  userEnvs: Record<string, ParamValue>,
-  nonInteractive?: boolean,
-  isEmulator = false,
-): Promise<Record<string, ParamValue>> {
+  opts: ResolveParamOpts,
+): Promise<{ paramValues: Record<string, ParamValue>; secretRefs: Record<string, string> }> {
+  const {
+    params,
+    firebaseConfig,
+    userEnvs,
+    codebase,
+    nonInteractive = false,
+    isEmulator = false,
+  } = opts;
   const paramValues: Record<string, ParamValue> = populateDefaultParams(firebaseConfig);
+  const secretRefs: Record<string, string> = {};
 
   // TODO(vsfan@): should we ever reject param values from .env files based on the appearance of the string?
   const [resolved, outstanding] = partition(params, (param) => {
@@ -398,7 +435,11 @@ export async function resolveParams(
   // The functions emulator will handle secrets
   if (!isEmulator) {
     for (const param of needSecret) {
-      await handleSecret(param as SecretParam, firebaseConfig.projectId, nonInteractive);
+      secretRefs[param.name] = await ensureSecret(
+        param as SecretParam,
+        firebaseConfig.projectId,
+        nonInteractive,
+      );
     }
   }
 
@@ -409,6 +450,9 @@ export async function resolveParams(
         "To continue, either run `firebase deploy` with an interactive terminal, or add values to a dotenv file. " +
         "For information regarding how to use dotenv files, see https://firebase.google.com/docs/functions/config-env",
     );
+  }
+  if (needPrompt.length > 0) {
+    logger.info(`Prompting for parameters for codebase ${clc.bold(codebase)}:`);
   }
   for (const param of needPrompt) {
     const promptable = param as Exclude<Param, SecretParam>;
@@ -424,7 +468,7 @@ export async function resolveParams(
     paramValues[param.name] = await promptParam(param, firebaseConfig.projectId, paramDefault);
   }
 
-  return paramValues;
+  return { paramValues: paramValues, secretRefs: secretRefs };
 }
 
 function populateDefaultParams(config: FirebaseConfig): Record<string, ParamValue> {
@@ -458,42 +502,41 @@ function populateDefaultParams(config: FirebaseConfig): Record<string, ParamValu
 
 /**
  * Handles a SecretParam by checking for the presence of a corresponding secret
- * in Cloud Secrets Manager. If not present, we currently ask the user to
- * create a corresponding one using functions:secret:set.
- * Firebase-tools is not responsible for providing secret values to the Functions
- * runtime environment, since having viewer permissions on a function is enough
- * to read its environment variables. They are instead provided through GCF's own
- * Secret Manager integration.
+ * in Cloud Secrets Manager. Assist the user with secret creation if not present.
+ * @return a Functions-formatted reference (e.g "foo:latest") to a Secret
+ * resource which has been verified to exist/have just been created
  */
-async function handleSecret(
+async function ensureSecret(
   secretParam: SecretParam,
   projectId: string,
   nonInteractive?: boolean,
-): Promise<void> {
-  const metadata = await secretManager.getSecretMetadata(projectId, secretParam.name, "latest");
+): Promise<string> {
+  const resourceId = secretParam.resourceId || secretParam.name;
+  const version = secretParam.version || "latest";
+  let secretAlreadyExisted = false;
+
+  const metadata = await secretManager.getSecretMetadata(projectId, resourceId, version);
   if (!metadata.secret) {
     if (nonInteractive) {
       throw new FirebaseError(
-        `In non-interactive mode but have no value for the secret: ${secretParam.name}\n\n` +
+        `In non-interactive mode but have no value for the secret ${secretParam.name}: ${resourceId}\n\n` +
           "Set this secret before deploying:\n" +
-          `\tfirebase functions:secrets:set ${secretParam.name}${secretParam.format === "json" ? " --format=json --data-file <file.json>" : ""}`,
+          `\tfirebase functions:secrets:set ${resourceId}${secretParam.format === "json" ? " --format=json --data-file <file.json>" : ""}`,
       );
     }
-    const promptMessage = `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${
-      secretParam.name
-    }. Enter ${secretParam.format === "json" ? "a JSON value" : "a value"} for ${
-      secretParam.label || secretParam.name
-    }:`;
-
+    const label = secretParam.label || secretParam.name;
+    const notice = `The value for this secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${resourceId}.`;
+    const desc = secretParam.description ? `${secretParam.description} ${notice}` : notice;
+    logger.info(`\n${clc.bold(label)}: ${(await marked(desc)).trim()}`);
+    const promptMessage = `Enter ${secretParam.format === "json" ? "a JSON value" : "a value"} for ${label}:`;
     const secretValue = await password({
       message: promptMessage,
     });
     if (secretParam.format === "json") {
       validateJsonSecret(secretParam.name, secretValue);
     }
-    await secretManager.createSecret(projectId, secretParam.name, secretLabels());
-    await secretManager.addVersion(projectId, secretParam.name, secretValue);
-    return;
+    await secretManager.createSecret(projectId, resourceId, secretLabels());
+    await secretManager.addVersion(projectId, resourceId, secretValue);
   } else if (!metadata.secretVersion) {
     throw new FirebaseError(
       `Cloud Secret Manager has no latest version of the secret defined by param ${
@@ -509,7 +552,23 @@ async function handleSecret(
         secretParam.label || secretParam.name
       } is in illegal state ${metadata.secretVersion.state}`,
     );
+  } else {
+    secretAlreadyExisted = true;
   }
+
+  const secretRefString = typeof version === "undefined" ? resourceId : `${resourceId}:${version}`;
+  if (
+    experiments.isEnabled("secretEnvParams") &&
+    experiments.isEnabled("writeDefaultSecretBindings")
+  ) {
+    if (!secretParam.inLocalEnvironment && secretAlreadyExisted) {
+      logger.info(
+        `Onetime (firebase-tools x.y.z+): storing a reference to existing secret ${secretParam.name}=${secretRefString} in .env files.`,
+      );
+    }
+  }
+
+  return secretRefString;
 }
 
 /**
@@ -524,6 +583,14 @@ async function promptParam(
   projectId: string,
   resolvedDefault?: RawParamValue,
 ): Promise<ParamValue> {
+  const label = param.label || param.name;
+  if (param.description) {
+    logger.info(`\n${clc.bold(label)}: ${(await marked(param.description)).trim()}`);
+  } else {
+    // Provide newline spacing between successive parameter prompts when there is no description to display.
+    logger.info("");
+  }
+
   if (param.type === "string") {
     const provided = await promptStringParam(
       param,
@@ -557,38 +624,32 @@ async function promptList(
     const defaultToText: TextInput<string> = { text: {} };
     param.input = defaultToText;
   }
-  let prompt: string;
+  const label = param.label || param.name;
 
   if (isSelectInput(param.input)) {
     throw new FirebaseError("List params cannot have non-list selector inputs");
   } else if (isMultiSelectInput(param.input)) {
-    prompt = `Select a value for ${param.label || param.name}:`;
-    if (param.description) {
-      prompt += ` \n(${param.description})`;
-    }
-    prompt += "\nSelect an option with the arrow keys, and use Enter to confirm your choice. ";
     return promptSelectMultiple<string>(
-      prompt,
+      `Select values for ${label}:`,
       param.input,
       resolvedDefault,
+      param.input.multiSelect.nonEmpty,
       (res: string[]) => res,
     );
   } else if (isTextInput(param.input)) {
-    prompt = `Enter a list of strings (delimiter: ${param.delimiter ? param.delimiter : ","}) for ${
-      param.label || param.name
-    }:`;
-    if (param.description) {
-      prompt += ` \n(${param.description})`;
-    }
-    return promptText<string[]>(prompt, param.input, resolvedDefault, (res: string): string[] => {
-      return res.split(param.delimiter || ",");
-    });
+    const delimiter = param.delimiter ? param.delimiter : ",";
+    return promptText<string[]>(
+      `Enter a list of strings (delimiter: ${delimiter}) for ${label}:`,
+      param.input,
+      resolvedDefault,
+      param.input.text.nonEmpty,
+      (res: string): string[] => {
+        return res.split(delimiter);
+      },
+    );
   } else if (isResourceInput(param.input)) {
-    prompt = `Select values for ${param.label || param.name}:`;
-    if (param.description) {
-      prompt += ` \n(${param.description})`;
-    }
-    return promptResourceStrings(prompt, param.input, projectId);
+    // N.B: The type system in the SDK currently doesn't allow a ResourceInput to be assigned to a ListParam, so this path is unreachable.
+    return promptResourceStrings(`Select values for ${label}:`, param.input, projectId, false);
   } else {
     assertExhaustive(param.input);
   }
@@ -603,23 +664,25 @@ async function promptBooleanParam(
     param.input = defaultToText;
   }
   const isTruthyInput = (res: string) => ["true", "y", "yes", "1"].includes(res.toLowerCase());
-  let prompt: string;
+  const label = param.label || param.name;
 
   if (isSelectInput(param.input)) {
-    prompt = `Select a value for ${param.label || param.name}:`;
-    if (param.description) {
-      prompt += ` \n(${param.description})`;
-    }
-    prompt += "\nSelect an option with the arrow keys, and use Enter to confirm your choice. ";
-    return promptSelect<boolean>(prompt, param.input, resolvedDefault, isTruthyInput);
+    return promptSelect<boolean>(
+      `Select a value for ${label}:`,
+      param.input,
+      resolvedDefault,
+      isTruthyInput,
+    );
   } else if (isMultiSelectInput(param.input)) {
     throw new FirebaseError("Non-list params cannot have multi selector inputs");
   } else if (isTextInput(param.input)) {
-    prompt = `Enter a boolean value for ${param.label || param.name}:`;
-    if (param.description) {
-      prompt += ` \n(${param.description})`;
-    }
-    return promptText<boolean>(prompt, param.input, resolvedDefault, isTruthyInput);
+    return promptText<boolean>(
+      `Enter a boolean value for ${label}:`,
+      param.input,
+      resolvedDefault,
+      false, // enforceNonEmpty
+      isTruthyInput,
+    );
   } else if (isResourceInput(param.input)) {
     throw new FirebaseError("Boolean params cannot have Cloud Resource selector inputs");
   } else {
@@ -636,29 +699,32 @@ async function promptStringParam(
     const defaultToText: TextInput<string> = { text: {} };
     param.input = defaultToText;
   }
-  let prompt: string;
+  const label = param.label || param.name;
 
   if (isResourceInput(param.input)) {
-    prompt = `Select a value for ${param.label || param.name}:`;
-    if (param.description) {
-      prompt += ` \n(${param.description})`;
-    }
-    return promptResourceString(prompt, param.input, projectId, resolvedDefault);
+    return promptResourceString(
+      `Select a value for ${label}:`,
+      param.input,
+      projectId,
+      resolvedDefault,
+    );
   } else if (isMultiSelectInput(param.input)) {
     throw new FirebaseError("Non-list params cannot have multi selector inputs");
   } else if (isSelectInput(param.input)) {
-    prompt = `Select a value for ${param.label || param.name}:`;
-    if (param.description) {
-      prompt += ` \n(${param.description})`;
-    }
-    prompt += "\nSelect an option with the arrow keys, and use Enter to confirm your choice. ";
-    return promptSelect<string>(prompt, param.input, resolvedDefault, (res: string) => res);
+    return promptSelect<string>(
+      `Select a value for ${label}:`,
+      param.input,
+      resolvedDefault,
+      (res: string) => res,
+    );
   } else if (isTextInput(param.input)) {
-    prompt = `Enter a string value for ${param.label || param.name}:`;
-    if (param.description) {
-      prompt += ` \n(${param.description})`;
-    }
-    return promptText<string>(prompt, param.input, resolvedDefault, (res: string) => res);
+    return promptText<string>(
+      `Enter a string value for ${label}:`,
+      param.input,
+      resolvedDefault,
+      param.input.text.nonEmpty,
+      (res: string) => res,
+    );
   } else {
     assertExhaustive(param.input);
   }
@@ -669,39 +735,41 @@ async function promptIntParam(param: IntParam, resolvedDefault?: number): Promis
     const defaultToText: TextInput<number> = { text: {} };
     param.input = defaultToText;
   }
-  let prompt: string;
+  const label = param.label || param.name;
 
   if (isSelectInput(param.input)) {
-    prompt = `Select a value for ${param.label || param.name}:`;
-    if (param.description) {
-      prompt += ` \n(${param.description})`;
-    }
-    prompt += "\nSelect an option with the arrow keys, and use Enter to confirm your choice. ";
-    return promptSelect(prompt, param.input, resolvedDefault, (res: string) => {
-      if (isNaN(+res)) {
-        return { message: `"${res}" could not be converted to a number.` };
-      }
-      if (res.includes(".")) {
-        return { message: `${res} is not an integer value.` };
-      }
-      return +res;
-    });
+    return promptSelect(
+      `Select a value for ${label}:`,
+      param.input,
+      resolvedDefault,
+      (res: string) => {
+        if (isNaN(+res)) {
+          return { message: `"${res}" could not be converted to a number.` };
+        }
+        if (res.includes(".")) {
+          return { message: `${res} is not an integer value.` };
+        }
+        return +res;
+      },
+    );
   } else if (isMultiSelectInput(param.input)) {
     throw new FirebaseError("Non-list params cannot have multi selector inputs");
   } else if (isTextInput(param.input)) {
-    prompt = `Enter an integer value for ${param.label || param.name}:`;
-    if (param.description) {
-      prompt += ` \n(${param.description})`;
-    }
-    return promptText<number>(prompt, param.input, resolvedDefault, (res: string) => {
-      if (isNaN(+res)) {
-        return { message: `"${res}" could not be converted to a number.` };
-      }
-      if (res.includes(".")) {
-        return { message: `${res} is not an integer value.` };
-      }
-      return +res;
-    });
+    return promptText<number>(
+      `Enter an integer value for ${label}:`,
+      param.input,
+      resolvedDefault,
+      param.input.text.nonEmpty,
+      (res: string) => {
+        if (isNaN(+res)) {
+          return { message: `"${res}" could not be converted to a number.` };
+        }
+        if (res.includes(".")) {
+          return { message: `${res} is not an integer value.` };
+        }
+        return +res;
+      },
+    );
   } else if (isResourceInput(param.input)) {
     throw new FirebaseError("Numeric params cannot have Cloud Resource selector inputs");
   } else {
@@ -734,7 +802,13 @@ async function promptResourceString(
       logger.warn(
         `Warning: unknown resource type ${input.resource.type}; defaulting to raw text input...`,
       );
-      return promptText<string>(prompt, { text: {} }, resolvedDefault, (res: string) => res);
+      return promptText<string>(
+        prompt,
+        { text: {} },
+        resolvedDefault,
+        true, // enforceNonEmpty
+        (res: string) => res,
+      );
   }
 }
 
@@ -742,6 +816,7 @@ async function promptResourceStrings(
   prompt: string,
   input: ResourceInput,
   projectId: string,
+  enforceNonEmpty?: boolean,
 ): Promise<string[]> {
   const notFound = new FirebaseError(`No instances of ${input.resource.type} found.`);
   switch (input.resource.type) {
@@ -757,12 +832,24 @@ async function promptResourceStrings(
           }),
         },
       };
-      return promptSelectMultiple<string>(prompt, forgedInput, undefined, (res: string[]) => res);
+      return promptSelectMultiple<string>(
+        prompt,
+        forgedInput,
+        undefined, // resolvedDefault
+        enforceNonEmpty,
+        (res: string[]) => res,
+      );
     default:
       logger.warn(
         `Warning: unknown resource type ${input.resource.type}; defaulting to raw text input...`,
       );
-      return promptText<string[]>(prompt, { text: {} }, undefined, (res: string) => res.split(","));
+      return promptText<string[]>(
+        prompt,
+        { text: {} }, // textInput
+        undefined, // resolvedDefault
+        enforceNonEmpty,
+        (res: string) => res.split(","),
+      );
   }
 }
 
@@ -775,6 +862,7 @@ async function promptText<T extends RawParamValue>(
   prompt: string,
   textInput: TextInput<T>,
   resolvedDefault: T | undefined,
+  enforceNonEmpty = false,
   converter: (res: string) => T | retryInput,
 ): Promise<T> {
   const res = await input({
@@ -788,8 +876,12 @@ async function promptText<T extends RawParamValue>(
         textInput.text.validationErrorMessage ||
           `Input did not match provided validator ${userRe.toString()}, retrying...`,
       );
-      return promptText<T>(prompt, textInput, resolvedDefault, converter);
+      return promptText<T>(prompt, textInput, resolvedDefault, enforceNonEmpty, converter);
     }
+  }
+  if (enforceNonEmpty && res === "") {
+    logger.error(`A non-empty value is required, retrying......`);
+    return promptText<T>(prompt, textInput, resolvedDefault, enforceNonEmpty, converter);
   }
   // TODO(vsfan): the toString() is because PromptOnce()'s return type of string
   // is wrong--it will return the type of the default if selected. Remove this
@@ -797,7 +889,7 @@ async function promptText<T extends RawParamValue>(
   const converted = converter(res.toString());
   if (shouldRetry(converted)) {
     logger.error(converted.message);
-    return promptText<T>(prompt, textInput, resolvedDefault, converter);
+    return promptText<T>(prompt, textInput, resolvedDefault, enforceNonEmpty, converter);
   }
   return converted;
 }
@@ -811,6 +903,7 @@ async function promptSelect<T extends RawParamValue>(
   const response = await select<string>({
     default: resolvedDefault as string,
     message: prompt,
+    instructions: "(Use arrow keys to navigate, and Enter to confirm your choice)",
     choices: input.select.options.map((option: SelectOptions<T>): ListItem => {
       return {
         checked: false,
@@ -831,11 +924,13 @@ async function promptSelectMultiple<T extends string>(
   prompt: string,
   input: MultiSelectInput,
   resolvedDefault: T[] | undefined,
+  enforceNonEmpty = false,
   converter: (res: string[]) => T[] | retryInput,
 ): Promise<T[]> {
   const response = await checkbox({
     default: resolvedDefault,
     message: prompt,
+    instructions: "(Press Space to select, and Enter to confirm your choices)",
     choices: input.multiSelect.options.map((option: SelectOptions<string>): ListItem => {
       return {
         checked: false,
@@ -847,7 +942,11 @@ async function promptSelectMultiple<T extends string>(
   const converted = converter(response);
   if (shouldRetry(converted)) {
     logger.error(converted.message);
-    return promptSelectMultiple<T>(prompt, input, resolvedDefault, converter);
+    return promptSelectMultiple<T>(prompt, input, resolvedDefault, enforceNonEmpty, converter);
+  }
+  if (enforceNonEmpty && Array.isArray(converted) && converted.length === 0) {
+    logger.error(`A non-empty value is required, retrying...`);
+    return promptSelectMultiple<T>(prompt, input, resolvedDefault, enforceNonEmpty, converter);
   }
   return converted;
 }

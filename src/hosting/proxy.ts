@@ -1,5 +1,4 @@
 import { capitalize, includes } from "lodash";
-import { FetchError, Headers } from "node-fetch";
 import { IncomingMessage, ServerResponse } from "http";
 import { PassThrough } from "stream";
 import { Request, RequestHandler, Response } from "express";
@@ -10,6 +9,18 @@ import { FirebaseError } from "../error";
 import { logger } from "../logger";
 
 const REQUIRED_VARY_VALUES = ["Accept-Encoding", "Authorization", "Cookie"];
+
+/**
+ * An IncomingMessage whose body was already read and buffered upstream so it can
+ * be replayed here. `simpleProxy` (the web-frameworks dev-server proxy) sets this
+ * when it forwards a request to the framework dev server, because that drains the
+ * original stream; without it, a request that 404-cascades from the framework to
+ * a function rewrite would arrive with a stale content-length and no body and
+ * time out. See `simpleProxy` in ../frameworks/utils.ts.
+ */
+export interface RequestWithRawBody extends IncomingMessage {
+  rawBody?: Buffer;
+}
 
 function makeVary(vary: string | null = ""): string {
   if (!vary) {
@@ -57,10 +68,22 @@ export function proxyRequestHandler(
     const u = new URL(url + req.url);
     const c = new Client({ urlPrefix: u.origin, auth: false });
 
+    let body: PassThrough | Buffer | undefined;
     let passThrough: PassThrough | undefined;
     if (req.method && !["GET", "HEAD"].includes(req.method)) {
-      passThrough = new PassThrough();
-      req.pipe(passThrough);
+      // If an upstream proxy already consumed the request stream (e.g. a web
+      // framework dev server) it stashes the body on req.rawBody so we can
+      // replay it. Piping the already-drained stream here would send 0 bytes
+      // while still advertising the original content-length, hanging the request
+      // until timeout. See https://github.com/firebase/firebase-tools/issues/5986
+      const rawBody = (req as RequestWithRawBody).rawBody;
+      if (rawBody !== undefined) {
+        body = rawBody;
+      } else {
+        passThrough = new PassThrough();
+        req.pipe(passThrough);
+        body = passThrough;
+      }
     }
 
     const headers = new Headers({
@@ -74,6 +97,14 @@ export function proxyRequestHandler(
     // Skip particular header keys:
     // - using x-forwarded-host, don't need to keep `host` in the headers.
     const headersToSkip = new Set(["host"]);
+    if (Buffer.isBuffer(body)) {
+      // A replayed Buffer is a fixed-length body; let node-fetch set
+      // content-length from it and drop the original request's framing headers,
+      // which would otherwise be stale or conflict (content-length alongside
+      // transfer-encoding: chunked).
+      headersToSkip.add("content-length");
+      headersToSkip.add("transfer-encoding");
+    }
     for (const key of Object.keys(req.headers)) {
       if (headersToSkip.has(key)) {
         continue;
@@ -101,56 +132,69 @@ export function proxyRequestHandler(
         resolveOnHTTPError: true,
         responseType: "stream",
         redirect: "manual",
-        body: passThrough,
+        body,
         timeout: 60000,
         compress: false,
       });
     } catch (err: any) {
+      logger.error("[PROXY ERROR]", err);
       const isAbortError =
         err instanceof FirebaseError && err.original?.name.includes("AbortError");
       const isTimeoutError =
         err instanceof FirebaseError &&
-        err.original instanceof FetchError &&
-        err.original.code === "ETIMEDOUT";
+        ((err.original as any)?.code === "ETIMEDOUT" ||
+          (err.original as any)?.cause?.code === "ETIMEDOUT");
       const isSocketTimeoutError =
         err instanceof FirebaseError &&
-        err.original instanceof FetchError &&
-        err.original.code === "ESOCKETTIMEDOUT";
+        ((err.original as any)?.code === "ESOCKETTIMEDOUT" ||
+          (err.original as any)?.cause?.code === "ESOCKETTIMEDOUT");
       if (isAbortError || isTimeoutError || isSocketTimeoutError) {
         res.statusCode = 504;
         return res.end("Timed out waiting for function to respond.\n");
       }
       res.statusCode = 500;
       return res.end(`An internal error occurred while proxying for ${rewriteIdentifier}\n`);
+    } finally {
+      if (passThrough) {
+        passThrough.resume();
+      }
+    }
+
+    const resHeaders: Record<string, string | string[]> = {};
+    for (const [key, value] of (proxyRes.response.headers as any).entries()) {
+      resHeaders[key.toLowerCase()] = value;
     }
 
     if (proxyRes.status === 404) {
-      // x-cascade is not a string[].
-      const cascade = proxyRes.response.headers.get("x-cascade");
-      if (options.forceCascade || (cascade && cascade.toUpperCase() === "PASS")) {
+      const cascade = resHeaders["x-cascade"];
+      if (
+        options.forceCascade ||
+        (typeof cascade === "string" && cascade.toUpperCase() === "PASS")
+      ) {
         return next();
       }
     }
 
     // default to private cache
-    if (!proxyRes.response.headers.get("cache-control")) {
-      proxyRes.response.headers.set("cache-control", "private");
+    if (!resHeaders["cache-control"]) {
+      resHeaders["cache-control"] = "private";
     }
 
     // don't allow cookies to be set on non-private cached responses
-    const cc = proxyRes.response.headers.get("cache-control");
-    if (cc && !cc.includes("private")) {
-      proxyRes.response.headers.delete("set-cookie");
+    const cc = resHeaders["cache-control"];
+    if (typeof cc === "string" && !cc.includes("private")) {
+      delete resHeaders["set-cookie"];
     }
 
-    proxyRes.response.headers.set("vary", makeVary(proxyRes.response.headers.get("vary")));
+    const vary = resHeaders["vary"];
+    resHeaders["vary"] = makeVary(typeof vary === "string" ? vary : null);
 
     // Fix the location header that `node-fetch` attempts to helpfully fix:
     // https://github.com/node-fetch/node-fetch/blob/4abbfd231f4bce7dbe65e060a6323fc6917fd6d9/src/index.js#L117-L120
     // Filed a bug in `node-fetch` to either document the change or fix it:
     // https://github.com/node-fetch/node-fetch/issues/1086
-    const location = proxyRes.response.headers.get("location");
-    if (location) {
+    const location = resHeaders["location"];
+    if (typeof location === "string" && location) {
       // If parsing the URL fails, it may be because the location header
       // isn't a helpeful resolved URL (if node-fetch changes behavior). This
       // try is a preventative measure to ensure such a change shouldn't break
@@ -161,7 +205,7 @@ export function proxyRequestHandler(
         // "fixed" header is the same as the origin of the outbound request.
         if (locationURL.origin === u.origin) {
           const unborkedLocation = location.replace(locationURL.origin, "");
-          proxyRes.response.headers.set("location", unborkedLocation);
+          resHeaders["location"] = unborkedLocation;
         }
       } catch (e: any) {
         logger.debug(
@@ -170,11 +214,20 @@ export function proxyRequestHandler(
       }
     }
 
-    for (const [key, value] of Object.entries(proxyRes.response.headers.raw())) {
-      res.setHeader(key, value as string[]);
+    for (const key of Object.keys(resHeaders)) {
+      const value = resHeaders[key];
+      if (key === "set-cookie") {
+        if (typeof (proxyRes.response.headers as any).getSetCookie === "function") {
+          res.setHeader(key, (proxyRes.response.headers as any).getSetCookie());
+        } else {
+          res.setHeader(key, value);
+        }
+      } else {
+        res.setHeader(key, value);
+      }
     }
     res.statusCode = proxyRes.status;
-    proxyRes.response.body.pipe(res);
+    proxyRes.body.pipe(res);
   };
 }
 

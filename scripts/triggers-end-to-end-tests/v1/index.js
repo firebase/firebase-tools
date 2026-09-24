@@ -1,5 +1,5 @@
 const admin = require("firebase-admin");
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v1");
 
 /*
  * Log snippets that the driver program above checks for. Be sure to update

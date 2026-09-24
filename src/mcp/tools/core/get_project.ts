@@ -8,6 +8,8 @@ export const get_project = tool(
   {
     name: "get_project",
     description: "Use this to retrieve information about the currently active Firebase Project.",
+    humanReadableDescription:
+      "Retrieve metadata and configuration details for the currently active Firebase project.",
     inputSchema: z.object({}),
     annotations: {
       title: "Get Current Firebase Project",

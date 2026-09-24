@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
+import { FirebaseError } from "../../../error";
 import * as fabricator from "./fabricator";
 import * as reporter from "./reporter";
 import * as executor from "./executor";
@@ -23,6 +24,8 @@ import * as identityPlatformNS from "../../../gcp/identityPlatform";
 import { AuthBlockingService } from "../services/auth";
 import { deepCopy } from "@angular-devkit/core";
 import * as gce from "../../../gcp/computeEngine";
+import * as iam from "../../../gcp/iam";
+import * as resourcemanager from "../../../gcp/resourceManager";
 
 describe("Fabricator", () => {
   // Stub all GCP APIs to make sure this test is hermetic
@@ -125,7 +128,9 @@ describe("Fabricator", () => {
     },
     appEngineLocation: "us-central1",
     projectNumber: "1234567",
+    projectId: "test-project",
   };
+
   let fab: fabricator.Fabricator;
   beforeEach(() => {
     fab = new fabricator.Fabricator(ctorArgs);
@@ -650,7 +655,7 @@ describe("Fabricator", () => {
       } catch (err) {
         // do nothing, error is expected
       }
-      await expect(sc.getToken()).to.eventually.equal("magic token");
+      await expect(sc.withToken(async (t) => t)).to.eventually.equal("magic token");
     });
 
     it("deletes broken function and retries on cloud run quota exhaustion", async () => {
@@ -665,6 +670,62 @@ describe("Fabricator", () => {
 
       expect(gcfv2.createFunction).to.have.been.calledTwice;
       expect(gcfv2.deleteFunction).to.have.been.called;
+    });
+
+    it("retries createV2Function and succeeds when service account 404 occurs", async () => {
+      const queueExec = new executor.QueueExecutor({
+        retries: 5,
+        backoff: 1,
+        maxBackoff: 1,
+      });
+      const fabWithQueue = new fabricator.Fabricator({
+        ...ctorArgs,
+        functionExecutor: queueExec,
+      });
+
+      const saError = new FirebaseError(
+        "Service account sa@proj.iam.gserviceaccount.com was not found",
+        { status: 404 },
+      );
+
+      gcfv2.createFunction.onFirstCall().rejects(saError);
+      gcfv2.createFunction.onSecondCall().resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      run.setInvokerCreate.resolves();
+
+      const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
+      const sc = new scraper.SourceTokenScraper();
+      await fabWithQueue.createV2Function(ep, sc);
+
+      expect(gcfv2.createFunction).to.have.been.calledTwice;
+    });
+
+    it("retries createV2Function and succeeds when service account 400 propagation error occurs", async () => {
+      const queueExec = new executor.QueueExecutor({
+        retries: 5,
+        backoff: 1,
+        maxBackoff: 1,
+      });
+      const fabWithQueue = new fabricator.Fabricator({
+        ...ctorArgs,
+        functionExecutor: queueExec,
+      });
+
+      const saError = new FirebaseError(
+        "Validation failed for trigger: The request was invalid: invalid service account firebase-fn-123@proj.iam.gserviceaccount.com provided",
+        { status: 400 },
+      );
+
+      gcfv2.createFunction.onFirstCall().rejects(saError);
+      gcfv2.createFunction.onSecondCall().resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      run.setInvokerCreate.resolves();
+
+      const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
+      const sc = new scraper.SourceTokenScraper();
+      await fabWithQueue.createV2Function(ep, sc);
+
+      expect(gcfv2.createFunction).to.have.been.calledTwice;
     });
 
     it("throws on set invoker failure", async () => {
@@ -1029,7 +1090,7 @@ describe("Fabricator", () => {
       } catch (err) {
         // do nothing, error is expected
       }
-      await expect(sc.getToken()).to.eventually.equal("magic token");
+      await expect(sc.withToken(async (t) => t)).to.eventually.equal("magic token");
     });
   });
 
@@ -1133,6 +1194,30 @@ describe("Fabricator", () => {
         "delete topic",
       );
     });
+
+    it("ignores a 404 when the schedule or topic is already deleted", async () => {
+      scheduler.deleteJob.rejects(new FirebaseError("Job not found.", { status: 404 }));
+      pubsub.deleteTopic.rejects(new FirebaseError("Topic not found.", { status: 404 }));
+      await expect(fab.deleteScheduleV1(ep)).to.eventually.be.fulfilled;
+      expect(scheduler.deleteJob).to.have.been.called;
+      expect(pubsub.deleteTopic).to.have.been.called;
+    });
+
+    it("ignores a raw GCP 404 where the status is on err.code", async () => {
+      scheduler.deleteJob.rejects(Object.assign(new Error("Job not found."), { code: 404 }));
+      pubsub.deleteTopic.rejects(Object.assign(new Error("Topic not found."), { code: 404 }));
+      await expect(fab.deleteScheduleV1(ep)).to.eventually.be.fulfilled;
+      expect(scheduler.deleteJob).to.have.been.called;
+      expect(pubsub.deleteTopic).to.have.been.called;
+    });
+
+    it("still wraps non-404 errors", async () => {
+      scheduler.deleteJob.rejects(new FirebaseError("Permission denied.", { status: 403 }));
+      await expect(fab.deleteScheduleV1(ep)).to.eventually.be.rejectedWith(
+        reporter.DeploymentError,
+        "delete schedule",
+      );
+    });
   });
 
   describe("deleteScheduleV2", () => {
@@ -1153,6 +1238,20 @@ describe("Fabricator", () => {
 
     it("wraps errors", async () => {
       scheduler.deleteJob.rejects(new Error("Fail"));
+      await expect(fab.deleteScheduleV2(ep)).to.eventually.be.rejectedWith(
+        reporter.DeploymentError,
+        "delete schedule",
+      );
+    });
+
+    it("ignores a 404 when the schedule is already deleted", async () => {
+      scheduler.deleteJob.rejects(new FirebaseError("Job not found.", { status: 404 }));
+      await expect(fab.deleteScheduleV2(ep)).to.eventually.be.fulfilled;
+      expect(scheduler.deleteJob).to.have.been.called;
+    });
+
+    it("still wraps non-404 errors", async () => {
+      scheduler.deleteJob.rejects(new FirebaseError("Permission denied.", { status: 403 }));
       await expect(fab.deleteScheduleV2(ep)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
         "delete schedule",
@@ -1598,7 +1697,12 @@ describe("Fabricator", () => {
       const updateEndpoint = sinon.stub(fab, "updateEndpoint");
       updateEndpoint.callsFake(fakeUpsert);
 
-      await fab.applyPlan({ "us-central1": changes });
+      await fab.applyPlan({
+        default: {
+          plannedBackend: backend.of(ep1, ep2, ep3),
+          regionalChangesets: { "us-central1": changes },
+        },
+      });
     });
 
     it("handles errors and wraps them in results", async () => {
@@ -1611,7 +1715,13 @@ describe("Fabricator", () => {
         endpointsToSkip: [],
       };
 
-      const summary = await fab.applyPlan({ "us-central1": changes });
+      const summary = await fab.applyPlan({
+        default: {
+          plannedBackend: backend.of(ep),
+          regionalChangesets: { "us-central1": changes },
+        },
+      });
+
       const results = summary.results;
       expect(results[0].error).to.be.instanceOf(reporter.DeploymentError);
       expect(results[0].error?.message).to.match(/create function/);
@@ -1664,7 +1774,13 @@ describe("Fabricator", () => {
       endpointsToSkip: [],
     };
 
-    const summary = await fab.applyPlan({ "us-central1": changes });
+    const summary = await fab.applyPlan({
+      default: {
+        plannedBackend: backend.of(createEP),
+        regionalChangesets: { "us-central1": changes },
+      },
+    });
+
     const results = summary.results;
     const result = results.find((r) => r.endpoint.id === deleteEP.id);
     expect(result?.error).to.be.instanceOf(reporter.AbortedDeploymentError);
@@ -1691,7 +1807,13 @@ describe("Fabricator", () => {
     const deleteEndpoint = sinon.stub(fab, "deleteEndpoint");
     deleteEndpoint.resolves();
 
-    const summary = await fab.applyPlan({ "us-central1": changes });
+    const summary = await fab.applyPlan({
+      default: {
+        plannedBackend: backend.of(createEP, updateEP, skipEP),
+        regionalChangesets: { "us-central1": changes },
+      },
+    });
+
     const results = summary.results;
     expect(createEndpoint).to.have.been.calledWithMatch(createEP);
     expect(updateEndpoint).to.have.been.calledWithMatch(update);
@@ -1709,17 +1831,22 @@ describe("Fabricator", () => {
       const ep1 = endpoint({ httpsTrigger: {} }, { region: "us-central1" });
       const ep2 = endpoint({ httpsTrigger: {} }, { region: "us-west1" });
       const plan: planner.DeploymentPlan = {
-        "us-central1": {
-          endpointsToCreate: [ep1],
-          endpointsToUpdate: [],
-          endpointsToDelete: [],
-          endpointsToSkip: [],
-        },
-        "us-west1": {
-          endpointsToCreate: [],
-          endpointsToUpdate: [],
-          endpointsToDelete: [ep2],
-          endpointsToSkip: [],
+        default: {
+          plannedBackend: backend.of(ep1),
+          regionalChangesets: {
+            "us-central1": {
+              endpointsToCreate: [ep1],
+              endpointsToUpdate: [],
+              endpointsToDelete: [],
+              endpointsToSkip: [],
+            },
+            "us-west1": {
+              endpointsToCreate: [],
+              endpointsToUpdate: [],
+              endpointsToDelete: [ep2],
+              endpointsToSkip: [],
+            },
+          },
         },
       };
 
@@ -1738,17 +1865,22 @@ describe("Fabricator", () => {
       const ep1 = endpoint({ httpsTrigger: {} }, { region: "us-central1", id: "A" });
       const ep2 = endpoint({ httpsTrigger: {} }, { region: "us-west1", id: "B" });
       const plan: planner.DeploymentPlan = {
-        "us-central1": {
-          endpointsToCreate: [ep1],
-          endpointsToUpdate: [],
-          endpointsToDelete: [],
-          endpointsToSkip: [],
-        },
-        "us-west1": {
-          endpointsToCreate: [],
-          endpointsToUpdate: [],
-          endpointsToDelete: [ep2],
-          endpointsToSkip: [],
+        default: {
+          plannedBackend: backend.of(ep1),
+          regionalChangesets: {
+            "us-central1": {
+              endpointsToCreate: [ep1],
+              endpointsToUpdate: [],
+              endpointsToDelete: [],
+              endpointsToSkip: [],
+            },
+            "us-west1": {
+              endpointsToCreate: [],
+              endpointsToUpdate: [],
+              endpointsToDelete: [ep2],
+              endpointsToSkip: [],
+            },
+          },
         },
       };
 
@@ -1785,17 +1917,22 @@ describe("Fabricator", () => {
       const ep1 = endpoint({ httpsTrigger: {} }, { id: "A", region: "us-central1" });
       const ep2 = endpoint({ httpsTrigger: {} }, { id: "B", region: "us-west1" });
       const plan: planner.DeploymentPlan = {
-        "us-central1": {
-          endpointsToCreate: [ep1],
-          endpointsToUpdate: [],
-          endpointsToDelete: [],
-          endpointsToSkip: [],
-        },
-        "us-west1": {
-          endpointsToCreate: [ep2],
-          endpointsToUpdate: [],
-          endpointsToDelete: [],
-          endpointsToSkip: [],
+        default: {
+          plannedBackend: backend.of(ep1, ep2),
+          regionalChangesets: {
+            "us-central1": {
+              endpointsToCreate: [ep1],
+              endpointsToUpdate: [],
+              endpointsToDelete: [],
+              endpointsToSkip: [],
+            },
+            "us-west1": {
+              endpointsToCreate: [ep2],
+              endpointsToUpdate: [],
+              endpointsToDelete: [],
+              endpointsToSkip: [],
+            },
+          },
         },
       };
 
@@ -1999,6 +2136,196 @@ describe("Fabricator", () => {
       await fab.deleteRunFunction(ep);
 
       expect(runv2.deleteService).to.have.been.called;
+    });
+  });
+
+  describe("declarative security phases", () => {
+    let createServiceAccountStub: sinon.SinonStub;
+    let addServiceAccountRolesStub: sinon.SinonStub;
+    let removeServiceAccountRolesStub: sinon.SinonStub;
+    let deleteServiceAccountStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      createServiceAccountStub = sinon.stub(iam, "createServiceAccount").resolves();
+      addServiceAccountRolesStub = sinon.stub(resourcemanager, "addServiceAccountRoles").resolves();
+      removeServiceAccountRolesStub = sinon
+        .stub(resourcemanager, "removeServiceAccountRoles")
+        .resolves();
+      deleteServiceAccountStub = sinon.stub(iam, "deleteServiceAccount").resolves();
+      sinon.stub(iam, "testIamPermissions").resolves({ passed: true } as any);
+    });
+
+    it("should create SA and grant roles in grantNewRoles", async () => {
+      const plan: planner.CodebasePlan = {
+        plannedBackend: backend.empty(),
+        regionalChangesets: {},
+        serviceAccountToCreate: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        managedServiceAccount: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        rolesToAdd: ["roles/viewer"],
+      };
+
+      await fab.grantNewRoles(plan, "default");
+
+      expect(createServiceAccountStub).to.have.been.calledWith(
+        "test-project",
+        "firebase-fn-123",
+        "Managed by Firebase CLI for codebase default",
+        "Firebase Functions default",
+      );
+      expect(addServiceAccountRolesStub).to.have.been.calledWith(
+        "test-project",
+        "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        ["roles/viewer"],
+        true,
+      );
+    });
+
+    it("should remove roles or delete SA in removeOldRoles", async () => {
+      const plan: planner.CodebasePlan = {
+        plannedBackend: backend.empty(),
+        regionalChangesets: {},
+        managedServiceAccount: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        rolesToRemove: ["roles/oldRole"],
+      };
+
+      await fab.removeOldRoles(plan, "default");
+
+      expect(removeServiceAccountRolesStub).to.have.been.calledWith(
+        "test-project",
+        "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        ["roles/oldRole"],
+      );
+    });
+
+    it("should delete SA if serviceAccountToDelete is set in removeOldRoles", async () => {
+      const plan: planner.CodebasePlan = {
+        plannedBackend: backend.empty(),
+        regionalChangesets: {},
+        serviceAccountToDelete: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+      };
+
+      await fab.removeOldRoles(plan, "default");
+
+      expect(deleteServiceAccountStub).to.have.been.calledWith(
+        "test-project",
+        "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+      );
+    });
+
+    it("should clean up newly created SA if role assignment fails in grantNewRoles", async () => {
+      addServiceAccountRolesStub.rejects(new Error("Permission denied"));
+
+      const plan: planner.CodebasePlan = {
+        plannedBackend: backend.empty(),
+        regionalChangesets: {},
+        serviceAccountToCreate: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        managedServiceAccount: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        rolesToAdd: ["roles/viewer"],
+      };
+
+      await expect(fab.grantNewRoles(plan, "default")).to.be.rejectedWith(FirebaseError);
+      expect(deleteServiceAccountStub).to.have.been.calledWith(
+        "test-project",
+        "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+      );
+    });
+
+    it("should clean up newly created SA on 100% deployment failure", async () => {
+      const endpoint: backend.Endpoint = {
+        id: "fn1",
+        region: "us-central1",
+        project: "test-project",
+        platform: "gcfv1",
+        runtime: "nodejs18",
+        entryPoint: "fn1",
+        httpsTrigger: {},
+        codebase: "default",
+      };
+
+      const deploymentPlan: planner.DeploymentPlan = {
+        default: {
+          plannedBackend: backend.of(endpoint),
+          regionalChangesets: {
+            "us-central1": {
+              endpointsToCreate: [endpoint],
+              endpointsToUpdate: [],
+              endpointsToDelete: [],
+              endpointsToSkip: [],
+            },
+          },
+          serviceAccountToCreate: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+          managedServiceAccount: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        },
+      };
+
+      // Stub applyUpserts to simulate a failed deployment for fn1
+      sinon.stub(fab, "applyUpserts").resolves([
+        {
+          endpoint,
+          durationMs: 100,
+          error: new Error("Deploy failed"),
+        },
+      ]);
+
+      const summary = await fab.applyPlan(deploymentPlan);
+
+      expect(summary.results.some((r) => r.error)).to.be.true;
+      expect(deleteServiceAccountStub).to.have.been.calledWith(
+        "test-project",
+        "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+      );
+    });
+
+    it("should NOT clean up SA on partial deployment success", async () => {
+      const endpoint1: backend.Endpoint = {
+        id: "fn1",
+        region: "us-central1",
+        project: "test-project",
+        platform: "gcfv1",
+        runtime: "nodejs18",
+        entryPoint: "fn1",
+        httpsTrigger: {},
+        codebase: "default",
+      };
+      const endpoint2: backend.Endpoint = {
+        id: "fn2",
+        region: "us-central1",
+        project: "test-project",
+        platform: "gcfv1",
+        runtime: "nodejs18",
+        entryPoint: "fn2",
+        httpsTrigger: {},
+        codebase: "default",
+      };
+
+      const deploymentPlan: planner.DeploymentPlan = {
+        default: {
+          plannedBackend: backend.of(endpoint1, endpoint2),
+          regionalChangesets: {
+            "us-central1": {
+              endpointsToCreate: [endpoint1, endpoint2],
+              endpointsToUpdate: [],
+              endpointsToDelete: [],
+              endpointsToSkip: [],
+            },
+          },
+          serviceAccountToCreate: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+          managedServiceAccount: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        },
+      };
+
+      // Stub applyUpserts so endpoint1 succeeds and endpoint2 fails
+      sinon.stub(fab, "applyUpserts").resolves([
+        { endpoint: endpoint1, durationMs: 100 },
+        { endpoint: endpoint2, durationMs: 100, error: new Error("Deploy failed") },
+      ]);
+
+      await fab.applyPlan(deploymentPlan);
+
+      expect(deleteServiceAccountStub).to.not.have.been.calledWith(
+        "test-project",
+        "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+      );
     });
   });
 });

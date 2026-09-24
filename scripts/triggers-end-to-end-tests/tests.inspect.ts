@@ -9,9 +9,9 @@ const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
  * Various delays that are needed because this test spawns
  * parallel emulator subprocesses.
  */
-const TEST_SETUP_TIMEOUT = 80000;
-const EMULATORS_WRITE_DELAY_MS = 5000;
-const EMULATORS_SHUTDOWN_DELAY_MS = 5000;
+const TEST_SETUP_TIMEOUT = process.platform === "win32" ? 180000 : 80000;
+const EMULATORS_WRITE_DELAY_MS = process.platform === "win32" ? 10000 : 5000;
+const EMULATORS_SHUTDOWN_DELAY_MS = process.platform === "win32" ? 30000 : 5000;
 
 function readConfig(): FrameworkOptions {
   const filename = path.join(__dirname, "firebase.json");

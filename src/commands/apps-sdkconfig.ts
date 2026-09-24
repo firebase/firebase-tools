@@ -7,10 +7,12 @@ import {
   AppConfigurationData,
   AppMetadata,
   AppPlatform,
+  checkForApps,
   getAppConfig,
   getAppConfigFile,
   getAppPlatform,
   listFirebaseApps,
+  selectAppInteractively,
 } from "../management/apps";
 import { needProjectId } from "../projectUtils";
 import { getOrPromptProject } from "../management/projects";
@@ -18,41 +20,10 @@ import { FirebaseError } from "../error";
 import { requireAuth } from "../requireAuth";
 import { logger } from "../logger";
 import { Options } from "../options";
-import { select, confirm } from "../prompt";
+import { confirm } from "../prompt";
 
-function checkForApps(apps: AppMetadata[], appPlatform: AppPlatform): void {
-  if (!apps.length) {
-    throw new FirebaseError(
-      `There are no ${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}apps ` +
-        "associated with this Firebase project",
-    );
-  }
-}
 export interface AppsSdkConfigOptions extends Options {
   out?: string | boolean;
-}
-async function selectAppInteractively(
-  apps: AppMetadata[],
-  appPlatform: AppPlatform,
-): Promise<AppMetadata> {
-  checkForApps(apps, appPlatform);
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const choices = apps.map((app: any) => {
-    return {
-      name:
-        `${app.displayName || app.bundleId || app.packageName}` +
-        ` - ${app.appId} (${app.platform})`,
-      value: app,
-    };
-  });
-
-  return await select<AppMetadata>({
-    message:
-      `Select the ${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}` +
-      "app to get the configuration data:",
-    choices,
-  });
 }
 
 export const command = new Command("apps:sdkconfig [platform] [appId]")

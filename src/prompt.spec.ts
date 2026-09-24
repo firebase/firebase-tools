@@ -4,6 +4,17 @@ import { FirebaseError } from "./error";
 import * as prompt from "./prompt";
 
 describe("prompt", () => {
+  let originalGlobalNonInteractive: boolean;
+
+  beforeEach(() => {
+    originalGlobalNonInteractive = prompt.isNonInteractive();
+    prompt.setNonInteractive(false);
+  });
+
+  afterEach(() => {
+    prompt.setNonInteractive(originalGlobalNonInteractive);
+  });
+
   describe("guard", () => {
     it("returns default in non-interactive if present", () => {
       const { shouldReturn, value } = prompt.guard({
@@ -23,6 +34,17 @@ describe("prompt", () => {
       });
       expect(shouldReturn).to.be.false;
       expect(value).to.be.undefined;
+    });
+
+    it("returns default if global non-interactive override is active", () => {
+      prompt.setNonInteractive(true);
+      const { shouldReturn, value } = prompt.guard({
+        message: "message",
+        nonInteractive: false,
+        default: 42,
+      });
+      expect(shouldReturn).to.be.true;
+      expect(value).to.equal(42);
     });
 
     it("throws if non-interactive without default", () => {

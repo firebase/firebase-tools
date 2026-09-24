@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import { McpContext } from "../types";
-import { availableTools, getRemoteToolsByFeature } from "./index";
+import { availableTools, getRemoteToolsByFeature, markdownDocsOfTools } from "./index";
 import { ONEMCP_SERVERS } from "../onemcp/index";
 import { OneMcpServer } from "../onemcp/onemcp_server";
 
@@ -22,6 +22,14 @@ describe("availableTools", () => {
     firebaseCliCommand: "firebase",
     isBillingEnabled: true,
   };
+
+  let listToolsStub: sinon.SinonStub;
+  beforeEach(() => {
+    listToolsStub = sinon.stub(OneMcpServer.prototype, "listTools").resolves([]);
+  });
+  afterEach(() => {
+    listToolsStub.restore();
+  });
 
   it("should return specific tools when enabledTools is provided", async () => {
     const tools = await availableTools(mockContext, [], [], ["firebase_login"]);
@@ -95,7 +103,7 @@ describe("getRemoteToolsByFeature", () => {
     fetchStub.resetHistory();
     await getRemoteToolsByFeature([]);
     // If features is empty, it should use all keys in ONEMCP_SERVERS.
-    expect(fetchStub).to.have.been.calledTwice;
+    expect(fetchStub).to.have.been.calledThrice;
   });
 
   it("should return flattened results from all remote servers", async () => {
@@ -131,5 +139,53 @@ describe("getRemoteToolsByFeature", () => {
         }
       }
     }
+  });
+});
+
+describe("markdownDocsOfTools", () => {
+  let sandbox: sinon.SinonSandbox;
+
+  beforeEach(() => {
+    sandbox = sinon.createSandbox();
+  });
+
+  afterEach(() => {
+    sandbox.restore();
+  });
+
+  it("should generate a markdown table containing all tools with humanReadableDescription", async () => {
+    sandbox.stub(OneMcpServer.prototype, "listTools").resolves([]);
+
+    const doc = await markdownDocsOfTools();
+
+    expect(doc).to.include("| Tool Name | Feature Group | Description |");
+    expect(doc).to.include("| --------- | ------------- | ----------- |");
+    // Verify core tools use their humanReadableDescription
+    expect(doc).to.include(
+      "| firebase_login | core | Sign the user into the Firebase CLI and MCP server or check current authentication status. |",
+    );
+    expect(doc).to.include(
+      "| firebase_logout | core | Sign the user out of the Firebase CLI and MCP server. |",
+    );
+    expect(doc).to.include(
+      "| auth_get_users | auth | Retrieve Firebase Auth users by UID, email, phone number, or list all users. |",
+    );
+  });
+
+  it("should fallback to description if humanReadableDescription is not provided", async () => {
+    const mockRemoteTool = {
+      mcp: {
+        name: "remote_tool_without_hrd",
+        description: "AI description only",
+      },
+    };
+    sandbox
+      .stub(OneMcpServer.prototype, "listTools")
+      .resolves([mockRemoteTool as unknown as import("../tool").ServerTool]);
+
+    const doc = await markdownDocsOfTools();
+
+    expect(doc).to.include("remote_tool_without_hrd");
+    expect(doc).to.include("AI description only");
   });
 });

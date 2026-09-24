@@ -30,8 +30,7 @@ npm run format                   # Auto-fix formatting issues
 - **Throw `FirebaseError`** (`src/error.ts`) for expected, user-facing errors. If the error is due to a violation of a precondition (e.g. something
   that is null but should never be), specify a non-zero exit code.
 - **API calls must use `apiv2.ts`** for authenticated requests.
-- **Reduce nesting as much as possible** Code should avoid unnecessarily deep nesting or long periods of nesting. Handle edge cases early and exit
-  or fold them into the general case. Consider helper functions that can completely encapsulate branching, e.g. multiple ways a variable can be populated.
+- **Reduce nesting as much as possible:** Code should avoid unnecessarily deep nesting or long periods of nesting. Use early returns, `continue`, and `break` statements in functions and loops to handle edge cases early and keep main logic flat. Consider helper functions to encapsulate complex branching.
 
 ### TypeScript
 

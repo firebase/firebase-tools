@@ -1,10 +1,7 @@
-import { AbortSignal } from "abort-controller";
 import { URL, URLSearchParams } from "url";
 import { Readable } from "stream";
-import { ProxyAgent } from "proxy-agent";
+import { ProxyAgent, request } from "undici";
 import * as retry from "retry";
-import AbortController from "abort-controller";
-import fetch, { HeadersInit, Response, RequestInit, Headers } from "node-fetch";
 import * as http from "http";
 import * as https from "https";
 import util from "util";
@@ -14,6 +11,7 @@ import { FirebaseError } from "./error";
 import { isFirebaseMcp, detectAIAgent } from "./env";
 import { logger } from "./logger";
 import { responseToError } from "./responseToError";
+import { streamToString } from "./streamUtils";
 import * as FormData from "form-data";
 
 // Using import would require resolveJsonModule, which seems to break the
@@ -38,7 +36,6 @@ const GOOG_QUOTA_USER_HEADER = "x-goog-quota-user";
 
 // Header for specifying a quota project. See https://cloud.google.com/apis/docs/system-parameters#project-header
 export const GOOG_USER_PROJECT_HEADER = "x-goog-user-project";
-const GOOGLE_CLOUD_QUOTA_PROJECT = process.env.GOOGLE_CLOUD_QUOTA_PROJECT;
 export const CLI_OAUTH_PROJECT_NUMBER = "563584335869";
 
 export type HttpMethod =
@@ -150,13 +147,16 @@ export async function getAccessToken(): Promise<string> {
 }
 
 function proxyURIFromEnv(): string | undefined {
-  return (
+  const uri =
     process.env.HTTPS_PROXY ||
     process.env.https_proxy ||
     process.env.HTTP_PROXY ||
     process.env.http_proxy ||
-    undefined
-  );
+    undefined;
+  if (uri === "undefined" || uri === "null") {
+    return undefined;
+  }
+  return uri;
 }
 
 // Some networks (and recent Node.js security releases) interact badly with
@@ -197,6 +197,12 @@ export type ClientOptions = {
   apiVersion?: string;
   auth?: boolean;
 };
+
+interface FetchOptions extends RequestInit {
+  dispatcher?: ProxyAgent;
+  duplex?: "half";
+  agent?: http.Agent | https.Agent | ((parsedUrl: URL) => http.Agent | https.Agent);
+}
 
 export class Client {
   constructor(private opts: ClientOptions) {
@@ -357,10 +363,10 @@ export class Client {
     }
     if (
       !reqOptions.ignoreQuotaProject &&
-      GOOGLE_CLOUD_QUOTA_PROJECT &&
-      GOOGLE_CLOUD_QUOTA_PROJECT !== ""
+      process.env.GOOGLE_CLOUD_QUOTA_PROJECT &&
+      process.env.GOOGLE_CLOUD_QUOTA_PROJECT !== ""
     ) {
-      reqOptions.headers.set(GOOG_USER_PROJECT_HEADER, GOOGLE_CLOUD_QUOTA_PROJECT);
+      reqOptions.headers.set(GOOG_USER_PROJECT_HEADER, process.env.GOOGLE_CLOUD_QUOTA_PROJECT);
     }
     return reqOptions;
   }
@@ -409,24 +415,19 @@ export class Client {
       }
     }
 
-    const fetchOptions: RequestInit = {
+    const fetchOptions: FetchOptions = {
       headers: options.headers,
       method: options.method,
       redirect: options.redirect,
-      compress: options.compress,
     };
 
-    if (proxyURIFromEnv()) {
-      fetchOptions.agent = new ProxyAgent();
+    const proxyURI = proxyURIFromEnv();
+    if (proxyURI) {
+      fetchOptions.dispatcher = new ProxyAgent({ uri: proxyURI });
     }
 
     if (options.signal) {
-      const signal = options.signal as any;
-      signal.reason = "";
-      signal.throwIfAborted = () => {
-        throw new FirebaseError("Aborted");
-      };
-      fetchOptions.signal = signal;
+      fetchOptions.signal = options.signal;
     }
 
     let reqTimeout: NodeJS.Timeout | undefined;
@@ -435,12 +436,7 @@ export class Client {
       reqTimeout = setTimeout(() => {
         controller.abort();
       }, options.timeout);
-      const signal = controller.signal as any;
-      signal.reason = "";
-      signal.throwIfAborted = () => {
-        throw new FirebaseError("Aborted");
-      };
-      fetchOptions.signal = signal;
+      fetchOptions.signal = controller.signal;
     }
 
     // A request can only be safely retried if its body can be sent again.
@@ -449,11 +445,12 @@ export class Client {
     // Raw streams cannot be replayed and therefore disable the keep-alive retry.
     let bodyReplayable = true;
     if (typeof options.body === "string" || Buffer.isBuffer(options.body)) {
-      fetchOptions.body = options.body;
+      fetchOptions.body = options.body as any;
     } else if (options.body instanceof FormData) {
-      fetchOptions.body = options.body.getBuffer();
+      fetchOptions.body = options.body.getBuffer() as any;
     } else if (isStream(options.body)) {
-      fetchOptions.body = options.body;
+      fetchOptions.body = options.body as any;
+      fetchOptions.duplex = "half";
       bodyReplayable = false;
     } else if (options.body !== undefined) {
       fetchOptions.body = JSON.stringify(options.body);
@@ -493,9 +490,38 @@ export class Client {
           }
           this.logRequest(options);
           try {
-            res = await fetch(fetchURL, fetchOptions);
+            if (options.compress === false) {
+              const undiciOptions: any = {
+                method: fetchOptions.method,
+                headers: {},
+                decompress: false,
+              };
+              if (fetchOptions.dispatcher) {
+                undiciOptions.dispatcher = fetchOptions.dispatcher;
+              }
+              if (fetchOptions.signal) {
+                undiciOptions.signal = fetchOptions.signal;
+              }
+              if (fetchOptions.body) {
+                undiciOptions.body = fetchOptions.body;
+              }
+              if (fetchOptions.headers) {
+                for (const [key, value] of (fetchOptions.headers as any).entries()) {
+                  undiciOptions.headers[key] = value;
+                }
+              }
+              const undiciRes = await request(fetchURL, undiciOptions);
+              res = new UndiciResponseCompat(undiciRes) as any;
+            } else {
+              res = await fetch(fetchURL, fetchOptions);
+            }
           } catch (thrown: any) {
-            const err = thrown instanceof Error ? thrown : new Error(thrown);
+            const err =
+              thrown && typeof thrown === "object" && thrown.cause instanceof Error
+                ? thrown.cause
+                : thrown instanceof Error
+                  ? thrown
+                  : new Error(thrown);
             logger.debug(
               `*** [apiv2] error from fetch(${fetchURL}, ${JSON.stringify(fetchOptions)}): ${err}`,
             );
@@ -532,7 +558,17 @@ export class Client {
           } else if (options.responseType === "xml") {
             body = (await res.text()) as unknown as ResT;
           } else if (options.responseType === "stream") {
-            body = res.body as unknown as ResT;
+            if (res.body) {
+              if (typeof (res.body as any).getReader === "function") {
+                body = Readable.fromWeb(res.body as any) as unknown as ResT;
+              } else {
+                body = res.body as unknown as ResT;
+              }
+            } else {
+              const emptyStream = new Readable();
+              emptyStream.push(null);
+              body = emptyStream as unknown as ResT;
+            }
           } else {
             throw new FirebaseError(`Unable to interpret response. Please set responseType.`, {
               exit: 2,
@@ -648,6 +684,36 @@ export class Client {
 function isLocalInsecureRequest(urlPrefix: string): boolean {
   const u = new URL(urlPrefix);
   return u.protocol === "http:";
+}
+
+class UndiciResponseCompat {
+  readonly status: number;
+  readonly headers: Headers;
+  readonly body: any;
+  readonly ok: boolean;
+
+  constructor(private undiciRes: any) {
+    this.status = undiciRes.statusCode;
+    this.ok = undiciRes.statusCode >= 200 && undiciRes.statusCode < 300;
+    this.headers = new Headers();
+    for (const [key, value] of Object.entries(undiciRes.headers)) {
+      if (Array.isArray(value)) {
+        for (const v of value) {
+          this.headers.append(key, v);
+        }
+      } else if (value !== undefined) {
+        this.headers.set(key, String(value));
+      }
+    }
+    this.body = undiciRes.body;
+  }
+
+  async text(): Promise<string> {
+    if (!this.body) {
+      return "";
+    }
+    return streamToString(this.body);
+  }
 }
 
 function bodyToString(body: unknown): string {

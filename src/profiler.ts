@@ -2,7 +2,6 @@ import * as fs from "fs";
 import * as ora from "ora";
 import * as readline from "readline";
 import * as tmp from "tmp";
-import AbortController from "abort-controller";
 
 import { Client } from "./apiv2";
 import { realtimeOriginOrEmulatorOrCustomUrl } from "./database/api";
@@ -70,7 +69,7 @@ export async function profiler(options: any): Promise<unknown> {
   });
 
   if (res.response.status >= 400) {
-    throw responseToError(res.response, await res.response.text());
+    throw responseToError(res.response, await utils.streamToString(res.body));
   }
 
   if (!options.duration) {

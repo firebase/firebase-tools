@@ -11,6 +11,7 @@ export const list_projects = tool(
     name: "list_projects",
     description:
       "Use this to retrieve a list of Firebase Projects that the signed-in user has access to.",
+    humanReadableDescription: "List Firebase projects accessible by the authenticated user.",
     inputSchema: z.object({
       page_size: z
         .number()

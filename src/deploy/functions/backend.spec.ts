@@ -340,6 +340,7 @@ describe("Backend", () => {
           ingressSettings: "ALLOW_ALL" as const,
           timeoutSeconds: 60,
           serviceAccount: null,
+          runServiceId: "id",
         };
         delete wantEndpoint.state;
 
@@ -395,6 +396,7 @@ describe("Backend", () => {
           ingressSettings: "ALLOW_ALL" as const,
           timeoutSeconds: 60,
           serviceAccount: null,
+          runServiceId: "id",
         };
         delete wantEndpoint.state;
 
