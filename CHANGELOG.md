@@ -1,1 +1,2 @@
 - [fixed] Increased retries for IAM policy updates to further reduce deployment flakiness from service account propagation delays.
+- [fixed] Resolve nested ternary CEL expressions in function parameters, which previously failed to load or selected the wrong branch. (#7755)
