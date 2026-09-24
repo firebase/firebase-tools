@@ -192,6 +192,27 @@ describe("resourceManager", () => {
       await expect(addServiceAccountToRoles(PROJECT_ID, SA_EMAIL, ["roles/nonexistent"], true)).to
         .be.rejected;
     });
+
+    it("should retry up to 7 times and fail after 7 retries", async () => {
+      for (let i = 0; i < 8; i++) {
+        mockGetIamPolicy(EMPTY_POLICY);
+        mockSetIamPolicy(400, {
+          error: {
+            code: 400,
+            message: `Service account ${SA_EMAIL} does not exist.`,
+            status: "INVALID_ARGUMENT",
+          },
+        });
+      }
+
+      await expect(addServiceAccountToRoles(PROJECT_ID, SA_EMAIL, ["roles/viewer"], true)).to.be
+        .rejected;
+      expect(retryStub).to.have.been.calledOnceWith(
+        sinon.match.func,
+        sinon.match({ retries: 7, delay: 1000, maxDelay: 5000 }),
+      );
+      expect(nock.isDone()).to.be.true;
+    });
   });
 
   describe("serviceAccountHasRoles", () => {
