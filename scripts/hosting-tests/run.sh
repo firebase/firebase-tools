@@ -69,10 +69,43 @@ function kill_port() {
   fi
 }
 
+function cleanup() {
+  if [ -n "${PID:-}" ]; then
+    kill "$PID" 2>/dev/null || true
+    if command -v taskkill &> /dev/null; then
+      taskkill //pid "$PID" //T //F 2>/dev/null || true
+    fi
+  fi
+  kill_port "${PORT:-8685}"
+  kill_port "5000"
+}
+trap cleanup EXIT
+
+function poll_url() {
+  local url="$1"
+  local expected_body="$2"
+  local timeout_secs="${3:-30}"
+  local delay_secs="${4:-0.5}"
+  local end=$((SECONDS + timeout_secs))
+  local response=""
+
+  while [ "$SECONDS" -lt "$end" ]; do
+    response="$(curl -s -L --connect-timeout 2 --max-time 3 "$url" 2>/dev/null || true)"
+    if [ "$response" = "$expected_body" ]; then
+      return 0
+    fi
+    sleep "$delay_secs"
+  done
+
+  echo "Expected ${response} to equal ${expected_body}."
+  return 1
+}
+
+
 echo "Testing local serve..."
 firebase serve --only hosting --project "${FBTOOLS_TARGET_PROJECT}" --port "${PORT}" --debug &
 PID="$!"
-sleep 5
+poll_url "localhost:${PORT}/${TARGET_FILE}" "${DATE}"
 VALUE="$(curl localhost:${PORT}/${TARGET_FILE})"
 test "${DATE}" = "${VALUE}" || (echo "Expected ${VALUE} to equal ${DATE}." && false)
 kill "$PID" 2>/dev/null || true
@@ -80,12 +113,13 @@ if command -v taskkill &> /dev/null; then
   taskkill //pid "$PID" //T //F 2>/dev/null || true
 fi
 kill_port "${PORT}"
+PID=""
 echo "Tested local serve."
 
 echo "Testing local hosting emulator..."
 firebase emulators:start --only hosting --project "${FBTOOLS_TARGET_PROJECT}" &
 PID="$!"
-sleep 5
+poll_url "localhost:${PORT}/${TARGET_FILE}" "${DATE}"
 VALUE="$(curl localhost:${PORT}/${TARGET_FILE})"
 test "${DATE}" = "${VALUE}" || (echo "Expected ${VALUE} to equal ${DATE}." && false)
 
@@ -103,12 +137,13 @@ if command -v taskkill &> /dev/null; then
 fi
 kill_port "${PORT}"
 kill_port "5000"
+PID=""
 echo "Tested local hosting emulator."
 
 echo "Testing hosting deployment..."
 firebase hosting:channel:deploy --non-interactive --expires 1h --project "${FBTOOLS_TARGET_PROJECT}" --json "channel-${RUN_SUFFIX}" | tee channeldeploy.json
 URL=$(cat channeldeploy.json | jq -r ".result.\"${FBTOOLS_TARGET_PROJECT}\".url")
-sleep 12
+poll_url "$URL/${TARGET_FILE}" "${DATE}"
 VALUE="$(curl $URL/${TARGET_FILE})"
 test "${DATE}" = "${VALUE}" || (echo "Expected ${VALUE} to equal ${DATE}." && false)
 
@@ -164,7 +199,7 @@ echo "Initialized second temp directory."
 echo "Testing hosting channel deployment by target..."
 firebase hosting:channel:deploy "targetchannel-${RUN_SUFFIX}" --only customtarget --project "${FBTOOLS_TARGET_PROJECT}" --non-interactive --json | tee output.json
 CHANNEL_URL=$(cat output.json | jq -r ".result.customtarget.url")
-sleep 12
+poll_url "${CHANNEL_URL}/${TARGET_FILE}" "${DATE}"
 VALUE="$(curl ${CHANNEL_URL}/${TARGET_FILE})"
 test "${DATE}" = "${VALUE}" || (echo "Expected ${VALUE} to equal ${DATE}." && false)
 echo "Tested hosting channel deployment by target."
