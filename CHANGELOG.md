@@ -1,8 +1,2 @@
-- [changed] Improve formatting and user experience for Cloud Functions parameter and secret prompts.
-- [fixed] Fail fast with an actionable error and remediation instructions when declarative security APIs (IAM and Cloud Resource Manager) are disabled on the project.
-- Updated Pub/Sub emulator to version 0.8.36.
-- [fixed] Clean up managed service accounts when opting out of declarative security alongside a filtered codebase deploy.
-- ext:uninstall --immediate now warns about secrets bound to the extension that will be deleted and offers a migration path.
-- [fixed] Generate deterministic unsalted ETags for declarative security roles.
+- [fixed] Increased retries for IAM policy updates to further reduce deployment flakiness from service account propagation delays.
 - [fixed] Preselect the default values of list function params in multi-select prompts.
-- Updated the Firebase SQL Connect local toolkit to v3.4.20.

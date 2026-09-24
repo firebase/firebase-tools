@@ -2351,7 +2351,6 @@ describe("functions/kits/install", () => {
         absSourcePath: "/mock/project/source",
         instanceId: "inst",
         nonInteractive: false,
-        force: false,
         params: paramList,
       });
 
@@ -2369,7 +2368,6 @@ describe("functions/kits/install", () => {
         userEnvs: sinon.match.object,
         codebase: "inst",
         nonInteractive: false,
-        force: false,
       });
 
       expect(writeResolvedParamsStub).to.have.been.calledWith(
@@ -2385,8 +2383,52 @@ describe("functions/kits/install", () => {
       );
     });
 
-    it("should write secret refs when secretEnvParams experiment is enabled", async () => {
+    it("should write secret refs with an instance-specific prefix when secretEnvParams and writeDefaultSecretBindings experiments are enabled", async () => {
       (experiments.isEnabled as sinon.SinonStub).withArgs("secretEnvParams").returns(true);
+      (experiments.isEnabled as sinon.SinonStub)
+        .withArgs("writeDefaultSecretBindings")
+        .returns(true);
+      const mockConfig = { projectDir: "/mock/project" } as Config;
+      const paramList: params.Param[] = [{ name: "SECRET_VAR", type: "secret" }];
+      const wantUpdatedParamList: params.Param[] = [
+        { name: "SECRET_VAR", type: "secret", resourceId: "kit-inst-SECRET_VAR" },
+      ];
+
+      resolveParamsStub.resolves({
+        paramValues: {},
+        secretRefs: { SECRET_VAR: "my-secret:latest" },
+      });
+
+      await promptAndWriteKitParams({
+        config: mockConfig,
+        projectId: "my-project",
+        absConfigDirPath: "/mock/project/config-inst",
+        absSourcePath: "/mock/project/source",
+        instanceId: "inst",
+        nonInteractive: false,
+        params: paramList,
+      });
+
+      expect(resolveParamsStub).to.have.been.calledWith({
+        params: wantUpdatedParamList,
+        firebaseConfig: { projectId: "my-project" },
+        userEnvs: sinon.match.object,
+        codebase: "inst",
+        nonInteractive: false,
+      });
+
+      expect(writeResolvedSecretRefsStub).to.have.been.calledWith(
+        { SECRET_VAR: "my-secret:latest" },
+        {},
+        sinon.match.object,
+      );
+    });
+
+    it("should not write secret refs when writeDefaultSecretBindings experiment is disabled", async () => {
+      (experiments.isEnabled as sinon.SinonStub).withArgs("secretEnvParams").returns(true);
+      (experiments.isEnabled as sinon.SinonStub)
+        .withArgs("writeDefaultSecretBindings")
+        .returns(false);
       const mockConfig = { projectDir: "/mock/project" } as Config;
       const paramList: params.Param[] = [{ name: "SECRET_VAR", type: "secret" }];
 
@@ -2401,14 +2443,37 @@ describe("functions/kits/install", () => {
         absConfigDirPath: "/mock/project/config-inst",
         absSourcePath: "/mock/project/source",
         instanceId: "inst",
+        nonInteractive: false,
         params: paramList,
       });
 
-      expect(writeResolvedSecretRefsStub).to.have.been.calledWith(
-        { SECRET_VAR: "my-secret:latest" },
-        {},
-        sinon.match.object,
-      );
+      expect(writeResolvedSecretRefsStub).to.not.have.been.called;
+    });
+
+    it("should not write secret refs when secretEnvParams experiment is disabled even if writeDefaultSecretBindings is enabled", async () => {
+      (experiments.isEnabled as sinon.SinonStub).withArgs("secretEnvParams").returns(false);
+      (experiments.isEnabled as sinon.SinonStub)
+        .withArgs("writeDefaultSecretBindings")
+        .returns(true);
+      const mockConfig = { projectDir: "/mock/project" } as Config;
+      const paramList: params.Param[] = [{ name: "SECRET_VAR", type: "secret" }];
+
+      resolveParamsStub.resolves({
+        paramValues: {},
+        secretRefs: { SECRET_VAR: "my-secret:latest" },
+      });
+
+      await promptAndWriteKitParams({
+        config: mockConfig,
+        projectId: "my-project",
+        absConfigDirPath: "/mock/project/config-inst",
+        absSourcePath: "/mock/project/source",
+        instanceId: "inst",
+        nonInteractive: false,
+        params: paramList,
+      });
+
+      expect(writeResolvedSecretRefsStub).to.not.have.been.called;
     });
 
     it("should apply secretRefs from loaded user envs to matching secret params", async () => {
@@ -2454,7 +2519,6 @@ describe("functions/kits/install", () => {
         userEnvs: sinon.match.object,
         codebase: "inst",
         nonInteractive: undefined,
-        force: undefined,
       });
     });
 
