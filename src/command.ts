@@ -480,7 +480,7 @@ export class Command {
       await this.prepare(options);
 
       if (this.name.startsWith("ext:") && experiments.isEnabled("extdeprecationwarnings")) {
-        showDeprecationWarningBefore(this.name, options);
+        await showDeprecationWarningBefore(this.name, options, args);
       }
 
       for (const before of this.befores) {

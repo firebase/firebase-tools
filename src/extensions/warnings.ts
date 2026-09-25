@@ -1,12 +1,16 @@
 import * as clc from "colorette";
 
-import { logPrefix } from "./extensionsHelper";
+import { isLocalPath, logPrefix } from "./extensionsHelper";
 import { humanReadable } from "../deploy/extensions/deploymentSummary";
 import { InstanceSpec, getExtensionVersion } from "../deploy/extensions/planner";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { Options } from "../options";
 import * as utils from "../utils";
+
+import { getReplacementsRegistry, getReplacementPackageName } from "./replacementRegistry";
+import * as manifest from "./manifest";
+import * as refs from "./refs";
 
 const toListEntry = (i: InstanceSpec) => {
   const idAndRef = humanReadable(i);
@@ -57,6 +61,7 @@ export function outOfBandChangesWarning(instanceIds: string[], isDynamic: boolea
 }
 
 const FAQ_URL = "https://firebase.google.com/docs/extensions/faq-and-troubleshooting";
+const BANNER_BORDER = "=".repeat(80);
 
 /** Commands that trigger a standard deprecation warning before execution. */
 const WARN_BEFORE_COMMANDS = new Set([
@@ -76,7 +81,7 @@ const WARN_STRONGLY_BEFORE_COMMANDS = new Set([
 ]);
 
 /** Commands that display a post-execution footer warning notice after completion. */
-const WARN_AFTER_COMMANDS = new Set(["ext:list", "ext:info"]);
+const WARN_AFTER_COMMANDS = new Set(["ext:list", "ext:info", "ext:export"]);
 
 /**
  * Checks if deprecation warnings should be silenced (e.g. non-interactive, JSON, non-TTY, quiet mode, or CI).
@@ -108,14 +113,40 @@ export function isSilenced(options: Options | Record<string, unknown>): boolean 
 }
 
 /**
+ * Resolves an extension reference from command arguments or manifest for warning lookup.
+ */
+function resolveExtensionRef(
+  commandName: string,
+  options: Options | Record<string, unknown>,
+  args: readonly unknown[] = [],
+): string | undefined {
+  const firstArg = typeof args[0] === "string" ? args[0] : undefined;
+  if (!firstArg || isLocalPath(firstArg)) {
+    return undefined;
+  }
+  try {
+    const ref =
+      commandName === "ext:configure" || commandName === "ext:update"
+        ? manifest.getInstanceRef(firstArg, manifest.loadConfig(options as Options))
+        : refs.parse(firstArg);
+    return refs.toExtensionRef(ref);
+  } catch (err) {
+    logger.debug(`Could not resolve extension ref for deprecation warning: ${String(err)}`);
+    return undefined;
+  }
+}
+
+/**
  * Displays deprecation warnings or throws hard exit errors before an ext:* command executes.
  * @param commandName Name of the command being run (e.g. "ext:install").
  * @param options Command execution options object.
+ * @param args Optional command arguments array.
  */
-export function showDeprecationWarningBefore(
+export async function showDeprecationWarningBefore(
   commandName: string,
   options: Options | Record<string, unknown>,
-): void {
+  args: readonly unknown[] = [],
+): Promise<void> {
   if (commandName === "ext:dev:register") {
     throw new FirebaseError(
       `ext:dev:register is disabled. Registering new publisher profile IDs is no longer supported.\n` +
@@ -130,25 +161,44 @@ export function showDeprecationWarningBefore(
   }
 
   if (WARN_BEFORE_COMMANDS.has(commandName)) {
+    let actionLine = "We recommend migrating active instances to function kits.";
+
+    const ref = resolveExtensionRef(commandName, options, args);
+    if (ref) {
+      try {
+        const registry = await getReplacementsRegistry();
+        const npmPackage = getReplacementPackageName(ref, registry);
+        if (npmPackage) {
+          actionLine = `Recommended replacement: ${npmPackage}`;
+        }
+      } catch (err) {
+        logger.debug(`Failed to resolve replacement info for warning: ${String(err)}`);
+      }
+    }
+
     logger.warn(
       clc.yellow(
-        `⚠ Firebase Extensions will shut down on March 31, 2027. You will not be able to install or edit extensions after this date. Learn more: ${FAQ_URL}`,
+        `${BANNER_BORDER}\n` +
+          `⚠ Firebase Extensions will shut down on March 31, 2027.\n` +
+          `${actionLine}\n` +
+          `Learn more & view migration steps: ${FAQ_URL}\n` +
+          `${BANNER_BORDER}`,
       ),
     );
   } else if (WARN_STRONGLY_BEFORE_COMMANDS.has(commandName)) {
     logger.warn(
       clc.yellow(
-        `================================================================================\n` +
+        `${BANNER_BORDER}\n` +
           `⚠ Notice for Publishers: Firebase Extensions will shut down on March 31, 2027.\n` +
-          `Learn more: ${FAQ_URL}\n` +
-          `================================================================================`,
+          `Learn more & view migration steps: ${FAQ_URL}\n` +
+          `${BANNER_BORDER}`,
       ),
     );
   }
 }
 
 /**
- * Displays post-execution deprecation warnings (e.g. single-line footer for ext:list and ext:info).
+ * Displays post-execution deprecation warnings (e.g. single-line footer for ext:list, ext:info, and ext:export).
  * @param commandName Name of the command being run.
  * @param options Command execution options object.
  */
@@ -160,9 +210,13 @@ export function showDeprecationWarningAfter(
     return;
   }
 
+  if (commandName === "ext:export" && (options as Record<string, unknown>).mode === "functions") {
+    return;
+  }
+
   logger.warn(
     clc.yellow(
-      `⚠ Notice: Firebase Extensions will shut down on March 31, 2027. Learn more: ${FAQ_URL}`,
+      `⚠ Notice: Firebase Extensions will shut down on March 31, 2027. Learn more & view migration steps: ${FAQ_URL}`,
     ),
   );
 }
