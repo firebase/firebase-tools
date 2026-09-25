@@ -12,7 +12,6 @@ import { logBullet, logSuccess, logWarning, readSecretValue } from "../utils";
 import { needProjectId, needProjectNumber } from "../projectUtils";
 import {
   addVersion,
-  destroySecretVersion,
   toSecretVersionResourceName,
   isFunctionsManaged,
   ensureApi,
@@ -31,8 +30,11 @@ export const command = new Command("functions:secrets:set <KEY>")
   .before(requirePermissions, [
     "secretmanager.secrets.create",
     "secretmanager.secrets.get",
+    "secretmanager.secrets.list",
     "secretmanager.secrets.update",
     "secretmanager.versions.add",
+    "secretmanager.versions.destroy",
+    "secretmanager.versions.list",
   ])
   .option(
     "--data-file <dataFile>",
@@ -91,7 +93,8 @@ export const command = new Command("functions:secrets:set <KEY>")
       return;
     }
 
-    let haveBackend = await backend.existingBackend({ projectId } as args.Context);
+    const context = { projectId } as args.Context;
+    let haveBackend = await backend.existingBackend(context);
     const endpointsToUpdate = backend
       .allEndpoints(haveBackend)
       .filter((e) => secrets.inUse({ projectId, projectNumber }, secret, e));
@@ -105,10 +108,19 @@ export const command = new Command("functions:secrets:set <KEY>")
         endpointsToUpdate.map((e) => `${e.id}(${e.region})`).join("\n\t"),
     );
 
+    // Only the versions these functions are moving off are candidates for destruction.
+    // Anything else unused is left to functions:secrets:prune, which lists what it will remove.
+    const staleVersions = new Set(
+      secrets
+        .of(endpointsToUpdate)
+        .filter((sev) => sev.secret === secret.name && sev.version && sev.version !== "latest")
+        .map((sev) => sev.version),
+    );
+
     const redeploy = options.nonInteractive
       ? false
       : await confirm({
-          message: `Do you want to re-deploy the functions and destroy the stale version of secret ${secret.name}?`,
+          message: `Do you want to re-deploy the functions and destroy the stale versions of secret ${secret.name}?`,
           default: true,
           force: options.force,
         });
@@ -133,7 +145,8 @@ export const command = new Command("functions:secrets:set <KEY>")
     await Promise.all(updateOps);
 
     // Double check that old secrets versions are unused.
-    haveBackend = await backend.existingBackend({ projectId } as args.Context, true);
+    haveBackend = await backend.existingBackend(context, true);
+    backend.assertAllRegionsReachable(context);
     const staleEndpoints = backend.allEndpoints(
       backend.matchingBackend(haveBackend, (e) => {
         const pInfo = { projectId, projectNumber };
@@ -151,16 +164,22 @@ export const command = new Command("functions:secrets:set <KEY>")
       );
     }
 
-    // Remove stale secret versions;
     const secretsToPrune = (
       await secrets.pruneSecrets({ projectId, projectNumber }, backend.allEndpoints(haveBackend))
-    ).filter((sv) => sv.key === key);
+    ).filter((sv) => sv.key === key && staleVersions.has(sv.version));
+    if (secretsToPrune.length === 0) {
+      return;
+    }
     logBullet(
       `Removing secret versions: ${secretsToPrune
         .map((sv) => sv.key + "[" + sv.version + "]")
         .join(", ")}`,
     );
-    await Promise.all(
-      secretsToPrune.map((sv) => destroySecretVersion(projectId, sv.secret, sv.version)),
-    );
+    const { erred } = await secrets.destroySecretVersions(secretsToPrune);
+    if (erred.length) {
+      throw new FirebaseError(
+        `Failed to destroy ${erred.length} secret versions:\n\t` +
+          erred.map((e) => e.message).join("\n\t"),
+      );
+    }
   });
