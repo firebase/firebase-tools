@@ -247,7 +247,7 @@ You can probably fix this by running "npm install ${systemLog.data.name}@latest"
           `The Cloud Functions directory you specified does not have a "package.json" file, so we can't load it.`,
         );
         break;
-      case "function-code-resolution-failed":
+      case "function-code-resolution-failed": {
         this.log("WARN", systemLog.data.error);
         const helper = ["We were unable to load your functions code. (see above)"];
         if (systemLog.data.isPotentially.wrong_directory) {
@@ -265,6 +265,7 @@ You can probably fix this by running "npm install ${systemLog.data.name}@latest"
         }
         utils.logWarning(helper.join("\n"), "warn", this.data);
         break;
+      }
       case "function-runtimeconfig-json-invalid":
         this.log("WARN", "Found .runtimeconfig.json but the JSON format is invalid.");
         break;

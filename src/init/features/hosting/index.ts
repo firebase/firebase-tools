@@ -42,7 +42,7 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
       case "express":
       // "svelekit" should not be removed unless it's confirmed to not cause breakages.
       case "svelekit":
-      case "sveltekit":
+      case "sveltekit": {
         logger.info();
         const useAppHosting = await confirm({
           message:
@@ -60,8 +60,9 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
           return;
         }
         break;
+      }
 
-      default:
+      default: {
         logger.info();
         logger.info(
           `Detected a ${frameworkName} codebase with SSR features. We can't guarantee that ` +
@@ -82,6 +83,7 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
           throw new FirebaseError("Hosting initialization cancelled.", { exit: 1 });
         }
         break;
+      }
     }
   }
 
