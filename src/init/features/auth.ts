@@ -30,7 +30,7 @@ export interface AuthInfo {
 export async function askQuestions(
   setup: Setup,
   config?: Config,
-  options?: Options,
+  options?: Partial<Options>,
 ): Promise<void> {
   const authConfig = setup.config.auth;
   const choices = [
@@ -71,9 +71,9 @@ export async function askQuestions(
     logger.info("");
     logger.info("Configuring Google Sign-In...");
 
-    const project = setup.project as { projectId?: string } | undefined;
+    const projectId = setup.projectId;
     const defaultDisplayName =
-      authConfig?.providers?.googleSignIn?.oAuthBrandDisplayName || project?.projectId || "My App";
+      authConfig?.providers?.googleSignIn?.oAuthBrandDisplayName || projectId || "My App";
 
     const oAuthBrandDisplayName = await input({
       message: "What display name would you like to use for your OAuth brand?",
@@ -82,7 +82,7 @@ export async function askQuestions(
 
     const defaultEmail =
       authConfig?.providers?.googleSignIn?.supportEmail ||
-      (project?.projectId ? `support@${project.projectId}.firebaseapp.com` : undefined);
+      (projectId ? `support@${projectId}.firebaseapp.com` : undefined);
 
     const supportEmail = await input({
       message: "What support email would you like to register for your OAuth brand?",
