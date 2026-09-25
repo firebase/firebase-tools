@@ -1,3 +1,4 @@
+const path = require("path");
 const chai = require("chai");
 const chaiAsPromised = require("chai-as-promised");
 const sinon = require("sinon");
@@ -27,6 +28,11 @@ process.on("unhandledRejection", (error) => {
   throw error;
 });
 
+// Absolute require.cache keys of the custom undici nock helper (src/test/helpers/nock.ts),
+// which sits next to this file. Looking them up directly avoids scanning ~3800 cache keys
+// after every test.
+const CUSTOM_NOCK_PATHS = [path.join(__dirname, "nock.ts"), path.join(__dirname, "nock.js")];
+
 let suiteFakes = new Set();
 
 /**
@@ -50,19 +56,17 @@ function cleanup() {
   nock.cleanAll();
 
   // Safely clean up custom nock (src/test/helpers/nock.ts) if required by tests
-  for (const key of Object.keys(require.cache)) {
-    if (key.endsWith("test/helpers/nock.ts") || key.endsWith("test/helpers/nock.js")) {
-      try {
-        const mod = require.cache[key];
-        if (mod && mod.exports) {
-          const customNock = mod.exports.default || mod.exports;
-          if (typeof customNock.cleanAll === "function") {
-            customNock.cleanAll();
-          }
+  for (const key of CUSTOM_NOCK_PATHS) {
+    try {
+      const mod = require.cache[key];
+      if (mod && mod.exports) {
+        const customNock = mod.exports.default || mod.exports;
+        if (typeof customNock.cleanAll === "function") {
+          customNock.cleanAll();
         }
-      } catch {
-        // Ignore cleanup errors from custom nock
       }
+    } catch {
+      // Ignore cleanup errors from custom nock
     }
   }
 }
