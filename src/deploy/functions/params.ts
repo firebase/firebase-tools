@@ -170,8 +170,8 @@ export interface ListParam extends ParamBase<string[]> {
   delimiter?: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- T is a phantom type parameter representing the resolved input value
 export interface TextInput<T> {
-  // eslint-disable-line
   text: {
     example?: string;
 
