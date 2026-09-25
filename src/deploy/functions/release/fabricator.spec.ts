@@ -27,6 +27,8 @@ import * as gce from "../../../gcp/computeEngine";
 import * as iam from "../../../gcp/iam";
 import * as resourcemanager from "../../../gcp/resourceManager";
 
+const DEFAULT_COMPUTE_SERVICE_ACCOUNT = "1234567-compute@developer.gserviceaccount.com";
+
 describe("Fabricator", () => {
   // Stub all GCP APIs to make sure this test is hermetic
   let gcf: sinon.SinonStubbedInstance<typeof gcfNS>;
@@ -40,6 +42,7 @@ describe("Fabricator", () => {
   let tasks: sinon.SinonStubbedInstance<typeof cloudtasksNS>;
   let services: sinon.SinonStubbedInstance<typeof servicesNS>;
   let identityPlatform: sinon.SinonStubbedInstance<typeof identityPlatformNS>;
+  let computeEngine: sinon.SinonStubbedInstance<typeof gce>;
 
   beforeEach(() => {
     gcf = sinon.stub(gcfNS);
@@ -53,6 +56,7 @@ describe("Fabricator", () => {
     tasks = sinon.stub(cloudtasksNS);
     services = sinon.stub(servicesNS);
     identityPlatform = sinon.stub(identityPlatformNS);
+    computeEngine = sinon.stub(gce);
 
     gcf.functionFromEndpoint.restore();
     gcfv2.functionFromEndpoint.restore();
@@ -103,6 +107,13 @@ describe("Fabricator", () => {
     );
     identityPlatform.setBlockingFunctionsConfig.rejects(
       new Error("unexpected identityPlatform.setBlockingFunctionsConfig"),
+    );
+    // Unstubbed, this reaches the Compute API over the network and every test that
+    // needs the default service account races mocha's 2s timeout. The fake derives
+    // the address from its argument so the tests still pin that the fabricator passes
+    // the project number through.
+    computeEngine.getDefaultServiceAccount.callsFake((pn: string) =>
+      Promise.resolve(`${pn}-compute@developer.gserviceaccount.com`),
     );
   });
 
@@ -892,7 +903,7 @@ describe("Fabricator", () => {
 
         await fab.createV2Function(ep, new scraper.SourceTokenScraper());
         expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, "service", [
-          await gce.getDefaultServiceAccount(fab.projectNumber),
+          DEFAULT_COMPUTE_SERVICE_ACCOUNT,
         ]);
       });
 
