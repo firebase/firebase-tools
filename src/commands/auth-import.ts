@@ -1,9 +1,6 @@
 import { parse } from "csv-parse";
-import * as Chain from "stream-chain";
 import * as clc from "colorette";
 import * as fs from "fs-extra";
-import * as Pick from "stream-json/filters/Pick";
-import * as StreamArray from "stream-json/streamers/StreamArray";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
@@ -11,6 +8,7 @@ import { logger } from "../logger";
 import { needProjectId } from "../projectUtils";
 import { Options } from "../options";
 import { requirePermissions } from "../requirePermissions";
+import { loadStreamJson } from "../streamJson";
 import {
   serialImportUsers,
   transArrayToUser,
@@ -103,11 +101,13 @@ export const command = new Command("auth:import [dataFile]")
         inStream.pipe(parser);
       });
     } else {
+      const { chain, pick, streamArray } = await loadStreamJson();
       userListArr = await new Promise<any[]>((resolve, reject) => {
-        const pipeline = new Chain([
-          Pick.withParser({ filter: /^users$/ }),
-          StreamArray.streamArray(),
-          ({ value }) => {
+        const pipeline = chain([
+          inStream,
+          pick.withParser({ filter: /^users$/ }),
+          streamArray(),
+          ({ value }: { value: Record<string, unknown> }) => {
             counter++;
             const user = validateUserJson(value);
             // TODO: Remove this casst once user can have an error.
@@ -122,14 +122,22 @@ export const command = new Command("auth:import [dataFile]")
             }
           },
         ]);
-        pipeline.once("error", reject);
-        pipeline.on("finish", () => {
+        let completed = false;
+        const onDone = () => {
+          if (completed) {
+            return;
+          }
+          completed = true;
           if (currentBatch.length) {
             batches.push(currentBatch);
+            currentBatch = [];
           }
           resolve(batches);
-        });
-        inStream.pipe(pipeline);
+        };
+        pipeline.once("error", reject);
+        pipeline.once("finish", onDone);
+        pipeline.once("end", onDone);
+        pipeline.resume();
       });
     }
 

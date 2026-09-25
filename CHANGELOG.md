@@ -1,2 +1,3 @@
-- Improved error message with a link to the Firebase console when `projects:addfirebase` fails due to unaccepted Firebase Terms of Service.
-- [fixed] Fixed `firebase deploy` leaving the Python discovery admin server (`serving.py`) running after a killed or wedged deploy, which caused later deploys to hang indefinitely on `connect ETIMEDOUT` (#10847).
+- [fixed] Increased retries for IAM policy updates to further reduce deployment flakiness from service account propagation delays.
+- [fixed] Preselect the default values of list function params in multi-select prompts.
+- [fixed] Fixed `ERR_REQUIRE_ESM` crash (e.g. on `emulators:start`) in the standalone binary and on Node.js versions earlier than 20.19 / 22.12. (#11168)
