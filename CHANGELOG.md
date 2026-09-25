@@ -1,1 +1,2 @@
 - [fixed] Increased retries for IAM policy updates to further reduce deployment flakiness from service account propagation delays.
+- [fixed] Honor boolean and integer defaults in `select` prompts for function params instead of preselecting the first option.
