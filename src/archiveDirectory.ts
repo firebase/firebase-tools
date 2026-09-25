@@ -70,7 +70,7 @@ async function zipDirectory(
     flags: "w",
     encoding: "binary",
   });
-  const archive = archiver("zip");
+  const archive = new archiver.ZipArchive();
   const archiveDone = pipeAsync(archive, archiveFileStream);
   const allFiles: string[] = [];
 
