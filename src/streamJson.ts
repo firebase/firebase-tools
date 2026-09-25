@@ -20,7 +20,7 @@ const nodeRequire: NodeRequire =
   typeof __webpack_require__ === "function" ? __non_webpack_require__ : require;
 /* eslint-enable camelcase */
 
-function load<T>(specifier: string): Promise<T> {
+async function load<T>(specifier: string): Promise<T> {
   return importModule(pathToFileURL(nodeRequire.resolve(specifier)).href) as Promise<T>;
 }
 
