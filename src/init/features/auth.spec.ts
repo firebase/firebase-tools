@@ -5,6 +5,8 @@ import * as config from "../../config";
 import * as getDefaultHostingSiteMod from "../../getDefaultHostingSite";
 import * as hostingInteractive from "../../hosting/interactive";
 import * as hostingApi from "../../hosting/api";
+import { logger } from "../../logger";
+import { Options } from "../../options";
 import { askQuestions, actuate } from "./auth";
 import { Setup } from "..";
 
@@ -67,7 +69,7 @@ describe("auth feature init", () => {
       expect(setup.featureInfo?.auth?.newSiteId).to.be.undefined;
     });
 
-    it("should not prompt to create site if a default hosting site already exists", async () => {
+    it("should not prompt to create site if a default hosting site already exists and log presence message", async () => {
       const setup: Setup = {
         config: {},
         rcfile: { projects: {}, targets: {}, etags: {} },
@@ -81,15 +83,18 @@ describe("auth feature init", () => {
         .resolves("test-site");
       sandbox.stub(prompt, "checkbox").resolves([]);
       const confirmStub = sandbox.stub(prompt, "confirm");
+      const loggerSpy = sandbox.spy(logger, "info");
 
       await askQuestions(setup, cfg);
 
       expect(getSiteStub.calledOnceWith({ projectId: "test-project" })).to.be.true;
       expect(confirmStub.called).to.be.false;
       expect(setup.featureInfo?.auth?.newSiteId).to.be.undefined;
+      expect(loggerSpy.calledWith(sinon.match(/Firebase Hosting site is present: .*test-site/))).to
+        .be.true;
     });
 
-    it("should not check or prompt to create site if featureInfo.hosting.newSiteId is already set", async () => {
+    it("should not check or prompt to create site if featureInfo.hosting.newSiteId is already set and log presence message", async () => {
       const setup: Setup = {
         config: {},
         rcfile: { projects: {}, targets: {}, etags: {} },
@@ -106,12 +111,16 @@ describe("auth feature init", () => {
       const getSiteStub = sandbox.stub(getDefaultHostingSiteMod, "getDefaultHostingSite");
       sandbox.stub(prompt, "checkbox").resolves([]);
       const confirmStub = sandbox.stub(prompt, "confirm");
+      const loggerSpy = sandbox.spy(logger, "info");
 
       await askQuestions(setup, cfg);
 
       expect(getSiteStub.called).to.be.false;
       expect(confirmStub.called).to.be.false;
       expect(setup.featureInfo?.auth?.newSiteId).to.be.undefined;
+      expect(
+        loggerSpy.calledWith(sinon.match(/Firebase Hosting site is present: .*existing-new-site/)),
+      ).to.be.true;
     });
 
     it("should prompt to create a default site if none exists and user accepts", async () => {
@@ -132,7 +141,7 @@ describe("auth feature init", () => {
         .stub(hostingInteractive, "pickHostingSiteName")
         .resolves("new-default-site");
 
-      await askQuestions(setup, cfg, { nonInteractive: false } as any);
+      await askQuestions(setup, cfg, { nonInteractive: false } as unknown as Options);
 
       expect(confirmStub.calledOnce).to.be.true;
       expect(confirmStub.firstCall.args[0]).to.deep.include({

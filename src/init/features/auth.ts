@@ -97,10 +97,13 @@ export async function askQuestions(
 
   let newSiteId: string | undefined;
   if (setup.projectId) {
-    let hasHostingSite = !!setup.featureInfo?.hosting?.newSiteId;
-    if (!hasHostingSite) {
+    let hasHostingSite = false;
+    let existingSite: string | undefined = setup.featureInfo?.hosting?.newSiteId;
+    if (existingSite) {
+      hasHostingSite = true;
+    } else {
       try {
-        await getDefaultHostingSite({ projectId: setup.projectId });
+        existingSite = await getDefaultHostingSite({ projectId: setup.projectId });
         hasHostingSite = true;
       } catch (err: unknown) {
         if (err !== errNoDefaultSite) {
@@ -110,13 +113,14 @@ export async function askQuestions(
       }
     }
 
-    if (
-      !hasHostingSite &&
-      (await confirm({
+    if (hasHostingSite && existingSite) {
+      logger.info(`Firebase Hosting site is present: ${clc.bold(existingSite)}.`);
+    } else if (
+      await confirm({
         message:
           "A Firebase Hosting site is required for Firebase Authentication. Would you like to create a default site now?",
         default: true,
-      }))
+      })
     ) {
       const createOptions = {
         projectId: setup.projectId,
