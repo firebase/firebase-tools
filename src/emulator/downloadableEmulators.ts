@@ -656,7 +656,7 @@ export async function start(
 export function isIncomaptibleArchError(err: unknown): boolean {
   return (
     hasMessage(err) &&
-    /Unknown system error/.test(err.message ?? "") &&
+    (err.message ?? "").includes("Unknown system error") &&
     process.platform === "darwin"
   );
 }

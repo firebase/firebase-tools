@@ -112,7 +112,7 @@ function removeOldFiles(
   for (const file of files) {
     const fullFilePath = path.join(emulator.opts.cacheDir, file);
 
-    if (file.indexOf(emulator.opts.namePrefix) < 0) {
+    if (!file.includes(emulator.opts.namePrefix)) {
       // This file is not related to this emulator, could be a JAR
       // from a different emulator or just a random file.
       continue;

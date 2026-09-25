@@ -235,7 +235,7 @@ export class PostgresServer {
       await db.waitReady;
       return db;
     } catch (err: unknown) {
-      if (pg17Dir && hasMessage(err) && /Database already exists/.test(err.message)) {
+      if (pg17Dir && hasMessage(err) && err.message.includes("Database already exists")) {
         // Clear out the current pglite data
         fs.rmSync(pg17Dir, { force: true, recursive: true });
         const db = new PGlite({ ...baseArgs, dataDir: pg17Dir });

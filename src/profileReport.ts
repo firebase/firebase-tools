@@ -7,8 +7,6 @@ import * as readline from "readline";
 import { FirebaseError } from "./error";
 import { logger } from "./logger";
 
-const DATA_LINE_REGEX = /^data: /;
-
 const BANDWIDTH_NOTE =
   "NOTE: The numbers reported here are only estimates of the data" +
   " payloads from read operations. They are NOT a valid measure of your bandwidth bill.";
@@ -26,7 +24,7 @@ const COLLAPSE_WILDCARD = ["$wildcard"];
 // 'static' helper methods
 
 export function extractJSON(line: string, input: any): string | null {
-  if (!input && !DATA_LINE_REGEX.test(line)) {
+  if (!input && !line.startsWith("data: ")) {
     return null;
   } else if (!input) {
     line = line.substring(5);

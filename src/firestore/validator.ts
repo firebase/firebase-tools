@@ -35,7 +35,7 @@ export function assertHasOneOf(obj: any, props: string[]): void {
  */
 export function assertEnum(obj: any, prop: string, valid: any[]): void {
   const objString = clc.cyan(JSON.stringify(obj));
-  if (valid.indexOf(obj[prop]) < 0) {
+  if (!valid.includes(obj[prop])) {
     throw new FirebaseError(`Field "${prop}" must be one of ${valid.join(", ")}: ${objString}`);
   }
 }
