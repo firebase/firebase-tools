@@ -1,2 +1,5 @@
 - [fixed] Increased retries for IAM policy updates to further reduce deployment flakiness from service account propagation delays.
 - [fixed] Preselect the default values of list function params in multi-select prompts.
+- [added] Added support for overriding the Cloud Secret Manager secret ID and version used to resolve a named secret parameter via `FIREBASE_SECRET_REF_<SECRET_NAME>` in Functions `.env` files.
+- [added] Introduced function kits (`functions:kits:install`, `functions:kits:uninstall`, `functions:kits:list`) to configure and run multiple instances of functions from the CLI.
+- [added] Added `ext:migrate` and updated `ext:export` and `ext:list` to assist with migrating Firebase Extensions to function kits.
