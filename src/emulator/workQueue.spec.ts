@@ -130,7 +130,7 @@ describe("WorkQueue", () => {
       let hasRun1 = false;
       const work1 = () => {
         hasRun1 = true;
-        return Promise.reject();
+        return Promise.reject(new Error("job failed"));
       };
 
       let hasRun2 = false;

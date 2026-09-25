@@ -173,7 +173,7 @@ var waitForAck = function (uuid, testDescription) {
     }),
     new Promise(function (resolve, reject) {
       setTimeout(function () {
-        reject("Timed out while waiting for output from " + testDescription);
+        reject(new Error("Timed out while waiting for output from " + testDescription));
       }, TIMEOUT);
     }),
   ]);
