@@ -1,1 +1,2 @@
 - Fixed `functions:delete` recreating an already-deleted Cloud Tasks queue for task queue functions. (#9305)
+- [fixed] Increased retries for IAM policy updates to further reduce deployment flakiness from service account propagation delays.
