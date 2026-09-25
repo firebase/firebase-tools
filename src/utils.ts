@@ -949,27 +949,6 @@ export function readSecretValue(prompt: string, dataFile?: string): Promise<stri
 }
 
 /**
- * Updates or creates a .gitignore file with the given entries in the given path
- */
-export function updateOrCreateGitignore(dirPath: string, entries: string[]) {
-  const gitignorePath = path.join(dirPath, ".gitignore");
-
-  if (!fs.existsSync(gitignorePath)) {
-    fs.writeFileSync(gitignorePath, entries.join("\n"));
-    return;
-  }
-
-  let content = fs.readFileSync(gitignorePath, "utf-8");
-  for (const entry of entries) {
-    if (!content.includes(entry)) {
-      content += `\n${entry}\n`;
-    }
-  }
-
-  fs.writeFileSync(gitignorePath, content);
-}
-
-/**
  * Prompts for a directory name, and reprompts if that path does not exist
  * N.B. Moved from the original prompt library to this file because it brings in a lot of
  * dependencies. Moved to "utils" because this file arleady brings in the world.
