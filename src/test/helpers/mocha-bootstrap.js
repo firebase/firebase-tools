@@ -20,6 +20,11 @@ if (typeof nodeFetch.Headers.prototype.getSetCookie !== "function") {
 // Force nock to execute its side-effects (patching http/https) immediately on load
 void nock;
 
+// Unit tests must never reach real Google APIs: unmatched requests now fail fast with
+// NetConnectNotAllowedError instead of depending on network latency (flaky 2000ms timeouts).
+nock.disableNetConnect();
+nock.enableNetConnect(/^(localhost|127\.0\.0\.1|\[::1\]|::1)(:\d+)?$/);
+
 chai.use(chaiAsPromised);
 chai.use(sinonChai);
 
