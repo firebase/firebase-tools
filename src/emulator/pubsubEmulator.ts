@@ -71,12 +71,52 @@ export class PubsubEmulator implements EmulatorInstance {
 
   async stop(): Promise<void> {
     try {
-      await downloadableEmulators.stop(Emulators.PUBSUB);
-    } catch (e: unknown) {
-      this.logger.logLabeled("DEBUG", "pubsub", JSON.stringify(e));
-      if (process.platform !== "win32") {
-        const buffer = execSync(PUBSUB_KILL_COMMAND);
-        this.logger.logLabeled("DEBUG", "pubsub", "Pubsub kill output: " + JSON.stringify(buffer));
+      const closePromises = Array.from(this.subscriptionForTopic.values()).map(async (sub) => {
+        try {
+          await sub.close();
+        } catch (err: unknown) {
+          this.logger.logLabeled(
+            "DEBUG",
+            "pubsub",
+            `Failed to close subscription ${sub.name}: ${JSON.stringify(err)}`,
+          );
+        }
+      });
+      await Promise.all(closePromises);
+      this.subscriptionForTopic.clear();
+      this.triggersForTopic.clear();
+
+      if (this._pubsub) {
+        try {
+          await this._pubsub.close();
+        } catch (err: unknown) {
+          this.logger.logLabeled(
+            "DEBUG",
+            "pubsub",
+            `Failed to close pubsub client: ${JSON.stringify(err)}`,
+          );
+        }
+        this._pubsub = undefined;
+      }
+    } catch (err: unknown) {
+      this.logger.logLabeled(
+        "DEBUG",
+        "pubsub",
+        `Error during pubsub client cleanup: ${JSON.stringify(err)}`,
+      );
+    } finally {
+      try {
+        await downloadableEmulators.stop(Emulators.PUBSUB);
+      } catch (e: unknown) {
+        this.logger.logLabeled("DEBUG", "pubsub", JSON.stringify(e));
+        if (process.platform !== "win32") {
+          const buffer = execSync(PUBSUB_KILL_COMMAND);
+          this.logger.logLabeled(
+            "DEBUG",
+            "pubsub",
+            "Pubsub kill output: " + JSON.stringify(buffer),
+          );
+        }
       }
     }
   }
