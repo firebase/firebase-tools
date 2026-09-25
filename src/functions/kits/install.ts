@@ -8,7 +8,14 @@ import { Config } from "../../config";
 import { FirebaseError, getErrMsg } from "../../error";
 import { KitFunctionConfig, FunctionsConfig } from "../../firebaseConfig";
 import { getProjectId } from "../../projectUtils";
-import { logLabeledBullet, logLabeledSuccess, logLabeledWarning, resolveWithin } from "../../utils";
+import {
+  cloneDeep,
+  deepEqual,
+  logLabeledBullet,
+  logLabeledSuccess,
+  logLabeledWarning,
+  resolveWithin,
+} from "../../utils";
 import {
   addKitPrefix,
   isKitConfig,
@@ -31,11 +38,12 @@ import * as iam from "../../gcp/iam";
 import * as functionsEnv from "../env";
 import * as functionsConfig from "../../functionsConfig";
 import { partitionUserEnvs } from "../../deploy/functions/prepare";
+import { mapObject } from "../../functional";
 import { FirebaseConfig } from "../../deploy/functions/args";
-import { cloneDeep } from "../../utils";
 import { hasProjectEnv } from "../env";
 import { RC } from "../../rc";
 import { KitInstanceEnvSeed, seedKitInstanceEnv } from "./env";
+import { removeDirectoryIfEmpty } from "../../fsutils";
 
 export const TEMPLATES = {
   installation: "init/functions/typescript/index-kit.ts",
@@ -130,6 +138,8 @@ export interface PromptExistingInstanceOptions {
 
 export interface ExistingKitInstallOptions {
   config: Config;
+  existingKit: ValidatedKitSingle;
+  existingFunctionsInfo: ExistingFunctionsInfo;
   project?: string;
   projectId?: string;
   nonInteractive?: boolean;
@@ -139,6 +149,7 @@ export interface ExistingKitInstallOptions {
   instanceId?: string;
   defaultInstanceId?: string;
   seedEnv?: KitInstanceEnvSeed;
+  createdPaths?: string[];
 }
 
 export interface PromptAndWriteKitParamsOptions {
@@ -149,7 +160,6 @@ export interface PromptAndWriteKitParamsOptions {
   absSourcePath: string;
   instanceId: string;
   nonInteractive?: boolean;
-  force?: boolean;
   params?: params.Param[];
 }
 
@@ -223,6 +233,25 @@ export function validateNpmPackageName(packageNameOrSpecifier: string): void {
   ) {
     throw new FirebaseError(
       `Invalid NPM package name '${packageNameOrSpecifier}'. Package names must be valid npm package specifiers (e.g. 'my-kit' or '@scope/my-kit').`,
+    );
+  }
+}
+
+/**
+ * Validates that an npm package or package@version specifier has a valid name format
+ * and exists in the npm registry.
+ */
+export async function validateNpmPackageExists(rawPkgName: string): Promise<void> {
+  validateNpmPackageName(rawPkgName);
+  try {
+    const output = await spawnWithOutput("npm", ["view", rawPkgName, "version"]);
+    if (!output.trim()) {
+      throw new Error(`No version found for '${rawPkgName}'`);
+    }
+  } catch (err: unknown) {
+    throw new FirebaseError(
+      `NPM package '${rawPkgName}' could not be found in the npm registry. Please verify the package name and version.`,
+      { original: err instanceof Error ? err : undefined },
     );
   }
 }
@@ -939,6 +968,29 @@ export function addInstanceToKitConfig(
   config.writeProjectFile("firebase.json", config.src);
 }
 
+export interface RevertFunctionsConfigOptions {
+  config: Config;
+  originalFunctions: FunctionsConfig | undefined;
+}
+
+/**
+ * Reverts the functions configuration in firebase.json to its original state if it was modified.
+ */
+export function revertFunctionsConfig(options: RevertFunctionsConfigOptions): void {
+  try {
+    if (!deepEqual(options.config.src.functions, options.originalFunctions)) {
+      if (options.originalFunctions === undefined) {
+        delete options.config.src.functions;
+      } else {
+        options.config.src.functions = options.originalFunctions;
+      }
+      options.config.writeProjectFile("firebase.json", options.config.src);
+    }
+  } catch (err: unknown) {
+    logger.debug(`Failed to revert firebase.json: ${getErrMsg(err)}`);
+  }
+}
+
 /**
  * Scaffolds a new kit and its initial instance, optionally seeds the .env.<project-id> configuration,
  * and updates firebase.json.
@@ -988,6 +1040,7 @@ export async function addInstanceToKit(
 
   const configDirPath = path.join(FUNCTION_KITS_DIR, options.kitId, `config-${options.instanceId}`);
   const absConfigDirPath = options.config.path(configDirPath);
+
   await fs.ensureDir(absConfigDirPath);
 
   if (options.seedEnv?.envs && Object.keys(options.seedEnv.envs).length > 0) {
@@ -1010,7 +1063,7 @@ export async function addInstanceToKit(
  * Discovers the build manifest from the compiled kit source directory.
  */
 export async function discoverKitBuild(
-  options: { config?: Config; project?: string; projectId?: string },
+  options: { config?: Config; project?: string; projectId?: string; instanceId?: string },
   absSourcePath: string,
 ): Promise<build.Build> {
   const projectId = getProjectId(options) || "";
@@ -1021,7 +1074,8 @@ export async function discoverKitBuild(
     runtime: supported.latest("nodejs"),
   };
   const runtimeDelegate = await runtimes.getRuntimeDelegate(delegateContext);
-  return runtimeDelegate.discoverBuild({}, {});
+  const firebaseEnvs = functionsEnv.loadFirebaseEnvs({ projectId }, projectId, options.instanceId);
+  return runtimeDelegate.discoverBuild({}, firebaseEnvs);
 }
 
 /**
@@ -1050,6 +1104,15 @@ export async function promptAndWriteKitParams(
   const rawUserEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
   const { userEnvs, secretRefs } = partitionUserEnvs(rawUserEnvs);
 
+  const parsedSecretRefs = mapObject<string, build.ParsedSecretRef>(secretRefs, (unparsed) =>
+    build.parseSecretRef(unparsed),
+  );
+  const secretPrefixForInstance = addKitPrefix(options.instanceId);
+  for (const secretParam of options.params.filter((p) => params.isSecretParam(p))) {
+    secretParam.resourceId = `${secretPrefixForInstance}-${secretParam.name}`;
+  }
+  build.applyEnvSecretBindingsToParams(options.params, parsedSecretRefs);
+
   let firebaseConfig: FirebaseConfig = { projectId: options.projectId };
   try {
     firebaseConfig = await functionsConfig.getFirebaseConfig({ projectId: options.projectId });
@@ -1066,11 +1129,13 @@ export async function promptAndWriteKitParams(
     userEnvs: typedUserEnvs,
     codebase: options.instanceId,
     nonInteractive: options.nonInteractive,
-    force: options.force,
   });
 
   functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
-  if (experiments.isEnabled("secretEnvParams")) {
+  if (
+    experiments.isEnabled("secretEnvParams") &&
+    experiments.isEnabled("writeDefaultSecretBindings")
+  ) {
     functionsEnv.writeResolvedSecretRefs(resolvedSecretRefs, secretRefs, userEnvOpt);
   }
 }
@@ -1087,7 +1152,7 @@ export async function printKitFirstDeployReport(
     discoveredBuild = options.preDiscoveredBuild
       ? cloneDeep(options.preDiscoveredBuild)
       : await discoverKitBuild(options, options.absSourcePath);
-    build.applyPrefix(discoveredBuild, prefix);
+    build.applyEndpointPrefix(discoveredBuild, prefix);
   } catch (err: unknown) {
     logger.debug(`Could not discover kit build for reporting: ${getErrMsg(err)}`);
     return;
@@ -1162,9 +1227,8 @@ export async function printKitFirstDeployReport(
  */
 export async function addKitInstanceOrConfigureProject(
   options: ExistingKitInstallOptions,
-  existingKit: ValidatedKitSingle,
-  existingFunctionsInfo: ExistingFunctionsInfo,
 ): Promise<InstallKitOrInstanceResult> {
+  const { existingKit, existingFunctionsInfo, createdPaths = [] } = options;
   const projectId = getProjectId(options) || options.projectId;
   const projectAlias =
     options.rc?.hasProjects && options.project && options.rc.hasProjectAlias(options.project)
@@ -1233,6 +1297,14 @@ export async function addKitInstanceOrConfigureProject(
       options.instanceId,
     );
 
+    const expectedConfigDirPath = path.join(
+      FUNCTION_KITS_DIR,
+      existingKit.kit,
+      `config-${instanceId}`,
+    );
+    absConfigDirPath = options.config.path(expectedConfigDirPath);
+    createdPaths.push(absConfigDirPath);
+
     const result = await addInstanceToKit({
       config: options.config,
       kitId: existingKit.kit,
@@ -1256,6 +1328,14 @@ export async function addKitInstanceOrConfigureProject(
       );
     }
     absConfigDirPath = options.config.path(configDirPath);
+
+    if (projectId) {
+      const envPath = path.join(absConfigDirPath, `.env.${projectId}`);
+      if (!(await fs.pathExists(envPath))) {
+        createdPaths.push(envPath);
+      }
+    }
+
     if (options.seedEnv?.envs && Object.keys(options.seedEnv.envs).length > 0) {
       await fs.ensureDir(absConfigDirPath);
       seedKitInstanceEnv({
@@ -1281,7 +1361,7 @@ export async function addKitInstanceOrConfigureProject(
   const shouldConfigure = options.configure !== false;
   if (shouldConfigure) {
     try {
-      discoveredBuild = await discoverKitBuild(options, absSourcePath);
+      discoveredBuild = await discoverKitBuild({ ...options, instanceId }, absSourcePath);
     } catch (err: unknown) {
       logger.debug(`Could not discover kit build for params prompting: ${getErrMsg(err)}`);
     }
@@ -1295,7 +1375,6 @@ export async function addKitInstanceOrConfigureProject(
         absSourcePath,
         instanceId,
         nonInteractive: options.nonInteractive,
-        force: options.force,
         params: discoveredBuild.params,
       });
     }
@@ -1380,7 +1459,7 @@ export async function resolvePackageSource(
     throw new FirebaseError("Set the --package option to a valid NPM package and try again.");
   }
 
-  validateNpmPackageName(rawPkgName);
+  await validateNpmPackageExists(rawPkgName);
   const { packageName } = parseNpmPackageSpecifier(rawPkgName);
 
   const isThirdParty = await promptSecurityConfirmation({
@@ -1453,108 +1532,146 @@ export async function installKitOrInstance(
     throw new FirebaseError("Cannot specify --template with --directory.");
   }
 
-  const existingFunctionsInfo = extractExistingFunctionsInfo(options.config.src.functions);
-  const existingKit = findExistingKit(existingFunctionsInfo.existingFunctions, options);
-  if (existingKit) {
-    return addKitInstanceOrConfigureProject(options, existingKit, existingFunctionsInfo);
+  if (options.package) {
+    validateNpmPackageName(options.package);
   }
 
-  const source = options.directory
-    ? await resolveDirectorySource(options)
-    : await resolvePackageSource(options);
+  const originalFunctions = cloneDeep(options.config.src.functions);
+  const createdPaths: string[] = [];
+  let kitId: string | undefined;
 
-  const kitId = await promptKitId(
-    source.defaultKitName,
-    existingFunctionsInfo.existingKitIds,
-    options.nonInteractive,
-    options.kitId,
-  );
-
-  const instanceId = await promptKitInstanceId(
-    options.defaultInstanceId ?? kitId,
-    existingFunctionsInfo.existingInstanceIds,
-    existingFunctionsInfo.existingCodebases,
-    options.nonInteractive,
-    options.instanceId,
-  );
-
-  const { sourcePath, configDirPath, absSourcePath, absConfigDirPath } = await source.setup(
-    kitId,
-    instanceId,
-  );
-
-  if (options.seedEnv?.envs && Object.keys(options.seedEnv.envs).length > 0) {
-    seedKitInstanceEnv({
-      configDir: absConfigDirPath,
-      functionsSource: absSourcePath,
-      projectDir: options.config.projectDir,
-      projectId: options.seedEnv.projectId,
-      projectAlias: options.seedEnv.projectAlias,
-      envs: options.seedEnv.envs,
-    });
-  }
-
-  await source.buildAndInstall(absSourcePath);
-
-  const projectId = getProjectId(options) || options.projectId;
-  const projectAlias =
-    options.rc?.hasProjects && options.project && options.rc.hasProjectAlias(options.project)
-      ? options.project
-      : undefined;
-
-  if (projectId) {
-    fs.ensureFileSync(path.join(absConfigDirPath, `.env.${projectId}`));
-  }
-
-  let discoveredBuild: build.Build | undefined;
-
-  const shouldConfigure = options.configure !== false;
-  if (shouldConfigure) {
-    try {
-      discoveredBuild = await discoverKitBuild(options, absSourcePath);
-    } catch (err: unknown) {
-      logger.debug(`Could not discover kit build for params prompting: ${getErrMsg(err)}`);
-    }
-
-    if (discoveredBuild?.params && discoveredBuild.params.length > 0) {
-      await promptAndWriteKitParams({
-        config: options.config,
-        projectId,
-        projectAlias,
-        absConfigDirPath,
-        absSourcePath,
-        instanceId,
-        nonInteractive: options.nonInteractive,
-        force: options.force,
-        params: discoveredBuild.params,
+  try {
+    const existingFunctionsInfo = extractExistingFunctionsInfo(options.config.src.functions);
+    const existingKit = findExistingKit(existingFunctionsInfo.existingFunctions, options);
+    if (existingKit) {
+      kitId = existingKit.kit;
+      return await addKitInstanceOrConfigureProject({
+        ...options,
+        existingKit,
+        existingFunctionsInfo,
+        createdPaths,
       });
     }
+
+    const source = options.directory
+      ? await resolveDirectorySource(options)
+      : await resolvePackageSource(options);
+
+    kitId = await promptKitId(
+      source.defaultKitName,
+      existingFunctionsInfo.existingKitIds,
+      options.nonInteractive,
+      options.kitId,
+    );
+
+    const instanceId = await promptKitInstanceId(
+      options.defaultInstanceId ?? kitId,
+      existingFunctionsInfo.existingInstanceIds,
+      existingFunctionsInfo.existingCodebases,
+      options.nonInteractive,
+      options.instanceId,
+    );
+
+    const isPackageKit = !options.directory;
+    const absKitDir = options.config.path(path.join(FUNCTION_KITS_DIR, kitId));
+    const expectedConfigDirPath = path.join(FUNCTION_KITS_DIR, kitId, `config-${instanceId}`);
+    const absConfigDirPath = options.config.path(expectedConfigDirPath);
+
+    if (isPackageKit) {
+      createdPaths.push(absKitDir);
+    } else {
+      createdPaths.push(absConfigDirPath);
+    }
+
+    const setupResult = await source.setup(kitId, instanceId);
+    const { sourcePath, configDirPath, absSourcePath } = setupResult;
+
+    if (options.seedEnv?.envs && Object.keys(options.seedEnv.envs).length > 0) {
+      seedKitInstanceEnv({
+        configDir: setupResult.absConfigDirPath,
+        functionsSource: absSourcePath,
+        projectDir: options.config.projectDir,
+        projectId: options.seedEnv.projectId,
+        projectAlias: options.seedEnv.projectAlias,
+        envs: options.seedEnv.envs,
+      });
+    }
+
+    await source.buildAndInstall(absSourcePath);
+
+    const projectId = getProjectId(options) || options.projectId;
+    const projectAlias =
+      options.rc?.hasProjects && options.project && options.rc.hasProjectAlias(options.project)
+        ? options.project
+        : undefined;
+
+    if (projectId) {
+      fs.ensureFileSync(path.join(setupResult.absConfigDirPath, `.env.${projectId}`));
+    }
+
+    let discoveredBuild: build.Build | undefined;
+
+    const shouldConfigure = options.configure !== false;
+    if (shouldConfigure) {
+      try {
+        discoveredBuild = await discoverKitBuild({ ...options, instanceId }, absSourcePath);
+      } catch (err: unknown) {
+        logger.debug(`Could not discover kit build for params prompting: ${getErrMsg(err)}`);
+      }
+
+      if (discoveredBuild?.params && discoveredBuild.params.length > 0) {
+        await promptAndWriteKitParams({
+          config: options.config,
+          projectId,
+          projectAlias,
+          absConfigDirPath: setupResult.absConfigDirPath,
+          absSourcePath,
+          instanceId,
+          nonInteractive: options.nonInteractive,
+          params: discoveredBuild.params,
+        });
+      }
+    }
+
+    addKitToConfig(options.config, {
+      kitId,
+      instanceId,
+      packageName: source.sourcePackageName,
+      sourcePath,
+      configDirPath,
+      hasBuildScript: source.hasBuildScript,
+    });
+
+    logLabeledSuccess("functions", `Function kit ${clc.bold(kitId)} successfully installed.`);
+    await printKitFirstDeployReport({
+      config: options.config,
+      project: options.project,
+      projectId: options.projectId,
+      instanceId,
+      absSourcePath,
+      preDiscoveredBuild: discoveredBuild,
+    });
+
+    return {
+      action: "installedKit",
+      kitId,
+      instanceId,
+      sourcePath,
+      configDirPath,
+    };
+  } catch (err: unknown) {
+    await Promise.all(
+      createdPaths.map((targetPath) =>
+        fs.remove(targetPath).catch((cleanupErr: unknown) => {
+          logger.debug(`Failed to clean up path '${targetPath}': ${getErrMsg(cleanupErr)}`);
+        }),
+      ),
+    );
+    if (kitId) {
+      await removeDirectoryIfEmpty(options.config.path(path.join(FUNCTION_KITS_DIR, kitId)));
+    }
+    await removeDirectoryIfEmpty(options.config.path(FUNCTION_KITS_DIR));
+    revertFunctionsConfig({ config: options.config, originalFunctions });
+    throw err;
   }
-
-  addKitToConfig(options.config, {
-    kitId,
-    instanceId,
-    packageName: source.sourcePackageName,
-    sourcePath,
-    configDirPath,
-    hasBuildScript: source.hasBuildScript,
-  });
-
-  logLabeledSuccess("functions", `Function kit ${clc.bold(kitId)} successfully installed.`);
-  await printKitFirstDeployReport({
-    config: options.config,
-    project: options.project,
-    projectId: options.projectId,
-    instanceId,
-    absSourcePath,
-    preDiscoveredBuild: discoveredBuild,
-  });
-
-  return {
-    action: "installedKit",
-    kitId,
-    instanceId,
-    sourcePath,
-    configDirPath,
-  };
 }

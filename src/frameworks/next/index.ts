@@ -13,8 +13,8 @@ import { IncomingMessage, ServerResponse } from "http";
 import * as clc from "colorette";
 import { chain } from "stream-chain";
 import { parser } from "stream-json";
-import { pick } from "stream-json/filters/Pick";
-import { streamObject } from "stream-json/streamers/StreamObject";
+import { pick } from "stream-json/filters/pick.js";
+import { streamObject } from "stream-json/streamers/stream-object.js";
 import { fileExistsSync } from "../../fsutils";
 
 import { select } from "../../prompt";
