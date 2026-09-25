@@ -324,7 +324,8 @@ export type EmulatorsConfig = {
     host?: string;
     port?: number;
   };
-  extensions?: Record<string, unknown>;
+  // eslint-disable-next-line @typescript-eslint/ban-types -- {} needed to preserve byte-identical schema/firebase-config.json
+  extensions?: {};
   eventarc?: {
     host?: string;
     port?: number;
