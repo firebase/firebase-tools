@@ -6,7 +6,6 @@ import * as getDefaultHostingSiteMod from "../../getDefaultHostingSite";
 import * as hostingInteractive from "../../hosting/interactive";
 import * as hostingApi from "../../hosting/api";
 import { logger } from "../../logger";
-import { Options } from "../../options";
 import { askQuestions, actuate } from "./auth";
 import { Setup } from "..";
 
@@ -141,7 +140,7 @@ describe("auth feature init", () => {
         .stub(hostingInteractive, "pickHostingSiteName")
         .resolves("new-default-site");
 
-      await askQuestions(setup, cfg, { nonInteractive: false } as unknown as Options);
+      await askQuestions(setup, cfg, { nonInteractive: false });
 
       expect(confirmStub.calledOnce).to.be.true;
       expect(confirmStub.firstCall.args[0]).to.deep.include({
