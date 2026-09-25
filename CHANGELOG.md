@@ -1,5 +1,3 @@
-- [fixed] Fail fast with an actionable error and remediation instructions when declarative security APIs (IAM and Cloud Resource Manager) are disabled on the project.
-- Updated Pub/Sub emulator to version 0.8.36.
-- [fixed] Clean up managed service accounts when opting out of declarative security alongside a filtered codebase deploy.
-- ext:uninstall --immediate now warns about secrets bound to the extension that will be deleted and offers a migration path.
+- [fixed] Increased retries for IAM policy updates to further reduce deployment flakiness from service account propagation delays.
+- [fixed] Preselect the default values of list function params in multi-select prompts.
 - [fixed] The Firestore emulator now logs a warning instead of exiting when it cannot watch the rules file for changes. (#4298)
