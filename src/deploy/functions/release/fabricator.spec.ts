@@ -109,8 +109,12 @@ describe("Fabricator", () => {
       new Error("unexpected identityPlatform.setBlockingFunctionsConfig"),
     );
     // Unstubbed, this reaches the Compute API over the network and every test that
-    // needs the default service account races mocha's 2s timeout.
-    computeEngine.getDefaultServiceAccount.resolves(DEFAULT_COMPUTE_SERVICE_ACCOUNT);
+    // needs the default service account races mocha's 2s timeout. The fake derives
+    // the address from its argument so the tests still pin that the fabricator passes
+    // the project number through.
+    computeEngine.getDefaultServiceAccount.callsFake((pn: string) =>
+      Promise.resolve(`${pn}-compute@developer.gserviceaccount.com`),
+    );
   });
 
   afterEach(() => {

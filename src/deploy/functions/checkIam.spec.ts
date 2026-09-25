@@ -8,7 +8,6 @@ import * as backend from "./backend";
 
 const projectId = "my-project";
 const projectNumber = "123456789";
-const defaultComputeServiceAccount = `${projectNumber}-compute@developer.gserviceaccount.com`;
 
 const STORAGE_RES = {
   email_address: "service-123@gs-project-accounts.iam.gserviceaccount.com",
@@ -33,8 +32,12 @@ describe("checkIam", () => {
 
   beforeEach(() => {
     // Unstubbed, this reaches the Compute API over the network and each test that
-    // needs the default service account races mocha's 2s timeout.
-    sinon.stub(gce, "getDefaultServiceAccount").resolves(defaultComputeServiceAccount);
+    // needs the default service account races mocha's 2s timeout. The fake derives
+    // the address from its argument so the tests still pin that checkIam passes the
+    // project number through.
+    sinon
+      .stub(gce, "getDefaultServiceAccount")
+      .callsFake((pn: string) => Promise.resolve(`${pn}-compute@developer.gserviceaccount.com`));
     storageStub = sinon
       .stub(storage, "getServiceAccount")
       .throws("unexpected call to storage.getServiceAccount");
