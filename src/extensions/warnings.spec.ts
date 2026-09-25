@@ -164,7 +164,7 @@ describe("showDeprecationWarningBefore & showDeprecationWarningAfter", () => {
     );
   });
 
-  it("should show prominent banner with fallback for Category 1 commands without ref", async () => {
+  it("should show prominent banner with fallback for ext:install without ref", async () => {
     await warnings.showDeprecationWarningBefore("ext:install", {}, []);
     expect(warnStub).to.have.been.calledWithMatch(
       /We recommend migrating active instances to function kits\./,
@@ -172,7 +172,7 @@ describe("showDeprecationWarningBefore & showDeprecationWarningAfter", () => {
     expect(warnStub).to.have.been.calledWithMatch(/Learn more & view migration steps:/);
   });
 
-  it("should show prominent banner with replacement package for Category 1 commands when kit is available", async () => {
+  it("should show prominent banner with replacement package for ext:install when kit is available", async () => {
     await warnings.showDeprecationWarningBefore("ext:install", {}, [
       "firebase/firestore-bigquery-export",
     ]);
@@ -233,7 +233,7 @@ describe("showDeprecationWarningBefore & showDeprecationWarningAfter", () => {
     expect(warnStub).to.not.have.been.calledWithMatch(/Recommended replacement:/);
   });
 
-  it("should show prominent banner for Category 4 commands", async () => {
+  it("should show prominent banner for ext:dev:upload", async () => {
     await warnings.showDeprecationWarningBefore("ext:dev:upload", {});
     expect(warnStub).to.have.been.calledWithMatch(
       /Notice for Publishers: Firebase Extensions will shut down/,
@@ -252,7 +252,7 @@ describe("showDeprecationWarningBefore & showDeprecationWarningAfter", () => {
     expect(warnStub).to.not.have.been.called;
   });
 
-  it("should show footer warning in showDeprecationWarningAfter for Category 2 commands", () => {
+  it("should show footer warning in showDeprecationWarningAfter for ext:list and ext:export", () => {
     warnings.showDeprecationWarningAfter("ext:list", {});
     expect(warnStub).to.have.been.calledWithMatch(/Notice: Firebase Extensions will shut down/);
     expect(warnStub).to.have.been.calledWithMatch(/Learn more & view migration steps:/);
@@ -299,7 +299,7 @@ describe("showDeprecationWarningBefore & showDeprecationWarningAfter", () => {
     }
   });
 
-  it("should not warn on Category 3 commands", async () => {
+  it("should not warn on ext:uninstall and ext:dev:deprecate", async () => {
     await warnings.showDeprecationWarningBefore("ext:uninstall", {});
     await warnings.showDeprecationWarningBefore("ext:dev:deprecate", {});
     expect(warnStub).to.not.have.been.called;
