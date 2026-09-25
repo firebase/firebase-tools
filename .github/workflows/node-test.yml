@@ -149,17 +149,12 @@ jobs:
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
 
-      - name: Cache ESLint
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # ratchet:actions/cache@v4
-        with:
-          path: .eslintcache
-          key: eslint-${{ runner.os }}-node${{ matrix.node-version }}-${{ hashFiles('**/*.ts', '**/*.js') }}
-          restore-keys: |
-            eslint-${{ runner.os }}-node${{ matrix.node-version }}-
-
       - run: npm i -g npm@9.5
       - run: npm ci
       - run: npm test -- -- --forbid-only
+        if: matrix.node-version == '24'
+      - run: npm run mocha:fast -- --forbid-only
+        if: matrix.node-version != '24'
 
       - uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # ratchet:codecov/codecov-action@v5
         if: matrix.node-version == '24'
