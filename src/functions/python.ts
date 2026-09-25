@@ -1,8 +1,10 @@
+import * as os from "os";
 import * as path from "path";
 import { spawn } from "cross-spawn";
 import * as cp from "child_process";
 import { logger } from "../logger";
 import { IS_WINDOWS } from "../utils";
+import { getErrMsg } from "../error";
 
 /**
  * Default directory for python virtual environment.
@@ -42,4 +44,122 @@ export function runWithVirtualEnv(
     ...spawnOpts,
     env: { ...process.env, ...envs },
   });
+}
+
+/**
+ * Force-kill a process spawned by runWithVirtualEnv, including the Python
+ * process under its shell wrapper. Callers must pass `detached: true` so that
+ * shell leads the process group this kills.
+ */
+export function killProcessTree(pid: number): void {
+  // process.kill(-0, ...) would signal the CLI's own process group.
+  if (!pid || pid <= 0) {
+    return;
+  }
+  if (IS_WINDOWS) {
+    // Windows has no process groups; taskkill /T walks the tree by parent pid.
+    const result = cp.spawnSync("taskkill", ["/pid", pid.toString(), "/T", "/F"]);
+    if (result.error || result.status !== 0) {
+      logger.debug(
+        `taskkill on pid ${pid} exited with ${String(result.status)}: ` +
+          `${result.error?.message ?? result.stderr?.toString().trim() ?? ""}`,
+      );
+    }
+    return;
+  }
+  try {
+    // A negative pid signals the whole process group rather than just `pid`.
+    process.kill(-pid, "SIGKILL");
+  } catch (e: unknown) {
+    // Usually ESRCH (the group exited on its own); EPERM is the failure that
+    // surfaces later as an orphaned server.
+    logger.debug(`Failed to kill process group ${pid}: ${getErrMsg(e)}`);
+  }
+}
+
+/**
+ * SIGTERM is what CI runners send on job cancellation. SIGINT and SIGQUIT are
+ * terminal-generated and reach the foreground process group only, so a detached
+ * child never sees them on its own.
+ */
+const CLEANUP_SIGNALS: NodeJS.Signals[] = ["SIGINT", "SIGTERM", "SIGHUP", "SIGQUIT"];
+
+const trackedChildren = new Set<cp.ChildProcess>();
+const signalHandlers = new Map<NodeJS.Signals, () => void>();
+
+/**
+ * Terminate as if the signal had never been handled. Windows implements only
+ * SIGINT, SIGTERM and SIGKILL in `process.kill` and throws ENOSYS for the rest,
+ * including the SIGHUP it raises when the console window closes.
+ */
+function reRaise(signal: NodeJS.Signals): void {
+  try {
+    process.kill(process.pid, signal);
+  } catch (e: unknown) {
+    logger.debug(`Could not re-raise ${signal}, exiting instead: ${getErrMsg(e)}`);
+    process.exit(128 + (os.constants.signals[signal] ?? 0));
+  }
+}
+
+function killAllTrackedChildren(): void {
+  for (const child of trackedChildren) {
+    // An exited child's pid may have been reaped and recycled by now.
+    if (child.pid && child.exitCode === null && child.signalCode === null) {
+      killProcessTree(child.pid);
+    }
+  }
+  trackedChildren.clear();
+}
+
+function removeCleanupHandlers(): void {
+  if (!signalHandlers.size) {
+    return;
+  }
+  process.removeListener("exit", killAllTrackedChildren);
+  for (const [signal, handler] of signalHandlers) {
+    process.removeListener(signal, handler);
+  }
+  signalHandlers.clear();
+}
+
+function addCleanupHandlers(): void {
+  if (signalHandlers.size) {
+    return;
+  }
+  // 'exit' does not fire for signal-terminated processes, hence the handlers below.
+  process.on("exit", killAllTrackedChildren);
+  for (const signal of CLEANUP_SIGNALS) {
+    const handler = (): void => {
+      killAllTrackedChildren();
+      // A signal listener suppresses Node's default terminate-on-signal, so
+      // restore it, unless another listener is still driving the exit itself.
+      removeCleanupHandlers();
+      if (process.listenerCount(signal) === 0) {
+        reRaise(signal);
+      }
+    };
+    signalHandlers.set(signal, handler);
+    process.on(signal, handler);
+  }
+}
+
+/**
+ * Track a detached child so it is force-killed if the CLI goes away first.
+ * `detached: true` takes the child out of the CLI's process group, so it no
+ * longer dies with it on Ctrl-C; this restores that, and adds SIGTERM and SIGHUP.
+ */
+export function trackVirtualEnvChild(child: cp.ChildProcess): void {
+  trackedChildren.add(child);
+  addCleanupHandlers();
+}
+
+/**
+ * Stop tracking an exited child. Cleanup handlers come off once nothing is left
+ * to clean up, so the CLI's default signal behaviour is unchanged afterwards.
+ */
+export function untrackVirtualEnvChild(child: cp.ChildProcess): void {
+  trackedChildren.delete(child);
+  if (!trackedChildren.size) {
+    removeCleanupHandlers();
+  }
 }

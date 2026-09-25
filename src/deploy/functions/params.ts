@@ -557,7 +557,10 @@ async function ensureSecret(
   }
 
   const secretRefString = typeof version === "undefined" ? resourceId : `${resourceId}:${version}`;
-  if (experiments.isEnabled("secretEnvParams")) {
+  if (
+    experiments.isEnabled("secretEnvParams") &&
+    experiments.isEnabled("writeDefaultSecretBindings")
+  ) {
     if (!secretParam.inLocalEnvironment && secretAlreadyExisted) {
       logger.info(
         `Onetime (firebase-tools x.y.z+): storing a reference to existing secret ${secretParam.name}=${secretRefString} in .env files.`,
@@ -924,13 +927,16 @@ async function promptSelectMultiple<T extends string>(
   enforceNonEmpty = false,
   converter: (res: string[]) => T[] | retryInput,
 ): Promise<T[]> {
+  const preselected = new Set((resolvedDefault ?? []).map(String));
   const response = await checkbox({
+    // `default` only serves non-interactive mode; the checkbox prompt itself
+    // preselects through `checked` on each choice.
     default: resolvedDefault,
     message: prompt,
     instructions: "(Press Space to select, and Enter to confirm your choices)",
     choices: input.multiSelect.options.map((option: SelectOptions<string>): ListItem => {
       return {
-        checked: false,
+        checked: preselected.has(option.value.toString()),
         name: option.label,
         value: option.value.toString(),
       };
