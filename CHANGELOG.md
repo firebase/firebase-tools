@@ -1,2 +1,3 @@
 - [fixed] Increased retries for IAM policy updates to further reduce deployment flakiness from service account propagation delays.
+- [fixed] Improve error message when billing is not enabled
 - [fixed] Preselect the default values of list function params in multi-select prompts.
