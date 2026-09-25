@@ -120,3 +120,27 @@ describe("FirebaseMcpServer.mcpCallTool", () => {
     expect(toolFn.firstCall.args[0]).to.deep.equal({ foo: "bar" });
   });
 });
+
+describe("FirebaseMcpServer project detection", () => {
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it("does not start project detection when constructed", () => {
+    const detectStub = sinon.stub(FirebaseMcpServer.prototype, "detectProjectSetup").resolves();
+
+    new FirebaseMcpServer({});
+
+    expect(detectStub.called).to.be.false;
+  });
+
+  it("starts project detection when started", async () => {
+    const detectStub = sinon.stub(FirebaseMcpServer.prototype, "detectProjectSetup").resolves();
+    const server = new FirebaseMcpServer({});
+    sinon.stub(server.server, "connect").resolves();
+
+    await server.start();
+
+    expect(detectStub.calledOnce).to.be.true;
+  });
+});
