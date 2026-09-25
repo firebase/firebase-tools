@@ -53,7 +53,7 @@ module.exports = {
         eqeqeq: ["error", "always", { null: "ignore" }],
         camelcase: ["error", { properties: "never" }], // snake_case allowed in properties iif to satisfy an external contract / style
 
-        "@typescript-eslint/ban-types": "warn", // TODO(bkendall): remove, allow to error.
+        "@typescript-eslint/ban-types": "error", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/explicit-function-return-type": ["warn", { allowExpressions: true }], // TODO(bkendall): SET to error.
         "@typescript-eslint/no-extra-non-null-assertion": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-floating-promises": "warn", // TODO(bkendall): remove, allow to error.
