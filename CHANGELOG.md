@@ -1,3 +1,5 @@
+- [fixed] Fixed the first deploy of a codebase using `requiresRole` failing when it contains a Genkit function, and kept the Genkit monitoring roles on the managed service account across later deploys. (#11123)
+- [changed] Functions whose declarative security roles changed are no longer skipped as unchanged, so the first deploy after this release redeploys the functions in a codebase that uses `requiresRole` and contains Genkit functions.
 - [fixed] Increased retries for IAM policy updates to further reduce deployment flakiness from service account propagation delays.
 - [fixed] Preselect the default values of list function params in multi-select prompts.
 - [fixed] Fixed `ERR_REQUIRE_ESM` crash (e.g. on `emulators:start`) in the standalone binary and on Node.js versions earlier than 20.19 / 22.12. (#11168)

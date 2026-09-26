@@ -40,7 +40,12 @@ import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import { needProjectId, needProjectNumber } from "../../projectUtils";
 import { logger } from "../../logger";
 import { ensureTriggerRegions } from "./triggerRegionHelper";
-import { ensureServiceAgentRoles, ensureGenkitMonitoringRoles } from "./checkIam";
+import {
+  ensureServiceAgentRoles,
+  ensureGenkitMonitoringRoles,
+  isGenkitEndpoint,
+  GENKIT_MONITORING_ROLES,
+} from "./checkIam";
 import { FirebaseError, getErrStack } from "../../error";
 
 import {
@@ -68,7 +73,7 @@ import * as iam from "../../gcp/iam";
 import * as resourcemanager from "../../gcp/resourceManager";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
-export const DECLARATIVE_SECURITY_ETAG_LABEL = "firebase-declarative-security-etag";
+export const DECLARATIVE_SECURITY_ETAG_LABEL = backend.DECLARATIVE_SECURITY_ETAG_LABEL;
 
 /**
  * Discovers and coordinates declarative security details for a codebase.
@@ -93,6 +98,12 @@ export async function discoverSecurityDetails(
   managedSA?: string;
   newEtag?: string;
 }> {
+  // Genkit Monitoring needs these roles on whichever account runs a Genkit function. Folding
+  // them into requiredRoles keeps them in the etag and the plan, so the fabricator grants them
+  // once the managed service account exists and later deploys do not revoke them.
+  if (want.requiredRoles && backend.someEndpoint(want, isGenkitEndpoint)) {
+    want.requiredRoles = Array.from(new Set([...want.requiredRoles, ...GENKIT_MONITORING_ROLES]));
+  }
   const requiredRoles = want.requiredRoles;
   // Note: On partial first rollouts (where at least one function successfully deployed),
   // haveBackend contains all active endpoints in GCP from list calls. firstHave.serviceAccount
