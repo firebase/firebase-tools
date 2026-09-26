@@ -22,8 +22,14 @@ void nock;
 
 // Unit tests must never reach real Google APIs: unmatched requests now fail fast with
 // NetConnectNotAllowedError instead of depending on network latency (flaky 2000ms timeouts).
-nock.disableNetConnect();
-nock.enableNetConnect(/^(localhost|127\.0\.0\.1|\[::1\]|::1)(:\d+)?$/);
+// Integration tests (under scripts/) need real outbound network access.
+const isIntegrationTest = process.argv.some((arg) =>
+  /(^|[/\\])(scripts|dev[/\\]scripts)[/\\]/.test(arg),
+);
+if (!isIntegrationTest) {
+  nock.disableNetConnect();
+  nock.enableNetConnect(/^(localhost|127\.0\.0\.1|\[::1\]|::1)(:\d+)?$/);
+}
 
 chai.use(chaiAsPromised);
 chai.use(sinonChai);
