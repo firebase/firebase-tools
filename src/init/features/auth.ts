@@ -1,8 +1,13 @@
 import * as clc from "colorette";
 import { Config } from "../../config";
 import { Setup } from "..";
-import { checkbox, input } from "../../prompt";
+import { checkbox, confirm, input } from "../../prompt";
 import { logger } from "../../logger";
+import { Options } from "../../options";
+import { errNoDefaultSite, getDefaultHostingSite } from "../../getDefaultHostingSite";
+import { pickHostingSiteName } from "../../hosting/interactive";
+import { createSite } from "../../hosting/api";
+import { logSuccess } from "../../utils";
 
 export interface AuthInfo {
   providers: {
@@ -13,9 +18,20 @@ export interface AuthInfo {
       supportEmail: string;
     };
   };
+  newSiteId?: string;
 }
 
-export async function askQuestions(setup: Setup): Promise<void> {
+/**
+ * Asks questions to configure Firebase Authentication and checks for a default Hosting site.
+ * @param setup A helper object to use for the rest of the init features.
+ * @param config Configuration for the project.
+ * @param options Command line options.
+ */
+export async function askQuestions(
+  setup: Setup,
+  config?: Config,
+  options?: Partial<Options>,
+): Promise<void> {
   const authConfig = setup.config.auth;
   const choices = [
     {
@@ -55,19 +71,22 @@ export async function askQuestions(setup: Setup): Promise<void> {
     logger.info("");
     logger.info("Configuring Google Sign-In...");
 
+    const projectId = setup.projectId;
+    const defaultDisplayName =
+      authConfig?.providers?.googleSignIn?.oAuthBrandDisplayName || projectId || "My App";
+
     const oAuthBrandDisplayName = await input({
       message: "What display name would you like to use for your OAuth brand?",
-      default:
-        authConfig?.providers?.googleSignIn?.oAuthBrandDisplayName ||
-        setup.project?.projectId ||
-        "My App",
+      default: defaultDisplayName,
     });
+
+    const defaultEmail =
+      authConfig?.providers?.googleSignIn?.supportEmail ||
+      (projectId ? `support@${projectId}.firebaseapp.com` : undefined);
 
     const supportEmail = await input({
       message: "What support email would you like to register for your OAuth brand?",
-      default:
-        authConfig?.providers?.googleSignIn?.supportEmail ||
-        (setup.project ? `support@${setup.project.projectId}.firebaseapp.com` : undefined),
+      default: defaultEmail,
     });
 
     providersConfig.googleSignIn = {
@@ -76,12 +95,52 @@ export async function askQuestions(setup: Setup): Promise<void> {
     };
   }
 
+  let newSiteId: string | undefined;
+  if (setup.projectId) {
+    let hasHostingSite = false;
+    let existingSite: string | undefined = setup.featureInfo?.hosting?.newSiteId;
+    if (existingSite) {
+      hasHostingSite = true;
+    } else {
+      try {
+        existingSite = await getDefaultHostingSite({ projectId: setup.projectId });
+        hasHostingSite = true;
+      } catch (err: unknown) {
+        if (err !== errNoDefaultSite) {
+          throw err;
+        }
+        hasHostingSite = false;
+      }
+    }
+
+    if (hasHostingSite && existingSite) {
+      logger.info(`Firebase Hosting site is present: ${clc.bold(existingSite)}.`);
+    } else if (
+      await confirm({
+        message:
+          "A Firebase Hosting site is required for Firebase Authentication. Would you like to create a default site now?",
+        default: true,
+      })
+    ) {
+      const createOptions = {
+        projectId: setup.projectId,
+        nonInteractive: options?.nonInteractive,
+      };
+      newSiteId = await pickHostingSiteName("", createOptions);
+    }
+  }
+
   if (!setup.featureInfo) {
     setup.featureInfo = {};
   }
-  setup.featureInfo.auth = { providers: providersConfig };
+  setup.featureInfo.auth = { providers: providersConfig, newSiteId };
 }
 
+/**
+ * Actuates the setup by creating a Hosting site (if requested) and writing auth config to firebase.json.
+ * @param setup A helper object to use for the rest of the init features.
+ * @param config Configuration for the project.
+ */
 export async function actuate(setup: Setup, config: Config): Promise<void> {
   const authConfig = setup.featureInfo?.auth;
 
@@ -89,7 +148,14 @@ export async function actuate(setup: Setup, config: Config): Promise<void> {
     return;
   }
 
-  config.set("auth", authConfig);
+  if (authConfig.newSiteId && setup.projectId) {
+    await createSite(setup.projectId, authConfig.newSiteId);
+    logger.info("");
+    logSuccess(`Firebase Hosting site ${authConfig.newSiteId} created!`);
+    logger.info("");
+  }
+
+  config.set("auth", { providers: authConfig.providers });
   config.writeProjectFile("firebase.json", config.src);
 
   logger.info("");
