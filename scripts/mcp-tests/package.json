@@ -12,7 +12,7 @@
   "description": "",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.11.5",
-    "tsx": "^4.19.4"
+    "tsx": "^4.22.4"
   },
   "devDependencies": {
     "typescript": "^5.8.3"
