@@ -32,7 +32,7 @@ describe("apphosting rollouts", () => {
   let createRolloutStub: sinon.SinonStub;
   let pollOperationStub: sinon.SinonStub;
   let promptGitHubBranchStub: sinon.SinonStub;
-  let sleepStub: sinon.SinonStub;
+  let backoffStub: sinon.SinonStub;
 
   beforeEach(() => {
     getBackend = sinon.stub(backend, "getBackend").throws("unexpected getBackend call");
@@ -59,7 +59,7 @@ describe("apphosting rollouts", () => {
     promptGitHubBranchStub = sinon
       .stub(githubConnections, "promptGitHubBranch")
       .throws("unexpected promptGitHubBranch call");
-    sleepStub = sinon.stub(utils, "sleep").throws("unexpected sleep call");
+    backoffStub = sinon.stub(utils, "backoff").throws("unexpected backoff call");
   });
 
   afterEach(() => {
@@ -233,7 +233,7 @@ describe("apphosting rollouts", () => {
         createRolloutStub.resolves(rolloutOp);
         pollOperationStub.onFirstCall().resolves(rollout);
         pollOperationStub.onSecondCall().resolves(build);
-        sleepStub.resolves();
+        backoffStub.resolves();
 
         await orchestrateRollout({
           projectId,
@@ -253,7 +253,7 @@ describe("apphosting rollouts", () => {
         createRolloutStub.resolves(rolloutOp);
         pollOperationStub.onFirstCall().resolves(rollout);
         pollOperationStub.onSecondCall().resolves(build);
-        sleepStub.resolves();
+        backoffStub.resolves();
 
         await orchestrateRollout({
           projectId,
@@ -265,6 +265,50 @@ describe("apphosting rollouts", () => {
         expect(createBuildStub).to.be.called;
         expect(createRolloutStub).to.be.calledThrice;
         expect(pollOperationStub).to.be.called;
+      });
+
+      it("should keep validating while the build is still becoming visible", async () => {
+        getNextRolloutIdStub.resolves(buildAndRolloutId);
+        createBuildStub.resolves(buildOp);
+        // A slow control plane takes more than a handful of tries to make the
+        // new build visible to validation.
+        for (let i = 0; i < 8; i++) {
+          createRolloutStub.onCall(i).rejects(new FirebaseError("error", { status: 400 }));
+        }
+        createRolloutStub.resolves(rolloutOp);
+        pollOperationStub.onFirstCall().resolves(rollout);
+        pollOperationStub.onSecondCall().resolves(build);
+        backoffStub.resolves();
+
+        await orchestrateRollout({
+          projectId,
+          location,
+          backendId,
+          buildInput,
+        });
+
+        // Eight failed validations, the one that passes, and the real create.
+        expect(createRolloutStub).to.have.callCount(10);
+        expect(backoffStub).to.have.callCount(8);
+      });
+
+      it("should give up on a build that never becomes visible", async () => {
+        getNextRolloutIdStub.resolves(buildAndRolloutId);
+        createBuildStub.resolves(buildOp);
+        createRolloutStub.rejects(new FirebaseError("build was not found", { status: 400 }));
+        backoffStub.resolves();
+
+        await expect(
+          orchestrateRollout({
+            projectId,
+            location,
+            backendId,
+            buildInput,
+          }),
+        ).to.be.rejectedWith(/build was not found/);
+
+        // The old fixed window was five tries.
+        expect(createRolloutStub.callCount).to.be.greaterThan(5);
       });
     });
   });
