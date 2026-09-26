@@ -1,9 +1,6 @@
 import { parse } from "csv-parse";
-import { chain } from "stream-chain";
 import * as clc from "colorette";
 import * as fs from "fs-extra";
-import { pick } from "stream-json/filters/pick.js";
-import { streamArray } from "stream-json/streamers/stream-array.js";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
@@ -11,6 +8,7 @@ import { logger } from "../logger";
 import { needProjectId } from "../projectUtils";
 import { Options } from "../options";
 import { requirePermissions } from "../requirePermissions";
+import { loadStreamJson } from "../streamJson";
 import {
   serialImportUsers,
   transArrayToUser,
@@ -103,6 +101,7 @@ export const command = new Command("auth:import [dataFile]")
         inStream.pipe(parser);
       });
     } else {
+      const { chain, pick, streamArray } = await loadStreamJson();
       userListArr = await new Promise<any[]>((resolve, reject) => {
         const pipeline = chain([
           inStream,
