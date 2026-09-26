@@ -1,3 +1,4 @@
 - [fixed] Increased retries for IAM policy updates to further reduce deployment flakiness from service account propagation delays.
 - [fixed] Preselect the default values of list function params in multi-select prompts.
 - [fixed] Fixed `ERR_REQUIRE_ESM` crash (e.g. on `emulators:start`) in the standalone binary and on Node.js versions earlier than 20.19 / 22.12. (#11168)
+- [fixed] The Functions emulator no longer repeats the "External network resource requested!" and "Google API requested!" warnings for a URL it has already reported. (#4939)
