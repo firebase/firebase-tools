@@ -135,6 +135,16 @@ describe("validate", () => {
       expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(/GCF gen 1/);
     });
 
+    it("disallows unsupported memory for GCF gen 1", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        platform: "gcfv1",
+        availableMemoryMb: 1536,
+      };
+
+      expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(/only supports/);
+    });
+
     it("Disallows concurrency for low-CPU gen 2", () => {
       const ep: backend.Endpoint = {
         ...ENDPOINT_BASE,
@@ -289,7 +299,7 @@ describe("validate", () => {
       });
     }
 
-    for (const mem of [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768] as const) {
+    for (const mem of [128, 256, 512, 1024, 1536, 2048, 3072, 4096, 8192, 16384, 32768] as const) {
       it(`allows gcfv2 endpoints with mem ${mem} and no cpu`, () => {
         const ep: backend.Endpoint = {
           ...ENDPOINT_BASE,
