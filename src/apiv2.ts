@@ -552,7 +552,11 @@ export class Client {
               } catch (err: unknown) {
                 // JSON-parse errors are useless. Log the response for better debugging.
                 this.logResponse(res, text, options);
-                throw new FirebaseError(`Unable to parse JSON: ${err}`);
+                if (res.status >= 400) {
+                  body = text as unknown as ResT;
+                } else {
+                  throw new FirebaseError(`Unable to parse JSON: ${err}`);
+                }
               }
             }
           } else if (options.responseType === "xml") {

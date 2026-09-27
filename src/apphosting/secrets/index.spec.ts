@@ -189,6 +189,24 @@ describe("secrets", () => {
         undefined,
       );
     });
+
+    it("appends original message for 403 errors", async () => {
+      gcsm.getSecret.withArgs("project", "secret").rejects(new Error("Forbidden"));
+
+      await expect(secrets.upsertSecret("project", "secret")).to.be.rejectedWith("Unexpected error loading secret: Forbidden");
+    });
+
+    it("appends original message for 400 errors", async () => {
+      gcsm.getSecret.withArgs("project", "secret").rejects(new Error("Bad Request"));
+
+      await expect(secrets.upsertSecret("project", "secret")).to.be.rejectedWith("Unexpected error loading secret: Bad Request");
+    });
+
+    it("appends original message for other errors", async () => {
+      gcsm.getSecret.withArgs("project", "secret").rejects(new Error("Internal Error"));
+
+      await expect(secrets.upsertSecret("project", "secret")).to.be.rejectedWith("Unexpected error loading secret: Internal Error");
+    });
   });
 
   describe("toMulti", () => {
