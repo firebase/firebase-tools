@@ -63,7 +63,14 @@ When working on a feature or bug fix, you can work either in a dedicated Git bra
 1. **Implement Changes**:
    Make the necessary changes following the repository's coding standards.
 
-2. **Verify Code Compiles & Tests Pass**:
+2. **Update `CHANGELOG.md` (if applicable)**:
+   For user-facing changes (new features, bug fixes, deprecations), add an entry to `CHANGELOG.md`:
+   - Start with a past-tense verb (e.g., `Fixed`, `Added`, `Updated`).
+   - Do **not** include bracketed annotations such as `[fixed]` or `[added]`.
+   - End with `(#<issue_number>)` if the change addresses a GitHub issue.
+   - Example: ``- Fixed `ERR_REQUIRE_ESM` crash in the standalone binary. (#11168)``
+
+3. **Verify Code Compiles & Tests Pass**:
    Ensure you are in the workspace or worktree directory, then run:
    ```bash
    npm run build
@@ -74,7 +81,7 @@ When working on a feature or bug fix, you can work either in a dedicated Git bra
    npm test -- src/test/path/to/test.spec.ts
    ```
 
-3. **Commit Changes**:
+4. **Commit Changes**:
    ```bash
    git add .
    git commit -m "Your descriptive commit message"
