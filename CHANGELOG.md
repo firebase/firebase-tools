@@ -1,9 +1,1 @@
-- Increased retries for IAM policy updates to further reduce deployment flakiness from service account propagation delays.
-- Preselect the default values of list function params in multi-select prompts.
-- Fixed `ERR_REQUIRE_ESM` crash (e.g. on `emulators:start`) in the standalone binary and on Node.js versions earlier than 20.19 / 22.12. (#11168)
-- Updated the Firebase console link in the Terms of Service error to include `?forceCheckTos=true`.
-- Honor boolean and integer defaults in `select` prompts for function params instead of preselecting the first option.
-- Added support for overriding the Cloud Secret Manager secret ID and version used to resolve a named secret parameter via `FIREBASE_SECRET_REF_<SECRET_NAME>` in Functions `.env` files.
-- Introduced function kits (`functions:kits:install`, `functions:kits:uninstall`, `functions:kits:list`) to configure and run multiple instances of functions from the CLI.
-- Added `ext:migrate` and updated `ext:export` and `ext:list` to assist with migrating Firebase Extensions to function kits.
 - Fixed the Functions emulator repeating the "External network resource requested!" and "Google API requested!" warnings for a URL it has already reported. (#4939)
