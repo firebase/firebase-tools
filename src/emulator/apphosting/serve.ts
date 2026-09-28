@@ -33,6 +33,10 @@ interface StartOptions {
   rootDirectory?: string;
 }
 
+// Matches `--port 5004`, `--port=5004`, `-p 5004` or `-p '5004'` as a standalone flag and captures
+// the number. Skips values that aren't a plain port, like `$PORT` or `-p 8080:80`.
+const START_COMMAND_PORT_REGEX = /(?:^|\s)(?:--port|-p)(?:=|\s+)["']?(\d+)(?![\d:])/;
+
 /**
  * Spins up a project locally by running the project's dev command.
  *
@@ -55,19 +59,17 @@ export async function start(options?: StartOptions): Promise<{ hostname: string;
   let startCommand;
   if (options?.startCommand) {
     startCommand = options?.startCommand;
-    // Angular and nextjs CLIs allow for specifying port options but the emulator is setting and
-    // specifying specific ports rather than use framework defaults or w/e the user has set, so we
-    // need to reject such custom commands.
-    // NOTE: this is not robust, a command could be a wrapper around another command and we cannot
-    // detect --port there.
-    if (startCommand.includes("--port") || startCommand.includes(" -p ")) {
+    // A port set in the start command is the emulator port (see getListenConfig in ../controller),
+    // unless `firebase.json#emulators.apphosting.port` sets a different one.
+    const startCommandPort = getStartCommandPort(startCommand);
+    if (startCommandPort !== undefined && startCommandPort !== port) {
       throw new FirebaseError(
-        "Specifying a port in the start command is not supported by the apphosting emulator",
+        `The start command sets port ${startCommandPort}, but the emulator uses port ${port} (\`firebase.json#emulators.apphosting.port\`). Set them to the same port.`,
       );
     }
-    // Angular does not respect the NodeJS.ProcessEnv.PORT set below. Port needs to be
-    // set directly in the CLI.
-    if (startCommand.includes("ng serve")) {
+    // Angular below v22 does not respect the NodeJS.ProcessEnv.PORT set below. Port needs to be
+    // set directly in the CLI, unless the start command already does.
+    if (startCommand.includes("ng serve") && !startCommand.includes("--port")) {
       startCommand += ` --port ${port}`;
     }
     logger.logLabeled(
@@ -125,6 +127,14 @@ export async function start(options?: StartOptions): Promise<{ hostname: string;
     .then(() => logger.logLabeled("BULLET", Emulators.APPHOSTING, `Dev Server stopped`));
 
   return { hostname, port };
+}
+
+/**
+ * The port a start command sets with `--port` or `-p`, if it is a plain number.
+ */
+export function getStartCommandPort(startCommand: string): number | undefined {
+  const match = START_COMMAND_PORT_REGEX.exec(startCommand);
+  return match ? Number(match[1]) : undefined;
 }
 
 function availablePort(host: string, port: number): Promise<boolean> {
