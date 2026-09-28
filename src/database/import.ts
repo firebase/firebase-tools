@@ -1,12 +1,10 @@
-import { chain } from "stream-chain";
 import * as clc from "colorette";
-import { filter } from "stream-json/filters/filter.js";
 import * as stream from "stream";
-import { streamObject } from "stream-json/streamers/stream-object.js";
 
 import { URL } from "url";
 import { Client, ClientResponse } from "../apiv2";
 import { FirebaseError } from "../error";
+import { loadStreamJson } from "../streamJson";
 import { pLimit, Limit } from "../utils";
 
 type JsonType = { [key: string]: JsonType } | string | number | boolean;
@@ -169,7 +167,8 @@ export default class DatabaseImporter {
    * not too large. On the other hand, in the case where the data contains many small objects,
    * batching ensures that there are not too many requests.
    */
-  private readAndWriteChunks(): Promise<ClientResponse<JsonType>[]> {
+  private async readAndWriteChunks(): Promise<ClientResponse<JsonType>[]> {
+    const { chain, filter, streamObject } = await loadStreamJson();
     const { dbUrl, payloadSize } = this;
     const chunkData = this.chunkData.bind(this);
     const doWriteBatch = this.doWriteBatch.bind(this);
