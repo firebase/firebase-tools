@@ -740,3 +740,21 @@ export interface BrowserFilter {
    */
   displayNames: string[];
 }
+
+/** Supported alert types for template generation. */
+export enum AlertType {
+  ALERT_TYPE_UNSPECIFIED = "ALERT_TYPE_UNSPECIFIED",
+  /** Alert for newly detected issues. */
+  ALERT_TYPE_NEW_ISSUE = "ALERT_TYPE_NEW_ISSUE",
+  /** Alert for regressed (reopened) issues. */
+  ALERT_TYPE_REGRESSED_ISSUE = "ALERT_TYPE_REGRESSED_ISSUE",
+}
+
+/** Response message for the GenerateAlertPolicy method. */
+export interface GenerateAlertPolicyResponse {
+  /**
+   * The created Cloud Monitoring AlertPolicy resource name.
+   * Format: "projects/{project}/alertPolicies/{alert_policy_id}".
+   */
+  alertPolicy: string;
+}
