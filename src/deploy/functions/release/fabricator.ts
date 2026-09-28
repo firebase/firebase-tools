@@ -3,7 +3,7 @@ import * as clc from "colorette";
 import {
   Executor,
   isCloudRunResourceExhausted,
-  isServiceAccount404,
+  isServiceAccountPropagationError,
   isTransientError,
   parseErrorCode,
 } from "./executor";
@@ -253,7 +253,7 @@ export class Fabricator {
               serviceAccounts,
             }),
           {
-            retryPredicates: [isTransientError, isServiceAccount404],
+            retryPredicates: [isTransientError, isServiceAccountPropagationError],
           },
         ),
       ),
@@ -493,18 +493,23 @@ export class Fabricator {
     }
     const resultFunction = await this.functionExecutor
       .run(
-        async () => {
-          // try to get the source token right before deploying
-          apiFunction.sourceToken = await scraper.getToken();
-          const op: { name: string } = await gcf.createFunction(apiFunction);
-          return poller.pollOperation<gcf.CloudFunction>({
-            ...gcfV1PollerOptions,
-            pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
-            operationResourceName: op.name,
-            onPoll: scraper.poller,
-          });
-        },
-        { retryPredicates: [isTransientError, isServiceAccount404] },
+        () =>
+          scraper.withToken(async (token) => {
+            // Clear any token from a previous attempt so retries do not send a stale token.
+            // Explicitly delete instead of setting undefined so proto.fieldMasks() omits it.
+            delete apiFunction.sourceToken;
+            if (token) {
+              apiFunction.sourceToken = token;
+            }
+            const op: { name: string } = await gcf.createFunction(apiFunction);
+            return await poller.pollOperation<gcf.CloudFunction>({
+              ...gcfV1PollerOptions,
+              pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+              operationResourceName: op.name,
+              onPoll: scraper.poller,
+            });
+          }),
+        { retryPredicates: [isTransientError, isServiceAccountPropagationError] },
       )
       .catch(rethrowAs<gcf.CloudFunction>(endpoint, "create"));
 
@@ -624,24 +629,27 @@ export class Fabricator {
     while (!resultFunction) {
       resultFunction = await this.functionExecutor
         .run(
-          async () => {
-            if (experiments.isEnabled("functionsv2deployoptimizations")) {
-              apiFunction.buildConfig.sourceToken = await scraper.getToken();
-            }
-            const op: { name: string } = await gcfV2.createFunction(apiFunction);
-            return await poller.pollOperation<gcfV2.OutputCloudFunction>({
-              ...gcfV2PollerOptions,
-              pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
-              operationResourceName: op.name,
-              onPoll: scraper.poller,
-            });
-          },
-          { retryPredicates: [isTransientError, isServiceAccount404] },
+          () =>
+            scraper.withToken(async (token) => {
+              if (apiFunction.buildConfig) {
+                // Clear any token from a previous attempt so retries do not send a stale token.
+                // Explicitly delete instead of setting undefined so proto.fieldMasks() omits it.
+                delete apiFunction.buildConfig.sourceToken;
+                if (experiments.isEnabled("functionsv2deployoptimizations") && token) {
+                  apiFunction.buildConfig.sourceToken = token;
+                }
+              }
+              const op: { name: string } = await gcfV2.createFunction(apiFunction);
+              return await poller.pollOperation<gcfV2.OutputCloudFunction>({
+                ...gcfV2PollerOptions,
+                pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+                operationResourceName: op.name,
+                onPoll: scraper.poller,
+              });
+            }),
+          { retryPredicates: [isTransientError, isServiceAccountPropagationError] },
         )
         .catch(async (err: any) => {
-          // Abort waiting on source token so other concurrent calls don't get stuck
-          scraper.abort();
-
           // If the createFunction call returns RPC error code RESOURCE_EXHAUSTED (8),
           // we have exhausted the underlying Cloud Run API quota. To retry, we need to
           // first delete the GCF function resource, then call createFunction again.
@@ -726,16 +734,25 @@ export class Fabricator {
     const apiFunction = gcf.functionFromEndpoint(endpoint, sourceUrl);
 
     const resultFunction = await this.functionExecutor
-      .run(async () => {
-        apiFunction.sourceToken = await scraper.getToken();
-        const op: { name: string } = await gcf.updateFunction(apiFunction);
-        return await poller.pollOperation<gcf.CloudFunction>({
-          ...gcfV1PollerOptions,
-          pollerName: `update-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
-          operationResourceName: op.name,
-          onPoll: scraper.poller,
-        });
-      })
+      .run(
+        () =>
+          scraper.withToken(async (token) => {
+            // Clear any token from a previous attempt so retries do not send a stale token.
+            // Explicitly delete instead of setting undefined so proto.fieldMasks() omits it.
+            delete apiFunction.sourceToken;
+            if (token) {
+              apiFunction.sourceToken = token;
+            }
+            const op: { name: string } = await gcf.updateFunction(apiFunction);
+            return await poller.pollOperation<gcf.CloudFunction>({
+              ...gcfV1PollerOptions,
+              pollerName: `update-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+              operationResourceName: op.name,
+              onPoll: scraper.poller,
+            });
+          }),
+        { retryPredicates: [isTransientError, isServiceAccountPropagationError] },
+      )
       .catch(rethrowAs<gcf.CloudFunction>(endpoint, "update"));
 
     endpoint.uri = resultFunction?.httpsTrigger?.url;
@@ -775,22 +792,33 @@ export class Fabricator {
 
     const resultFunction = await this.functionExecutor
       .run(
-        async () => {
-          if (experiments.isEnabled("functionsv2deployoptimizations")) {
-            apiFunction.buildConfig.sourceToken = await scraper.getToken();
-          }
-          const op: { name: string } = await gcfV2.updateFunction(apiFunction);
-          return await poller.pollOperation<gcfV2.OutputCloudFunction>({
-            ...gcfV2PollerOptions,
-            pollerName: `update-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
-            operationResourceName: op.name,
-            onPoll: scraper.poller,
-          });
+        () =>
+          scraper.withToken(async (token) => {
+            if (apiFunction.buildConfig) {
+              // Clear any token from a previous attempt so retries do not send a stale token.
+              // Explicitly delete instead of setting undefined so proto.fieldMasks() omits it.
+              delete apiFunction.buildConfig.sourceToken;
+              if (experiments.isEnabled("functionsv2deployoptimizations") && token) {
+                apiFunction.buildConfig.sourceToken = token;
+              }
+            }
+            const op: { name: string } = await gcfV2.updateFunction(apiFunction);
+            return await poller.pollOperation<gcfV2.OutputCloudFunction>({
+              ...gcfV2PollerOptions,
+              pollerName: `update-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+              operationResourceName: op.name,
+              onPoll: scraper.poller,
+            });
+          }),
+        {
+          retryPredicates: [
+            isTransientError,
+            isCloudRunResourceExhausted,
+            isServiceAccountPropagationError,
+          ],
         },
-        { retryPredicates: [isTransientError, isCloudRunResourceExhausted, isServiceAccount404] },
       )
       .catch((err: any) => {
-        scraper.abort();
         logger.error((err as Error).message);
         throw new reporter.DeploymentError(endpoint, "update", err);
       });
@@ -865,7 +893,13 @@ export class Fabricator {
           };
           await poller.pollOperation<void>(pollerOptions);
         },
-        { retryPredicates: [isTransientError, isCloudRunResourceExhausted, isServiceAccount404] },
+        {
+          retryPredicates: [
+            isTransientError,
+            isCloudRunResourceExhausted,
+            isServiceAccountPropagationError,
+          ],
+        },
       )
       .catch(rethrowAs(endpoint, "delete"));
   }
@@ -901,7 +935,7 @@ export class Fabricator {
           endpoint.uri = op.uri;
           endpoint.runServiceId = endpoint.id;
         },
-        { retryPredicates: [isTransientError, isServiceAccount404] },
+        { retryPredicates: [isTransientError, isServiceAccountPropagationError] },
       )
       .catch(rethrowAs(endpoint, "create"));
 

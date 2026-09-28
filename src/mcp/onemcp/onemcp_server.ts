@@ -15,6 +15,12 @@ import { McpContext, ServerFeature } from "../types";
 import { FirebaseError } from "../../error";
 import { ensure } from "../../ensureApiEnabled";
 
+export type HeaderOverrideFn = (
+  headers: Record<string, string>,
+  toolName: string,
+  args: Record<string, unknown>,
+) => Record<string, string> | void;
+
 export interface OneMcpServerOptions {
   /**
    * Optional allowlist of tool names. If provided, only tools matching
@@ -27,6 +33,10 @@ export interface OneMcpServerOptions {
    * that should opt-out of the project requirement.
    */
   toolsToOptOutProjectRequirement?: string[];
+  /**
+   * Optional callback to override or inject HTTP headers prior to proxying a callTool request.
+   */
+  headerOverride?: HeaderOverrideFn;
 }
 
 /**
@@ -165,6 +175,18 @@ export class OneMcpServer {
       await ensure(ctx.projectId, this.serverUrl, this.feature, /* silent=*/ true);
     }
     try {
+      const baseHeaders: Record<string, string> = {
+        "MCP-Protocol-Version": LATEST_PROTOCOL_VERSION,
+        "Mcp-Method": "tools/call",
+        "Mcp-Name": toolName,
+        ...(ctx.projectId ? { "x-goog-user-project": ctx.projectId } : {}),
+        ...paramHeaders,
+      };
+      const headers: Record<string, string> = {
+        ...baseHeaders,
+        ...(this.options.headerOverride?.(baseHeaders, toolName, args) ?? {}),
+      };
+
       const res = await this.callClient.post<
         JSONRPCRequest & CallToolRequest,
         JSONRPCResultResponse
@@ -180,13 +202,7 @@ export class OneMcpServer {
           id: 1,
         },
         {
-          headers: {
-            "MCP-Protocol-Version": LATEST_PROTOCOL_VERSION,
-            "Mcp-Method": "tools/call",
-            "Mcp-Name": toolName,
-            ...(ctx.projectId ? { "x-goog-user-project": ctx.projectId } : {}),
-            ...paramHeaders,
-          },
+          headers,
         },
       );
       return CallToolResultSchema.parse(res.body.result);

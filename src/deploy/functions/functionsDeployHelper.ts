@@ -249,6 +249,16 @@ export function isEndpointFiltered(endpoint: backend.Endpoint, filters: Endpoint
   return filters.some((filter) => endpointMatchesFilter(endpoint, filter));
 }
 
+/** Checks if a codebase has any intra-codebase (partial) filters targeting specific function IDs. */
+export function isCodebasePartiallyFiltered(codebase: string, filters?: EndpointFilter[]): boolean {
+  if (!filters) {
+    return false;
+  }
+  return filters.some(
+    (f) => (!f.codebase || f.codebase === codebase) && !!f.idChunks && f.idChunks.length > 0,
+  );
+}
+
 /**
  * Parses raw CLI filter strings for functions:delete into EndpointFilter objects.
  *

@@ -10,7 +10,7 @@ import {
   logLabeledSuccess,
   logLabeledWarning,
 } from "../utils";
-import { logPrefix } from "./extensionsHelper";
+import { ensureInstanceSpec, logPrefix } from "./extensionsHelper";
 import { confirm, select } from "../prompt";
 import * as extensionsApi from "./extensionsApi";
 import * as refs from "./refs";
@@ -347,7 +347,11 @@ export async function ensureInstanceUpToDate(
   try {
     const parsed = refs.parse(rawRef);
     baseRef = refs.toExtensionRef(parsed);
-    currentVersion = parsed.version || instance.config.source?.spec?.version;
+    currentVersion =
+      parsed.version ||
+      instance.config?.source?.spec?.version ||
+      instance.config?.extensionVersion ||
+      instance.extensionVersion;
   } catch (err: unknown) {
     logger.debug(`[ensureInstanceUpToDate] Could not parse extension reference '${rawRef}':`, err);
     logLabeledWarning(
@@ -372,6 +376,20 @@ export async function ensureInstanceUpToDate(
 
   const latestVersion = await getLatestExtensionVersionNumber(baseRef);
   if (!latestVersion || currentVersion === latestVersion) {
+    return instance;
+  }
+
+  const shouldUpgrade = await confirm({
+    message: `Extension instance ${clc.bold(instanceId)} is on version ${clc.bold(currentVersion)}, but the latest version is ${clc.bold(latestVersion)}. An upgrade is strongly recommended before migrating to avoid breaking changes. Upgrade it now?`,
+    default: true,
+    nonInteractive: options?.nonInteractive,
+    force: options?.force,
+  });
+  if (!shouldUpgrade) {
+    logLabeledWarning(
+      logPrefix,
+      `Continuing migration with extension instance ${clc.bold(instanceId)} on outdated version ${clc.bold(currentVersion)}.`,
+    );
     return instance;
   }
 
@@ -439,7 +457,7 @@ export async function ensureInstanceUpToDate(
   }
 
   const updatedInstance = await extensionsApi.getInstance(projectId, instanceId);
-  return updatedInstance ?? instance;
+  return updatedInstance ? await ensureInstanceSpec(updatedInstance) : instance;
 }
 
 /**
