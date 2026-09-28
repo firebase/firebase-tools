@@ -3,3 +3,6 @@
 - [fixed] Fixed `ERR_REQUIRE_ESM` crash (e.g. on `emulators:start`) in the standalone binary and on Node.js versions earlier than 20.19 / 22.12. (#11168)
 - [fixed] Updated the Firebase console link in the Terms of Service error to include `?forceCheckTos=true`.
 - [fixed] Honor boolean and integer defaults in `select` prompts for function params instead of preselecting the first option.
+- [added] Added support for overriding the Cloud Secret Manager secret ID and version used to resolve a named secret parameter via `FIREBASE_SECRET_REF_<SECRET_NAME>` in Functions `.env` files.
+- [added] Introduced function kits (`functions:kits:install`, `functions:kits:uninstall`, `functions:kits:list`) to configure and run multiple instances of functions from the CLI.
+- [added] Added `ext:migrate` and updated `ext:export` and `ext:list` to assist with migrating Firebase Extensions to function kits.
