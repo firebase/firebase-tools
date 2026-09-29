@@ -1,2 +1,3 @@
 - Fixed the first deploy of a codebase using `requiresRole` failing when it contains a Genkit function, and kept the Genkit monitoring roles on the managed service account across later deploys. (#11123)
 - Stopped skipping functions whose declarative security roles changed, so the first deploy after this release redeploys the functions in a codebase that uses `requiresRole` and contains Genkit functions.
+- [fixed] Improve error message when billing is not enabled
