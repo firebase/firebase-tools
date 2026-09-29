@@ -1,2 +1,1 @@
-- [fixed] Increased retries for IAM policy updates to further reduce deployment flakiness from service account propagation delays.
 - [fixed] Improve error message when billing is not enabled

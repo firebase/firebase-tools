@@ -8,6 +8,7 @@ import {
   generateUniqueId,
   parseNpmPackageSpecifier,
   validateNpmPackageName,
+  validateNpmPackageExists,
   sanitizePackageNameToKitName,
   isThirdPartyPackage,
   checkPackageHasShrinkwrap,
@@ -306,6 +307,52 @@ describe("functions/kits/install", () => {
       expect(res).to.deep.equal({
         packageName: "my-kit",
       });
+    });
+  });
+
+  describe("validateNpmPackageExists", () => {
+    it("should resolve when npm view returns a valid version", async () => {
+      spawnWithOutputStub
+        .withArgs("npm", ["view", "@firebase-function-kits/firestore-bigquery-export", "version"])
+        .resolves("1.0.0\n");
+
+      await expect(validateNpmPackageExists("@firebase-function-kits/firestore-bigquery-export")).to
+        .not.be.rejected;
+    });
+
+    it("should throw FirebaseError when npm view fails", async () => {
+      spawnWithOutputStub
+        .withArgs("npm", ["view", "@firebase/my-silly-package", "version"])
+        .rejects(
+          new Error(
+            "Error: spawn(npm, [view, @firebase/my-silly-package, version]) \n exited with code: 1",
+          ),
+        );
+
+      await expect(validateNpmPackageExists("@firebase/my-silly-package")).to.be.rejectedWith(
+        FirebaseError,
+        "NPM package '@firebase/my-silly-package' could not be found in the npm registry. Please verify the package name and version.",
+      );
+    });
+
+    it("should throw FirebaseError when npm view returns empty output", async () => {
+      spawnWithOutputStub
+        .withArgs("npm", ["view", "@firebase/empty-package", "version"])
+        .resolves("   \n");
+
+      await expect(validateNpmPackageExists("@firebase/empty-package")).to.be.rejectedWith(
+        FirebaseError,
+        "NPM package '@firebase/empty-package' could not be found in the npm registry. Please verify the package name and version.",
+      );
+    });
+
+    it("should reject invalid package name format without spawning npm view", async () => {
+      await expect(validateNpmPackageExists("my-kit@")).to.be.rejectedWith(
+        FirebaseError,
+        /Invalid NPM package name 'my-kit@'/,
+      );
+
+      expect(spawnWithOutputStub).to.not.have.been.called;
     });
   });
 
@@ -911,17 +958,6 @@ describe("functions/kits/install", () => {
       expect(source.defaultKitName).to.equal("@firebase-function-kits/firestore-export");
       expect(source.sourcePackageName).to.equal("@firebase-function-kits/firestore-export");
       expect(source.hasBuildScript).to.be.true;
-    });
-
-    it("should reject malformed package specifier with trailing @", async () => {
-      await expect(
-        resolvePackageSource({
-          config: { projectDir: "/mock/project" } as Config,
-          package: "my-kit@",
-          template: "installation",
-          nonInteractive: true,
-        }),
-      ).to.be.rejectedWith(FirebaseError, /Invalid NPM package name 'my-kit@'/);
     });
   });
 
@@ -3268,6 +3304,36 @@ describe("functions/kits/install", () => {
           package: "@scope/pkg/extra@1.0.0",
         }),
       ).to.be.rejectedWith(FirebaseError, /Invalid NPM package name/);
+    });
+
+    it("should throw an error before prompting or scaffolding if package does not exist in npm registry", async () => {
+      const writeProjectFileStub = sinon.stub();
+      const askWriteProjectFileStub = sinon.stub().resolves();
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: writeProjectFileStub,
+        askWriteProjectFile: askWriteProjectFileStub,
+      } as unknown as Config;
+
+      spawnWithOutputStub
+        .withArgs("npm", ["view", "@firebase/my-silly-package", "version"])
+        .rejects(new Error("npm error code E404"));
+
+      await expect(
+        installKitOrInstance({
+          config: mockConfig,
+          package: "@firebase/my-silly-package",
+        }),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        /NPM package '@firebase\/my-silly-package' could not be found in the npm registry/,
+      );
+
+      expect(loggerWarnStub).to.not.have.been.called;
+      expect(askWriteProjectFileStub).to.not.have.been.called;
+      expect(writeProjectFileStub).to.not.have.been.called;
     });
 
     it("should throw an error if template has an invalid template name", async () => {
