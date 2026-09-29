@@ -1,2 +1,3 @@
 - [fixed] Improve error message when billing is not enabled
+- Fixed a crash in `setEnqueuer` when deploying Cloud Tasks functions whose IAM policy has no bindings (#11184).
 - Fixed the Firestore emulator exiting when it could not watch the rules file for changes. It now logs a warning instead. (#4298)
