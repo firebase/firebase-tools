@@ -1,5 +1,6 @@
 import { expect } from "chai";
-import * as admin from "firebase-admin";
+import { initializeApp } from "firebase-admin/app";
+import { Database, getDatabase } from "firebase-admin/database";
 import { Firestore } from "@google-cloud/firestore";
 import * as fs from "fs";
 import * as path from "path";
@@ -40,8 +41,8 @@ function readConfig(): FrameworkOptions {
 
 describe("function triggers", () => {
   let test: TriggerEndToEndTest;
-  let database: admin.database.Database | undefined;
-  let firestore: admin.firestore.Firestore | undefined;
+  let database: Database | undefined;
+  let firestore: Firestore | undefined;
   const firestoreUnsub: Array<() => void> = [];
 
   before(async function (this) {
@@ -60,13 +61,13 @@ describe("function triggers", () => {
       ssl: false,
     });
 
-    admin.initializeApp({
+    initializeApp({
       projectId: FIREBASE_PROJECT,
       databaseURL: `http://127.0.0.1:${test.rtdbEmulatorPort}?ns=${FIREBASE_PROJECT}`,
       credential: ADMIN_CREDENTIAL,
     });
 
-    database = admin.database();
+    database = getDatabase();
 
     // /*
     //  * Install completion marker handlers and have them update state
