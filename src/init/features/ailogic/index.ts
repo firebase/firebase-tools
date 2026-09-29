@@ -1,8 +1,7 @@
-import { select } from "../../../prompt";
 import { Setup } from "../..";
 import { FirebaseError } from "../../../error";
 import { AppInfo, getConfigFileName, parseAppId } from "./utils";
-import { listFirebaseApps, AppMetadata, AppPlatform } from "../../../management/apps";
+import { listFirebaseApps, AppPlatform, selectAppInteractively } from "../../../management/apps";
 import { provisionFirebaseApp } from "../../../management/provisioning/provision";
 import {
   ProvisionAppOptions,
@@ -12,41 +11,6 @@ import {
 export interface AiLogicInfo {
   appId: string;
   displayName?: string;
-}
-
-function checkForApps(apps: AppMetadata[]): void {
-  if (!apps.length) {
-    throw new FirebaseError(
-      "No Firebase apps found in this project. Please create an app first using the Firebase Console or 'firebase apps:create'.",
-      { exit: 1 },
-    );
-  }
-}
-
-async function selectAppInteractively(apps: AppMetadata[]): Promise<AppMetadata> {
-  checkForApps(apps);
-
-  const choices = apps.map((app) => {
-    let displayText = app.displayName || app.appId;
-
-    if (!app.displayName) {
-      if (app.platform === AppPlatform.IOS && "bundleId" in app) {
-        displayText = app.bundleId as string;
-      } else if (app.platform === AppPlatform.ANDROID && "packageName" in app) {
-        displayText = app.packageName as string;
-      }
-    }
-
-    return {
-      name: `${displayText} - ${app.appId} (${app.platform})`,
-      value: app,
-    };
-  });
-
-  return await select<AppMetadata>({
-    message: "Select the Firebase app to enable AI Logic for:",
-    choices,
-  });
 }
 
 /**
@@ -61,7 +25,9 @@ export async function askQuestions(setup: Setup): Promise<void> {
   }
 
   const apps = await listFirebaseApps(setup.projectId, AppPlatform.ANY);
-  const selectedApp = await selectAppInteractively(apps);
+  const selectedApp = await selectAppInteractively(apps, AppPlatform.ANY, {
+    message: "Select the Firebase app to enable AI Logic for:",
+  });
 
   // Set up the feature info
   if (!setup.featureInfo) {

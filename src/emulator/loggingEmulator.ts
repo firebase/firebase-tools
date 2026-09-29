@@ -123,7 +123,7 @@ class WebSocketTransport extends TransportStream {
           try {
             bundle.data = { ...bundle.data, ...JSON.parse(value) };
             return null;
-          } catch (err: any) {
+          } catch (err: unknown) {
             // If the value isn't JSONable, just treat it like a string
             return value;
           }

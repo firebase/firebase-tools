@@ -2,11 +2,13 @@ import { spawn, spawnSync } from "child_process";
 import * as utils from "./utils";
 import * as prompt from "./prompt";
 import { getErrMsg } from "./error";
+import { Options } from "./options";
 
-export async function promptForAgentSkills(): Promise<boolean> {
+export async function promptForAgentSkills(options?: Options): Promise<boolean> {
   return prompt.confirm({
     message: "Would you like to install agent skills for Firebase?",
-    default: true,
+    default: !options?.nonInteractive,
+    nonInteractive: options?.nonInteractive,
   });
 }
 
@@ -15,6 +17,7 @@ export interface InstallAgentSkillsOptions {
   global?: boolean;
   background?: boolean;
   agentName?: string;
+  skillPackage?: string;
 }
 
 export async function installAgentSkills(options: InstallAgentSkillsOptions): Promise<void> {
@@ -22,11 +25,12 @@ export async function installAgentSkills(options: InstallAgentSkillsOptions): Pr
     return;
   }
 
+  const skillPackage = options.skillPackage || "firebase/agent-skills";
   const args = [
     "-y", // npx -y to auto-confirm package install
     "skills",
     "add",
-    "firebase/agent-skills",
+    skillPackage,
     "--skill",
     "*",
     "-y",

@@ -67,6 +67,35 @@ describe("prettyIndexString", () => {
       ),
     ).to.contain("(foo,ASCENDING) (bar,VECTOR<200>) ");
   });
+
+  it("should correctly print a search type Index", () => {
+    expect(
+      printer.prettyIndexString(
+        {
+          name: "/projects/project/databases/(default)/collectionGroups/collectionB/indexes/a",
+          queryScope: API.QueryScope.COLLECTION,
+          fields: [{ fieldPath: "foo", searchConfig: {} }],
+        },
+        false,
+      ),
+    ).to.contain("(foo,SEARCH) ");
+  });
+
+  it("should correctly print a search type Index with other fields", () => {
+    expect(
+      printer.prettyIndexString(
+        {
+          name: "/projects/project/databases/(default)/collectionGroups/collectionB/indexes/a",
+          queryScope: API.QueryScope.COLLECTION,
+          fields: [
+            { fieldPath: "foo", order: API.Order.ASCENDING },
+            { fieldPath: "bar", searchConfig: {} },
+          ],
+        },
+        false,
+      ),
+    ).to.contain("(foo,ASCENDING) (bar,SEARCH) ");
+  });
 });
 
 describe("firebaseConsoleDatabaseUrl", () => {
@@ -95,7 +124,7 @@ describe("prettyStringArray", () => {
   });
 });
 
-describe("prettyPrintDatabase", () => {
+describe("database:get", () => {
   let loggerInfoStub: sinon.SinonStub;
 
   const BASE_DATABASE: API.DatabaseResp = {
@@ -169,5 +198,94 @@ describe("prettyPrintDatabase", () => {
 
     expect(loggerInfoStub.firstCall.args[0]).to.include("Edition");
     expect(loggerInfoStub.firstCall.args[0]).to.include("STANDARD");
+  });
+});
+
+describe("database:list", () => {
+  let loggerInfoStub: sinon.SinonStub;
+
+  const BASE_DATABASE: API.DatabaseResp = {
+    name: "projects/my-project/databases/(default)",
+    uid: "uid",
+    createTime: "2020-01-01T00:00:00Z",
+    updateTime: "2020-01-01T00:00:00Z",
+    locationId: "us-central1",
+    type: API.DatabaseType.FIRESTORE_NATIVE,
+    concurrencyMode: "OPTIMISTIC",
+    appEngineIntegrationMode: "ENABLED",
+    keyPrefix: "prefix",
+    deleteProtectionState: API.DatabaseDeleteProtectionState.DISABLED,
+    pointInTimeRecoveryEnablement: API.PointInTimeRecoveryEnablement.DISABLED,
+    etag: "etag",
+    versionRetentionPeriod: "1h",
+    earliestVersionTime: "2020-01-01T00:00:00Z",
+    realtimeUpdatesMode: API.RealtimeUpdatesMode.ENABLED,
+    firestoreDataAccessMode: API.DataAccessMode.ENABLED,
+    mongodbCompatibleDataAccessMode: API.DataAccessMode.DISABLED,
+  };
+
+  beforeEach(() => {
+    loggerInfoStub = sinon.stub(logger, "info");
+  });
+
+  afterEach(() => {
+    loggerInfoStub.restore();
+  });
+
+  it("should display columns for Name, Edition, and Type", () => {
+    const databases: API.DatabaseResp[] = [
+      {
+        ...BASE_DATABASE,
+        name: "projects/my-project/databases/db1",
+        databaseEdition: API.DatabaseEdition.STANDARD,
+      },
+    ];
+
+    printer.prettyPrintDatabases(databases);
+
+    expect(loggerInfoStub.firstCall.args[0]).to.include("Database Name");
+    expect(loggerInfoStub.firstCall.args[0]).to.include("Edition");
+    expect(loggerInfoStub.firstCall.args[0]).to.include("Type");
+    expect(loggerInfoStub.firstCall.args[0]).to.include("db1");
+    expect(loggerInfoStub.firstCall.args[0]).to.include("STANDARD");
+    expect(loggerInfoStub.firstCall.args[0]).to.include("FIRESTORE_NATIVE");
+  });
+
+  it("should sort databases by name", () => {
+    const databases: API.DatabaseResp[] = [
+      {
+        ...BASE_DATABASE,
+        name: "projects/my-project/databases/z-database",
+      },
+      {
+        ...BASE_DATABASE,
+        name: "projects/my-project/databases/a-database",
+      },
+    ];
+
+    printer.prettyPrintDatabases(databases);
+
+    const logOutput = loggerInfoStub.firstCall.args[0] as string;
+    expect(logOutput.indexOf("a-database")).to.be.lessThan(logOutput.indexOf("z-database"));
+  });
+
+  it("should show No databases found when list is empty", () => {
+    printer.prettyPrintDatabases([]);
+    expect(loggerInfoStub.firstCall.args[0]).to.include("No databases found.");
+  });
+
+  it("should display DATASTORE_MODE when type is DATASTORE_MODE", () => {
+    const databases: API.DatabaseResp[] = [
+      {
+        ...BASE_DATABASE,
+        name: "projects/my-project/databases/db-datastore",
+        type: API.DatabaseType.DATASTORE_MODE,
+      },
+    ];
+
+    printer.prettyPrintDatabases(databases);
+
+    expect(loggerInfoStub.firstCall.args[0]).to.include("db-datastore");
+    expect(loggerInfoStub.firstCall.args[0]).to.include("DATASTORE_MODE");
   });
 });

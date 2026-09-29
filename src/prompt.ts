@@ -3,6 +3,22 @@ import { FirebaseError } from "./error";
 
 export { Separator } from "@inquirer/prompts";
 
+let globalNonInteractive = false;
+
+/**
+ * Set the global non-interactive override.
+ */
+export function setNonInteractive(value: boolean): void {
+  globalNonInteractive = value;
+}
+
+/**
+ * Get the global non-interactive override state.
+ */
+export function isNonInteractive(): boolean {
+  return globalNonInteractive;
+}
+
 /**
  * Common options for all prompts.
  */
@@ -23,7 +39,7 @@ export interface BasicOptions<T> {
 export function guard<T>(
   opts: BasicOptions<T>,
 ): { shouldReturn: true; value: T } | { shouldReturn: false; value: undefined } {
-  if (!opts.nonInteractive) {
+  if (!opts.nonInteractive && !isNonInteractive()) {
     return { shouldReturn: false, value: undefined };
   }
   if (typeof opts.default !== "undefined") {
@@ -144,6 +160,7 @@ export type CheckboxOptions<Value> = BasicOptions<Value[]> & {
     | ((choices: readonly Choice<Value>[]) => boolean | string | Promise<string | boolean>)
     | undefined;
   pageSize?: number;
+  instructions?: string | boolean;
 };
 
 /**
@@ -151,7 +168,16 @@ export type CheckboxOptions<Value> = BasicOptions<Value[]> & {
  * Can accept a generic type for enum values.
  */
 export async function checkbox<Value>(opts: CheckboxOptions<Value>): Promise<Value[]> {
-  const { shouldReturn, value } = guard(opts);
+  let optsWithDefault = opts;
+  if (opts.default === undefined && Array.isArray(opts.choices)) {
+    const checkedValues = (opts.choices as Choice<Value>[])
+      .filter((c) => c && typeof c === "object" && "checked" in c && c.checked)
+      .map((c) => c.value);
+    if (checkedValues.length > 0) {
+      optsWithDefault = { ...opts, default: checkedValues };
+    }
+  }
+  const { shouldReturn, value } = guard(optsWithDefault);
   if (shouldReturn) {
     return value;
   }
@@ -174,6 +200,7 @@ export type SelectOptions<Value> = BasicOptions<Value> & {
     | readonly (MaybeLiteral<Value> | inquirer.Separator)[]
     | readonly (inquirer.Separator | Choice<Value>)[];
   pageSize?: number;
+  instructions?: string | { navigation: string; pager: string };
 };
 
 /**
@@ -184,8 +211,13 @@ export async function select<Value>(opts: SelectOptions<Value>): Promise<Value> 
   if (shouldReturn) {
     return value;
   }
+  const instructions =
+    typeof opts.instructions === "string"
+      ? { navigation: opts.instructions, pager: opts.instructions }
+      : opts.instructions;
   return inquirer.select({
     ...opts,
+    instructions,
     loop: false,
   });
 }

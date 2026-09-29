@@ -75,7 +75,7 @@ function RunningEmulatorControlButtons({ infos }: { infos: EmulatorInfo[] }) {
         onClick={() => broker.send("fdc.clear-emulator-data")}
         appearance="secondary"
       >
-        Clear Data Connect data
+        Clear SQL Connect data
       </VSCodeButton>
       <Spacer size="small"></Spacer>
       <VSCodeButton

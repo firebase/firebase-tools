@@ -56,7 +56,7 @@ function convertGQLErrorToDiagnostic(
     const absFilePath = path.join(dcPath, file);
     perFileDiagnostics[absFilePath] = perFileDiagnostics[absFilePath] || [];
     perFileDiagnostics[absFilePath].push({
-      source: "Firebase Data Connect: Compiler",
+      source: "Firebase SQL Connect: Compiler",
       message: error.message,
       severity: warningLevelToDiagnosticSeverity(error.extensions?.warningLevel),
       range: locationToRange(error.locations?.[0] || { line: 0, column: 0 }),

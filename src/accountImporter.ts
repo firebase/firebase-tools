@@ -10,7 +10,6 @@ const apiClient = new Client({
   urlPrefix: googleOrigin(),
 });
 
-// TODO: support for MFA at runtime was added in PR #3173, but this importer currently ignores `mfaInfo` and loses the data on import.
 const ALLOWED_JSON_KEYS = [
   "localId",
   "email",
@@ -25,12 +24,24 @@ const ALLOWED_JSON_KEYS = [
   "phoneNumber",
   "disabled",
   "customAttributes",
+  "mfaInfo",
 ];
 const ALLOWED_JSON_KEYS_RENAMING = {
   lastSignedInAt: "lastLoginAt",
 };
 const ALLOWED_PROVIDER_USER_INFO_KEYS = ["providerId", "rawId", "email", "displayName", "photoUrl"];
-const ALLOWED_PROVIDER_IDS = ["google.com", "facebook.com", "twitter.com", "github.com"];
+const ALLOWED_PROVIDER_IDS = [
+  "google.com",
+  "facebook.com",
+  "twitter.com",
+  "github.com",
+  "apple.com",
+  "microsoft.com",
+  "gc.apple.com",
+  "playgames.google.com",
+  "linkedin.com",
+  "yahoo.com",
+];
 
 function isValidBase64(str: string): boolean {
   const expected = Buffer.from(str, "base64").toString("base64");
@@ -130,6 +141,12 @@ export function transArrayToUser(arr: any[]): any {
   addProviderUserInfo(user, "facebook.com", arr.slice(11, 15));
   addProviderUserInfo(user, "twitter.com", arr.slice(15, 19));
   addProviderUserInfo(user, "github.com", arr.slice(19, 23));
+  addProviderUserInfo(user, "apple.com", arr.slice(28, 32));
+  addProviderUserInfo(user, "microsoft.com", arr.slice(32, 36));
+  addProviderUserInfo(user, "gc.apple.com", arr.slice(36, 40));
+  addProviderUserInfo(user, "playgames.google.com", arr.slice(40, 44));
+  addProviderUserInfo(user, "linkedin.com", arr.slice(44, 48));
+  addProviderUserInfo(user, "yahoo.com", arr.slice(48, 52));
 
   if (user.passwordHash && !isValidBase64(user.passwordHash)) {
     return {

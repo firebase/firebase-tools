@@ -85,7 +85,12 @@ export interface Diff {
   destructive: boolean;
 }
 
-export type WarningLevel = "LOG_ONLY" | "INTERACTIVE_ACK" | "REQUIRE_ACK" | "REQUIRE_FORCE";
+export type WarningLevel =
+  | "LOG_ONLY"
+  | "INTERACTIVE_ACK"
+  | "REQUIRE_ACK"
+  | "REQUIRE_FORCE"
+  | "ALWAYS_REQUIRED";
 
 export interface Workaround {
   description: string;
@@ -266,7 +271,7 @@ export function toDatasource(
   return {};
 }
 
-/** Returns the main schema YAML for a Data Connect YAML */
+/** Returns the main schema YAML for a SQL Connect YAML */
 export function mainSchemaYaml(dataconnectYaml: DataConnectYaml): SchemaYaml {
   if (dataconnectYaml.schema) {
     return dataconnectYaml.schema;
@@ -278,7 +283,7 @@ export function mainSchemaYaml(dataconnectYaml: DataConnectYaml): SchemaYaml {
   return mainSch;
 }
 
-/** Returns the secondary schema YAMLs for a Data Connect YAML */
+/** Returns the secondary schema YAMLs for a SQL Connect YAML */
 export function secondarySchemaYamls(dataconnectYaml: DataConnectYaml): SchemaYaml[] {
   if (dataconnectYaml.schema) {
     return [];

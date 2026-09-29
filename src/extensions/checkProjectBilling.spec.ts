@@ -47,10 +47,10 @@ describe("checkProjectBilling", () => {
       await checkProjectBilling.enableBilling(projectId);
     }
 
-    expect(listBillingAccountsStub.notCalled);
-    expect(setBillingAccountStub.notCalled);
-    expect(confirmStub.notCalled);
-    expect(selectStub.notCalled);
+    expect(listBillingAccountsStub.notCalled).to.be.true;
+    expect(setBillingAccountStub.notCalled).to.be.true;
+    expect(confirmStub.notCalled).to.be.true;
+    expect(selectStub.notCalled).to.be.true;
   });
 
   it("should list accounts if no billing account set, but accounts available.", async () => {
@@ -73,9 +73,11 @@ describe("checkProjectBilling", () => {
       await checkProjectBilling.enableBilling(projectId);
     }
 
-    expect(listBillingAccountsStub.calledOnce);
-    expect(setBillingAccountStub.calledOnce);
-    expect(setBillingAccountStub.calledWith(projectId, "test-cloud-billing-account-name"));
+    expect(listBillingAccountsStub.calledOnce).to.be.true;
+    expect(listBillingAccountsStub.calledWith(projectId)).to.be.true;
+    expect(setBillingAccountStub.calledOnce).to.be.true;
+    expect(setBillingAccountStub.calledWith(projectId, "test-cloud-billing-account-name")).to.be
+      .true;
   });
 
   it("should not list accounts if no billing accounts set or available.", async () => {
@@ -90,8 +92,9 @@ describe("checkProjectBilling", () => {
       await checkProjectBilling.enableBilling(projectId);
     }
 
-    expect(listBillingAccountsStub.calledOnce);
-    expect(setBillingAccountStub.notCalled);
+    expect(listBillingAccountsStub.calledOnce).to.be.true;
+    expect(listBillingAccountsStub.calledWith(projectId)).to.be.true;
+    expect(setBillingAccountStub.notCalled).to.be.true;
     expect(checkBillingEnabledStub.callCount).to.equal(2);
   });
 });

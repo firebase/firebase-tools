@@ -96,11 +96,19 @@ describe("terraform iac", () => {
     });
 
     it("should serialize arrays of objects with line breaks", () => {
-      expect(tf.serializeValue([{ a: 1 }])).to.equal("[\n  {\n    a = 1\n  }\n]");
+      expect(tf.serializeValue([{ a: 1 }])).to.equal(`[
+  {
+    a = 1
+  }
+]`);
     });
 
     it("should serialize nested objects with proper indentation", () => {
-      expect(tf.serializeValue({ a: { b: 2 } })).to.equal("{\n  a = {\n    b = 2\n  }\n}");
+      expect(tf.serializeValue({ a: { b: 2 } })).to.equal(`{
+  a = {
+    b = 2
+  }
+}`);
     });
   });
 
@@ -111,7 +119,9 @@ describe("terraform iac", () => {
           type: "locals",
           attributes: { foo: "bar" },
         }),
-      ).to.equal('locals {\n  foo = "bar"\n}');
+      ).to.equal(`locals {
+  foo = "bar"
+}`);
     });
 
     it("should stringify a block with labels", () => {
@@ -121,7 +131,30 @@ describe("terraform iac", () => {
           labels: ["google_function", "my_func"],
           attributes: { name: "test" },
         }),
-      ).to.equal('resource "google_function" "my_func" {\n  name = "test"\n}');
+      ).to.equal(`resource "google_function" "my_func" {
+  name = "test"
+}`);
     });
+  });
+
+  it("should use pretty ordering and spacing for resources", () => {
+    const block: tf.Block = {
+      type: "resource",
+      labels: ["google_cloudfunctions_function", "my_func"],
+      attributes: {
+        name: "test",
+        runtime: "nodejs20",
+        count: tf.expr("other_resource.count"),
+        depends_on: [tf.expr("other_resource")],
+      },
+    };
+    expect(tf.blockToString(block)).to.equal(`resource "google_cloudfunctions_function" "my_func" {
+  count = other_resource.count
+
+  name = "test"
+  runtime = "nodejs20"
+
+  depends_on = [other_resource]
+}`);
   });
 });

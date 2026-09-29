@@ -3,6 +3,24 @@
 // Check for older versions of Node no longer supported by the CLI.
 import * as semver from "semver";
 const pkg = require("../../package.json");
+
+interface NodeWarning extends Error {
+  code?: string;
+}
+
+// List of warning codes to silence
+const IGNORED_WARNINGS = [
+  "DEP0040", // Punycode module is deprecated. Ignored because transitive dependencies (e.g. tr46) still use it via require('punycode/') or directly.
+];
+
+process.on("warning", (warning) => {
+  const nodeWarning = warning as NodeWarning;
+  if (nodeWarning.code && IGNORED_WARNINGS.includes(nodeWarning.code)) {
+    return;
+  }
+  console.warn(nodeWarning.stack || nodeWarning.message);
+});
+
 const nodeVersion = process.version;
 if (!semver.satisfies(nodeVersion, pkg.engines.node)) {
   console.error(

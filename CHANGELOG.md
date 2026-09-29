@@ -1,2 +1,2 @@
+- [fixed] Improve error message when billing is not enabled
 - Fixed a crash in `setEnqueuer` when deploying Cloud Tasks functions whose IAM policy has no bindings.
-- Added a prompt to `firebase init` to install Agent Skills for Firebase.

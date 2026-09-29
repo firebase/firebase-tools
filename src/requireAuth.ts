@@ -28,7 +28,18 @@ function getAuthClient(config: GoogleAuthOptions): GoogleAuth {
     return authClient;
   }
 
-  authClient = new GoogleAuth(config);
+  const authConfig: GoogleAuthOptions = {
+    ...config,
+    clientOptions: {
+      ...config.clientOptions,
+      transporterOptions: {
+        ...config.clientOptions?.transporterOptions,
+        agent: apiv2.noKeepAliveAgent,
+      },
+    },
+  };
+
+  authClient = new GoogleAuth(authConfig);
   return authClient;
 }
 

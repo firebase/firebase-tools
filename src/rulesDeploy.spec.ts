@@ -198,6 +198,7 @@ describe("RulesDeploy", () => {
       sinon
         .stub(gcp.rules, "createRuleset")
         .rejects(new Error("createRuleset behavior unspecified"));
+      sinon.stub(gcp.rules, "listAllReleases").resolves([]);
     });
 
     afterEach(() => {
@@ -223,9 +224,11 @@ describe("RulesDeploy", () => {
         const result = rd.createRulesets(RulesetServiceType.CLOUD_FIRESTORE);
         await expect(result).to.eventually.deep.equal(["compiled"]);
 
-        expect(gcp.rules.createRuleset).calledOnceWithExactly(BASE_OPTIONS.project, [
-          { name: "firestore.rules", content: sinon.match.string },
-        ]);
+        expect(gcp.rules.createRuleset).calledOnceWithExactly(
+          BASE_OPTIONS.project,
+          [{ name: "firestore.rules", content: sinon.match.string }],
+          undefined,
+        );
       });
 
       it("should throw an error if createRuleset fails", async () => {
@@ -249,12 +252,37 @@ describe("RulesDeploy", () => {
         await expect(result).to.eventually.deep.equal(["one", "two"]);
 
         expect(gcp.rules.createRuleset).calledTwice;
-        expect(gcp.rules.createRuleset).calledWithExactly(BASE_OPTIONS.project, [
-          { name: "firestore.rules", content: sinon.match.string },
-        ]);
-        expect(gcp.rules.createRuleset).calledWithExactly(BASE_OPTIONS.project, [
-          { name: "storage.rules", content: sinon.match.string },
-        ]);
+        expect(gcp.rules.createRuleset).calledWithExactly(
+          BASE_OPTIONS.project,
+          [{ name: "firestore.rules", content: sinon.match.string }],
+          undefined,
+        );
+        expect(gcp.rules.createRuleset).calledWithExactly(
+          BASE_OPTIONS.project,
+          [{ name: "storage.rules", content: sinon.match.string }],
+          undefined,
+        );
+      });
+    });
+
+    describe("with non-default database", () => {
+      beforeEach(() => {
+        (gcp.rules.getLatestRulesetName as sinon.SinonStub).resolves(null);
+        sinon.stub(projectNumber, "getProjectNumber").resolves("12345");
+      });
+
+      it("should create ruleset with attachment_point", async () => {
+        (gcp.rules.createRuleset as sinon.SinonStub).onFirstCall().resolves("compiled");
+        rd.addFile("firestore.rules", "my-db");
+
+        const result = rd.createRulesets(RulesetServiceType.CLOUD_FIRESTORE);
+        await expect(result).to.eventually.deep.equal(["compiled"]);
+
+        expect(gcp.rules.createRuleset).calledOnceWithExactly(
+          BASE_OPTIONS.project,
+          [{ name: "firestore.rules", content: sinon.match.string }],
+          "firestore.googleapis.com/projects/12345/databases/my-db",
+        );
       });
     });
 
@@ -309,9 +337,11 @@ describe("RulesDeploy", () => {
         await expect(result).to.eventually.deep.equal(["created"]);
 
         expect(gcp.rules.createRuleset).calledOnce;
-        expect(gcp.rules.createRuleset).calledOnceWithExactly(BASE_OPTIONS.project, [
-          { name: "storage.rules", content: sinon.match.string },
-        ]);
+        expect(gcp.rules.createRuleset).calledOnceWithExactly(
+          BASE_OPTIONS.project,
+          [{ name: "storage.rules", content: sinon.match.string }],
+          undefined,
+        );
       });
 
       it("should create all rules if none match", async () => {
@@ -328,12 +358,16 @@ describe("RulesDeploy", () => {
         await expect(result).to.eventually.deep.equal(["one", "two"]);
 
         expect(gcp.rules.createRuleset).calledTwice;
-        expect(gcp.rules.createRuleset).calledWithExactly(BASE_OPTIONS.project, [
-          { name: "firestore.rules", content: sinon.match.string },
-        ]);
-        expect(gcp.rules.createRuleset).calledWithExactly(BASE_OPTIONS.project, [
-          { name: "storage.rules", content: sinon.match.string },
-        ]);
+        expect(gcp.rules.createRuleset).calledWithExactly(
+          BASE_OPTIONS.project,
+          [{ name: "firestore.rules", content: sinon.match.string }],
+          undefined,
+        );
+        expect(gcp.rules.createRuleset).calledWithExactly(
+          BASE_OPTIONS.project,
+          [{ name: "storage.rules", content: sinon.match.string }],
+          undefined,
+        );
       });
     });
 
@@ -362,9 +396,11 @@ describe("RulesDeploy", () => {
         const result = rd.createRulesets(RulesetServiceType.FIREBASE_STORAGE);
         await expect(result).to.eventually.deep.equal(["compiled"]);
 
-        expect(gcp.rules.createRuleset).calledOnceWithExactly(BASE_OPTIONS.project, [
-          { name: "storage.rules", content: sinon.match.string },
-        ]);
+        expect(gcp.rules.createRuleset).calledOnceWithExactly(
+          BASE_OPTIONS.project,
+          [{ name: "storage.rules", content: sinon.match.string }],
+          undefined,
+        );
         expect(resourceManager.serviceAccountHasRoles).calledOnce;
       });
 
@@ -376,9 +412,11 @@ describe("RulesDeploy", () => {
         const result = rd.createRulesets(RulesetServiceType.FIREBASE_STORAGE);
         await expect(result).to.eventually.deep.equal(["compiled"]);
 
-        expect(gcp.rules.createRuleset).calledOnceWithExactly(BASE_OPTIONS.project, [
-          { name: "storage.rules", content: sinon.match.string },
-        ]);
+        expect(gcp.rules.createRuleset).calledOnceWithExactly(
+          BASE_OPTIONS.project,
+          [{ name: "storage.rules", content: sinon.match.string }],
+          undefined,
+        );
         expect(resourceManager.addServiceAccountToRoles).calledOnceWithExactly(
           "12345",
           "service-12345@gcp-sa-firebasestorage.iam.gserviceaccount.com",
@@ -395,9 +433,11 @@ describe("RulesDeploy", () => {
         const result = rd.createRulesets(RulesetServiceType.FIREBASE_STORAGE);
         await expect(result).to.eventually.deep.equal(["compiled"]);
 
-        expect(gcp.rules.createRuleset).calledOnceWithExactly(BASE_OPTIONS.project, [
-          { name: "storage.rules", content: sinon.match.string },
-        ]);
+        expect(gcp.rules.createRuleset).calledOnceWithExactly(
+          BASE_OPTIONS.project,
+          [{ name: "storage.rules", content: sinon.match.string }],
+          undefined,
+        );
         expect(resourceManager.addServiceAccountToRoles).not.called;
       });
 
@@ -409,9 +449,11 @@ describe("RulesDeploy", () => {
         const result = rd.createRulesets(RulesetServiceType.FIREBASE_STORAGE);
         await expect(result).to.eventually.deep.equal(["compiled"]);
 
-        expect(gcp.rules.createRuleset).calledOnceWithExactly(BASE_OPTIONS.project, [
-          { name: "storage.rules", content: sinon.match.string },
-        ]);
+        expect(gcp.rules.createRuleset).calledOnceWithExactly(
+          BASE_OPTIONS.project,
+          [{ name: "storage.rules", content: sinon.match.string }],
+          undefined,
+        );
         expect(resourceManager.addServiceAccountToRoles).not.called;
         expect(promptSpy).not.called;
       });
@@ -452,7 +494,7 @@ describe("RulesDeploy", () => {
       describe("and a prompt is made", () => {
         beforeEach(() => {
           sinon.stub(prompt, "confirm").rejects(new Error("behavior unspecified"));
-          sinon.stub(gcp.rules, "listAllReleases").rejects(new Error("listAllReleases failing"));
+          (gcp.rules.listAllReleases as sinon.SinonStub).resolves([]);
           sinon.stub(gcp.rules, "deleteRuleset").rejects(new Error("deleteRuleset failing"));
           sinon.stub(gcp.rules, "getRulesetId").throws(new Error("getRulesetId failing"));
         });

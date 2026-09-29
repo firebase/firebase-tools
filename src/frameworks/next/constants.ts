@@ -8,6 +8,7 @@ import type {
   ROUTES_MANIFEST as ROUTES_MANIFEST_TYPE,
   APP_PATHS_MANIFEST as APP_PATHS_MANIFEST_TYPE,
   SERVER_REFERENCE_MANIFEST as SERVER_REFERENCE_MANIFEST_TYPE,
+  FUNCTIONS_CONFIG_MANIFEST as FUNCTIONS_CONFIG_MANIFEST_TYPE,
 } from "next/constants";
 import type { WEBPACK_LAYERS as NEXTJS_WEBPACK_LAYERS } from "next/dist/lib/constants";
 
@@ -16,6 +17,8 @@ export const APP_PATH_ROUTES_MANIFEST: typeof APP_PATH_ROUTES_MANIFEST_TYPE =
 export const EXPORT_MARKER: typeof EXPORT_MARKER_TYPE = "export-marker.json";
 export const IMAGES_MANIFEST: typeof IMAGES_MANIFEST_TYPE = "images-manifest.json";
 export const MIDDLEWARE_MANIFEST: typeof MIDDLEWARE_MANIFEST_TYPE = "middleware-manifest.json";
+export const FUNCTIONS_CONFIG_MANIFEST: typeof FUNCTIONS_CONFIG_MANIFEST_TYPE =
+  "functions-config-manifest.json";
 export const PAGES_MANIFEST: typeof PAGES_MANIFEST_TYPE = "pages-manifest.json";
 export const PRERENDER_MANIFEST: typeof PRERENDER_MANIFEST_TYPE = "prerender-manifest.json";
 export const ROUTES_MANIFEST: typeof ROUTES_MANIFEST_TYPE = "routes-manifest.json";

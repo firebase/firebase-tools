@@ -3,17 +3,18 @@ import { Setup } from "..";
 import { promptForAgentSkills, installAgentSkills } from "../../agentSkills";
 import { logger } from "../../logger";
 import { getErrMsg } from "../../error";
+import { Options } from "../../options";
 
 export interface AgentSkillsInfo {
   shouldInstall: boolean;
 }
 
-export async function askQuestions(setup: Setup): Promise<void> {
+export async function askQuestions(setup: Setup, config: Config, options: Options): Promise<void> {
   try {
     logger.info(
       "If you are using an AI coding agent, Firebase Agent Skills make it an expert at Firebase.",
     );
-    const shouldInstall = await promptForAgentSkills();
+    const shouldInstall = await promptForAgentSkills(options);
     setup.featureInfo = setup.featureInfo || {};
     setup.featureInfo.agentSkills = { shouldInstall };
   } catch (err: unknown) {

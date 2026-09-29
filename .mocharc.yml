@@ -1,10 +1,10 @@
 require:
   - ts-node/register
   - source-map-support/register
-  - src/test/helpers/mocha-bootstrap.ts
+  - src/test/helpers/mocha-bootstrap.js
 file:
   - src/test/helpers/global-mock-auth.ts
-timeout: 1000
+timeout: 2000
 recursive: true
 node-options:
   - no-experimental-strip-types

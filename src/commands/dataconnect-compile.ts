@@ -14,14 +14,14 @@ import { FirebaseError } from "../error";
 type CompileOptions = Options & { service?: string; location?: string };
 
 export const command = new Command("dataconnect:compile")
-  .description("compile your Data Connect schema and connector config and GQL files.")
+  .description("compile your SQL Connect schema and connector config and GQL files.")
   .option(
     "--service <serviceId>",
-    "the serviceId of the Data Connect service. If not provided, compiles all services.",
+    "the serviceId of the SQL Connect service. If not provided, compiles all services.",
   )
   .option(
     "--location <location>",
-    "the location of the Data Connect service. Only needed if service ID is used in multiple locations.",
+    "the location of the SQL Connect service. Only needed if service ID is used in multiple locations.",
   )
   .action(async (options: CompileOptions) => {
     const projectId = getProjectId(options);
@@ -29,7 +29,7 @@ export const command = new Command("dataconnect:compile")
     const config = options.config;
     if (!config || !config.has("dataconnect")) {
       throw new FirebaseError(
-        `No Data Connect project directory found. Please run ${clc.bold("firebase init dataconnect")} to set it up first.`,
+        `No SQL Connect project directory found. Please run ${clc.bold("firebase init dataconnect")} to set it up first.`,
       );
     }
 
@@ -41,7 +41,7 @@ export const command = new Command("dataconnect:compile")
     );
 
     if (!serviceInfos.length) {
-      throw new FirebaseError("No Data Connect services found to compile.");
+      throw new FirebaseError("No SQL Connect services found to compile.");
     }
 
     for (const serviceInfo of serviceInfos) {
@@ -69,7 +69,7 @@ export const command = new Command("dataconnect:compile")
 
       logLabeledSuccess(
         "dataconnect",
-        `Successfully compiled Data Connect service: ${clc.bold(serviceInfo.dataConnectYaml.serviceId)}`,
+        `Successfully compiled SQL Connect service: ${clc.bold(serviceInfo.dataConnectYaml.serviceId)}`,
       );
     }
   });

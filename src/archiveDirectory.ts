@@ -1,5 +1,5 @@
 import * as archiver from "archiver";
-import * as filesize from "filesize";
+import { formatFilesize } from "./utils";
 import * as fs from "fs";
 import * as path from "path";
 import * as tmp from "tmp";
@@ -48,7 +48,7 @@ export async function archiveDirectory(
   const makeArchive = zipDirectory(sourceDirectory, tempFile, options);
   try {
     const archive = await makeArchive;
-    logger.debug(`Archived ${filesize(archive.size)} in ${sourceDirectory}.`);
+    logger.debug(`Archived ${formatFilesize(archive.size)} in ${sourceDirectory}.`);
     return archive;
   } catch (err: unknown) {
     if (err instanceof FirebaseError) {
@@ -78,7 +78,7 @@ async function zipDirectory(
   try {
     files = await fsAsync.readdirRecursive({
       path: sourceDirectory,
-      ignore: options.ignore,
+      ignoreStrings: options.ignore,
       ignoreSymlinks: true,
     });
   } catch (err: any) {

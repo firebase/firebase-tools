@@ -26,7 +26,7 @@ const LINKS: Link[] = [
   { name: "Crash Reporting", arg: "crash", consolePath: "/crashlytics" },
   { name: "Database: Data", arg: "database", consolePath: "/database/data" },
   { name: "Database: Rules", arg: "database:rules", consolePath: "/database/rules" },
-  { name: "Data Connect", arg: "dataconnect", consolePath: "/dataconnect" },
+  { name: "SQL Connect", arg: "dataconnect", consolePath: "/dataconnect" },
   { name: "Docs", arg: "docs", url: "https://firebase.google.com/docs" },
   { name: "Dynamic Links", arg: "links", consolePath: "/durablelinks" },
   { name: "Extensions", arg: "extensions", consolePath: "/extensions" },

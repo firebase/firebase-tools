@@ -38,7 +38,7 @@ function prepareRules(
   databaseId: string,
   rulesFile: string,
 ): void {
-  rulesDeploy.addFile(rulesFile);
+  rulesDeploy.addFile(rulesFile, databaseId);
   context.firestore.rules.push({
     databaseId,
     rulesFile,

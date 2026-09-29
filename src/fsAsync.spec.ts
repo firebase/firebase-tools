@@ -61,7 +61,10 @@ describe("fsAsync", () => {
     });
 
     it("can ignore directories", async () => {
-      const results = await fsAsync.readdirRecursive({ path: baseDir, ignore: ["node_modules"] });
+      const results = await fsAsync.readdirRecursive({
+        path: baseDir,
+        ignoreStrings: ["node_modules"],
+      });
 
       const gotFileNames = results.map((r) => r.name).sort();
       const expectFiles = files
@@ -74,7 +77,7 @@ describe("fsAsync", () => {
     it("supports blob rules", async () => {
       const results = await fsAsync.readdirRecursive({
         path: baseDir,
-        ignore: ["**/node_modules/**"],
+        ignoreStrings: ["**/node_modules/**"],
       });
 
       const gotFileNames = results.map((r) => r.name).sort();
@@ -86,7 +89,10 @@ describe("fsAsync", () => {
     });
 
     it("should support negation rules", async () => {
-      const results = await fsAsync.readdirRecursive({ path: baseDir, ignore: ["!visible"] });
+      const results = await fsAsync.readdirRecursive({
+        path: baseDir,
+        ignoreStrings: ["!visible"],
+      });
 
       const gotFileNames = results.map((r) => r.name).sort();
       const expectFiles = files
@@ -99,8 +105,8 @@ describe("fsAsync", () => {
     it("should support .gitignore rules via options", async () => {
       const results = await fsAsync.readdirRecursive({
         path: baseDir,
-        ignore: ["subdir/nesteddir/*", "!subdir/nesteddir/nestedfile"],
-        isGitIgnore: true,
+        ignoreStrings: ["subdir/nesteddir/*", "!subdir/nesteddir/nestedfile"],
+        supportGitIgnore: true,
       });
 
       const gotFileNames = results.map((r) => r.name).sort();
@@ -109,6 +115,102 @@ describe("fsAsync", () => {
         .filter((file) => file !== path.join(baseDir, "subdir/nesteddir/nestedfile2"))
         .sort();
       return expect(gotFileNames).to.deep.equal(expectFiles);
+    });
+
+    it("should support .gitignore files in subdirectories dynamically", async () => {
+      const testDir = path.join(os.tmpdir(), crypto.randomBytes(10).toString("hex"));
+      fs.mkdirSync(testDir);
+      fs.mkdirSync(path.join(testDir, "a"));
+      fs.mkdirSync(path.join(testDir, "b"));
+
+      fs.writeFileSync(path.join(testDir, "b.txt"), "b.txt");
+      fs.writeFileSync(path.join(testDir, "a", "foo.txt"), "foo.txt");
+      fs.writeFileSync(path.join(testDir, "a", ".env"), ".env");
+      fs.writeFileSync(path.join(testDir, "b", "bar.txt"), "bar.txt");
+
+      fs.writeFileSync(path.join(testDir, ".gitignore"), "b.txt");
+      fs.writeFileSync(path.join(testDir, "a", ".gitignore"), ".env");
+
+      try {
+        const results = await fsAsync.readdirRecursive({
+          path: testDir,
+          supportGitIgnore: true,
+          ignoreStrings: ["node_modules", ".git", "b.txt"],
+        });
+
+        const gotFileNames = results.map((r) => path.relative(testDir, r.name)).sort();
+        const expectedFiles = [".gitignore", "a/.gitignore", "a/foo.txt", "b/bar.txt"].sort();
+
+        expect(gotFileNames).to.deep.equal(expectedFiles);
+      } finally {
+        rmSync(testDir, { recursive: true, force: true });
+      }
+    });
+
+    it("should respect nested subdirectory overrides and path scoping", async () => {
+      const testDir = path.join(os.tmpdir(), crypto.randomBytes(10).toString("hex"));
+      fs.mkdirSync(testDir);
+      fs.mkdirSync(path.join(testDir, "subdir"));
+      fs.mkdirSync(path.join(testDir, "subdir", "nested"));
+
+      fs.writeFileSync(path.join(testDir, "subdir", "foo.txt"), "foo");
+      fs.writeFileSync(path.join(testDir, "subdir", "bar.txt"), "bar");
+      fs.writeFileSync(path.join(testDir, "subdir", "nested", "foo.txt"), "nested foo");
+      fs.writeFileSync(path.join(testDir, "subdir", "nested", "baz.txt"), "nested baz");
+
+      fs.writeFileSync(path.join(testDir, ".gitignore"), "*.txt");
+      fs.writeFileSync(
+        path.join(testDir, "subdir", ".gitignore"),
+        ["!foo.txt", "/nested/baz.txt"].join("\n"),
+      );
+
+      try {
+        const results = await fsAsync.readdirRecursive({
+          path: testDir,
+          supportGitIgnore: true,
+        });
+
+        const gotFileNames = results.map((r) => path.relative(testDir, r.name)).sort();
+        const expectedFiles = [
+          ".gitignore",
+          "subdir/.gitignore",
+          "subdir/foo.txt",
+          "subdir/nested/foo.txt",
+        ].sort();
+
+        expect(gotFileNames).to.deep.equal(expectedFiles);
+      } finally {
+        rmSync(testDir, { recursive: true, force: true });
+      }
+    });
+
+    it("should handle subdirectories without .gitignore and directories named .gitignore gracefully", async () => {
+      const testDir = path.join(os.tmpdir(), crypto.randomBytes(10).toString("hex"));
+      fs.mkdirSync(testDir);
+
+      fs.mkdirSync(path.join(testDir, "a"));
+      fs.writeFileSync(path.join(testDir, "a", "keep.log"), "keep");
+      fs.writeFileSync(path.join(testDir, "a", "ignore.log"), "ignore");
+
+      fs.mkdirSync(path.join(testDir, "b"));
+      fs.mkdirSync(path.join(testDir, "b", ".gitignore"));
+      fs.writeFileSync(path.join(testDir, "b", "file.txt"), "file");
+
+      fs.writeFileSync(path.join(testDir, ".gitignore"), "ignore.log");
+
+      try {
+        const results = await fsAsync.readdirRecursive({
+          path: testDir,
+          supportGitIgnore: true,
+        });
+
+        const gotFileNames = results.map((r) => path.relative(testDir, r.name)).sort();
+        const expectedFiles = [".gitignore", "a/keep.log", "b/file.txt"].sort();
+
+        expect(gotFileNames).to.deep.equal(expectedFiles);
+      } finally {
+        rmSync(testDir, { recursive: true, force: true });
+      }
     });
 
     it("should support maximum recursion depth", async () => {

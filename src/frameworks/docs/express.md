@@ -16,13 +16,14 @@ to extend integration support to frameworks other than Angular and Next.js.
 
 <<_includes/_preview-disclaimer.md>>
 
+Caution: For Express.js developers, new participation in the {{hosting}}
+frameworks experiment has been closed permanently. If you're already using the
+frameworks experiment in the Firebase CLI, we recommend "graduating" to
+{{app_hosting}}. With {{app_hosting}}, you'll have a unified solution to manage
+everything from CDN to server-side rendering, along with improved GitHub
+integration.
+
 <<_includes/_before-you-begin.md>>
-
-<<_includes/_initialize-firebase.md>>
-
-1. Answer yes to "Do you want to use a web framework? (experimental)"
-1. Choose your hosting source directory; this could be an existing web app.
-1. If prompted, choose Express.js / custom
 
 ### Initialize an existing project
 

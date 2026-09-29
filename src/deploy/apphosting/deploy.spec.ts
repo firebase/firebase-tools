@@ -1,5 +1,8 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+import * as os from "os";
+import * as path from "path";
+import * as crypto from "crypto";
 import { Config } from "../../config";
 import * as gcs from "../../gcp/storage";
 import { RC } from "../../rc";
@@ -10,6 +13,7 @@ import * as fs from "fs";
 import * as getProjectNumber from "../../getProjectNumber";
 import * as experiments from "../../experiments";
 import { FirebaseError } from "../../error";
+import { CLOUD_RUN_SIZE_LIMIT_BYTES } from "../../apphosting/constants";
 
 const BASE_OPTS = {
   cwd: "/",
@@ -23,6 +27,11 @@ const BASE_OPTS = {
 };
 
 function initializeContext(): Context {
+  const expectedPathHash = crypto
+    .createHash("md5")
+    .update(process.cwd())
+    .digest("hex")
+    .substring(0, 8);
   return {
     backendConfigs: {
       foo: {
@@ -41,15 +50,23 @@ function initializeContext(): Context {
     backendStorageUris: {},
     backendLocalBuilds: {
       fooLocalBuild: {
-        buildDir: "./nextjs/standalone",
+        outputFiles: ["./nextjs/standalone"],
+        localBuildScratchDir: path.join(
+          os.tmpdir(),
+          `apphosting-local-build-fooLocalBuild-${expectedPathHash}`,
+        ),
         buildConfig: {},
-        annotations: {},
       },
     },
   };
 }
 
 describe("apphosting", () => {
+  const expectedPathHash = crypto
+    .createHash("md5")
+    .update(process.cwd())
+    .digest("hex")
+    .substring(0, 8);
   let upsertBucketStub: sinon.SinonStub;
   let uploadObjectStub: sinon.SinonStub;
   let createArchiveStub: sinon.SinonStub;
@@ -72,6 +89,7 @@ describe("apphosting", () => {
     createReadStreamStub = sinon
       .stub(fs, "createReadStream")
       .throws("Unexpected createReadStream call");
+    sinon.stub(os, "tmpdir").returns("/tmp");
     sinon.stub(experiments, "isEnabled").returns(true);
     sinon.stub(experiments, "assertEnabled");
   });
@@ -172,8 +190,8 @@ describe("apphosting", () => {
       );
       expect(createTarArchiveStub).to.be.calledWithExactly(
         context.backendConfigs["fooLocalBuild"],
-        process.cwd(),
-        "./nextjs/standalone",
+        path.join(os.tmpdir(), `apphosting-local-build-fooLocalBuild-${expectedPathHash}`),
+        ["./nextjs/standalone"],
       );
       expect(uploadObjectStub).to.be.calledWithMatch(
         sinon.match.any,
@@ -184,6 +202,7 @@ describe("apphosting", () => {
         sinon.match.any,
         "firebaseapphosting-sources-000000000000-us-central1",
         gcs.ContentType.TAR,
+        CLOUD_RUN_SIZE_LIMIT_BYTES,
       );
     });
 
@@ -215,8 +234,8 @@ describe("apphosting", () => {
       );
       expect(createTarArchiveStub).to.be.calledWithExactly(
         context.backendConfigs["fooLocalBuild"],
-        process.cwd(),
-        "./nextjs/standalone",
+        path.join(os.tmpdir(), `apphosting-local-build-fooLocalBuild-${expectedPathHash}`),
+        ["./nextjs/standalone"],
       );
       expect(uploadObjectStub).to.be.calledWithMatch(
         sinon.match.any,
@@ -227,6 +246,7 @@ describe("apphosting", () => {
         sinon.match.any,
         "firebaseapphosting-sources-000000000000-us-central1",
         gcs.ContentType.TAR,
+        CLOUD_RUN_SIZE_LIMIT_BYTES,
       );
 
       expect(context.backendStorageUris["foo"]).to.equal(`gs://${bucketName}/foo-1234.zip`);

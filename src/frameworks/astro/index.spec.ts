@@ -191,7 +191,7 @@ describe("Astro", () => {
         bootstrapScript,
       });
       expect(copy.getCalls().map((it) => it.args)).to.deep.equal([
-        [join(root, outDir, "server"), dist],
+        [join(root, outDir, "server"), join(dist, "server")],
       ]);
     });
   });

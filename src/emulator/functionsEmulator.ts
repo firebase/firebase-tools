@@ -35,6 +35,7 @@ import {
   prepareEndpoints,
   BlockingTrigger,
   getTemporarySocketPath,
+  getEventTenantId,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
@@ -60,8 +61,13 @@ import { BlockingFunctionsConfig } from "../gcp/identityPlatform";
 import { resolveBackend } from "../deploy/functions/build";
 import { getCredentialsEnvironment, setEnvVarsForEmulators } from "./env";
 import { runWithVirtualEnv } from "../functions/python";
-import { isLanguageRuntime, Runtime } from "../deploy/functions/runtimes/supported";
+import { runtimeIsLanguage, Runtime } from "../deploy/functions/runtimes/supported";
 import { DART_ENTRY_POINT } from "../deploy/functions/runtimes/dart";
+import {
+  isDartEndpoint,
+  classifyNonProductionEndpoints,
+  groupByTriggerLabel,
+} from "../deploy/functions/runtimes/dart/triggerSupport";
 import { ExtensionsEmulator } from "./extensionsEmulator";
 
 const EVENT_INVOKE_GA4 = "functions_invoke"; // event name GA4 (alphanumertic)
@@ -352,13 +358,22 @@ export class FunctionsEmulator implements EmulatorInstance {
       } else {
         triggerKey = `${this.args.projectId}:${event.eventType}`;
       }
-      if (event.data.bucket) {
+      if (event.data?.bucket) {
         triggerKey += `:${event.data.bucket}`;
       }
       const triggers = this.multicastTriggers[triggerKey] || [];
 
       const { host, port } = this.getInfo();
-      triggers.forEach((triggerId) => {
+      const eventTenantId = getEventTenantId(event);
+      for (const triggerId of triggers) {
+        const record = this.getTriggerRecordByKey(triggerId);
+
+        // If the trigger has a tenant filter ({ tenantId: "..." }),
+        // ensure the event matches the expected tenant.
+        const filterTenantId = record?.def?.eventTrigger?.eventFilters?.tenantid;
+        if (filterTenantId && filterTenantId !== eventTenantId) {
+          continue;
+        }
         const work: Work = () => {
           return new Promise<void>((resolve, reject) => {
             const trigReq = http.request({
@@ -376,7 +391,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         };
         work.type = `${triggerId}-${new Date().toISOString()}`;
         this.workQueue.submit(work);
-      });
+      }
       res.json({ status: "multicast_acknowledged" });
     };
 
@@ -424,7 +439,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     // For Dart, include the function name in the path so the server can route
     // For other runtimes, use / as they use FUNCTION_TARGET env var
-    const isDart = isLanguageRuntime(record.backend.runtime, "dart");
+    const isDart = runtimeIsLanguage(record.backend.runtime, "dart");
     const path = isDart ? `/${trigger.entryPoint}` : `/`;
 
     return new Promise((resolve, reject) => {
@@ -485,7 +500,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       // First load triggers to discover the runtime type
       await this.loadTriggers(backend, /* force= */ true);
 
-      const isDart = isLanguageRuntime(backend.runtime, "dart");
+      const isDart = runtimeIsLanguage(backend.runtime, "dart");
 
       if (isDart) {
         // For Dart, build_runner watch handles source file watching and rebuilds
@@ -594,7 +609,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       emulatableBackend.runtime = runtimeDelegate.runtime;
       emulatableBackend.bin = runtimeDelegate.bin;
 
-      // Don't include user envs when parsing triggers. Do include user envs when resolving parameter values
       const firebaseConfig = this.getFirebaseConfig();
       const environment = {
         ...this.getSystemEnvs(),
@@ -608,9 +622,13 @@ export class FunctionsEmulator implements EmulatorInstance {
         projectAlias: this.args.projectAlias,
         isEmulator: true,
         configDir: emulatableBackend.configDir,
+        projectDir: this.args.projectDir,
       };
       const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
-      const discoveredBuild = await runtimeDelegate.discoverBuild(runtimeConfig, environment);
+      const discoveredBuild = await runtimeDelegate.discoverBuild(runtimeConfig, {
+        ...userEnvs,
+        ...environment,
+      });
       if (discoveredBuild.extensions && this.args.extensionsEmulator) {
         await this.args.extensionsEmulator.addDynamicExtensions(
           emulatableBackend.codebase,
@@ -618,11 +636,18 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
         await this.loadDynamicExtensionBackends();
       }
-      build.applyPrefix(discoveredBuild, emulatableBackend.prefix || "");
+      build.applyEndpointPrefix(discoveredBuild, emulatableBackend.prefix || "");
+      if (emulatableBackend.env?.FIREBASE_KIT_INSTANCE_ID) {
+        build.applyKitSecretRefPrefix(
+          discoveredBuild,
+          emulatableBackend.env.FIREBASE_KIT_INSTANCE_ID,
+        );
+      }
       const resolution = await resolveBackend({
         build: discoveredBuild,
         firebaseConfig: JSON.parse(firebaseConfig),
         userEnvs,
+        codebase: emulatableBackend.codebase,
         nonInteractive: false,
         isEmulator: true,
       });
@@ -634,6 +659,10 @@ export class FunctionsEmulator implements EmulatorInstance {
       for (const e of endpoints) {
         e.codebase = emulatableBackend.codebase;
       }
+
+      // Warn about Dart triggers with limited support.
+      this.logDartTriggerSupportWarnings(endpoints);
+
       return emulatedFunctionsFromEndpoints(endpoints);
     }
   }
@@ -857,14 +886,45 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
         try {
           await this.startRuntime(emulatableBackend);
-        } catch (e: any) {
+        } catch (e: unknown) {
+          const message = e instanceof Error ? e.message : String(e);
           this.logger.logLabeled(
             "ERROR",
-            `Failed to start functions in ${emulatableBackend.functionsDir}: ${e}`,
+            `Failed to start functions in ${emulatableBackend.functionsDir}: ${message}`,
           );
         }
       }
     }
+  }
+
+  /**
+   * Logs warnings for Dart endpoints whose trigger types are not yet
+   * production-ready.  Classification is owned by the shared
+   * `dart/triggerSupport` module.
+   */
+  private logDartTriggerSupportWarnings(endpoints: backend.Endpoint[]): void {
+    const dartEndpoints = endpoints.filter(isDartEndpoint);
+    if (dartEndpoints.length === 0) {
+      return;
+    }
+
+    const { emulatorOnly, experimental } = classifyNonProductionEndpoints(dartEndpoints);
+
+    groupByTriggerLabel(emulatorOnly).forEach((ids, label) => {
+      this.logger.logLabeled(
+        "WARN",
+        "functions",
+        `Dart ${clc.bold(label)} triggers work in the emulator but cannot be deployed to production yet: ${ids.join(", ")}`,
+      );
+    });
+
+    groupByTriggerLabel(experimental).forEach((ids, label) => {
+      this.logger.logLabeled(
+        "WARN",
+        "functions",
+        `Dart ${clc.bold(label)} triggers are experimental and not yet fully supported: ${ids.join(", ")}`,
+      );
+    });
   }
 
   // Currently only cleans up eventarc and firealerts triggers
@@ -1133,8 +1193,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     const client = EmulatorRegistry.client(Emulators.DATABASE);
     try {
       await client.post(apiPath, bundle, { headers: { Authorization: "Bearer owner" } });
-    } catch (err: any) {
-      this.logger.log("WARN", "Error adding Realtime Database function: " + err);
+    } catch (err: unknown) {
+      this.logger.log("WARN", "Error adding Realtime Database function: " + String(err));
       throw err;
     }
     return true;
@@ -1207,8 +1267,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     const client = EmulatorRegistry.client(Emulators.FIRESTORE);
     try {
       signature === "cloudevent" ? await client.post(path, bundle) : await client.put(path, bundle);
-    } catch (err: any) {
-      this.logger.log("WARN", "Error adding firestore function: " + err);
+    } catch (err: unknown) {
+      this.logger.log("WARN", "Error adding firestore function: " + String(err));
       throw err;
     }
     return true;
@@ -1436,12 +1496,13 @@ export class FunctionsEmulator implements EmulatorInstance {
       projectId: this.args.projectId,
       projectAlias: this.args.projectAlias,
       isEmulator: true,
+      projectDir: this.args.projectDir,
     };
 
     if (functionsEnv.hasUserEnvs(projectInfo)) {
       try {
         return functionsEnv.loadUserEnvs(projectInfo);
-      } catch (e: any) {
+      } catch (e: unknown) {
         // Ignore - user envs are optional.
         logger.debug("Failed to load local environment variables", e);
       }
@@ -1539,13 +1600,17 @@ export class FunctionsEmulator implements EmulatorInstance {
     try {
       const data = fs.readFileSync(secretPath, "utf8");
       secretEnvs = functionsEnv.parseStrict(data);
-    } catch (e: any) {
-      if (e.code !== "ENOENT") {
-        this.logger.logLabeled(
-          "ERROR",
-          "functions",
-          `Failed to read local secrets file ${secretPath}: ${e.message}`,
-        );
+    } catch (e: unknown) {
+      if (typeof e === "object" && e !== null && "code" in e) {
+        const code = (e as { code: unknown }).code;
+        if (code !== "ENOENT") {
+          const message = e instanceof Error ? e.message : String(e);
+          this.logger.logLabeled(
+            "ERROR",
+            "functions",
+            `Failed to read local secrets file ${secretPath}: ${message}`,
+          );
+        }
       }
     }
     // Note - if trigger is undefined, we are loading in 'sequential' mode.
@@ -1694,7 +1759,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       port: 8081 + randomInt(0, 1000), // Add a small jitter to avoid race condition.
     });
     const childProcess = runWithVirtualEnv(args, backend.functionsDir, {
-      ...process.env,
       ...envs,
       // Required to flush stdout/stderr immediately to the piped channels.
       PYTHONUNBUFFERED: "1",
@@ -1771,9 +1835,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     const secretEnvs = await this.resolveSecretEnvs(backend, trigger);
 
     let runtime;
-    if (isLanguageRuntime(backend.runtime, "python")) {
+    if (runtimeIsLanguage(backend.runtime, "python")) {
       runtime = await this.startPython(backend, { ...runtimeEnv, ...secretEnvs });
-    } else if (isLanguageRuntime(backend.runtime, "dart")) {
+    } else if (runtimeIsLanguage(backend.runtime, "dart")) {
       runtime = await this.startDart(backend, { ...runtimeEnv, ...secretEnvs });
     } else {
       runtime = await this.startNode(backend, { ...runtimeEnv, ...secretEnvs });
@@ -1884,8 +1948,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     // Use trigger.entryPoint (e.g. "helloworld") which is the actual function name
     // registered in the Dart server, not trigger_name which may include region prefix
     // (e.g. "us-central1-helloworld-0" from background function routes).
-    const isDart = isLanguageRuntime(record.backend.runtime, "dart");
-    if (isDart) {
+    if (runtimeIsLanguage(record.backend.runtime, "dart")) {
       // Background trigger routes (e.g., /functions/projects/.../triggers/...)
       // leave a path artifact (/functions/projects/) after regex replacement.
       // Only append remaining path for HTTP trigger routes where the user may
@@ -1907,11 +1970,12 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (!pool.readyForWork(trigger.id, record.backend.runtime)) {
       try {
         await this.startRuntime(record.backend, trigger);
-      } catch (e: any) {
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
         this.logger.logLabeled("ERROR", `Failed to handle request for function ${trigger.id}`);
         this.logger.logLabeled(
           "ERROR",
-          `Failed to start functions in ${record.backend.functionsDir}: ${e}`,
+          `Failed to start functions in ${record.backend.functionsDir}: ${message}`,
         );
         return;
       }

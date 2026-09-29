@@ -1,93 +1,76 @@
 import { expect } from "chai";
-import * as names from "./names";
+import {
+  parseServiceName,
+  parseConnectorName,
+  parseCloudSQLInstanceName,
+  isGraphqlName,
+} from "./names";
 
-describe("names.ts", () => {
+describe("dataconnect/names", () => {
   describe("parseServiceName", () => {
-    const cases: {
-      desc: string;
-      input: string;
-      want: {
-        projectId?: string;
-        location?: string;
-        serviceId?: string;
-        error?: boolean;
-      };
-    }[] = [
-      {
-        desc: "should parse a well formed service name, and convert back",
-        input: "projects/proj/locations/us-central1/services/serve",
-        want: {
-          projectId: "proj",
-          location: "us-central1",
-          serviceId: "serve",
-        },
-      },
-      {
-        desc: "should error on an invalid service name",
-        input: "projects/proj/locations/us-central1/functions/funky",
-        want: {
-          error: true,
-        },
-      },
-    ];
-    for (const c of cases) {
-      it(c.desc, () => {
-        try {
-          const got = names.parseServiceName(c.input);
-          expect(got.projectId).to.equal(c.want.projectId);
-          expect(got.location).to.equal(c.want.location);
-          expect(got.serviceId).to.equal(c.want.serviceId);
-          expect(got.toString()).to.equal(c.input);
-        } catch (err) {
-          expect(c.want.error, `Unexpected error: ${err}`).to.be.true;
-        }
-      });
-    }
+    it("should parse valid service name", () => {
+      const name = "projects/my-project/locations/us-central1/services/my-service";
+      const res = parseServiceName(name);
+      expect(res.projectId).to.equal("my-project");
+      expect(res.location).to.equal("us-central1");
+      expect(res.serviceId).to.equal("my-service");
+      expect(res.toString()).to.equal(name);
+    });
+
+    it("should throw on invalid service name", () => {
+      expect(() => parseServiceName("invalid-name")).to.throw(/not a valid service name/);
+    });
   });
 
   describe("parseConnectorName", () => {
-    const cases: {
-      desc: string;
-      input: string;
-      want: {
-        projectId?: string;
-        location?: string;
-        serviceId?: string;
-        connectorId?: string;
-        error?: boolean;
-      };
-    }[] = [
-      {
-        desc: "should parse a well formed service name, and convert back",
-        input: "projects/proj/locations/us-central1/services/serve/connectors/connect",
-        want: {
-          projectId: "proj",
-          location: "us-central1",
-          serviceId: "serve",
-          connectorId: "connect",
-        },
-      },
-      {
-        desc: "should error on an invalid connector name",
-        input: "projects/proj/locations/us-central1/functions/funky",
-        want: {
-          error: true,
-        },
-      },
-    ];
-    for (const c of cases) {
-      it(c.desc, () => {
-        try {
-          const got = names.parseConnectorName(c.input);
-          expect(got.projectId).to.equal(c.want.projectId);
-          expect(got.location).to.equal(c.want.location);
-          expect(got.serviceId).to.equal(c.want.serviceId);
-          expect(got.connectorId).to.equal(c.want.connectorId);
-          expect(got.toString()).to.equal(c.input);
-        } catch (err) {
-          expect(c.want.error, `Unexpected error: ${err}`).to.be.true;
-        }
-      });
-    }
+    it("should parse valid connector name", () => {
+      const name =
+        "projects/my-project/locations/us-central1/services/my-service/connectors/my-connector";
+      const res = parseConnectorName(name);
+      expect(res.projectId).to.equal("my-project");
+      expect(res.location).to.equal("us-central1");
+      expect(res.serviceId).to.equal("my-service");
+      expect(res.connectorId).to.equal("my-connector");
+      expect(res.toString()).to.equal(name);
+    });
+
+    it("should throw on invalid connector name", () => {
+      expect(() => parseConnectorName("projects/my-project/services/only")).to.throw(
+        /not a valid connector name/,
+      );
+    });
+  });
+
+  describe("parseCloudSQLInstanceName", () => {
+    it("should parse valid CloudSQL instance name", () => {
+      const name = "projects/my-project/locations/us-central1/instances/my-instance";
+      const res = parseCloudSQLInstanceName(name);
+      expect(res.projectId).to.equal("my-project");
+      expect(res.location).to.equal("us-central1");
+      expect(res.instanceId).to.equal("my-instance");
+      expect(res.toString()).to.equal(
+        "projects/my-project/locations/us-central1/instances/my-instance",
+      );
+    });
+
+    it("should throw on invalid CloudSQL instance name", () => {
+      expect(() => parseCloudSQLInstanceName("invalid")).to.throw(
+        /not a valid cloudSQL instance name/,
+      );
+    });
+  });
+
+  describe("isGraphqlName", () => {
+    it("should validate correct names", () => {
+      expect(isGraphqlName("User")).to.be.true;
+      expect(isGraphqlName("_test")).to.be.true;
+      expect(isGraphqlName("Test123")).to.be.true;
+    });
+
+    it("should invalidate wrong names", () => {
+      expect(isGraphqlName("1User")).to.be.false;
+      expect(isGraphqlName("user-name")).to.be.false;
+      expect(isGraphqlName("")).to.be.false;
+    });
   });
 });

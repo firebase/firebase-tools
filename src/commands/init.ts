@@ -33,7 +33,7 @@ let choices: {
 }[] = [
   {
     value: "dataconnect",
-    name: "Data Connect: Set up a Firebase Data Connect service",
+    name: "SQL Connect: Set up a Firebase SQL Connect service",
     checked: false,
   },
   {
@@ -90,7 +90,7 @@ let choices: {
   },
   {
     value: "dataconnect:sdk",
-    name: "Data Connect: Set up a generated SDK for your Firebase Data Connect service",
+    name: "SQL Connect: Set up a generated SDK for your Firebase SQL Connect service",
     checked: false,
     hidden: true,
   },
@@ -104,7 +104,7 @@ let choices: {
 if (isEnabled("fdcwebhooks")) {
   choices.push({
     value: "dataconnect:resolver",
-    name: "Data Connect: Set up a custom resolver for your Firebase Data Connect service",
+    name: "SQL Connect: Set up a custom resolver for your Firebase SQL Connect service",
     checked: false,
     hidden: true,
   });

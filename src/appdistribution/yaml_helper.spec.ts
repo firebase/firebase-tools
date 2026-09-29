@@ -67,7 +67,7 @@ const YAML_DATA = {
 describe("YamlHelper", () => {
   it("converts TestCase[] to YAML string", () => {
     const yamlString = toYaml(TEST_CASES);
-    expect(jsYaml.safeLoad(yamlString)).to.eql(YAML_DATA);
+    expect(jsYaml.load(yamlString)).to.eql(YAML_DATA);
     expect(yamlString).to.eq(YAML_STRING); // brittle ¯\_(ツ)_/¯
   });
 
@@ -167,7 +167,7 @@ describe("YamlHelper", () => {
   -
   invalid key: value`,
       ),
-    ).to.throw(/at line 3/);
+    ).to.throw(/(at line 3|\(3:3\))/);
   });
 
   it("throws error if YAML doesn't contain a top-level tests field", () => {
