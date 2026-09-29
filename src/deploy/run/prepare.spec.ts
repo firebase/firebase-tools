@@ -1,403 +1,130 @@
 import { expect } from "chai";
+import * as fs from "fs";
 import * as sinon from "sinon";
-import { prepare } from "./prepare";
+import * as localbuilds from "../../apphosting/localbuilds";
 import * as runv2 from "../../gcp/runv2";
-import * as prereqs from "./prereqs";
 import { Options } from "../../options";
-import { Context, Payload, RunDeployOptions } from "./args";
-import { FirebaseError } from "../../error";
-import * as utils from "../../utils";
+import * as apphostingPrepare from "../apphosting/prepare";
+import { Context, Payload } from "./args";
+import { prepare } from "./prepare";
+import * as prereqs from "./prereqs";
 
 describe("run prepare", () => {
+  const nodejs22 = "us-central1-docker.pkg.dev/serverless-runtimes/google-22/runtimes/nodejs22";
+  const existing = {
+    name: "projects/p/locations/us-central1/services/s",
+    template: { containers: [{ name: "s", image: "i", baseImageUri: nodejs22 }] },
+  } as unknown as runv2.Service;
   let prereqsStub: sinon.SinonStub;
   let getServiceStub: sinon.SinonStub;
-  let logWarningStub: sinon.SinonStub;
-  const originalEnv = process.env;
+  let localBuildStub: sinon.SinonStub;
+
+  const options = (run: Record<string, unknown>): Options =>
+    ({
+      config: { src: { run: { serviceId: "s", region: "us-central1", ...run } }, projectDir: "/p" },
+    }) as unknown as Options;
+
+  async function prepareOne(run: Record<string, unknown> = {}, context: Partial<Context> = {}) {
+    const payload: Payload = {};
+    await prepare({ projectId: "p", ...context }, options(run), payload);
+    return payload.run!.services[0];
+  }
 
   beforeEach(() => {
-    process.env = { ...originalEnv };
     prereqsStub = sinon.stub(prereqs, "prereqs").resolves();
-    getServiceStub = sinon.stub(runv2, "getService");
-    logWarningStub = sinon.stub(utils, "logLabeledWarning");
+    getServiceStub = sinon.stub(runv2, "getService").rejects({ status: 404 });
+    sinon
+      .stub(apphostingPrepare, "injectEnvVarsFromApphostingConfig")
+      .callsFake((_configs, _options, buildEnv, runtimeEnv) => {
+        buildEnv["s"] = { BUILD_VAR: { value: "b" } };
+        runtimeEnv["s"] = { RUN_VAR: { value: "r" } };
+        return Promise.resolve();
+      });
+    sinon.stub(apphostingPrepare, "prepareLocalBuildScratchDirectory").resolves();
+    localBuildStub = sinon.stub(localbuilds, "localBuild").resolves({
+      outputFiles: [".next"],
+      buildConfig: { runCommand: "npm start", env: [{ variable: "UM_VAR", value: "u" }] },
+    });
   });
 
-  afterEach(() => {
-    process.env = originalEnv;
-    sinon.restore();
-  });
+  afterEach(() => sinon.restore());
 
-  it("should throw FirebaseError if no run config is configured in firebase.json", async () => {
+  it("does nothing if no services are being deployed", async () => {
     const payload: Payload = {};
-    const context: Context = {};
-    const options = {
-      project: "project",
-      config: { get: () => undefined, path: (p: string) => p },
-    } as unknown as Options;
+    await prepare({ projectId: "p" }, { config: { src: {} } } as unknown as Options, payload);
+    expect(prereqsStub).not.to.have.been.called;
+    expect(payload.run).to.be.undefined;
+  });
 
-    await expect(prepare(context, options, payload)).to.be.rejectedWith(
-      FirebaseError,
-      "No Cloud Run services configured in firebase.json. Run 'firebase init run' to set up a service.",
+  it("requires a region", async () => {
+    await expect(prepareOne({ region: undefined })).to.be.rejectedWith(
+      "Cloud Run service s is missing a region in firebase.json.",
     );
   });
 
-  it("should load run service configuration from firebase.json", async () => {
-    const payload: Payload = {};
-    const context: Context = {};
-    const options = {
-      project: "project",
-      config: {
-        get: () => ({ serviceId: "my-service", region: "us-central1", rootDir: "." }),
-        path: (p: string) => p,
-      },
-    } as unknown as Options;
-
-    getServiceStub.resolves(undefined);
-
-    await prepare(context, options, payload);
-
-    expect(prereqsStub.calledOnce).to.be.true;
-    expect(context.projectId).to.equal("project");
-    expect(payload.run?.services).to.have.length(1);
-    expect(payload.run?.services?.[0].serviceId).to.equal("my-service");
-    expect(payload.run?.services?.[0].region).to.equal("us-central1");
+  it("reads the service and apphosting.yaml env vars", async () => {
+    const svc = await prepareOne();
+    expect(prereqsStub).to.have.been.calledWith("p");
+    expect(getServiceStub).to.have.been.calledWith("p", "us-central1", "s");
+    expect(svc.existing).to.be.undefined;
+    expect(svc.baseImage).to.be.undefined;
+    expect(svc.buildEnv).to.deep.equal({ BUILD_VAR: { value: "b" } });
+    expect(svc.runtimeEnv).to.deep.equal({ RUN_VAR: { value: "r" } });
   });
 
-  it("should normalize rootDir with leading slash to project relative path", async () => {
-    const payload: Payload = {};
-    const context: Context = {};
-    let pathArg = "";
-    const options = {
-      project: "project",
-      config: {
-        get: () => ({ serviceId: "my-service", region: "us-central1", rootDir: "/" }),
-        path: (p: string) => {
-          pathArg = p;
-          return `/project/${p}`;
-        },
-      },
-    } as unknown as Options;
-
-    getServiceStub.resolves(undefined);
-
-    await prepare(context, options, payload);
-
-    expect(pathArg).to.equal(".");
-    expect(payload.run?.services?.[0].source).to.equal("/project/.");
+  it("reuses the service's current base image", async () => {
+    getServiceStub.resolves(existing);
+    const svc = await prepareOne();
+    expect(svc.existing).to.equal(existing);
+    expect(svc.baseImage).to.equal(nodejs22);
   });
 
-  it("should respect FIREBASE_RUN_REGION environment variable", async () => {
-    process.env.FIREBASE_RUN_REGION = "europe-west1";
-    const payload: Payload = {};
-    const context: Context = {};
-    const options = {
-      project: "project",
-      config: {
-        get: () => ({ serviceId: "my-service", rootDir: "." }),
-        path: (p: string) => p,
-      },
-    } as unknown as Options;
-
-    getServiceStub.resolves(undefined);
-
-    await prepare(context, options, payload);
-
-    expect(payload.run?.services?.[0].region).to.equal("europe-west1");
+  it("lets the context set or clear the base image", async () => {
+    getServiceStub.resolves(existing);
+    expect((await prepareOne({}, { baseImage: "nodejs20" })).baseImage).to.equal("nodejs20");
+    expect((await prepareOne({}, { baseImage: null })).baseImage).to.be.undefined;
   });
 
-  it("should fetch existing service and base image", async () => {
-    const payload: Payload = {};
-    const context: Context = {};
-    const options = {
-      project: "project",
-      config: {
-        get: () => ({ serviceId: "mysvc", region: "us-central1", rootDir: "." }),
-        path: (p: string) => p,
-      },
-    } as unknown as Options;
-
-    getServiceStub.resolves({
-      template: {
-        containers: [{ baseImageUri: "some-uri" }],
-      },
-    } as runv2.Service);
-
-    await prepare(context, options, payload);
-
-    expect(prereqsStub.calledOnce).to.be.true;
-    expect(payload.run?.services).to.have.length(1);
-    expect(payload.run?.services?.[0].baseImageUri).to.equal("some-uri");
-  });
-
-  it("should override existing base image if --base-image flag is specified", async () => {
-    const payload: Payload = {};
-    const context: Context = {};
-    const options = {
-      project: "project",
-      baseImage: "override-uri",
-      config: {
-        get: () => ({
-          serviceId: "mysvc",
-          region: "us-central1",
-          rootDir: ".",
-        }),
-        path: (p: string) => p,
-      },
-    } as unknown as Options;
-
-    getServiceStub.resolves({
-      template: {
-        containers: [{ baseImageUri: "some-uri" }],
-      },
-    } as runv2.Service);
-
-    await prepare(context, options, payload);
-
-    expect(payload.run?.services?.[0].baseImageUri).to.equal("override-uri");
-  });
-
-  it("should support --runtime flag override", async () => {
-    const payload: Payload = {};
-    const context: Context = {};
-    const options = {
-      project: "project",
-      runtime: "nodejs22",
-      config: {
-        get: () => ({ serviceId: "mysvc", region: "us-central1", rootDir: "." }),
-        path: (p: string) => p,
-      },
-    } as unknown as Options;
-
-    getServiceStub.resolves({
-      template: {
-        containers: [{ baseImageUri: "old-uri" }],
-      },
-    } as runv2.Service);
-
-    await prepare(context, options, payload);
-
-    expect(payload.run?.services?.[0].baseImageUri).to.equal("nodejs22");
-    expect(payload.run?.services?.[0].clearBaseImage).to.be.false;
-  });
-
-  it("should support --clear-runtime flag", async () => {
-    const payload: Payload = {};
-    const context: Context = {};
-    const options = {
-      project: "project",
-      clearRuntime: true,
-      config: {
-        get: () => ({ serviceId: "mysvc", region: "us-central1", rootDir: "." }),
-        path: (p: string) => p,
-      },
-    } as unknown as Options;
-
-    getServiceStub.resolves({
-      template: {
-        containers: [{ baseImageUri: "old-uri" }],
-      },
-    } as runv2.Service);
-
-    await prepare(context, options, payload);
-
-    expect(payload.run?.services?.[0].baseImageUri).to.be.undefined;
-    expect(payload.run?.services?.[0].clearBaseImage).to.be.true;
-  });
-
-  it("should throw error if both --runtime and --clear-runtime are specified", async () => {
-    const payload: Payload = {};
-    const context: Context = {};
-    const options = {
-      project: "project",
-      runtime: "nodejs22",
-      clearRuntime: true,
-      config: {
-        get: () => ({ serviceId: "mysvc", region: "us-central1", rootDir: "." }),
-        path: (p: string) => p,
-      },
-    } as unknown as Options;
-
-    await expect(prepare(context, options, payload)).to.be.rejectedWith(
-      FirebaseError,
-      "Cannot specify both --runtime/--base-image and --clear-runtime/--clear-base-image.",
+  it("requires a base image for local builds", async () => {
+    getServiceStub.resolves({ ...existing, template: { containers: [{ name: "s", image: "i" }] } });
+    await expect(prepareOne({ localBuild: true })).to.be.rejectedWith(
+      "Local builds require a base image",
     );
+    expect(localBuildStub).not.to.have.been.called;
   });
 
-  it("should filter multi-service configurations using --only run:<serviceId>", async () => {
-    const payload: Payload = {};
-    const context: Context = {};
-    const options = {
-      project: "project",
-      only: "run:svc-2",
-      config: {
-        get: () => [
-          { serviceId: "svc-1", region: "us-central1", rootDir: "." },
-          { serviceId: "svc-2", region: "us-east1", rootDir: "." },
-        ],
-        path: (p: string) => p,
-      },
-    } as unknown as Options;
-
-    getServiceStub.resolves(undefined);
-
-    await prepare(context, options, payload);
-
-    expect(payload.run?.services).to.have.length(1);
-    expect(payload.run?.services?.[0].serviceId).to.equal("svc-2");
-  });
-
-  it("should throw FirebaseError when --only filter does not match any configured service", async () => {
-    const payload: Payload = {};
-    const context: Context = {};
-    const options = {
-      project: "project",
-      only: "run:non-existent",
-      config: {
-        get: () => [
-          { serviceId: "svc-1", region: "us-central1", rootDir: "." },
-          { serviceId: "svc-2", region: "us-east1", rootDir: "." },
-        ],
-        path: (p: string) => p,
-      },
-    } as unknown as Options;
-
-    await expect(prepare(context, options, payload)).to.be.rejectedWith(
-      FirebaseError,
-      "Cloud Run service(s) 'non-existent' not found in firebase.json.",
+  it("points new local build services to init, which sets a base image", async () => {
+    await expect(prepareOne({ localBuild: true })).to.be.rejectedWith(
+      /doesn't exist in us-central1 yet.*which also sets the base image/,
     );
+    expect(localBuildStub).not.to.have.been.called;
   });
 
-  it("should throw FirebaseError if serviceId is missing", async () => {
-    const payload: Payload = {};
-    const context: Context = {};
-    const options = {
-      project: "project",
-      config: {
-        get: () => ({ serviceId: "", region: "us-central1", rootDir: "." }),
-        path: (p: string) => p,
-      },
-    } as unknown as Options;
-
-    await expect(prepare(context, options, payload)).to.be.rejectedWith(
-      FirebaseError,
-      "Cloud Run serviceId must be specified in firebase.json.",
-    );
+  it("builds locally", async () => {
+    getServiceStub.resolves(existing);
+    const svc = await prepareOne({ localBuild: true, rootDir: "web" });
+    try {
+      expect(localBuildStub).to.have.been.calledWithMatch(
+        "p",
+        svc.localBuild!.scratchDir,
+        { BUILD_VAR: { value: "b" } },
+        { allowLocalBuildSecrets: true, rootDir: "web" },
+      );
+      expect(svc.localBuild).to.deep.include({ outputFiles: [".next"], runCommand: "npm start" });
+      expect(svc.runtimeEnv).to.deep.equal({
+        UM_VAR: { variable: "UM_VAR", value: "u" },
+        RUN_VAR: { value: "r" },
+      });
+    } finally {
+      fs.rmSync(svc.localBuild!.scratchDir, { recursive: true, force: true });
+    }
   });
 
-  it("should ignore 404 error from getService and proceed", async () => {
-    const payload: Payload = {};
-    const context: Context = {};
-    const options = {
-      project: "project",
-      config: {
-        get: () => ({ serviceId: "new-svc", region: "us-central1", rootDir: "." }),
-        path: (p: string) => p,
-      },
-    } as unknown as Options;
-
-    getServiceStub.rejects({ status: 404 });
-
-    await prepare(context, options, payload);
-
-    expect(payload.run?.services?.[0].existingService).to.be.undefined;
-  });
-
-  it("should propagate non-404 error from getService", async () => {
-    const payload: Payload = {};
-    const context: Context = {};
-    const options = {
-      project: "project",
-      config: {
-        get: () => ({ serviceId: "new-svc", region: "us-central1", rootDir: "." }),
-        path: (p: string) => p,
-      },
-    } as unknown as Options;
-
-    getServiceStub.rejects({ status: 500, message: "Internal server error" });
-
-    await expect(prepare(context, options, payload)).to.be.rejected;
-  });
-
-  it("should support multiple service configurations in firebase.json", async () => {
-    const payload: Payload = {};
-    const context: Context = {};
-    const options = {
-      project: "project",
-      config: {
-        get: () => [
-          { serviceId: "svc-1", region: "us-central1", rootDir: "." },
-          { serviceId: "svc-2", region: "us-east1", rootDir: "." },
-        ],
-        path: (p: string) => p,
-      },
-    } as unknown as Options;
-
-    getServiceStub.resolves(undefined);
-
-    await prepare(context, options, payload);
-
-    expect(payload.run?.services).to.have.length(2);
-    expect(payload.run?.services?.[0].serviceId).to.equal("svc-1");
-    expect(payload.run?.services?.[1].serviceId).to.equal("svc-2");
-  });
-
-  it("should log a warning if --allow-local-build-secrets flag is passed", async () => {
-    const payload: Payload = {};
-    const context: Context = {};
-    const options = {
-      project: "project",
-      allowLocalBuildSecrets: true,
-      config: {
-        get: () => ({ serviceId: "my-service", region: "us-central1", rootDir: "." }),
-        path: (p: string) => p,
-      },
-    } as unknown as RunDeployOptions;
-
-    getServiceStub.resolves(undefined);
-
-    await prepare(context, options, payload);
-
-    expect(logWarningStub.calledOnce).to.be.true;
-    expect(logWarningStub.firstCall.args[0]).to.equal("run");
-    expect(logWarningStub.firstCall.args[1]).to.include("--allow-local-build-secrets");
-  });
-
-  it("should throw FirebaseError if localBuild option is passed", async () => {
-    const payload: Payload = {};
-    const context: Context = {};
-    const options = {
-      project: "project",
-      localBuild: true,
-      config: {
-        get: () => ({ serviceId: "my-service", region: "us-central1", rootDir: "." }),
-        path: (p: string) => p,
-      },
-    } as unknown as RunDeployOptions;
-
-    await expect(prepare(context, options, payload)).to.be.rejectedWith(
-      FirebaseError,
-      "Cloud Run does not support local builds",
-    );
-  });
-
-  it("should throw FirebaseError if a service has localBuild: true in firebase.json", async () => {
-    const payload: Payload = {};
-    const context: Context = {};
-    const options = {
-      project: "project",
-      config: {
-        get: () => ({
-          serviceId: "my-service",
-          region: "us-central1",
-          rootDir: ".",
-          localBuild: true,
-        }),
-        path: (p: string) => p,
-      },
-    } as unknown as RunDeployOptions;
-
-    await expect(prepare(context, options, payload)).to.be.rejectedWith(
-      FirebaseError,
-      "Cloud Run does not support local builds ('localBuild: true' configured for service 'my-service')",
-    );
+  it("cleans up if the local build fails", async () => {
+    getServiceStub.resolves(existing);
+    localBuildStub.rejects(new Error("boom"));
+    const mkdtemp = sinon.spy(fs, "mkdtempSync");
+    await expect(prepareOne({ localBuild: true })).to.be.rejectedWith("boom");
+    expect(fs.existsSync(mkdtemp.firstCall.returnValue)).to.be.false;
   });
 });

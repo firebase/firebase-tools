@@ -13,7 +13,6 @@ import { EnvVar, mebibytes, PlaintextEnvVar, SecretEnvVar } from "./k8s";
 import { latest, Runtime } from "../deploy/functions/runtimes/supported";
 import { logger } from "../logger";
 import { partition } from "../functional";
-import * as secretManager from "./secretManager";
 
 export const API_VERSION = "v2";
 
@@ -32,11 +31,12 @@ export interface Scaling {
 }
 
 export interface Container {
-  name?: string;
+  name: string;
   image: string;
   command?: string[];
   args?: string[];
   env?: EnvVar[];
+  ports?: Array<{ name?: string; containerPort?: number }>;
   resources?: {
     limits?: {
       cpu?: string; // e.g. "1", "2", "4"
@@ -64,7 +64,7 @@ export interface RevisionTemplate {
   vpcAccess?: {
     connector?: string;
     egress?: "ALL_TRAFFIC" | "PRIVATE_RANGES_ONLY";
-    networkInterfaces?: Array<{
+    networkinterfaces?: Array<{
       network?: string;
       subnetwork?: string;
       tags?: string[];
@@ -86,7 +86,7 @@ export interface BuildConfig {
 }
 
 export interface TrafficTarget {
-  type?: string;
+  type?: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST" | "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION";
   revision?: string;
   percent?: number;
   tag?: string;
@@ -119,6 +119,7 @@ export interface Service {
   etag: string;
   template: RevisionTemplate;
   traffic?: TrafficTarget[];
+  trafficStatuses?: TrafficTarget[];
   invokerIamDisabled?: boolean;
   ingress?: string;
   // Is this redundant with the Build API?
@@ -164,97 +165,54 @@ export interface Build {
   buildpackBuild: BuildpacksBuild;
 }
 
-/**
- * Represents the LRO or Operation object returned by Cloud Run submitBuild endpoint.
- */
-export interface BuildOperationObject {
-  /** The fully qualified operation resource name (e.g. projects/{p}/locations/{l}/operations/{opId}). */
-  name?: string;
-  /** Operation metadata containing the build details. */
-  metadata?: {
-    build?: {
-      id?: string;
-      name?: string;
-      status?: string;
-      statusDetail?: string;
-      logUrl?: string;
-    };
-  };
-}
-
 export interface SubmitBuildResponse {
-  buildOperation: string | BuildOperationObject;
+  buildOperation: {
+    metadata?: { build?: { name: string; logUrl?: string } };
+  };
   baseImageUri?: string;
   baseImageWarning?: string;
 }
 
+const PENDING_BUILD_STATUSES = ["STATUS_UNKNOWN", "PENDING", "QUEUED", "WORKING"];
+
 /**
- * Submits a build to Cloud Build using the v2 API, tracking the long-running operation.
+ * Submits a build to Cloud Build using the v2 API and waits for the build to finish.
  * Used for building source code into container images.
  */
 export async function submitBuild(
   projectId: string,
   location: string,
   build: Build,
-): Promise<Omit<SubmitBuildResponse, "buildOperation">> {
+): Promise<void> {
   const res = await client.post<Build, SubmitBuildResponse>(
     `/projects/${projectId}/locations/${location}/builds:submit`,
     build,
   );
-  if (res.status !== 200) {
-    throw new FirebaseError(`Failed to submit build: ${res.status}`, {
-      status: res.status,
-    });
+  if (res.body.baseImageWarning) {
+    logger.warn(res.body.baseImageWarning);
   }
-  const op = res.body.buildOperation;
-  const buildName = typeof op !== "string" ? op?.metadata?.build?.name : undefined;
-  const buildId = typeof op !== "string" ? op?.metadata?.build?.id : undefined;
-  const operationResourceName =
-    buildName ||
-    (buildId
-      ? `projects/${projectId}/locations/${location}/builds/${buildId}`
-      : typeof op === "string"
-        ? op
-        : op?.name);
-  if (operationResourceName) {
-    let latestBuild: { status?: string; statusDetail?: string; logUrl?: string } | undefined;
-    await pollOperation<any>({
-      pollerName: "Cloud Build Poller",
-      apiOrigin: cloudbuildOrigin(),
-      apiVersion: "v1",
-      operationResourceName,
-      masterTimeout: 15 * 60 * 1000,
-      backoff: 2000,
-      maxBackoff: 10000,
-      onPoll: (opRes: any) => {
-        latestBuild = opRes?.metadata?.build || opRes;
-      },
-      doneFn: (opRes: any) => {
-        const status = opRes?.status || opRes?.metadata?.build?.status;
-        return (
-          status === "SUCCESS" ||
-          status === "FAILURE" ||
-          status === "INTERNAL_ERROR" ||
-          status === "TIMEOUT" ||
-          status === "CANCELLED"
-        );
-      },
-    });
-
-    if (latestBuild && latestBuild.status !== "SUCCESS") {
-      const detail = latestBuild.statusDetail ? `: ${latestBuild.statusDetail}` : "";
-      const consoleLink =
-        latestBuild.logUrl ||
-        `https://console.cloud.google.com/cloud-build/builds?project=${projectId}`;
-      throw new FirebaseError(
-        `Cloud Build failed with status ${latestBuild.status}${detail}\nView Cloud Build logs at: ${consoleLink}`,
-      );
-    }
+  const cloudBuild = res.body.buildOperation.metadata?.build;
+  if (!cloudBuild) {
+    throw new FirebaseError("Failed to submit build: no build was returned.");
   }
-  return {
-    baseImageUri: res.body.baseImageUri,
-    baseImageWarning: res.body.baseImageWarning,
-  };
+  // The returned operation can't be polled for regional builds, so poll the build itself.
+  let status: string | undefined;
+  await pollOperation({
+    apiOrigin: cloudbuildOrigin(),
+    apiVersion: "v1",
+    operationResourceName: cloudBuild.name,
+    masterTimeout: 30 * 60 * 1000,
+    maxBackoff: 10_000,
+    doneFn: (b: { status?: string }) => {
+      status = b.status;
+      return !PENDING_BUILD_STATUSES.includes(b.status ?? "STATUS_UNKNOWN");
+    },
+  });
+  if (status !== "SUCCESS") {
+    throw new FirebaseError(
+      `Cloud Build failed with status ${status}. View the build logs at ${cloudBuild.logUrl}`,
+    );
+  }
 }
 
 /**
@@ -263,35 +221,22 @@ export async function submitBuild(
  */
 export async function updateService(
   service: Omit<Service, ServiceOutputFields>,
-  updateMask?: string[],
+  opts: { updateMask?: string[]; masterTimeout?: number } = {},
 ): Promise<Service> {
-  let fieldMask: string[];
-  if (updateMask) {
-    fieldMask = updateMask;
-  } else {
-    const rawMask = proto.fieldMasks(
-      service,
-      /* doNotRecurseIn...*/
-      "labels",
-      "annotations",
-      "tags",
-      "scaling",
-      "template.labels",
-      "template.annotations",
-      "template.scaling",
-    );
-    fieldMask = rawMask.filter(
-      (f) =>
-        f !== "name" && (f !== "template.revision" || service.template?.revision !== undefined),
-    );
-  }
-
+  const fieldMask = proto.fieldMasks(
+    service,
+    /* doNotRecurseIn...*/ "labels",
+    "annotations",
+    "tags",
+  );
+  // Always update revision name to ensure null generates a new unique revision name.
+  fieldMask.push("template.revision");
   const res = await client.patch<Omit<Service, ServiceOutputFields>, LongRunningOperation<Service>>(
     service.name,
     service,
     {
       queryParams: {
-        updateMask: fieldMask.join(","),
+        updateMask: (opts.updateMask || fieldMask).join(","),
       },
     },
   );
@@ -299,9 +244,7 @@ export async function updateService(
     apiOrigin: runOrigin(),
     apiVersion: API_VERSION,
     operationResourceName: res.body.name,
-    masterTimeout: 10 * 60 * 1000,
-    backoff: 1000,
-    maxBackoff: 5000,
+    masterTimeout: opts.masterTimeout,
   });
   return svc;
 }
@@ -315,6 +258,7 @@ export async function createService(
   location: string,
   serviceId: string,
   service: Omit<Service, ServiceOutputFields>,
+  opts: { masterTimeout?: number } = {},
 ): Promise<Service> {
   // The create API expects the name to be empty or unset, as the parent is in the URL
   // and resource ID is a query param.
@@ -333,9 +277,7 @@ export async function createService(
     apiOrigin: runOrigin(),
     apiVersion: API_VERSION,
     operationResourceName: res.body.name,
-    masterTimeout: 10 * 60 * 1000,
-    backoff: 1000,
-    maxBackoff: 5000,
+    masterTimeout: opts.masterTimeout,
   });
   return svc;
 }
@@ -374,10 +316,10 @@ export async function getService(
 /**
  * Lists Cloud Run services in the given project.
  *
- * This method only returns services with the "goog-managed-by" label set to
+ * By default, this method only returns services with the "goog-managed-by" label set to
  * "cloud-functions" or "firebase-functions".
  */
-export async function listServices(projectId: string): Promise<Service[]> {
+export async function listServices(projectId: string, functionsOnly = true): Promise<Service[]> {
   const allServices: Service[] = [];
   let pageToken: string | undefined = undefined;
 
@@ -401,75 +343,11 @@ export async function listServices(projectId: string): Promise<Service[]> {
     if (res.body.services) {
       for (const service of res.body.services) {
         if (
+          !functionsOnly ||
           service.labels?.[CLIENT_NAME_LABEL] === "cloud-functions" ||
           service.labels?.[CLIENT_NAME_LABEL] === "cloudfunctions" ||
           service.labels?.[CLIENT_NAME_LABEL] === "firebase-functions"
         ) {
-          allServices.push(service);
-        }
-      }
-    }
-    pageToken = res.body.nextPageToken;
-  } while (pageToken);
-
-  return allServices;
-}
-
-/**
- * Parses a fully qualified Cloud Run service name into project, location, and serviceId.
- * e.g. "projects/{projectId}/locations/{location}/services/{serviceId}"
- */
-export function parseServiceName(serviceName: string): {
-  projectId: string;
-  location: string;
-  serviceId: string;
-} {
-  const match = /^projects\/([^/]+)\/locations\/([^/]+)\/services\/([^/]+)$/.exec(serviceName);
-  if (!match) {
-    throw new FirebaseError(`Invalid Cloud Run service name: "${serviceName}"`);
-  }
-  return {
-    projectId: match[1],
-    location: match[2],
-    serviceId: match[3],
-  };
-}
-
-/**
- * Lists all Cloud Run services in the given project across all locations.
- * Excludes internal Cloud Functions (2nd gen) services by default.
- */
-export async function listCloudRunServices(
-  projectId: string,
-  includeFunctions = false,
-): Promise<Service[]> {
-  const allServices: Service[] = [];
-  let pageToken: string | undefined = undefined;
-
-  do {
-    const queryParams: Record<string, string> = {};
-    if (pageToken) {
-      queryParams["pageToken"] = pageToken;
-    }
-
-    const res = await client.get<{ services?: Service[]; nextPageToken?: string }>(
-      `/projects/${projectId}/locations/-/services`,
-      { queryParams },
-    );
-
-    if (res.status !== 200) {
-      throw new FirebaseError(`Failed to list Cloud Run services. HTTP Error: ${res.status}`, {
-        original: res.body as any,
-      });
-    }
-
-    if (res.body.services) {
-      for (const service of res.body.services) {
-        const isFunction =
-          service.labels?.[CLIENT_NAME_LABEL] === "cloud-functions" ||
-          service.labels?.[CLIENT_NAME_LABEL] === "cloudfunctions" ||
-          service.labels?.[CLIENT_NAME_LABEL] === "firebase-functions";
-        if (includeFunctions || !isFunction) {
           allServices.push(service);
         }
       }
@@ -807,13 +685,11 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
     return acc;
   }, {});
   endpoint.secretEnvironmentVariables = secretEnv.map((e) => {
-    const { projectId: secretProjectId, secret } = parseSecretKeyRef(
-      e.valueSource.secretKeyRef.secret,
-      project,
-    );
+    const [, /* projects*/ projectId /* secrets*/, , secret] =
+      e.valueSource.secretKeyRef.secret.split("/");
     return {
       key: e.name,
-      projectId: secretProjectId,
+      projectId,
       secret,
       version: e.valueSource.secretKeyRef.version || "latest",
     };
@@ -825,29 +701,6 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
     };
   }
   return endpoint;
-}
-
-/**
- * Parses a SecretKeyRef secret resource string into its target project ID and short secret name.
- * Handles full resource names (projects/{project}/secrets/{secret}) via secretManager.parseSecretResourceName
- * and falls back to the default service project ID for bare secret names.
- */
-export function parseSecretKeyRef(
-  secretRef: string,
-  defaultProjectId: string,
-): { projectId: string; secret: string } {
-  try {
-    const parsed = secretManager.parseSecretResourceName(secretRef);
-    return {
-      projectId: parsed.projectId,
-      secret: parsed.name,
-    };
-  } catch {
-    return {
-      projectId: defaultProjectId,
-      secret: secretRef,
-    };
-  }
 }
 
 /**

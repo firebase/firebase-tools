@@ -1,11 +1,10 @@
-import { Options } from "../../options";
 import { ensure } from "../../ensureApiEnabled";
 import * as artifactregistry from "../../gcp/artifactregistry";
 
 /**
- * Checks and ensures necessary GCP APIs are enabled before deploying Cloud Run services.
+ * Ensures that the APIs needed to build and deploy Cloud Run services are enabled.
  */
-export async function prereqs(options: Options, projectId: string): Promise<void> {
+export async function prereqs(projectId: string): Promise<void> {
   await Promise.all([
     ensure(projectId, "run.googleapis.com", "run", true),
     ensure(projectId, "cloudbuild.googleapis.com", "cloudbuild", true),

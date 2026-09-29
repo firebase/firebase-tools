@@ -1,301 +1,159 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import * as runFeature from "./run";
-import * as prompt from "../../prompt";
-import * as fs from "fs";
+import { Setup } from "..";
 import { Config } from "../../config";
-import { Setup } from "../index";
-import { FirebaseError } from "../../error";
+import * as deployIndex from "../../deploy";
+import * as prereqs from "../../deploy/run/prereqs";
+import * as run from "../../gcp/run";
 import * as runv2 from "../../gcp/runv2";
+import { Options } from "../../options";
+import * as prompt from "../../prompt";
+import * as requirePermissions from "../../requirePermissions";
+import { actuate, askQuestions, upsertRunConfig } from "./run";
 
-function createMockSetup(overrides: Partial<Setup> = {}): Setup {
-  return {
-    config: {},
-    rcfile: { projects: {}, targets: {}, etags: {} },
-    instructions: [],
-    ...overrides,
-  };
-}
+describe("init run", () => {
+  const options = {} as Options;
+  let config: Config;
+  let selectStub: sinon.SinonStub;
+  let inputStub: sinon.SinonStub;
 
-describe("init features run", () => {
-  let sandbox: sinon.SinonSandbox;
+  function setup(): Setup {
+    return {
+      config: {},
+      rcfile: { projects: {}, targets: {}, etags: {} },
+      projectId: "p",
+      instructions: [],
+    };
+  }
 
   beforeEach(() => {
-    sandbox = sinon.createSandbox();
+    config = new Config({}, { projectDir: process.cwd(), cwd: process.cwd() });
+    sinon.stub(requirePermissions, "requirePermissions").resolves();
+    sinon.stub(prereqs, "prereqs").resolves();
+    sinon.stub(run, "listLocations").resolves(["us-central1", "us-east1"]);
+    sinon.stub(runv2, "getService").rejects({ status: 404 });
+    selectStub = sinon.stub(prompt, "select");
+    inputStub = sinon.stub(prompt, "input");
   });
 
-  afterEach(() => {
-    sandbox.restore();
-  });
+  afterEach(() => sinon.restore());
 
   describe("askQuestions", () => {
-    it("should prompt for create, region, serviceId, and rootDir when creating new service", async () => {
-      const selectStub = sandbox.stub(prompt, "select");
-      selectStub.onFirstCall().resolves("create");
-
-      const inputStub = sandbox.stub(prompt, "input");
-      inputStub.onFirstCall().resolves("us-central1");
-      inputStub.onSecondCall().resolves("custom-service");
+    it("asks how to create a new service", async () => {
+      selectStub.onFirstCall().resolves("create").onSecondCall().resolves("us-east1");
+      inputStub.onFirstCall().resolves("my-service").onSecondCall().resolves("nodejs22");
       inputStub.onThirdCall().resolves("/");
+      const s = setup();
 
-      const setup = createMockSetup({ projectId: "test-project" });
-      await runFeature.askQuestions(setup);
+      await askQuestions(s, config, options);
 
-      expect(selectStub.calledOnce).to.be.true;
-      expect(selectStub.firstCall.args[0].choices).to.deep.equal([
-        { name: "Create a new service", value: "create" },
-        { name: "Link to an existing service", value: "link" },
-      ]);
-
-      expect(setup.featureInfo?.run).to.deep.equal({
-        serviceId: "custom-service",
-        region: "us-central1",
-        rootDir: "/",
+      expect(selectStub.secondCall.args[0]).to.deep.include({
+        choices: ["us-central1", "us-east1"],
+        default: "us-central1",
       });
-
-      // Verify prompt 1: Region (defaults to us-central1)
-      const regionCall = inputStub.firstCall.args[0];
-      expect(regionCall.message).to.equal("Which region should this service be deployed to?");
-      expect(regionCall.default).to.equal("us-central1");
-      expect(regionCall.validate!("INVALID REGION")).to.be.a("string");
-      expect(regionCall.validate!("us-central1")).to.be.true;
-
-      // Verify prompt 2: Service ID (no default)
-      const serviceCall = inputStub.secondCall.args[0];
-      expect(serviceCall.message).to.equal("Please enter a unique ID for your service");
-      expect(serviceCall.default).to.be.undefined;
-      expect(serviceCall.validate!("ab")).to.be.a("string");
-      expect(serviceCall.validate!("my-service-")).to.be.a("string");
-      expect(serviceCall.validate!("My-Service")).to.be.a("string");
-      expect(serviceCall.validate!("a".repeat(64))).to.be.a("string");
-      expect(serviceCall.validate!("custom-service")).to.be.true;
-
-      // Verify prompt 3: Root directory (defaults to /)
-      const rootDirCall = inputStub.thirdCall.args[0];
-      expect(rootDirCall.message).to.equal(
-        "Specify your app's root directory relative to your firebase.json directory",
-      );
-      expect(rootDirCall.default).to.equal("/");
-      expect(rootDirCall.validate!("/")).to.be.true;
-    });
-
-    it("should allow linking to an existing Cloud Run service", async () => {
-      const selectStub = sandbox.stub(prompt, "select");
-      selectStub.onFirstCall().resolves("link");
-      selectStub.onSecondCall().resolves({ serviceId: "existing-svc", region: "us-east1" });
-
-      const listServicesStub = sandbox.stub(runv2, "listCloudRunServices").resolves([
-        {
-          name: "projects/test-project/locations/us-east1/services/existing-svc",
-        } as unknown as runv2.Service,
-      ]);
-
-      const inputStub = sandbox.stub(prompt, "input");
-      inputStub.onFirstCall().resolves("/");
-
-      const setup = createMockSetup({ projectId: "test-project" });
-      await runFeature.askQuestions(setup);
-
-      expect(listServicesStub.calledOnceWith("test-project")).to.be.true;
-      expect(selectStub.calledTwice).to.be.true;
-      expect(setup.featureInfo?.run).to.deep.equal({
-        serviceId: "existing-svc",
+      expect(inputStub.secondCall.args[0].default).to.equal("nodejs22");
+      expect(s.featureInfo?.run).to.deep.equal({
+        serviceId: "my-service",
         region: "us-east1",
+        baseImage: "nodejs22",
         rootDir: "/",
       });
     });
 
-    it("should fall back to creation if no existing services are found when linking", async () => {
-      const selectStub = sandbox.stub(prompt, "select");
-      selectStub.onFirstCall().resolves("link");
+    it("rejects invalid or taken service IDs", async () => {
+      selectStub.onFirstCall().resolves("create").onSecondCall().resolves("us-central1");
+      inputStub.resolves("/");
+      await askQuestions(setup(), config, options);
+      const validate = inputStub.firstCall.args[0].validate;
 
-      sandbox.stub(runv2, "listCloudRunServices").resolves([]);
+      expect(await validate("Bad_Id")).to.be.a("string");
+      expect(await validate("ok-id")).to.be.true;
+      (runv2.getService as sinon.SinonStub).resolves({});
+      expect(await validate("ok-id")).to.equal(
+        "A service named ok-id already exists in us-central1.",
+      );
+    });
 
-      const inputStub = sandbox.stub(prompt, "input");
-      inputStub.onFirstCall().resolves("us-central1");
-      inputStub.onSecondCall().resolves("new-svc");
-      inputStub.onThirdCall().resolves("/");
+    it("updates an existing service", async () => {
+      const existing = {
+        name: "projects/p/locations/europe-west1/services/web",
+        template: { containers: [{ name: "web", image: "i", baseImageUri: "nodejs20" }] },
+      };
+      const managed = {
+        name: "projects/p/locations/r/services/f",
+        labels: { "goog-managed-by": "x" },
+      };
+      sinon.stub(runv2, "listServices").resolves([existing, managed] as unknown as runv2.Service[]);
+      selectStub.onFirstCall().resolves("update").onSecondCall().resolves(existing);
+      inputStub.callsFake((o) => Promise.resolve(o.default));
+      const s = setup();
 
-      const setup = createMockSetup({ projectId: "test-project" });
-      await runFeature.askQuestions(setup);
+      await askQuestions(s, config, options);
 
-      expect(setup.featureInfo?.run).to.deep.equal({
-        serviceId: "new-svc",
-        region: "us-central1",
+      expect(runv2.listServices).to.have.been.calledWith("p", false);
+      expect(selectStub.secondCall.args[0].choices).to.deep.equal([
+        { name: "web (europe-west1)", value: existing },
+      ]);
+      expect(s.featureInfo?.run).to.deep.equal({
+        serviceId: "web",
+        region: "europe-west1",
+        baseImage: "nodejs20",
         rootDir: "/",
       });
     });
 
-    it("should validate rootDir existence against config.projectDir", async () => {
-      const selectStub = sandbox.stub(prompt, "select");
-      selectStub.onFirstCall().resolves("create");
+    it("creates a service if there are none to update", async () => {
+      sinon.stub(runv2, "listServices").resolves([]);
+      selectStub.onFirstCall().resolves("update").onSecondCall().resolves("us-central1");
+      inputStub.onFirstCall().resolves("my-service");
+      inputStub.callsFake((o) => Promise.resolve(o.default));
+      const s = setup();
 
-      const inputStub = sandbox.stub(prompt, "input");
-      inputStub.onFirstCall().resolves("us-central1");
-      inputStub.onSecondCall().resolves("custom-service");
-      inputStub.onThirdCall().resolves("non-existent-folder");
+      await askQuestions(s, config, options);
 
-      const existsSyncStub = sandbox.stub(fs, "existsSync");
-      existsSyncStub.withArgs("/path/to/project/non-existent-folder").returns(false);
-      existsSyncStub.withArgs("/path/to/project/valid-folder").returns(true);
-
-      const setup = createMockSetup({ projectId: "test-project" });
-      const config = new Config({}, {});
-      config.projectDir = "/path/to/project";
-
-      await runFeature.askQuestions(setup, config);
-
-      const rootDirCall = inputStub.thirdCall.args[0];
-      expect(rootDirCall.validate!("non-existent-folder")).to.include("does not exist");
-      expect(rootDirCall.validate!("valid-folder")).to.be.true;
-    });
-
-    it("should throw FirebaseError if projectId is missing", async () => {
-      const setup = createMockSetup();
-      try {
-        await runFeature.askQuestions(setup);
-        expect.fail("Expected askQuestions to throw");
-      } catch (err: any) {
-        expect(err).to.be.instanceOf(FirebaseError);
-        expect(err.message).to.equal("Project ID must be set before initializing Cloud Run.");
-        expect(err.exit).to.equal(1);
-      }
+      expect(s.featureInfo?.run?.serviceId).to.equal("my-service");
     });
   });
 
   describe("actuate", () => {
-    let existsSyncStub: sinon.SinonStub;
-    let getServiceStub: sinon.SinonStub;
-    let createServiceStub: sinon.SinonStub;
+    it("saves the service to firebase.json and deploys it", async () => {
+      const writeStub = sinon.stub(config, "writeProjectFile");
+      const deployStub = sinon.stub(deployIndex, "deploy").resolves();
+      const s = setup();
+      s.featureInfo = { run: { serviceId: "s", region: "r", baseImage: "", rootDir: "/" } };
 
-    beforeEach(() => {
-      existsSyncStub = sandbox.stub(fs, "existsSync");
-      getServiceStub = sandbox.stub(runv2, "getService");
-      createServiceStub = sandbox.stub(runv2, "createService");
-    });
+      await actuate(s, config, options);
 
-    it("should do nothing if featureInfo.run is not present", async () => {
-      const setup = createMockSetup({ projectId: "test-project" });
-      const config = new Config({}, {});
-
-      await runFeature.actuate(setup, config);
-
-      expect(config.src.run).to.be.undefined;
-      expect(getServiceStub.notCalled).to.be.true;
-    });
-
-    it("should throw FirebaseError if projectId is missing", async () => {
-      const setup = createMockSetup({
-        featureInfo: {
-          run: {
-            serviceId: "my-svc",
-            region: "us-central1",
-            rootDir: ".",
-          },
-        },
-      });
-      const config = new Config({}, {});
-
-      try {
-        await runFeature.actuate(setup, config);
-        expect.fail("Expected actuate to throw");
-      } catch (err: any) {
-        expect(err).to.be.instanceOf(FirebaseError);
-        expect(err.message).to.equal("Project ID must be set before initializing Cloud Run.");
-        expect(err.exit).to.equal(1);
-      }
-    });
-
-    it("should create placeholder service with 0% traffic when service does not exist in GCP", async () => {
-      const setup = createMockSetup({
-        projectId: "test-project",
-        featureInfo: {
-          run: {
-            serviceId: "my-svc",
-            region: "us-central1",
-            rootDir: ".",
-          },
-        },
-      });
-      const config = new Config({}, {});
-      sandbox.stub(config, "writeProjectFile");
-      const askWriteStub = sandbox.stub(config, "askWriteProjectFile").resolves();
-
-      existsSyncStub.returns(false);
-      const notFoundErr = new Error("Not Found") as any;
-      notFoundErr.status = 404;
-      getServiceStub.rejects(notFoundErr);
-      createServiceStub.resolves({ uri: "https://my-svc.a.run.app" });
-
-      await runFeature.actuate(setup, config);
-
-      expect(createServiceStub.calledOnce).to.be.true;
-      const createdService = createServiceStub.args[0][3] as runv2.Service;
-      expect(createdService.template.containers?.[0].image).to.equal(
-        "us-docker.pkg.dev/cloudrun/container/hello",
-      );
-      expect(createdService.invokerIamDisabled).to.be.true;
-      expect(setup.instructions).to.include(
-        "Your Cloud Run service URL is: https://my-svc.a.run.app",
-      );
-
-      const runConfigs = config.src.run as Array<{ serviceId: string }>;
-      expect(runConfigs).to.be.an("array");
-      expect(runConfigs[0].serviceId).to.equal("my-svc");
-      expect(askWriteStub.calledOnce).to.be.true;
-    });
-
-    it("should not create service if service already exists in GCP", async () => {
-      const setup = createMockSetup({
-        projectId: "test-project",
-        featureInfo: {
-          run: {
-            serviceId: "my-svc",
-            region: "us-central1",
-            rootDir: ".",
-          },
-        },
-      });
-      const config = new Config({}, {});
-      sandbox.stub(config, "writeProjectFile");
-      existsSyncStub.returns(true);
-      getServiceStub.resolves({ uri: "https://existing-svc.a.run.app" });
-
-      await runFeature.actuate(setup, config);
-
-      expect(createServiceStub.notCalled).to.be.true;
-      expect(setup.instructions).to.include(
-        "Your Cloud Run service URL is: https://existing-svc.a.run.app",
+      const runConfig = {
+        serviceId: "s",
+        rootDir: "/",
+        region: "r",
+        ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"],
+      };
+      expect(config.src.run).to.deep.equal(runConfig);
+      expect(writeStub).to.have.been.calledWith("firebase.json", config.src);
+      expect(deployStub).to.have.been.calledWithMatch(
+        ["run"],
+        { projectId: "p", config, only: "run:s" },
+        { baseImage: null },
       );
     });
+  });
 
-    it("should append to existing run configs array in firebase.json", async () => {
-      const setup = createMockSetup({
-        projectId: "test-project",
-        featureInfo: {
-          run: {
-            serviceId: "second-svc",
-            region: "us-central1",
-            rootDir: "./app2",
-          },
-        },
-      });
-      const config = new Config(
-        {
-          run: [{ serviceId: "first-svc", region: "us-central1", rootDir: "./app1" }],
-        },
-        {},
-      );
-      sandbox.stub(config, "writeProjectFile");
-      existsSyncStub.returns(true);
-      getServiceStub.resolves({ uri: "https://second-svc.a.run.app" });
-
-      await runFeature.actuate(setup, config);
-
-      const runConfigs = config.src.run as Array<{ serviceId: string }>;
-      expect(runConfigs).to.have.length(2);
-      expect(runConfigs[0].serviceId).to.equal("first-svc");
-      expect(runConfigs[1].serviceId).to.equal("second-svc");
+  describe("upsertRunConfig", () => {
+    it("adds services, and updates them in place without dropping other settings", () => {
+      const a = { serviceId: "a", region: "r", rootDir: "/", ignore: ["x"] };
+      const b = { serviceId: "b", region: "r" };
+      upsertRunConfig(a, config);
+      expect(config.src.run).to.deep.equal(a);
+      upsertRunConfig(b, config);
+      expect(config.src.run).to.deep.equal([a, b]);
+      config.set("run.0.localBuild", true);
+      upsertRunConfig({ serviceId: "a", region: "r2", rootDir: "web", ignore: ["y"] }, config);
+      expect(config.src.run).to.deep.equal([
+        { serviceId: "a", region: "r2", rootDir: "web", ignore: ["x"], localBuild: true },
+        b,
+      ]);
     });
   });
 });

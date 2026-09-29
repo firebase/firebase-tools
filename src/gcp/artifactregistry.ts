@@ -3,6 +3,7 @@ import { artifactRegistryDomain } from "../api";
 import { assertImplements, DeepOmit, RecursiveKeyOf } from "../metaprogramming";
 import * as api from "../ensureApiEnabled";
 import * as proto from "./proto";
+import { getErrStatus } from "../error";
 import { pollOperation } from "../operation-poller";
 
 export const API_VERSION = "v1";
@@ -13,12 +14,6 @@ const client = new Client({
   apiVersion: API_VERSION,
 });
 
-/**
- * Ensures that the Artifact Registry API is enabled for the specified project.
- *
- * @param projectId The GCP project ID.
- * @return A promise that resolves when the API is confirmed enabled.
- */
 export function ensureApiEnabled(projectId: string): Promise<void> {
   return api.ensure(projectId, artifactRegistryDomain(), "artifactregistry", true);
 }
@@ -104,67 +99,29 @@ export async function updateRepository(repo: RepositoryInput): Promise<Repositor
 }
 
 /**
- * Creates an Artifact Registry repository.
+ * Creates a Docker repository in Artifact Registry if it doesn't exist yet.
  */
-export async function createRepository(
+export async function ensureDockerRepository(
   projectId: string,
   location: string,
   repositoryId: string,
-  format = "DOCKER",
-): Promise<Repository> {
-  const res = await client.post<any, any>(
-    `/projects/${projectId}/locations/${location}/repositories`,
-    {
-      format,
-      description: "Cloud Run Source Deploy Repository",
-    },
-    {
-      queryParams: {
-        repositoryId,
-      },
-    },
-  );
-  if (res.body?.name && !res.body.done) {
-    return await pollOperation<Repository>({
-      apiOrigin: artifactRegistryDomain(),
-      apiVersion: API_VERSION,
-      operationResourceName: res.body.name,
-      masterTimeout: 5 * 60 * 1000,
-      backoff: 1000,
-      maxBackoff: 5000,
-    });
-  }
-  return res.body;
-}
-
-/**
- * Ensures an Artifact Registry repository exists, creating it if not.
- */
-export async function ensureRepositoryExists(
-  projectId: string,
-  location: string,
-  repositoryId: string,
-  format = "DOCKER",
 ): Promise<void> {
-  const name = `projects/${projectId}/locations/${location}/repositories/${repositoryId}`;
   try {
-    await getRepository(name);
-  } catch (err: any) {
-    if (err.status === 404) {
-      try {
-        await createRepository(projectId, location, repositoryId, format);
-      } catch (createErr: any) {
-        // 409 Already Exists: repository was created concurrently or already exists, safe to ignore.
-        if (createErr.status === 409) {
-          return;
-        }
-        throw createErr;
-      }
-      // 409 Already Exists from getRepository (e.g. repository state conflict), safe to ignore.
-    } else if (err.status === 409) {
-      return;
-    } else {
+    await getRepository(`projects/${projectId}/locations/${location}/repositories/${repositoryId}`);
+    return;
+  } catch (err: unknown) {
+    if (getErrStatus(err) !== 404) {
       throw err;
     }
   }
+  const res = await client.post<{ format: string }, Operation>(
+    `/projects/${projectId}/locations/${location}/repositories`,
+    { format: "DOCKER" },
+    { queryParams: { repositoryId } },
+  );
+  await pollOperation({
+    apiOrigin: artifactRegistryDomain(),
+    apiVersion: API_VERSION,
+    operationResourceName: res.body.name,
+  });
 }

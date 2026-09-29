@@ -1,229 +1,144 @@
-import * as path from "path";
 import { existsSync } from "fs";
-import { Setup } from "../index";
+import * as path from "path";
+import { Setup } from "..";
 import { Config } from "../../config";
-import { input, select } from "../../prompt";
-import { logBullet, logSuccess } from "../../utils";
-import { readTemplateSync } from "../../templates";
+import { deploy, TARGET_PERMISSIONS } from "../../deploy";
+import { prereqs } from "../../deploy/run/prereqs";
+import { getExistingService, mainContainer } from "../../deploy/run/util";
 import { FirebaseError } from "../../error";
-import { DEFAULT_RUN_IGNORE } from "../../deploy/run/args";
 import { RunSingle } from "../../firebaseConfig";
+import * as run from "../../gcp/run";
 import * as runv2 from "../../gcp/runv2";
-import { logger } from "../../logger";
+import { Options } from "../../options";
+import { input, select } from "../../prompt";
+import { requirePermissions } from "../../requirePermissions";
+import { logBullet } from "../../utils";
 
 export interface RunInfo {
   serviceId: string;
   region: string;
+  baseImage: string;
   rootDir: string;
 }
 
 /**
- * Prompts the user for Cloud Run service ID, deployment region, and source root.
+ * Checks product-level setup, then asks which service to create or update and how to deploy it.
  */
-export async function askQuestions(setup: Setup, config?: Config, options?: any): Promise<void> {
+export async function askQuestions(setup: Setup, config: Config, options: Options): Promise<void> {
   const projectId = setup.projectId;
   if (!projectId) {
-    throw new FirebaseError("Project ID must be set before initializing Cloud Run.", { exit: 1 });
+    throw new FirebaseError("Cloud Run requires a Firebase project. Run firebase use --add first.");
   }
+  await requirePermissions({ ...options, projectId }, TARGET_PERMISSIONS.run);
+  await prereqs(projectId);
 
-  logBullet("Configuring Cloud Run...");
-
-  let serviceId = options?.service || options?.serviceId;
-  let region = options?.primaryRegion || options?.region;
-
-  if (!serviceId) {
-    const createOrLink: string = await select({
-      default: "create",
-      message: "Please select an option",
-      choices: [
-        { name: "Create a new service", value: "create" },
-        { name: "Link to an existing service", value: "link" },
-      ],
-    });
-
-    if (createOrLink === "link") {
-      try {
-        const existingServices = await runv2.listCloudRunServices(projectId);
-        if (existingServices.length === 0) {
-          logBullet(
-            "No existing Cloud Run services found in this project. Creating a new service instead.",
-          );
-        } else {
-          const choices = existingServices.map((s) => {
-            const parsed = runv2.parseServiceName(s.name);
-            return {
-              name: `${parsed.serviceId} (${parsed.location})`,
-              value: { serviceId: parsed.serviceId, region: parsed.location },
-            };
-          });
-          const selected = await select<{ serviceId: string; region: string }>({
-            message: "Which Cloud Run service would you like to link?",
-            choices,
-          });
-          serviceId = selected.serviceId;
-          region = selected.region;
-          logSuccess(`Linked to service ${serviceId} in ${region}\n`);
-        }
-      } catch (err: unknown) {
-        logger.debug("Failed to list Cloud Run services:", err);
-        logBullet("Could not list existing Cloud Run services. Proceeding with service creation.");
-      }
+  let existing: runv2.Service | undefined;
+  const action = await select({
+    message: "Please select an option",
+    choices: [
+      { name: "Create a new service and deploy", value: "create" },
+      { name: "Update an existing service and deploy", value: "update" },
+    ],
+    default: "create",
+  });
+  if (action === "update") {
+    // Skip services that another product (e.g. Cloud Functions or App Hosting) manages.
+    const services = (await runv2.listServices(projectId, /* functionsOnly= */ false)).filter(
+      (s) => !s.labels?.[runv2.CLIENT_NAME_LABEL],
+    );
+    if (services.length) {
+      existing = await select<runv2.Service>({
+        message: "Which service would you like to update?",
+        choices: services.map((s) => {
+          const [, , , location, , id] = s.name.split("/");
+          return { name: `${id} (${location})`, value: s };
+        }),
+      });
+    } else {
+      logBullet("No Cloud Run services to update. Creating a new service instead.");
     }
   }
 
-  if (!region) {
-    const defaultRegion =
-      options?.primaryRegion || options?.region || process.env.FIREBASE_RUN_REGION || "us-central1";
-
-    region = await input({
+  let serviceId: string;
+  let region: string;
+  if (existing) {
+    [, , , region, , serviceId] = existing.name.split("/");
+  } else {
+    region = await select({
       message: "Which region should this service be deployed to?",
-      default: defaultRegion,
-      validate: (val: string) => {
-        if (!/^[a-z0-9-]+$/.test(val)) {
-          return "Region must be a valid GCP region string (e.g. us-central1).";
-        }
-        return true;
-      },
+      choices: await run.listLocations(projectId),
+      default: "us-central1",
     });
-  }
-
-  if (!serviceId) {
     serviceId = await input({
       message: "Please enter a unique ID for your service",
-      validate: (s: string) => {
-        if (!/^[a-z](?:[a-z0-9-]*[a-z0-9])?$/.test(s)) {
-          return "Must begin with a letter, can contain only lowercase, digits, hyphens, and cannot end with hyphen";
+      validate: async (id) => {
+        if (!/^[a-z]([-a-z0-9]{0,47}[a-z0-9])?$/.test(id)) {
+          return "Use up to 49 lowercase letters, digits, and hyphens, starting with a letter and not ending with a hyphen.";
         }
-        if (s.length < 3 || s.length > 63) {
-          return "Must be between 3 and 63 characters";
+        if (await getExistingService(projectId, region, id)) {
+          return `A service named ${id} already exists in ${region}.`;
         }
         return true;
       },
     });
   }
 
-  const rootDir =
-    options?.rootDir ||
-    options?.source ||
-    (await input({
-      message: "Specify your app's root directory relative to your firebase.json directory",
-      default: "/",
-      validate: (input: string) => {
-        if (config?.projectDir) {
-          const absPath = path.join(config.projectDir, input);
-          if (!existsSync(absPath)) {
-            return `Directory ${absPath} does not exist. Please enter a valid directory.`;
-          }
-        }
-        return true;
-      },
-    }));
+  const baseImage = await input({
+    message: "Which base image should your app use? (e.g. nodejs20, nodejs22)",
+    default: existing ? mainContainer(existing.template)?.baseImageUri : "nodejs22",
+  });
+  const rootDir = await input({
+    message: "Specify your app's root directory relative to your firebase.json directory",
+    default: "/",
+    validate: (dir) => {
+      const absPath = path.join(config.projectDir, dir);
+      return (
+        existsSync(absPath) ||
+        `Directory ${absPath} does not exist. Please enter a valid directory.`
+      );
+    },
+  });
 
-  setup.featureInfo = setup.featureInfo || {};
-  setup.featureInfo.run = {
-    serviceId,
-    region,
-    rootDir,
-  };
+  setup.featureInfo = { ...setup.featureInfo, run: { serviceId, region, baseImage, rootDir } };
 }
 
 /**
- * Scaffolds Cloud Run configuration in firebase.json, creates placeholder Cloud Run service in GCP,
- * and creates placeholder apphosting.yaml template.
+ * Adds the service to firebase.json and deploys it, since Cloud Run services only change on deploy.
  */
-export async function actuate(setup: Setup, config: Config): Promise<void> {
-  const runInfo = setup.featureInfo?.run;
-  if (!runInfo) {
+export async function actuate(setup: Setup, config: Config, options: Options): Promise<void> {
+  const info = setup.featureInfo?.run;
+  if (!info) {
     return;
   }
-  const projectId = setup.projectId;
-  if (!projectId) {
-    throw new FirebaseError("Project ID must be set before initializing Cloud Run.", { exit: 1 });
-  }
-
-  const { serviceId, region, rootDir } = runInfo;
-
-  logBullet("Setting up Cloud Run configuration...");
-
-  // 1. Check or create placeholder Cloud Run service in GCP (0% traffic)
-  let serviceUrl: string | undefined;
-  try {
-    const existing = await runv2.getService(projectId, region, serviceId);
-    if (existing) {
-      serviceUrl = existing.uri;
-      logBullet(`Cloud Run service ${serviceId} already exists at ${serviceUrl}`);
-    }
-  } catch (err: unknown) {
-    if ((err as { status?: number })?.status === 404) {
-      logBullet(`Creating placeholder Cloud Run service ${serviceId} in ${region}...`);
-      try {
-        const placeholderService: Omit<runv2.Service, runv2.ServiceOutputFields> = {
-          name: `projects/${projectId}/locations/${region}/services/${serviceId}`,
-          template: {
-            containers: [
-              {
-                image: "us-docker.pkg.dev/cloudrun/container/hello",
-              },
-            ],
-          },
-          invokerIamDisabled: true,
-        };
-
-        const created = await runv2.createService(projectId, region, serviceId, placeholderService);
-        serviceUrl = created.uri;
-        logSuccess(`Reserved Cloud Run service URL: ${serviceUrl}`);
-      } catch (createErr: unknown) {
-        logger.debug(`Failed to create placeholder Cloud Run service ${serviceId}:`, createErr);
-        logBullet(`Note: Cloud Run service will be created on first deploy.`);
-      }
-    } else {
-      logger.debug(`Failed to query Cloud Run service ${serviceId}:`, err);
-    }
-  }
-
-  if (serviceUrl && setup.instructions) {
-    setup.instructions.push(`Your Cloud Run service URL is: ${serviceUrl}`);
-  }
-
-  // 2. Update firebase.json
-  const runConfig: RunSingle = {
-    serviceId,
-    region,
-    rootDir,
-    ignore: DEFAULT_RUN_IGNORE,
-  };
-
-  upsertRunConfig(runConfig, config);
+  upsertRunConfig(
+    {
+      serviceId: info.serviceId,
+      rootDir: info.rootDir,
+      region: info.region,
+      ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"],
+    },
+    config,
+  );
   config.writeProjectFile("firebase.json", config.src);
-
-  // 3. Create placeholder apphosting.yaml
-  const projectDir = config.projectDir || ".";
-  const absRootDir = path.join(projectDir, rootDir);
-  const apphostingYamlPath = path.join(absRootDir, "apphosting.yaml");
-  if (!existsSync(apphostingYamlPath)) {
-    logBullet(`Creating placeholder apphosting.yaml in ${rootDir}`);
-    await config.askWriteProjectFile(
-      apphostingYamlPath,
-      readTemplateSync("init/apphosting/apphosting.yaml"),
-    );
-  }
-
-  logSuccess("Cloud Run initialization complete!");
+  await deploy(
+    ["run"],
+    { ...options, projectId: setup.projectId, config, only: `run:${info.serviceId}` },
+    { baseImage: info.baseImage || null },
+  );
 }
 
-/** Exported for unit testing. */
+/**
+ * Adds a service to firebase.json, or updates it in place. Settings that init doesn't ask
+ * about (e.g. localBuild or a custom ignore list) are kept. Exported for unit testing.
+ */
 export function upsertRunConfig(runConfig: RunSingle, config: Config): void {
-  if (!config.src.run) {
-    config.set("run", [runConfig]);
-    return;
-  }
-  const existing = Array.isArray(config.src.run) ? config.src.run : [config.src.run];
-  const idx = existing.findIndex((s) => s.serviceId === runConfig.serviceId);
-  if (idx >= 0) {
-    const updated = [...existing];
-    updated[idx] = { ...updated[idx], ...runConfig };
-    config.set("run", updated);
+  const services = [config.src.run || []].flat();
+  const i = services.findIndex((c) => c.serviceId === runConfig.serviceId);
+  if (i < 0) {
+    services.push(runConfig);
   } else {
-    config.set("run", [...existing, runConfig]);
+    const { rootDir, region } = runConfig;
+    services[i] = { ...runConfig, ...services[i], rootDir, region };
   }
+  config.set("run", services.length === 1 ? services[0] : services);
 }

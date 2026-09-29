@@ -1,399 +1,202 @@
-import * as fs from "fs-extra";
-import * as path from "path";
 import { expect } from "chai";
-import * as cli from "../integration-helpers/cli";
-import * as runv2 from "../../src/gcp/runv2";
-
-interface MockRunConfig {
-  serviceId?: string;
-  region?: string;
-  source?: string;
-}
-
-interface MockFirebaseJson {
-  run?: MockRunConfig | MockRunConfig[];
-  hosting?: { public?: string };
-}
-
+import * as fs from "fs-extra";
 import * as os from "os";
+import * as path from "path";
+import * as cli from "../functions-deploy-tests/cli";
+import * as runv2 from "../../src/gcp/runv2";
+import { requireAuth } from "../../src/requireAuth";
 
-const TARGET_PROJECT =
-  process.env.FBTOOLS_TARGET_PROJECT || process.env.GCLOUD_PROJECT || "test-project";
-const DEFAULT_APP_DIR = process.env.APP_DIR;
+const PROJECT = process.env.FBTOOLS_TARGET_PROJECT || process.env.GCLOUD_PROJECT || "";
+const REGION = "us-central1";
+const SERVICE_ID = `run-e2e-${Date.now()}`;
 
-describe("Cloud Run Deployment E2E Test Suite", function (this: Mocha.Suite) {
-  this.timeout(600_000); // 10 minutes per test for Cloud Build & Cloud Run provisioning
-
+describe("firebase deploy --only run", function (this: Mocha.Suite) {
+  this.timeout(600_000);
   let workDir: string;
-  let hasAppDir = false;
 
-  before(() => {
-    if (DEFAULT_APP_DIR && fs.existsSync(DEFAULT_APP_DIR)) {
-      workDir = DEFAULT_APP_DIR;
-      hasAppDir = true;
-    } else {
-      // Create isolated temporary workspace for E2E testing
-      workDir = fs.mkdtempSync(path.join(os.tmpdir(), "firebase-run-e2e-"));
-      fs.writeFileSync(
-        path.join(workDir, "package.json"),
-        JSON.stringify(
-          {
-            name: "run-e2e-test-app",
-            version: "1.0.0",
-            scripts: { start: "node index.js" },
-          },
-          null,
-          2,
-        ),
-      );
-      fs.writeFileSync(
-        path.join(workDir, "index.js"),
-        'const http = require("http"); const server = http.createServer((req, res) => res.end("OK")); server.listen(process.env.PORT || 8080);',
-      );
-    }
-  });
-
-  const createdServices: Array<{ serviceId: string; region: string }> = [];
-
-  function trackCreatedServices(): void {
-    const fbJson = path.join(workDir, "firebase.json");
-    if (fs.existsSync(fbJson)) {
-      try {
-        const config = fs.readJsonSync(fbJson) as MockFirebaseJson;
-        if (config.run) {
-          const runConfigs = Array.isArray(config.run) ? config.run : [config.run];
-          for (const rc of runConfigs) {
-            if (rc.serviceId) {
-              const region = rc.region || "us-central1";
-              if (
-                !createdServices.some((s) => s.serviceId === rc.serviceId && s.region === region)
-              ) {
-                createdServices.push({ serviceId: rc.serviceId, region });
-              }
-            }
-          }
-        }
-      } catch {
-        // ignore parse errors
-      }
-    }
+  function firebase(cmd: string, ...args: string[]): Promise<cli.Result> {
+    return cli.exec(cmd, PROJECT, [...args, "--non-interactive"], workDir, false);
   }
 
+  async function mainContainer(): Promise<runv2.Container> {
+    const service = await runv2.getService(PROJECT, REGION, SERVICE_ID);
+    return service.template.containers![0];
+  }
+
+  async function expectServing(): Promise<void> {
+    const { uri } = await runv2.getService(PROJECT, REGION, SERVICE_ID);
+    const res = await fetch(uri!);
+    expect(await res.text()).to.equal("hello");
+  }
+
+  function writeFirebaseJson(run: Record<string, unknown> = {}): void {
+    fs.writeJsonSync(path.join(workDir, "firebase.json"), {
+      run: { serviceId: SERVICE_ID, rootDir: "/", region: REGION, ...run },
+    });
+  }
+
+  before(async () => {
+    expect(PROJECT).to.not.be.empty;
+    process.env.FIREBASE_CLI_EXPERIMENTS = "direct_cloud_run";
+    await requireAuth({});
+    workDir = fs.mkdtempSync(path.join(os.tmpdir(), "run-e2e-"));
+    const pkg = { name: "run-e2e", version: "1.0.0" };
+    fs.writeJsonSync(path.join(workDir, "package.json"), {
+      ...pkg,
+      scripts: { start: "node index.js" },
+    });
+    fs.writeJsonSync(path.join(workDir, "package-lock.json"), {
+      ...pkg,
+      lockfileVersion: 3,
+      packages: { "": pkg },
+    });
+    fs.writeFileSync(
+      path.join(workDir, "index.js"),
+      'require("http").createServer((req, res) => res.end(process.env.GREETING)).listen(process.env.PORT);',
+    );
+    fs.writeFileSync(
+      path.join(workDir, "apphosting.yaml"),
+      "env:\n  - variable: GREETING\n    value: hello\n",
+    );
+    writeFirebaseJson();
+  });
+
   after(async () => {
-    trackCreatedServices();
-
-    // Clean up created Cloud Run services from GCP
-    for (const svc of createdServices) {
-      try {
-        await runv2.deleteService(TARGET_PROJECT, svc.region, svc.serviceId);
-      } catch (err: unknown) {
-        // Ignore 404 Not Found or unauthenticated errors in local/mock environments
-      }
-    }
-
-    if (!hasAppDir && workDir && fs.existsSync(workDir)) {
-      fs.removeSync(workDir);
-    }
+    await runv2.deleteService(PROJECT, REGION, SERVICE_ID).catch(() => undefined);
+    fs.removeSync(workDir);
   });
 
-  beforeEach(() => {
-    // Backup any existing firebase.json / .firebaserc before each test
-    const fbJson = path.join(workDir, "firebase.json");
-    const fbRc = path.join(workDir, ".firebaserc");
-    const apphostingYaml = path.join(workDir, "apphosting.yaml");
-
-    if (fs.existsSync(fbJson)) fs.moveSync(fbJson, `${fbJson}.bak`, { overwrite: true });
-    if (fs.existsSync(fbRc)) fs.moveSync(fbRc, `${fbRc}.bak`, { overwrite: true });
-    if (fs.existsSync(apphostingYaml)) {
-      fs.moveSync(apphostingYaml, `${apphostingYaml}.bak`, { overwrite: true });
+  it("requires the direct_cloud_run experiment", async () => {
+    delete process.env.FIREBASE_CLI_EXPERIMENTS;
+    try {
+      const res = await firebase("deploy", "--only", "run");
+      expect(res.proc.exitCode).not.to.equal(0);
+      expect(res.stdout + res.stderr).to.include("experiment direct_cloud_run is not enabled");
+    } finally {
+      process.env.FIREBASE_CLI_EXPERIMENTS = "direct_cloud_run";
     }
   });
 
-  afterEach(() => {
-    trackCreatedServices();
-    // Restore backup configs
-    const fbJson = path.join(workDir, "firebase.json");
-    const fbRc = path.join(workDir, ".firebaserc");
-    const apphostingYaml = path.join(workDir, "apphosting.yaml");
+  it("creates a service from source", async () => {
+    const res = await firebase("deploy", "--only", "run");
+    expect(res.proc.exitCode).to.equal(0);
+    expect(res.stdout).to.include("Deploy complete!");
 
-    if (fs.existsSync(`${fbJson}.bak`)) fs.moveSync(`${fbJson}.bak`, fbJson, { overwrite: true });
-    else if (fs.existsSync(fbJson)) fs.removeSync(fbJson);
+    const service = await runv2.getService(PROJECT, REGION, SERVICE_ID);
+    const container = service.template.containers![0];
+    expect(container.baseImageUri).to.be.undefined;
+    expect(container.env).to.deep.include({ name: "GREETING", value: "hello" });
+    expect(service.traffic).to.deep.equal([
+      { type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 },
+    ]);
+    await expectServing();
+  });
 
-    if (fs.existsSync(`${fbRc}.bak`)) fs.moveSync(`${fbRc}.bak`, fbRc, { overwrite: true });
-    else if (fs.existsSync(fbRc)) fs.removeSync(fbRc);
+  /** Runs a base image command and checks that it deployed without building or moving traffic. */
+  async function expectDeployedWithoutBuild(
+    cmd: string,
+    ...args: string[]
+  ): Promise<runv2.Container> {
+    const before = await runv2.getService(PROJECT, REGION, SERVICE_ID);
+    const res = await firebase(cmd, ...args, "--service", SERVICE_ID);
+    expect(res.proc.exitCode).to.equal(0);
+    expect(res.stdout).to.include("Deployed a new revision without building it");
 
-    if (fs.existsSync(`${apphostingYaml}.bak`)) {
-      fs.moveSync(`${apphostingYaml}.bak`, apphostingYaml, { overwrite: true });
-    } else if (fs.existsSync(apphostingYaml)) {
-      fs.removeSync(apphostingYaml);
+    const after = await runv2.getService(PROJECT, REGION, SERVICE_ID);
+    const container = after.template.containers![0];
+    expect(after.latestCreatedRevision).not.to.equal(before.latestCreatedRevision);
+    expect(container.image).to.equal(before.template.containers![0].image);
+    expect(after.trafficStatuses).to.deep.equal([
+      { ...before.trafficStatuses![0], type: "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION" },
+    ]);
+    await expectServing();
+    return container;
+  }
+
+  it("sets a base image without building or sending traffic", async () => {
+    const container = await expectDeployedWithoutBuild("run:baseImage:set", "nodejs22");
+    expect(container.baseImageUri).to.include("nodejs22");
+  });
+
+  it("builds with the base image, keeps settings changed outside the CLI, and ramps on deploy", async () => {
+    // Simulate a console change to a service-level setting.
+    const service = await runv2.getService(PROJECT, REGION, SERVICE_ID);
+    const template = { ...service.template, revision: undefined };
+    template.containers![0].resources = { limits: { cpu: "1", memory: "1Gi" } };
+    await runv2.updateService({ name: service.name, template }, { updateMask: ["template"] });
+
+    const res = await firebase("deploy", "--only", `run:${SERVICE_ID}`);
+    expect(res.proc.exitCode).to.equal(0);
+    const after = await runv2.getService(PROJECT, REGION, SERVICE_ID);
+    const container = after.template.containers![0];
+    expect(container.image).not.to.equal(service.template.containers![0].image);
+    expect(container.baseImageUri).to.include("nodejs22");
+    expect(container.resources?.limits?.memory).to.equal("1Gi");
+    expect(after.traffic).to.deep.equal([
+      { type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 },
+    ]);
+    await expectServing();
+  });
+
+  it("changes the base image without building or sending traffic", async () => {
+    const container = await expectDeployedWithoutBuild("run:baseImage:set", "nodejs20");
+    expect(container.baseImageUri).to.include("nodejs20");
+  });
+
+  it("clears the base image without building or sending traffic", async () => {
+    const container = await expectDeployedWithoutBuild("run:baseImage:clear");
+    expect(container).not.to.have.property("baseImageUri");
+  });
+
+  it("requires a base image for local builds", async () => {
+    writeFirebaseJson({ localBuild: true });
+    const failed = await firebase("deploy", "--only", "run");
+    expect(failed.proc.exitCode).not.to.equal(0);
+    expect(failed.stdout + failed.stderr).to.include("Local builds require a base image");
+  });
+
+  it("deploys a local build", async () => {
+    await expectDeployedWithoutBuild("run:baseImage:set", "nodejs22");
+    const res = await firebase("deploy", "--only", "run");
+    expect(res.proc.exitCode).to.equal(0);
+
+    const container = await mainContainer();
+    expect(container.image).to.equal("scratch");
+    expect(container.sourceCode).to.exist;
+    expect(container.baseImageUri).to.include("nodejs22");
+    expect(container.resources?.limits?.memory).to.equal("1Gi");
+    await expectServing();
+  });
+
+  it("rejects services that aren't in firebase.json", async () => {
+    const res = await firebase("deploy", "--only", "run:not-a-service");
+    expect(res.proc.exitCode).not.to.equal(0);
+    expect(res.stdout + res.stderr).to.include("not-a-service not detected in firebase.json");
+  });
+
+  it("fails without a firebase.json", async () => {
+    const emptyDir = fs.mkdtempSync(path.join(os.tmpdir(), "run-e2e-empty-"));
+    try {
+      const res = await cli.exec(
+        "deploy",
+        PROJECT,
+        ["--only", "run", "--non-interactive"],
+        emptyDir,
+      );
+      expect(res.proc.exitCode).not.to.equal(0);
+      expect(res.stdout + res.stderr).to.include("Not in a Firebase app directory");
+    } finally {
+      fs.removeSync(emptyDir);
     }
   });
 
-  describe("Tier 1: Feature Coverage", () => {
-    it("T1.1: should initialize Cloud Run configuration in non-interactive mode", async () => {
-      const res = await cli.exec(
-        "init",
-        TARGET_PROJECT,
-        ["run", "--non-interactive"],
-        workDir,
-        false,
-      );
-      expect(res.exitCode).to.equal(0);
-      expect(fs.existsSync(path.join(workDir, "firebase.json"))).to.be.true;
-
-      const config = fs.readJsonSync(path.join(workDir, "firebase.json")) as MockFirebaseJson;
-      expect(config.run).to.exist;
-    });
-
-    it("T1.2: should respect explicit --project flag during init", async () => {
-      const res = await cli.exec(
-        "init",
-        TARGET_PROJECT,
-        ["run", "--non-interactive", "--project", TARGET_PROJECT],
-        workDir,
-        false,
-      );
-      expect(res.exitCode).to.equal(0);
-      expect(fs.existsSync(path.join(workDir, "firebase.json"))).to.be.true;
-    });
-
-    it("T1.3: should additively update existing firebase.json without overwriting other targets", async () => {
-      fs.writeJsonSync(path.join(workDir, "firebase.json"), { hosting: { public: "public" } });
-
-      const res = await cli.exec(
-        "init",
-        TARGET_PROJECT,
-        ["run", "--non-interactive"],
-        workDir,
-        false,
-      );
-      expect(res.exitCode).to.equal(0);
-
-      const config = fs.readJsonSync(path.join(workDir, "firebase.json")) as MockFirebaseJson;
-      expect(config.hosting).to.deep.equal({ public: "public" });
-      expect(config.run).to.exist;
-    });
-
-    it("T1.4: should successfully deploy source to Cloud Run", async () => {
-      await cli.exec("init", TARGET_PROJECT, ["run", "--non-interactive"], workDir, false);
-      const deployRes = await cli.exec(
-        "deploy",
-        TARGET_PROJECT,
-        ["--only", "run", "--non-interactive"],
-        workDir,
-        false,
-      );
-      expect(deployRes.exitCode).to.equal(0);
-      expect(deployRes.stdout).to.include("Deploy complete!");
-    });
-
-    it("T1.5: should deploy successfully with --force flag", async () => {
-      await cli.exec("init", TARGET_PROJECT, ["run", "--non-interactive"], workDir, false);
-      const deployRes = await cli.exec(
-        "deploy",
-        TARGET_PROJECT,
-        ["--only", "run", "--non-interactive", "--force"],
-        workDir,
-        false,
-      );
-      expect(deployRes.exitCode).to.equal(0);
-      expect(deployRes.stdout).to.include("Deploy complete!");
-    });
-  });
-
-  describe("Tier 2: Boundary & Corner Cases", () => {
-    it("T2.1: should fail init gracefully with an invalid/non-existent project ID", async () => {
-      const res = await cli.exec(
-        "init",
-        "invalid-project-id-1234567890",
-        ["run", "--non-interactive"],
-        workDir,
-        false,
-      );
-      expect(res.exitCode).to.not.equal(0);
-    });
-
-    it("T2.2: should fail init gracefully in directory without write permissions", async () => {
-      const readOnlyDir = path.join(workDir, "no_write_dir");
-      fs.ensureDirSync(readOnlyDir);
-      fs.chmodSync(readOnlyDir, 0o555);
-
-      try {
-        const res = await cli.exec(
-          "init",
-          TARGET_PROJECT,
-          ["run", "--non-interactive"],
-          readOnlyDir,
-          false,
-        );
-        expect(res.exitCode).to.not.equal(0);
-      } finally {
-        fs.chmodSync(readOnlyDir, 0o755);
-        fs.removeSync(readOnlyDir);
-      }
-    });
-
-    it("T2.3: should deploy with default in-memory config or throw clear error when firebase.json is absent", async () => {
-      const res = await cli.exec(
-        "deploy",
-        TARGET_PROJECT,
-        ["--only", "run", "--non-interactive"],
-        workDir,
-        false,
-      );
-      // Validates either clean zero-config execution or standard missing config error
-      expect([0, 1]).to.include(res.exitCode);
-    });
-
-    it("T2.4: should fail deploy gracefully when invalid region is provided", async () => {
-      await cli.exec("init", TARGET_PROJECT, ["run", "--non-interactive"], workDir, false);
-      const res = await cli.exec(
-        "deploy",
-        TARGET_PROJECT,
-        ["--only", "run", "--non-interactive"],
-        workDir,
-        false,
-        { FIREBASE_RUN_REGION: "invalid-region-99" },
-      );
-      expect(res.exitCode).to.not.equal(0);
-    });
-
-    it("T2.5: should be idempotent when init run is executed repeatedly", async () => {
-      const res1 = await cli.exec(
-        "init",
-        TARGET_PROJECT,
-        ["run", "--non-interactive"],
-        workDir,
-        false,
-      );
-      expect(res1.exitCode).to.equal(0);
-
-      const res2 = await cli.exec(
-        "init",
-        TARGET_PROJECT,
-        ["run", "--non-interactive"],
-        workDir,
-        false,
-      );
-      expect(res2.exitCode).to.equal(0);
-
-      const config = fs.readJsonSync(path.join(workDir, "firebase.json")) as MockFirebaseJson;
-      expect(config.run).to.exist;
-    });
-  });
-
-  describe("Tier 3: Cross-Feature Combinations", () => {
-    it("T3.1: should support immediate sequential init and deploy", async () => {
-      const initRes = await cli.exec(
-        "init",
-        TARGET_PROJECT,
-        ["run", "--non-interactive"],
-        workDir,
-        false,
-      );
-      expect(initRes.exitCode).to.equal(0);
-
-      const deployRes = await cli.exec(
-        "deploy",
-        TARGET_PROJECT,
-        ["--only", "run", "--non-interactive"],
-        workDir,
-        false,
-      );
-      expect(deployRes.exitCode).to.equal(0);
-    });
-
-    it("T3.2: should support multiple sequential deployments idempotently", async () => {
-      await cli.exec("init", TARGET_PROJECT, ["run", "--non-interactive"], workDir, false);
-
-      const deploy1 = await cli.exec(
-        "deploy",
-        TARGET_PROJECT,
-        ["--only", "run", "--non-interactive"],
-        workDir,
-        false,
-      );
-      expect(deploy1.exitCode).to.equal(0);
-
-      const deploy2 = await cli.exec(
-        "deploy",
-        TARGET_PROJECT,
-        ["--only", "run", "--non-interactive"],
-        workDir,
-        false,
-      );
-      expect(deploy2.exitCode).to.equal(0);
-    });
-  });
-
-  describe("Tier 4: Real-World Application & GCP Resource Verification", () => {
-    it("T4.1: should deploy application with apphosting.yaml and verify Cloud Run live resource configuration", async () => {
-      const apphostingYamlContent = `
-runConfig:
-  cpu: 2
-  memoryMiB: 1024
-  minInstances: 1
-  maxInstances: 5
-  concurrency: 100
-env:
-  - variable: TEST_VAR
-    value: "hello_world"
-    availability:
-      - RUNTIME
-`;
-      fs.writeFileSync(path.join(workDir, "apphosting.yaml"), apphostingYamlContent.trim());
-
-      const initRes = await cli.exec(
-        "init",
-        TARGET_PROJECT,
-        ["run", "--non-interactive"],
-        workDir,
-        false,
-      );
-      expect(initRes.exitCode).to.equal(0);
-
-      const deployRes = await cli.exec(
-        "deploy",
-        TARGET_PROJECT,
-        ["--only", "run", "--non-interactive"],
-        workDir,
-        false,
-      );
-      expect(deployRes.exitCode).to.equal(0);
-
-      // Extract serviceId and region from generated firebase.json
-      const config = fs.readJsonSync(path.join(workDir, "firebase.json")) as MockFirebaseJson;
-      const runConfig = (Array.isArray(config.run) ? config.run[0] : config.run) as MockRunConfig;
-      const serviceId = runConfig?.serviceId || "my-service";
-      const region = runConfig?.region || "us-central1";
-
-      // Verify Cloud Run Service via GCP API directly
-      const service = await runv2.getService(TARGET_PROJECT, region, serviceId);
-      expect(service).to.exist;
-
-      const container = service.template?.containers?.[0];
-      expect(container).to.exist;
-
-      // Verify CPU and Memory limits
-      expect(container?.resources?.limits?.cpu).to.equal("2");
-      expect(container?.resources?.limits?.memory).to.equal("1024Mi");
-
-      // Verify Min/Max Instance Scaling (Service-Level or Template-Level)
-      const minInstances =
-        service.scaling?.minInstanceCount ?? service.template?.scaling?.minInstanceCount;
-      const maxInstances =
-        service.scaling?.maxInstanceCount ?? service.template?.scaling?.maxInstanceCount;
-      expect(minInstances).to.equal(1);
-      expect(maxInstances).to.equal(5);
-
-      // Verify Concurrency
-      expect(service.template?.maxInstanceRequestConcurrency).to.equal(100);
-
-      // Verify Runtime Environment Variables
-      const envVars = container?.env || [];
-      const testVar = envVars.find((e) => e.name === "TEST_VAR");
-      expect(testVar).to.exist;
-      expect(testVar?.value).to.equal("hello_world");
-    });
+  it("fails with a project that doesn't exist", async () => {
+    const res = await cli.exec(
+      "deploy",
+      "invalid-project-id-1234567890",
+      ["--only", "run", "--non-interactive"],
+      workDir,
+    );
+    expect(res.proc.exitCode).not.to.equal(0);
   });
 });

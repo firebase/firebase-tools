@@ -99,12 +99,15 @@ let choices: {
     name: "Authentication: Set up Firebase Authentication",
     checked: false,
   },
-  {
-    value: "run",
-    name: "Cloud Run: Configure a Cloud Run service",
-    checked: false,
-  },
 ];
+
+if (isEnabled("direct_cloud_run")) {
+  choices.push({
+    value: "run",
+    name: "Cloud Run: Create or update a Cloud Run service and deploy your web app to it",
+    checked: false,
+  });
+}
 
 if (isEnabled("fdcwebhooks")) {
   choices.push({
@@ -166,98 +169,7 @@ export const command = new Command("init [feature]")
   .action(initAction);
 
 /**
- * Collects warning messages based on project initialization directory location.
- */
-function getDirectoryWarnings(
-  cwd: string,
-  userHomeDir: string,
-  existingConfig: Config | null,
-): string[] {
-  const warnings: string[] = [];
-  if (isOutside(userHomeDir, cwd)) {
-    warnings.push("You are currently outside your home directory");
-  }
-  if (cwd === userHomeDir) {
-    warnings.push("You are initializing your home directory as a Firebase project directory");
-  }
-  if (existingConfig) {
-    warnings.push("You are initializing within an existing Firebase project directory");
-  }
-  return warnings;
-}
-
-/**
- * Prompts the user to select Firebase features, or validates a CLI feature argument.
- */
-async function promptFeatureSelection(
-  feature?: string,
-): Promise<{ features: string[]; isFeatureArg: boolean }> {
-  if (feature) {
-    return { features: [feature], isFeatureArg: true };
-  }
-
-  const features = await checkbox<string>({
-    message:
-      "Which Firebase features do you want to set up for this directory? " +
-      "Press Space to select features, then Enter to confirm your choices.",
-    choices: choices.filter((c) => !c.hidden),
-    validate: (selected) => {
-      if (selected.length === 0) {
-        return (
-          "Must select at least one feature. Use " +
-          clc.bold(clc.underline("SPACEBAR")) +
-          " to select features, or specify a feature by running " +
-          clc.bold("firebase init [feature_name]")
-        );
-      }
-      return true;
-    },
-  });
-
-  if (!features || features.length === 0) {
-    throw new FirebaseError(
-      "Must select at least one feature. Use " +
-        clc.bold(clc.underline("SPACEBAR")) +
-        " to select features, or specify a feature by running " +
-        clc.bold("firebase init [feature_name]"),
-    );
-  }
-
-  return { features, isFeatureArg: false };
-}
-
-/**
- * Normalizes and orders selected features with project, account, and deduplication rules.
- */
-function normalizeSelectedFeatures(selectedFeatures: string[]): string[] {
-  const features = [...selectedFeatures];
-
-  // Always set up project
-  features.unshift("project");
-
-  // If there is more than one account, add an account choice phase
-  const allAccounts = getAllAccounts();
-  if (allAccounts.length > 1) {
-    features.unshift("account");
-  }
-
-  // Deduplicate sub-features if parent features are selected
-  let normalized = features;
-  if (normalized.includes("hosting") && normalized.includes("hosting:github")) {
-    normalized = normalized.filter((f) => f !== "hosting:github");
-  }
-  if (normalized.includes("dataconnect") && normalized.includes("dataconnect:sdk")) {
-    normalized = normalized.filter((f) => f !== "dataconnect:sdk");
-  }
-
-  // Always prompt for agent skills at the end of init
-  normalized.push("agentSkills");
-
-  return normalized;
-}
-
-/**
- * The "firebase init" command flow.
+ * Init command action
  * @param feature Feature to init (e.g., hosting, functions)
  * @param options Command options
  */
@@ -272,12 +184,24 @@ export async function initAction(feature: string, options: Options): Promise<voi
   }
 
   const cwd = options.cwd || process.cwd();
+
+  const warnings = [];
+  let warningText = "";
+  if (isOutside(homeDir, cwd)) {
+    warnings.push("You are currently outside your home directory");
+  }
+  if (cwd === homeDir) {
+    warnings.push("You are initializing your home directory as a Firebase project directory");
+  }
+
   const existingConfig = Config.load(options, true);
+  if (existingConfig) {
+    warnings.push("You are initializing within an existing Firebase project directory");
+  }
+
   const config =
     existingConfig !== null ? existingConfig : new Config({}, { projectDir: cwd, cwd: cwd });
 
-  const warnings = getDirectoryWarnings(cwd, homeDir, existingConfig);
-  let warningText = "";
   if (warnings.length) {
     warningText =
       "\nBefore we get started, keep in mind:\n\n  " +
@@ -294,24 +218,75 @@ export async function initAction(feature: string, options: Options): Promise<voi
       warningText,
   );
 
-  // HACK: Windows Node selectable prompt issue workaround
-  if (process.platform === "win32") {
-    if (!(await confirm("Are you ready to proceed?"))) {
-      throw new FirebaseError("Aborted by user.", { exit: 1 });
-    }
-  }
-
-  const { features, isFeatureArg } = await promptFeatureSelection(feature);
   const setup: Setup = {
     config: config.src,
     rcfile: config.readProjectFile(".firebaserc", {
       json: true,
       fallback: {},
     }),
-    features: normalizeSelectedFeatures(features),
-    featureArg: isFeatureArg,
     instructions: [],
   };
+
+  // HACK: Windows Node has issues with selectables as the first prompt, so we
+  // add an extra confirmation prompt that fixes the problem
+  // TODO: see if this issue still persists in the new prompt library.
+  if (process.platform === "win32") {
+    if (!(await confirm("Are you ready to proceed?"))) {
+      throw new FirebaseError("Aborted by user.", { exit: 1 });
+    }
+  }
+
+  if (feature) {
+    setup.featureArg = true;
+    setup.features = [feature];
+  } else {
+    setup.features = await checkbox<string>({
+      message:
+        "Which Firebase features do you want to set up for this directory? " +
+        "Press Space to select features, then Enter to confirm your choices.",
+      choices: choices.filter((c) => !c.hidden),
+      validate: (choices) => {
+        if (choices.length === 0) {
+          return (
+            "Must select at least one feature. Use " +
+            clc.bold(clc.underline("SPACEBAR")) +
+            " to select features, or specify a feature by running " +
+            clc.bold("firebase init [feature_name]")
+          );
+        }
+        return true;
+      },
+    });
+  }
+  if (!setup.features || setup.features?.length === 0) {
+    throw new FirebaseError(
+      "Must select at least one feature. Use " +
+        clc.bold(clc.underline("SPACEBAR")) +
+        " to select features, or specify a feature by running " +
+        clc.bold("firebase init [feature_name]"),
+    );
+  }
+
+  // Always set up project
+  setup.features.unshift("project");
+
+  // If there is more than one account, add an account choice phase
+  const allAccounts = getAllAccounts();
+  if (allAccounts.length > 1) {
+    setup.features.unshift("account");
+  }
+
+  // "hosting:github" is a part of "hosting", so if both are selected, "hosting:github" is ignored.
+  if (setup.features.includes("hosting") && setup.features.includes("hosting:github")) {
+    setup.features = setup.features.filter((f) => f !== "hosting:github");
+  }
+  // "dataconnect:sdk" is a part of "dataconnect", so if both are selected, "dataconnect:sdk" is ignored.
+  if (setup.features.includes("dataconnect") && setup.features.includes("dataconnect:sdk")) {
+    setup.features = setup.features.filter((f) => f !== "dataconnect:sdk");
+  }
+
+  // Always prompt for agent skills at the end of init
+  setup.features.push("agentSkills");
 
   await init(setup, config, options);
   await postInitSaves(setup, config);
@@ -324,12 +299,6 @@ export async function initAction(feature: string, options: Options): Promise<voi
   }
 }
 
-/**
- * Persists initialization configuration by writing firebase.json, .firebaserc, and .gitignore.
- *
- * @param setup The initialization setup state.
- * @param config The project configuration.
- */
 export async function postInitSaves(setup: Setup, config: Config): Promise<void> {
   logger.info();
   config.writeProjectFile("firebase.json", setup.config);

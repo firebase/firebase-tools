@@ -179,6 +179,15 @@ export const ALL_EXPERIMENTS = experiments({
     public: true,
   },
 
+  direct_cloud_run: {
+    shortDescription: "Build and deploy web apps directly to Cloud Run services",
+    fullDescription:
+      "Enables `firebase init run`, `firebase deploy --only run`, and the " +
+      "`firebase run:baseImage:set` and `firebase run:baseImage:clear` commands. " +
+      "These are in preview and may change.",
+    public: false,
+  },
+
   // TODO(joehanley): Delete this once weve scrubbed all references to experiment from docs.
   dataconnect: {
     shortDescription: "Deprecated. Previosuly, enabled SQL Connect related features.",

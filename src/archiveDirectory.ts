@@ -12,8 +12,6 @@ import * as fsAsync from "./fsAsync";
 export interface ArchiveOptions {
   /** Globs to be ignored. */
   ignore?: string[];
-  /** When true, respects .gitignore files during traversal. */
-  supportGitIgnore?: boolean;
 }
 
 export interface ArchiveResult {
@@ -82,7 +80,6 @@ async function zipDirectory(
       path: sourceDirectory,
       ignoreStrings: options.ignore,
       ignoreSymlinks: true,
-      supportGitIgnore: options.supportGitIgnore ?? false,
     });
   } catch (err: any) {
     if (err.code === "ENOENT") {

@@ -1230,6 +1230,9 @@
                     },
                     "type": "array"
                 },
+                "localBuild": {
+                    "type": "boolean"
+                },
                 "postdeploy": {
                     "anyOf": [
                         {
@@ -1262,14 +1265,12 @@
                 "rootDir": {
                     "type": "string"
                 },
-                "serviceAccount": {
-                    "type": "string"
-                },
                 "serviceId": {
                     "type": "string"
                 }
             },
             "required": [
+                "region",
                 "serviceId"
             ],
             "type": "object"

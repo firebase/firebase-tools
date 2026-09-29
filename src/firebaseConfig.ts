@@ -368,10 +368,9 @@ export type AppHostingConfig = AppHostingSingle | AppHostingMultiple;
 
 export interface RunSingle extends Deployable {
   serviceId: string;
-  region?: string;
+  region: string;
   rootDir?: string;
   ignore?: string[];
-  serviceAccount?: string;
   localBuild?: boolean;
 }
 
