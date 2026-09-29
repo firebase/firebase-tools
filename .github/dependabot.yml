@@ -4,10 +4,17 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Wait a week before proposing a newly published version so that
+    # compromised or broken releases have time to be caught and yanked.
+    # Cooldown does not delay security updates.
+    cooldown:
+      default-days: 7
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
     groups:
       # Bundle all security fixes for the root package into a single PR so that
       # transitive fixes don't pile up as many individual PRs.
