@@ -1,9 +1,4 @@
-- [fixed] Increased retries for IAM policy updates to further reduce deployment flakiness from service account propagation delays.
-- [fixed] Preselect the default values of list function params in multi-select prompts.
-- [fixed] Fixed `ERR_REQUIRE_ESM` crash (e.g. on `emulators:start`) in the standalone binary and on Node.js versions earlier than 20.19 / 22.12. (#11168)
-- [fixed] Updated the Firebase console link in the Terms of Service error to include `?forceCheckTos=true`.
-- [fixed] Honor boolean and integer defaults in `select` prompts for function params instead of preselecting the first option.
-- [added] Added support for overriding the Cloud Secret Manager secret ID and version used to resolve a named secret parameter via `FIREBASE_SECRET_REF_<SECRET_NAME>` in Functions `.env` files.
-- [added] Introduced function kits (`functions:kits:install`, `functions:kits:uninstall`, `functions:kits:list`) to configure and run multiple instances of functions from the CLI.
-- [added] Added `ext:migrate` and updated `ext:export` and `ext:list` to assist with migrating Firebase Extensions to function kits.
+- [fixed] Improve error message when billing is not enabled
 - [added] The App Hosting emulator now uses a port set in `startCommand` instead of rejecting it, and errors if it differs from `emulators.apphosting.port` (#11180).
+
+
