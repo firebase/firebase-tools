@@ -1,1 +1,2 @@
+- [fixed] Improve error message when billing is not enabled
 - Fixed the Functions emulator repeating the "External network resource requested!" and "Google API requested!" warnings for a URL it has already reported. (#4939)
