@@ -72,26 +72,36 @@ const WEBPACK_LAYERS_NAMES = {
 // This is copied from Next.js source code to keep WEBPACK_LAYERS in sync with the Next.js definition.
 export const WEBPACK_LAYERS: typeof NEXTJS_WEBPACK_LAYERS = {
   ...WEBPACK_LAYERS_NAMES,
+  pagesDirBrowser: "pages-dir-browser",
+  pagesDirEdge: "pages-dir-edge",
+  pagesDirNode: "pages-dir-node",
+  apiNode: "api-node",
+  apiEdge: "api-edge",
+  instrument: "instrument",
   GROUP: {
-    server: [
-      WEBPACK_LAYERS_NAMES.reactServerComponents,
-      WEBPACK_LAYERS_NAMES.actionBrowser,
-      WEBPACK_LAYERS_NAMES.appMetadataRoute,
-      WEBPACK_LAYERS_NAMES.appRouteHandler,
-    ],
-    nonClientServerTarget: [
-      // plus middleware and pages api
+    builtinReact: [WEBPACK_LAYERS_NAMES.reactServerComponents, WEBPACK_LAYERS_NAMES.actionBrowser],
+    serverOnly: [
       WEBPACK_LAYERS_NAMES.middleware,
-      WEBPACK_LAYERS_NAMES.api,
-    ],
-    app: [
       WEBPACK_LAYERS_NAMES.reactServerComponents,
       WEBPACK_LAYERS_NAMES.actionBrowser,
-      WEBPACK_LAYERS_NAMES.appMetadataRoute,
-      WEBPACK_LAYERS_NAMES.appRouteHandler,
-      WEBPACK_LAYERS_NAMES.serverSideRendering,
-      WEBPACK_LAYERS_NAMES.appPagesBrowser,
+      "instrument",
+    ],
+    neutralTarget: ["api-node", "api-edge"],
+    clientOnly: [WEBPACK_LAYERS_NAMES.serverSideRendering, WEBPACK_LAYERS_NAMES.appPagesBrowser],
+    bundled: [
       WEBPACK_LAYERS_NAMES.shared,
+      WEBPACK_LAYERS_NAMES.middleware,
+      WEBPACK_LAYERS_NAMES.reactServerComponents,
+      WEBPACK_LAYERS_NAMES.serverSideRendering,
+      WEBPACK_LAYERS_NAMES.actionBrowser,
+      "instrument",
+      WEBPACK_LAYERS_NAMES.appPagesBrowser,
+    ],
+    appPages: [
+      WEBPACK_LAYERS_NAMES.reactServerComponents,
+      WEBPACK_LAYERS_NAMES.serverSideRendering,
+      WEBPACK_LAYERS_NAMES.actionBrowser,
+      WEBPACK_LAYERS_NAMES.appPagesBrowser,
     ],
   },
 };

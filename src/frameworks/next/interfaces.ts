@@ -1,6 +1,5 @@
 import type { RouteHas } from "next/dist/lib/load-custom-routes";
 import type { ImageConfigComplete } from "next/dist/shared/lib/image-config";
-import type { MiddlewareManifest as MiddlewareManifestV2FromNext } from "next/dist/build/webpack/plugins/middleware-plugin";
 import type { HostingHeaders } from "../../firebaseConfig";
 import type { CONFIG_FILES } from "./constants";
 
@@ -83,17 +82,19 @@ export interface ExportMarker {
   isNextImageImported: boolean;
 }
 
-export type MiddlewareManifest =
-  | MiddlewareManifestV1
-  | MiddlewareManifestV2FromNext
-  | MiddlewareManifestV3;
+export type MiddlewareManifest = MiddlewareManifestV1 | MiddlewareManifestV2 | MiddlewareManifestV3;
 
 /**
  * Middleware manifest type used between Next.js 12.2.0 - 14.1.4
  *
  * @see https://github.com/vercel/next.js/blob/v14.1.4/packages/next/src/build/webpack/plugins/middleware-plugin.ts#L45-L50
  */
-export type MiddlewareManifestV2 = MiddlewareManifestV2FromNext;
+export type MiddlewareManifestV2 = {
+  version: 2;
+  sortedMiddleware: string[];
+  middleware: { [page: string]: EdgeFunctionDefinition };
+  functions: { [page: string]: EdgeFunctionDefinition };
+};
 
 /**
  * Middleware manifest types used since Next.js 14.2.0
@@ -108,16 +109,17 @@ export type MiddlewareManifestV3 = {
 };
 
 /**
- * Type required for MiddlewareManifestV3
+ * Type required for MiddlewareManifestV2 and MiddlewareManifestV3
  *
  * @see https://github.com/vercel/next.js/blob/3352f9ee9342b40aaded91c340e7e11650aa4867/packages/next/src/build/webpack/plugins/middleware-plugin.ts#L44-L53
  */
-interface EdgeFunctionDefinition {
+export interface EdgeFunctionDefinition {
   files: string[];
   name: string;
   page: string;
   matchers: ProxyMatcherNext16[];
-  env: Record<string, string>;
+  entrypoint?: string;
+  env?: Record<string, string>;
   wasm?: AssetBinding[];
   assets?: AssetBinding[];
   regions?: string[] | string;
@@ -209,8 +211,9 @@ export interface MiddlewareManifestV1 {
 
 export interface ImagesManifest {
   version: number;
-  images: ImageConfigComplete & {
+  images: Partial<ImageConfigComplete> & {
     sizes: number[];
+    unoptimized: boolean;
   };
 }
 

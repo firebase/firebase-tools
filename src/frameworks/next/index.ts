@@ -518,6 +518,9 @@ export async function ɵcodegenPublicDirectory(
             dataRoute: "",
             experimentalPPR: false,
             prefetchDataRoute: "",
+            initialExpireSeconds: undefined,
+            renderingMode: undefined,
+            allowHeader: [],
           },
         ];
       }),

@@ -16,15 +16,12 @@ import type {
   RoutesManifestRedirect,
   RoutesManifestHeader,
   MiddlewareManifest,
-  MiddlewareManifestV1,
-  MiddlewareManifestV2,
   AppPathsManifest,
   HostingHeadersWithSource,
   AppPathRoutesManifest,
   ActionManifest,
   NextConfigFileName,
   FunctionsConfigManifest,
-  MiddlewareManifestV3,
 } from "./interfaces";
 import {
   APP_PATH_ROUTES_MANIFEST,
@@ -354,21 +351,18 @@ export function getMiddlewareMatcherRegexes(
   middlewareManifest: MiddlewareManifest,
   functionsConfigManifest: FunctionsConfigManifest,
 ): RegExp[] {
-  const middlewareObjectValues = Object.values(middlewareManifest.middleware);
   const middlewareMatchers: Record<"regexp", string>[] = [];
 
   if (middlewareManifest.version === 1) {
+    const values = Object.values(middlewareManifest.middleware);
     middlewareMatchers.push(
-      ...middlewareObjectValues.map((page: MiddlewareManifestV1["middleware"][string]) => ({
+      ...values.map((page) => ({
         regexp: page.regexp,
       })),
     );
   } else if (middlewareManifest.version === 2) {
-    middlewareMatchers.push(
-      ...middlewareObjectValues
-        .map((page: MiddlewareManifestV2["middleware"][string]) => page.matchers)
-        .flat(),
-    );
+    const values = Object.values(middlewareManifest.middleware);
+    middlewareMatchers.push(...values.map((page) => page.matchers).flat());
   } else if (middlewareManifest.version === 3) {
     if (functionsConfigManifest?.functions?.["/_middleware"]) {
       // matchers from proxy.js
@@ -377,11 +371,8 @@ export function getMiddlewareMatcherRegexes(
       );
     } else {
       // matchers from middleware.js
-      middlewareMatchers.push(
-        ...middlewareObjectValues
-          .map((page: MiddlewareManifestV3["middleware"][string]) => page.matchers)
-          .flat(),
-      );
+      const values = Object.values(middlewareManifest.middleware);
+      middlewareMatchers.push(...values.map((page) => page.matchers).flat());
     }
   }
 
