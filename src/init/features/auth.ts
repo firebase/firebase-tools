@@ -97,36 +97,31 @@ export async function askQuestions(
 
   let newSiteId: string | undefined;
   if (setup.projectId) {
-    let hasHostingSite = false;
-    let existingSite: string | undefined = setup.featureInfo?.hosting?.newSiteId;
-    if (existingSite) {
-      hasHostingSite = true;
-    } else {
+    let existingSite = setup.featureInfo?.hosting?.newSiteId;
+    if (!existingSite) {
       try {
         existingSite = await getDefaultHostingSite({ projectId: setup.projectId });
-        hasHostingSite = true;
       } catch (err: unknown) {
         if (err !== errNoDefaultSite) {
           throw err;
         }
-        hasHostingSite = false;
       }
     }
 
-    if (hasHostingSite && existingSite) {
+    if (existingSite) {
       logger.info(`Firebase Hosting site is present: ${clc.bold(existingSite)}.`);
     } else if (
       await confirm({
         message:
           "A Firebase Hosting site is required for Firebase Authentication. Would you like to create a default site now?",
         default: true,
+        nonInteractive: options?.nonInteractive,
       })
     ) {
-      const createOptions = {
+      newSiteId = await pickHostingSiteName("", {
         projectId: setup.projectId,
         nonInteractive: options?.nonInteractive,
-      };
-      newSiteId = await pickHostingSiteName("", createOptions);
+      });
     }
   }
 

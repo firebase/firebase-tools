@@ -147,6 +147,7 @@ describe("auth feature init", () => {
         message:
           "A Firebase Hosting site is required for Firebase Authentication. Would you like to create a default site now?",
         default: true,
+        nonInteractive: false,
       });
       expect(pickSiteStub.calledOnceWith("", { projectId: "test-project", nonInteractive: false }))
         .to.be.true;
