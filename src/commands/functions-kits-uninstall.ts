@@ -253,6 +253,9 @@ async function uninstallKit(
   // standard mode (package source installs w/ unedited config): delete entire kit dir
   if (conservativeDeletion) {
     for (const [, instanceConfigDir] of Object.entries(kit.instances)) {
+      if (!config.projectDirExists(instanceConfigDir)) {
+        continue;
+      }
       for (const projectIdOrAlias of getInstanceEnvNames(config, instanceConfigDir)) {
         config.deleteProjectFile(join(instanceConfigDir, `.env.${projectIdOrAlias}`));
       }
@@ -362,6 +365,9 @@ function configDirEmpty(config: Config, projectRelativePath: string): boolean {
 }
 
 function getInstanceEnvNames(config: Config, instanceConfigDirPath: string): string[] {
+  if (!config.projectDirExists(instanceConfigDirPath)) {
+    return [];
+  }
   return config
     .lsProjectDir(instanceConfigDirPath)
     .filter((f) => f.isFile() && f.name.startsWith(".env."))

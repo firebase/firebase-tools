@@ -43,6 +43,7 @@ describe("functions:kits:uninstall", () => {
       deleteProjectDir: deleteProjectDirStub,
       deleteProjectFile: sinon.stub(),
       projectFileExists: sinon.stub().returns(true),
+      projectDirExists: sinon.stub().returns(true),
       set: sinon.stub(),
       writeProjectFile: writeProjectFileStub,
     } as unknown as Config;
@@ -265,6 +266,21 @@ describe("functions:kits:uninstall", () => {
         expect(error).to.be.an.instanceOf(Error);
         expect(deleteProjectDirStub).to.not.have.been.called;
         expect(writeProjectFileStub).to.not.have.been.called;
+      });
+
+      it("should safely handle non-existent instance directories without throwing", async () => {
+        const { config, writeProjectFileStub } = createMockConfig("my-kit", "inst1");
+        (config.projectDirExists as sinon.SinonStub).returns(false);
+
+        await command.runner()({
+          kit: "my-kit",
+          config,
+          nonInteractive: true,
+          force: true,
+        });
+
+        expect(deleteFunctionsStub).to.not.have.been.called;
+        expect(writeProjectFileStub).to.have.been.calledOnce;
       });
     });
   });
