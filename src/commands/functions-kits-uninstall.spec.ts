@@ -6,40 +6,48 @@ import { requireAuth } from "../requireAuth";
 import { requireConfig } from "../requireConfig";
 import * as prompt from "../prompt";
 import * as experiments from "../experiments";
+import * as functionsDelete from "../deploy/functions/delete";
 import { Config } from "../config";
 import { RC } from "../rc";
 
 describe("functions:kits:uninstall", () => {
   const originalBefores = [...(command["befores"] || [])];
   let confirmStub: sinon.SinonStub;
+  let deleteFunctionsStub: sinon.SinonStub;
 
   function createMockConfig(
     kitId = "my-kit",
-    instanceId = "inst1",
+    instances: string | Record<string, string> = "inst1",
   ): {
     config: Config;
     writeProjectFileStub: sinon.SinonStub;
+    deleteProjectDirStub: sinon.SinonStub;
   } {
+    const instancesObj =
+      typeof instances === "string"
+        ? { [instances]: `function-kits/${kitId}/config-${instances}` }
+        : instances;
     const writeProjectFileStub = sinon.stub();
+    const deleteProjectDirStub = sinon.stub();
     const config = {
       src: {
         functions: [
           {
             kit: kitId,
             source: `function-kits/${kitId}/source`,
-            instances: {
-              [instanceId]: `function-kits/${kitId}/config-${instanceId}`,
-            },
+            instances: instancesObj,
           },
         ],
       },
       lsProjectDir: sinon.stub().returns([]),
-      deleteProjectDir: sinon.stub(),
+      deleteProjectDir: deleteProjectDirStub,
+      deleteProjectFile: sinon.stub(),
+      projectFileExists: sinon.stub().returns(true),
       set: sinon.stub(),
       writeProjectFile: writeProjectFileStub,
     } as unknown as Config;
 
-    return { config, writeProjectFileStub };
+    return { config, writeProjectFileStub, deleteProjectDirStub };
   }
 
   beforeEach(() => {
@@ -47,6 +55,9 @@ describe("functions:kits:uninstall", () => {
     command["befores"] = [];
     sinon.stub(command, "prepare").resolves();
     confirmStub = sinon.stub(prompt, "confirm").resolves(true);
+    deleteFunctionsStub = sinon
+      .stub(functionsDelete, "deleteFunctionsByEndpointFilters")
+      .resolves(1);
   });
 
   afterEach(() => {
@@ -149,6 +160,110 @@ describe("functions:kits:uninstall", () => {
         });
 
         expect(confirmStub).to.have.been.calledOnce;
+        expect(writeProjectFileStub).to.not.have.been.called;
+      });
+    });
+
+    describe("batching endpoint deletions across instances", () => {
+      it("should batch delete functions for all instances targeting the same project into a single call", async () => {
+        const { config, writeProjectFileStub, deleteProjectDirStub } = createMockConfig("my-kit", {
+          inst1: "function-kits/my-kit/config-inst1",
+          inst2: "function-kits/my-kit/config-inst2",
+        });
+
+        // Mock lsProjectDir to return .env files pointing to the same project
+        (config.lsProjectDir as sinon.SinonStub).callsFake((dirPath: string) => {
+          if (dirPath.includes("config-inst1") || dirPath.includes("config-inst2")) {
+            return [{ name: ".env.my-project", isFile: () => true }];
+          }
+          return [];
+        });
+
+        await command.runner()({
+          kit: "my-kit",
+          config,
+          nonInteractive: true,
+          force: true,
+        });
+
+        expect(deleteFunctionsStub).to.have.been.calledOnce;
+        expect(deleteFunctionsStub).to.have.been.calledWith(
+          sinon.match({
+            projectId: "my-project",
+            filters: [{ codebase: "inst1" }, { codebase: "inst2" }],
+          }),
+        );
+        expect(deleteProjectDirStub).to.have.been.calledWith("function-kits/my-kit");
+        expect(writeProjectFileStub).to.have.been.calledOnce;
+      });
+
+      it("should group endpoint deletions by project when instances target different projects", async () => {
+        const { config, writeProjectFileStub } = createMockConfig("my-kit", {
+          inst1: "function-kits/my-kit/config-inst1",
+          inst2: "function-kits/my-kit/config-inst2",
+        });
+
+        (config.lsProjectDir as sinon.SinonStub).callsFake((dirPath: string) => {
+          if (dirPath.includes("config-inst1")) {
+            return [{ name: ".env.project-a", isFile: () => true }];
+          }
+          if (dirPath.includes("config-inst2")) {
+            return [{ name: ".env.project-b", isFile: () => true }];
+          }
+          return [];
+        });
+
+        await command.runner()({
+          kit: "my-kit",
+          config,
+          nonInteractive: true,
+          force: true,
+        });
+
+        expect(deleteFunctionsStub).to.have.been.calledTwice;
+        expect(deleteFunctionsStub.firstCall).to.have.been.calledWith(
+          sinon.match({
+            projectId: "project-a",
+            filters: [{ codebase: "inst1" }],
+          }),
+        );
+        expect(deleteFunctionsStub.secondCall).to.have.been.calledWith(
+          sinon.match({
+            projectId: "project-b",
+            filters: [{ codebase: "inst2" }],
+          }),
+        );
+        expect(writeProjectFileStub).to.have.been.calledOnce;
+      });
+
+      it("should not delete local files or update firebase.json if deleteFunctionsByEndpointFilters fails", async () => {
+        deleteFunctionsStub.rejects(new Error("GCP error"));
+        const { config, writeProjectFileStub, deleteProjectDirStub } = createMockConfig("my-kit", {
+          inst1: "function-kits/my-kit/config-inst1",
+          inst2: "function-kits/my-kit/config-inst2",
+        });
+
+        (config.lsProjectDir as sinon.SinonStub).callsFake((dirPath: string) => {
+          if (dirPath.includes("config-inst1")) {
+            return [{ name: ".env.my-project", isFile: () => true }];
+          }
+          return [];
+        });
+
+        let error: unknown;
+        try {
+          await command.runner()({
+            kit: "my-kit",
+            config,
+            nonInteractive: true,
+            force: true,
+          });
+        } catch (e: unknown) {
+          error = e;
+        }
+
+        expect(error).to.be.an.instanceOf(Error);
+        expect(deleteProjectDirStub).to.not.have.been.called;
         expect(writeProjectFileStub).to.not.have.been.called;
       });
     });
