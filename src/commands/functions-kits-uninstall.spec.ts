@@ -359,7 +359,9 @@ describe("functions:kits:uninstall", () => {
     });
 
     it("should safely handle non-existent instance directories without throwing", async () => {
-      const { config, writeProjectFileStub } = createMockConfig("my-kit", "inst1");
+      const { config, writeProjectFileStub } = createMockConfig("my-kit", "inst1", {
+        conservativeDeletion: true,
+      });
       (config.projectDirExists as sinon.SinonStub).returns(false);
 
       await command.runner()({
