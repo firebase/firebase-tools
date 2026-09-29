@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import * as fs from "fs";
 import * as fsPromises from "fs/promises";
+import * as crossSpawn from "cross-spawn";
 import * as fsExtra from "fs-extra";
 import * as sinon from "sinon";
 import * as glob from "glob";
@@ -31,6 +32,7 @@ import {
   cleanCustomRouteI18n,
   I18N_SOURCE,
   allDependencyNames,
+  getProductionDependencyNames,
   getMiddlewareMatcherRegexes,
   getNonStaticRoutes,
   getNonStaticServerComponents,
@@ -639,6 +641,50 @@ describe("Next.js utils", () => {
         "react",
         "loose-envify",
       ]);
+    });
+  });
+
+  describe("getProductionDependencyNames", () => {
+    let sandbox: sinon.SinonSandbox;
+    let spawnStub: sinon.SinonStub;
+
+    function stubNpmLs(output: string): void {
+      const realSpawn = crossSpawn.spawn;
+      spawnStub = sandbox
+        .stub(crossSpawn, "spawn")
+        .callsFake(() =>
+          realSpawn(process.execPath, ["-e", `process.stdout.write(${JSON.stringify(output)})`]),
+        );
+    }
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should emit one unique name per dependency from npm ls output", async () => {
+      stubNpmLs(JSON.stringify(npmLsReturn));
+
+      const names = await getProductionDependencyNames("/app");
+
+      expect(spawnStub).to.have.been.calledWith("npm", [
+        "ls",
+        "--omit=dev",
+        "--all",
+        "--json=true",
+      ]);
+      expect(names).to.include.members(["next", "@next/env", "tslib", "postcss", "nanoid"]);
+      expect(names.every((name) => typeof name === "string")).to.be.true;
+      expect(new Set(names).size).to.equal(names.length);
+    });
+
+    it("should resolve empty when there are no dependencies", async () => {
+      stubNpmLs("{}");
+
+      expect(await getProductionDependencyNames("/app")).to.eql([]);
     });
   });
 
