@@ -21,7 +21,7 @@ const JAR_URL = `https://dl.google.com/android/maven2/com/google/firebase/fireba
 export async function fetchBuildtoolsJar(): Promise<string> {
   // If you set CRASHLYTICS_LOCAL_JAR to a path it will override the downloaded buildtools.jar
   if (process.env.CRASHLYTICS_LOCAL_JAR) {
-    logger.debug(`Using local Crashlytics Jar override at ${process.env.CRASHLYTICS_LOCAL_JAR}`);
+    logger.debug(new Error(),`Using local Crashlytics Jar override at ${process.env.CRASHLYTICS_LOCAL_JAR}`);
     return process.env.CRASHLYTICS_LOCAL_JAR;
   }
 
@@ -35,9 +35,7 @@ export async function fetchBuildtoolsJar(): Promise<string> {
   // doesn't, then we're running the CLI with a new Jar version and we can
   // delete the old version.
   if (fs.existsSync(JAR_CACHE_DIR)) {
-    logger.debug(
-      `Deleting Jar cache at ${JAR_CACHE_DIR} because the CLI was run with a newer Jar version`,
-    );
+    logger.debug(`Deleting Jar cache at ${JAR_CACHE_DIR} because the CLI was run with a newer Jar version`);
     fs.rmSync(JAR_CACHE_DIR, { recursive: true, force: true });
   }
   utils.logBullet("Downloading crashlytics-buildtools.jar to " + jarPath);
@@ -61,9 +59,11 @@ export function runBuildtoolsCommand(jarFile: string, args: string[], debug: boo
   });
 
   if (outputs.status !== 0) {
-    if (!debug) {
-      utils.logWarning(outputs.stdout?.toString() || "An unknown error occurred");
+    if (!debug && outputs.stdout) {
+      utils.logWarning(new Error(outputs.stdout?.toString() || "An unknown error occurred").message);
     }
-    throw new FirebaseError(`java command failed with args: ${fullArgs}`);
+    throw new FirebaseError(`java command failed with args: ${fullArgs}`, {
+      exit: outputs.status ?? 1,
+    });
   }
 }
