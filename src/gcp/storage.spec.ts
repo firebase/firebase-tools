@@ -1,9 +1,11 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+import { Readable } from "stream";
 
 import * as storage from "./storage";
 import * as utils from "../utils";
 import { FirebaseError } from "../error";
+import { Client } from "../apiv2";
 
 describe("storage", () => {
   describe("upsertBucket", () => {
@@ -231,6 +233,117 @@ describe("storage", () => {
 
       expect(logLabeledWarningStub).to.not.be.called;
       expect(createBucketStub).to.be.calledOnce;
+    });
+  });
+
+  describe("uploadObject", () => {
+    let clientRequestStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      clientRequestStub = sinon.stub(Client.prototype, "request").resolves({
+        status: 200,
+        response: new Response(null, {
+          headers: new Headers({
+            "x-goog-generation": "123456789",
+          }),
+        }),
+        body: {},
+      });
+    });
+
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it("should use custom maxSizeBytes when provided", async () => {
+      const source = {
+        file: "/path/to/archive.tar.gz",
+        stream: new Readable({
+          read() {
+            this.push(null);
+          },
+        }),
+      };
+
+      const result = await storage.uploadObject(
+        source,
+        "my-bucket",
+        storage.ContentType.TAR,
+        262144000,
+      );
+
+      expect(result).to.deep.equal({
+        bucket: "my-bucket",
+        object: "archive.tar.gz",
+        generation: "123456789",
+      });
+      expect(clientRequestStub).to.be.calledOnceWith({
+        method: "PUT",
+        path: "/my-bucket/archive.tar.gz",
+        headers: {
+          "Content-Type": "application/octet-stream",
+          "x-goog-content-length-range": "0,262144000",
+        },
+        body: source.stream,
+      });
+    });
+
+    it("should default to 123289600 when maxSizeBytes is not provided", async () => {
+      const source = {
+        file: "/path/to/source.zip",
+        stream: new Readable({
+          read() {
+            this.push(null);
+          },
+        }),
+      };
+
+      const result = await storage.uploadObject(source, "my-bucket", storage.ContentType.ZIP);
+
+      expect(result).to.deep.equal({
+        bucket: "my-bucket",
+        object: "source.zip",
+        generation: "123456789",
+      });
+      expect(clientRequestStub).to.be.calledOnceWith({
+        method: "PUT",
+        path: "/my-bucket/source.zip",
+        headers: {
+          "Content-Type": "application/zip",
+          "x-goog-content-length-range": "0,123289600",
+        },
+        body: source.stream,
+      });
+    });
+
+    it("should throw FirebaseError if TAR upload does not end with .tar.gz", async () => {
+      const source = {
+        file: "/path/to/archive.zip",
+        stream: new Readable({
+          read() {
+            this.push(null);
+          },
+        }),
+      };
+
+      await expect(
+        storage.uploadObject(source, "my-bucket", storage.ContentType.TAR),
+      ).to.be.rejectedWith(FirebaseError, "Expected a file name ending in .tar.gz");
+    });
+
+    it("should throw FirebaseError if ZIP upload does not end with .zip", async () => {
+      const source = {
+        file: "/path/to/archive.tar.gz",
+        stream: new Readable({
+          read() {
+            this.push(null);
+          },
+        }),
+      };
+
+      await expect(
+        storage.uploadObject(source, "my-bucket", storage.ContentType.ZIP),
+      ).to.be.rejectedWith(FirebaseError, "Expected a file name ending in .zip");
     });
   });
 });

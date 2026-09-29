@@ -10,7 +10,15 @@ import { logBullet, logWarning } from "../utils";
 const FUNCTIONS_EMULATOR_DOTENV = ".env.local";
 
 const RESERVED_PREFIXES = ["X_GOOGLE_", "FIREBASE_", "EXT_", "KIT_"];
-const RESERVED_PREFIX_ALLOWLIST = ["FIREBASE_SECRET_REF_"];
+// Allow list for keys & key prefixes within the reserved prefixes that should not be rejected for violating RESERVED_PREFIXES.
+// If an allow list entry ends with _, it is a prefix and it is an error for there to be no suffix in the key.
+// If an allow list entry does not end with _, it is a whole key and it is an error for there to be a suffix in the key.
+// For example, "FIREBASE_SECRET_REF_" and "EXT_SELECTED_EVENTS_FOO" will both throw.
+const RESERVED_PREFIX_ALLOWLIST = [
+  "FIREBASE_SECRET_REF_",
+  "EXT_MIGRATED_SYSTEM_",
+  "EXT_SELECTED_EVENTS",
+];
 const RESERVED_KEYS = [
   // Cloud Functions for Firebase
   "FIREBASE_CONFIG",
@@ -183,19 +191,40 @@ export function validateKey(key: string): void {
       `Key ${key} starts with a reserved prefix (${RESERVED_PREFIXES.join(" ")})`,
     );
   }
-  if (RESERVED_PREFIX_ALLOWLIST.some((prefix) => key === prefix)) {
-    throw new KeyValidationError(key, `Key ${key} is a known prefix with an empty suffix`);
-  }
 }
 
 /**
- * @returns true if the key begins with a prefix on the reserved list and is not a known usage.
+ * Returns true if the key begins with a prefix on the reserved list and is not a known allowlisted usage.
+ * Returns false if the key does not begin with a prefix on the reserved list
+ * Throws if the key is a known allowlisted usage but is malformed:
+ * For example, "FIREBASE_SECRET_REF_" and "EXT_SELECTED_EVENTS_FOO" will both throw.
  */
 function keyConflictsWithReservedPrefixes(key: string): boolean {
-  return RESERVED_PREFIXES.some(
-    (prefix) =>
-      key.startsWith(prefix) && !RESERVED_PREFIX_ALLOWLIST.some((known) => key.startsWith(known)),
-  );
+  if (!RESERVED_PREFIXES.some((prefix) => key.startsWith(prefix))) {
+    return false;
+  }
+  for (const allowedPrefix of RESERVED_PREFIX_ALLOWLIST) {
+    if (keyPermittedByKnownPrefix(key, allowedPrefix)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function keyPermittedByKnownPrefix(key: string, prefix: string): boolean {
+  if (!key.startsWith(prefix)) {
+    return false;
+  }
+  if (prefix.endsWith("_") && key === prefix) {
+    throw new KeyValidationError(key, `Key ${key} is a known prefix that requires a suffix`);
+  }
+  if (!prefix.endsWith("_") && key !== prefix) {
+    throw new KeyValidationError(
+      key,
+      `Key ${key} conflicts with known key ${prefix} that does not permit a suffix`,
+    );
+  }
+  return true;
 }
 
 /**
@@ -258,6 +287,7 @@ export interface UserEnvsOpts {
   projectId: string;
   projectAlias?: string;
   isEmulator?: boolean;
+  projectDir: string;
 }
 
 /**
@@ -267,6 +297,22 @@ export interface UserEnvsOpts {
 export function hasUserEnvs(opts: UserEnvsOpts): boolean {
   const configDir = opts.configDir || opts.functionsSource;
   return findEnvfiles(configDir, opts.projectId, opts.projectAlias, opts.isEmulator).length > 0;
+}
+
+/**
+ * Checks if a directory contains a project-specific dotenv file (.env.<projectId> or .env.<projectAlias>).
+ */
+export function hasProjectEnv(dir: string, projectId?: string, projectAlias?: string): boolean {
+  if (!projectId && !projectAlias) {
+    return false;
+  }
+  if (!fs.existsSync(dir)) {
+    return false;
+  }
+  return (
+    (!!projectId && fs.existsSync(path.join(dir, `.env.${projectId}`))) ||
+    (!!projectAlias && fs.existsSync(path.join(dir, `.env.${projectAlias}`)))
+  );
 }
 
 /**
@@ -288,11 +334,13 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
     ? FUNCTIONS_EMULATOR_DOTENV
     : `.env.${envOpts.projectId}`;
   const targetEnvFileExists = allEnvFiles.includes(targetEnvFile);
+  const targetEnvFilePath = path.join(configDir, targetEnvFile);
+  const relativeTargetEnvFilePath = path.relative(envOpts.projectDir, targetEnvFilePath);
   if (!targetEnvFileExists) {
-    fs.writeFileSync(path.join(configDir, targetEnvFile), "", { flag: "wx" });
+    fs.writeFileSync(targetEnvFilePath, "", { flag: "wx" });
     logBullet(
       clc.yellow(clc.bold("functions: ")) +
-        `Created new local file ${targetEnvFile} to store param values. We suggest explicitly adding or excluding this file from version control.`,
+        `Created new local file ${relativeTargetEnvFilePath} to store param values. We suggest explicitly adding or excluding this file from version control.`,
     );
   }
 
@@ -308,7 +356,8 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
 
   // Write all the keys in a single filesystem access
   logBullet(
-    clc.cyan(clc.bold("functions: ")) + `Writing new parameter values to disk: ${targetEnvFile}`,
+    clc.cyan(clc.bold("functions: ")) +
+      `Writing new parameter values to disk: ${relativeTargetEnvFilePath}`,
   );
   let lines = "";
   for (const k of Object.keys(toWrite)) {
@@ -405,8 +454,12 @@ export function loadUserEnvs(opts: UserEnvsOpts): Record<string, string> {
       });
     }
   }
+  const relativeEnvFiles = envFiles.map((f) =>
+    path.relative(opts.projectDir, path.join(configDir, f)),
+  );
   logBullet(
-    clc.cyan(clc.bold("functions: ")) + `Loaded environment variables from ${envFiles.join(", ")}.`,
+    clc.cyan(clc.bold("functions: ")) +
+      `Loaded environment variables from ${relativeEnvFiles.join(", ")}`,
   );
 
   return envs;
@@ -419,11 +472,16 @@ export function loadUserEnvs(opts: UserEnvsOpts): Record<string, string> {
 export function loadFirebaseEnvs(
   firebaseConfig: Record<string, any>,
   projectId: string,
+  kitInstanceId?: string,
 ): Record<string, string> {
-  return {
+  const envs: Record<string, string> = {
     FIREBASE_CONFIG: JSON.stringify(firebaseConfig),
     GCLOUD_PROJECT: projectId,
   };
+  if (kitInstanceId) {
+    envs.FIREBASE_KIT_INSTANCE_ID = kitInstanceId;
+  }
+  return envs;
 }
 
 /**

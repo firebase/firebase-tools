@@ -11,11 +11,8 @@ import { pathToFileURL, parse } from "url";
 import { gte, coerce } from "semver";
 import { IncomingMessage, ServerResponse } from "http";
 import * as clc from "colorette";
-import { chain } from "stream-chain";
-import { parser } from "stream-json";
-import { pick } from "stream-json/filters/Pick";
-import { streamObject } from "stream-json/streamers/StreamObject";
 import { fileExistsSync } from "../../fsutils";
+import { loadStreamJson } from "../../streamJson";
 
 import { select } from "../../prompt";
 import { FirebaseError } from "../../error";
@@ -660,6 +657,7 @@ export async function ɵcodegenFunctionsDirectory(
         throw new FirebaseError(`Failed to load esbuild from path: ${esbuildPath}`);
       }
 
+      const { chain, parser, pick, streamObject } = await loadStreamJson();
       const productionDeps = await new Promise<string[]>((resolve) => {
         const dependencies: string[] = [];
         const npmLs = spawn("npm", ["ls", "--omit=dev", "--all", "--json=true"], {

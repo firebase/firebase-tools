@@ -251,8 +251,47 @@ export class Config {
     return fs.existsSync(this.path(p));
   }
 
+  projectDirExists(p: string): boolean {
+    return this.projectFileExists(p) && fs.statSync(this.path(p)).isDirectory();
+  }
+
   deleteProjectFile(p: string) {
     fs.removeSync(this.path(p));
+  }
+
+  deleteProjectDir(p: string) {
+    if (path.isAbsolute(p)) {
+      throw new FirebaseError(
+        `Sanity: deleteProjectDir() should not be called with an absolute path.`,
+      );
+    }
+    const resolvedPath = this.path(p);
+    if (!fs.existsSync(resolvedPath)) {
+      throw new FirebaseError(`Failed to delete project directory ${p}: directory doesn't exist.`);
+    }
+    try {
+      fs.rmSync(resolvedPath, { recursive: true });
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to delete project directory ${p}: ${err}`, {
+        original: err instanceof Error ? err : undefined,
+      });
+    }
+  }
+
+  lsProjectDir(p: string): fs.Dirent[] {
+    const resolvedPath = this.path(p);
+    if (!fs.existsSync(resolvedPath)) {
+      throw new FirebaseError(
+        `Failed to list files in project directory ${p}: directory doesn't exist.`,
+      );
+    }
+    try {
+      return fs.readdirSync(resolvedPath, { withFileTypes: true });
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to list files in project directory ${p}: ${err}`, {
+        original: err instanceof Error ? err : undefined,
+      });
+    }
   }
 
   async confirmWriteProjectFile(
