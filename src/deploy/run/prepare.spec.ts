@@ -1,11 +1,9 @@
 import { expect } from "chai";
-import * as fs from "fs";
 import * as sinon from "sinon";
-import * as localbuilds from "../../apphosting/localbuilds";
 import * as runv2 from "../../gcp/runv2";
 import { Options } from "../../options";
-import * as apphostingPrepare from "../apphosting/prepare";
 import { Context, Payload } from "./args";
+import { BUILD_ENV_ANNOTATION } from "./buildEnv";
 import { prepare } from "./prepare";
 import * as prereqs from "./prereqs";
 
@@ -17,7 +15,6 @@ describe("run prepare", () => {
   } as unknown as runv2.Service;
   let prereqsStub: sinon.SinonStub;
   let getServiceStub: sinon.SinonStub;
-  let localBuildStub: sinon.SinonStub;
 
   const options = (run: Record<string, unknown>): Options =>
     ({
@@ -33,11 +30,6 @@ describe("run prepare", () => {
   beforeEach(() => {
     prereqsStub = sinon.stub(prereqs, "prereqs").resolves();
     getServiceStub = sinon.stub(runv2, "getService").rejects({ status: 404 });
-    sinon.stub(apphostingPrepare, "prepareLocalBuildScratchDirectory").resolves();
-    localBuildStub = sinon.stub(localbuilds, "localBuild").resolves({
-      outputFiles: [".next"],
-      buildConfig: { runCommand: "npm start" },
-    });
   });
 
   afterEach(() => sinon.restore());
@@ -81,37 +73,49 @@ describe("run prepare", () => {
     await expect(prepareOne({ localBuild: true })).to.be.rejectedWith(
       "Local builds require a base image",
     );
-    expect(localBuildStub).not.to.have.been.called;
   });
 
   it("points new local build services to init, which sets a base image", async () => {
     await expect(prepareOne({ localBuild: true })).to.be.rejectedWith(
       /doesn't exist in us-central1 yet.*which also sets the base image/,
     );
-    expect(localBuildStub).not.to.have.been.called;
   });
 
-  it("builds locally", async () => {
+  it("doesn't build locally", async () => {
     getServiceStub.resolves(existing);
-    const svc = await prepareOne({ localBuild: true, rootDir: "web" });
-    try {
-      expect(localBuildStub).to.have.been.calledWithMatch(
-        "p",
-        svc.localBuild!.scratchDir,
-        {},
-        { rootDir: "web" },
+    const svc = await prepareOne({ localBuild: true });
+    expect(svc.baseImage).to.equal(nodejs22);
+    expect(svc).not.to.have.property("localBuild");
+  });
+
+  describe("build env", () => {
+    const withBuildEnv = (env: Record<string, unknown>): runv2.Service =>
+      ({
+        ...existing,
+        annotations: { [BUILD_ENV_ANNOTATION]: JSON.stringify(env) },
+      }) as unknown as runv2.Service;
+
+    it("passes plain build env to Cloud Build", async () => {
+      getServiceStub.resolves(withBuildEnv({ A: "1" }));
+      expect((await prepareOne()).buildEnv).to.deep.equal({ A: "1" });
+    });
+
+    it("leaves build env unset without the annotation", async () => {
+      getServiceStub.resolves(existing);
+      expect(await prepareOne()).not.to.have.property("buildEnv");
+    });
+
+    it("rejects build secrets on Cloud Build", async () => {
+      getServiceStub.resolves(withBuildEnv({ A: "1", TOKEN: { secret: "t" } }));
+      await expect(prepareOne()).to.be.rejectedWith(
+        /Service s has build secrets \(TOKEN\).*"localBuild": true/,
       );
-      expect(svc.localBuild).to.deep.include({ outputFiles: [".next"], runCommand: "npm start" });
-    } finally {
-      fs.rmSync(svc.localBuild!.scratchDir, { recursive: true, force: true });
-    }
-  });
+    });
 
-  it("cleans up if the local build fails", async () => {
-    getServiceStub.resolves(existing);
-    localBuildStub.rejects(new Error("boom"));
-    const mkdtemp = sinon.spy(fs, "mkdtempSync");
-    await expect(prepareOne({ localBuild: true })).to.be.rejectedWith("boom");
-    expect(fs.existsSync(mkdtemp.firstCall.returnValue)).to.be.false;
+    it("keeps build secrets for local builds", async () => {
+      getServiceStub.resolves(withBuildEnv({ A: "1", TOKEN: { secret: "t", version: "2" } }));
+      const svc = await prepareOne({ localBuild: true });
+      expect(svc.buildEnv).to.deep.equal({ A: "1", TOKEN: { secret: "t", version: "2" } });
+    });
   });
 });

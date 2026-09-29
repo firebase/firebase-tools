@@ -1,13 +1,13 @@
 import { expect } from "chai";
 import * as fs from "fs";
-import * as os from "os";
-import * as path from "path";
 import * as sinon from "sinon";
+import * as localbuilds from "../../apphosting/localbuilds";
 import * as artifactregistry from "../../gcp/artifactregistry";
 import * as runv2 from "../../gcp/runv2";
 import * as gcs from "../../gcp/storage";
 import * as getProjectNumber from "../../getProjectNumber";
 import { Options } from "../../options";
+import * as apphostingPrepare from "../apphosting/prepare";
 import * as apphostingUtil from "../apphosting/util";
 import { ServiceDeploy } from "./args";
 import { deploy } from "./deploy";
@@ -92,6 +92,15 @@ describe("run deploy", () => {
     );
   });
 
+  it("passes build env to the build", async () => {
+    await deployOne(service({ baseImage: "nodejs22", buildEnv: { A: "1" } }));
+    expect(submitBuildStub.firstCall.args[2].buildpackBuild).to.deep.equal({
+      baseImage: "nodejs22",
+      enableAutomaticUpdates: true,
+      environmentVariables: { A: "1" },
+    });
+  });
+
   it("updates the live revision template of an existing service", async () => {
     const existing = {
       name: "projects/p/locations/us-central1/services/s",
@@ -144,31 +153,73 @@ describe("run deploy", () => {
     expect(existing.template.revision).to.equal("s-1");
   });
 
-  it("deploys local builds without building", async () => {
-    const scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), "run-deploy-spec-"));
+  describe("local builds", () => {
     const existing = {
       name: "projects/p/locations/us-central1/services/s",
       template: { containers: [{ name: "s", image: "old" }] },
     } as unknown as runv2.Service;
-
-    await deployOne(
+    const localService = (overrides: Partial<ServiceDeploy> = {}): ServiceDeploy =>
       service({
+        config: { ...config, localBuild: true },
         existing,
         baseImage: "nodejs22",
-        localBuild: { scratchDir, outputFiles: [".next"], runCommand: "node server.js" },
-      }),
-    );
+        ...overrides,
+      });
+    let localBuildStub: sinon.SinonStub;
+    let mkdtemp: sinon.SinonSpy;
 
-    expect(tarArchiveStub).to.have.been.calledWithMatch({ backendId: "s" }, scratchDir, [".next"]);
-    expect(submitBuildStub).not.to.have.been.called;
-    expect(updateServiceStub.firstCall.args[0].template.containers[0]).to.deep.equal({
-      name: "s",
-      image: "scratch",
-      sourceCode: { cloudStorageSource: { bucket: "bucket", object: "out.tar.gz" } },
-      command: ["node", "server.js"],
-      baseImageUri: "nodejs22",
+    beforeEach(() => {
+      sinon.stub(apphostingPrepare, "prepareLocalBuildScratchDirectory").resolves();
+      localBuildStub = sinon.stub(localbuilds, "localBuild").resolves({
+        outputFiles: [".next"],
+        buildConfig: { runCommand: "node server.js" },
+      });
+      mkdtemp = sinon.spy(fs, "mkdtempSync");
     });
-    expect(fs.existsSync(scratchDir)).to.be.false;
+
+    it("builds locally and deploys the output without building on Cloud Build", async () => {
+      await deployOne(localService());
+
+      const scratchDir = mkdtemp.firstCall.returnValue as string;
+      expect(localBuildStub).to.have.been.calledWith(
+        "p",
+        scratchDir,
+        {},
+        {
+          nonInteractive: undefined,
+          allowLocalBuildSecrets: true,
+          rootDir: "web",
+          firebaseBuildpacks: false,
+        },
+      );
+      expect(tarArchiveStub).to.have.been.calledWithMatch({ backendId: "s" }, scratchDir, [
+        ".next",
+      ]);
+      expect(submitBuildStub).not.to.have.been.called;
+      expect(updateServiceStub.firstCall.args[0].template.containers[0]).to.deep.equal({
+        name: "s",
+        image: "scratch",
+        sourceCode: { cloudStorageSource: { bucket: "bucket", object: "out.tar.gz" } },
+        command: ["node", "server.js"],
+        baseImageUri: "nodejs22",
+      });
+      expect(fs.existsSync(scratchDir)).to.be.false;
+    });
+
+    it("passes build env and secrets to the local build", async () => {
+      await deployOne(localService({ buildEnv: { A: "1", TOKEN: { secret: "t", version: "2" } } }));
+      expect(localBuildStub.firstCall.args[2]).to.deep.equal({
+        A: { value: "1", availability: ["BUILD"] },
+        TOKEN: { secret: "t@2", availability: ["BUILD"] },
+      });
+    });
+
+    it("cleans up and deploys nothing if the local build fails", async () => {
+      localBuildStub.rejects(new Error("boom"));
+      await expect(deployOne(localService())).to.be.rejectedWith("boom");
+      expect(fs.existsSync(mkdtemp.firstCall.returnValue as string)).to.be.false;
+      expect(updateServiceStub).not.to.have.been.called;
+    });
   });
 
   it("switches a service from a local build back to a source build", async () => {

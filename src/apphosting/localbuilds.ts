@@ -24,14 +24,16 @@ interface UniversalMakerOutput {
  * Runs the Universal Maker binary to build the project.
  * @param projectRoot - The path to the temporary scratch directory (e.g., .local_build_<backendId>) containing the copied source files.
  * @param addedEnv - The resolved environment variables to inject into the build process.
+ * @param firebaseBuildpacks - Whether to run the Firebase App Hosting buildpacks (see LocalBuildOptions).
  */
 export async function runUniversalMaker(
   projectRoot: string,
   addedEnv?: NodeJS.ProcessEnv,
+  firebaseBuildpacks = true,
 ): Promise<AppHostingBuildOutput> {
   const universalMakerBinary = await getOrDownloadUniversalMaker();
-  executeUniversalMakerBinary(universalMakerBinary, projectRoot, addedEnv);
-  return processUniversalMakerOutput(projectRoot);
+  executeUniversalMakerBinary(universalMakerBinary, projectRoot, addedEnv, firebaseBuildpacks);
+  return processUniversalMakerOutput(projectRoot, firebaseBuildpacks);
 }
 
 /**
@@ -41,28 +43,34 @@ export async function runUniversalMaker(
  * @param universalMakerBinary - The absolute path to the Universal Maker executable.
  * @param projectRoot - The path to the temporary scratch directory containing the project source files.
  * @param addedEnv - The resolved environment variables to inject into the build process.
+ * @param firebaseBuildpacks - Whether to run the Firebase App Hosting buildpacks.
  */
 function executeUniversalMakerBinary(
   universalMakerBinary: string,
   projectRoot: string,
-  addedEnv?: NodeJS.ProcessEnv,
+  addedEnv: NodeJS.ProcessEnv | undefined,
+  firebaseBuildpacks: boolean,
 ): void {
   try {
-    const targetAppHosting = path.join(projectRoot, ".apphosting");
-    fs.removeSync(targetAppHosting);
-    fs.ensureDirSync(targetAppHosting);
+    const env: NodeJS.ProcessEnv = { ...process.env, ...addedEnv };
+    if (firebaseBuildpacks) {
+      const targetAppHosting = path.join(projectRoot, ".apphosting");
+      fs.removeSync(targetAppHosting);
+      fs.ensureDirSync(targetAppHosting);
+      env.X_GOOGLE_TARGET_PLATFORM = "fah";
+      env.FIREBASE_OUTPUT_BUNDLE_DIR = targetAppHosting;
+    } else {
+      // These turn on the Firebase buildpacks, so don't pass them through from the user's shell.
+      delete env.X_GOOGLE_TARGET_PLATFORM;
+      delete env.FIREBASE_OUTPUT_BUNDLE_DIR;
+    }
 
     const res = childProcess.spawnSync(
       universalMakerBinary,
       ["-application_dir", projectRoot, "-output_dir", projectRoot, "-output_format", "json"],
       {
         cwd: projectRoot,
-        env: {
-          ...process.env,
-          ...addedEnv,
-          X_GOOGLE_TARGET_PLATFORM: "fah",
-          FIREBASE_OUTPUT_BUNDLE_DIR: targetAppHosting,
-        },
+        env,
         stdio: "pipe",
       },
     );
@@ -126,8 +134,13 @@ function parseBundleYaml(
  *
  * This includes resolving the final run command and artifact paths from the
  * generated bundle.yaml, as well as cleaning up temporary metadata files.
+ * Only the Firebase buildpacks write bundle.yaml. Without them, the run command comes from
+ * Universal Maker and the whole built directory is deployed.
  */
-function processUniversalMakerOutput(projectRoot: string): AppHostingBuildOutput {
+function processUniversalMakerOutput(
+  projectRoot: string,
+  firebaseBuildpacks: boolean,
+): AppHostingBuildOutput {
   const outputFilePath = path.join(projectRoot, "build_output.json");
   if (!fs.existsSync(outputFilePath)) {
     throw new FirebaseError(
@@ -145,10 +158,9 @@ function processUniversalMakerOutput(projectRoot: string): AppHostingBuildOutput
   }
 
   const defaultRunCommand = `${umOutput.command} ${umOutput.args.join(" ")}`;
-  const { runCommand: finalRunCommand, outputFiles: finalOutputFiles } = parseBundleYaml(
-    projectRoot,
-    defaultRunCommand,
-  );
+  const { runCommand: finalRunCommand, outputFiles: finalOutputFiles } = firebaseBuildpacks
+    ? parseBundleYaml(projectRoot, defaultRunCommand)
+    : { runCommand: defaultRunCommand, outputFiles: [] };
 
   return {
     runConfig: {
@@ -204,7 +216,17 @@ export async function localBuild(
   projectId: string,
   projectRoot: string,
   env: EnvMap = {},
-  options?: { nonInteractive?: boolean; allowLocalBuildSecrets?: boolean; rootDir?: string },
+  options?: {
+    nonInteractive?: boolean;
+    allowLocalBuildSecrets?: boolean;
+    rootDir?: string;
+    /**
+     * Whether to run the Firebase App Hosting buildpacks: framework adapters (e.g. Next.js
+     * standalone output) and output bundling. Defaults to true. Without them, Universal Maker
+     * runs the standard buildpacks, like Cloud Run's source builds.
+     */
+    firebaseBuildpacks?: boolean;
+  },
 ): Promise<{
   outputFiles: string[];
   buildConfig: BuildConfig;
@@ -245,7 +267,11 @@ export async function localBuild(
     }
   }
 
-  const apphostingBuildOutput = await runUniversalMaker(projectRoot, addedEnv);
+  const apphostingBuildOutput = await runUniversalMaker(
+    projectRoot,
+    addedEnv,
+    options?.firebaseBuildpacks ?? true,
+  );
 
   const discoveredEnv: Env[] | undefined =
     apphostingBuildOutput.runConfig.environmentVariables?.map(
@@ -306,7 +332,7 @@ export function validateLocalBuildNodeVersion(backend: Backend, projectRoot: str
     );
   }
 
-  const targetMajorMatch = runtimeValue.match(/^nodejs(\d+)$/);
+  const targetMajorMatch = /^nodejs(\d+)$/.exec(runtimeValue);
   if (!targetMajorMatch) {
     logLabeledWarning(
       "apphosting",
@@ -357,7 +383,7 @@ export function validateLocalBuildNodeVersion(backend: Backend, projectRoot: str
   }
 
   // 2. Check local vs target ABIU runtime version
-  const localMajorMatch = localNodeVersion.match(/^v?(\d+)/);
+  const localMajorMatch = /^v?(\d+)/.exec(localNodeVersion);
   const localMajor = localMajorMatch ? parseInt(localMajorMatch[1], 10) : null;
 
   if (localMajor !== null && localMajor !== targetMajor) {

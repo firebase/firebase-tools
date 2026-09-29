@@ -1,14 +1,18 @@
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
 import { CLOUD_RUN_SIZE_LIMIT_BYTES } from "../../apphosting/constants";
+import { localBuild } from "../../apphosting/localbuilds";
 import * as artifactregistry from "../../gcp/artifactregistry";
 import * as runv2 from "../../gcp/runv2";
 import * as gcs from "../../gcp/storage";
 import { getProjectNumber } from "../../getProjectNumber";
 import { Options } from "../../options";
 import { logLabeledBullet } from "../../utils";
+import { prepareLocalBuildScratchDirectory } from "../apphosting/prepare";
 import { createLocalBuildTarArchive, createSourceDeployArchive } from "../apphosting/util";
 import { Context, Payload, ServiceDeploy } from "./args";
+import { secretNames, toLocalBuildEnv } from "./buildEnv";
 import {
   copyTemplate,
   deployRevision,
@@ -20,17 +24,62 @@ import {
 const DEPLOY_MESSAGE_ANNOTATION = "firebase.google.com/deploy-message";
 
 /**
- * Uploads each service's source (or local build output), builds it if needed, and deploys it.
+ * Builds each service (locally or on Cloud Build), uploads it, and deploys it.
  */
 export async function deploy(context: Context, options: Options, payload: Payload): Promise<void> {
   for (const svc of payload.run?.services || []) {
     try {
+      if (svc.config.localBuild) {
+        svc.localBuild = await buildLocally(context, options, svc);
+      }
       svc.deployed = await deployService(context, options, svc);
     } finally {
       if (svc.localBuild) {
         fs.rmSync(svc.localBuild.scratchDir, { recursive: true, force: true });
       }
     }
+  }
+}
+
+async function buildLocally(
+  context: Context,
+  options: Options,
+  svc: ServiceDeploy,
+): Promise<NonNullable<ServiceDeploy["localBuild"]>> {
+  const { config } = svc;
+  const { serviceId } = config;
+  const buildEnv = svc.buildEnv || {};
+  logLabeledBullet("run", `Starting local build for service ${serviceId}`);
+  const secrets = secretNames(buildEnv);
+  if (secrets.length) {
+    logLabeledBullet(
+      "run",
+      `Reading build secrets ${secrets.join(", ")} with your credentials. Their values may be ` +
+        `included in the build output.`,
+    );
+  }
+  const cfg = toAppHostingConfig(config);
+  const scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), `run-local-build-${serviceId}-`));
+  try {
+    await prepareLocalBuildScratchDirectory(options.config.projectDir, scratchDir, cfg);
+    const { outputFiles, buildConfig } = await localBuild(
+      context.projectId,
+      scratchDir,
+      toLocalBuildEnv(buildEnv),
+      {
+        nonInteractive: options.nonInteractive,
+        // Unlike App Hosting, Cloud Run doesn't ask users to confirm build secrets in local builds.
+        allowLocalBuildSecrets: true,
+        rootDir: config.rootDir,
+        // Cloud Run doesn't use the Firebase App Hosting buildpacks (framework adapters and output
+        // bundling), so local builds match Cloud Run's own source builds.
+        firebaseBuildpacks: false,
+      },
+    );
+    return { scratchDir, outputFiles, runCommand: buildConfig.runCommand };
+  } catch (err: unknown) {
+    fs.rmSync(scratchDir, { recursive: true, force: true });
+    throw err;
   }
 }
 
@@ -141,6 +190,8 @@ async function buildImage(
     buildpackBuild: {
       // Only images built for a base image can have their base image updated automatically.
       ...(svc.baseImage && { baseImage: svc.baseImage, enableAutomaticUpdates: true }),
+      // Prepare rejects build secrets for builds on Cloud Build, so these are all plain values.
+      ...(svc.buildEnv && { environmentVariables: svc.buildEnv as Record<string, string> }),
     },
   });
   return imageUri;
