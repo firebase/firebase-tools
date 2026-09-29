@@ -9,6 +9,12 @@ updates:
     schedule:
       interval: "weekly"
     groups:
+      # Bundle all security fixes for the root package into a single PR so that
+      # transitive fixes don't pile up as many individual PRs.
+      security:
+        applies-to: security-updates
+        patterns:
+          - "*"
       patch:
         update-types:
           - "patch"
