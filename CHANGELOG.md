@@ -1,1 +1,2 @@
 - [fixed] Improve error message when billing is not enabled
+- [fixed] Next.js deploys failing to bundle `next.config` since v15.31.0. (#11187)
