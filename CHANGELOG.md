@@ -1,2 +1,3 @@
 - [fixed] Improve error message when billing is not enabled
+- Fixed a crash in `setEnqueuer` when deploying Cloud Tasks functions whose IAM policy has no bindings (#11184).
 - Fixed the Functions emulator repeating the "External network resource requested!" and "Google API requested!" warnings for a URL it has already reported. (#4939)
