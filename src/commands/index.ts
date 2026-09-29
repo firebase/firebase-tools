@@ -303,9 +303,8 @@ export function load(client: CLIClient): CLIClient {
   client.remoteconfig.experiments.delete = loadCommand("remoteconfig-experiments-delete");
   if (experiments.isEnabled("direct_cloud_run")) {
     client.run = {};
-    client.run.baseImage = {};
-    client.run.baseImage.set = loadCommand("run-baseimage-set");
-    client.run.baseImage.clear = loadCommand("run-baseimage-clear");
+    client.run.services = {};
+    client.run.services.update = loadCommand("run-services-update");
   }
   client.serve = loadCommand("serve");
   client.setup = {};

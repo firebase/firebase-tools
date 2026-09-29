@@ -183,7 +183,7 @@ export const ALL_EXPERIMENTS = experiments({
     shortDescription: "Build and deploy web apps directly to Cloud Run services",
     fullDescription:
       "Enables `firebase init run`, `firebase deploy --only run`, and the " +
-      "`firebase run:baseImage:set` and `firebase run:baseImage:clear` commands. " +
+      "`firebase run:services:update` command. " +
       "These are in preview and may change.",
     public: false,
   },

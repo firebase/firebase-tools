@@ -33,17 +33,10 @@ describe("run prepare", () => {
   beforeEach(() => {
     prereqsStub = sinon.stub(prereqs, "prereqs").resolves();
     getServiceStub = sinon.stub(runv2, "getService").rejects({ status: 404 });
-    sinon
-      .stub(apphostingPrepare, "injectEnvVarsFromApphostingConfig")
-      .callsFake((_configs, _options, buildEnv, runtimeEnv) => {
-        buildEnv["s"] = { BUILD_VAR: { value: "b" } };
-        runtimeEnv["s"] = { RUN_VAR: { value: "r" } };
-        return Promise.resolve();
-      });
     sinon.stub(apphostingPrepare, "prepareLocalBuildScratchDirectory").resolves();
     localBuildStub = sinon.stub(localbuilds, "localBuild").resolves({
       outputFiles: [".next"],
-      buildConfig: { runCommand: "npm start", env: [{ variable: "UM_VAR", value: "u" }] },
+      buildConfig: { runCommand: "npm start" },
     });
   });
 
@@ -62,14 +55,12 @@ describe("run prepare", () => {
     );
   });
 
-  it("reads the service and apphosting.yaml env vars", async () => {
+  it("reads the service", async () => {
     const svc = await prepareOne();
     expect(prereqsStub).to.have.been.calledWith("p");
     expect(getServiceStub).to.have.been.calledWith("p", "us-central1", "s");
     expect(svc.existing).to.be.undefined;
     expect(svc.baseImage).to.be.undefined;
-    expect(svc.buildEnv).to.deep.equal({ BUILD_VAR: { value: "b" } });
-    expect(svc.runtimeEnv).to.deep.equal({ RUN_VAR: { value: "r" } });
   });
 
   it("reuses the service's current base image", async () => {
@@ -107,14 +98,10 @@ describe("run prepare", () => {
       expect(localBuildStub).to.have.been.calledWithMatch(
         "p",
         svc.localBuild!.scratchDir,
-        { BUILD_VAR: { value: "b" } },
-        { allowLocalBuildSecrets: true, rootDir: "web" },
+        {},
+        { rootDir: "web" },
       );
       expect(svc.localBuild).to.deep.include({ outputFiles: [".next"], runCommand: "npm start" });
-      expect(svc.runtimeEnv).to.deep.equal({
-        UM_VAR: { variable: "UM_VAR", value: "u" },
-        RUN_VAR: { value: "r" },
-      });
     } finally {
       fs.rmSync(svc.localBuild!.scratchDir, { recursive: true, force: true });
     }

@@ -22,7 +22,7 @@ describe("run deploy", () => {
   let updateServiceStub: sinon.SinonStub;
 
   function service(overrides: Partial<ServiceDeploy> = {}): ServiceDeploy {
-    return { config, buildEnv: {}, runtimeEnv: {}, ...overrides };
+    return { config, ...overrides };
   }
 
   async function deployOne(svc: ServiceDeploy, opts = options) {
@@ -53,25 +53,17 @@ describe("run deploy", () => {
   afterEach(() => sinon.restore());
 
   it("builds source and creates a new service", async () => {
-    const svc = await deployOne(
-      service({
-        baseImage: "nodejs22",
-        buildEnv: { A: { value: "a" }, S: { secret: "s" } },
-        runtimeEnv: { B: { value: "b" }, T: { secret: "t@2" } },
-      }),
-      { ...options, message: "hi" } as Options,
-    );
+    const svc = await deployOne(service({ baseImage: "nodejs22" }), {
+      ...options,
+      message: "hi",
+    } as Options);
 
     expect(sourceArchiveStub).to.have.been.calledWithMatch({ backendId: "s" }, "/p/web");
     const imageUri = "us-central1-docker.pkg.dev/p/cloud-run-source-deploy/s:42";
     expect(submitBuildStub).to.have.been.calledWith("p", "us-central1", {
       storageSource: { bucket: "bucket", object: "src.zip" },
       imageUri,
-      buildpackBuild: {
-        environmentVariables: { A: "a" },
-        baseImage: "nodejs22",
-        enableAutomaticUpdates: true,
-      },
+      buildpackBuild: { baseImage: "nodejs22", enableAutomaticUpdates: true },
     });
     expect(createServiceStub).to.have.been.calledWith("p", "us-central1", "s", {
       name: "projects/p/locations/us-central1/services/s",
@@ -81,10 +73,6 @@ describe("run deploy", () => {
             name: "s",
             image: imageUri,
             baseImageUri: "nodejs22",
-            env: [
-              { name: "B", value: "b" },
-              { name: "T", valueSource: { secretKeyRef: { secret: "t", version: "2" } } },
-            ],
           },
         ],
         annotations: { "firebase.google.com/deploy-message": "hi" },
@@ -98,9 +86,7 @@ describe("run deploy", () => {
 
   it("builds without a base image", async () => {
     await deployOne(service());
-    expect(submitBuildStub.firstCall.args[2].buildpackBuild).to.deep.equal({
-      environmentVariables: {},
-    });
+    expect(submitBuildStub.firstCall.args[2].buildpackBuild).to.deep.equal({});
     expect(createServiceStub.firstCall.args[3].template.containers[0]).not.to.have.property(
       "baseImageUri",
     );
@@ -132,7 +118,7 @@ describe("run deploy", () => {
       ],
     } as unknown as runv2.Service;
 
-    await deployOne(service({ existing, runtimeEnv: { B: { value: "b" } } }));
+    await deployOne(service({ existing }));
 
     const [update, updateOpts] = updateServiceStub.firstCall.args;
     expect(updateOpts.updateMask).to.deep.equal(["template", "traffic"]);
@@ -146,7 +132,7 @@ describe("run deploy", () => {
           image: "us-central1-docker.pkg.dev/p/cloud-run-source-deploy/s:42",
           ports: [{ containerPort: 8080 }],
           env: [
-            { name: "B", value: "b" },
+            { name: "B", value: "old" },
             { name: "C", value: "c" },
           ],
         },
@@ -181,7 +167,6 @@ describe("run deploy", () => {
       sourceCode: { cloudStorageSource: { bucket: "bucket", object: "out.tar.gz" } },
       command: ["node", "server.js"],
       baseImageUri: "nodejs22",
-      env: [],
     });
     expect(fs.existsSync(scratchDir)).to.be.false;
   });

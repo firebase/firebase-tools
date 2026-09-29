@@ -1,4 +1,3 @@
-import { EnvMap } from "../../apphosting/yaml";
 import { RunSingle } from "../../firebaseConfig";
 import * as runv2 from "../../gcp/runv2";
 
@@ -6,8 +5,6 @@ export interface ServiceDeploy {
   config: RunSingle;
   existing?: runv2.Service;
   baseImage?: string;
-  buildEnv: EnvMap;
-  runtimeEnv: EnvMap;
   localBuild?: {
     scratchDir: string;
     outputFiles: string[];

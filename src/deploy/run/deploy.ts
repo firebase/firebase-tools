@@ -1,15 +1,12 @@
 import * as fs from "fs";
 import * as path from "path";
 import { CLOUD_RUN_SIZE_LIMIT_BYTES } from "../../apphosting/constants";
-import { getSecretNameParts } from "../../apphosting/secrets";
-import { EnvMap } from "../../apphosting/yaml";
 import * as artifactregistry from "../../gcp/artifactregistry";
-import { EnvVar } from "../../gcp/k8s";
 import * as runv2 from "../../gcp/runv2";
 import * as gcs from "../../gcp/storage";
 import { getProjectNumber } from "../../getProjectNumber";
 import { Options } from "../../options";
-import { logLabeledBullet, logLabeledWarning } from "../../utils";
+import { logLabeledBullet } from "../../utils";
 import { createLocalBuildTarArchive, createSourceDeployArchive } from "../apphosting/util";
 import { Context, Payload, ServiceDeploy } from "./args";
 import {
@@ -68,7 +65,6 @@ async function deployService(
   } else {
     delete container.baseImageUri;
   }
-  container.env = withEnv(container.env, svc.runtimeEnv);
   template.annotations = { ...template.annotations };
   if (options.message) {
     template.annotations[DEPLOY_MESSAGE_ANNOTATION] = options.message as string;
@@ -136,15 +132,6 @@ async function buildImage(
   source: runv2.StorageSource,
 ): Promise<string> {
   const { serviceId, region } = svc.config;
-  const environmentVariables: Record<string, string> = {};
-  for (const [name, { value }] of Object.entries(svc.buildEnv)) {
-    if (value === undefined) {
-      logLabeledWarning("run", `Skipping ${name}: secrets are not available to source builds.`);
-    } else {
-      environmentVariables[name] = value;
-    }
-  }
-
   await artifactregistry.ensureDockerRepository(projectId, region, "cloud-run-source-deploy");
   const imageUri = `${region}-docker.pkg.dev/${projectId}/cloud-run-source-deploy/${serviceId}:${Date.now()}`;
   logLabeledBullet("run", `Building service ${serviceId}...`);
@@ -152,26 +139,9 @@ async function buildImage(
     storageSource: source,
     imageUri,
     buildpackBuild: {
-      environmentVariables,
       // Only images built for a base image can have their base image updated automatically.
       ...(svc.baseImage && { baseImage: svc.baseImage, enableAutomaticUpdates: true }),
     },
   });
   return imageUri;
-}
-
-/**
- * Adds apphosting.yaml env vars to the container's env vars, overriding any with the same name.
- */
-function withEnv(existing: EnvVar[] = [], env: EnvMap): EnvVar[] {
-  const vars = new Map(existing.map((v) => [v.name, v]));
-  for (const [name, { value, secret }] of Object.entries(env)) {
-    if (secret) {
-      const [secretName, version] = getSecretNameParts(secret);
-      vars.set(name, { name, valueSource: { secretKeyRef: { secret: secretName, version } } });
-    } else {
-      vars.set(name, { name, value: value || "" });
-    }
-  }
-  return [...vars.values()];
 }

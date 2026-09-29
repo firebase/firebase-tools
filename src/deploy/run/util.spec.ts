@@ -81,24 +81,5 @@ describe("run util", () => {
         { updateMask: ["template", "traffic"], masterTimeout: SERVICE_OPERATION_TIMEOUT_MS },
       );
     });
-
-    it("keeps traffic on the current revisions when noTraffic is set", async () => {
-      const update = sinon.stub(runv2, "updateService").resolves();
-      await deployRevision(service, template, /* noTraffic= */ true);
-      expect(update.firstCall.args[0].traffic).to.deep.equal([
-        {
-          type: "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION",
-          revision: "s-2",
-          percent: 90,
-          tag: undefined,
-        },
-        {
-          type: "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION",
-          revision: "s-1",
-          percent: 10,
-          tag: undefined,
-        },
-      ]);
-    });
   });
 });

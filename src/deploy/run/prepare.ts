@@ -2,15 +2,11 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import { localBuild } from "../../apphosting/localbuilds";
-import { EnvMap } from "../../apphosting/yaml";
 import { FirebaseError } from "../../error";
 import { RunSingle } from "../../firebaseConfig";
 import { Options } from "../../options";
 import { logLabeledBullet } from "../../utils";
-import {
-  injectEnvVarsFromApphostingConfig,
-  prepareLocalBuildScratchDirectory,
-} from "../apphosting/prepare";
+import { prepareLocalBuildScratchDirectory } from "../apphosting/prepare";
 import { Context, Payload, ServiceDeploy } from "./args";
 import { prereqs } from "./prereqs";
 import {
@@ -52,17 +48,7 @@ async function prepareService(
       ? mainContainer(existing?.template)?.baseImageUri
       : context.baseImage || undefined;
 
-  const cfg = toAppHostingConfig(config);
-  const buildEnv: Record<string, EnvMap> = {};
-  const runtimeEnv: Record<string, EnvMap> = {};
-  await injectEnvVarsFromApphostingConfig([cfg], options, buildEnv, runtimeEnv);
-  const svc: ServiceDeploy = {
-    config,
-    existing,
-    baseImage,
-    buildEnv: buildEnv[serviceId],
-    runtimeEnv: runtimeEnv[serviceId],
-  };
+  const svc: ServiceDeploy = { config, existing, baseImage };
   if (!config.localBuild) {
     return svc;
   }
@@ -73,29 +59,24 @@ async function prepareService(
     }
     throw new FirebaseError(
       `Local builds require a base image. Set one for service ${serviceId} with ` +
-        `"firebase run:baseImage:set <baseImage> --service ${serviceId}".`,
+        `"firebase run:services:update --base-image <baseImage> --service ${serviceId}".`,
     );
   }
   logLabeledBullet("run", `Starting local build for service ${serviceId}`);
+  const cfg = toAppHostingConfig(config);
   const scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), `run-local-build-${serviceId}-`));
   try {
     await prepareLocalBuildScratchDirectory(options.config.projectDir, scratchDir, cfg);
     const { outputFiles, buildConfig } = await localBuild(
       context.projectId,
       scratchDir,
-      svc.buildEnv,
+      {},
       {
         nonInteractive: options.nonInteractive,
-        // Unlike App Hosting, Cloud Run doesn't require --allow-local-build-secrets.
-        allowLocalBuildSecrets: true,
         rootDir: config.rootDir,
       },
     );
     svc.localBuild = { scratchDir, outputFiles, runCommand: buildConfig.runCommand };
-    svc.runtimeEnv = {
-      ...Object.fromEntries((buildConfig.env || []).map((e) => [e.variable, e])),
-      ...svc.runtimeEnv,
-    };
   } catch (err: unknown) {
     fs.rmSync(scratchDir, { recursive: true, force: true });
     throw err;

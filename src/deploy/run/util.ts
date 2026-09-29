@@ -86,24 +86,18 @@ export function copyTemplate(service: runv2.Service): runv2.RevisionTemplate {
 }
 
 /**
- * Deploys a new revision of an existing service. Either sends it all traffic,
- * or pins traffic to the revisions that are serving it today.
+ * Deploys a new revision of an existing service and sends it all traffic.
  */
 export function deployRevision(
   service: runv2.Service,
   template: runv2.RevisionTemplate,
-  noTraffic?: boolean,
 ): Promise<runv2.Service> {
-  const traffic: runv2.TrafficTarget[] = noTraffic
-    ? (service.trafficStatuses ?? []).map(({ revision, percent, tag }) => ({
-        type: "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION",
-        revision,
-        percent,
-        tag,
-      }))
-    : [{ type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 }];
   return runv2.updateService(
-    { name: service.name, template, traffic },
+    {
+      name: service.name,
+      template,
+      traffic: [{ type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 }],
+    },
     { updateMask: ["template", "traffic"], masterTimeout: SERVICE_OPERATION_TIMEOUT_MS },
   );
 }

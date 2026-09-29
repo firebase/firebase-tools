@@ -23,10 +23,13 @@ describe("firebase deploy --only run", function (this: Mocha.Suite) {
     return service.template.containers![0];
   }
 
-  async function expectServing(): Promise<void> {
+  /** Checks that the service responds, and returns the Node.js version it runs on. */
+  async function expectServing(): Promise<string> {
     const { uri } = await runv2.getService(PROJECT, REGION, SERVICE_ID);
     const res = await fetch(uri!);
-    expect(await res.text()).to.equal("hello");
+    const body = await res.text();
+    expect(body).to.match(/^hello from v\d+\./);
+    return body.replace("hello from ", "");
   }
 
   function writeFirebaseJson(run: Record<string, unknown> = {}): void {
@@ -52,11 +55,7 @@ describe("firebase deploy --only run", function (this: Mocha.Suite) {
     });
     fs.writeFileSync(
       path.join(workDir, "index.js"),
-      'require("http").createServer((req, res) => res.end(process.env.GREETING)).listen(process.env.PORT);',
-    );
-    fs.writeFileSync(
-      path.join(workDir, "apphosting.yaml"),
-      "env:\n  - variable: GREETING\n    value: hello\n",
+      'require("http").createServer((req, res) => res.end("hello from " + process.version)).listen(process.env.PORT);',
     );
     writeFirebaseJson();
   });
@@ -77,6 +76,8 @@ describe("firebase deploy --only run", function (this: Mocha.Suite) {
     }
   });
 
+  let defaultNodeVersion: string;
+
   it("creates a service from source", async () => {
     const res = await firebase("deploy", "--only", "run");
     expect(res.proc.exitCode).to.equal(0);
@@ -85,40 +86,45 @@ describe("firebase deploy --only run", function (this: Mocha.Suite) {
     const service = await runv2.getService(PROJECT, REGION, SERVICE_ID);
     const container = service.template.containers![0];
     expect(container.baseImageUri).to.be.undefined;
-    expect(container.env).to.deep.include({ name: "GREETING", value: "hello" });
     expect(service.traffic).to.deep.equal([
       { type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 },
     ]);
-    await expectServing();
+    defaultNodeVersion = await expectServing();
   });
 
-  /** Runs a base image command and checks that it deployed without building or moving traffic. */
-  async function expectDeployedWithoutBuild(
-    cmd: string,
+  /**
+   * Runs run:services:update and checks that it rebuilt and deployed the service like deploy
+   * does. Returns the new main container and the Node.js version the service now runs on.
+   */
+  async function expectUpdated(
     ...args: string[]
-  ): Promise<runv2.Container> {
+  ): Promise<{ container: runv2.Container; nodeVersion: string }> {
     const before = await runv2.getService(PROJECT, REGION, SERVICE_ID);
-    const res = await firebase(cmd, ...args, "--service", SERVICE_ID);
+    const res = await firebase("run:services:update", "--service", SERVICE_ID, ...args);
     expect(res.proc.exitCode).to.equal(0);
-    expect(res.stdout).to.include("Deployed a new revision without building it");
+    expect(res.stdout).to.include("Deploy complete!");
 
     const after = await runv2.getService(PROJECT, REGION, SERVICE_ID);
     const container = after.template.containers![0];
-    expect(after.latestCreatedRevision).not.to.equal(before.latestCreatedRevision);
-    expect(container.image).to.equal(before.template.containers![0].image);
-    expect(after.trafficStatuses).to.deep.equal([
-      { ...before.trafficStatuses![0], type: "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION" },
+    const oldContainer = before.template.containers![0];
+    // Cloud Build deploys push a new image; local builds upload new source.
+    expect([container.image, container.sourceCode]).not.to.deep.equal([
+      oldContainer.image,
+      oldContainer.sourceCode,
     ]);
-    await expectServing();
-    return container;
+    expect(after.traffic).to.deep.equal([
+      { type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 },
+    ]);
+    return { container, nodeVersion: await expectServing() };
   }
 
-  it("sets a base image without building or sending traffic", async () => {
-    const container = await expectDeployedWithoutBuild("run:baseImage:set", "nodejs22");
+  it("sets a base image, then rebuilds and deploys", async () => {
+    const { container, nodeVersion } = await expectUpdated("--base-image", "nodejs22");
     expect(container.baseImageUri).to.include("nodejs22");
+    expect(nodeVersion).to.match(/^v22\./);
   });
 
-  it("builds with the base image, keeps settings changed outside the CLI, and ramps on deploy", async () => {
+  it("keeps the base image and settings changed outside the CLI on deploy", async () => {
     // Simulate a console change to a service-level setting.
     const service = await runv2.getService(PROJECT, REGION, SERVICE_ID);
     const template = { ...service.template, revision: undefined };
@@ -135,17 +141,26 @@ describe("firebase deploy --only run", function (this: Mocha.Suite) {
     expect(after.traffic).to.deep.equal([
       { type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 },
     ]);
-    await expectServing();
+    expect(await expectServing()).to.match(/^v22\./);
   });
 
-  it("changes the base image without building or sending traffic", async () => {
-    const container = await expectDeployedWithoutBuild("run:baseImage:set", "nodejs20");
+  it("changes the base image", async () => {
+    const { container, nodeVersion } = await expectUpdated("--base-image", "nodejs20");
     expect(container.baseImageUri).to.include("nodejs20");
+    expect(nodeVersion).to.match(/^v20\./);
   });
 
-  it("clears the base image without building or sending traffic", async () => {
-    const container = await expectDeployedWithoutBuild("run:baseImage:clear");
+  it("clears the base image", async () => {
+    const { container, nodeVersion } = await expectUpdated("--clear-base-image");
     expect(container).not.to.have.property("baseImageUri");
+    expect(container.resources?.limits?.memory).to.equal("1Gi");
+    expect(nodeVersion.split(".")[0]).to.equal(defaultNodeVersion.split(".")[0]);
+  });
+
+  it("requires a setting to update", async () => {
+    const res = await firebase("run:services:update", "--service", SERVICE_ID);
+    expect(res.proc.exitCode).not.to.equal(0);
+    expect(res.stdout + res.stderr).to.include("--base-image <baseImage> or --clear-base-image");
   });
 
   it("requires a base image for local builds", async () => {
@@ -155,17 +170,18 @@ describe("firebase deploy --only run", function (this: Mocha.Suite) {
     expect(failed.stdout + failed.stderr).to.include("Local builds require a base image");
   });
 
-  it("deploys a local build", async () => {
-    await expectDeployedWithoutBuild("run:baseImage:set", "nodejs22");
-    const res = await firebase("deploy", "--only", "run");
-    expect(res.proc.exitCode).to.equal(0);
-
-    const container = await mainContainer();
+  it("sets the base image of a local build, then builds locally and deploys", async () => {
+    const { container, nodeVersion } = await expectUpdated("--base-image", "nodejs22");
     expect(container.image).to.equal("scratch");
     expect(container.sourceCode).to.exist;
     expect(container.baseImageUri).to.include("nodejs22");
     expect(container.resources?.limits?.memory).to.equal("1Gi");
-    await expectServing();
+    expect(nodeVersion).to.match(/^v22\./);
+
+    const res = await firebase("deploy", "--only", "run");
+    expect(res.proc.exitCode).to.equal(0);
+    expect((await mainContainer()).baseImageUri).to.include("nodejs22");
+    expect(await expectServing()).to.match(/^v22\./);
   });
 
   it("rejects services that aren't in firebase.json", async () => {
