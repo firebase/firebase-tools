@@ -1,1 +1,2 @@
+- [fixed] Improve error message when billing is not enabled
 - Fixed the Firestore emulator exiting when it could not watch the rules file for changes. It now logs a warning instead. (#4298)
