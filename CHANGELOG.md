@@ -1,3 +1,1 @@
-- Added `appcheck:providers:list`, `appcheck:providers:get` and `appcheck:providers:set` to configure App Check attestation providers for an app.
-- Added `appcheck:apps:list` to show every app with its configured App Check providers.
-- Added web app support for Crashlytics MCP tools and prompts.>>>>>>> main
+- [fixed] Improve error message when billing is not enabled

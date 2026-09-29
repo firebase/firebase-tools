@@ -35,7 +35,7 @@ const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: apphostingOrigin(),
   apiVersion: API_VERSION,
-  masterTimeout: 25 * 60 * 1_000,
+  masterTimeout: 60 * 60 * 1_000,
   maxBackoff: 10_000,
 };
 
@@ -291,12 +291,29 @@ export async function createGitRepoLink(
 }
 
 /**
- * Ensures the service account is present the user has permissions to use it by
- * checking the `iam.serviceAccounts.actAs` permission. If the permissions
- * check fails, this returns an error. Otherwise, it attempts to provision the
- * service account.
+ * Prepares the service accounts a backend needs before it is created. This
+ * covers two functionally separate accounts, which may or may not be the same:
+ * - the runtime service account the backend will serve as, which the caller
+ *   must be able to act as (verified by `verifyRuntimeServiceAccountAccess`);
+ * - the default compute service account used by the build pipeline, which is
+ *   provisioned regardless of the runtime account
+ *   (`provisionDefaultComputeServiceAccount`).
  */
 export async function ensureAppHostingComputeServiceAccount(
+  projectId: string,
+  serviceAccount: string | null,
+): Promise<void> {
+  await verifyRuntimeServiceAccountAccess(projectId, serviceAccount);
+  await provisionDefaultComputeServiceAccount(projectId);
+}
+
+/**
+ * Verifies that the caller can act as the runtime service account the backend
+ * will serve as, by checking the `iam.serviceAccounts.actAs` permission. When
+ * no service account is provided, this checks the default compute service
+ * account, which may not exist yet and will be provisioned separately.
+ */
+async function verifyRuntimeServiceAccountAccess(
   projectId: string,
   serviceAccount: string | null,
 ): Promise<void> {
@@ -326,7 +343,6 @@ export async function ensureAppHostingComputeServiceAccount(
       );
     }
   }
-  await provisionDefaultComputeServiceAccount(projectId);
 }
 
 /**
@@ -411,20 +427,18 @@ export async function createBackend(
   return await createBackendAndPoll();
 }
 
+/**
+ * Ensures the default App Hosting compute service account exists and has the
+ * roles the build pipeline needs. Missing permissions to create the account or
+ * to grant its roles are surfaced as warnings rather than errors, so that
+ * least-privilege deploy identities are not blocked when the account is already
+ * set up.
+ */
 async function provisionDefaultComputeServiceAccount(projectId: string): Promise<void> {
-  try {
-    await iam.createServiceAccount(
-      projectId,
-      DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME,
-      "Default service account used to run builds and deploys for Firebase App Hosting",
-      "Firebase App Hosting compute service account",
-    );
-  } catch (err: unknown) {
-    // 409 Already Exists errors can safely be ignored.
-    if (getErrStatus(err) !== 409) {
-      throw err;
-    }
+  if (!(await defaultComputeServiceAccountExists(projectId))) {
+    await createDefaultComputeServiceAccount(projectId);
   }
+
   try {
     await addServiceAccountToRoles(
       projectId,
@@ -438,11 +452,64 @@ async function provisionDefaultComputeServiceAccount(projectId: string): Promise
       /* skipAccountLookup= */ true,
     );
   } catch (err: unknown) {
-    if (getErrStatus(err) === 400) {
+    const status = getErrStatus(err);
+    if (status === 400) {
       logWarning(
         "Your App Hosting compute service account is still being provisioned in the background. If you encounter an error, please try again after a few moments.",
       );
+    } else if (status === 403) {
+      logWarning(
+        "Failed to grant roles to the default App Hosting compute service account. Make sure you " +
+          "have the resourcemanager.projects.setIamPolicy permission. If the service account " +
+          "already has these roles, this warning can be safely ignored.",
+      );
     } else {
+      throw err;
+    }
+  }
+}
+
+/**
+ * Exported for unit testing. Returns whether the default App Hosting compute
+ * service account exists. If the caller does not have permission to look it up,
+ * this returns false so that we fall back to attempting to create it.
+ */
+export async function defaultComputeServiceAccountExists(projectId: string): Promise<boolean> {
+  try {
+    await iam.getServiceAccount(projectId, defaultComputeServiceAccountEmail(projectId));
+    return true;
+  } catch (err: unknown) {
+    const status = getErrStatus(err);
+    if (status === 404 || status === 403) {
+      return false;
+    }
+    throw err;
+  }
+}
+
+/**
+ * Creates the default App Hosting compute service account. Missing permission to
+ * create it is surfaced as a warning rather than an error, since the account may
+ * already exist even when we were unable to look it up.
+ */
+async function createDefaultComputeServiceAccount(projectId: string): Promise<void> {
+  try {
+    await iam.createServiceAccount(
+      projectId,
+      DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME,
+      "Default service account used to run builds and deploys for Firebase App Hosting",
+      "Firebase App Hosting compute service account",
+    );
+  } catch (err: unknown) {
+    const status = getErrStatus(err);
+    if (status === 403) {
+      logWarning(
+        "Failed to create the default App Hosting compute service account. Make sure you have " +
+          "the iam.serviceAccounts.create permission. If the service account already exists, " +
+          "this warning can be safely ignored.",
+      );
+    } else if (status !== 409) {
+      // 409 Already Exists errors can safely be ignored.
       throw err;
     }
   }

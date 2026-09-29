@@ -8,11 +8,14 @@ import {
   LogSink,
 } from "../gcp/cloudlogging";
 import { createOrUpdateTelemetryConfig, TelemetryConfig } from "./firebasetelemetry";
-import { logLabeledBullet, logLabeledSuccess } from "../utils";
+import { logLabeledBullet, logLabeledSuccess, logLabeledWarning } from "../utils";
+import { updateAppApiKeyRestriction } from "../gcp/apikeys";
+import { AppPlatform, getAppConfig } from "../management/apps";
 
 export const CRASHLYTICS_TELEMETRY_BUCKET_ID = "firebase-telemetry";
 export const CRASHLYTICS_TELEMETRY_SINK_ID = "firebase-telemetry-routing";
 export const CRASHLYTICS_TELEMETRY_RESOURCE_TYPE = "firebasetelemetry.googleapis.com/App";
+export const CRASHLYTICS_TELEMETRY_SERVICE = "firebasetelemetry.googleapis.com";
 
 export interface OnboardWebResult {
   bucket: LogBucket;
@@ -41,10 +44,33 @@ export async function onboardCrashlyticsWeb(
 
   logLabeledBullet("crashlytics", "Enabling required telemetry APIs...");
   await Promise.all([
-    ensure(projectId, "firebasetelemetry.googleapis.com", "crashlytics", false),
+    ensure(projectId, CRASHLYTICS_TELEMETRY_SERVICE, "crashlytics", false),
     ensure(projectId, "firebasetelemetryadmin.googleapis.com", "crashlytics", false),
   ]);
   logLabeledSuccess("crashlytics", "Telemetry APIs enabled.");
+
+  const appConfig = await getAppConfig(appId, AppPlatform.WEB);
+  if ("apiKey" in appConfig && appConfig.apiKey) {
+    logLabeledBullet(
+      "crashlytics",
+      "Ensuring Crashlytics Telemetry API is permitted in API key restrictions...",
+    );
+    try {
+      await updateAppApiKeyRestriction({
+        apiKey: appConfig.apiKey,
+        service: CRASHLYTICS_TELEMETRY_SERVICE,
+      });
+      logLabeledSuccess("crashlytics", "API key restrictions updated for Crashlytics Telemetry.");
+    } catch (err: unknown) {
+      logLabeledWarning("crashlytics", err instanceof Error ? err.message : String(err));
+    }
+  } else {
+    logLabeledWarning(
+      "crashlytics",
+      `No API key found for this app. If you configure an API key later, ` +
+        `please rerun this command or manually add '${CRASHLYTICS_TELEMETRY_SERVICE}' to its allowed APIs in the Google Cloud Console if the key is restricted.`,
+    );
+  }
 
   logLabeledBullet(
     "crashlytics",

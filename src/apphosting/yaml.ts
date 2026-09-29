@@ -1,11 +1,12 @@
 import { basename, dirname } from "path";
 import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
-import { Config, Env, store, RunConfig, ScriptsConfig, BuildConfig } from "./config";
+import { Config, Env, store, RunConfig } from "./config";
 import * as yaml from "yaml";
 import * as jsYaml from "js-yaml";
 import * as path from "path";
 import { fileExistsSync } from "../fsutils";
 import { FirebaseError } from "../error";
+import { ApiRunConfig } from "../gcp/apphosting";
 
 export type Secret = Omit<Env, "value">;
 export type EnvMap = Record<string, Omit<Env, "variable">>;
@@ -19,8 +20,6 @@ export class AppHostingYamlConfig {
   public filename: string | undefined;
   public env: EnvMap = {};
   public runConfig?: RunConfig;
-  public scripts?: ScriptsConfig;
-  public buildConfig?: BuildConfig;
 
   /**
    * Reads in the App Hosting yaml file found in filePath, parses the secrets and
@@ -42,12 +41,6 @@ export class AppHostingYamlConfig {
     }
     if (loadedAppHostingYaml.runConfig) {
       config.runConfig = loadedAppHostingYaml.runConfig;
-    }
-    if (loadedAppHostingYaml.scripts) {
-      config.scripts = loadedAppHostingYaml.scripts;
-    }
-    if (loadedAppHostingYaml.buildConfig) {
-      config.buildConfig = loadedAppHostingYaml.buildConfig;
     }
 
     return config;
@@ -88,20 +81,6 @@ export class AppHostingYamlConfig {
         ...other.runConfig,
       };
     }
-
-    if (other.scripts) {
-      this.scripts = {
-        ...this.scripts,
-        ...other.scripts,
-      };
-    }
-
-    if (other.buildConfig) {
-      this.buildConfig = {
-        ...this.buildConfig,
-        ...other.buildConfig,
-      };
-    }
   }
 
   /**
@@ -120,24 +99,12 @@ export class AppHostingYamlConfig {
     if (this.runConfig) {
       yamlConfigToWrite.runConfig = this.runConfig;
     }
-    if (this.scripts) {
-      yamlConfigToWrite.scripts = this.scripts;
-    }
-    if (this.buildConfig) {
-      yamlConfigToWrite.buildConfig = this.buildConfig;
-    }
 
     store(filePath, yaml.parseDocument(jsYaml.dump(yamlConfigToWrite)));
   }
 }
 
 // TODO: generalize into a utility function and remove the key from the array type.
-/**
- * Converts a list of environment variable objects into an environment variable map keyed by variable name.
- *
- * @param envs List of environment variables.
- * @return Map of environment variables keyed by variable name.
- */
 export function toEnvMap(envs: Env[]): EnvMap {
   return Object.fromEntries(
     envs.map((env) => {
@@ -147,14 +114,26 @@ export function toEnvMap(envs: Env[]): EnvMap {
   );
 }
 
-/**
- * Converts an environment variable map keyed by variable name into an array of environment variable objects.
- *
- * @param envs Map of environment variables.
- * @return Array of environment variable objects with variable property.
- */
 export function toEnvList(envs: EnvMap): Env[] {
   return Object.entries(envs).map(([variable, env]) => {
     return { ...env, variable };
   });
+}
+
+/**
+ * Converts yaml runConfig (e.g. memoryMiB) to the API schema expected by App Hosting backend (memoryMib).
+ */
+export function toApiRunConfig(runConfig?: RunConfig): ApiRunConfig | undefined {
+  if (!runConfig) {
+    return undefined;
+  }
+  const { memoryMiB, ...rest } = runConfig;
+  const apiConfig: ApiRunConfig = {
+    ...rest,
+    ...(memoryMiB !== undefined ? { memoryMib: memoryMiB } : {}),
+  };
+  if (Object.keys(apiConfig).length === 0) {
+    return undefined;
+  }
+  return apiConfig;
 }

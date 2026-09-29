@@ -27,24 +27,13 @@ export const APPHOSTING_LOCAL_YAML_FILE = "apphosting.local.yaml";
 
 export const APPHOSTING_YAML_FILE_REGEX = /^apphosting(\.[a-z0-9_]+)?\.yaml$/;
 
-export interface AppHostingRunConfig {
+export interface RunConfig {
   concurrency?: number;
   cpu?: number;
   memoryMiB?: number;
   minInstances?: number;
   maxInstances?: number;
-  vpcAccess?: {
-    connector?: string;
-    egress?: "ALL_TRAFFIC" | "PRIVATE_RANGES_ONLY";
-    networkInterfaces?: Array<{
-      network?: string;
-      subnetwork?: string;
-      tags?: string[];
-    }>;
-  };
 }
-
-export type RunConfig = AppHostingRunConfig;
 
 /** Where an environment variable can be provided. */
 export type Availability = "BUILD" | "RUNTIME";
@@ -57,21 +46,10 @@ export type Env = {
   availability?: Availability[];
 };
 
-export interface ScriptsConfig {
-  build?: string;
-  run?: string;
-}
-
-export interface BuildConfig {
-  buildCommand?: string;
-}
-
 /** Schema for apphosting.yaml. */
 export interface Config {
   runConfig?: RunConfig;
   env?: Env[];
-  scripts?: ScriptsConfig;
-  buildConfig?: BuildConfig;
 }
 
 /**
@@ -154,6 +132,7 @@ const dynamicDispatch = exports as {
  */
 export async function getAppHostingConfiguration(
   backendDir: string,
+  includeLocalConfigs = true,
 ): Promise<AppHostingYamlConfig> {
   const appHostingConfigPaths = dynamicDispatch.listAppHostingFilesInPath(backendDir);
   // generate a map to make it easier to interface between file name and it's path
@@ -173,14 +152,16 @@ export async function getAppHostingConfiguration(
     output.merge(baseFile, /* allowSecretsToBecomePlaintext= */ false);
   }
 
-  if (emulatorsFilePath) {
-    const emulatorsConfig = await AppHostingYamlConfig.loadFromFile(emulatorsFilePath);
-    output.merge(emulatorsConfig, /* allowSecretsToBecomePlaintext= */ false);
-  }
+  if (includeLocalConfigs) {
+    if (emulatorsFilePath) {
+      const emulatorsConfig = await AppHostingYamlConfig.loadFromFile(emulatorsFilePath);
+      output.merge(emulatorsConfig, /* allowSecretsToBecomePlaintext= */ false);
+    }
 
-  if (localFilePath) {
-    const localYamlConfig = await AppHostingYamlConfig.loadFromFile(localFilePath);
-    output.merge(localYamlConfig, /* allowSecretsToBecomePlaintext= */ true);
+    if (localFilePath) {
+      const localYamlConfig = await AppHostingYamlConfig.loadFromFile(localFilePath);
+      output.merge(localYamlConfig, /* allowSecretsToBecomePlaintext= */ true);
+    }
   }
 
   return output;
@@ -411,13 +392,6 @@ export async function overrideChosenEnv(
   return newEnv;
 }
 
-/**
- * Generates a suggested Secret Manager secret name for testing based on an environment variable name.
- * Converts underscores to hyphens and prepends a "test-" prefix.
- *
- * @param variable The environment variable name (e.g. API_KEY).
- * @return The suggested test secret key name (e.g. test-api-key).
- */
 export function suggestedTestKeyName(variable: string): string {
   return "test-" + variable.replace(/_/g, "-").toLowerCase();
 }

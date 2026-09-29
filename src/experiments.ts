@@ -93,8 +93,8 @@ export const ALL_EXPERIMENTS = experiments({
   kits: {
     shortDescription: "Enable Functions Kits.",
     fullDescription: "Adds support for Function Kits.",
-    public: false,
-    default: false,
+    public: true,
+    default: true,
   },
 
   // Emulator experiments
@@ -240,14 +240,31 @@ export const ALL_EXPERIMENTS = experiments({
   },
   secretEnvParams: {
     shortDescription:
-      "Enable writing the backing resource binding for a Functions secret param to .env",
-    default: false,
-    public: false,
+      "Enable reading the backing resource binding for a Functions secret param from .env",
+    default: true,
+    public: true,
   },
   extdeprecationwarnings: {
     shortDescription: "Show deprecation warnings for Firebase Extensions CLI commands.",
     default: true,
     public: true,
+  },
+  extMigrationFeatures: {
+    shortDescription:
+      "Enable features intended to assist with the migration of Extension instances to Kits.",
+    default: true,
+    public: true,
+  },
+  fdcapimigration: {
+    shortDescription: "Enable the FDC API schema migration path.",
+    fullDescription: "API based Schema Migration behind experimental flag.",
+    default: false,
+    public: false,
+  },
+  writeDefaultSecretBindings: {
+    shortDescription: "Write Cloud Secret Manager bindings to the default resource ID to .env.",
+    default: false,
+    public: false,
   },
 });
 

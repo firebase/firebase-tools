@@ -3,7 +3,7 @@ import { FirebaseError } from "../error";
 import { runOrigin } from "../api";
 import * as proto from "./proto";
 import * as iam from "./iam";
-import { backoff } from "../throttler/throttler";
+import { backoff } from "../utils";
 import { logger } from "../logger";
 import { listEntries, LogEntry } from "./cloudlogging";
 

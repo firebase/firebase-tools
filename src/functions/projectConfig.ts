@@ -240,28 +240,42 @@ function assertUniqueSourcePrefixPair(config: ValidatedConfig): void {
 }
 
 /**
- * Validate each instance ID format and ensure instance IDs are unique across all kit stanzas in the project.
+ * Check that the kit instance ID is 40 characters or less and only contains allowed characters.
  */
-export function validateKitInstances(
-  instances: Record<string, string>,
+export function validateKitInstanceId(instanceId: string): void {
+  if (
+    instanceId.length === 0 ||
+    instanceId.length > 40 ||
+    !/^[a-z0-9_](?:[a-z0-9_-]*[a-z0-9_])?$/.test(instanceId)
+  ) {
+    throw new FirebaseError(
+      `Invalid kit instance ID '${instanceId}'. Instance ID must be 40 characters or less, ` +
+        "can contain only lowercase letters, numeric characters, underscores, and dashes, and cannot start or end with a dash.",
+    );
+  }
+}
+
+/**
+ * Validate each instance ID format and ensure instance IDs are unique across all kit stanzas in the project.
+ * Adds each validated instance ID to `allProjectInstanceIds`.
+ * @param instanceIds An iterable collection of instance IDs to validate.
+ * @param allProjectInstanceIds The set of all instance IDs across the project to check against and update.
+ */
+export function validateAndAddKitInstances(
+  instanceIds: Iterable<string>,
   allProjectInstanceIds: Set<string>,
 ): void {
-  for (const instanceId of Object.keys(instances)) {
-    if (
-      instanceId.length === 0 ||
-      instanceId.length > 40 ||
-      !/^[a-z0-9_](?:[a-z0-9_-]*[a-z0-9_])?$/.test(instanceId)
-    ) {
-      throw new FirebaseError(
-        `Invalid kit instance ID '${instanceId}'. Instance ID must be 40 characters or less, ` +
-          "can contain only lowercase letters, numeric characters, underscores, and dashes, and cannot start or end with a dash.",
-      );
-    }
-    if (allProjectInstanceIds.has(instanceId)) {
+  const seenInBatch = new Set<string>();
+  for (const instanceId of instanceIds) {
+    validateKitInstanceId(instanceId);
+    if (seenInBatch.has(instanceId) || allProjectInstanceIds.has(instanceId)) {
       throw new FirebaseError(
         `functions kit instance ID must be unique across all kits, but '${instanceId}' was used more than once.`,
       );
     }
+    seenInBatch.add(instanceId);
+  }
+  for (const instanceId of seenInBatch) {
     allProjectInstanceIds.add(instanceId);
   }
 }
@@ -275,7 +289,7 @@ function assertUniqueKitInstancesAndCodebases(config: ValidatedConfig): void {
       codebases.add(c.codebase);
     }
     if ("instances" in c && c.instances) {
-      validateKitInstances(c.instances, instanceIds);
+      validateAndAddKitInstances(Object.keys(c.instances), instanceIds);
     }
   }
 

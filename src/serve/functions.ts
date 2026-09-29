@@ -43,7 +43,7 @@ export class FunctionsServer {
             prefix: projectConfig.addKitPrefix(instanceId),
             configDir: path.join(options.config.projectDir, configDir),
             runtime: localCfg.runtime,
-            env: {},
+            env: { FIREBASE_KIT_INSTANCE_ID: instanceId },
             secretEnv: [],
           });
         }

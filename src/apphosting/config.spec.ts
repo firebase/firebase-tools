@@ -600,5 +600,23 @@ env:
 
       await expect(config.getAppHostingConfiguration("./")).to.be.rejectedWith(FirebaseError);
     });
+
+    it("should ignore emulator and local yaml files when includeLocalConfigs is false", async () => {
+      listAppHostingFilesInPathStub.returns([
+        "/parent/cwd/apphosting.yaml",
+        "/parent/cwd/apphosting.emulator.yaml",
+        "/parent/apphosting.local.yaml",
+      ]);
+
+      loadAppHostingYamlStub.withArgs("/parent/cwd/apphosting.yaml").returns(configOne);
+      loadAppHostingYamlStub.withArgs("/parent/cwd/apphosting.emulator.yaml").returns(configTwo);
+      loadAppHostingYamlStub
+        .withArgs("/parent/apphosting.local.yaml")
+        .returns(configSecretsToPlaintext);
+
+      const apphostingConfig = await config.getAppHostingConfiguration("./", false);
+
+      expect(apphostingConfig.env).to.deep.equal(apphostingYamlEnvOne);
+    });
   });
 });
