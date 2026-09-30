@@ -526,10 +526,7 @@ describe("function triggers", () => {
         test.writeToAuth(),
       ]);
 
-      await waitForCondition(
-        () => test.authTriggerCount >= 1,
-        EMULATORS_WRITE_DELAY_MS * 3,
-      );
+      await waitForCondition(() => test.authTriggerCount >= 1, EMULATORS_WRITE_DELAY_MS * 3);
       // TODO(danielylee): Trying to respond to all triggers at once often results in Functions
       // Emulator hanging indefinitely. Only triggering 1 trigger for now. Re-enable other triggers
       // once the root cause is identified.

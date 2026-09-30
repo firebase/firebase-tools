@@ -424,4 +424,3 @@ export {
   DEFAULT_WAIT_INTERVAL_MS,
   waitForCondition,
 } from "../../src/test/helpers/waitForCondition";
-
