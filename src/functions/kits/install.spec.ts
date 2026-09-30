@@ -8,6 +8,7 @@ import {
   generateUniqueId,
   parseNpmPackageSpecifier,
   validateNpmPackageName,
+  validateNpmPackageExists,
   sanitizePackageNameToKitName,
   isThirdPartyPackage,
   checkPackageHasShrinkwrap,
@@ -44,6 +45,7 @@ import * as build from "../../deploy/functions/build";
 import * as params from "../../deploy/functions/params";
 import * as functionsConfig from "../../functionsConfig";
 import * as runtimes from "../../deploy/functions/runtimes";
+import * as supported from "../../deploy/functions/runtimes/supported";
 import * as iam from "../../gcp/iam";
 import * as initSpawn from "../../init/spawn";
 import * as prompt from "../../prompt";
@@ -64,6 +66,9 @@ describe("functions/kits/install", () => {
   let statStub: sinon.SinonStub;
   let fsRemoveStub: sinon.SinonStub;
   let fsReaddirStub: sinon.SinonStub;
+  let getFirebaseConfigStub: sinon.SinonStub;
+  let getRuntimeDelegateStub: sinon.SinonStub;
+  let discoverBuildStub: sinon.SinonStub;
 
   beforeEach(() => {
     sinon.stub(experiments, "assertEnabled");
@@ -84,6 +89,19 @@ describe("functions/kits/install", () => {
     seedKitInstanceEnvStub = sinon.stub(env, "seedKitInstanceEnv");
     loggerInfoStub = sinon.stub(logger, "info");
     loggerWarnStub = sinon.stub(logger, "warn");
+    getFirebaseConfigStub = sinon
+      .stub(functionsConfig, "getFirebaseConfig")
+      .resolves({ projectId: "my-project" });
+    discoverBuildStub = sinon.stub().resolves(build.empty());
+    getRuntimeDelegateStub = sinon.stub(runtimes, "getRuntimeDelegate").resolves({
+      language: "nodejs",
+      runtime: supported.latest("nodejs"),
+      bin: "node",
+      validate: sinon.stub().resolves(),
+      build: sinon.stub().resolves(),
+      watch: sinon.stub().resolves(() => Promise.resolve()),
+      discoverBuild: discoverBuildStub,
+    });
   });
 
   afterEach(() => {
@@ -306,6 +324,52 @@ describe("functions/kits/install", () => {
       expect(res).to.deep.equal({
         packageName: "my-kit",
       });
+    });
+  });
+
+  describe("validateNpmPackageExists", () => {
+    it("should resolve when npm view returns a valid version", async () => {
+      spawnWithOutputStub
+        .withArgs("npm", ["view", "@firebase-function-kits/firestore-bigquery-export", "version"])
+        .resolves("1.0.0\n");
+
+      await expect(validateNpmPackageExists("@firebase-function-kits/firestore-bigquery-export")).to
+        .not.be.rejected;
+    });
+
+    it("should throw FirebaseError when npm view fails", async () => {
+      spawnWithOutputStub
+        .withArgs("npm", ["view", "@firebase/my-silly-package", "version"])
+        .rejects(
+          new Error(
+            "Error: spawn(npm, [view, @firebase/my-silly-package, version]) \n exited with code: 1",
+          ),
+        );
+
+      await expect(validateNpmPackageExists("@firebase/my-silly-package")).to.be.rejectedWith(
+        FirebaseError,
+        "NPM package '@firebase/my-silly-package' could not be found in the npm registry. Please verify the package name and version.",
+      );
+    });
+
+    it("should throw FirebaseError when npm view returns empty output", async () => {
+      spawnWithOutputStub
+        .withArgs("npm", ["view", "@firebase/empty-package", "version"])
+        .resolves("   \n");
+
+      await expect(validateNpmPackageExists("@firebase/empty-package")).to.be.rejectedWith(
+        FirebaseError,
+        "NPM package '@firebase/empty-package' could not be found in the npm registry. Please verify the package name and version.",
+      );
+    });
+
+    it("should reject invalid package name format without spawning npm view", async () => {
+      await expect(validateNpmPackageExists("my-kit@")).to.be.rejectedWith(
+        FirebaseError,
+        /Invalid NPM package name 'my-kit@'/,
+      );
+
+      expect(spawnWithOutputStub).to.not.have.been.called;
     });
   });
 
@@ -911,17 +975,6 @@ describe("functions/kits/install", () => {
       expect(source.defaultKitName).to.equal("@firebase-function-kits/firestore-export");
       expect(source.sourcePackageName).to.equal("@firebase-function-kits/firestore-export");
       expect(source.hasBuildScript).to.be.true;
-    });
-
-    it("should reject malformed package specifier with trailing @", async () => {
-      await expect(
-        resolvePackageSource({
-          config: { projectDir: "/mock/project" } as Config,
-          package: "my-kit@",
-          template: "installation",
-          nonInteractive: true,
-        }),
-      ).to.be.rejectedWith(FirebaseError, /Invalid NPM package name 'my-kit@'/);
     });
   });
 
@@ -1944,16 +1997,9 @@ describe("functions/kits/install", () => {
 
   describe("discoverKitBuild", () => {
     it("should pass firebase envs including FIREBASE_KIT_INSTANCE_ID to discoverBuild when instanceId is provided", async () => {
-      const delegate = {
-        discoverBuild: sinon.stub().resolves(build.empty()),
-      };
-      sinon
-        .stub(runtimes, "getRuntimeDelegate")
-        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
-
       await discoverKitBuild({ instanceId: "my-inst", projectId: "test-proj" }, "/mock/source");
 
-      expect(delegate.discoverBuild).to.have.been.calledOnceWithExactly(
+      expect(discoverBuildStub).to.have.been.calledOnceWithExactly(
         {},
         {
           FIREBASE_CONFIG: JSON.stringify({ projectId: "test-proj" }),
@@ -1964,16 +2010,9 @@ describe("functions/kits/install", () => {
     });
 
     it("should omit FIREBASE_KIT_INSTANCE_ID from discoverBuild envs when instanceId is omitted", async () => {
-      const delegate = {
-        discoverBuild: sinon.stub().resolves(build.empty()),
-      };
-      sinon
-        .stub(runtimes, "getRuntimeDelegate")
-        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
-
       await discoverKitBuild({ projectId: "test-proj" }, "/mock/source");
 
-      expect(delegate.discoverBuild).to.have.been.calledOnceWithExactly(
+      expect(discoverBuildStub).to.have.been.calledOnceWithExactly(
         {},
         {
           FIREBASE_CONFIG: JSON.stringify({ projectId: "test-proj" }),
@@ -1994,13 +2033,7 @@ describe("functions/kits/install", () => {
         params: [],
         requiredRoles: [],
       };
-
-      const delegate = {
-        discoverBuild: sinon.stub().resolves(mockBuild),
-      };
-      sinon
-        .stub(runtimes, "getRuntimeDelegate")
-        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      discoverBuildStub.resolves(mockBuild);
 
       await printKitFirstDeployReport({ instanceId: "my-inst", absSourcePath: "/mock/source" });
 
@@ -2026,13 +2059,7 @@ describe("functions/kits/install", () => {
         params: [],
         requiredRoles: [],
       };
-
-      const delegate = {
-        discoverBuild: sinon.stub().resolves(mockBuild),
-      };
-      sinon
-        .stub(runtimes, "getRuntimeDelegate")
-        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      discoverBuildStub.resolves(mockBuild);
 
       await printKitFirstDeployReport({ instanceId: "my-inst", absSourcePath: "/mock/source" });
 
@@ -2061,13 +2088,7 @@ describe("functions/kits/install", () => {
         params: [],
         requiredRoles: [],
       };
-
-      const delegate = {
-        discoverBuild: sinon.stub().resolves(mockBuild),
-      };
-      sinon
-        .stub(runtimes, "getRuntimeDelegate")
-        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      discoverBuildStub.resolves(mockBuild);
 
       await printKitFirstDeployReport({ instanceId: "my-inst", absSourcePath: "/mock/source" });
 
@@ -2090,13 +2111,7 @@ describe("functions/kits/install", () => {
         params: [],
         requiredRoles: [],
       };
-
-      const delegate = {
-        discoverBuild: sinon.stub().resolves(mockBuild),
-      };
-      sinon
-        .stub(runtimes, "getRuntimeDelegate")
-        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      discoverBuildStub.resolves(mockBuild);
 
       await printKitFirstDeployReport({ instanceId: "my-inst", absSourcePath: "/mock/source" });
 
@@ -2117,13 +2132,7 @@ describe("functions/kits/install", () => {
         params: [],
         requiredRoles: ["roles/datastore.user", "roles/bigquery.dataEditor"],
       };
-
-      const delegate = {
-        discoverBuild: sinon.stub().resolves(mockBuild),
-      };
-      sinon
-        .stub(runtimes, "getRuntimeDelegate")
-        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      discoverBuildStub.resolves(mockBuild);
       sinon.stub(iam, "getRoleName").callsFake((role: string) => {
         if (role === "roles/datastore.user") return Promise.resolve("Cloud Datastore User");
         if (role === "roles/bigquery.dataEditor") return Promise.resolve("BigQuery Data Editor");
@@ -2162,13 +2171,7 @@ describe("functions/kits/install", () => {
         params: [],
         requiredRoles: ["roles/bigquery.dataEditor"],
       };
-
-      const delegate = {
-        discoverBuild: sinon.stub().resolves(mockBuild),
-      };
-      sinon
-        .stub(runtimes, "getRuntimeDelegate")
-        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      discoverBuildStub.resolves(mockBuild);
       sinon.stub(iam, "getRoleName").resolves("BigQuery Data Editor");
 
       await printKitFirstDeployReport({ instanceId: "my-inst", absSourcePath: "/mock/source" });
@@ -2222,13 +2225,7 @@ describe("functions/kits/install", () => {
         params: [],
         requiredRoles: [],
       };
-
-      const delegate = {
-        discoverBuild: sinon.stub().resolves(mockBuild),
-      };
-      sinon
-        .stub(runtimes, "getRuntimeDelegate")
-        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      discoverBuildStub.resolves(mockBuild);
 
       await printKitFirstDeployReport({ instanceId: "my-inst", absSourcePath: "/mock/source" });
 
@@ -2237,7 +2234,7 @@ describe("functions/kits/install", () => {
     });
 
     it("should handle discovery errors gracefully without throwing", async () => {
-      sinon.stub(runtimes, "getRuntimeDelegate").rejects(new Error("Discovery failed"));
+      getRuntimeDelegateStub.rejects(new Error("Discovery failed"));
 
       await expect(
         printKitFirstDeployReport({ instanceId: "my-inst", absSourcePath: "/mock/source" }),
@@ -2245,8 +2242,6 @@ describe("functions/kits/install", () => {
     });
 
     it("should use preDiscoveredBuild when provided without rediscovering build", async () => {
-      const getRuntimeDelegateStub = sinon.stub(runtimes, "getRuntimeDelegate");
-
       const mockBuild: build.Build = {
         requiredAPIs: [{ api: "storage.googleapis.com" }],
         endpoints: {},
@@ -2275,7 +2270,6 @@ describe("functions/kits/install", () => {
     let writeResolvedParamsStub: sinon.SinonStub;
     let writeResolvedSecretRefsStub: sinon.SinonStub;
     let resolveParamsStub: sinon.SinonStub;
-    let getFirebaseConfigStub: sinon.SinonStub;
 
     beforeEach(() => {
       loadUserEnvsStub = sinon.stub(functionsEnv, "loadUserEnvs").returns({});
@@ -2285,9 +2279,6 @@ describe("functions/kits/install", () => {
         paramValues: {},
         secretRefs: {},
       });
-      getFirebaseConfigStub = sinon
-        .stub(functionsConfig, "getFirebaseConfig")
-        .resolves({ projectId: "my-project" });
     });
 
     it("should return early if params array is empty or undefined", async () => {
@@ -2617,12 +2608,7 @@ describe("functions/kits/install", () => {
         endpoints: {},
         params: paramList,
       };
-      const delegate = {
-        discoverBuild: sinon.stub().resolves(mockBuild),
-      };
-      sinon
-        .stub(runtimes, "getRuntimeDelegate")
-        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      discoverBuildStub.resolves(mockBuild);
 
       const resolveParamsStub = sinon.stub(params, "resolveParams").resolves({
         paramValues: { TABLE_NAME: new params.ParamValue("my_table", false, { string: true }) },
@@ -2643,7 +2629,7 @@ describe("functions/kits/install", () => {
       });
 
       expect(res.action).to.equal("addedInstance");
-      expect(delegate.discoverBuild).to.have.been.calledWith(
+      expect(discoverBuildStub).to.have.been.calledWith(
         {},
         sinon.match({ FIREBASE_KIT_INSTANCE_ID: "inst2" }),
       );
@@ -2766,12 +2752,7 @@ describe("functions/kits/install", () => {
         endpoints: {},
         params: paramList,
       };
-      const delegate = {
-        discoverBuild: sinon.stub().resolves(mockBuild),
-      };
-      sinon
-        .stub(runtimes, "getRuntimeDelegate")
-        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      discoverBuildStub.resolves(mockBuild);
 
       const resolveParamsStub = sinon.stub(params, "resolveParams").resolves({
         paramValues: { TABLE_NAME: new params.ParamValue("my_table", false, { string: true }) },
@@ -3268,6 +3249,36 @@ describe("functions/kits/install", () => {
           package: "@scope/pkg/extra@1.0.0",
         }),
       ).to.be.rejectedWith(FirebaseError, /Invalid NPM package name/);
+    });
+
+    it("should throw an error before prompting or scaffolding if package does not exist in npm registry", async () => {
+      const writeProjectFileStub = sinon.stub();
+      const askWriteProjectFileStub = sinon.stub().resolves();
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: writeProjectFileStub,
+        askWriteProjectFile: askWriteProjectFileStub,
+      } as unknown as Config;
+
+      spawnWithOutputStub
+        .withArgs("npm", ["view", "@firebase/my-silly-package", "version"])
+        .rejects(new Error("npm error code E404"));
+
+      await expect(
+        installKitOrInstance({
+          config: mockConfig,
+          package: "@firebase/my-silly-package",
+        }),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        /NPM package '@firebase\/my-silly-package' could not be found in the npm registry/,
+      );
+
+      expect(loggerWarnStub).to.not.have.been.called;
+      expect(askWriteProjectFileStub).to.not.have.been.called;
+      expect(writeProjectFileStub).to.not.have.been.called;
     });
 
     it("should throw an error if template has an invalid template name", async () => {
@@ -3778,12 +3789,7 @@ describe("functions/kits/install", () => {
         endpoints: {},
         params: paramList,
       };
-      const delegate = {
-        discoverBuild: sinon.stub().resolves(mockBuild),
-      };
-      sinon
-        .stub(runtimes, "getRuntimeDelegate")
-        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      discoverBuildStub.resolves(mockBuild);
 
       const resolveParamsStub = sinon.stub(params, "resolveParams").resolves({
         paramValues: {
@@ -3820,12 +3826,7 @@ describe("functions/kits/install", () => {
         endpoints: {},
         params: paramList,
       };
-      const delegate = {
-        discoverBuild: sinon.stub().resolves(mockBuild),
-      };
-      sinon
-        .stub(runtimes, "getRuntimeDelegate")
-        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      discoverBuildStub.resolves(mockBuild);
 
       sinon
         .stub(params, "resolveParams")
@@ -3994,12 +3995,7 @@ describe("functions/kits/install", () => {
         endpoints: {},
         params: paramList,
       };
-      const delegate = {
-        discoverBuild: sinon.stub().resolves(mockBuild),
-      };
-      sinon
-        .stub(runtimes, "getRuntimeDelegate")
-        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      discoverBuildStub.resolves(mockBuild);
       sinon.stub(params, "resolveParams").rejects(new FirebaseError("Failed to resolve param"));
 
       (fs.pathExists as sinon.SinonStub)
@@ -4082,12 +4078,7 @@ describe("functions/kits/install", () => {
         params: [],
         requiredRoles: ["roles/viewer"],
       };
-      const delegate = {
-        discoverBuild: sinon.stub().resolves(mockBuild),
-      };
-      sinon
-        .stub(runtimes, "getRuntimeDelegate")
-        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      discoverBuildStub.resolves(mockBuild);
       sinon.stub(iam, "getRoleName").rejects(new Error("Reporting error"));
 
       await expect(
@@ -4139,12 +4130,7 @@ describe("functions/kits/install", () => {
         endpoints: {},
         params: paramList,
       };
-      const delegate = {
-        discoverBuild: sinon.stub().resolves(mockBuild),
-      };
-      sinon
-        .stub(runtimes, "getRuntimeDelegate")
-        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      discoverBuildStub.resolves(mockBuild);
       sinon.stub(params, "resolveParams").rejects(new FirebaseError("Required param missing"));
 
       await expect(
@@ -4207,12 +4193,7 @@ describe("functions/kits/install", () => {
         endpoints: {},
         params: paramList,
       };
-      const delegate = {
-        discoverBuild: sinon.stub().resolves(mockBuild),
-      };
-      sinon
-        .stub(runtimes, "getRuntimeDelegate")
-        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      discoverBuildStub.resolves(mockBuild);
       sinon.stub(params, "resolveParams").rejects(new FirebaseError("Required param missing"));
 
       await expect(

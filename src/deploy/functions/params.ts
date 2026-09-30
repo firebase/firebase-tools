@@ -901,7 +901,9 @@ async function promptSelect<T extends RawParamValue>(
   converter: (res: string) => T | retryInput,
 ): Promise<T> {
   const response = await select<string>({
-    default: resolvedDefault as string,
+    // Choice values are stringified below, so the default must be too or a
+    // boolean/number default never matches and the first option is preselected.
+    default: resolvedDefault?.toString(),
     message: prompt,
     instructions: "(Use arrow keys to navigate, and Enter to confirm your choice)",
     choices: input.select.options.map((option: SelectOptions<T>): ListItem => {
@@ -927,13 +929,16 @@ async function promptSelectMultiple<T extends string>(
   enforceNonEmpty = false,
   converter: (res: string[]) => T[] | retryInput,
 ): Promise<T[]> {
+  const preselected = new Set((resolvedDefault ?? []).map(String));
   const response = await checkbox({
+    // `default` only serves non-interactive mode; the checkbox prompt itself
+    // preselects through `checked` on each choice.
     default: resolvedDefault,
     message: prompt,
     instructions: "(Press Space to select, and Enter to confirm your choices)",
     choices: input.multiSelect.options.map((option: SelectOptions<string>): ListItem => {
       return {
-        checked: false,
+        checked: preselected.has(option.value.toString()),
         name: option.label,
         value: option.value.toString(),
       };
