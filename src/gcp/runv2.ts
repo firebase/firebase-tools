@@ -188,10 +188,10 @@ export async function submitBuild(
     `/projects/${projectId}/locations/${location}/builds:submit`,
     build,
   );
-  if (res.body.baseImageWarning) {
+  if (res.body?.baseImageWarning) {
     logger.warn(res.body.baseImageWarning);
   }
-  const cloudBuild = res.body.buildOperation?.metadata?.build;
+  const cloudBuild = res.body?.buildOperation?.metadata?.build;
   if (!cloudBuild) {
     throw new FirebaseError("Failed to submit build: no build was returned.");
   }
@@ -203,9 +203,9 @@ export async function submitBuild(
     operationResourceName: cloudBuild.name,
     masterTimeout: 30 * 60 * 1000,
     maxBackoff: 10_000,
-    doneFn: (b: { status?: string }) => {
-      status = b.status;
-      return !PENDING_BUILD_STATUSES.includes(b.status ?? "STATUS_UNKNOWN");
+    doneFn: (b?: { status?: string }) => {
+      status = b?.status;
+      return !b?.status || !PENDING_BUILD_STATUSES.includes(b.status);
     },
   });
   if (status !== "SUCCESS") {
