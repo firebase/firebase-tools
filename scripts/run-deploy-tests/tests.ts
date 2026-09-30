@@ -4,11 +4,15 @@ import * as os from "os";
 import * as path from "path";
 import * as cli from "../functions-deploy-tests/cli";
 import * as runv2 from "../../src/gcp/runv2";
+import * as secretManager from "../../src/gcp/secretManager";
+import { BUILD_ENV_ANNOTATION } from "../../src/deploy/run/buildEnv";
 import { requireAuth } from "../../src/requireAuth";
 
 const PROJECT = process.env.FBTOOLS_TARGET_PROJECT || process.env.GCLOUD_PROJECT || "";
 const REGION = "us-central1";
 const SERVICE_ID = `run-e2e-${Date.now()}`;
+const SECRET_ID = SERVICE_ID;
+const SECRET_VALUE = `secret-${Date.now()}`;
 
 describe("firebase deploy --only run", function (this: Mocha.Suite) {
   this.timeout(600_000);
@@ -18,6 +22,11 @@ describe("firebase deploy --only run", function (this: Mocha.Suite) {
     return cli.exec(cmd, PROJECT, [...args, "--non-interactive"], workDir, false);
   }
 
+  async function mainContainer(): Promise<runv2.Container> {
+    const service = await runv2.getService(PROJECT, REGION, SERVICE_ID);
+    return service.template.containers![0];
+  }
+
   /** Checks that the service responds, and returns the Node.js version it runs on. */
   async function expectServing(): Promise<string> {
     const { uri } = await runv2.getService(PROJECT, REGION, SERVICE_ID);
@@ -25,6 +34,24 @@ describe("firebase deploy --only run", function (this: Mocha.Suite) {
     const body = await res.text();
     expect(body).to.match(/^hello from v\d+\./);
     return body.replace("hello from ", "");
+  }
+
+  /** Returns the value of BUILD_VALUE that the service's last build saw. */
+  async function builtValue(): Promise<string> {
+    const { uri } = await runv2.getService(PROJECT, REGION, SERVICE_ID);
+    return (await fetch(`${uri!}/build`)).text();
+  }
+
+  /** Sets the service's build env annotation, keeping its other annotations. */
+  async function setBuildEnv(env: Record<string, unknown>): Promise<void> {
+    const service = await runv2.getService(PROJECT, REGION, SERVICE_ID);
+    await runv2.updateService(
+      {
+        name: service.name,
+        annotations: { ...service.annotations, [BUILD_ENV_ANNOTATION]: JSON.stringify(env) },
+      } as unknown as runv2.Service,
+      { updateMask: ["annotations"] },
+    );
   }
 
   function writeFirebaseJson(run: Record<string, unknown> = {}): void {
@@ -41,7 +68,10 @@ describe("firebase deploy --only run", function (this: Mocha.Suite) {
     const pkg = { name: "run-e2e", version: "1.0.0" };
     fs.writeJsonSync(path.join(workDir, "package.json"), {
       ...pkg,
-      scripts: { start: "node index.js" },
+      scripts: {
+        start: "node index.js",
+        build: `node -e "require('fs').writeFileSync('build.txt', process.env.BUILD_VALUE || '')"`,
+      },
     });
     fs.writeJsonSync(path.join(workDir, "package-lock.json"), {
       ...pkg,
@@ -50,13 +80,21 @@ describe("firebase deploy --only run", function (this: Mocha.Suite) {
     });
     fs.writeFileSync(
       path.join(workDir, "index.js"),
-      "require('http').createServer((req, res) => res.end('hello from ' + process.version)).listen(process.env.PORT);\n",
+      [
+        'const fs = require("fs");',
+        "require('http').createServer((req, res) => res.end(req.url === '/build'",
+        "  ? (fs.existsSync('build.txt') ? fs.readFileSync('build.txt', 'utf8') : 'not built')",
+        "  : 'hello from ' + process.version)).listen(process.env.PORT);",
+      ].join("\n"),
     );
     writeFirebaseJson();
+    await secretManager.createSecret(PROJECT, SECRET_ID, {});
+    await secretManager.addVersion(PROJECT, SECRET_ID, SECRET_VALUE);
   });
 
   after(async () => {
     await runv2.deleteService(PROJECT, REGION, SERVICE_ID).catch(() => undefined);
+    await secretManager.deleteSecret(PROJECT, SECRET_ID).catch(() => undefined);
     fs.removeSync(workDir);
   });
 
@@ -85,6 +123,7 @@ describe("firebase deploy --only run", function (this: Mocha.Suite) {
       { type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 },
     ]);
     defaultNodeVersion = await expectServing();
+    expect(await builtValue()).to.equal("");
   });
 
   /**
@@ -102,6 +141,7 @@ describe("firebase deploy --only run", function (this: Mocha.Suite) {
     const after = await runv2.getService(PROJECT, REGION, SERVICE_ID);
     const container = after.template.containers![0];
     const oldContainer = before.template.containers![0];
+    // Cloud Build deploys push a new image; local builds upload new source.
     expect([container.image, container.sourceCode]).not.to.deep.equal([
       oldContainer.image,
       oldContainer.sourceCode,
@@ -151,10 +191,50 @@ describe("firebase deploy --only run", function (this: Mocha.Suite) {
     expect(nodeVersion.split(".")[0]).to.equal(defaultNodeVersion.split(".")[0]);
   });
 
+  it("passes build env from the service to Cloud Build", async () => {
+    await setBuildEnv({ BUILD_VALUE: "plain" });
+    const res = await firebase("deploy", "--only", "run");
+    expect(res.proc.exitCode).to.equal(0);
+    expect(res.stdout).to.include(`Using build environment variables from ${BUILD_ENV_ANNOTATION}`);
+    expect(await builtValue()).to.equal("plain");
+    // Deploys don't touch service-level annotations.
+    const service = await runv2.getService(PROJECT, REGION, SERVICE_ID);
+    expect(service.annotations?.[BUILD_ENV_ANNOTATION]).to.equal('{"BUILD_VALUE":"plain"}');
+  });
+
+  it("rejects build secrets on Cloud Build", async () => {
+    await setBuildEnv({ BUILD_VALUE: { secret: SECRET_ID, version: "1" } });
+    const res = await firebase("deploy", "--only", "run");
+    expect(res.proc.exitCode).not.to.equal(0);
+    expect(res.stdout + res.stderr).to.include("has build secrets (BUILD_VALUE)");
+  });
+
   it("requires a setting to update", async () => {
     const res = await firebase("run:services:update", SERVICE_ID);
     expect(res.proc.exitCode).not.to.equal(0);
     expect(res.stdout + res.stderr).to.include("Specify a setting to update:");
+  });
+
+  it("requires a base image for local builds", async () => {
+    writeFirebaseJson({ localBuild: true });
+    const failed = await firebase("deploy", "--only", "run");
+    expect(failed.proc.exitCode).not.to.equal(0);
+    expect(failed.stdout + failed.stderr).to.include("Local builds require a base image");
+  });
+
+  it("sets the base image of a local build, then builds locally with secrets and deploys", async () => {
+    const { container, nodeVersion } = await expectUpdated("--base-image", "nodejs22");
+    expect(container.image).to.equal("scratch");
+    expect(container.sourceCode).to.exist;
+    expect(container.baseImageUri).to.include("nodejs22");
+    expect(container.resources?.limits?.memory).to.equal("1Gi");
+    expect(nodeVersion).to.match(/^v22\./);
+    expect(await builtValue()).to.equal(SECRET_VALUE);
+
+    const res = await firebase("deploy", "--only", "run");
+    expect(res.proc.exitCode).to.equal(0);
+    expect((await mainContainer()).baseImageUri).to.include("nodejs22");
+    expect(await expectServing()).to.match(/^v22\./);
   });
 
   it("rejects services that aren't in firebase.json", async () => {

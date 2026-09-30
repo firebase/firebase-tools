@@ -19,6 +19,7 @@ export interface RunInfo {
   region: string;
   baseImage: string;
   rootDir: string;
+  localBuild?: boolean;
 }
 
 /**
@@ -83,9 +84,20 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
     });
   }
 
+  const localBuild = await select({
+    message: "Would you like to build your app locally or remotely?",
+    choices: [
+      { name: "Build remotely on Cloud Build", value: false },
+      { name: "Build locally", value: true },
+    ],
+    default: false,
+  });
   const baseImage = await input({
     message: "Which base image should your app use? (e.g. nodejs20, nodejs22)",
-    default: existing ? mainContainer(existing.template)?.baseImageUri : "nodejs22",
+    default:
+      (existing ? mainContainer(existing.template)?.baseImageUri : "nodejs22") ||
+      (localBuild ? "nodejs22" : undefined),
+    validate: (img) => !localBuild || !!img.trim() || "Local builds require a base image.",
   });
   const rootDir = await input({
     message: "Specify your app's root directory relative to your firebase.json directory",
@@ -99,7 +111,10 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
     },
   });
 
-  setup.featureInfo = { ...setup.featureInfo, run: { serviceId, region, baseImage, rootDir } };
+  setup.featureInfo = {
+    ...setup.featureInfo,
+    run: { serviceId, region, baseImage, rootDir, ...(localBuild && { localBuild }) },
+  };
 }
 
 /**
@@ -115,6 +130,7 @@ export async function actuate(setup: Setup, config: Config, options: Options): P
       serviceId: info.serviceId,
       rootDir: info.rootDir,
       region: info.region,
+      ...(info.localBuild && { localBuild: true }),
       ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"],
     },
     config,
@@ -137,8 +153,14 @@ export function upsertRunConfig(runConfig: RunSingle, config: Config): void {
   if (i < 0) {
     services.push(runConfig);
   } else {
-    const { rootDir, region } = runConfig;
-    services[i] = { ...runConfig, ...services[i], rootDir, region };
+    const { rootDir, region, localBuild } = runConfig;
+    services[i] = {
+      ...runConfig,
+      ...services[i],
+      rootDir,
+      region,
+      ...(localBuild !== undefined && { localBuild }),
+    };
   }
   config.set("run", services.length === 1 ? services[0] : services);
 }

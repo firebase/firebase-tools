@@ -31,6 +31,9 @@ export async function updateService(serviceId: string, options: Options): Promis
   const projectId = needProjectId(options);
   const only = `run:${serviceId}`;
   const [config] = getServiceConfigs({ ...options, only });
+  if (clearBaseImage && config.localBuild) {
+    throw new FirebaseError(`Cannot clear the base image of ${serviceId}: local builds need one.`);
+  }
   const existing = await getExistingService(projectId, config.region, serviceId);
   if (!existing) {
     throw new FirebaseError(`${missingServiceMessage(config)} Then you can update it.`);
