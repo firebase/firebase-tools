@@ -362,7 +362,7 @@ export function getMiddlewareMatcherRegexes(
     );
   } else if (middlewareManifest.version === 2) {
     const values = Object.values(middlewareManifest.middleware);
-    middlewareMatchers.push(...values.map((page) => page.matchers).flat());
+    middlewareMatchers.push(...values.map((page) => page.matchers || []).flat());
   } else if (middlewareManifest.version === 3) {
     if (functionsConfigManifest?.functions?.["/_middleware"]) {
       // matchers from proxy.js
@@ -372,7 +372,7 @@ export function getMiddlewareMatcherRegexes(
     } else {
       // matchers from middleware.js
       const values = Object.values(middlewareManifest.middleware);
-      middlewareMatchers.push(...values.map((page) => page.matchers).flat());
+      middlewareMatchers.push(...values.map((page) => page.matchers || []).flat());
     }
   }
 
