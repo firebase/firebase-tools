@@ -99,7 +99,6 @@ export interface EventTrigger {
   service?: string;
 }
 
-
 export interface FunctionsRuntimeBundle {
   proto: any;
   disabled_features?: FunctionsRuntimeFeatures;
@@ -118,7 +117,6 @@ export interface FunctionsRuntimeBundle {
 export interface FunctionsRuntimeFeatures {
   timeout?: boolean;
 }
-
 
 /**
  * Checks if the v2 event service has been implemented in the emulator
@@ -279,7 +277,6 @@ export function emulatedFunctionsByRegion(
   return regionDefinitions;
 }
 
-
 /**
  * Create a path that used to create a tempfile for IPC over socket files.
  */
@@ -370,7 +367,6 @@ export function getServiceFromEventType(eventType: string): string {
 
   return "";
 }
-
 
 /**
  * Find the root directory housing a node module.
