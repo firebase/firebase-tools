@@ -35,13 +35,17 @@ export interface SourceMapMapping {
   obfuscatedFilePath: string;
 }
 
+export interface CacheableOptions extends CommandOptions {
+  __mappingFilesCache?: Promise<Map<string, string>>;
+}
+
 export interface UploadRequest {
   projectId: string;
   mappingFile: string;
   obfuscatedFilePath: string;
   bucketName: string;
   appVersion: string;
-  options: CommandOptions;
+  options: CacheableOptions;
 }
 
 interface ListSourceMapsResponse {
@@ -472,13 +476,16 @@ export async function uploadMap(request: UploadRequest, attemptsRemaining = 0): 
     const fileUri = `gs://${bucket}/${object}`;
     logger.debug(`Uploaded mapping file ${filePath} to GCS: ${fileUri}`);
 
-    await registerSourceMap({
-      name,
-      appId,
-      version: appVersion,
-      obfuscatedFilePath: `/${obfuscatedPath}`,
-      fileUri,
-    });
+    await registerSourceMap(
+      {
+        name,
+        appId,
+        version: appVersion,
+        obfuscatedFilePath: `/${obfuscatedPath}`,
+        fileUri,
+      },
+      options,
+    );
     logger.debug(`Successfully registered source map in Firebase Telemetry for /${obfuscatedPath}`);
 
     return true;
@@ -527,13 +534,11 @@ function isAlreadyExistsError(e: FirebaseError): boolean {
   return message.includes("already exists") || bodyMessage.includes("already exists");
 }
 
-async function findExistingSourceMapName(
+async function listAllMappingFiles(
   client: Client,
-  sourceMap: SourceMap,
-): Promise<string | undefined> {
-  const lastSlashIndex = sourceMap.name.lastIndexOf("/");
-  const collectionPath =
-    lastSlashIndex === -1 ? sourceMap.name : sourceMap.name.slice(0, lastSlashIndex);
+  collectionPath: string,
+): Promise<Map<string, string>> {
+  const cache = new Map<string, string>();
   let pageToken: string | undefined;
   do {
     const queryParams: Record<string, string> = {};
@@ -541,22 +546,50 @@ async function findExistingSourceMapName(
       queryParams.pageToken = pageToken;
     }
     const listResponse = await client.get<ListSourceMapsResponse>(collectionPath, { queryParams });
-    const existing = listResponse.body?.mappingFiles?.find(
-      (mappingFile) =>
-        mappingFile.obfuscatedFilePath === sourceMap.obfuscatedFilePath && mappingFile.name,
-    );
-    if (existing) {
-      return existing.name;
+    for (const mappingFile of listResponse.body?.mappingFiles ?? []) {
+      if (mappingFile.obfuscatedFilePath && mappingFile.name) {
+        cache.set(mappingFile.obfuscatedFilePath, mappingFile.name);
+      }
     }
     pageToken = listResponse.body?.nextPageToken;
   } while (pageToken);
-  return undefined;
+  return cache;
+}
+
+function getOrListAllMappingFiles(
+  client: Client,
+  collectionPath: string,
+  options?: CacheableOptions,
+): Promise<Map<string, string>> {
+  if (options) {
+    options.__mappingFilesCache ??= listAllMappingFiles(client, collectionPath).catch((err) => {
+      delete options.__mappingFilesCache;
+      throw err;
+    });
+    return options.__mappingFilesCache;
+  }
+  return listAllMappingFiles(client, collectionPath);
+}
+
+async function findExistingSourceMapName(
+  client: Client,
+  sourceMap: SourceMap,
+  options?: CacheableOptions,
+): Promise<string | undefined> {
+  const lastSlashIndex = sourceMap.name.lastIndexOf("/");
+  const collectionPath =
+    lastSlashIndex === -1 ? sourceMap.name : sourceMap.name.slice(0, lastSlashIndex);
+  const cache = await getOrListAllMappingFiles(client, collectionPath, options);
+  return cache.get(sourceMap.obfuscatedFilePath);
 }
 
 /**
  * Submits resource descriptors to the Firebase Telemetry API to register completed source maps.
  */
-export async function registerSourceMap(sourceMap: SourceMap): Promise<void> {
+export async function registerSourceMap(
+  sourceMap: SourceMap,
+  options?: CacheableOptions,
+): Promise<void> {
   const client = new Client({
     urlPrefix: "https://firebasetelemetryadmin.googleapis.com",
     auth: true,
@@ -581,7 +614,7 @@ export async function registerSourceMap(sourceMap: SourceMap): Promise<void> {
             `Source map ${sourceMap.obfuscatedFilePath} already exists, deleting and re-registering...`,
           );
           const existingName =
-            (await findExistingSourceMapName(client, sourceMap)) ?? sourceMap.name;
+            (await findExistingSourceMapName(client, sourceMap, options)) ?? sourceMap.name;
           await client.delete(existingName);
           await patchSourceMap();
           return;
