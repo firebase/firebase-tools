@@ -2,6 +2,7 @@ import { existsSync } from "fs";
 import * as path from "path";
 import { Setup } from "..";
 import { Config } from "../../config";
+import { deploy } from "../../deploy";
 import { prereqs, RUN_PERMISSIONS } from "../../deploy/run/prereqs";
 import { getExistingService, mainContainer } from "../../deploy/run/util";
 import { FirebaseError } from "../../error";
@@ -102,9 +103,9 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
 }
 
 /**
- * Adds the service to firebase.json.
+ * Adds the service to firebase.json and deploys it, since Cloud Run services only change on deploy.
  */
-export async function actuate(setup: Setup, config: Config): Promise<void> {
+export async function actuate(setup: Setup, config: Config, options: Options): Promise<void> {
   const info = setup.featureInfo?.run;
   if (!info) {
     return;
@@ -119,6 +120,11 @@ export async function actuate(setup: Setup, config: Config): Promise<void> {
     config,
   );
   config.writeProjectFile("firebase.json", config.src);
+  await deploy(
+    ["run"],
+    { ...options, projectId: setup.projectId, config, only: `run:${info.serviceId}` },
+    { baseImage: info.baseImage || null },
+  );
 }
 
 /**
