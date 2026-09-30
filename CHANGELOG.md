@@ -1,3 +1,4 @@
-- [fixed] Increased retries for IAM policy updates to further reduce deployment flakiness from service account propagation delays.
-- [fixed] Preselect the default values of list function params in multi-select prompts.
-- [fixed] Fixed `ERR_REQUIRE_ESM` crash (e.g. on `emulators:start`) in the standalone binary and on Node.js versions earlier than 20.19 / 22.12. (#11168)
+- [fixed] Improve error message when billing is not enabled
+- Fixed a crash in `setEnqueuer` when deploying Cloud Tasks functions whose IAM policy has no bindings (#11184).
+- Updated dependencies to address security vulnerabilities, including `protobufjs`, `tar`, `@grpc/grpc-js`, `express`, `undici`, `hono`, `tmp`, and `form-data`.
+- Fix Next.js deploys failing to bundle `next.config` since v15.31.0. (#11187)
