@@ -1,3 +1,5 @@
 - [fixed] Improve error message when billing is not enabled
 - Fixed a crash in `setEnqueuer` when deploying Cloud Tasks functions whose IAM policy has no bindings (#11184).
+- Updated dependencies to address security vulnerabilities, including `protobufjs`, `tar`, `@grpc/grpc-js`, `express`, `undici`, `hono`, `tmp`, and `form-data`.
+- Fix Next.js deploys failing to bundle `next.config` since v15.31.0. (#11187)
 - Fixed nested ternary CEL expressions in function parameters, which previously failed to load or selected the wrong branch. (#7755)
