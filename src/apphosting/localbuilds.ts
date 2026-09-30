@@ -51,18 +51,19 @@ function executeUniversalMakerBinary(
     const targetAppHosting = path.join(projectRoot, ".apphosting");
     fs.removeSync(targetAppHosting);
     fs.ensureDirSync(targetAppHosting);
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
+      ...addedEnv,
+      X_GOOGLE_TARGET_PLATFORM: "fah",
+      FIREBASE_OUTPUT_BUNDLE_DIR: targetAppHosting,
+    };
 
     const res = childProcess.spawnSync(
       universalMakerBinary,
       ["-application_dir", projectRoot, "-output_dir", projectRoot, "-output_format", "json"],
       {
         cwd: projectRoot,
-        env: {
-          ...process.env,
-          ...addedEnv,
-          X_GOOGLE_TARGET_PLATFORM: "fah",
-          FIREBASE_OUTPUT_BUNDLE_DIR: targetAppHosting,
-        },
+        env,
         stdio: "pipe",
       },
     );
@@ -204,7 +205,11 @@ export async function localBuild(
   projectId: string,
   projectRoot: string,
   env: EnvMap = {},
-  options?: { nonInteractive?: boolean; allowLocalBuildSecrets?: boolean; rootDir?: string },
+  options?: {
+    nonInteractive?: boolean;
+    allowLocalBuildSecrets?: boolean;
+    rootDir?: string;
+  },
 ): Promise<{
   outputFiles: string[];
   buildConfig: BuildConfig;
@@ -306,7 +311,7 @@ export function validateLocalBuildNodeVersion(backend: Backend, projectRoot: str
     );
   }
 
-  const targetMajorMatch = runtimeValue.match(/^nodejs(\d+)$/);
+  const targetMajorMatch = /^nodejs(\d+)$/.exec(runtimeValue);
   if (!targetMajorMatch) {
     logLabeledWarning(
       "apphosting",
@@ -357,7 +362,7 @@ export function validateLocalBuildNodeVersion(backend: Backend, projectRoot: str
   }
 
   // 2. Check local vs target ABIU runtime version
-  const localMajorMatch = localNodeVersion.match(/^v?(\d+)/);
+  const localMajorMatch = /^v?(\d+)/.exec(localNodeVersion);
   const localMajor = localMajorMatch ? parseInt(localMajorMatch[1], 10) : null;
 
   if (localMajor !== null && localMajor !== targetMajor) {

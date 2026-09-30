@@ -101,6 +101,14 @@ let choices: {
   },
 ];
 
+if (isEnabled("direct_cloud_run")) {
+  choices.push({
+    value: "run",
+    name: "Cloud Run: Create or update a Cloud Run service and deploy your web app to it",
+    checked: false,
+  });
+}
+
 if (isEnabled("fdcwebhooks")) {
   choices.push({
     value: "dataconnect:resolver",
