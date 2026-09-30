@@ -20,15 +20,37 @@ if (typeof nodeFetch.Headers.prototype.getSetCookie !== "function") {
 // Force nock to execute its side-effects (patching http/https) immediately on load
 void nock;
 
-// Unit tests must never reach real Google APIs: unmatched requests now fail fast with
+const LOOPBACK_REGEXP = /^(localhost|127\.0\.0\.1|\[::1\]|::1)(:\d+)?$/;
+
+// Unit tests must never reach real Google APIs: unmatched requests fail fast with
 // NetConnectNotAllowedError instead of depending on network latency (flaky 2000ms timeouts).
 // Integration tests (under scripts/) need real outbound network access.
-const isIntegrationTest = process.argv.some((arg) =>
-  /(^|[/\\])(scripts|dev[/\\]scripts)[/\\]/.test(arg),
-);
+const isIntegrationTest =
+  process.env.FIREBASE_ALLOW_NET_CONNECT === "true" ||
+  process.argv.some((arg) => /(^|[/\\])(scripts|dev[/\\]scripts)[/\\]/.test(arg));
+
+function enforceNetConnectPolicy() {
+  if (!isIntegrationTest) {
+    nock.disableNetConnect();
+    nock.enableNetConnect(LOOPBACK_REGEXP);
+  }
+}
+
+enforceNetConnectPolicy();
+
 if (!isIntegrationTest) {
-  nock.disableNetConnect();
-  nock.enableNetConnect(/^(localhost|127\.0\.0\.1|\[::1\]|::1)(:\d+)?$/);
+  const origEnableNetConnect = nock.enableNetConnect.bind(nock);
+  nock.enableNetConnect = function (matcher) {
+    const isUnscoped =
+      !matcher ||
+      matcher === ".*" ||
+      matcher === "*" ||
+      (matcher instanceof RegExp && (matcher.source === ".*" || matcher.source === "^.*$"));
+    if (isUnscoped) {
+      return origEnableNetConnect(LOOPBACK_REGEXP);
+    }
+    return origEnableNetConnect(matcher);
+  };
 }
 
 chai.use(chaiAsPromised);
@@ -59,6 +81,7 @@ function cleanup() {
   }
 
   nock.cleanAll();
+  enforceNetConnectPolicy();
 
   // Safely clean up custom nock (src/test/helpers/nock.ts) if required by tests
   for (const key of Object.keys(require.cache)) {
@@ -80,6 +103,7 @@ function cleanup() {
 
 exports.mochaHooks = {
   beforeEach() {
+    enforceNetConnectPolicy();
     suiteFakes = new Set(typeof sinon.getFakes === "function" ? sinon.getFakes() : []);
   },
   afterEach: cleanup,
