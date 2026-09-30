@@ -1,0 +1,1 @@
+- Removed unused dependencies `proxy-agent`, `universal-analytics`, and `@apphosting/common`.
