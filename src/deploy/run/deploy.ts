@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
+import { FirebaseError } from "../../error";
 import * as artifactregistry from "../../gcp/artifactregistry";
 import * as runv2 from "../../gcp/runv2";
 import * as gcs from "../../gcp/storage";
@@ -39,7 +40,10 @@ async function deployService(
   const template = svc.existing
     ? copyTemplate(svc.existing)
     : { containers: [{ name: serviceId, image: "" }] };
-  const container = mainContainer(template)!;
+  const container = mainContainer(template);
+  if (!container) {
+    throw new FirebaseError(`Service ${serviceId} has no containers.`);
+  }
   container.image = await buildImage(projectId, svc, source);
   if (svc.baseImage) {
     container.baseImageUri = svc.baseImage;
@@ -98,13 +102,17 @@ async function uploadSource(
     cfg,
     path.join(options.config.projectDir, cfg.rootDir),
   );
-  logLabeledBullet("run", `Uploading source for service ${serviceId}...`);
-  const { bucket, object } = await gcs.uploadObject(
-    { file: archive, stream: fs.createReadStream(archive) },
-    bucketName,
-    gcs.ContentType.ZIP,
-  );
-  return { bucket, object };
+  try {
+    logLabeledBullet("run", `Uploading source for service ${serviceId}...`);
+    const { bucket, object } = await gcs.uploadObject(
+      { file: archive, stream: fs.createReadStream(archive) },
+      bucketName,
+      gcs.ContentType.ZIP,
+    );
+    return { bucket, object };
+  } finally {
+    fs.rmSync(archive, { force: true });
+  }
 }
 
 async function buildImage(
