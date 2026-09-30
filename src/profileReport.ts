@@ -23,11 +23,14 @@ const COLLAPSE_WILDCARD = ["$wildcard"];
 
 // 'static' helper methods
 
+/**
+ *
+ */
 export function extractJSON(line: string, input: any): string | null {
   if (!input && !line.startsWith("data: ")) {
     return null;
   } else if (!input) {
-    line = line.substring(5);
+    line = line.substring(6);
   }
   try {
     return JSON.parse(line);
@@ -36,10 +39,16 @@ export function extractJSON(line: string, input: any): string | null {
   }
 }
 
+/**
+ *
+ */
 export function pathString(path: string[]): string {
   return `/${path ? path.join("/") : ""}`;
 }
 
+/**
+ *
+ */
 export function formatNumber(num: number) {
   const parts = num.toFixed(2).split(".");
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -49,6 +58,9 @@ export function formatNumber(num: number) {
   return parts.join(".");
 }
 
+/**
+ *
+ */
 export function formatBytes(bytes: number) {
   const threshold = 1000;
   if (Math.round(bytes) < threshold) {
@@ -64,6 +76,9 @@ export function formatBytes(bytes: number) {
   return formatNumber(formattedBytes) + " " + units[u];
 }
 
+/**
+ *
+ */
 export function extractReadableIndex(query: Record<string, any>): string {
   if (query.orderBy) {
     return query.orderBy;

@@ -113,6 +113,27 @@ module.exports = {
       files: ["src/mcp/tools/**/*.ts", "src/mcp/prompts/**/*.ts", "src/mcp/resources/**/*.ts"],
       rules: { camelcase: "off" },
     },
+    {
+      files: ["*.ts"],
+      excludedFiles: ["*.d.ts"],
+      rules: {
+        // ESM-only packages: a static import compiles to require(), which throws ERR_REQUIRE_ESM
+        // on Node.js without require(esm) support, including the standalone binary's runtime.
+        // See https://github.com/firebase/firebase-tools/issues/11168.
+        "no-restricted-imports": [
+          "error",
+          {
+            patterns: [
+              {
+                group: ["stream-chain", "stream-chain/*", "stream-json", "stream-json/*"],
+                message:
+                  "stream-chain and stream-json are ESM-only; use loadStreamJson() from src/streamJson.ts.",
+              },
+            ],
+          },
+        ],
+      },
+    },
   ],
   globals: {},
   parserOptions: {
