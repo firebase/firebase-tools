@@ -686,6 +686,19 @@ describe("Next.js utils", () => {
 
       expect(await getProductionDependencyNames("/app")).to.eql([]);
     });
+
+    it("should reject when npm ls fails to spawn", async () => {
+      const realSpawn = crossSpawn.spawn;
+      sandbox.stub(crossSpawn, "spawn").callsFake(() => realSpawn("firebase-tools-missing-npm"));
+
+      await expect(getProductionDependencyNames("/app")).to.be.rejected;
+    });
+
+    it("should reject when npm ls output is not valid JSON", async () => {
+      stubNpmLs("not json");
+
+      await expect(getProductionDependencyNames("/app")).to.be.rejected;
+    });
   });
 
   describe("getMiddlewareMatcherRegexes", () => {

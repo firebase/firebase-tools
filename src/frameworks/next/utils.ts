@@ -356,12 +356,16 @@ export function allDependencyNames(mod: NpmLsDepdendency): string[] {
  */
 export async function getProductionDependencyNames(sourceDir: string): Promise<string[]> {
   const { chain, many, parser, pick, streamObject } = await loadStreamJson();
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const dependencies: string[] = [];
     const npmLs = spawn("npm", ["ls", "--omit=dev", "--all", "--json=true"], {
       cwd: sourceDir,
       timeout: NPM_COMMAND_TIMEOUT_MILLIES,
     });
+    npmLs.on("error", reject);
+    if (!npmLs.stdout) {
+      return reject(new FirebaseError("Failed to capture npm ls output"));
+    }
     const pipeline = chain([
       npmLs.stdout,
       parser({ packValues: false, packKeys: true, streamValues: false }),
@@ -371,6 +375,7 @@ export async function getProductionDependencyNames(sourceDir: string): Promise<s
         many([key, ...allDependencyNames(value)]),
     ]);
     pipeline.on("data", (it: string) => dependencies.push(it));
+    pipeline.on("error", reject);
     pipeline.on("end", () => resolve([...new Set(dependencies)]));
   });
 }
