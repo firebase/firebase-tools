@@ -19,9 +19,18 @@ DATE="$(date)"
 NUMBER="$(date '+%Y%m%d%H%M%S')"
 echo "Variables initalized..."
 
+function cleanup() {
+  cd "${CWD}" || true
+  if [ -n "${TEMP_DIR:-}" ] && [ -d "${TEMP_DIR}" ]; then
+    rm -rf "${TEMP_DIR}"
+  fi
+}
+trap cleanup EXIT
+
 echo "Creating temp directory..."
 TEMP_DIR="$(mktemp -d)"
 echo "Created temp directory: ${TEMP_DIR}"
+
 
 echo "Installing firebase-tools..."
 ./scripts/clean-install.sh
