@@ -2,3 +2,4 @@
 - Fixed a crash in `setEnqueuer` when deploying Cloud Tasks functions whose IAM policy has no bindings (#11184).
 - Updated dependencies to address security vulnerabilities, including `protobufjs`, `tar`, `@grpc/grpc-js`, `express`, `undici`, `hono`, `tmp`, and `form-data`.
 - Fix Next.js deploys failing to bundle `next.config` since v15.31.0. (#11187)
+- Web frameworks deploys now warn when the SSR function is not publicly invokable, which makes server-rendered requests through Hosting return 403 (#10690)

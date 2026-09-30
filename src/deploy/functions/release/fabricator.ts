@@ -8,7 +8,7 @@ import {
   parseErrorCode,
 } from "./executor";
 import * as ensure from "../ensure";
-import { FirebaseError } from "../../../error";
+import { FirebaseError, getErrMsg } from "../../../error";
 
 import { SourceTokenScraper } from "./sourceTokenScraper";
 import { Timer } from "./timer";
@@ -35,6 +35,7 @@ import * as scheduler from "../../../gcp/cloudscheduler";
 import * as utils from "../../../utils";
 import * as services from "../services";
 import { getDataConnectP4SA } from "../services/dataconnect";
+import { isFrameworksManagedCodebase } from "../../../frameworks/constants";
 import { AUTH_BLOCKING_EVENTS } from "../../../functions/events/v1";
 import * as gce from "../../../gcp/computeEngine";
 import { getHumanFriendlyPlatformName } from "../functionsDeployHelper";
@@ -862,6 +863,33 @@ export class Fabricator {
       await this.executor
         .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!))
         .catch(rethrowAs(endpoint, "set invoker"));
+    } else if (
+      backend.isHttpsTriggered(endpoint) &&
+      isFrameworksManagedCodebase(endpoint.codebase)
+    ) {
+      // Firebase Hosting invokes frameworks SSR functions anonymously. They declare no
+      // invoker, so nothing above notices when allUsers loses the invoker role; warn
+      // instead of silently serving 403s.
+      // See: https://github.com/firebase/firebase-tools/issues/10631
+      try {
+        const policy = await this.executor.run(() => run.getIamPolicy(serviceName));
+        const isPublic = policy.bindings?.some(
+          (binding) =>
+            binding.role === "roles/run.invoker" && binding.members?.includes("allUsers"),
+        );
+        if (!isPublic) {
+          utils.logLabeledWarning(
+            "functions",
+            `The SSR function ${endpoint.id} is not publicly invokable, so requests to it from ` +
+              `Firebase Hosting will return 403. Grant allUsers the Cloud Run Invoker role on ` +
+              `its service to fix this. See https://cloud.google.com/run/docs/authenticating/public`,
+          );
+        }
+      } catch (err: unknown) {
+        logger.debug(
+          `Failed to check whether ${serviceName} is publicly invokable: ${getErrMsg(err)}`,
+        );
+      }
     }
   }
 
