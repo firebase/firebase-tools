@@ -689,7 +689,7 @@ describe("crashlytics:sourcemap helpers", () => {
 
       const result = await uploadMap(request);
 
-      const expectedUid = utils.murmurHashV3("1:12345:web:abc-1.0.0-path/to/file.js");
+      const expectedUid = utils.murmurHashV3("path/to/file.js");
       const expectedName = `projects/test-project/locations/global/mappingFiles/${expectedUid}`;
 
       expect(result).to.be.true;
@@ -718,6 +718,43 @@ describe("crashlytics:sourcemap helpers", () => {
       expect(clientPatchStub.firstCall.args[2]).to.deep.equal({
         queryParams: { allowMissing: "true" },
       });
+    });
+
+    it("should generate the same mappingFile UID across different appVersions for the same obfuscatedPath", async () => {
+      const requestV1 = mockUploadRequest({
+        mappingFile: "/mock-root/path/to/file.js.map",
+        obfuscatedFilePath: "path/to/file.js",
+        appVersion: "1.0.0",
+        options: mockCommandOptions({
+          app: "1:12345:web:abc",
+          projectRoot: "/mock-root",
+        }),
+      });
+      const requestV2 = mockUploadRequest({
+        mappingFile: "/mock-root/path/to/file.js.map",
+        obfuscatedFilePath: "path/to/file.js",
+        appVersion: "2.0.0",
+        options: mockCommandOptions({
+          app: "1:12345:web:abc",
+          projectRoot: "/mock-root",
+        }),
+      });
+
+      await uploadMap(requestV1);
+      await uploadMap(requestV2);
+
+      const expectedUid = utils.murmurHashV3("path/to/file.js");
+      const expectedName = `projects/test-project/locations/global/mappingFiles/${expectedUid}`;
+
+      expect(clientPatchStub.callCount).to.equal(2);
+      expect(clientPatchStub.firstCall.args[0]).to.equal(expectedName);
+      expect(clientPatchStub.secondCall.args[0]).to.equal(expectedName);
+      expect((clientPatchStub.firstCall.args[1] as { fileUri: string }).fileUri).to.equal(
+        "gs://test-bucket/1:12345:web:abc-1.0.0-path-to-file.js.zip",
+      );
+      expect((clientPatchStub.secondCall.args[1] as { fileUri: string }).fileUri).to.equal(
+        "gs://test-bucket/1:12345:web:abc-2.0.0-path-to-file.js.zip",
+      );
     });
 
     it("should normalize Next.js paths and ignore dev segments in obfuscated path", async () => {
@@ -810,7 +847,35 @@ describe("crashlytics:sourcemap helpers", () => {
       expect(logLabeledWarningStub.callCount).to.equal(0);
     });
 
-    it("should delete and re-register when registerSourceMap fails with 400 already exists error", async () => {
+    it("should look up existing mapping by obfuscatedFilePath, delete its old UID, and re-register on 400 already exists error", async () => {
+      const legacyName = "projects/test-project/locations/global/mappingFiles/legacy-uid-999";
+      const clientGetStub = sandbox.stub(Client.prototype, "get");
+      clientGetStub.onFirstCall().resolves({
+        status: 200,
+        response: {} as unknown as ClientResponse<unknown>["response"],
+        body: {
+          mappingFiles: [
+            {
+              name: "projects/test-project/locations/global/mappingFiles/other-uid",
+              obfuscatedFilePath: "/other.js",
+            },
+          ],
+          nextPageToken: "page-2",
+        },
+      } as unknown as ClientResponse<unknown>);
+      clientGetStub.onSecondCall().resolves({
+        status: 200,
+        response: {} as unknown as ClientResponse<unknown>["response"],
+        body: {
+          mappingFiles: [
+            {
+              name: legacyName,
+              obfuscatedFilePath: "/path/to/file.js",
+            },
+          ],
+        },
+      } as unknown as ClientResponse<unknown>);
+
       const clientDeleteStub = sandbox.stub(Client.prototype, "delete").resolves({
         status: 200,
         response: {} as unknown as ClientResponse<unknown>["response"],
@@ -834,10 +899,67 @@ describe("crashlytics:sourcemap helpers", () => {
       const request = mockUploadRequest();
       const result = await uploadMap(request);
 
-      const expectedUid = utils.murmurHashV3("1:12345:web:abc-1.0.0-path/to/file.js");
+      const expectedUid = utils.murmurHashV3("path/to/file.js");
       const expectedName = `projects/test-project/locations/global/mappingFiles/${expectedUid}`;
 
       expect(result).to.be.true;
+      expect(clientGetStub.callCount).to.equal(2);
+      expect(clientGetStub.firstCall.args).to.deep.equal([
+        "projects/test-project/locations/global/mappingFiles",
+        { queryParams: {} },
+      ]);
+      expect(clientGetStub.secondCall.args).to.deep.equal([
+        "projects/test-project/locations/global/mappingFiles",
+        { queryParams: { pageToken: "page-2" } },
+      ]);
+      expect(clientDeleteStub.callCount).to.equal(1);
+      expect(clientDeleteStub.firstCall.args[0]).to.equal(legacyName);
+      expect(clientPatchStub.callCount).to.equal(2);
+      expect(clientPatchStub.secondCall.args[0]).to.equal(expectedName);
+      expect(clientPatchStub.secondCall.args[2]).to.deep.equal({
+        queryParams: { allowMissing: "true" },
+      });
+      expect(logLabeledWarningStub.callCount).to.equal(0);
+    });
+
+    it("should fall back to deleting sourceMap.name when ListMappingFiles returns no match on 400 already exists error", async () => {
+      const clientGetStub = sandbox.stub(Client.prototype, "get").resolves({
+        status: 200,
+        response: {} as unknown as ClientResponse<unknown>["response"],
+        body: { mappingFiles: [] },
+      } as unknown as ClientResponse<unknown>);
+      const clientDeleteStub = sandbox.stub(Client.prototype, "delete").resolves({
+        status: 200,
+        response: {} as unknown as ClientResponse<unknown>["response"],
+        body: {},
+      } as unknown as ClientResponse<unknown>);
+
+      clientPatchStub.onFirstCall().rejects(
+        new FirebaseError("HTTP Error: 400, Bad Request", {
+          status: 400,
+          context: {
+            body: {
+              error: {
+                message: "A mapping file with this file name already exists.",
+              },
+            },
+          },
+        }),
+      );
+      clientPatchStub.onSecondCall().resolves({
+        status: 200,
+        response: {} as unknown as ClientResponse<unknown>["response"],
+        body: {},
+      } as unknown as ClientResponse<unknown>);
+
+      const request = mockUploadRequest();
+      const result = await uploadMap(request);
+
+      const expectedUid = utils.murmurHashV3("path/to/file.js");
+      const expectedName = `projects/test-project/locations/global/mappingFiles/${expectedUid}`;
+
+      expect(result).to.be.true;
+      expect(clientGetStub.callCount).to.equal(1);
       expect(clientPatchStub.callCount).to.equal(2);
       expect(clientDeleteStub.callCount).to.equal(1);
       expect(clientDeleteStub.firstCall.args[0]).to.equal(expectedName);
@@ -864,6 +986,11 @@ describe("crashlytics:sourcemap helpers", () => {
     });
 
     it("should fail and log warning when delete or re-registration fails after 400 already exists error", async () => {
+      sandbox.stub(Client.prototype, "get").resolves({
+        status: 200,
+        response: {} as unknown as ClientResponse<unknown>["response"],
+        body: { mappingFiles: [] },
+      } as unknown as ClientResponse<unknown>);
       const clientDeleteStub = sandbox
         .stub(Client.prototype, "delete")
         .rejects(new FirebaseError("HTTP Error: 500, Internal error", { status: 500 }));

@@ -44,6 +44,11 @@ export interface UploadRequest {
   options: CommandOptions;
 }
 
+interface ListSourceMapsResponse {
+  mappingFiles?: SourceMap[];
+  nextPageToken?: string;
+}
+
 export const CONCURRENCY = 25;
 
 // Special directory names used for Angular client-side build assets
@@ -448,7 +453,7 @@ export async function uploadMap(request: UploadRequest, attemptsRemaining = 0): 
   const tmpArchive = await archiveFile(filePath, { archivedFileName: "mapping.js.map" });
   const appId = options.app || "";
   const gcsFile = `${appId}-${appVersion}-${normalizeFileName(obfuscatedPath)}.zip`;
-  const uid = murmurHashV3(`${appId}-${appVersion}-${obfuscatedPath}`);
+  const uid = murmurHashV3(obfuscatedPath);
   const name = `projects/${projectId}/locations/global/mappingFiles/${uid}`;
 
   const stream = fs.createReadStream(tmpArchive);
@@ -465,7 +470,7 @@ export async function uploadMap(request: UploadRequest, attemptsRemaining = 0): 
       bucketName,
     );
     const fileUri = `gs://${bucket}/${object}`;
-    logger.debug(`Uploaded mapping file ${filePath} to ${fileUri}`);
+    logger.debug(`Uploaded mapping file ${filePath} to GCS: ${fileUri}`);
 
     await registerSourceMap({
       name,
@@ -474,7 +479,7 @@ export async function uploadMap(request: UploadRequest, attemptsRemaining = 0): 
       obfuscatedFilePath: `/${obfuscatedPath}`,
       fileUri,
     });
-    logger.debug(`Registered mapping file ${filePath}`);
+    logger.debug(`Successfully registered source map in Firebase Telemetry for /${obfuscatedPath}`);
 
     return true;
   } catch (e) {
@@ -504,13 +509,48 @@ export function normalizeFileName(fileName: string): string {
   return fileName.replaceAll(/\//g, "-");
 }
 
+interface ErrorContext {
+  body?: {
+    error?: {
+      message?: string;
+    };
+  };
+}
+
 function isAlreadyExistsError(e: FirebaseError): boolean {
   if (e.status !== 400) {
     return false;
   }
   const message = e.message.toLowerCase();
-  const bodyMessage = ((e.context as any)?.body?.error?.message ?? "").toLowerCase();
+  const context = e.context as ErrorContext | undefined;
+  const bodyMessage = (context?.body?.error?.message ?? "").toLowerCase();
   return message.includes("already exists") || bodyMessage.includes("already exists");
+}
+
+async function findExistingSourceMapName(
+  client: Client,
+  sourceMap: SourceMap,
+): Promise<string | undefined> {
+  const lastSlashIndex = sourceMap.name.lastIndexOf("/");
+  const collectionPath =
+    lastSlashIndex === -1 ? sourceMap.name : sourceMap.name.slice(0, lastSlashIndex);
+  let pageToken: string | undefined;
+  do {
+    const queryParams: Record<string, string> = {};
+    if (pageToken) {
+      queryParams.pageToken = pageToken;
+    }
+    const listResponse = await client.get<ListSourceMapsResponse>(collectionPath, { queryParams });
+    const existing = listResponse.body?.mappingFiles?.find(
+      (mappingFile) =>
+        mappingFile.obfuscatedFilePath === sourceMap.obfuscatedFilePath && mappingFile.name,
+    );
+    if (existing) {
+      return existing.name;
+    }
+    pageToken = listResponse.body?.nextPageToken;
+  } while (pageToken);
+  return undefined;
 }
 
 /**
@@ -525,9 +565,6 @@ export async function registerSourceMap(sourceMap: SourceMap): Promise<void> {
 
   const patchSourceMap = async (): Promise<void> => {
     await client.patch(sourceMap.name, sourceMap, { queryParams: { allowMissing: "true" } });
-    logger.debug(
-      `Registered source map ${sourceMap.obfuscatedFilePath} with Firebase Telemetry service`,
-    );
   };
 
   try {
@@ -541,21 +578,23 @@ export async function registerSourceMap(sourceMap: SourceMap): Promise<void> {
       if (isAlreadyExistsError(e)) {
         try {
           logger.debug(
-            `Source map ${sourceMap.obfuscatedFilePath} already exists, deleting and re-registering`,
+            `Source map ${sourceMap.obfuscatedFilePath} already exists, deleting and re-registering...`,
           );
-          await client.delete(sourceMap.name);
+          const existingName =
+            (await findExistingSourceMapName(client, sourceMap)) ?? sourceMap.name;
+          await client.delete(existingName);
           await patchSourceMap();
           return;
         } catch (retryErr) {
           throw new FirebaseError(
-            `Failed to register source map ${sourceMap.obfuscatedFilePath} with Firebase Telemetry service:\n${retryErr instanceof Error ? retryErr.message : String(retryErr)}`,
+            `Failed to register source map ${sourceMap.obfuscatedFilePath} with Firebase Telemetry:\n${retryErr instanceof Error ? retryErr.message : String(retryErr)}`,
             { original: retryErr instanceof Error ? retryErr : undefined },
           );
         }
       }
     }
     throw new FirebaseError(
-      `Failed to register source map ${sourceMap.obfuscatedFilePath} with Firebase Telemetry service:\n${e instanceof Error ? e.message : String(e)}`,
+      `Failed to register source map ${sourceMap.obfuscatedFilePath} with Firebase Telemetry:\n${e instanceof Error ? e.message : String(e)}`,
       { original: e instanceof Error ? e : undefined },
     );
   }
