@@ -82,10 +82,12 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
     });
   }
 
-  const baseImage = await input({
-    message: "Which base image should your app use? (e.g. nodejs20, nodejs22)",
-    default: existing ? mainContainer(existing.template)?.baseImageUri : "nodejs22",
-  });
+  const baseImage = (
+    (await input({
+      message: "Which base image should your app use? (e.g. nodejs20, nodejs22)",
+      default: existing ? mainContainer(existing.template)?.baseImageUri : "nodejs22",
+    })) || ""
+  ).trim();
   const rootDir = await input({
     message: "Specify your app's root directory relative to your firebase.json directory",
     default: "/",
