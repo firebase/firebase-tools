@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { waitForCondition, TriggerEndToEndTest } from "./framework";
+import { waitForCondition } from "./waitForCondition";
 
 describe("waitForCondition", () => {
   it("should resolve immediately if condition is already true", async () => {
@@ -80,72 +80,5 @@ describe("waitForCondition", () => {
 
     expect(error).to.exist;
     expect(error?.message).to.equal("Predicate failure");
-  });
-
-  describe("TriggerEndToEndTest instance method", () => {
-    let test: TriggerEndToEndTest;
-
-    beforeEach(() => {
-      test = new TriggerEndToEndTest("test-project", "/tmp", {});
-    });
-
-    it("should return a Promise that resolves when condition is true", async () => {
-      let count = 0;
-      setTimeout(() => {
-        count = 3;
-      }, 50);
-
-      await test.waitForCondition(() => count >= 3, 1000, 20);
-      expect(count).to.equal(3);
-    });
-
-    it("should reject the Promise on timeout", async () => {
-      let error: Error | undefined;
-      try {
-        await test.waitForCondition(() => false, 100, 20);
-      } catch (err) {
-        error = err as Error;
-      }
-
-      expect(error).to.exist;
-      expect(error?.message).to.include("Timed out waiting for condition after 100ms");
-    });
-
-    it("should support legacy callback on success", (done) => {
-      let count = 0;
-      setTimeout(() => {
-        count = 1;
-      }, 30);
-
-      test.waitForCondition(
-        () => count === 1,
-        1000,
-        (err) => {
-          try {
-            expect(err).to.be.undefined;
-            expect(count).to.equal(1);
-            done();
-          } catch (assertErr) {
-            done(assertErr);
-          }
-        },
-      );
-    });
-
-    it("should support legacy callback on timeout", (done) => {
-      test.waitForCondition(
-        () => false,
-        100,
-        (err) => {
-          try {
-            expect(err).to.exist;
-            expect(err?.message).to.include("Timed out waiting for condition");
-            done();
-          } catch (assertErr) {
-            done(assertErr);
-          }
-        },
-      );
-    });
   });
 });

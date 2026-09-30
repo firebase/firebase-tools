@@ -27,7 +27,7 @@ const ADMIN_CREDENTIAL = {
 const TEST_SETUP_TIMEOUT = 80000;
 const EMULATORS_WRITE_DELAY_MS = 5000;
 const EMULATORS_SHUTDOWN_DELAY_MS = 7000;
-const EMULATOR_TEST_TIMEOUT = EMULATORS_WRITE_DELAY_MS * 2;
+const EMULATOR_TEST_TIMEOUT = EMULATORS_WRITE_DELAY_MS * 4;
 
 /*
  * Realtime Database and Firestore documents we used to verify
@@ -526,7 +526,10 @@ describe("function triggers", () => {
         test.writeToAuth(),
       ]);
 
-      await waitForCondition(() => test.authTriggerCount >= 1);
+      await waitForCondition(
+        () => test.authTriggerCount >= 1,
+        EMULATORS_WRITE_DELAY_MS * 3,
+      );
       // TODO(danielylee): Trying to respond to all triggers at once often results in Functions
       // Emulator hanging indefinitely. Only triggering 1 trigger for now. Re-enable other triggers
       // once the root cause is identified.

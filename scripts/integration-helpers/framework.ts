@@ -1,5 +1,10 @@
 import { CLIProcess } from "./cli";
 import { Emulators } from "../../src/emulator/types";
+import {
+  DEFAULT_WAIT_TIMEOUT_MS,
+  DEFAULT_WAIT_INTERVAL_MS,
+  waitForCondition,
+} from "../../src/test/helpers/waitForCondition";
 
 const FIREBASE_PROJECT_ZONE = "us-central1";
 
@@ -397,38 +402,10 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
 
   waitForCondition(
     conditionFn: () => boolean | Promise<boolean>,
-    timeoutMs?: number,
-    intervalMs?: number,
-  ): Promise<void>;
-  waitForCondition(
-    conditionFn: () => boolean,
-    timeoutMs: number,
-    callback: (err?: Error) => void,
-  ): void;
-  waitForCondition(
-    conditionFn: () => boolean | Promise<boolean>,
-    timeoutMs = 10000,
-    intervalMsOrCallback: number | ((err?: Error) => void) = 50,
-    callback?: (err?: Error) => void,
-  ): Promise<void> | void {
-    let intervalMs = 50;
-    let cb: ((err?: Error) => void) | undefined;
-    if (typeof intervalMsOrCallback === "function") {
-      cb = intervalMsOrCallback;
-    } else if (typeof intervalMsOrCallback === "number") {
-      intervalMs = intervalMsOrCallback;
-      cb = callback;
-    }
-
-    const promise = waitForCondition(conditionFn, timeoutMs, intervalMs);
-    if (cb) {
-      promise.then(
-        () => cb?.(),
-        (err: unknown) => cb?.(err instanceof Error ? err : new Error(String(err))),
-      );
-      return;
-    }
-    return promise;
+    timeoutMs = DEFAULT_WAIT_TIMEOUT_MS,
+    intervalMs = DEFAULT_WAIT_INTERVAL_MS,
+  ): Promise<void> {
+    return waitForCondition(conditionFn, timeoutMs, intervalMs);
   }
 
   disableBackgroundTriggers(): Promise<Response> {
@@ -442,28 +419,9 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
   }
 }
 
-/**
- * Polls for a condition to be met within a specified timeout.
- * Resolves immediately once predicate returns true.
- * @param predicate A synchronous or asynchronous function returning a boolean.
- * @param timeoutMs Maximum time to wait in milliseconds (default: 10000ms).
- * @param intervalMs Time between predicate evaluations in milliseconds (default: 50ms).
- */
-export async function waitForCondition(
-  predicate: () => boolean | Promise<boolean>,
-  timeoutMs = 10000,
-  intervalMs = 50,
-): Promise<void> {
-  const startTime = Date.now();
-  for (;;) {
-    if (await predicate()) {
-      return;
-    }
-    if (Date.now() - startTime >= timeoutMs) {
-      throw new Error(
-        `Timed out waiting for condition after ${timeoutMs}ms: ${predicate.toString()}`,
-      );
-    }
-    await new Promise((resolve) => setTimeout(resolve, intervalMs));
-  }
-}
+export {
+  DEFAULT_WAIT_TIMEOUT_MS,
+  DEFAULT_WAIT_INTERVAL_MS,
+  waitForCondition,
+} from "../../src/test/helpers/waitForCondition";
+
