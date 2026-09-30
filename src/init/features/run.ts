@@ -1,4 +1,4 @@
-import { existsSync } from "fs";
+import { statSync } from "fs";
 import * as path from "path";
 import { Setup } from "..";
 import { Config } from "../../config";
@@ -93,7 +93,7 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
     validate: (dir) => {
       const absPath = path.join(config.projectDir, dir);
       return (
-        existsSync(absPath) ||
+        Boolean(statSync(absPath, { throwIfNoEntry: false })?.isDirectory()) ||
         `Directory ${absPath} does not exist. Please enter a valid directory.`
       );
     },
