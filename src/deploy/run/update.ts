@@ -5,6 +5,7 @@ import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
 import { logBullet } from "../../utils";
 import {
+  FIREBASE_APP_ANNOTATION,
   getExistingService,
   getServiceConfigs,
   mainContainer,
@@ -23,12 +24,17 @@ export async function updateService(options: Options): Promise<void> {
   }
   const newBaseImage = options.baseImage as string | undefined;
   const clearBaseImage = !!options.clearBaseImage;
+  const newAppId = options.app as string | undefined;
+  const clearApp = !!options.clearApp;
   if (newBaseImage && clearBaseImage) {
     throw new FirebaseError("Use either --base-image or --clear-base-image, not both.");
   }
-  if (!newBaseImage && !clearBaseImage) {
+  if (newAppId && clearApp) {
+    throw new FirebaseError("Use either --app or --clear-app, not both.");
+  }
+  if (!newBaseImage && !clearBaseImage && !newAppId && !clearApp) {
     throw new FirebaseError(
-      "Specify a setting to update: --base-image <baseImage> or --clear-base-image.",
+      "Specify a setting to update: --base-image <baseImage>, --clear-base-image, --app <appId>, or --clear-app.",
     );
   }
 
@@ -46,6 +52,17 @@ export async function updateService(options: Options): Promise<void> {
     logBullet(`Service ${clc.bold(serviceId)} does not have a base image.`);
     return;
   }
+  if (clearApp && !existing.annotations?.[FIREBASE_APP_ANNOTATION]) {
+    logBullet(`Service ${clc.bold(serviceId)} does not have a linked Firebase Web App.`);
+    return;
+  }
 
-  await deploy(["run"], { ...options, only }, { baseImage: newBaseImage ?? null });
+  await deploy(
+    ["run"],
+    { ...options, only },
+    {
+      ...((newBaseImage || clearBaseImage) && { baseImage: newBaseImage ?? null }),
+      ...((newAppId || clearApp) && { appId: newAppId ?? null }),
+    },
+  );
 }

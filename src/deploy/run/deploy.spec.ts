@@ -146,7 +146,7 @@ describe("run deploy", () => {
     await deployOne(service({ existing }));
 
     const [update, updateOpts] = updateServiceStub.firstCall.args;
-    expect(updateOpts.updateMask).to.deep.equal(["template", "traffic"]);
+    expect(updateOpts.updateMask).to.deep.equal(["annotations", "template", "traffic"]);
     expect(update.template).to.deep.equal({
       serviceAccount: "sa",
       annotations: { keep: "me" },
@@ -167,6 +167,39 @@ describe("run deploy", () => {
       { type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 },
     ]);
     expect(existing.template.revision).to.equal("s-1");
+  });
+
+  it("sets and clears the linked Firebase Web App and runtime FIREBASE_CONFIG", async () => {
+    const existing = {
+      name: "projects/p/locations/us-central1/services/s",
+      annotations: { keep: "1", "firebase.google.com/app-id": "old-app" },
+      template: {
+        containers: [
+          {
+            name: "s",
+            image: "old",
+            env: [{ name: "FIREBASE_CONFIG", value: '{"projectId":"old"}' }],
+          },
+        ],
+      },
+    } as unknown as runv2.Service;
+
+    await deployOne(service({ existing, appId: "new-app", firebaseConfig: '{"projectId":"p"}' }));
+    expect(updateServiceStub.firstCall.args[0].annotations).to.deep.equal({
+      keep: "1",
+      "firebase.google.com/app-id": "new-app",
+    });
+    expect(updateServiceStub.firstCall.args[0].template.containers[0].env).to.deep.equal([
+      { name: "FIREBASE_CONFIG", value: '{"projectId":"p"}' },
+    ]);
+
+    await deploy(
+      { projectId: "p", appId: null },
+      options,
+      { run: { services: [service({ existing })] } },
+    );
+    expect(updateServiceStub.secondCall.args[0].annotations).to.deep.equal({ keep: "1" });
+    expect(updateServiceStub.secondCall.args[0].template.containers[0]).not.to.have.property("env");
   });
 
   describe("local builds", () => {

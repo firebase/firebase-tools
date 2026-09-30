@@ -77,17 +77,21 @@ describe("run util", () => {
 
     it("sends all traffic to the new revision and keeps revision tags", async () => {
       const update = sinon.stub(runv2, "updateService").resolves();
-      await deployRevision(service, template);
+      await deployRevision(service, template, { "firebase.google.com/app-id": "app" });
       expect(update).to.have.been.calledWith(
         {
           name: service.name,
+          annotations: { "firebase.google.com/app-id": "app" },
           template,
           traffic: [
             { type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 },
             { type: "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION", revision: "s-1", tag: "staging" },
           ],
         },
-        { updateMask: ["template", "traffic"], masterTimeout: SERVICE_OPERATION_TIMEOUT_MS },
+        {
+          updateMask: ["annotations", "template", "traffic"],
+          masterTimeout: SERVICE_OPERATION_TIMEOUT_MS,
+        },
       );
     });
   });

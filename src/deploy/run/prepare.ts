@@ -1,11 +1,16 @@
+import { getAutoinitEnvVars } from "../../apphosting/utils";
 import { FirebaseError } from "../../error";
+import { WebConfig } from "../../fetchWebSetup";
 import { RunSingle } from "../../firebaseConfig";
+import * as runv2 from "../../gcp/runv2";
+import * as managementApps from "../../management/apps";
 import { Options } from "../../options";
-import { logLabeledBullet } from "../../utils";
+import { logLabeledBullet, logLabeledWarning } from "../../utils";
 import { Context, Payload, ServiceDeploy } from "./args";
-import { BUILD_ENV_ANNOTATION, getBuildEnv, secretNames } from "./buildEnv";
+import { BUILD_ENV_ANNOTATION, BuildEnv, getBuildEnv, secretNames } from "./buildEnv";
 import { prereqs } from "./prereqs";
 import {
+  FIREBASE_APP_ANNOTATION,
   getExistingService,
   getServiceConfigs,
   mainContainer,
@@ -38,19 +43,30 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
     context.baseImage === undefined
       ? mainContainer(existing?.template)?.baseImageUri
       : context.baseImage || undefined;
+  // App IDs are sticky: deploys reuse the service's current Firebase Web App unless told otherwise.
+  const appId =
+    context.appId === undefined
+      ? existing?.annotations?.[FIREBASE_APP_ANNOTATION]
+      : context.appId || undefined;
 
-  const buildEnv = getBuildEnv(existing);
-  if (Object.keys(buildEnv).length) {
+  const autoInitEnv = await resolveAutoInitEnv(serviceId, appId, existing, !context.appId);
+  const userBuildEnv = getBuildEnv(existing);
+  if (Object.keys(userBuildEnv).length) {
     logLabeledBullet(
       "run",
-      `Using build environment variables from ${BUILD_ENV_ANNOTATION}: ${Object.keys(buildEnv).join(", ")}`,
+      `Using build environment variables from ${BUILD_ENV_ANNOTATION}: ${Object.keys(userBuildEnv).join(", ")}`,
     );
   }
+  const buildEnv: BuildEnv = { ...autoInitEnv, ...userBuildEnv };
 
-  const svc: ServiceDeploy = { config, existing, baseImage };
-  if (Object.keys(buildEnv).length) {
-    svc.buildEnv = buildEnv;
-  }
+  const svc: ServiceDeploy = {
+    config,
+    existing,
+    baseImage,
+    appId,
+    ...(autoInitEnv?.FIREBASE_CONFIG && { firebaseConfig: autoInitEnv.FIREBASE_CONFIG }),
+    ...(Object.keys(buildEnv).length && { buildEnv }),
+  };
   if (!config.localBuild) {
     const secrets = secretNames(buildEnv);
     if (secrets.length) {
@@ -73,4 +89,44 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
     );
   }
   return svc;
+}
+
+/**
+ * Fetches Firebase Web App config for SDK auto-initialization, respecting any user-configured
+ * overrides on the container's runtime environment unless a new appId is being set.
+ */
+async function resolveAutoInitEnv(
+  serviceId: string,
+  appId: string | undefined,
+  existing: runv2.Service | undefined,
+  keepExistingContainerEnv: boolean,
+): Promise<Record<string, string> | undefined> {
+  if (!appId) {
+    return undefined;
+  }
+  try {
+    const webappConfig = (await managementApps.getAppConfig(
+      appId,
+      managementApps.AppPlatform.WEB,
+    )) as WebConfig;
+    const autoinitVars = getAutoinitEnvVars(webappConfig);
+    if (keepExistingContainerEnv) {
+      for (const env of mainContainer(existing?.template)?.env || []) {
+        if (env.name in autoinitVars) {
+          if ("value" in env && env.value !== undefined) {
+            autoinitVars[env.name] = env.value;
+          } else {
+            delete autoinitVars[env.name];
+          }
+        }
+      }
+    }
+    return Object.keys(autoinitVars).length ? autoinitVars : undefined;
+  } catch {
+    logLabeledWarning(
+      "run",
+      `Unable to lookup details for Firebase Web App ${appId} on service ${serviceId}. Firebase SDK autoinit will not be available.`,
+    );
+    return undefined;
+  }
 }
