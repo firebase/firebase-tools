@@ -120,5 +120,20 @@ describe("run util", () => {
         },
       );
     });
+
+    it("includes annotations in updateMask when annotations are passed", async () => {
+      const updateStub = sinon.stub(runv2, "updateService").resolves({} as runv2.Service);
+      const service = {
+        name: "projects/p/locations/r/services/s",
+        template: { containers: [{ name: "s", image: "i" }] },
+      } as unknown as runv2.Service;
+
+      await deployRevision(service, service.template, { "firebase.google.com/app-id": "app" });
+
+      expect(updateStub).to.have.been.calledWithMatch(
+        { annotations: { "firebase.google.com/app-id": "app" } },
+        { updateMask: ["annotations", "template", "traffic"] },
+      );
+    });
   });
 });

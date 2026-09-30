@@ -1,10 +1,11 @@
 import { existsSync } from "fs";
 import * as path from "path";
 import { Setup } from "..";
+import { webApps } from "../../apphosting/app";
 import { Config } from "../../config";
 import { deploy } from "../../deploy";
 import { prereqs, RUN_PERMISSIONS } from "../../deploy/run/prereqs";
-import { getExistingService, mainContainer } from "../../deploy/run/util";
+import { FIREBASE_APP_ANNOTATION, getExistingService, mainContainer } from "../../deploy/run/util";
 import { FirebaseError } from "../../error";
 import { RunSingle } from "../../firebaseConfig";
 import * as run from "../../gcp/run";
@@ -20,6 +21,7 @@ export interface RunInfo {
   baseImage: string;
   rootDir: string;
   localBuild?: boolean;
+  appId?: string;
 }
 
 /**
@@ -84,6 +86,12 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
     });
   }
 
+  let appId = existing?.annotations?.[FIREBASE_APP_ANNOTATION];
+  if (!appId) {
+    const webApp = await webApps.getOrCreateWebApp(projectId, null, serviceId);
+    appId = webApp?.id;
+  }
+
   const localBuild = await select({
     message: "Would you like to build your app locally or remotely?",
     choices: [
@@ -113,7 +121,14 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
 
   setup.featureInfo = {
     ...setup.featureInfo,
-    run: { serviceId, region, baseImage, rootDir, ...(localBuild && { localBuild }) },
+    run: {
+      serviceId,
+      region,
+      baseImage,
+      rootDir,
+      ...(localBuild && { localBuild }),
+      ...(appId && { appId }),
+    },
   };
 }
 
@@ -139,7 +154,10 @@ export async function actuate(setup: Setup, config: Config, options: Options): P
   await deploy(
     ["run"],
     { ...options, projectId: setup.projectId, config, only: `run:${info.serviceId}` },
-    { baseImage: info.baseImage || null },
+    {
+      baseImage: info.baseImage || null,
+      ...(info.appId !== undefined && { appId: info.appId || null }),
+    },
   );
 }
 
