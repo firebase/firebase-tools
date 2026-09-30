@@ -14,7 +14,7 @@ describe("run deploy", () => {
   const options = { config: { projectDir: "/p" } } as unknown as Options;
   const config = { serviceId: "s", region: "us-central1", rootDir: "web" };
   let sourceArchiveStub: sinon.SinonStub;
-  let rmSyncStub: sinon.SinonStub;
+  let rmSyncStub: sinon.SinonSpy;
   let submitBuildStub: sinon.SinonStub;
   let createServiceStub: sinon.SinonStub;
   let updateServiceStub: sinon.SinonStub;
@@ -35,7 +35,7 @@ describe("run deploy", () => {
       .stub(gcs, "uploadObject")
       .callsFake((src) => Promise.resolve({ bucket: "bucket", object: src.file, generation: "1" }));
     sinon.stub(fs, "createReadStream").returns("stream" as unknown as fs.ReadStream);
-    rmSyncStub = sinon.stub(fs, "rmSync");
+    rmSyncStub = sinon.spy(fs, "rmSync");
     sourceArchiveStub = sinon.stub(apphostingUtil, "createSourceDeployArchive").resolves("src.zip");
     sinon.stub(artifactregistry, "ensureDockerRepository").resolves();
     submitBuildStub = sinon.stub(runv2, "submitBuild").resolves();
