@@ -4,3 +4,4 @@
 - Updated the Firebase SQL Connect local toolkit to v3.4.22, which includes the following changes:
   - [fixed] Disallow using the GraphQL root operation type names (`Query`, `Mutation`, `Subscription`) as `@table` or `@view` types.
 - Added an optional step to configure Crashlytics email alerts during `crashlytics:onboard:web`.
+- Fix `404` errors during `crashlytics:sourcemap:upload` when re-uploading a source map with the same obfuscated file path across different app versions
