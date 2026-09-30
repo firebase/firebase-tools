@@ -211,10 +211,17 @@ describe("init run", () => {
       expect(config.src.run).to.deep.equal(a);
       upsertRunConfig(b, config);
       expect(config.src.run).to.deep.equal([a, b]);
-      config.set("run.0.localBuild", true);
-      upsertRunConfig({ serviceId: "a", region: "r2", rootDir: "web", ignore: ["y"] }, config);
+      upsertRunConfig(
+        { serviceId: "a", region: "r2", rootDir: "web", localBuild: true, ignore: ["y"] },
+        config,
+      );
       expect(config.src.run).to.deep.equal([
         { serviceId: "a", region: "r2", rootDir: "web", ignore: ["x"], localBuild: true },
+        b,
+      ]);
+      upsertRunConfig({ serviceId: "a", region: "r2", rootDir: "web", ignore: ["y"] }, config);
+      expect(config.src.run).to.deep.equal([
+        { serviceId: "a", region: "r2", rootDir: "web", ignore: ["x"] },
         b,
       ]);
     });

@@ -49,7 +49,12 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
       ? existing?.annotations?.[FIREBASE_APP_ANNOTATION]
       : context.appId || undefined;
 
-  const autoInitEnv = await resolveAutoInitEnv(serviceId, appId, existing, Boolean(context.appId));
+  const autoInitEnv = await resolveAutoInitEnv(
+    serviceId,
+    appId,
+    existing,
+    Boolean(context.appId && context.appId !== existing?.annotations?.[FIREBASE_APP_ANNOTATION]),
+  );
   const userBuildEnv = getBuildEnv(existing);
   if (Object.keys(userBuildEnv).length) {
     logLabeledBullet(

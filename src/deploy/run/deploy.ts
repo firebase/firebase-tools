@@ -116,7 +116,11 @@ async function deployService(
     container.image = "scratch";
     container.sourceCode = { cloudStorageSource: source };
     const cmd = svc.localBuild.runCommand?.trim();
-    container.command = cmd ? cmd.split(/\s+/) : undefined;
+    if (cmd) {
+      container.command = cmd.split(/\s+/);
+    } else {
+      delete container.command;
+    }
     if (svc.localBuild.env?.length) {
       const existingNames = new Set((container.env || []).map((e) => e.name));
       const newEnv = svc.localBuild.env.filter((e) => !existingNames.has(e.name));
@@ -146,15 +150,17 @@ async function deployService(
       delete container.env;
     }
   }
-  template.annotations = { ...template.annotations };
   if (options.message) {
-    template.annotations[DEPLOY_MESSAGE_ANNOTATION] = options.message as string;
-  } else {
+    template.annotations = {
+      ...template.annotations,
+      [DEPLOY_MESSAGE_ANNOTATION]: options.message as string,
+    };
+  } else if (template.annotations) {
     delete template.annotations[DEPLOY_MESSAGE_ANNOTATION];
   }
 
   let annotations: Record<string, string> | undefined;
-  if (svc.appId !== undefined || context.appId === null) {
+  if (svc.appId !== svc.existing?.annotations?.[FIREBASE_APP_ANNOTATION]) {
     annotations = { ...svc.existing?.annotations };
     if (svc.appId) {
       annotations[FIREBASE_APP_ANNOTATION] = svc.appId;

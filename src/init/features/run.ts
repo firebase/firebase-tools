@@ -100,13 +100,15 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
     ],
     default: false,
   });
-  const baseImage = await input({
-    message: "Which base image should your app use? (e.g. nodejs20, nodejs22)",
-    default:
-      (existing ? mainContainer(existing.template)?.baseImageUri : "nodejs22") ||
-      (localBuild ? "nodejs22" : undefined),
-    validate: (img) => !localBuild || !!img.trim() || "Local builds require a base image.",
-  });
+  const baseImage = (
+    (await input({
+      message: "Which base image should your app use? (e.g. nodejs20, nodejs22)",
+      default:
+        (existing ? mainContainer(existing.template)?.baseImageUri : "nodejs22") ||
+        (localBuild ? "nodejs22" : undefined),
+      validate: (img) => !localBuild || !!img.trim() || "Local builds require a base image.",
+    })) || ""
+  ).trim();
   const rootDir = await input({
     message: "Specify your app's root directory relative to your firebase.json directory",
     default: "/",
@@ -163,7 +165,7 @@ export async function actuate(setup: Setup, config: Config, options: Options): P
 
 /**
  * Adds a service to firebase.json, or updates it in place. Settings that init doesn't ask
- * about (e.g. localBuild or a custom ignore list) are kept. Exported for unit testing.
+ * about (e.g. a custom ignore list) are kept. Exported for unit testing.
  */
 export function upsertRunConfig(runConfig: RunSingle, config: Config): void {
   const services = [config.src.run || []].flat();
@@ -177,8 +179,11 @@ export function upsertRunConfig(runConfig: RunSingle, config: Config): void {
       ...services[i],
       rootDir,
       region,
-      ...(localBuild !== undefined && { localBuild }),
+      ...(localBuild && { localBuild }),
     };
+    if (!localBuild) {
+      delete services[i].localBuild;
+    }
   }
   config.set("run", services.length === 1 ? services[0] : services);
 }
