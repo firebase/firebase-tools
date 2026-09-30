@@ -101,7 +101,7 @@ let choices: {
   },
 ];
 
-if (isEnabled("direct_cloud_run")) {
+if (isEnabled("directcloudrun")) {
   choices.push({
     value: "run",
     name: "Cloud Run: Create or update a Cloud Run service and deploy your web app to it",
