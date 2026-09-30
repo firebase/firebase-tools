@@ -249,6 +249,21 @@ describe("CloudTasks", () => {
       });
     });
 
+    it("handles missing bindings in IAM policy", async () => {
+      ct.getIamPolicy.resolves({
+        etag: "",
+        version: 3,
+      } as iam.Policy);
+
+      await cloudtasks.setEnqueuer(NAME, ["public"]);
+      expect(ct.getIamPolicy).to.have.been.called;
+      expect(ct.setIamPolicy).to.have.been.calledWith(NAME, {
+        bindings: [PUBLIC_ENQUEUER_BINDING],
+        etag: "",
+        version: 3,
+      });
+    });
+
     it("can resolve conflicts", async () => {
       ct.getIamPolicy.onCall(0).resolves({
         bindings: [ADMIN_BINDING],
