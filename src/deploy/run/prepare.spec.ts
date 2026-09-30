@@ -213,12 +213,23 @@ describe("run prepare", () => {
       expect(svc.buildEnv).to.deep.equal({ FIREBASE_WEBAPP_CONFIG: webappConfig });
     });
 
-    it("warns and continues without autoinit if getAppConfig fails", async () => {
+    it("warns and continues without autoinit if getAppConfig fails for an existing annotation", async () => {
+      getServiceStub.resolves({
+        ...existing,
+        annotations: { [FIREBASE_APP_ANNOTATION]: "1:1:web:a" },
+      });
       getAppConfigStub.rejects(new Error("boom"));
-      const svc = await prepareOne({}, { appId: "1:1:web:a" });
+      const svc = await prepareOne();
       expect(svc.appId).to.equal("1:1:web:a");
       expect(svc.firebaseConfig).to.be.undefined;
       expect(svc.buildEnv).to.be.undefined;
+    });
+
+    it("throws if getAppConfig fails when explicitly setting a new appId", async () => {
+      getAppConfigStub.rejects(new Error("boom"));
+      await expect(prepareOne({}, { appId: "bad-app" })).to.be.rejectedWith(
+        "Unable to lookup details for Firebase Web App bad-app on service s.",
+      );
     });
   });
 });

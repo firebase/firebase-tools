@@ -49,7 +49,7 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
       ? existing?.annotations?.[FIREBASE_APP_ANNOTATION]
       : context.appId || undefined;
 
-  const autoInitEnv = await resolveAutoInitEnv(serviceId, appId, existing);
+  const autoInitEnv = await resolveAutoInitEnv(serviceId, appId, existing, Boolean(context.appId));
   const userBuildEnv = getBuildEnv(existing);
   if (Object.keys(userBuildEnv).length) {
     logLabeledBullet(
@@ -99,6 +99,7 @@ async function resolveAutoInitEnv(
   serviceId: string,
   appId: string | undefined,
   existing: runv2.Service | undefined,
+  requireValidApp: boolean,
 ): Promise<Record<string, string> | undefined> {
   if (!appId) {
     return undefined;
@@ -121,7 +122,13 @@ async function resolveAutoInitEnv(
       }
     }
     return Object.keys(autoinitVars).length ? autoinitVars : undefined;
-  } catch {
+  } catch (err: unknown) {
+    if (requireValidApp) {
+      throw new FirebaseError(
+        `Unable to lookup details for Firebase Web App ${appId} on service ${serviceId}.`,
+        { original: err instanceof Error ? err : undefined },
+      );
+    }
     logLabeledWarning(
       "run",
       `Unable to lookup details for Firebase Web App ${appId} on service ${serviceId}. Firebase SDK autoinit will not be available.`,

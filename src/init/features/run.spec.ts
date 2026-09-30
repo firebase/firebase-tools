@@ -67,6 +67,7 @@ describe("init run", () => {
       const validateDir = inputStub.thirdCall.args[0].validate;
       expect(validateDir(".")).to.be.true;
       expect(validateDir("nonexistent-dir-xyz")).to.include("does not exist");
+      expect(validateDir("package.json")).to.include("does not exist");
       expect(s.featureInfo?.run).to.deep.equal({
         serviceId: "my-service",
         region: "us-east1",

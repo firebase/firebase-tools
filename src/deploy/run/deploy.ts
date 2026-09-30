@@ -3,6 +3,7 @@ import * as os from "os";
 import * as path from "path";
 import { CLOUD_RUN_SIZE_LIMIT_BYTES } from "../../apphosting/constants";
 import { localBuild, validateLocalBuildNodeVersion } from "../../apphosting/localbuilds";
+import { FirebaseError } from "../../error";
 import { Backend } from "../../gcp/apphosting";
 import * as artifactregistry from "../../gcp/artifactregistry";
 import * as runv2 from "../../gcp/runv2";
@@ -81,7 +82,10 @@ async function buildLocally(
     );
     const env = (buildConfig.env || [])
       .filter(
-        (e) => e.value !== undefined && (!e.availability || e.availability.includes("RUNTIME")),
+        (e) =>
+          e.variable &&
+          e.value !== undefined &&
+          (!e.availability || e.availability.includes("RUNTIME")),
       )
       .map((e) => ({ name: e.variable, value: e.value! }));
     return { scratchDir, outputFiles, runCommand: buildConfig.runCommand, env };
@@ -103,12 +107,16 @@ async function deployService(
   const template = svc.existing
     ? copyTemplate(svc.existing)
     : { containers: [{ name: serviceId, image: "" }] };
-  const container = mainContainer(template)!;
+  const container = mainContainer(template);
+  if (!container) {
+    throw new FirebaseError(`Service ${serviceId} has no containers.`);
+  }
   if (svc.localBuild) {
     // Cloud Run runs locally built apps directly from source on top of the base image.
     container.image = "scratch";
     container.sourceCode = { cloudStorageSource: source };
-    container.command = svc.localBuild.runCommand?.split(" ");
+    const cmd = svc.localBuild.runCommand?.trim();
+    container.command = cmd ? cmd.split(/\s+/) : undefined;
     if (svc.localBuild.env?.length) {
       const existingNames = new Set((container.env || []).map((e) => e.name));
       const newEnv = svc.localBuild.env.filter((e) => !existingNames.has(e.name));
@@ -197,17 +205,21 @@ async function uploadSource(
   const archive = svc.localBuild
     ? await createLocalBuildTarArchive(cfg, svc.localBuild.scratchDir, svc.localBuild.outputFiles)
     : await createSourceDeployArchive(cfg, path.join(options.config.projectDir, cfg.rootDir));
-  logLabeledBullet(
-    "run",
-    `Uploading ${svc.localBuild ? "built app" : "source"} for service ${serviceId}...`,
-  );
-  const { bucket, object } = await gcs.uploadObject(
-    { file: archive, stream: fs.createReadStream(archive) },
-    bucketName,
-    svc.localBuild ? gcs.ContentType.TAR : gcs.ContentType.ZIP,
-    svc.localBuild ? CLOUD_RUN_SIZE_LIMIT_BYTES : undefined,
-  );
-  return { bucket, object };
+  try {
+    logLabeledBullet(
+      "run",
+      `Uploading ${svc.localBuild ? "built app" : "source"} for service ${serviceId}...`,
+    );
+    const { bucket, object } = await gcs.uploadObject(
+      { file: archive, stream: fs.createReadStream(archive) },
+      bucketName,
+      svc.localBuild ? gcs.ContentType.TAR : gcs.ContentType.ZIP,
+      svc.localBuild ? CLOUD_RUN_SIZE_LIMIT_BYTES : undefined,
+    );
+    return { bucket, object };
+  } finally {
+    fs.rmSync(archive, { force: true });
+  }
 }
 
 async function buildImage(

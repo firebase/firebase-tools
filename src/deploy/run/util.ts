@@ -15,7 +15,7 @@ export const FIREBASE_APP_ANNOTATION = "firebase.google.com/app-id";
  * Returns the Cloud Run services in firebase.json that match the --only filter.
  */
 export function getServiceConfigs(options: Options): RunSingle[] {
-  const configs = [options.config.src.run || []].flat();
+  const configs = [options.config?.src?.run || []].flat();
   const selectors = options.only ? options.only.split(",") : ["run"];
   if (selectors.includes("run")) {
     return configs;
