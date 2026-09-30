@@ -57,9 +57,6 @@ async function deployService(
     };
   } else if (template.annotations) {
     delete template.annotations[DEPLOY_MESSAGE_ANNOTATION];
-    if (!Object.keys(template.annotations).length) {
-      delete template.annotations;
-    }
   }
 
   if (svc.existing) {
