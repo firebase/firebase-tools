@@ -792,9 +792,8 @@ export async function findIntelligentPathForAndroid(appDir: string, options: App
    * android/build.gradle // if it's this, choose app
    * android/app/build.gradle // if it's this, choose current dir.
    */
-  const paths = appDir.split("/");
   // For when app/build.gradle is found
-  if (paths[0] === "app") {
+  if (path.basename(appDir) === "app") {
     return appDir;
   } else {
     const currentFiles: fs.Dirent[] = await fs.readdir(appDir, { withFileTypes: true });

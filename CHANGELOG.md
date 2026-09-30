@@ -1,9 +1,5 @@
-- Added `firebase ailogic:providers:*` CLI commands to enable, disable, and list Gemini API providers.
-- Add `MCP-Protocol-Version`, `Mcp-Method`, and `Mcp-Name` HTTP headers to `OneMcpServer` requests per the MCP 0728 standard release candidate (https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/ and https://modelcontextprotocol.io/seps/2243-http-standardization).
-- Fixes Storage Emulator to support JSON uploads larger than 100KB without hanging or throwing 413 error (#8355)
-- Add `extdeprecationwarnings` experiment to display phased deprecation notices and guidance across `ext:*` CLI commands.
-- Fixes Data Connect emulator crash when in-flight GraphQL requests are cancelled (#10821)
-- Fixed a Cloud Storage emulator hang under concurrent requests, caused by the rules runtime's stdout being parsed per-chunk instead of per-line so batched responses were dropped (#6194, #6865).
-- Support for specifying that the input for a string or string[] param in Functions must be non-empty (#10678)
-- Removed the warning that Dart functions may not yet be visible in the Firebase Console, since they are now shown.
+- [fixed] Improve error message when billing is not enabled
+- Fixed a crash in `setEnqueuer` when deploying Cloud Tasks functions whose IAM policy has no bindings (#11184).
+- Updated dependencies to address security vulnerabilities, including `protobufjs`, `tar`, `@grpc/grpc-js`, `express`, `undici`, `hono`, `tmp`, and `form-data`.
+- Fix Next.js deploys failing to bundle `next.config` since v15.31.0. (#11187)
 - Web frameworks deploys now warn when the SSR function is not publicly invokable, which makes server-rendered requests through Hosting return 403 (#10690)

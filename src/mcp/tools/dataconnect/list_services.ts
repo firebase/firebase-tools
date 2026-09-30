@@ -12,7 +12,6 @@ import {
   mainSchemaYaml,
 } from "../../../dataconnect/types";
 import { dump } from "js-yaml";
-import { logger } from "../../../logger";
 
 interface CombinedServiceInfo {
   local?: ServiceInfo;
@@ -30,6 +29,8 @@ export const list_services = tool(
   {
     name: "list_services",
     description: "Use this to list existing local and backend Firebase SQL Connect services",
+    humanReadableDescription:
+      "List local and deployed Firebase SQL Connect services, schemas, and connectors.",
     inputSchema: z.object({}),
     annotations: {
       title: "List existing Firebase SQL Connect services",
@@ -40,7 +41,7 @@ export const list_services = tool(
       requiresAuth: false,
     },
   },
-  async (_, { projectId, config }) => {
+  async (_, { projectId, config, host }) => {
     const localServiceInfos = await loadAll(projectId, config);
     const serviceInfos = new Map<string, CombinedServiceInfo>();
 
@@ -58,7 +59,8 @@ export const list_services = tool(
           client.listSchemas(`projects/${projectId}/locations/-/services/-`),
           client.listConnectors(`projects/${projectId}/locations/-/services/-`),
         ]);
-        console.log(services, schemas, connectors);
+        host.logger.debug(JSON.stringify({ services, schemas, connectors }));
+
         for (const s of services) {
           const k = s.name.split("/").slice(2, 6).join("/");
           const st = serviceInfos.get(k) || {};
@@ -83,7 +85,7 @@ export const list_services = tool(
           serviceInfos.set(k, st);
         }
       } catch (e: any) {
-        logger.debug("cannot fetch dataconnect resources in the backend", e);
+        host.logger.debug(`cannot fetch dataconnect resources in the backend.\n${e}`);
       }
     }
 

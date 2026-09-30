@@ -419,7 +419,7 @@ export async function promptForLifecycleEvent(
   choices.push({ name: "skip (default)", value: "skip" });
 
   const selection = await select<LifecycleEvent | "skip">({
-    message: `We cannot determine whether this deployment is a first deploy or a redeploy for codebase "${codebase}" because it is recovering from a previous partial failure.`,
+    message: `Cannot determine if this is a first deploy or a redeploy for codebase "${codebase}" because the last deployment was partial (either due to a failure or a filtered deploy).`,
     choices,
     default: "skip",
     nonInteractive: options?.nonInteractive,

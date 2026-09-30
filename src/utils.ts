@@ -486,6 +486,59 @@ export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** Calculates the exponential backoff delay in milliseconds. */
+export function timeToWait(retryNumber: number, delay: number, maxDelay: number): number {
+  return Math.min(delay * Math.pow(2, retryNumber), maxDelay);
+}
+
+/** Creates a promise to wait for the nth exponential backoff delay. */
+export function backoff(retryNumber: number, delay: number, maxDelay: number): Promise<void> {
+  return sleep(timeToWait(retryNumber, delay, maxDelay));
+}
+
+export interface RetryWithBackoffOptions {
+  /**
+   * Predicate determining whether an error is retryable. Required so callers
+   * explicitly define expected transient error conditions rather than blindly retrying fatal errors.
+   */
+  retryPredicate: (err: unknown) => boolean;
+  /** Maximum number of retry attempts before giving up. Default: 0 (matches Throttler). */
+  retries?: number;
+  /** Initial delay in milliseconds for the first retry backoff. Default: 200ms (matches Throttler). */
+  delay?: number;
+  /** Maximum delay cap in milliseconds for any single backoff sleep. Default: 60000ms (matches Throttler). */
+  maxDelay?: number;
+}
+
+/**
+ * Runs an asynchronous operation and retries it with exponential backoff when errors match `retryPredicate`.
+ *
+ * Timing defaults:
+ * - `delay`: 200ms (matches Throttler).
+ * - `maxDelay`: 60000ms (matches Throttler).
+ * - `retries`: 0 (matches Throttler).
+ */
+export async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  options: RetryWithBackoffOptions,
+): Promise<T> {
+  const retries = options.retries ?? 0;
+  const delay = options.delay ?? 200;
+  const maxDelay = options.maxDelay ?? 60000;
+
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fn();
+    } catch (err: unknown) {
+      if (attempt < retries && options.retryPredicate(err)) {
+        await backoff(attempt, delay, maxDelay);
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
 /**
  * Return a "destroy" function for a Node.js HTTP server. MUST be called on
  * server creation (e.g. right after `.listen`), BEFORE any connections.

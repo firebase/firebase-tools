@@ -33,18 +33,21 @@ const TEST_PARAMS_2: Param[] = [
     label: "Another Param",
     type: ParamType.STRING,
     default: "default",
+    required: true,
   },
   {
     param: "NEW_PARAMETER",
     label: "New Param",
     type: ParamType.STRING,
     default: "${PROJECT_ID}",
+    required: true,
   },
   {
     param: "THIRD_PARAMETER",
     label: "3",
     type: ParamType.STRING,
     default: "default",
+    required: true,
   },
 ];
 const TEST_PARAMS_3: Param[] = [
@@ -257,6 +260,83 @@ describe("paramHelper", () => {
       };
       expect(newParams).to.eql(expected);
       expect(prompt.input).not.to.have.been.called;
+    });
+
+    it("should re-prompt for existing parameters whose current values fail validation against the new spec", async () => {
+      prompt.select.resolves("jpeg");
+      const oldSpec = cloneDeep(SPEC);
+      const newSpec = cloneDeep(SPEC);
+      oldSpec.params = [
+        {
+          param: "IMAGE_TYPE",
+          label: "Image Type",
+          type: ParamType.STRING,
+          required: false,
+        },
+      ];
+      newSpec.params = [
+        {
+          param: "IMAGE_TYPE",
+          label: "Image Type",
+          type: ParamType.SELECT,
+          required: true,
+          options: [
+            { label: "JPEG", value: "jpeg" },
+            { label: "PNG", value: "png" },
+          ],
+        },
+      ];
+
+      const newParams = await paramHelper.promptForNewParams({
+        spec: oldSpec,
+        newSpec,
+        currentParams: {
+          IMAGE_TYPE: "",
+        },
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+      });
+
+      expect(newParams).to.eql({
+        IMAGE_TYPE: { baseValue: "jpeg" },
+      });
+    });
+
+    it("should prompt for parameter when parameter type changes", async () => {
+      prompt.input.resolves("my-custom-bucket.appspot.com");
+      const oldSpec = cloneDeep(SPEC);
+      const newSpec = cloneDeep(SPEC);
+      oldSpec.params = [
+        {
+          param: "IMG_BUCKET",
+          label: "Storage Bucket",
+          type: ParamType.STRING,
+          required: true,
+        },
+      ];
+      newSpec.params = [
+        {
+          param: "IMG_BUCKET",
+          label: "Storage Bucket",
+          type: ParamType.SELECT_RESOURCE,
+          required: true,
+        },
+      ];
+
+      const newParams = await paramHelper.promptForNewParams({
+        spec: oldSpec,
+        newSpec,
+        currentParams: {
+          IMG_BUCKET: "my-custom-bucket.appspot.com",
+        },
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+      });
+
+      expect(newParams).to.eql({
+        IMG_BUCKET: { baseValue: "my-custom-bucket.appspot.com" },
+      });
+      expect(prompt.input).to.have.been.calledOnce;
     });
 
     it("should not prompt the user for params that did not change type or param", async () => {

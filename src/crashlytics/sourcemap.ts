@@ -46,6 +46,10 @@ export interface UploadRequest {
 
 export const CONCURRENCY = 25;
 
+// Special directory names used for Angular client-side build assets
+const ANGULAR_DIST_DIR = "dist";
+const ANGULAR_BROWSER_DIR = "browser";
+
 /**
  * Checks if the Google App ID is provided in command options.
  * Throws a FirebaseError if it is missing.
@@ -152,6 +156,8 @@ export async function upsertBucket(
 
 /**
  * Scans files to discover mapping files and links them to source assets.
+ * Supports both traditional sourcemap comments (//# sourceMappingURL=...) and
+ * hidden sourcemaps (generated without sourceMappingURL comments).
  */
 export async function findSourceMapMappings(
   files: { name: string }[],
@@ -161,12 +167,17 @@ export async function findSourceMapMappings(
   const mapFiles = files.filter((f) => f.name.endsWith(".js.map"));
 
   const mappings: SourceMapMapping[] = [];
-  const mapFilePathsSet = new Set(mapFiles.map((f) => f.name));
-  // Set to track map files that were linked from a JS file (via `sourceMappingURL` comment)
-  const mapFilesLinkedInJsComment = new Set<string>();
+  const mapFilePathsSet = new Set(mapFiles.map((f) => path.resolve(f.name)));
+  const jsFilesSet = new Set(jsFiles.map((f) => path.resolve(f.name)));
+
+  // Track map files and JS files that have been successfully linked
+  const linkedMapFilePaths = new Set<string>();
+  const linkedJsFilePaths = new Set<string>();
 
   const limit = pLimit(CONCURRENCY);
-  const results = await Promise.all(
+
+  // Pass 1: Traditional sourcemaps - check JS files for sourceMappingURL comments
+  const traditionalResults = await Promise.all(
     jsFiles.map((jsFile) =>
       limit(async () => {
         const mapFilePath = await getLinkedSourceMapPath(jsFile.name);
@@ -175,27 +186,141 @@ export async function findSourceMapMappings(
     ),
   );
 
-  for (const { jsFile, mapFilePath } of results) {
-    if (mapFilePath && mapFilePathsSet.has(mapFilePath)) {
-      mappings.push({
-        mapFilePath,
-        obfuscatedFilePath: path.relative(rootDir, path.resolve(jsFile.name)),
-      });
-      mapFilesLinkedInJsComment.add(mapFilePath);
+  for (const { jsFile, mapFilePath } of traditionalResults) {
+    if (mapFilePath) {
+      const resolvedMapPath = path.resolve(mapFilePath);
+      const resolvedJsPath = path.resolve(jsFile.name);
+      if (mapFilePathsSet.has(resolvedMapPath) && !linkedMapFilePaths.has(resolvedMapPath)) {
+        mappings.push({
+          mapFilePath,
+          obfuscatedFilePath: path.relative(rootDir, resolvedJsPath),
+        });
+        linkedMapFilePaths.add(resolvedMapPath);
+        linkedJsFilePaths.add(resolvedJsPath);
+      }
     }
   }
 
-  // Add map files that were not linked from any JS file
-  for (const mapFile of mapFiles) {
-    if (!mapFilesLinkedInJsComment.has(mapFile.name)) {
+  // Pass 2: Hidden sourcemaps - for map files not linked in Pass 1, resolve matching JS files
+  const unlinkedMapFiles = mapFiles.filter((f) => !linkedMapFilePaths.has(path.resolve(f.name)));
+  const availableJsFilesSet = new Set(
+    [...jsFilesSet].filter((jsPath) => !linkedJsFilePaths.has(jsPath)),
+  );
+
+  const hiddenResults = await Promise.all(
+    unlinkedMapFiles.map((mapFile) =>
+      limit(async () => {
+        const resolvedMapPath = path.resolve(mapFile.name);
+        const targetJsPath = await findHiddenSourceMapTarget(mapFile.name, availableJsFilesSet);
+        return { mapFile, targetJsPath, resolvedMapPath };
+      }),
+    ),
+  );
+
+  for (const { mapFile, targetJsPath, resolvedMapPath } of hiddenResults) {
+    if (targetJsPath && !linkedJsFilePaths.has(path.resolve(targetJsPath))) {
+      const resolvedJsPath = path.resolve(targetJsPath);
       mappings.push({
         mapFilePath: mapFile.name,
-        obfuscatedFilePath: path.relative(rootDir, path.resolve(mapFile.name)),
+        obfuscatedFilePath: path.relative(rootDir, resolvedJsPath),
       });
+      linkedMapFilePaths.add(resolvedMapPath);
+      linkedJsFilePaths.add(resolvedJsPath);
+    } else if (!linkedMapFilePaths.has(resolvedMapPath)) {
+      // Pass 3: Unlinked map files without matching JS file map to themselves (fallback)
+      mappings.push({
+        mapFilePath: mapFile.name,
+        obfuscatedFilePath: path.relative(rootDir, resolvedMapPath),
+      });
+      linkedMapFilePaths.add(resolvedMapPath);
     }
   }
 
   return mappings;
+}
+
+/**
+ * Extracts the optional 'file' field from the header of a source map file.
+ * Reads the initial chunk of the file to quickly parse the property without loading massive mapping tables into memory.
+ */
+export async function extractSourceMapFileField(mapFilePath: string): Promise<string | undefined> {
+  let fileHandle: fs.promises.FileHandle | undefined;
+  try {
+    const stat = await fs.promises.stat(mapFilePath);
+    const size = stat.size;
+    if (size === 0) {
+      return undefined;
+    }
+    const bufferSize = Math.min(size, 16384);
+    fileHandle = await fs.promises.open(mapFilePath, "r");
+    const buffer = Buffer.alloc(bufferSize);
+    const { bytesRead } = await fileHandle.read(buffer, 0, bufferSize, 0);
+    const header = buffer.toString("utf-8", 0, bytesRead);
+    const regex = /"file"\s*:\s*"(?<file>(?:[^"\\]|\\.)*)"/;
+    const match = regex.exec(header);
+    const file = match?.groups?.file;
+    if (file) {
+      try {
+        const decoded = JSON.parse(`"${file}"`) as string;
+        const trimmed = decoded.trim();
+        return trimmed.length > 0 ? trimmed : undefined;
+      } catch {
+        const trimmed = file.trim();
+        return trimmed.length > 0 ? trimmed : undefined;
+      }
+    }
+  } catch (e) {
+    logger.debug(
+      `Error reading source map file property from ${mapFilePath}: ${e instanceof Error ? e.message : String(e)}`,
+    );
+  } finally {
+    if (fileHandle) {
+      try {
+        await fileHandle.close();
+      } catch (e) {
+        // Ignore close error
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Finds the corresponding JS target file for a hidden source map.
+ * Checks by filename convention (e.g. foo.js.map -> foo.js) and the source map 'file' property.
+ */
+export async function findHiddenSourceMapTarget(
+  mapFilePath: string,
+  jsFilesSet?: Set<string>,
+): Promise<string | undefined> {
+  const resolvedMapPath = path.resolve(mapFilePath);
+  const mapDir = path.dirname(resolvedMapPath);
+
+  // Strategy 1: Check by convention (e.g., stripping '.map' suffix from 'foo.js.map' -> 'foo.js')
+  if (resolvedMapPath.endsWith(".map")) {
+    const candidateJsPath = resolvedMapPath.slice(0, -4);
+    if (jsFilesSet ? jsFilesSet.has(candidateJsPath) : fs.existsSync(candidateJsPath)) {
+      return candidateJsPath;
+    }
+  }
+
+  // Strategy 2: Check the 'file' property inside the source map JSON
+  const fileField = await extractSourceMapFileField(resolvedMapPath);
+  if (fileField) {
+    // Check relative to the source map directory
+    const candidateJsPath = path.resolve(mapDir, fileField);
+    if (jsFilesSet ? jsFilesSet.has(candidateJsPath) : fs.existsSync(candidateJsPath)) {
+      return candidateJsPath;
+    }
+
+    // Check if any known JS file matches the fileField basename in the same directory
+    const baseCandidate = path.resolve(mapDir, path.basename(fileField));
+    if (jsFilesSet ? jsFilesSet.has(baseCandidate) : fs.existsSync(baseCandidate)) {
+      return baseCandidate;
+    }
+  }
+
+  return undefined;
 }
 
 /**
@@ -301,13 +426,25 @@ export async function uploadSourceMaps(
  */
 export async function uploadMap(request: UploadRequest, attemptsRemaining = 0): Promise<boolean> {
   const { projectId, mappingFile, obfuscatedFilePath, bucketName, appVersion, options } = request;
-  const filePath = path.relative(options.projectRoot ?? process.cwd(), mappingFile);
-  const obfuscatedPath = obfuscatedFilePath
-    .split(path.sep)
+  const rootDir = options.projectRoot ?? process.cwd();
+  const relativeToRoot = path.relative(rootDir, mappingFile);
+  const resolvedCheckPath = path.resolve(rootDir, relativeToRoot);
+  const filePath =
+    !fs.existsSync(resolvedCheckPath) && fs.existsSync(mappingFile) ? mappingFile : relativeToRoot;
+
+  // Perform special handling for Angular to adjust source map file path since source
+  // files are served at root (`/`) and the maps reference them with an absolute path.
+  const pathSegments = obfuscatedFilePath.split(path.sep);
+  const browserIndex = pathSegments.lastIndexOf(ANGULAR_BROWSER_DIR);
+  const isAngularBuildDir = filePath.split(path.sep).includes(ANGULAR_DIST_DIR);
+  const normalizedSegments =
+    isAngularBuildDir && browserIndex !== -1 ? pathSegments.slice(browserIndex + 1) : pathSegments;
+  const obfuscatedPath = normalizedSegments
     .map((p) => (p === ".next" ? "_next" : p))
     // TODO(andrewbrook): add flag to allow uploading dev maps
     .filter((p) => p !== "dev")
     .join("/");
+
   const tmpArchive = await archiveFile(filePath, { archivedFileName: "mapping.js.map" });
   const appId = options.app || "";
   const gcsFile = `${appId}-${appVersion}-${normalizeFileName(obfuscatedPath)}.zip`;
@@ -367,6 +504,15 @@ export function normalizeFileName(fileName: string): string {
   return fileName.replaceAll(/\//g, "-");
 }
 
+function isAlreadyExistsError(e: FirebaseError): boolean {
+  if (e.status !== 400) {
+    return false;
+  }
+  const message = e.message.toLowerCase();
+  const bodyMessage = ((e.context as any)?.body?.error?.message ?? "").toLowerCase();
+  return message.includes("already exists") || bodyMessage.includes("already exists");
+}
+
 /**
  * Submits resource descriptors to the Firebase Telemetry API to register completed source maps.
  */
@@ -377,20 +523,40 @@ export async function registerSourceMap(sourceMap: SourceMap): Promise<void> {
     apiVersion: "v1alpha",
   });
 
-  try {
+  const patchSourceMap = async (): Promise<void> => {
     await client.patch(sourceMap.name, sourceMap, { queryParams: { allowMissing: "true" } });
     logger.debug(
       `Registered source map ${sourceMap.obfuscatedFilePath} with Firebase Telemetry service`,
     );
+  };
+
+  try {
+    await patchSourceMap();
   } catch (e) {
     if (e instanceof FirebaseError) {
       // Ignore 409 errors, as they indicate the source map was recently uploaded
       if (e.status === 409) {
         return;
       }
+      if (isAlreadyExistsError(e)) {
+        try {
+          logger.debug(
+            `Source map ${sourceMap.obfuscatedFilePath} already exists, deleting and re-registering`,
+          );
+          await client.delete(sourceMap.name);
+          await patchSourceMap();
+          return;
+        } catch (retryErr) {
+          throw new FirebaseError(
+            `Failed to register source map ${sourceMap.obfuscatedFilePath} with Firebase Telemetry service:\n${retryErr instanceof Error ? retryErr.message : String(retryErr)}`,
+            { original: retryErr instanceof Error ? retryErr : undefined },
+          );
+        }
+      }
     }
     throw new FirebaseError(
       `Failed to register source map ${sourceMap.obfuscatedFilePath} with Firebase Telemetry service:\n${e instanceof Error ? e.message : String(e)}`,
+      { original: e instanceof Error ? e : undefined },
     );
   }
 }

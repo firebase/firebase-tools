@@ -267,6 +267,7 @@ export async function uploadObject(
   /** Bucket to upload to. */
   bucketName: string,
   contentType?: ContentType,
+  maxSizeBytes?: number,
 ): Promise<{
   bucket: string;
   object: string;
@@ -286,13 +287,14 @@ export async function uploadObject(
 
   const localAPIClient = new Client({ urlPrefix: storageOrigin() });
   const location = `/${bucketName}/${path.basename(source.file)}`;
+  const rangeHeader = maxSizeBytes !== undefined ? `0,${maxSizeBytes}` : "0,123289600";
   const res = await localAPIClient.request({
     method: "PUT",
     path: location,
     headers: {
       "Content-Type":
         contentType === ContentType.TAR ? "application/octet-stream" : "application/zip",
-      "x-goog-content-length-range": "0,123289600",
+      "x-goog-content-length-range": rangeHeader,
     },
     body: source.stream,
   });

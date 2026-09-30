@@ -11,6 +11,8 @@ export const query_collection = tool(
     name: "query_collection",
     description:
       "Use this to retrieve one or more Firestore documents from a collection in a database in the current project by a collection with a full document path. Use this if you know the exact path of a collection and the filtering clause you would like for the document.",
+    humanReadableDescription:
+      "Query Firestore documents from a collection with optional filters and ordering.",
     inputSchema: z.object({
       database: z
         .string()

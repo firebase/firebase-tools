@@ -150,6 +150,34 @@ describe("getReport", () => {
     expect(nock.isDone()).to.be.true;
   });
 
+  it("should resolve with topBrowsers report on success", async () => {
+    const mockResponse = { groups: [{ browser: { displayName: "Chrome (123)" } }] };
+
+    nock(crashlyticsApiOrigin())
+      .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports/topBrowsers`)
+      .query({ page_size: "10" })
+      .reply(200, mockResponse);
+
+    const result = await getReport(CrashlyticsReport.TOP_BROWSERS, appId, {});
+
+    expect(result).to.deep.equal(mockResponse);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should resolve with webMetrics report on success", async () => {
+    const mockResponse = { groups: [{ webMetricsGroup: { id: "metrics-1" } }] };
+
+    nock(crashlyticsApiOrigin())
+      .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports/webMetrics`)
+      .query({ page_size: "10" })
+      .reply(200, mockResponse);
+
+    const result = await getReport(CrashlyticsReport.WEB_METRICS, appId, {});
+
+    expect(result).to.deep.equal(mockResponse);
+    expect(nock.isDone()).to.be.true;
+  });
+
   it("should throw a FirebaseError if the appId is invalid", async () => {
     const invalidAppId = "invalid-app-id";
 
