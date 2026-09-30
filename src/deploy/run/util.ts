@@ -1,3 +1,4 @@
+import * as clc from "colorette";
 import { FirebaseError, getErrStatus } from "../../error";
 import { AppHostingSingle, RunSingle } from "../../firebaseConfig";
 import * as runv2 from "../../gcp/runv2";
@@ -54,6 +55,14 @@ export async function getExistingService(
     }
     throw err;
   }
+}
+
+/**
+ * Explains how to create a service that is in firebase.json, but not in Cloud Run yet.
+ */
+export function missingServiceMessage(config: RunSingle): string {
+  const how = `Create it with ${clc.bold("firebase init run")} or ${clc.bold(`firebase deploy --only run:${config.serviceId}`)}.`;
+  return `Cloud Run service ${config.serviceId} doesn't exist in ${config.region} yet. ${how}`;
 }
 
 /**
