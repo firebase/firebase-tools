@@ -1,6 +1,6 @@
 import { cloudMonitoringOrigin } from "../api";
 import { Client } from "../apiv2";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg, getError, getErrStatus } from "../error";
 
 export const CLOUD_MONITORING_VERSION = "v3";
 
@@ -139,17 +139,154 @@ export async function queryTimeSeries(
     urlPrefix: cloudMonitoringOrigin(),
     apiVersion: CLOUD_MONITORING_VERSION,
   });
+  const queryParams: Record<string, string | number> = {};
+  for (const [key, value] of Object.entries(query)) {
+    if (typeof value === "string" || typeof value === "number") {
+      queryParams[key] = value;
+    }
+  }
   try {
     const res = await client.get<{ timeSeries: TimeSeriesResponse }>(
       `/projects/${project}/timeSeries/`,
       {
-        queryParams: query as { [key: string]: any },
+        queryParams,
       },
     );
     return res.body.timeSeries;
-  } catch (err: any) {
-    throw new FirebaseError(`Failed to get Cloud Monitoring metric: ${err}`, {
-      status: err.status,
+  } catch (err: unknown) {
+    throw new FirebaseError(`Failed to get Cloud Monitoring metric: ${getErrMsg(err)}`, {
+      status: getErrStatus(err),
+      original: getError(err),
     });
+  }
+}
+
+/** NotificationChannel from v3 Cloud Monitoring API */
+export interface NotificationChannel {
+  name?: string;
+  type: string;
+  displayName?: string;
+  description?: string;
+  labels?: Record<string, string>;
+  userLabels?: Record<string, string>;
+  enabled?: boolean;
+}
+
+/** AlertPolicy from v3 Cloud Monitoring API */
+export interface AlertPolicy {
+  name: string;
+  displayName?: string;
+  notificationChannels?: string[];
+  userLabels?: Record<string, string>;
+  enabled?: boolean;
+}
+
+/**
+ * Lists Cloud Monitoring NotificationChannel resources for a project.
+ */
+export async function listNotificationChannels(
+  project: number | string,
+  filter?: string,
+): Promise<NotificationChannel[]> {
+  const client = new Client({
+    urlPrefix: cloudMonitoringOrigin(),
+    apiVersion: CLOUD_MONITORING_VERSION,
+  });
+  try {
+    const res = await client.get<{ notificationChannels?: NotificationChannel[] }>(
+      `/projects/${project}/notificationChannels`,
+      filter ? { queryParams: { filter } } : {},
+    );
+    return res.body?.notificationChannels ?? [];
+  } catch (err: unknown) {
+    throw new FirebaseError(
+      `Failed to list Cloud Monitoring notification channels: ${getErrMsg(err)}`,
+      {
+        status: getErrStatus(err),
+        original: getError(err),
+      },
+    );
+  }
+}
+
+/**
+ * Creates a Cloud Monitoring NotificationChannel resource for a project.
+ */
+export async function createNotificationChannel(
+  project: number | string,
+  channel: NotificationChannel,
+): Promise<NotificationChannel> {
+  const client = new Client({
+    urlPrefix: cloudMonitoringOrigin(),
+    apiVersion: CLOUD_MONITORING_VERSION,
+  });
+  try {
+    const res = await client.post<NotificationChannel, NotificationChannel>(
+      `/projects/${project}/notificationChannels`,
+      channel,
+    );
+    return res.body;
+  } catch (err: unknown) {
+    throw new FirebaseError(
+      `Failed to create Cloud Monitoring notification channel: ${getErrMsg(err)}`,
+      {
+        status: getErrStatus(err),
+        original: getError(err),
+      },
+    );
+  }
+}
+
+/**
+ * Gets a Cloud Monitoring AlertPolicy resource by its full resource name
+ * (e.g., `projects/{project}/alertPolicies/{policyId}`).
+ */
+export async function getAlertPolicy(name: string): Promise<AlertPolicy> {
+  const client = new Client({
+    urlPrefix: cloudMonitoringOrigin(),
+    apiVersion: CLOUD_MONITORING_VERSION,
+  });
+  const path = name.startsWith("/") ? name : `/${name}`;
+  try {
+    const res = await client.get<AlertPolicy>(path);
+    return res.body;
+  } catch (err: unknown) {
+    throw new FirebaseError(
+      `Failed to get Cloud Monitoring alert policy ${name}: ${getErrMsg(err)}`,
+      {
+        status: getErrStatus(err),
+        original: getError(err),
+      },
+    );
+  }
+}
+
+/**
+ * Updates a Cloud Monitoring AlertPolicy resource.
+ */
+export async function updateAlertPolicy(
+  policy: AlertPolicy,
+  updateMask?: string,
+): Promise<AlertPolicy> {
+  const client = new Client({
+    urlPrefix: cloudMonitoringOrigin(),
+    apiVersion: CLOUD_MONITORING_VERSION,
+  });
+  const path = policy.name.startsWith("/") ? policy.name : `/${policy.name}`;
+  try {
+    const res = await client.patch<AlertPolicy, AlertPolicy>(
+      path,
+      policy,
+      updateMask ? { queryParams: { updateMask } } : {},
+    );
+    return res.body;
+  } catch (err: unknown) {
+    throw new FirebaseError(
+      `Failed to update Cloud Monitoring alert policy ${policy.name}: ${getErrMsg(err)}`,
+      {
+        status: getErrStatus(err),
+        original: getError(err),
+      },
+    );
   }
 }
