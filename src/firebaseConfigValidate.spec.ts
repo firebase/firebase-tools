@@ -24,6 +24,24 @@ describe("firebaseConfigValidate", () => {
     expect(isValid).to.be.true;
   });
 
+  function expectValidationError(
+    config: unknown,
+    keyword: string,
+    instancePath: string,
+    params: Record<string, unknown>,
+  ): void {
+    const validator = getValidator();
+    expect(validator(config)).to.be.false;
+    expect(
+      (validator.errors ?? []).some(
+        (e) =>
+          e.keyword === keyword &&
+          e.instancePath === instancePath &&
+          Object.entries(params).every(([k, v]) => e.params[k] === v),
+      ),
+    ).to.be.true;
+  }
+
   it("should accept a valid run config", () => {
     const config: FirebaseConfig = {
       run: [
@@ -36,9 +54,7 @@ describe("firebaseConfigValidate", () => {
     };
 
     const validator = getValidator();
-    const isValid = validator(config);
-
-    expect(isValid).to.be.true;
+    expect(validator(config)).to.be.true;
   });
 
   it("should accept a single-object run config", () => {
@@ -51,80 +67,42 @@ describe("firebaseConfigValidate", () => {
     };
 
     const validator = getValidator();
-    const isValid = validator(config);
-
-    expect(isValid).to.be.true;
+    expect(validator(config)).to.be.true;
   });
 
   it("should reject a run config missing serviceId", () => {
-    const config = {
-      run: [
-        {
-          region: "us-central1",
-          rootDir: ".",
-        },
-      ],
-    };
+    expectValidationError(
+      { run: [{ region: "us-central1", rootDir: "." }] },
+      "required",
+      "/run/0",
+      {
+        missingProperty: "serviceId",
+      },
+    );
+  });
 
-    const validator = getValidator();
-    const isValid = validator(config);
-
-    expect(isValid).to.be.false;
-    expect(validator.errors).to.exist;
-    expect(
-      (validator.errors ?? []).some(
-        (e) =>
-          e.keyword === "required" &&
-          e.instancePath === "/run/0" &&
-          e.params.missingProperty === "serviceId",
-      ),
-    ).to.be.true;
+  it("should reject a run config missing region", () => {
+    expectValidationError({ run: { serviceId: "my-service" } }, "required", "/run", {
+      missingProperty: "region",
+    });
   });
 
   it("should reject a run config with an unknown field", () => {
-    const config = {
-      run: {
-        serviceId: "my-service",
-        bananas: true,
-      },
-    };
-
-    const validator = getValidator();
-    const isValid = validator(config);
-
-    expect(isValid).to.be.false;
-    expect(validator.errors).to.exist;
-    expect(
-      (validator.errors ?? []).some(
-        (e) =>
-          e.keyword === "additionalProperties" &&
-          e.instancePath === "/run" &&
-          e.params.additionalProperty === "bananas",
-      ),
-    ).to.be.true;
+    expectValidationError(
+      { run: { serviceId: "my-service", region: "us-central1", bananas: true } },
+      "additionalProperties",
+      "/run",
+      { additionalProperty: "bananas" },
+    );
   });
 
   it("should reject a run config with an incorrect type", () => {
-    const config = {
-      run: {
-        serviceId: "my-service",
-        localBuild: "yes",
-      },
-    };
-
-    const validator = getValidator();
-    const isValid = validator(config);
-
-    expect(isValid).to.be.false;
-    expect(validator.errors).to.exist;
-    expect(
-      (validator.errors ?? []).some(
-        (e) =>
-          e.keyword === "type" &&
-          e.instancePath === "/run/localBuild" &&
-          e.params.type === "boolean",
-      ),
-    ).to.be.true;
+    expectValidationError(
+      { run: { serviceId: "my-service", region: "us-central1", localBuild: "yes" } },
+      "type",
+      "/run/localBuild",
+      { type: "boolean" },
+    );
   });
 
   it("should report an extra top-level field", () => {
