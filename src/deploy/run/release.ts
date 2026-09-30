@@ -10,6 +10,9 @@ export async function release(
   payload: Payload,
 ): Promise<void> {
   for (const { config, deployed } of payload.run?.services || []) {
-    logLabeledSuccess("run", `Deployed service ${config.serviceId} to ${deployed?.uri}`);
+    logLabeledSuccess(
+      "run",
+      `Deployed service ${config.serviceId}${deployed?.uri ? ` to ${deployed.uri}` : ""}`,
+    );
   }
 }

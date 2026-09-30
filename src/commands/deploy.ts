@@ -89,7 +89,7 @@ command
       experiments.assertEnabled("ailogic", "deploy AI Logic resources");
     }
     if (options.filteredTargets.includes("run")) {
-      experiments.assertEnabled("direct_cloud_run", "deploy Cloud Run services");
+      experiments.assertEnabled("directcloudrun", "deploy Cloud Run services");
     }
     const permissions = options.filteredTargets.reduce((perms: string[], target: string) => {
       return perms.concat(TARGET_PERMISSIONS[target as (typeof VALID_DEPLOY_TARGETS)[number]]);

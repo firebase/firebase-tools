@@ -179,7 +179,7 @@ export const ALL_EXPERIMENTS = experiments({
     public: true,
   },
 
-  direct_cloud_run: {
+  directcloudrun: {
     shortDescription: "Build and deploy web apps directly to Cloud Run services",
     fullDescription:
       "Enables `firebase init run`, `firebase deploy --only run`, and the " +

@@ -36,10 +36,13 @@ describe("updateService", () => {
     await expect(updateService("s", both)).to.be.rejectedWith("not both");
   });
 
-  it("requires the service to be in firebase.json", async () => {
+  it("requires the service to be in firebase.json with a region", async () => {
     await expect(updateService("other", options({ baseImage: "nodejs20" }))).to.be.rejectedWith(
       "Cloud Run service IDs other not detected in firebase.json",
     );
+    await expect(
+      updateService("s", options({ baseImage: "nodejs20" }, { region: "" })),
+    ).to.be.rejectedWith("Cloud Run service s is missing a region in firebase.json.");
   });
 
   it("requires the service to exist", async () => {
