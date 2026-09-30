@@ -375,5 +375,5 @@ export async function listLocations(projectId: string): Promise<string[]> {
   const res = await client.get<{ locations?: Array<{ locationId: string }> }>(
     `/projects/${projectId}/locations`,
   );
-  return res.body.locations?.map((l) => l.locationId) ?? [];
+  return res.body?.locations?.map((l) => l.locationId) ?? [];
 }
