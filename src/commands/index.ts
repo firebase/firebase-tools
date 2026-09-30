@@ -301,7 +301,7 @@ export function load(client: CLIClient): CLIClient {
   client.remoteconfig.experiments.get = loadCommand("remoteconfig-experiments-get");
   client.remoteconfig.experiments.list = loadCommand("remoteconfig-experiments-list");
   client.remoteconfig.experiments.delete = loadCommand("remoteconfig-experiments-delete");
-  if (experiments.isEnabled("direct_cloud_run")) {
+  if (experiments.isEnabled("directcloudrun")) {
     client.run = {};
     client.run.services = {};
     client.run.services.update = loadCommand("run-services-update");
