@@ -11,7 +11,7 @@ export const SERVICE_OPERATION_TIMEOUT_MS = 10 * 60 * 1000;
  * Returns the Cloud Run services in firebase.json that match the --only filter.
  */
 export function getServiceConfigs(options: Options): RunSingle[] {
-  const configs = [options.config.src.run || []].flat();
+  const configs = [options.config?.src?.run || []].flat();
   const selectors = options.only ? options.only.split(",") : ["run"];
   if (selectors.includes("run")) {
     return configs;

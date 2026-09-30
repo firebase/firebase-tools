@@ -35,7 +35,7 @@ describe("firebase deploy --only run", function (this: Mocha.Suite) {
 
   before(async () => {
     expect(PROJECT).to.not.be.empty;
-    process.env.FIREBASE_CLI_EXPERIMENTS = "direct_cloud_run";
+    process.env.FIREBASE_CLI_EXPERIMENTS = "directcloudrun";
     await requireAuth({});
     workDir = fs.mkdtempSync(path.join(os.tmpdir(), "run-e2e-"));
     const pkg = { name: "run-e2e", version: "1.0.0" };
@@ -60,14 +60,14 @@ describe("firebase deploy --only run", function (this: Mocha.Suite) {
     fs.removeSync(workDir);
   });
 
-  it("requires the direct_cloud_run experiment", async () => {
+  it("requires the directcloudrun experiment", async () => {
     delete process.env.FIREBASE_CLI_EXPERIMENTS;
     try {
       const res = await firebase("deploy", "--only", "run");
       expect(res.proc.exitCode).not.to.equal(0);
-      expect(res.stdout + res.stderr).to.include("experiment direct_cloud_run is not enabled");
+      expect(res.stdout + res.stderr).to.include("experiment directcloudrun is not enabled");
     } finally {
-      process.env.FIREBASE_CLI_EXPERIMENTS = "direct_cloud_run";
+      process.env.FIREBASE_CLI_EXPERIMENTS = "directcloudrun";
     }
   });
 

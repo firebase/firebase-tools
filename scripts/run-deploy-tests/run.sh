@@ -12,4 +12,4 @@ echo "======================================"
 echo "Starting Cloud Run E2E Test Suite"
 echo "======================================"
 
-mocha scripts/run-deploy-tests/tests.ts --timeout 600000
+npx mocha scripts/run-deploy-tests/tests.ts --timeout 600000
