@@ -178,7 +178,7 @@ async function deployService(
     serviceId,
     {
       name: `projects/${projectId}/locations/${region}/services/${serviceId}`,
-      ...(annotations && Object.keys(annotations).length && { annotations }),
+      ...(annotations && Object.keys(annotations).length > 0 ? { annotations } : {}),
       template,
       client: "cli-firebase",
       invokerIamDisabled: true,

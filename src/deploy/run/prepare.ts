@@ -78,7 +78,7 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
     baseImage,
     appId,
     ...(autoInitEnv?.FIREBASE_CONFIG && { firebaseConfig: autoInitEnv.FIREBASE_CONFIG }),
-    ...(Object.keys(buildEnv).length && { buildEnv }),
+    ...(Object.keys(buildEnv).length > 0 ? { buildEnv } : {}),
   };
   if (!config.localBuild) {
     const secrets = secretNames(buildEnv);
