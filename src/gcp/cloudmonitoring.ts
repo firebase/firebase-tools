@@ -167,8 +167,8 @@ export interface NotificationChannel {
   type: string;
   displayName?: string;
   description?: string;
-  labels?: { [key: string]: string };
-  userLabels?: { [key: string]: string };
+  labels?: Record<string, string>;
+  userLabels?: Record<string, string>;
   enabled?: boolean;
 }
 
@@ -177,7 +177,7 @@ export interface AlertPolicy {
   name: string;
   displayName?: string;
   notificationChannels?: string[];
-  userLabels?: { [key: string]: string };
+  userLabels?: Record<string, string>;
   enabled?: boolean;
 }
 

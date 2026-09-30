@@ -72,19 +72,19 @@ export async function generateAlertPolicy(
 
 /**
  * Fetches the Firebase-owned notification channel for the user's email if it exists.
- * Returns null if no such channel is configured yet.
+ * Returns undefined if no such channel is configured yet.
  */
 export async function fetchFirebaseEmailChannel(
   projectId: string,
   userEmail: string,
-): Promise<NotificationChannel | null> {
+): Promise<NotificationChannel | undefined> {
   const escapedEmail = userEmail.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
   const filter =
     `type = "${EMAIL_CHANNEL_TYPE}" AND ` +
     `labels.email_address = "${escapedEmail}" AND ` +
     `user_labels.${FIREBASE_CHANNEL_LABEL} = "true"`;
   const channels = await listNotificationChannels(projectId, filter);
-  return channels[0] ?? null;
+  return channels[0];
 }
 
 /**
@@ -189,7 +189,7 @@ export async function enableAlerts(
       exit: 1,
     });
   }
-  return await Promise.all(
+  const results = await Promise.allSettled(
     alertTypes.map(async (alertType) => {
       const { policy } = await enableAlert(projectId, appId, alertType, {
         channelName,
@@ -197,4 +197,13 @@ export async function enableAlerts(
       return policy;
     }),
   );
+  const policies: AlertPolicy[] = [];
+  for (const res of results) {
+    if (res.status === "fulfilled") {
+      policies.push(res.value);
+    } else {
+      logger.debug(`[crashlytics] Failed to enable alert: ${getErrMsg(res.reason)}`);
+    }
+  }
+  return policies;
 }

@@ -91,14 +91,14 @@ describe("crashlytics alerts", () => {
       expect(nock.isDone()).to.be.true;
     });
 
-    it("should return null when no matching channel exists", async () => {
+    it("should return undefined when no matching channel exists", async () => {
       nock(cloudMonitoringOrigin())
         .get(`/v3/projects/${projectId}/notificationChannels`)
         .query({ filter: expectedFilter })
         .reply(200, {});
 
       const res = await fetchFirebaseEmailChannel(projectId, userEmail);
-      expect(res).to.be.null;
+      expect(res).to.be.undefined;
       expect(nock.isDone()).to.be.true;
     });
 
@@ -320,6 +320,43 @@ describe("crashlytics alerts", () => {
       );
 
       expect(res).to.deep.equal([updatedNewPolicy, updatedRegressedPolicy]);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should preserve fulfilled policies when one alert type fails", async () => {
+      const initialNewPolicy = { name: newIssuePolicyName, notificationChannels: [] };
+      const updatedNewPolicy = { name: newIssuePolicyName, notificationChannels: [channelName] };
+
+      nock(cloudMonitoringOrigin())
+        .get(`/v3/projects/${projectId}/notificationChannels`)
+        .query({ filter: expectedFilter })
+        .reply(200, { notificationChannels: [emailChannel] });
+
+      nock(crashlyticsApiOrigin())
+        .post(`/v1alpha/projects/${projectId}/apps/${appId}:generateAlertPolicy`, {
+          alertType: AlertType.ALERT_TYPE_NEW_ISSUE,
+        })
+        .reply(200, { alertPolicy: newIssuePolicyName });
+      nock(cloudMonitoringOrigin()).get(`/v3/${newIssuePolicyName}`).reply(200, initialNewPolicy);
+      nock(cloudMonitoringOrigin())
+        .patch(`/v3/${newIssuePolicyName}`, updatedNewPolicy)
+        .query({ updateMask: NOTIFICATION_CHANNELS_MASK_PATH })
+        .reply(200, updatedNewPolicy);
+
+      nock(crashlyticsApiOrigin())
+        .post(`/v1alpha/projects/${projectId}/apps/${appId}:generateAlertPolicy`, {
+          alertType: AlertType.ALERT_TYPE_REGRESSED_ISSUE,
+        })
+        .reply(500, { error: "Internal Server Error" });
+
+      const res = await enableAlerts(
+        projectId,
+        appId,
+        [AlertType.ALERT_TYPE_NEW_ISSUE, AlertType.ALERT_TYPE_REGRESSED_ISSUE],
+        userEmail,
+      );
+
+      expect(res).to.deep.equal([updatedNewPolicy]);
       expect(nock.isDone()).to.be.true;
     });
   });
