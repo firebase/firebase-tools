@@ -117,7 +117,7 @@ async function resolveAutoInitEnv(
     const autoinitVars = getAutoinitEnvVars(webappConfig);
     if (appId === existing?.annotations?.[FIREBASE_APP_ANNOTATION]) {
       for (const env of mainContainer(existing?.template)?.env || []) {
-        if (env.name in autoinitVars) {
+        if (Object.prototype.hasOwnProperty.call(autoinitVars, env.name)) {
           if ("value" in env && env.value !== undefined) {
             autoinitVars[env.name] = env.value;
           } else {
