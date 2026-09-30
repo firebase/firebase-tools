@@ -156,14 +156,16 @@ export function upsertRunConfig(runConfig: RunSingle, config: Config): void {
     services.push(runConfig);
   } else {
     const { rootDir, region, localBuild } = runConfig;
-    const { localBuild: _, ...existing } = services[i];
     services[i] = {
       ...runConfig,
-      ...existing,
+      ...services[i],
       rootDir,
       region,
       ...(localBuild && { localBuild }),
     };
+    if (!localBuild) {
+      delete services[i].localBuild;
+    }
   }
   config.set("run", services.length === 1 ? services[0] : services);
 }
