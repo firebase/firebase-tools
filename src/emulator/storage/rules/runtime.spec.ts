@@ -41,13 +41,14 @@ describe("Storage Rules Runtime", () => {
     });
 
     function mockFirestoreDocumentReads(runtime: StorageRulesRuntime, evaluations: string[][]) {
-      const mockClient = sandbox.createStubInstance(Client);
-      mockClient.get.resolves({
+      const clientMock = sandbox.createStubInstance(Client);
+      const firestoreGet = clientMock.get;
+      firestoreGet.resolves({
         status: 200,
         response: {} as Response,
         body: { name: "projects/test/databases/(default)/documents/test/doc", fields: {} },
       });
-      sandbox.stub(EmulatorRegistry, "client").returns(mockClient as unknown as Client);
+      sandbox.stub(EmulatorRegistry, "client").returns(clientMock);
 
       const sendRequest = sandbox.stub(runtime as any, "_sendRequest");
       let evaluationIndex = -1;
@@ -74,12 +75,12 @@ describe("Storage Rules Runtime", () => {
         return Promise.resolve({ result: { permit: true }, errors: [], warnings: [] });
       });
 
-      return { mockClient, sendRequest };
+      return { clientMock, sendRequest };
     }
 
     async function verifyDocumentReads(paths: string[]) {
       const runtime = new StorageRulesRuntime();
-      const { mockClient, sendRequest } = mockFirestoreDocumentReads(runtime, [paths]);
+      const { clientMock, sendRequest } = mockFirestoreDocumentReads(runtime, [paths]);
 
       const result = await runtime.verifyWithRuleset("test-ruleset", {
         file: {},
@@ -88,7 +89,7 @@ describe("Storage Rules Runtime", () => {
         projectId: "test-project",
       });
 
-      return { result, mockClient, sendRequest };
+      return { result, clientMock, sendRequest };
     }
 
     it("allows one unique Firestore document", async () => {
@@ -104,7 +105,7 @@ describe("Storage Rules Runtime", () => {
     });
 
     it("denies access to a third unique Firestore document", async () => {
-      const { result, mockClient, sendRequest } = await verifyDocumentReads([
+      const { result, clientMock, sendRequest } = await verifyDocumentReads([
         "/documents/one",
         "/documents/two",
         "/documents/three",
@@ -112,36 +113,36 @@ describe("Storage Rules Runtime", () => {
 
       expect(result.permitted).to.be.undefined;
       expect(result.issues.errors).to.deep.equal(["Rules evaluation failed"]);
-      expect(mockClient.get.callCount).to.equal(2);
-      expect(mockClient.get.calledWith("projects/test-project/documents/three")).to.be.false;
+      expect(clientMock.get.callCount).to.equal(2);
+      expect(clientMock.get.calledWith("projects/test-project/documents/three")).to.be.false;
       expect(sendRequest.getCall(3).args[0].status).to.equal(DataLoadStatus.INVALID_STATE);
     });
 
     it("counts repeated reads of the same document only once", async () => {
-      const { result, mockClient } = await verifyDocumentReads([
+      const { result, clientMock } = await verifyDocumentReads([
         "/documents/one",
         "/documents/one",
         "/documents/one",
       ]);
 
       expect(result.permitted).to.be.true;
-      expect(mockClient.get.callCount).to.equal(3);
+      expect(clientMock.get.callCount).to.equal(3);
     });
 
     it("allows repeated reads among two unique Firestore documents", async () => {
-      const { result, mockClient } = await verifyDocumentReads([
+      const { result, clientMock } = await verifyDocumentReads([
         "/documents/one",
         "/documents/two",
         "/documents/one",
       ]);
 
       expect(result.permitted).to.be.true;
-      expect(mockClient.get.callCount).to.equal(3);
+      expect(clientMock.get.callCount).to.equal(3);
     });
 
     it("tracks Firestore documents independently for each Rules evaluation", async () => {
       const runtime = new StorageRulesRuntime();
-      const { mockClient } = mockFirestoreDocumentReads(runtime, [
+      const { clientMock } = mockFirestoreDocumentReads(runtime, [
         ["/documents/one", "/documents/two"],
         ["/documents/three", "/documents/four"],
       ]);
@@ -157,7 +158,7 @@ describe("Storage Rules Runtime", () => {
 
       expect(first.permitted).to.be.true;
       expect(second.permitted).to.be.true;
-      expect(mockClient.get.callCount).to.equal(4);
+      expect(clientMock.get.callCount).to.equal(4);
     });
   });
 
