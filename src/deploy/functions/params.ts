@@ -394,7 +394,6 @@ export interface ResolveParamOpts {
   userEnvs: Record<string, ParamValue>;
   codebase: string;
   nonInteractive?: boolean;
-  force?: boolean;
   isEmulator?: boolean;
 }
 
@@ -418,7 +417,6 @@ export async function resolveParams(
     userEnvs,
     codebase,
     nonInteractive = false,
-    force = false,
     isEmulator = false,
   } = opts;
   const paramValues: Record<string, ParamValue> = populateDefaultParams(firebaseConfig);
@@ -441,7 +439,6 @@ export async function resolveParams(
         param as SecretParam,
         firebaseConfig.projectId,
         nonInteractive,
-        force,
       );
     }
   }
@@ -513,7 +510,6 @@ async function ensureSecret(
   secretParam: SecretParam,
   projectId: string,
   nonInteractive?: boolean,
-  force?: boolean,
 ): Promise<string> {
   const resourceId = secretParam.resourceId || secretParam.name;
   const version = secretParam.version || "latest";
@@ -527,25 +523,6 @@ async function ensureSecret(
           "Set this secret before deploying:\n" +
           `\tfirebase functions:secrets:set ${resourceId}${secretParam.format === "json" ? " --format=json --data-file <file.json>" : ""}`,
       );
-    }
-    if (experiments.isEnabled("secretEnvParams") && typeof secretParam.resourceId === "undefined") {
-      if (force) {
-        logger.info(`--force: Using default resource ID for secret ${secretParam.name}`);
-        secretParam.resourceId = secretParam.name;
-      } else {
-        // TODO: Move the explanation and link to Cloud Secret Manager in the next prompt here once this makes it out of experimental.
-        secretParam.resourceId = await input({
-          default: secretParam.name,
-          message: `What resource ID do you want to use for the backing Secret resource for secret param ${secretParam.name}?`,
-          validate: (id) => {
-            if (new RegExp(`^${build.GCP_SECRET_ID_PATTERN}$`).test(id)) {
-              return true;
-            }
-            return "GCP Secret identifiers must contain only letters, numbers, underscores, and hyphens.";
-          },
-        });
-      }
-      return ensureSecret(secretParam, projectId, nonInteractive, force);
     }
     const label = secretParam.label || secretParam.name;
     const notice = `The value for this secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${resourceId}.`;
@@ -580,7 +557,10 @@ async function ensureSecret(
   }
 
   const secretRefString = typeof version === "undefined" ? resourceId : `${resourceId}:${version}`;
-  if (experiments.isEnabled("secretEnvParams")) {
+  if (
+    experiments.isEnabled("secretEnvParams") &&
+    experiments.isEnabled("writeDefaultSecretBindings")
+  ) {
     if (!secretParam.inLocalEnvironment && secretAlreadyExisted) {
       logger.info(
         `Onetime (firebase-tools x.y.z+): storing a reference to existing secret ${secretParam.name}=${secretRefString} in .env files.`,
@@ -921,7 +901,9 @@ async function promptSelect<T extends RawParamValue>(
   converter: (res: string) => T | retryInput,
 ): Promise<T> {
   const response = await select<string>({
-    default: resolvedDefault as string,
+    // Choice values are stringified below, so the default must be too or a
+    // boolean/number default never matches and the first option is preselected.
+    default: resolvedDefault?.toString(),
     message: prompt,
     instructions: "(Use arrow keys to navigate, and Enter to confirm your choice)",
     choices: input.select.options.map((option: SelectOptions<T>): ListItem => {
@@ -947,13 +929,16 @@ async function promptSelectMultiple<T extends string>(
   enforceNonEmpty = false,
   converter: (res: string[]) => T[] | retryInput,
 ): Promise<T[]> {
+  const preselected = new Set((resolvedDefault ?? []).map(String));
   const response = await checkbox({
+    // `default` only serves non-interactive mode; the checkbox prompt itself
+    // preselects through `checked` on each choice.
     default: resolvedDefault,
     message: prompt,
     instructions: "(Press Space to select, and Enter to confirm your choices)",
     choices: input.multiSelect.options.map((option: SelectOptions<string>): ListItem => {
       return {
-        checked: false,
+        checked: preselected.has(option.value.toString()),
         name: option.label,
         value: option.value.toString(),
       };

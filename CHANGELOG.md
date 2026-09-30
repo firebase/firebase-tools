@@ -1,0 +1,5 @@
+- [fixed] Improve error message when billing is not enabled
+- Fixed a crash in `setEnqueuer` when deploying Cloud Tasks functions whose IAM policy has no bindings (#11184).
+- Updated dependencies to address security vulnerabilities, including `protobufjs`, `tar`, `@grpc/grpc-js`, `express`, `undici`, `hono`, `tmp`, and `form-data`.
+- Updated the Firebase SQL Connect local toolkit to v3.4.22, which includes the following changes:
+  - [fixed] Disallow using the GraphQL root operation type names (`Query`, `Mutation`, `Subscription`) as `@table` or `@view` types.
