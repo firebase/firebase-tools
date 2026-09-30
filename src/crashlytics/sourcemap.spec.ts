@@ -745,6 +745,29 @@ describe("crashlytics:sourcemap helpers", () => {
       );
     });
 
+    it("should strip Angular browser build directory prefix from obfuscatedFilePath", async () => {
+      const request = mockUploadRequest({
+        mappingFile: "/mock-root/dist/apps/ecp/browser/chunk-GNZJHBSG.js.map",
+        obfuscatedFilePath: path.join("apps", "ecp", "browser", "chunk-GNZJHBSG.js"),
+        options: mockCommandOptions({
+          app: "1:12345:web:abc",
+          projectRoot: "/mock-root",
+        }),
+      });
+
+      const result = await uploadMap(request);
+
+      expect(result).to.be.true;
+      const patchArg = clientPatchStub.firstCall.args[1] as {
+        obfuscatedFilePath: string;
+        fileUri: string;
+      };
+      expect(patchArg.obfuscatedFilePath).to.equal("/chunk-GNZJHBSG.js");
+      expect(patchArg.fileUri).to.equal(
+        "gs://test-bucket/1:12345:web:abc-1.0.0-chunk-GNZJHBSG.js.zip",
+      );
+    });
+
     it("should return false and log a warning when upload fails with attemptsRemaining === 0", async () => {
       uploadObjectStub.rejects(new Error("upload failed"));
       const request = mockUploadRequest();
@@ -785,6 +808,83 @@ describe("crashlytics:sourcemap helpers", () => {
 
       expect(result).to.be.true;
       expect(logLabeledWarningStub.callCount).to.equal(0);
+    });
+
+    it("should delete and re-register when registerSourceMap fails with 400 already exists error", async () => {
+      const clientDeleteStub = sandbox.stub(Client.prototype, "delete").resolves({
+        status: 200,
+        response: {} as unknown as ClientResponse<unknown>["response"],
+        body: {},
+      } as unknown as ClientResponse<unknown>);
+
+      clientPatchStub
+        .onFirstCall()
+        .rejects(
+          new FirebaseError(
+            "Request to https://firebasetelemetryadmin.googleapis.com/v1alpha/projects/test-project/locations/global/mappingFiles/123 had HTTP Error: 400, com.google.apps.framework.request.BadRequestException: A mapping file with this file name already exists.",
+            { status: 400 },
+          ),
+        );
+      clientPatchStub.onSecondCall().resolves({
+        status: 200,
+        response: {} as unknown as ClientResponse<unknown>["response"],
+        body: {},
+      } as unknown as ClientResponse<unknown>);
+
+      const request = mockUploadRequest();
+      const result = await uploadMap(request);
+
+      const expectedUid = utils.murmurHashV3("1:12345:web:abc-1.0.0-path/to/file.js");
+      const expectedName = `projects/test-project/locations/global/mappingFiles/${expectedUid}`;
+
+      expect(result).to.be.true;
+      expect(clientPatchStub.callCount).to.equal(2);
+      expect(clientDeleteStub.callCount).to.equal(1);
+      expect(clientDeleteStub.firstCall.args[0]).to.equal(expectedName);
+      expect(clientPatchStub.secondCall.args[0]).to.equal(expectedName);
+      expect(clientPatchStub.secondCall.args[2]).to.deep.equal({
+        queryParams: { allowMissing: "true" },
+      });
+      expect(logLabeledWarningStub.callCount).to.equal(0);
+    });
+
+    it("should not delete and should fail when registerSourceMap fails with unrelated 400 error", async () => {
+      const clientDeleteStub = sandbox.stub(Client.prototype, "delete");
+      clientPatchStub.rejects(
+        new FirebaseError("HTTP Error: 400, Invalid argument", { status: 400 }),
+      );
+
+      const request = mockUploadRequest();
+      const result = await uploadMap(request, 0);
+
+      expect(result).to.be.false;
+      expect(clientPatchStub.callCount).to.equal(1);
+      expect(clientDeleteStub.callCount).to.equal(0);
+      expect(logLabeledWarningStub.callCount).to.equal(1);
+    });
+
+    it("should fail and log warning when delete or re-registration fails after 400 already exists error", async () => {
+      const clientDeleteStub = sandbox
+        .stub(Client.prototype, "delete")
+        .rejects(new FirebaseError("HTTP Error: 500, Internal error", { status: 500 }));
+
+      clientPatchStub
+        .onFirstCall()
+        .rejects(
+          new FirebaseError(
+            "com.google.apps.framework.request.BadRequestException: A mapping file with this file name already exists.",
+            { status: 400 },
+          ),
+        );
+
+      const request = mockUploadRequest();
+      const result = await uploadMap(request, 0);
+
+      expect(result).to.be.false;
+      expect(clientPatchStub.callCount).to.equal(1);
+      expect(clientDeleteStub.callCount).to.equal(1);
+      expect(logLabeledWarningStub.callCount).to.equal(1);
+      expect(logLabeledWarningStub.firstCall.args[1]).to.contain("Failed to register source map");
     });
   });
 
