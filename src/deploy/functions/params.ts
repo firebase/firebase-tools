@@ -170,7 +170,8 @@ export interface ListParam extends ParamBase<string[]> {
   delimiter?: string;
 }
 
-export interface TextInput<T> { // eslint-disable-line
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- T is a phantom type parameter representing the resolved input value
+export interface TextInput<T> {
   text: {
     example?: string;
 
@@ -785,7 +786,7 @@ async function promptResourceString(
 ): Promise<string> {
   const notFound = new FirebaseError(`No instances of ${input.resource.type} found.`);
   switch (input.resource.type) {
-    case "storage.googleapis.com/Bucket":
+    case "storage.googleapis.com/Bucket": {
       const buckets = (await listBuckets(projectId)).map((b) => b.name);
       if (buckets.length === 0) {
         throw notFound;
@@ -798,6 +799,7 @@ async function promptResourceString(
         },
       };
       return promptSelect<string>(prompt, forgedInput, resolvedDefault, (res: string) => res);
+    }
     default:
       logger.warn(
         `Warning: unknown resource type ${input.resource.type}; defaulting to raw text input...`,
@@ -820,7 +822,7 @@ async function promptResourceStrings(
 ): Promise<string[]> {
   const notFound = new FirebaseError(`No instances of ${input.resource.type} found.`);
   switch (input.resource.type) {
-    case "storage.googleapis.com/Bucket":
+    case "storage.googleapis.com/Bucket": {
       const buckets = (await listBuckets(projectId)).map((b) => b.name);
       if (buckets.length === 0) {
         throw notFound;
@@ -839,6 +841,7 @@ async function promptResourceStrings(
         enforceNonEmpty,
         (res: string[]) => res,
       );
+    }
     default:
       logger.warn(
         `Warning: unknown resource type ${input.resource.type}; defaulting to raw text input...`,
@@ -901,7 +904,9 @@ async function promptSelect<T extends RawParamValue>(
   converter: (res: string) => T | retryInput,
 ): Promise<T> {
   const response = await select<string>({
-    default: resolvedDefault as string,
+    // Choice values are stringified below, so the default must be too or a
+    // boolean/number default never matches and the first option is preselected.
+    default: resolvedDefault?.toString(),
     message: prompt,
     instructions: "(Use arrow keys to navigate, and Enter to confirm your choice)",
     choices: input.select.options.map((option: SelectOptions<T>): ListItem => {

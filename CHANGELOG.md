@@ -1,3 +1,7 @@
-- [fixed] Increased retries for IAM policy updates to further reduce deployment flakiness from service account propagation delays.
-- [fixed] Preselect the default values of list function params in multi-select prompts.
-- [fixed] Fixed `ERR_REQUIRE_ESM` crash (e.g. on `emulators:start`) in the standalone binary and on Node.js versions earlier than 20.19 / 22.12. (#11168)
+- [fixed] Improve error message when billing is not enabled
+- Fixed a crash in `setEnqueuer` when deploying Cloud Tasks functions whose IAM policy has no bindings (#11184).
+- Updated dependencies to address security vulnerabilities, including `protobufjs`, `tar`, `@grpc/grpc-js`, `express`, `undici`, `hono`, `tmp`, and `form-data`.
+- Updated the Firebase SQL Connect local toolkit to v3.4.22, which includes the following changes:
+  - [fixed] Disallow using the GraphQL root operation type names (`Query`, `Mutation`, `Subscription`) as `@table` or `@view` types.
+- Added an optional step to configure Crashlytics email alerts during `crashlytics:onboard:web`.
+- Fix `404` errors during `crashlytics:sourcemap:upload` when re-uploading a source map with the same obfuscated file path across different app versions
