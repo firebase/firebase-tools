@@ -63,7 +63,14 @@ describe("run deploy", () => {
     expect(submitBuildStub).to.have.been.calledWith("p", "us-central1", {
       storageSource: { bucket: "bucket", object: "src.zip" },
       imageUri,
-      buildpackBuild: { baseImage: "nodejs22", enableAutomaticUpdates: true },
+      buildpackBuild: {
+        baseImage: "nodejs22",
+        enableAutomaticUpdates: true,
+        environmentVariables: {
+          X_GOOGLE_TARGET_PLATFORM: "fah",
+          FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
+        },
+      },
     });
     expect(createServiceStub).to.have.been.calledWith("p", "us-central1", "s", {
       name: "projects/p/locations/us-central1/services/s",
@@ -86,7 +93,12 @@ describe("run deploy", () => {
 
   it("builds without a base image", async () => {
     await deployOne(service());
-    expect(submitBuildStub.firstCall.args[2].buildpackBuild).to.deep.equal({});
+    expect(submitBuildStub.firstCall.args[2].buildpackBuild).to.deep.equal({
+      environmentVariables: {
+        X_GOOGLE_TARGET_PLATFORM: "fah",
+        FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
+      },
+    });
     expect(createServiceStub.firstCall.args[3].template.containers[0]).not.to.have.property(
       "baseImageUri",
     );
@@ -97,7 +109,11 @@ describe("run deploy", () => {
     expect(submitBuildStub.firstCall.args[2].buildpackBuild).to.deep.equal({
       baseImage: "nodejs22",
       enableAutomaticUpdates: true,
-      environmentVariables: { A: "1" },
+      environmentVariables: {
+        A: "1",
+        X_GOOGLE_TARGET_PLATFORM: "fah",
+        FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
+      },
     });
   });
 
@@ -165,11 +181,13 @@ describe("run deploy", () => {
         baseImage: "nodejs22",
         ...overrides,
       });
+    let validateNodeStub: sinon.SinonStub;
     let localBuildStub: sinon.SinonStub;
     let mkdtemp: sinon.SinonSpy;
 
     beforeEach(() => {
       sinon.stub(apphostingPrepare, "prepareLocalBuildScratchDirectory").resolves();
+      validateNodeStub = sinon.stub(localbuilds, "validateLocalBuildNodeVersion");
       localBuildStub = sinon.stub(localbuilds, "localBuild").resolves({
         outputFiles: [".next"],
         buildConfig: { runCommand: "node server.js" },
@@ -181,6 +199,10 @@ describe("run deploy", () => {
       await deployOne(localService());
 
       const scratchDir = mkdtemp.firstCall.returnValue as string;
+      expect(validateNodeStub).to.have.been.calledWith(
+        { runtime: { value: "nodejs22" } },
+        "/p/web",
+      );
       expect(localBuildStub).to.have.been.calledWith(
         "p",
         scratchDir,
@@ -189,7 +211,6 @@ describe("run deploy", () => {
           nonInteractive: undefined,
           allowLocalBuildSecrets: true,
           rootDir: "web",
-          firebaseBuildpacks: false,
         },
       );
       expect(tarArchiveStub).to.have.been.calledWithMatch({ backendId: "s" }, scratchDir, [

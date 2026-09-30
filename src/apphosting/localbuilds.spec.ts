@@ -345,53 +345,6 @@ describe("localBuild", () => {
       );
       sinon.assert.calledOnce(downloadStub);
     });
-
-    it("runs without the Firebase buildpacks and ignores bundle.yaml when they're off", async () => {
-      process.env.X_GOOGLE_TARGET_PLATFORM = "fah";
-      try {
-        const spawnStub = sinon.stub(childProcess, "spawnSync").returns({
-          status: 0,
-          output: ["", "", ""],
-          pid: 12345,
-          stdout: "",
-          stderr: "",
-          signal: null,
-        });
-
-        const output = await runUniversalMaker("./", { ...process.env, A: "1" }, false);
-
-        const env = spawnStub.firstCall.args[2]?.env;
-        expect(env).to.include({ A: "1" });
-        expect(env).not.to.have.property("X_GOOGLE_TARGET_PLATFORM");
-        expect(env).not.to.have.property("FIREBASE_OUTPUT_BUNDLE_DIR");
-        expect(fsExtra.ensureDirSync).not.to.have.been.called;
-        expect(output.runConfig.runCommand).to.equal("npm run start");
-        expect(output.outputFiles?.serverApp.include).to.deep.equal([]);
-      } finally {
-        delete process.env.X_GOOGLE_TARGET_PLATFORM;
-      }
-    });
-
-    it("passes firebaseBuildpacks through from localBuild", async () => {
-      const spawnStub = sinon.stub(childProcess, "spawnSync").returns({
-        status: 0,
-        output: ["", "", ""],
-        pid: 12345,
-        stdout: "",
-        stderr: "",
-        signal: null,
-      });
-
-      const { outputFiles } = await localBuild(
-        "test-project",
-        "./",
-        {},
-        { firebaseBuildpacks: false },
-      );
-
-      expect(spawnStub.firstCall.args[2]?.env).not.to.have.property("X_GOOGLE_TARGET_PLATFORM");
-      expect(outputFiles).to.deep.equal([]);
-    });
   });
 
   describe("validateLocalBuildNodeVersion", () => {

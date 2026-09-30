@@ -62,21 +62,30 @@ describe("run util", () => {
   describe("deployRevision", () => {
     const service = {
       name: "projects/p/locations/r/services/s",
-      trafficStatuses: [
-        { type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", revision: "s-2", percent: 90 },
-        { type: "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION", revision: "s-1", percent: 10 },
+      traffic: [
+        { type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 80 },
+        { type: "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION", revision: "s-1", percent: 20 },
+        {
+          type: "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION",
+          revision: "s-1",
+          percent: 0,
+          tag: "staging",
+        },
       ],
     } as unknown as runv2.Service;
     const template = { containers: [{ name: "c", image: "i" }] };
 
-    it("sends all traffic to the new revision", async () => {
+    it("sends all traffic to the new revision and keeps revision tags", async () => {
       const update = sinon.stub(runv2, "updateService").resolves();
       await deployRevision(service, template);
       expect(update).to.have.been.calledWith(
         {
           name: service.name,
           template,
-          traffic: [{ type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 }],
+          traffic: [
+            { type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 },
+            { type: "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION", revision: "s-1", tag: "staging" },
+          ],
         },
         { updateMask: ["template", "traffic"], masterTimeout: SERVICE_OPERATION_TIMEOUT_MS },
       );

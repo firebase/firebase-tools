@@ -2,7 +2,8 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import { CLOUD_RUN_SIZE_LIMIT_BYTES } from "../../apphosting/constants";
-import { localBuild } from "../../apphosting/localbuilds";
+import { localBuild, validateLocalBuildNodeVersion } from "../../apphosting/localbuilds";
+import { Backend } from "../../gcp/apphosting";
 import * as artifactregistry from "../../gcp/artifactregistry";
 import * as runv2 from "../../gcp/runv2";
 import * as gcs from "../../gcp/storage";
@@ -49,6 +50,11 @@ async function buildLocally(
   const { config } = svc;
   const { serviceId } = config;
   const buildEnv = svc.buildEnv || {};
+  const cfg = toAppHostingConfig(config);
+  validateLocalBuildNodeVersion(
+    { runtime: { value: svc.baseImage?.split("/").pop() } } as Backend,
+    path.join(options.config.projectDir, cfg.rootDir),
+  );
   logLabeledBullet("run", `Starting local build for service ${serviceId}`);
   const secrets = secretNames(buildEnv);
   if (secrets.length) {
@@ -58,7 +64,6 @@ async function buildLocally(
         `included in the build output.`,
     );
   }
-  const cfg = toAppHostingConfig(config);
   const scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), `run-local-build-${serviceId}-`));
   try {
     await prepareLocalBuildScratchDirectory(options.config.projectDir, scratchDir, cfg);
@@ -71,9 +76,6 @@ async function buildLocally(
         // Unlike App Hosting, Cloud Run doesn't ask users to confirm build secrets in local builds.
         allowLocalBuildSecrets: true,
         rootDir: config.rootDir,
-        // Cloud Run doesn't use the Firebase App Hosting buildpacks (framework adapters and output
-        // bundling), so local builds match Cloud Run's own source builds.
-        firebaseBuildpacks: false,
       },
     );
     return { scratchDir, outputFiles, runCommand: buildConfig.runCommand };
@@ -191,7 +193,11 @@ async function buildImage(
       // Only images built for a base image can have their base image updated automatically.
       ...(svc.baseImage && { baseImage: svc.baseImage, enableAutomaticUpdates: true }),
       // Prepare rejects build secrets for builds on Cloud Build, so these are all plain values.
-      ...(svc.buildEnv && { environmentVariables: svc.buildEnv as Record<string, string> }),
+      environmentVariables: {
+        ...(svc.buildEnv as Record<string, string> | undefined),
+        X_GOOGLE_TARGET_PLATFORM: "fah",
+        FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
+      },
     },
   });
   return imageUri;

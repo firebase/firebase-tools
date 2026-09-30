@@ -92,11 +92,12 @@ export function deployRevision(
   service: runv2.Service,
   template: runv2.RevisionTemplate,
 ): Promise<runv2.Service> {
+  const tags = (service.traffic || []).filter((t) => t.tag).map(({ percent: _, ...t }) => t);
   return runv2.updateService(
     {
       name: service.name,
       template,
-      traffic: [{ type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 }],
+      traffic: [{ type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 }, ...tags],
     },
     { updateMask: ["template", "traffic"], masterTimeout: SERVICE_OPERATION_TIMEOUT_MS },
   );
