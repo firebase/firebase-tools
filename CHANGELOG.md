@@ -1,0 +1,1 @@
+- Removed unused experiments `crossservicerules`, `emulatorapphosting`, and `runfunctions`.
