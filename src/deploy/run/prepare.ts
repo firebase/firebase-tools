@@ -1,8 +1,11 @@
 import { getAutoinitEnvVars } from "../../apphosting/utils";
-import { FirebaseError } from "../../error";
+import { FirebaseError, getErrStatus } from "../../error";
 import { WebConfig } from "../../fetchWebSetup";
 import { RunSingle } from "../../firebaseConfig";
+import { getDefaultServiceAccount } from "../../gcp/computeEngine";
+import * as resourceManager from "../../gcp/resourceManager";
 import * as runv2 from "../../gcp/runv2";
+import { getProjectNumber } from "../../getProjectNumber";
 import * as managementApps from "../../management/apps";
 import { Options } from "../../options";
 import { logLabeledBullet, logLabeledWarning } from "../../utils";
@@ -16,6 +19,8 @@ import {
   mainContainer,
   missingServiceMessage,
 } from "./util";
+
+const ADMIN_SDK_ROLE = "roles/firebase.sdkAdminServiceAgent";
 
 /**
  * Reads each service's current state from Cloud Run and resolves its base image and build env.
@@ -55,6 +60,9 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
     existing,
     Boolean(context.appId && context.appId !== existing?.annotations?.[FIREBASE_APP_ANNOTATION]),
   );
+  if (autoInitEnv) {
+    await ensureAutoInitIam(context, existing);
+  }
   const userBuildEnv = getBuildEnv(existing);
   if (Object.keys(userBuildEnv).length) {
     logLabeledBullet(
@@ -139,5 +147,49 @@ async function resolveAutoInitEnv(
       `Unable to lookup details for Firebase Web App ${appId} on service ${serviceId}. Firebase SDK autoinit will not be available.`,
     );
     return undefined;
+  }
+}
+
+/**
+ * Ensures the service's runtime service account has the IAM role needed for Firebase Admin SDK
+ * auto-initialization.
+ */
+async function ensureAutoInitIam(
+  context: Context,
+  existing: runv2.Service | undefined,
+): Promise<void> {
+  const serviceAccount =
+    existing?.template?.serviceAccount ||
+    (await getDefaultServiceAccount(await getProjectNumber(context)));
+  try {
+    if (
+      await resourceManager.serviceAccountHasRoles(
+        context.projectId,
+        serviceAccount,
+        [ADMIN_SDK_ROLE],
+        /* skipAccountLookup= */ true,
+      )
+    ) {
+      return;
+    }
+    logLabeledWarning(
+      "run",
+      `Service account ${serviceAccount} is missing role ${ADMIN_SDK_ROLE} required for Firebase Admin SDK auto-initialization. Granting ${ADMIN_SDK_ROLE} to ${serviceAccount}...`,
+    );
+    await resourceManager.addServiceAccountToRoles(
+      context.projectId,
+      serviceAccount,
+      [ADMIN_SDK_ROLE],
+      /* skipAccountLookup= */ true,
+    );
+  } catch (err: unknown) {
+    if (getErrStatus(err) === 403) {
+      logLabeledWarning(
+        "run",
+        `Failed to grant ${ADMIN_SDK_ROLE} to ${serviceAccount}. Make sure you have the resourcemanager.projects.setIamPolicy permission.`,
+      );
+    } else {
+      throw err;
+    }
   }
 }

@@ -1,6 +1,9 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+import * as computeEngine from "../../gcp/computeEngine";
+import * as resourceManager from "../../gcp/resourceManager";
 import * as runv2 from "../../gcp/runv2";
+import * as getProjectNumber from "../../getProjectNumber";
 import * as managementApps from "../../management/apps";
 import { Options } from "../../options";
 import { Context, Payload } from "./args";
@@ -122,6 +125,8 @@ describe("run prepare", () => {
   });
 
   describe("sdk autoinit", () => {
+    const defaultSa = "123-compute@developer.gserviceaccount.com";
+    const adminSdkRole = "roles/firebase.sdkAdminServiceAgent";
     const webConfig = {
       projectId: "p",
       appId: "1:1:web:a",
@@ -131,9 +136,17 @@ describe("run prepare", () => {
     const firebaseConfig = JSON.stringify({ storageBucket: "p.appspot.com", projectId: "p" });
     const webappConfig = JSON.stringify(webConfig);
     let getAppConfigStub: sinon.SinonStub;
+    let hasRolesStub: sinon.SinonStub;
+    let addRolesStub: sinon.SinonStub;
 
     beforeEach(() => {
       getAppConfigStub = sinon.stub(managementApps, "getAppConfig").resolves(webConfig);
+      sinon.stub(getProjectNumber, "getProjectNumber").resolves("123");
+      sinon.stub(computeEngine, "getDefaultServiceAccount").resolves(defaultSa);
+      hasRolesStub = sinon.stub(resourceManager, "serviceAccountHasRoles").resolves(true);
+      addRolesStub = sinon
+        .stub(resourceManager, "addServiceAccountToRoles")
+        .resolves({ bindings: [] });
     });
 
     it("reuses the service's current appId and resolves build and runtime config", async () => {
@@ -149,6 +162,43 @@ describe("run prepare", () => {
         FIREBASE_WEBAPP_CONFIG: webappConfig,
         FIREBASE_CONFIG: firebaseConfig,
       });
+      expect(hasRolesStub).to.have.been.calledWith("p", defaultSa, [adminSdkRole], true);
+      expect(addRolesStub).not.to.have.been.called;
+    });
+
+    it("grants roles/firebase.sdkAdminServiceAgent when missing on the service account", async () => {
+      hasRolesStub.resolves(false);
+      await prepareOne({}, { appId: "1:1:web:a" });
+      expect(addRolesStub).to.have.been.calledOnceWithExactly("p", defaultSa, [adminSdkRole], true);
+    });
+
+    it("checks and grants roles/firebase.sdkAdminServiceAgent on a custom service account", async () => {
+      hasRolesStub.resolves(false);
+      getServiceStub.resolves({
+        ...existing,
+        annotations: { [FIREBASE_APP_ANNOTATION]: "1:1:web:a" },
+        template: { ...existing.template, serviceAccount: "custom@p.iam.gserviceaccount.com" },
+      });
+      await prepareOne();
+      expect(hasRolesStub).to.have.been.calledWith(
+        "p",
+        "custom@p.iam.gserviceaccount.com",
+        [adminSdkRole],
+        true,
+      );
+      expect(addRolesStub).to.have.been.calledOnceWithExactly(
+        "p",
+        "custom@p.iam.gserviceaccount.com",
+        [adminSdkRole],
+        true,
+      );
+    });
+
+    it("warns and continues if granting roles/firebase.sdkAdminServiceAgent fails with 403", async () => {
+      hasRolesStub.resolves(false);
+      addRolesStub.rejects({ status: 403 });
+      const svc = await prepareOne({}, { appId: "1:1:web:a" });
+      expect(svc.appId).to.equal("1:1:web:a");
     });
 
     it("lets the context set or clear the appId", async () => {
@@ -223,6 +273,7 @@ describe("run prepare", () => {
       expect(svc.appId).to.equal("1:1:web:a");
       expect(svc.firebaseConfig).to.be.undefined;
       expect(svc.buildEnv).to.be.undefined;
+      expect(hasRolesStub).not.to.have.been.called;
     });
 
     it("throws if getAppConfig fails when explicitly setting a new appId", async () => {
@@ -230,6 +281,7 @@ describe("run prepare", () => {
       await expect(prepareOne({}, { appId: "bad-app" })).to.be.rejectedWith(
         "Unable to lookup details for Firebase Web App bad-app on service s.",
       );
+      expect(hasRolesStub).not.to.have.been.called;
     });
   });
 });
