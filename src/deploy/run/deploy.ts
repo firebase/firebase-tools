@@ -50,10 +50,12 @@ async function deployService(
   } else {
     delete container.baseImageUri;
   }
-  template.annotations = { ...template.annotations };
   if (options.message) {
-    template.annotations[DEPLOY_MESSAGE_ANNOTATION] = options.message as string;
-  } else {
+    template.annotations = {
+      ...template.annotations,
+      [DEPLOY_MESSAGE_ANNOTATION]: options.message as string,
+    };
+  } else if (template.annotations) {
     delete template.annotations[DEPLOY_MESSAGE_ANNOTATION];
     if (!Object.keys(template.annotations).length) {
       delete template.annotations;
