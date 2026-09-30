@@ -2,7 +2,7 @@ import { Emulators } from "./types";
 import { EmulatorRegistry } from "./registry";
 import { expect } from "chai";
 import { FakeEmulator } from "./testing/fakeEmulator";
-import { shouldStart } from "./controller";
+import { getListenConfig, shouldStart } from "./controller";
 import { Options } from "../options";
 
 function createMockOptions(
@@ -102,6 +102,38 @@ describe("EmulatorController", () => {
         functions: {}, // Config is present, but no source
       });
       expect(shouldStart(options, Emulators.FUNCTIONS)).to.be.false;
+    });
+  });
+
+  describe("getListenConfig", () => {
+    it("should use the port set in the App Hosting start command", () => {
+      const options = createMockOptions("apphosting", {
+        apphosting: { startCommand: "ng serve --port 4000" },
+      });
+      expect(getListenConfig(options, Emulators.APPHOSTING)).to.deep.include({
+        port: 4000,
+        portFixed: true,
+      });
+    });
+
+    it("should prefer the configured App Hosting port over the start command", () => {
+      const options = createMockOptions("apphosting", {
+        apphosting: { port: 5004, startCommand: "ng serve --port 4000" },
+      });
+      expect(getListenConfig(options, Emulators.APPHOSTING)).to.deep.include({
+        port: 5004,
+        portFixed: true,
+      });
+    });
+
+    it("should pick the App Hosting port if the start command uses $PORT", () => {
+      const options = createMockOptions("apphosting", {
+        apphosting: { startCommand: "npm run dev -- --port $PORT" },
+      });
+      expect(getListenConfig(options, Emulators.APPHOSTING)).to.deep.include({
+        port: 5002,
+        portFixed: false,
+      });
     });
   });
 }).timeout(2000);

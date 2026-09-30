@@ -94,14 +94,29 @@ describe("serve", () => {
       expect(spawnWithCommandStringStub.getCall(0).args[0]).to.eq(startCommand + " --port 5002");
     });
 
-    it("should reject the custom command if a port is specified", async () => {
+    for (const startCommand of [
+      "ng serve --port 5002",
+      "next dev -p 5002",
+      "npm run dev -- --port $PORT",
+    ]) {
+      it(`should run '${startCommand}' without adding a port`, async () => {
+        checkListenableStub.onFirstCall().returns(true);
+        configsStub.getLocalAppHostingConfiguration.resolves(AppHostingYamlConfig.empty());
+
+        await serve.start({ startCommand });
+
+        expect(spawnWithCommandStringStub.getCall(0).args[0]).to.eq(startCommand);
+      });
+    }
+
+    it("should reject a start command that sets a different port than the emulator", async () => {
       const startCommand = "ng serve --port 5004";
       checkListenableStub.onFirstCall().returns(true);
       configsStub.getLocalAppHostingConfiguration.resolves(AppHostingYamlConfig.empty());
 
       await expect(serve.start({ startCommand })).to.be.rejectedWith(
         FirebaseError,
-        /Specifying a port in the start command is not supported by the apphosting emulator/,
+        /The start command sets port 5004, but the emulator uses port 5002/,
       );
 
       expect(spawnWithCommandStringStub).to.not.be.called;
@@ -192,6 +207,26 @@ describe("serve", () => {
         expect(spawnWithCommandStringStub).to.not.be.called;
       });
     });
+  });
+
+  describe("getStartCommandPort", () => {
+    const cases: Array<[string, number | undefined]> = [
+      ["ng serve --port 4200", 4200],
+      ["ng serve --port=4200", 4200],
+      ["next dev -p 4200", 4200],
+      ["npm run dev -- --port 4200", 4200],
+      ["next dev -p '4200'", 4200],
+      ['ng serve --port="4200"', 4200],
+      ["npm run dev", undefined],
+      ["npm run dev -- --port $PORT", undefined],
+      ["docker run -p 8080:80 app", undefined],
+    ];
+
+    for (const [startCommand, expected] of cases) {
+      it(`should return ${String(expected)} for '${startCommand}'`, () => {
+        expect(serve.getStartCommandPort(startCommand)).to.equal(expected);
+      });
+    }
   });
 
   describe("getEmulatorEnvs", () => {

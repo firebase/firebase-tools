@@ -2,3 +2,4 @@
 - Fixed a crash in `setEnqueuer` when deploying Cloud Tasks functions whose IAM policy has no bindings (#11184).
 - Updated dependencies to address security vulnerabilities, including `protobufjs`, `tar`, `@grpc/grpc-js`, `express`, `undici`, `hono`, `tmp`, and `form-data`.
 - Fix Next.js deploys failing to bundle `next.config` since v15.31.0. (#11187)
+- The App Hosting emulator now uses a port set in `startCommand` instead of rejecting it, and errors if it differs from `emulators.apphosting.port` (#11180).

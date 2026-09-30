@@ -65,6 +65,7 @@ import { StorageEmulator } from "./storage";
 import { readFirebaseJson } from "../dataconnect/load";
 import { TasksEmulator } from "./tasksEmulator";
 import { AppHostingEmulator } from "./apphosting";
+import { getStartCommandPort } from "./apphosting/serve";
 import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook";
 import { dataConnectLocalConnString } from "../api";
 import { AppHostingSingle } from "../firebaseConfig";
@@ -1088,7 +1089,10 @@ export async function startAll(
   return { deprecationNotices };
 }
 
-function getListenConfig(
+/**
+ * Exported for unit tests
+ */
+export function getListenConfig(
   options: EmulatorOptions,
   emulator: Exclude<Emulators, Emulators.EXTENSIONS>,
 ): EmulatorListenConfig {
@@ -1103,7 +1107,13 @@ function getListenConfig(
     host = "127.0.0.1";
   }
 
-  const portVal = options.config.src.emulators?.[emulator]?.port;
+  let portVal = options.config.src.emulators?.[emulator]?.port;
+  if (emulator === Emulators.APPHOSTING && !portVal) {
+    // A port set in the start command counts as the configured port.
+    const apphosting = options.config.src.emulators?.apphosting;
+    const startCommand = apphosting?.startCommand || apphosting?.startCommandOverride || "";
+    portVal = getStartCommandPort(startCommand);
+  }
   let port: number;
   let portFixed: boolean;
   if (portVal) {
