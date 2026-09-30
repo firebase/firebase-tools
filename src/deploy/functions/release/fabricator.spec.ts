@@ -80,7 +80,6 @@ describe("Fabricator", () => {
     run.setIamPolicy.rejects(new Error("unexpected run.setIamPolicy"));
     run.setInvokerCreate.rejects(new Error("unexpected run.setInvokerCreate"));
     run.setInvokerUpdate.rejects(new Error("unexpected run.setInvokerUpdate"));
-    run.ensureInvokerPublic.rejects(new Error("unexpected run.ensureInvokerPublic"));
     run.replaceService.rejects(new Error("unexpected run.replaceService"));
     run.updateService.rejects(new Error("Unexpected run.updateService"));
     runv2.createService.rejects(new Error("unexpected runv2.createService"));
@@ -996,24 +995,62 @@ describe("Fabricator", () => {
       expect(run.setInvokerUpdate).to.not.have.been.called;
     });
 
-    it("ensures a frameworks SSR function stays publicly invokable when no invoker is declared", async () => {
+    it("warns when a frameworks SSR function is not publicly invokable", async () => {
       gcfv2.updateFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
-      run.ensureInvokerPublic.resolves();
+      run.getIamPolicy.resolves({
+        bindings: [
+          {
+            role: "roles/run.invoker",
+            members: ["serviceAccount:sa@project.iam.gserviceaccount.com"],
+          },
+        ],
+        etag: "1234",
+        version: 3,
+      });
+      const warn = sinon.stub(utils, "logLabeledWarning");
       const ep = endpoint(
         { httpsTrigger: {} },
         { platform: "gcfv2", codebase: frameworksCodebase },
       );
 
       await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
-      expect(run.ensureInvokerPublic).to.have.been.calledWith("service");
+      expect(run.getIamPolicy).to.have.been.calledWith("service");
+      expect(warn).to.have.been.calledOnce;
+      expect(warn.firstCall.args[1]).to.contain("not publicly invokable");
+      expect(run.setIamPolicy).to.not.have.been.called;
       expect(run.setInvokerUpdate).to.not.have.been.called;
     });
 
-    it("warns but does not fail the deploy when ensuring a frameworks function's invoker fails", async () => {
+    it("does not warn when a frameworks SSR function is publicly invokable", async () => {
       gcfv2.updateFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
-      run.ensureInvokerPublic.rejects(new Error("permission denied"));
+      run.getIamPolicy.resolves({
+        bindings: [
+          {
+            role: "roles/run.invoker",
+            members: ["serviceAccount:sa@project.iam.gserviceaccount.com", "allUsers"],
+          },
+        ],
+        etag: "1234",
+        version: 3,
+      });
+      const warn = sinon.stub(utils, "logLabeledWarning");
+      const ep = endpoint(
+        { httpsTrigger: {} },
+        { platform: "gcfv2", codebase: frameworksCodebase },
+      );
+
+      await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
+      expect(run.getIamPolicy).to.have.been.calledWith("service");
+      expect(warn).to.not.have.been.called;
+      expect(run.setIamPolicy).to.not.have.been.called;
+    });
+
+    it("does not warn or fail the deploy when a frameworks SSR function's IAM policy can't be read", async () => {
+      gcfv2.updateFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      run.getIamPolicy.rejects(new Error("permission denied"));
       const warn = sinon.stub(utils, "logLabeledWarning");
       const ep = endpoint(
         { httpsTrigger: {} },
@@ -1021,18 +1058,17 @@ describe("Fabricator", () => {
       );
 
       await expect(fab.updateV2Function(ep, new scraper.SourceTokenScraper())).to.not.be.rejected;
-      expect(run.ensureInvokerPublic).to.have.been.calledWith("service");
-      expect(warn).to.have.been.calledOnce;
-      expect(warn.firstCall.args[1]).to.contain("publicly invokable");
+      expect(run.getIamPolicy).to.have.been.calledWith("service");
+      expect(warn).to.not.have.been.called;
     });
 
-    it("does not ensure public invoker for non-frameworks functions", async () => {
+    it("does not check the invoker of non-frameworks functions", async () => {
       gcfv2.updateFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
       const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
 
       await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
-      expect(run.ensureInvokerPublic).to.not.have.been.called;
+      expect(run.getIamPolicy).to.not.have.been.called;
     });
 
     it("updates invoker to public on Node updates when explicitly null", async () => {

@@ -1,7 +1,7 @@
 import * as clc from "colorette";
 
 import { DEFAULT_RETRY_CODES, Executor } from "./executor";
-import { FirebaseError } from "../../../error";
+import { FirebaseError, getErrMsg } from "../../../error";
 import { SourceTokenScraper } from "./sourceTokenScraper";
 import { Timer } from "./timer";
 import { assertExhaustive } from "../../../functional";
@@ -755,25 +755,29 @@ export class Fabricator {
       backend.isHttpsTriggered(endpoint) &&
       isFrameworksManagedCodebase(endpoint.codebase)
     ) {
-      // Frameworks-managed SSR functions are fronted by Firebase Hosting, which
-      // invokes them anonymously, so they must remain publicly invokable. They
-      // declare no invoker, so the branch above leaves IAM untouched and a binding
-      // removed out-of-band (e.g. by an org policy) is never restored. Re-assert
-      // allUsers additively — preserving any members the user added — and warn
-      // rather than fail the deploy when something blocks it.
-      // See: https://cloud.google.com/run/docs/authenticating/public
+      // Firebase Hosting invokes frameworks SSR functions anonymously. They declare no
+      // invoker, so nothing above notices when allUsers loses the invoker role; warn
+      // instead of silently serving 403s.
       // See: https://github.com/firebase/firebase-tools/issues/10631
-      await this.executor
-        .run(() => run.ensureInvokerPublic(serviceName))
-        .catch((err: unknown) => {
+      try {
+        const policy = await this.executor.run(() => run.getIamPolicy(serviceName));
+        const isPublic = policy.bindings?.some(
+          (binding) =>
+            binding.role === "roles/run.invoker" && binding.members?.includes("allUsers"),
+        );
+        if (!isPublic) {
           utils.logLabeledWarning(
             "functions",
-            `Unable to make the SSR function ${endpoint.id} publicly invokable. Requests served ` +
-              `by it will return 403 until allUsers is granted the Cloud Run Invoker role. ` +
-              `See https://cloud.google.com/run/docs/authenticating/public`,
+            `The SSR function ${endpoint.id} is not publicly invokable, so requests to it from ` +
+              `Firebase Hosting will return 403. Grant allUsers the Cloud Run Invoker role on ` +
+              `its service to fix this. See https://cloud.google.com/run/docs/authenticating/public`,
           );
-          logger.debug(`Failed to ensure ${serviceName} is publicly invokable: ${err}`);
-        });
+        }
+      } catch (err: unknown) {
+        logger.debug(
+          `Failed to check whether ${serviceName} is publicly invokable: ${getErrMsg(err)}`,
+        );
+      }
     }
   }
 
