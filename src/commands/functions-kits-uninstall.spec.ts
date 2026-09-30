@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+import { basename, dirname } from "path/posix";
 
 import { command } from "./functions-kits-uninstall";
 import { requireAuth } from "../requireAuth";
@@ -17,38 +18,49 @@ describe("functions:kits:uninstall", () => {
 
   function createMockConfig(
     kitId = "my-kit",
-    instances: string | Record<string, string> = "inst1",
+    instances: Record<string, string> = {
+      inst1: `function-kits/${kitId}/config-inst1`,
+    },
+    filesByDir: Record<string, string[]> = {},
   ): {
     config: Config;
     writeProjectFileStub: sinon.SinonStub;
     deleteProjectDirStub: sinon.SinonStub;
+    deleteProjectFileStub: sinon.SinonStub;
   } {
-    const instancesObj =
-      typeof instances === "string"
-        ? { [instances]: `function-kits/${kitId}/config-${instances}` }
-        : instances;
     const writeProjectFileStub = sinon.stub();
-    const deleteProjectDirStub = sinon.stub();
+    const deleteProjectDirStub = sinon.stub().callsFake((dirPath: string) => {
+      const parent = dirname(dirPath);
+      const base = basename(dirPath);
+      filesByDir[parent] = (filesByDir[parent] ?? []).filter((name) => name !== base);
+    });
+    const deleteProjectFileStub = sinon.stub().callsFake((filePath: string) => {
+      const dir = dirname(filePath);
+      const base = basename(filePath);
+      filesByDir[dir] = (filesByDir[dir] ?? []).filter((name) => name !== base);
+    });
     const config = {
       src: {
         functions: [
           {
             kit: kitId,
             source: `function-kits/${kitId}/source`,
-            instances: instancesObj,
+            instances,
             sourcePackage: { name: `@firebase-function-kits/${kitId}` },
           },
         ],
       },
-      lsProjectDir: sinon.stub().returns([]),
+      lsProjectDir: sinon.stub().callsFake((dirPath: string) => {
+        return (filesByDir[dirPath] ?? []).map((name) => ({ name, isFile: () => true }));
+      }),
       deleteProjectDir: deleteProjectDirStub,
-      deleteProjectFile: sinon.stub(),
+      deleteProjectFile: deleteProjectFileStub,
       projectFileExists: sinon.stub().returns(true),
       set: sinon.stub(),
       writeProjectFile: writeProjectFileStub,
     } as unknown as Config;
 
-    return { config, writeProjectFileStub, deleteProjectDirStub };
+    return { config, writeProjectFileStub, deleteProjectDirStub, deleteProjectFileStub };
   }
 
   beforeEach(() => {
@@ -85,7 +97,7 @@ describe("functions:kits:uninstall", () => {
   describe("command action with --force", () => {
     describe("when uninstalling a kit (--kit)", () => {
       it("should pass force option to confirm prompt", async () => {
-        const { config, writeProjectFileStub } = createMockConfig("my-kit", "inst1");
+        const { config, writeProjectFileStub } = createMockConfig();
 
         await command.runner()({
           kit: "my-kit",
@@ -107,7 +119,7 @@ describe("functions:kits:uninstall", () => {
 
       it("should abort if confirmation prompt returns false", async () => {
         confirmStub.resolves(false);
-        const { config, writeProjectFileStub } = createMockConfig("my-kit", "inst1");
+        const { config, writeProjectFileStub } = createMockConfig();
 
         await command.runner()({
           kit: "my-kit",
@@ -123,7 +135,7 @@ describe("functions:kits:uninstall", () => {
 
     describe("when uninstalling the last instance (--instance)", () => {
       it("should pass force option to confirm prompt", async () => {
-        const { config, writeProjectFileStub } = createMockConfig("my-kit", "inst1");
+        const { config, writeProjectFileStub } = createMockConfig();
 
         await command.runner()({
           instance: "inst1",
@@ -148,7 +160,7 @@ describe("functions:kits:uninstall", () => {
 
       it("should abort if confirmation prompt returns false", async () => {
         confirmStub.resolves(false);
-        const { config, writeProjectFileStub } = createMockConfig("my-kit", "inst1");
+        const { config, writeProjectFileStub } = createMockConfig();
 
         await command.runner()({
           instance: "inst1",
@@ -168,18 +180,17 @@ describe("functions:kits:uninstall", () => {
 
   describe("batching endpoint deletions across instances", () => {
     it("should batch delete functions for all instances targeting the same project into a single call", async () => {
-      const { config, writeProjectFileStub, deleteProjectDirStub } = createMockConfig("my-kit", {
-        inst1: "function-kits/my-kit/config-inst1",
-        inst2: "function-kits/my-kit/config-inst2",
-      });
-
-      // Mock lsProjectDir to return .env files pointing to the same project
-      (config.lsProjectDir as sinon.SinonStub).callsFake((dirPath: string) => {
-        if (dirPath.includes("config-inst1") || dirPath.includes("config-inst2")) {
-          return [{ name: ".env.my-project", isFile: () => true }];
-        }
-        return [];
-      });
+      const { config, writeProjectFileStub, deleteProjectDirStub } = createMockConfig(
+        "my-kit",
+        {
+          inst1: "function-kits/my-kit/config-inst1",
+          inst2: "function-kits/my-kit/config-inst2",
+        },
+        {
+          "function-kits/my-kit/config-inst1": [".env.my-project"],
+          "function-kits/my-kit/config-inst2": [".env.my-project"],
+        },
+      );
 
       await command.runner()({
         kit: "my-kit",
@@ -200,20 +211,17 @@ describe("functions:kits:uninstall", () => {
     });
 
     it("should group endpoint deletions by project and resolve aliases when instances target different projects", async () => {
-      const { config, writeProjectFileStub } = createMockConfig("my-kit", {
-        inst1: "function-kits/my-kit/config-inst1",
-        inst2: "function-kits/my-kit/config-inst2",
-      });
-
-      (config.lsProjectDir as sinon.SinonStub).callsFake((dirPath: string) => {
-        if (dirPath.includes("config-inst1")) {
-          return [{ name: ".env.alias-a", isFile: () => true }];
-        }
-        if (dirPath.includes("config-inst2")) {
-          return [{ name: ".env.project-b", isFile: () => true }];
-        }
-        return [];
-      });
+      const { config, writeProjectFileStub } = createMockConfig(
+        "my-kit",
+        {
+          inst1: "function-kits/my-kit/config-inst1",
+          inst2: "function-kits/my-kit/config-inst2",
+        },
+        {
+          "function-kits/my-kit/config-inst1": [".env.alias-a"],
+          "function-kits/my-kit/config-inst2": [".env.project-b"],
+        },
+      );
 
       const rc = new RC(undefined, { projects: { "alias-a": "project-a" } });
 
@@ -241,33 +249,60 @@ describe("functions:kits:uninstall", () => {
       expect(writeProjectFileStub).to.have.been.calledOnce;
     });
 
+    it("should clean up .env files and empty config directories individually in conservative deletion mode", async () => {
+      const { config, writeProjectFileStub, deleteProjectDirStub, deleteProjectFileStub } =
+        createMockConfig(
+          "my-kit",
+          {
+            inst1: "custom-dir/config-inst1",
+            inst2: "custom-dir/config-inst2",
+          },
+          {
+            "custom-dir": ["config-inst1", "config-inst2"],
+            "custom-dir/config-inst1": [".env.my-project"],
+            "custom-dir/config-inst2": [".env.my-project", "custom.txt"],
+          },
+        );
+
+      await command.runner()({
+        kit: "my-kit",
+        config,
+        nonInteractive: true,
+        force: true,
+      });
+
+      expect(deleteProjectFileStub).to.have.been.calledWith(
+        "custom-dir/config-inst1/.env.my-project",
+      );
+      expect(deleteProjectFileStub).to.have.been.calledWith(
+        "custom-dir/config-inst2/.env.my-project",
+      );
+      expect(deleteProjectDirStub).to.have.been.calledOnceWithExactly("custom-dir/config-inst1");
+      expect(writeProjectFileStub).to.have.been.calledOnce;
+    });
+
     it("should not delete local files or update firebase.json if deleteFunctionsByEndpointFilters fails", async () => {
       deleteFunctionsStub.rejects(new Error("GCP error"));
-      const { config, writeProjectFileStub, deleteProjectDirStub } = createMockConfig("my-kit", {
-        inst1: "function-kits/my-kit/config-inst1",
-        inst2: "function-kits/my-kit/config-inst2",
-      });
+      const { config, writeProjectFileStub, deleteProjectDirStub } = createMockConfig(
+        "my-kit",
+        {
+          inst1: "function-kits/my-kit/config-inst1",
+          inst2: "function-kits/my-kit/config-inst2",
+        },
+        {
+          "function-kits/my-kit/config-inst1": [".env.my-project"],
+        },
+      );
 
-      (config.lsProjectDir as sinon.SinonStub).callsFake((dirPath: string) => {
-        if (dirPath.includes("config-inst1")) {
-          return [{ name: ".env.my-project", isFile: () => true }];
-        }
-        return [];
-      });
-
-      let error: unknown;
-      try {
-        await command.runner()({
+      await expect(
+        command.runner()({
           kit: "my-kit",
           config,
           nonInteractive: true,
           force: true,
-        });
-      } catch (e: unknown) {
-        error = e;
-      }
+        }),
+      ).to.be.rejectedWith("GCP error");
 
-      expect(error).to.be.an.instanceOf(Error);
       expect(deleteProjectDirStub).to.not.have.been.called;
       expect(writeProjectFileStub).to.not.have.been.called;
     });
