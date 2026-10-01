@@ -1,14 +1,15 @@
 import { cloudTraceOrigin } from "../api";
 import { Client } from "../apiv2";
-import { FirebaseError } from "../error";
+import { FirebaseError, getError } from "../error";
 
 const API_VERSION = "v2";
 
-const traceClient = new Client({
-  urlPrefix: cloudTraceOrigin(),
-  auth: true,
-  apiVersion: API_VERSION,
-});
+const getTraceClient = (): Client =>
+  new Client({
+    urlPrefix: cloudTraceOrigin(),
+    auth: true,
+    apiVersion: API_VERSION,
+  });
 
 interface Span {
   name: string;
@@ -50,13 +51,13 @@ export async function provisionTraceStorage(projectId: string): Promise<void> {
 
   try {
     // Send the dummy span to trigger BigQuery _Trace database creation
-    await traceClient.post<BatchWriteSpansRequest, void>(
+    await getTraceClient().post<BatchWriteSpansRequest, void>(
       `/projects/${projectId}/traces:batchWrite`,
       payload,
     );
   } catch (err: unknown) {
     throw new FirebaseError(`Failed to provision trace storage for project ${projectId}`, {
-      original: err instanceof Error ? err : undefined,
+      original: getError(err),
     });
   }
 }
