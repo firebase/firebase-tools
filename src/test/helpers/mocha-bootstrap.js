@@ -33,11 +33,11 @@ function isIntegrationTestFile(filePath) {
 
 function enforceNetConnectPolicy(ctx) {
   const currentFile = ctx && ctx.currentTest && ctx.currentTest.file;
-  if (!isIntegrationTestFile(currentFile)) {
+  if (isIntegrationTestFile(currentFile)) {
+    nock.enableNetConnect();
+  } else {
     nock.disableNetConnect();
     nock.enableNetConnect(LOOPBACK_REGEXP);
-  } else {
-    nock.enableNetConnect();
   }
 }
 
