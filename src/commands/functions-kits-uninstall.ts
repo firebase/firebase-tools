@@ -17,6 +17,8 @@ import { logger } from "../logger";
 import { deleteFunctionsByEndpointFilters } from "../deploy/functions/delete";
 import { Context } from "../deploy/functions/args";
 
+const ENV_FILE_PREFIX = ".env.";
+
 export const command = new Command("functions:kits:uninstall")
   .description(
     "uninstall a function kit or kit instance from your project. Deletes all running resources and the associated managed service account.",
@@ -88,10 +90,7 @@ async function handleInstance(options: Options, config: Config): Promise<void> {
     `Kit ${kitForInstance.kit} uninstall mode: conservativeDeletion=${conservativeDeletion}`,
   );
 
-  const configDirContents = config.lsProjectDir(instanceConfigDirPath);
-  const envFileNames = configDirContents
-    .filter((f) => f.isFile() && f.name.startsWith(".env."))
-    .map((f) => f.name.slice(".env.".length));
+  const envFileNames = getInstanceEnvNames(config, instanceConfigDirPath);
   const projectNamesInEnvs = envFileNames.map((envName) =>
     options.rc ? options.rc.resolveAlias(envName) : envName,
   );
@@ -139,7 +138,7 @@ async function handleInstance(options: Options, config: Config): Promise<void> {
   );
   if (envFilesWhichAliasToProject.length > 1) {
     throw new FirebaseError(
-      `Instance ${instanceId} contains multiple .env files which ambiguously resolve to the current project ${envFilesWhichAliasToProject.map((s) => ".env." + s).join(", ")}`,
+      `Instance ${instanceId} contains multiple .env files which ambiguously resolve to the current project ${envFilesWhichAliasToProject.map((s) => ENV_FILE_PREFIX + s).join(", ")}`,
     );
   }
   if (envFilesWhichAliasToProject.length === 1) {
@@ -155,9 +154,8 @@ async function handleInstance(options: Options, config: Config): Promise<void> {
 }
 
 /*
- * For each .env.<projectId> file present in a Kit instance config folder, call
- * uninstallProjectInstance() helper to tear down the .env file and Functions
- * resources, then remove the instance itself from firebase.json.
+ * Tear down deployed Functions and .env files for a Kit instance,
+ * then remove the instance itself from firebase.json.
  *
  * @param instanceId: must be specified, since configPath is user-overridable
  * @param instanceConfigDirPath: project relative function-kits/<kitId>/config-<instanceId>
@@ -170,24 +168,8 @@ async function uninstallInstance(
   instanceConfigDirPath: string,
   onlyDeleteEmpty: boolean,
 ): Promise<void> {
-  const configDirContents = config.lsProjectDir(instanceConfigDirPath);
-  const fileNames = configDirContents.filter((f) => f.isFile()).map((f) => f.name);
-  for (const fileName of fileNames) {
-    if (!fileName.startsWith(".env.")) {
-      continue;
-    }
-    const projectIdOrAlias = fileName.slice(".env.".length);
-    await uninstallProjectInstance(
-      options,
-      config,
-      projectIdOrAlias,
-      instanceId,
-      instanceConfigDirPath,
-    );
-  }
-  if (!onlyDeleteEmpty || configDirEmpty(config, instanceConfigDirPath)) {
-    config.deleteProjectDir(instanceConfigDirPath);
-  }
+  await deleteInstancesFunctions(options, config, { [instanceId]: instanceConfigDirPath });
+  deleteInstanceConfigFiles(config, instanceConfigDirPath, onlyDeleteEmpty);
   // remove a functions.instances record with the id from firebase.json; kit instance IDs are unique
   let functionsConfig = config.src.functions ?? [];
   if (!Array.isArray(functionsConfig)) {
@@ -222,7 +204,7 @@ async function uninstallProjectInstance(
   kitInstancePath: string,
 ): Promise<void> {
   const projectId = options.rc?.resolveAlias(envName) || envName;
-  const envFilePath = join(kitInstancePath, `.env.${envName}`);
+  const envFilePath = join(kitInstancePath, `${ENV_FILE_PREFIX}${envName}`);
   if (!config.projectFileExists(envFilePath)) {
     throw new FirebaseError(
       `Expected to clean up project kit instance .env file at ${envFilePath}, but it doesn't exist.`,
@@ -252,15 +234,17 @@ async function uninstallKit(
   kit: ValidatedKitSingle,
 ): Promise<void> {
   const conservativeDeletion = nonstandardKitLayout(kit);
-  // instance and .env teardowns
-  for (const [instanceId, instanceConfigDir] of Object.entries(kit.instances)) {
-    await uninstallInstance(options, config, instanceId, instanceConfigDir, conservativeDeletion);
-  }
+
+  // Teardown deployed functions for all instances in the kit (batched by project)
+  await deleteInstancesFunctions(options, config, kit.instances);
 
   // filesystem deletions:
   // conservative mode (directory kits, edited json): delete only config dir if empty and common parent to all instances
   // standard mode (package source installs w/ unedited config): delete entire kit dir
   if (conservativeDeletion) {
+    for (const instanceConfigDir of Object.values(kit.instances)) {
+      deleteInstanceConfigFiles(config, instanceConfigDir);
+    }
     const instanceConfigDirParents = Object.values(kit.instances).map((p) => dirname(p));
     if (
       instanceConfigDirParents.length > 0 &&
@@ -291,6 +275,54 @@ async function uninstallKit(
   functionsConfig = functionsConfig.filter((fc: FunctionConfig) => fc.kit !== kit.kit);
   config.set("functions", functionsConfig);
   config.writeProjectFile("firebase.json", config.src);
+}
+
+/**
+ * Teardown deployed Cloud Functions across the provided kit instances.
+ * Groups by project ID to batch endpoint filters and prompt once per project.
+ */
+async function deleteInstancesFunctions(
+  options: Options,
+  config: Config,
+  instances: Record<string, string>,
+): Promise<void> {
+  const instancesByProject = new Map<string, string[]>();
+  for (const [instanceId, instanceConfigDir] of Object.entries(instances)) {
+    for (const projectIdOrAlias of getInstanceEnvNames(config, instanceConfigDir)) {
+      const projectId = options.rc ? options.rc.resolveAlias(projectIdOrAlias) : projectIdOrAlias;
+      const list = instancesByProject.get(projectId) ?? [];
+      list.push(instanceId);
+      instancesByProject.set(projectId, list);
+    }
+  }
+
+  for (const [projectId, instanceIds] of instancesByProject.entries()) {
+    const epFilters: EndpointFilter[] = instanceIds.map((id) => ({ codebase: id }));
+    const deployContext: Context = { projectId, filters: epFilters };
+    const deletionCount = await deleteFunctionsByEndpointFilters(deployContext, options);
+    if (deletionCount === 0) {
+      logger.info(
+        `No deployed functions found for instances: ${instanceIds.join(", ")}. This is normal if firebase deploy was never run.`,
+      );
+    }
+  }
+}
+
+/**
+ * Removes all `.env.<projectId>` files in an instance config directory and
+ * deletes the directory if allowed or empty.
+ */
+function deleteInstanceConfigFiles(
+  config: Config,
+  instanceConfigDirPath: string,
+  onlyDeleteEmpty = true,
+): void {
+  for (const projectIdOrAlias of getInstanceEnvNames(config, instanceConfigDirPath)) {
+    config.deleteProjectFile(join(instanceConfigDirPath, `${ENV_FILE_PREFIX}${projectIdOrAlias}`));
+  }
+  if (!onlyDeleteEmpty || configDirEmpty(config, instanceConfigDirPath)) {
+    config.deleteProjectDir(instanceConfigDirPath);
+  }
 }
 
 // Returns true if a kit lacks a sourcePackage or has its instance configs or source dir in a location other than what the CLI would have generated.
@@ -324,4 +356,15 @@ function configDirEmpty(config: Config, projectRelativePath: string): boolean {
     return false;
   }
   return true;
+}
+
+/**
+ * Returns the project IDs or aliases from all `.env.<projectIdOrAlias>` files
+ * in a kit instance configuration directory.
+ */
+function getInstanceEnvNames(config: Config, instanceConfigDirPath: string): string[] {
+  return config
+    .lsProjectDir(instanceConfigDirPath)
+    .filter((f) => f.isFile() && f.name.startsWith(ENV_FILE_PREFIX))
+    .map((f) => f.name.slice(ENV_FILE_PREFIX.length));
 }
