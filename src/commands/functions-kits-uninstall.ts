@@ -169,7 +169,7 @@ async function uninstallInstance(
   onlyDeleteEmpty: boolean,
 ): Promise<void> {
   await deleteInstancesFunctions(options, config, { [instanceId]: instanceConfigDirPath });
-  cleanInstanceFiles(config, instanceConfigDirPath, onlyDeleteEmpty);
+  deleteInstanceConfigFiles(config, instanceConfigDirPath, onlyDeleteEmpty);
   // remove a functions.instances record with the id from firebase.json; kit instance IDs are unique
   let functionsConfig = config.src.functions ?? [];
   if (!Array.isArray(functionsConfig)) {
@@ -243,7 +243,7 @@ async function uninstallKit(
   // standard mode (package source installs w/ unedited config): delete entire kit dir
   if (conservativeDeletion) {
     for (const instanceConfigDir of Object.values(kit.instances)) {
-      cleanInstanceFiles(config, instanceConfigDir);
+      deleteInstanceConfigFiles(config, instanceConfigDir);
     }
     const instanceConfigDirParents = Object.values(kit.instances).map((p) => dirname(p));
     if (
@@ -312,7 +312,7 @@ async function deleteInstancesFunctions(
  * Removes all `.env.<projectId>` files in an instance config directory and
  * deletes the directory if allowed or empty.
  */
-function cleanInstanceFiles(
+function deleteInstanceConfigFiles(
   config: Config,
   instanceConfigDirPath: string,
   onlyDeleteEmpty = true,
