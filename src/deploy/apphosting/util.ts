@@ -48,7 +48,9 @@ export async function createLocalBuildTarArchive(
         ignoreStrings: ["firebase-debug.log", "firebase-debug.*.log"],
         supportGitIgnore: false,
       });
-      allFiles.push(...rdrFiles.map((rdrf) => path.relative(rootDir, rdrf.name)));
+      for (const rdrf of rdrFiles) {
+        allFiles.push(path.relative(rootDir, rdrf.name));
+      }
     } else {
       allFiles.push(path.relative(rootDir, absolutePath));
     }

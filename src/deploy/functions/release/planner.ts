@@ -1,12 +1,15 @@
 import {
   EndpointFilter,
   endpointMatchesAnyFilter,
+  generationDowngradeMessage,
   getFunctionLabel,
+  isCodebasePartiallyFiltered,
 } from "../functionsDeployHelper";
 import { isFirebaseManaged } from "../../../deploymentTool";
 import { FirebaseError } from "../../../error";
 import * as utils from "../../../utils";
 import * as backend from "../backend";
+import * as ensure from "../ensure";
 import * as v2events from "../../../functions/events/v2";
 
 export interface EndpointUpdate {
@@ -24,6 +27,8 @@ export interface Changeset {
 
 export interface BaseCodebasePlan {
   regionalChangesets: Record<string, Changeset>;
+  plannedBackend: backend.Backend;
+  secretAccessPlan?: Record<string, string[]>;
 }
 
 export interface ActiveSecurityPlan {
@@ -174,19 +179,17 @@ export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan
   let serviceAccountToCreate: string | undefined;
   let serviceAccountToDelete: string | undefined;
 
-  const isFiltered = !!(
-    filters &&
-    filters.some((f) => f.idChunks && f.idChunks.length > 0) &&
-    !deleteAll
-  );
+  const isPartiallyFiltered = isCodebasePartiallyFiltered(codebase, filters);
 
-  if (requiredRoles) {
+  const hasWantEndpoints = backend.someEndpoint(wantBackend, () => true);
+
+  if (requiredRoles && hasWantEndpoints) {
     rolesToAdd = requiredRoles.filter((r) => !roles.includes(r));
     rolesToRemove = roles.filter((r) => !requiredRoles.includes(r));
     if (!existingManagedSA && managedSA) {
       serviceAccountToCreate = managedSA;
     }
-  } else if (existingManagedSA && !isFiltered) {
+  } else if (existingManagedSA && (!isPartiallyFiltered || deleteAll)) {
     serviceAccountToDelete = existingManagedSA;
   }
 
@@ -222,7 +225,13 @@ export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan
         "old default of 1. You can change this with the 'concurrency' option.",
     );
   }
-  if (requiredRoles) {
+  const secretAccessPlan = await ensure.secretsAccessDelta({
+    projectId: args.projectId,
+    wantBackend,
+    haveBackend,
+  });
+
+  if (requiredRoles && hasWantEndpoints) {
     if (!managedSA) {
       throw new FirebaseError("managedServiceAccount is required when requiredRoles is defined.", {
         exit: 1,
@@ -230,6 +239,8 @@ export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan
     }
     return {
       regionalChangesets,
+      plannedBackend: wantBackend,
+      secretAccessPlan,
       rolesToAdd,
       rolesToRemove,
       serviceAccountToCreate,
@@ -238,6 +249,8 @@ export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan
   } else {
     return {
       regionalChangesets,
+      plannedBackend: wantBackend,
+      secretAccessPlan,
       serviceAccountToDelete,
     };
   }
@@ -377,10 +390,9 @@ export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endp
       )}] Changing from ${haveType} function to ${wantType} function is not allowed. Please delete your function and create a new one instead.`,
     );
   }
-  if (want.platform === "gcfv1" && have.platform === "gcfv2") {
-    throw new FirebaseError(
-      `[${getFunctionLabel(want)}] Functions cannot be downgraded from GCFv2 to GCFv1`,
-    );
+  const downgrade = generationDowngradeMessage(want, have);
+  if (downgrade) {
+    throw new FirebaseError(downgrade);
   }
 
   // We need to call from module exports so tests can stub this behavior, but that

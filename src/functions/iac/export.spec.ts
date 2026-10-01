@@ -25,6 +25,7 @@ describe("export", () => {
   beforeEach(() => {
     sinon.stub(functionsConfig, "getFirebaseConfig").resolves({ projectId: "my-project" });
     sinon.stub(functionsEnv, "loadFirebaseEnvs").returns({});
+    sinon.stub(functionsEnv, "loadUserEnvs").returns({ FOO: "bar" });
     sinon.stub(runtimes, "getRuntimeDelegate").resolves(mockDelegate);
     sinon.stub(supported, "guardVersionSupport");
     needProjectIdStub = sinon.stub(projectUtils, "needProjectId").returns("my-project");
@@ -55,6 +56,7 @@ describe("export", () => {
       expect(mockDelegate.validate.calledOnce).to.be.true;
       expect(mockDelegate.build.calledOnce).to.be.true;
       expect(mockDelegate.discoverBuild.calledOnce).to.be.true;
+      expect(mockDelegate.discoverBuild.firstCall.args[1]).to.deep.include({ FOO: "bar" });
       expect(result).to.deep.equal({
         "functions.yaml": yaml.dump(mockBuild),
       });
