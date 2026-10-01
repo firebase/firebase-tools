@@ -260,6 +260,25 @@ export const DEFAULT_TIMEOUT_SECONDS = 60;
 export const MIN_CPU_FOR_CONCURRENCY = 1;
 export const SCHEDULED_FUNCTION_LABEL = Object.freeze({ deployment: "firebase-schedule" });
 
+/** Label recording the set of declarative security roles an endpoint was deployed with. */
+export const DECLARATIVE_SECURITY_ETAG_LABEL = "firebase-declarative-security-etag";
+
+/**
+ * Whether the deployed copy of an endpoint already matches what we want to deploy.
+ * The hash covers source, environment variables and secrets. The declarative security etag can
+ * change without any of those changing, so it is compared separately.
+ */
+export function endpointUpToDate(want: Endpoint, have: Endpoint): boolean {
+  return !!(
+    have.state === "ACTIVE" &&
+    have.hash &&
+    want.hash &&
+    want.hash === have.hash &&
+    want.labels?.[DECLARATIVE_SECURITY_ETAG_LABEL] ===
+      have.labels?.[DECLARATIVE_SECURITY_ETAG_LABEL]
+  );
+}
+
 /**
  * IDs used to identify a regional resource.
  * This type exists so we can have lightweight references from a Pub/Sub topic

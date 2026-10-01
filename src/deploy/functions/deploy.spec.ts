@@ -81,6 +81,25 @@ describe("deploy", () => {
       expect(result).to.be.true;
     });
 
+    it("should not skip if the declarative security etag changed", () => {
+      endpoint1InWantBackend.hash = "1";
+      endpoint2InWantBackend.hash = "2";
+      endpoint1InHaveBackend.hash = endpoint1InWantBackend.hash;
+      endpoint2InHaveBackend.hash = endpoint2InWantBackend.hash;
+      endpoint1InWantBackend.labels = {
+        [backend.DECLARATIVE_SECURITY_ETAG_LABEL]: "new-etag",
+      };
+      endpoint1InHaveBackend.labels = {
+        [backend.DECLARATIVE_SECURITY_ETAG_LABEL]: "old-etag",
+      };
+
+      // Execute
+      const result = deploy.shouldUploadBeSkipped(CONTEXT, wantBackend, haveBackend);
+
+      // Expect
+      expect(result).to.be.false;
+    });
+
     it("should not skip if hashes don't match", () => {
       endpoint1InWantBackend.hash = "1";
       endpoint2InWantBackend.hash = "2";

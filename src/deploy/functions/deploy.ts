@@ -227,11 +227,8 @@ export function shouldUploadBeSkipped(
     if (!haveEndpoint) {
       return false;
     }
-    return (
-      haveEndpoint.hash &&
-      wantEndpoint.hash &&
-      haveEndpoint.hash === wantEndpoint.hash &&
-      haveEndpoint.state === "ACTIVE"
-    );
+    // Must agree with the planner's skip predicate: an endpoint the planner updates needs its
+    // source uploaded, or the update fails without storage.
+    return backend.endpointUpToDate(wantEndpoint, haveEndpoint);
   });
 }

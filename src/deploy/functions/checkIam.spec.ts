@@ -285,6 +285,71 @@ describe("checkIam", () => {
       expect(setIamStub).to.not.have.been.called;
     });
 
+    it("should skip genkit endpoints that run as a managed service account", async () => {
+      const managedFn: backend.Endpoint = {
+        id: "managedGenkitFn",
+        platform: "gcfv2",
+        entryPoint: "managedGenkitFn",
+        serviceAccount: `firebase-fn-123@${projectId}.iam.gserviceaccount.com`,
+        callableTrigger: {
+          genkitAction: "action",
+        },
+        ...SPEC,
+      };
+
+      await checkIam.ensureGenkitMonitoringRoles(
+        projectId,
+        projectNumber,
+        backend.of(managedFn),
+        backend.empty(),
+      );
+
+      expect(getIamStub).to.not.have.been.called;
+      expect(setIamStub).to.not.have.been.called;
+    });
+
+    it("should only bind the accounts that are not managed", async () => {
+      const serviceAccount = `test-sa@${projectId}.iam.gserviceaccount.com`;
+      getIamStub.resolves({ etag: "etag", version: 3, bindings: [BINDING] });
+      setIamStub.resolves({});
+      const managedFn: backend.Endpoint = {
+        id: "managedGenkitFn",
+        platform: "gcfv2",
+        entryPoint: "managedGenkitFn",
+        serviceAccount: `firebase-fn-123@${projectId}.iam.gserviceaccount.com`,
+        callableTrigger: {
+          genkitAction: "action",
+        },
+        ...SPEC,
+      };
+      const customFn: backend.Endpoint = {
+        id: "customGenkitFn",
+        platform: "gcfv2",
+        entryPoint: "customGenkitFn",
+        serviceAccount,
+        callableTrigger: {
+          genkitAction: "action",
+        },
+        ...SPEC,
+      };
+
+      await checkIam.ensureGenkitMonitoringRoles(
+        projectId,
+        projectNumber,
+        backend.of(managedFn, customFn),
+        backend.empty(),
+      );
+
+      expect(setIamStub).to.have.been.calledOnce;
+      const policy = setIamStub.firstCall.args[1] as {
+        bindings: { role: string; members: string[] }[];
+      };
+      for (const role of checkIam.GENKIT_MONITORING_ROLES) {
+        const binding = policy.bindings.find((b) => b.role === role);
+        expect(binding?.members).to.deep.equal([`serviceAccount:${serviceAccount}`]);
+      }
+    });
+
     it("should return early if none of the new endpoints are genkit", async () => {
       const fn1: backend.Endpoint = {
         id: "genkitFn1",

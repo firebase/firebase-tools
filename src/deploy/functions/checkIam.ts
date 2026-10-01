@@ -141,9 +141,17 @@ function reduceEventsToServices(services: Array<Service>, endpoint: backend.Endp
 }
 
 /** Checks whether the given endpoint is a Genkit callable function. */
-function isGenkitEndpoint(endpoint: backend.Endpoint): boolean {
+export function isGenkitEndpoint(endpoint: backend.Endpoint): boolean {
   return (
     backend.isCallableTriggered(endpoint) && endpoint.callableTrigger.genkitAction !== undefined
+  );
+}
+
+/** Checks whether the endpoint runs as a service account managed by declarative security. */
+function usesManagedServiceAccount(endpoint: backend.Endpoint): boolean {
+  return (
+    typeof endpoint.serviceAccount === "string" &&
+    endpoint.serviceAccount.startsWith("firebase-fn-")
   );
 }
 
@@ -197,7 +205,12 @@ export async function ensureGenkitMonitoringRoles(
   have: backend.Backend,
   dryRun?: boolean,
 ): Promise<void> {
-  const wantEndpoints = backend.allEndpoints(want).filter(isGenkitEndpoint);
+  // A managed service account may not exist until release, so its Genkit roles are part of the
+  // codebase's required roles and are granted with them in the fabricator.
+  const wantEndpoints = backend
+    .allEndpoints(want)
+    .filter(isGenkitEndpoint)
+    .filter((endpoint) => !usesManagedServiceAccount(endpoint));
   const newEndpoints = wantEndpoints.filter(backend.missingEndpoint(have));
 
   if (newEndpoints.length === 0) {

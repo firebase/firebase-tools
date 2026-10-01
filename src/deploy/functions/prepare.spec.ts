@@ -29,6 +29,7 @@ import * as functionsEnv from "../../functions/env";
 import * as ensure from "./ensure";
 import * as functionsConfig from "../../functionsConfig";
 import * as args from "./args";
+import * as checkIam from "./checkIam";
 
 describe("partition env helper", () => {
   it("splits a Record into two based on which keys begin with FIREBASE_SECRET_REF", () => {
@@ -1515,6 +1516,55 @@ describe("prepare", () => {
       expect(result.newEtag).to.be.a("string");
       expect(e.serviceAccount).to.equal("firebase-fn-123@project.iam.gserviceaccount.com");
       expect(e.labels?.["firebase-declarative-security-etag"]).to.equal(result.newEtag);
+    });
+
+    it("should add the Genkit monitoring roles to requiredRoles and the etag when a Genkit function is present", async () => {
+      const genkitFn: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        id: "genkit",
+        callableTrigger: { genkitAction: "flow" },
+      };
+      const want = backend.of({ ...ENDPOINT }, genkitFn);
+      want.requiredRoles = ["roles/viewer"];
+      const have = backend.empty();
+
+      const result = await prepare.discoverSecurityDetails("default", want, have, "project");
+
+      const expectedRoles = ["roles/viewer", ...checkIam.GENKIT_MONITORING_ROLES];
+      expect(want.requiredRoles).to.have.members(expectedRoles);
+      expect(want.requiredRoles).to.have.length(expectedRoles.length);
+      expect(result.newEtag).to.equal(iam.computeRolesEtag(expectedRoles));
+      expect(result.newEtag).to.not.equal(iam.computeRolesEtag(["roles/viewer"]));
+    });
+
+    it("should report the Genkit monitoring roles as held when the etag already covers them", async () => {
+      const expectedRoles = ["roles/viewer", ...checkIam.GENKIT_MONITORING_ROLES];
+      const etag = iam.computeRolesEtag(expectedRoles);
+      const genkitFn: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        id: "genkit",
+        callableTrigger: { genkitAction: "flow" },
+        serviceAccount: "firebase-fn-123@project.iam.gserviceaccount.com",
+        labels: { "firebase-declarative-security-etag": etag },
+      };
+      const want = backend.of(genkitFn);
+      want.requiredRoles = ["roles/viewer"];
+      const have = backend.of({ ...genkitFn, labels: { ...genkitFn.labels } });
+
+      const result = await prepare.discoverSecurityDetails("default", want, have, "project");
+
+      expect(result.newEtag).to.equal(etag);
+      expect(result.haveRoles).to.have.members(expectedRoles);
+    });
+
+    it("should not add the Genkit monitoring roles when no Genkit function is present", async () => {
+      const want = backend.of({ ...ENDPOINT });
+      want.requiredRoles = ["roles/viewer"];
+      const have = backend.empty();
+
+      await prepare.discoverSecurityDetails("default", want, have, "project");
+
+      expect(want.requiredRoles).to.deep.equal(["roles/viewer"]);
     });
 
     it("should skip permission checks when haveRolesEtag matches newEtag", async () => {
