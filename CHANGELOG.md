@@ -1,1 +1,2 @@
+- [Fixed] Report the GCFv2-to-GCFv1 downgrade error during validation instead of a misleading CPU error (#5461).
 - Fixed `functions:delete` recreating an already-deleted Cloud Tasks queue for task queue functions. (#9305)
