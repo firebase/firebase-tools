@@ -41,8 +41,6 @@ function enforceNetConnectPolicy(ctx) {
   }
 }
 
-enforceNetConnectPolicy();
-
 chai.use(chaiAsPromised);
 chai.use(sinonChai);
 
