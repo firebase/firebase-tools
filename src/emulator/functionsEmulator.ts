@@ -35,6 +35,7 @@ import {
   prepareEndpoints,
   BlockingTrigger,
   getTemporarySocketPath,
+  getEventTenantId,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
@@ -357,13 +358,22 @@ export class FunctionsEmulator implements EmulatorInstance {
       } else {
         triggerKey = `${this.args.projectId}:${event.eventType}`;
       }
-      if (event.data.bucket) {
+      if (event.data?.bucket) {
         triggerKey += `:${event.data.bucket}`;
       }
       const triggers = this.multicastTriggers[triggerKey] || [];
 
       const { host, port } = this.getInfo();
-      triggers.forEach((triggerId) => {
+      const eventTenantId = getEventTenantId(event);
+      for (const triggerId of triggers) {
+        const record = this.getTriggerRecordByKey(triggerId);
+
+        // If the trigger has a tenant filter ({ tenantId: "..." }),
+        // ensure the event matches the expected tenant.
+        const filterTenantId = record?.def?.eventTrigger?.eventFilters?.tenantid;
+        if (filterTenantId && filterTenantId !== eventTenantId) {
+          continue;
+        }
         const work: Work = () => {
           return new Promise<void>((resolve, reject) => {
             const trigReq = http.request({
@@ -381,7 +391,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         };
         work.type = `${triggerId}-${new Date().toISOString()}`;
         this.workQueue.submit(work);
-      });
+      }
       res.json({ status: "multicast_acknowledged" });
     };
 
@@ -626,7 +636,13 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
         await this.loadDynamicExtensionBackends();
       }
-      build.applyPrefix(discoveredBuild, emulatableBackend.prefix || "");
+      build.applyEndpointPrefix(discoveredBuild, emulatableBackend.prefix || "");
+      if (emulatableBackend.env?.FIREBASE_KIT_INSTANCE_ID) {
+        build.applyKitSecretRefPrefix(
+          discoveredBuild,
+          emulatableBackend.env.FIREBASE_KIT_INSTANCE_ID,
+        );
+      }
       const resolution = await resolveBackend({
         build: discoveredBuild,
         firebaseConfig: JSON.parse(firebaseConfig),
