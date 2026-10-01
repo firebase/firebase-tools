@@ -238,6 +238,11 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: true,
   },
+  crashlyticsWebAlerts: {
+    shortDescription: "Enable configuring Crashlytics email alerts during web app onboarding.",
+    default: false,
+    public: false,
+  },
   secretEnvParams: {
     shortDescription:
       "Enable reading the backing resource binding for a Functions secret param from .env",
