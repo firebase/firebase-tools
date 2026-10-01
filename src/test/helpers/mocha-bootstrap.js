@@ -1,3 +1,4 @@
+const path = require("path");
 const chai = require("chai");
 const chaiAsPromised = require("chai-as-promised");
 const sinon = require("sinon");
@@ -22,36 +23,25 @@ void nock;
 
 const LOOPBACK_REGEXP = /^(localhost|127\.0\.0\.1|\[::1\]|::1)(:\d+)?$/;
 
-// Unit tests must never reach real Google APIs: unmatched requests fail fast with
-// NetConnectNotAllowedError instead of depending on network latency (flaky 2000ms timeouts).
-// Integration tests (under scripts/) need real outbound network access.
-const isIntegrationTest =
-  process.env.FIREBASE_ALLOW_NET_CONNECT === "true" ||
-  process.argv.some((arg) => /(^|[/\\])(scripts|dev[/\\]scripts)[/\\]/.test(arg));
+function isIntegrationTestFile(filePath) {
+  if (!filePath) {
+    return false;
+  }
+  const rel = path.relative(process.cwd(), filePath);
+  return /^(scripts|dev[/\\]scripts)[/\\]/.test(rel);
+}
 
-function enforceNetConnectPolicy() {
-  if (!isIntegrationTest) {
+function enforceNetConnectPolicy(ctx) {
+  const currentFile = ctx && ctx.currentTest && ctx.currentTest.file;
+  if (!isIntegrationTestFile(currentFile)) {
     nock.disableNetConnect();
     nock.enableNetConnect(LOOPBACK_REGEXP);
+  } else {
+    nock.enableNetConnect();
   }
 }
 
 enforceNetConnectPolicy();
-
-if (!isIntegrationTest) {
-  const origEnableNetConnect = nock.enableNetConnect.bind(nock);
-  nock.enableNetConnect = function (matcher) {
-    const isUnscoped =
-      !matcher ||
-      matcher === ".*" ||
-      matcher === "*" ||
-      (matcher instanceof RegExp && (matcher.source === ".*" || matcher.source === "^.*$"));
-    if (isUnscoped) {
-      return origEnableNetConnect(LOOPBACK_REGEXP);
-    }
-    return origEnableNetConnect(matcher);
-  };
-}
 
 chai.use(chaiAsPromised);
 chai.use(sinonChai);
@@ -66,8 +56,9 @@ let suiteFakes = new Set();
  * Global teardown hook executed after every test case.
  * Hermetically restores Sinon stubs, spies, and mocks created during the test,
  * resets standard Nock HTTP interceptors, and resets custom Undici Nock interceptors if loaded.
+ * @param {object} [ctx] - Mocha context for the completed test.
  */
-function cleanup() {
+function cleanup(ctx) {
   if (typeof sinon.getFakes === "function") {
     for (const fake of sinon.getFakes()) {
       if (!suiteFakes.has(fake)) {
@@ -81,7 +72,7 @@ function cleanup() {
   }
 
   nock.cleanAll();
-  enforceNetConnectPolicy();
+  enforceNetConnectPolicy(ctx);
 
   // Safely clean up custom nock (src/test/helpers/nock.ts) if required by tests
   for (const key of Object.keys(require.cache)) {
@@ -103,8 +94,10 @@ function cleanup() {
 
 exports.mochaHooks = {
   beforeEach() {
-    enforceNetConnectPolicy();
+    enforceNetConnectPolicy(this);
     suiteFakes = new Set(typeof sinon.getFakes === "function" ? sinon.getFakes() : []);
   },
-  afterEach: cleanup,
+  afterEach() {
+    cleanup(this);
+  },
 };
