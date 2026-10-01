@@ -1,12 +1,24 @@
 import { FirestoreDocument, FirestoreValue } from "../../../gcp/firestore";
 import { logger } from "../../../logger";
+import { mcpError } from "../../util";
 
 /**
  * Takes an arbitrary value from a user and returns a FirestoreValue equivalent.
- * @param {any} inputValue the JSON object input value.
- * return FirestoreValue a firestorevalue object used in the Firestore API.
+ * @param inputValue the JSON object input value.
+ * @param key the schema field name driving the conversion (e.g. `reference_value`). When
+ *   set to `reference_value`, the string is treated as a document path/resource name and
+ *   converted to a `referenceValue` rather than a `stringValue`.
+ * @param projectId the active project id, used to build a full resource name from a
+ *   relative document path when `key === "reference_value"`.
+ * @param databaseId the active database id (defaults to `(default)`).
+ * @return a FirestoreValue object used in the Firestore API.
  */
-export function convertInputToValue(inputValue: any): FirestoreValue {
+export function convertInputToValue(
+  inputValue: any,
+  key?: string,
+  projectId?: string,
+  databaseId: string = "(default)",
+): FirestoreValue {
   if (inputValue === null) {
     return { nullValue: null };
   } else if (typeof inputValue === "boolean") {
@@ -19,9 +31,19 @@ export function convertInputToValue(inputValue: any): FirestoreValue {
       return { doubleValue: inputValue };
     }
   } else if (typeof inputValue === "string") {
-    // This is a simplification. In a real-world scenario, you might want to
-    // check for specific string formats like timestamp, bytes, or referenceValue.
-    // For now, it defaults to stringValue.
+    if (key === "reference_value") {
+      if (inputValue.startsWith("projects/")) {
+        return { referenceValue: inputValue };
+      }
+      if (!projectId) {
+        throw mcpError("projectId is required to convert a relative reference_value path.");
+      }
+      const root = `projects/${projectId}/databases/${databaseId}/documents`;
+      return { referenceValue: `${root}/${inputValue.replace(/^\/+/, "")}` };
+    }
+    if (key === "timestamp_value") {
+      return { timestampValue: inputValue };
+    }
     return { stringValue: inputValue };
   } else if (Array.isArray(inputValue)) {
     const arrayValue: { values?: FirestoreValue[] } = {
