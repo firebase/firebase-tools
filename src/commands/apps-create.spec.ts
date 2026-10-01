@@ -3,7 +3,6 @@ import * as sinon from "sinon";
 
 import { command } from "./apps-create";
 import * as projectUtils from "../projectUtils";
-import * as requireAuthModule from "../requireAuth";
 import * as apps from "../management/apps";
 import * as getDefaultHostingSiteMod from "../getDefaultHostingSite";
 import * as hostingInteractive from "../hosting/interactive";
@@ -35,7 +34,6 @@ describe("apps:create", () => {
   beforeEach(() => {
     sandbox = sinon.createSandbox();
     sandbox.stub(projectUtils, "needProjectId").returns(PROJECT_ID);
-    sandbox.stub(requireAuthModule, "requireAuth").resolves();
     sdkInitStub = sandbox.stub(apps, "sdkInit");
   });
 
