@@ -55,7 +55,7 @@ describe("apps:create", () => {
 
       const result = (await command.runner()("web", "My Web App", {
         interactive: true,
-      })) as AppMetadata;
+      })) as apps.AppMetadata;
 
       expect(result).to.deep.equal(webAppMetadata);
       expect(getSiteStub.calledOnceWith({ projectId: PROJECT_ID })).to.be.true;
@@ -84,7 +84,7 @@ describe("apps:create", () => {
 
       const result = (await command.runner()("web", "My Web App", {
         interactive: true,
-      })) as AppMetadata;
+      })) as apps.AppMetadata;
 
       expect(result).to.deep.equal(webAppMetadata);
       expect(confirmStub.calledOnce).to.be.true;
@@ -115,7 +115,7 @@ describe("apps:create", () => {
 
       const result = (await command.runner()("web", "My Web App", {
         interactive: true,
-      })) as AppMetadata;
+      })) as apps.AppMetadata;
 
       expect(result).to.deep.equal(webAppMetadata);
       expect(confirmStub.calledOnce).to.be.true;
@@ -143,7 +143,7 @@ describe("apps:create", () => {
 
       const result = (await command.runner()("", "My Web App", {
         interactive: true,
-      })) as AppMetadata;
+      })) as apps.AppMetadata;
 
       expect(result).to.deep.equal(webAppMetadata);
       expect(getSiteStub.calledOnceWith({ projectId: PROJECT_ID })).to.be.true;
@@ -161,7 +161,7 @@ describe("apps:create", () => {
       const result = (await command.runner()("ios", "My iOS App", {
         nonInteractive: false,
         bundleId: "com.example.app",
-      })) as AppMetadata;
+      })) as apps.AppMetadata;
 
       expect(result).to.deep.equal(iosAppMetadata);
       expect(getSiteStub.called).to.be.false;
