@@ -1,1 +1,2 @@
 - Fixed `functions:secrets:set` and `functions:secrets:prune` not destroying unused versions of secrets created with v13.6.1 or later. (#11066)
+- [Fixed] Report the GCFv2-to-GCFv1 downgrade error during validation instead of a misleading CPU error (#5461).
