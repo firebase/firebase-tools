@@ -14,6 +14,7 @@ import { createOrUpdateTelemetryConfig, TelemetryConfig } from "./firebaseteleme
 import { AlertType } from "./types";
 import { logLabeledBullet, logLabeledSuccess, logLabeledWarning } from "../utils";
 import { updateAppApiKeyRestriction } from "../gcp/apikeys";
+import { provisionTraceStorage } from "../gcp/cloudtrace";
 import { AppPlatform, getAppConfig } from "../management/apps";
 import { logger } from "../logger";
 import { checkbox } from "../prompt";
@@ -52,8 +53,7 @@ async function resolveAuthenticatedUserEmail(
 
 /**
  * Onboards a Firebase Web App to Crashlytics by enabling required APIs,
- * setting up Cloud Logging bucket and sink routing, creating a Telemetry Config,
- * and optionally configuring Crashlytics email alerts.
+ * setting up Cloud Logging bucket and sink routing, provisioning Cloud Trace storage, creating a Telemetry Config, and optionally configuring Crashlytics email alerts.
  */
 export async function onboardCrashlyticsWeb(
   projectId: string,
@@ -74,6 +74,7 @@ export async function onboardCrashlyticsWeb(
   await Promise.all([
     ensure(projectId, CRASHLYTICS_TELEMETRY_SERVICE, "crashlytics", false),
     ensure(projectId, "firebasetelemetryadmin.googleapis.com", "crashlytics", false),
+    ensure(projectId, "cloudtrace.googleapis.com", "crashlytics", false),
   ]);
   logLabeledSuccess("crashlytics", "Telemetry APIs enabled.");
 
@@ -125,6 +126,10 @@ export async function onboardCrashlyticsWeb(
     filter,
   );
   logLabeledSuccess("crashlytics", "Cloud Logging routing sink configured.");
+
+  logLabeledBullet("crashlytics", "Provisioning Cloud Trace storage...");
+  await provisionTraceStorage(projectId);
+  logLabeledSuccess("crashlytics", "Cloud Trace storage provisioned.");
 
   logLabeledBullet("crashlytics", "Configuring Crashlytics telemetry for web app...");
   const config = await createOrUpdateTelemetryConfig(
