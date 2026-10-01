@@ -1,0 +1,1 @@
+- Fixed nested ternary CEL expressions in function parameters, which previously failed to load or selected the wrong branch. (#7755)
