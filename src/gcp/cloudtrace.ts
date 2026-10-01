@@ -25,7 +25,7 @@ interface BatchWriteSpansRequest {
 }
 
 /**
- * Sends a dummy span to Cloud Trace to trigger BigQuery _Trace dataset provisioning.
+ * Sends a mock span to Cloud Trace to trigger BigQuery _Trace dataset provisioning.
  * Ref: https://cloud.google.com/trace/docs/reference/v2/rest/v2/projects.traces/batchWrite
  */
 export async function provisionTraceStorage(projectId: string): Promise<void> {
@@ -50,7 +50,7 @@ export async function provisionTraceStorage(projectId: string): Promise<void> {
   };
 
   try {
-    // Send the dummy span to trigger BigQuery _Trace database creation
+    // Send the mock span to trigger BigQuery _Trace database creation
     await getTraceClient().post<BatchWriteSpansRequest, void>(
       `/projects/${projectId}/traces:batchWrite`,
       payload,

@@ -71,11 +71,14 @@ export async function onboardCrashlyticsWeb(
   }
 
   logLabeledBullet("crashlytics", "Enabling required telemetry APIs...");
-  await Promise.all([
+  const requiredApis = [
     ensure(projectId, CRASHLYTICS_TELEMETRY_SERVICE, "crashlytics", false),
     ensure(projectId, "firebasetelemetryadmin.googleapis.com", "crashlytics", false),
-    ensure(projectId, "cloudtrace.googleapis.com", "crashlytics", false),
-  ]);
+  ];
+  if (experiments.isEnabled("crashlyticsWebTrace")) {
+    requiredApis.push(ensure(projectId, "cloudtrace.googleapis.com", "crashlytics", false));
+  }
+  await Promise.all(requiredApis);
   logLabeledSuccess("crashlytics", "Telemetry APIs enabled.");
 
   const appConfig = await getAppConfig(appId, AppPlatform.WEB);
@@ -127,9 +130,11 @@ export async function onboardCrashlyticsWeb(
   );
   logLabeledSuccess("crashlytics", "Cloud Logging routing sink configured.");
 
-  logLabeledBullet("crashlytics", "Provisioning Cloud Trace storage...");
-  await provisionTraceStorage(projectId);
-  logLabeledSuccess("crashlytics", "Cloud Trace storage provisioned.");
+  if (experiments.isEnabled("crashlyticsWebTrace")) {
+    logLabeledBullet("crashlytics", "Provisioning Cloud Trace storage...");
+    await provisionTraceStorage(projectId);
+    logLabeledSuccess("crashlytics", "Cloud Trace storage provisioned.");
+  }
 
   logLabeledBullet("crashlytics", "Configuring Crashlytics telemetry for web app...");
   const config = await createOrUpdateTelemetryConfig(
