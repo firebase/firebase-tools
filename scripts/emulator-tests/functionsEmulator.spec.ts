@@ -20,7 +20,7 @@ import * as registry from "../../src/emulator/registry";
 import * as secretManager from "../../src/gcp/secretManager";
 
 if ((process.env.DEBUG || "").toLowerCase().includes("spec")) {
-  const dropLogLevels = (info: logform.TransformableInfo) => info.message;
+  const dropLogLevels = (info: logform.TransformableInfo): string => `${info.message}`;
   logger.add(
     new winston.transports.Console({
       level: "debug",

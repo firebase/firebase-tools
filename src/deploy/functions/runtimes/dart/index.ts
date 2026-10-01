@@ -15,6 +15,7 @@ import { Build } from "../../build";
 import { EmulatorRegistry } from "../../../../emulator/registry";
 import { Emulators } from "../../../../emulator/types";
 import * as experiments from "../../../../experiments";
+import { DartVersionFeatures } from "./features";
 
 /**
  * Create a runtime delegate for the Dart runtime, if applicable.
@@ -45,14 +46,14 @@ export async function tryCreateDelegate(
   return Promise.resolve(new Delegate(context.projectId, context.sourceDir, runtime));
 }
 
-/**
- * Minimum Dart SDK version required.
- * Dart 3.8+ is needed for cross-compilation flags (--target-os, --target-arch).
- */
-const MIN_DART_SDK_VERSION = "3.9.0";
-
 /** Default entry point for Dart functions projects. */
 export const DART_ENTRY_POINT = "bin/server.dart";
+
+/** Path to the executable produced by `dart compile exe`, used below the native-assets language version threshold. */
+export const DART_COMPILE_EXE_PATH = "bin/server";
+
+/** Path to the bundle (executable, shared libraries, and metadata) produced by `dart build cli` for native-build-hook projects. */
+export const DART_BUNDLE_EXECUTABLE_PATH = "build/cli/linux_x64/bundle/bin/server";
 
 export class Delegate implements runtimes.RuntimeDelegate {
   public readonly language = "dart";
@@ -69,7 +70,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
   ) {}
 
   async validate(): Promise<void> {
-    // Verify the Dart binary exists and meets the minimum version requirement.
+    // Verify the Dart binary exists.
     const result = spawn.sync(this.bin, ["--version"], {
       encoding: "utf8",
       timeout: 10_000,
@@ -80,22 +81,8 @@ export class Delegate implements runtimes.RuntimeDelegate {
         `Could not find a Dart SDK. Make sure the '${this.bin}' command is available on your PATH.`,
       );
     }
-
     // `dart --version` outputs e.g. "Dart SDK version: 3.8.0 (stable) ... on "macos_arm64""
     const versionOutput = (result.stdout || result.stderr || "").toString();
-    const match = /Dart SDK version:\s*(\d+\.\d+\.\d+)/.exec(versionOutput);
-    if (match) {
-      const installedVersion = match[1];
-      if (installedVersion.localeCompare(MIN_DART_SDK_VERSION, undefined, { numeric: true }) < 0) {
-        throw new FirebaseError(
-          `Dart SDK version ${installedVersion} is not supported. ` +
-            `Firebase Functions for Dart requires Dart ${MIN_DART_SDK_VERSION} or later. ` +
-            `Please upgrade your Dart SDK.`,
-        );
-      }
-    } else {
-      logger.debug(`Could not parse Dart SDK version from: ${versionOutput}`);
-    }
 
     // Verify pubspec.yaml exists and is readable.
     const pubspecYamlPath = path.join(this.sourceDir, "pubspec.yaml");
@@ -147,6 +134,23 @@ export class Delegate implements runtimes.RuntimeDelegate {
         });
         pubGetProcess.on("error", reject);
       });
+    }
+
+    // Verify the installed Dart SDK meets the minimum version required.
+    const match = /Dart SDK version:\s*(\d+\.\d+\.\d+)/.exec(versionOutput);
+    if (match) {
+      const installedVersion = match[1];
+      const features = await DartVersionFeatures.detect(this.sourceDir);
+      const minVersion = features.minDartSdkVersion;
+      if (installedVersion.localeCompare(minVersion, undefined, { numeric: true }) < 0) {
+        throw new FirebaseError(
+          `Dart SDK version ${installedVersion} is not supported. ` +
+            `Firebase Functions for Dart requires Dart ${minVersion} or later. ` +
+            `Please upgrade your Dart SDK.`,
+        );
+      }
+    } else {
+      logger.debug(`Could not parse Dart SDK version from: ${versionOutput}`);
     }
   }
 
@@ -200,6 +204,16 @@ export class Delegate implements runtimes.RuntimeDelegate {
       return;
     }
 
+    const features = await DartVersionFeatures.detect(this.sourceDir);
+    if (features.isNativeAssetsAvailable) {
+      await this.buildCli();
+    } else {
+      await this.compileExe();
+    }
+  }
+
+  /** Cross-compiles the entry point to a linux-x64 executable via `dart compile exe`. */
+  private async compileExe(): Promise<void> {
     const binDir = path.join(this.sourceDir, "bin");
     await fs.promises.mkdir(binDir, { recursive: true });
 
@@ -212,7 +226,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
         "exe",
         this.entryPoint,
         "-o",
-        "bin/server",
+        DART_COMPILE_EXE_PATH,
         "--target-os=linux",
         "--target-arch=x64",
       ],
@@ -238,7 +252,10 @@ export class Delegate implements runtimes.RuntimeDelegate {
             new FirebaseError(
               `Dart compilation failed with exit code ${code}. ` +
                 `Make sure your Dart project compiles successfully with: ` +
-                `dart compile exe ${this.entryPoint} --target-os=linux --target-arch=x64`,
+                `dart compile exe ${this.entryPoint} --target-os=linux --target-arch=x64\n` +
+                `If your dependencies require native build hooks (e.g. sqlite3), bump the ` +
+                `SDK constraint in your pubspec.yaml's "environment" section to "^3.13.0" or ` +
+                `later to use dart build cli instead.`,
             ),
           );
         }
@@ -247,6 +264,46 @@ export class Delegate implements runtimes.RuntimeDelegate {
     });
 
     logLabeledBullet("functions", "Dart compilation complete.");
+  }
+
+  /** Cross-compiles the entry point to a linux-x64 bundle via `dart build cli`. */
+  private async buildCli(): Promise<void> {
+    logLabeledBullet("functions", "building Dart linux-x64 bundle...");
+
+    const buildProcess = spawn(
+      this.bin,
+      ["build", "cli", "--target", this.entryPoint, "--target-os", "linux", "--target-arch", "x64"],
+      {
+        cwd: this.sourceDir,
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
+
+    buildProcess.stdout?.on("data", (chunk: Buffer) => {
+      logger.debug(`[dart build cli] ${chunk.toString("utf8").trim()}`);
+    });
+    buildProcess.stderr?.on("data", (chunk: Buffer) => {
+      logger.debug(`[dart build cli] ${chunk.toString("utf8").trim()}`);
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      buildProcess.on("exit", (code) => {
+        if (code === 0 || code === null) {
+          resolve();
+        } else {
+          reject(
+            new FirebaseError(
+              `Dart build failed with exit code ${code}. ` +
+                `Make sure your Dart project builds successfully with: ` +
+                `dart build cli --target ${this.entryPoint} --target-os linux --target-arch x64`,
+            ),
+          );
+        }
+      });
+      buildProcess.on("error", reject);
+    });
+
+    logLabeledBullet("functions", "Dart build complete.");
   }
 
   /**
@@ -350,6 +407,8 @@ export class Delegate implements runtimes.RuntimeDelegate {
       const buildRunnerProcess = spawn(this.bin, ["run", "build_runner", "build"], {
         cwd: this.sourceDir,
         stdio: ["ignore", "pipe", "pipe"],
+        // TODO: Including process.env was a mistake; only known envs should be included after a breaking change.
+        env: { ...process.env, ...envs },
       });
 
       buildRunnerProcess.stdout?.on("data", (chunk: Buffer) => {

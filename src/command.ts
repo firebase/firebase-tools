@@ -15,9 +15,10 @@ import { getProject } from "./management/projects";
 import { reconcileStudioFirebaseProject } from "./management/studio";
 import { requireAuth } from "./requireAuth";
 import { Options } from "./options";
-import { isFirebaseStudio } from "./env";
+import { isFirebaseStudio, detectAIAgent } from "./env";
 import * as experiments from "./experiments";
 import { showDeprecationWarningBefore, showDeprecationWarningAfter } from "./extensions/warnings";
+import { setNonInteractive } from "./prompt";
 
 export interface CommandModule {
   load: () => void;
@@ -166,8 +167,7 @@ export class Command {
     if (this.aliases) {
       cmd.aliases(this.aliases);
     }
-    this.options.forEach((args) => {
-      const flags = args.shift();
+    this.options.forEach(([flags, ...args]) => {
       cmd.option(flags, ...args);
     });
 
@@ -315,7 +315,8 @@ export class Command {
     if (
       !process.stdin.isTTY ||
       getInheritedOption(options, "nonInteractive") ||
-      getInheritedOption(options, "json") // --json implies --non-interactive.
+      getInheritedOption(options, "json") || // --json implies --non-interactive.
+      detectAIAgent() !== "unknown"
     ) {
       options.nonInteractive = true;
     }
@@ -324,6 +325,8 @@ export class Command {
     if (getInheritedOption(options, "interactive")) {
       options.nonInteractive = false;
     }
+
+    setNonInteractive(!!options.nonInteractive);
 
     if (getInheritedOption(options, "debug")) {
       options.debug = true;
@@ -477,7 +480,7 @@ export class Command {
       await this.prepare(options);
 
       if (this.name.startsWith("ext:") && experiments.isEnabled("extdeprecationwarnings")) {
-        showDeprecationWarningBefore(this.name, options);
+        await showDeprecationWarningBefore(this.name, options, args);
       }
 
       for (const before of this.befores) {

@@ -32,11 +32,30 @@ export class SourceTokenScraper {
     this.fetchState = "NONE";
   }
 
-  abort(): void {
-    this.resolve({ aborted: true });
+  /**
+   * Runs an operation with a source token.
+   * If the operation throws, automatically aborts the token fetch to prevent deadlocks.
+   */
+  async withToken<T>(fn: (token: string | undefined) => Promise<T>): Promise<T> {
+    const token = await this.getToken();
+    try {
+      return await fn(token);
+    } catch (err) {
+      this.abort();
+      throw err;
+    }
   }
 
-  async getToken(): Promise<string | undefined> {
+  private abort(): void {
+    if (this.fetchState === "FETCHING") {
+      this.fetchState = "NONE";
+      const resolve = this.resolve;
+      this.promise = new Promise((r) => (this.resolve = r));
+      resolve({ aborted: true });
+    }
+  }
+
+  private async getToken(): Promise<string | undefined> {
     if (this.fetchState === "NONE") {
       this.fetchState = "FETCHING";
       return undefined;
@@ -55,7 +74,6 @@ export class SourceTokenScraper {
             "Timed out waiting for a source token. Proceeding without one, which may slow the deploy.",
           );
         }
-        this.promise = new Promise((resolve) => (this.resolve = resolve));
         return undefined;
       }
       return tokenResult.token;
@@ -72,7 +90,7 @@ export class SourceTokenScraper {
     }
   }
 
-  isTokenExpired(): boolean {
+  private isTokenExpired(): boolean {
     if (this.expiry === undefined) {
       throw new FirebaseError(
         "Your deployment is checking the expiration of a source token that has not yet been polled. " +
