@@ -75,10 +75,9 @@ describe("onboarding", () => {
       { name: "projects/test-project/alertPolicies/222", notificationChannels: ["ch-1"] },
     ]);
     requireAuthStub = sinon.stub(requireAuth, "requireAuth").resolves("user@example.com");
-    isEnabledStub = sinon
-      .stub(experiments, "isEnabled")
-      .withArgs("crashlyticsWebAlerts")
-      .returns(true);
+    isEnabledStub = sinon.stub(experiments, "isEnabled");
+    isEnabledStub.withArgs("crashlyticsWebAlerts").returns(true);
+    isEnabledStub.withArgs("crashlyticsWebTrace").returns(true);
   });
 
   afterEach(() => {
@@ -169,6 +168,32 @@ describe("onboarding", () => {
     expect(checkboxStub).to.not.have.been.called;
     expect(enableAlertsStub).to.not.have.been.called;
     expect(res.alertPolicies).to.be.undefined;
+  });
+
+  it("should skip only the Cloud Trace API enablement and storage provisioning when crashlyticsWebTrace experiment is disabled", async () => {
+    isEnabledStub.withArgs("crashlyticsWebTrace").returns(false);
+
+    await onboarding.onboardCrashlyticsWeb("test-project", "1:123:web:456");
+
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      onboarding.CRASHLYTICS_TELEMETRY_SERVICE,
+      "crashlytics",
+      false,
+    );
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      "firebasetelemetryadmin.googleapis.com",
+      "crashlytics",
+      false,
+    );
+    expect(ensureStub).to.not.have.been.calledWith(
+      "test-project",
+      "cloudtrace.googleapis.com",
+      "crashlytics",
+      false,
+    );
+    expect(provisionTraceStub).to.not.have.been.called;
   });
 
   it("should skip alerting prompt and setup in non-interactive mode", async () => {
