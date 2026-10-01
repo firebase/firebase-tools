@@ -92,14 +92,11 @@ export const command = new Command("apps:create [platform] [displayName]")
 
       let newSiteId: string | undefined;
       if (appPlatform === AppPlatform.WEB) {
-        let existingSite: string | undefined;
-        try {
-          existingSite = await getDefaultHostingSite({ projectId });
-        } catch (err: unknown) {
+        const existingSite = await getDefaultHostingSite({ projectId }).catch((err: unknown) => {
           if (err !== errNoDefaultSite) {
             throw err;
           }
-        }
+        });
 
         if (existingSite) {
           logger.info(`Firebase Hosting site is present: ${clc.bold(existingSite)}.`);
