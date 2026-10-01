@@ -33,6 +33,7 @@ type StreamObjectModule = typeof import("stream-json/streamers/stream-object.js"
 
 export interface StreamJson {
   chain: StreamChainModule["chain"];
+  many: StreamChainModule["many"];
   parser: StreamJsonModule["parser"];
   pick: PickModule["pick"];
   filter: FilterModule["filter"];
@@ -58,6 +59,7 @@ export function loadStreamJson(): Promise<StreamJson> {
       ]);
       return {
         chain: streamChain.chain,
+        many: streamChain.many,
         parser: streamJson.parser,
         pick: pick.pick,
         filter: filter.filter,
