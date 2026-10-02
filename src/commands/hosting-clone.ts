@@ -15,6 +15,7 @@ import * as utils from "../utils";
 import { requireAuth } from "../requireAuth";
 import { logger } from "../logger";
 import { needProjectId } from "../projectUtils";
+import { Options } from "../options";
 
 export const command = new Command("hosting:clone <source> <targetChannel>")
   .description("clone a version from one site to another")
@@ -26,7 +27,7 @@ For example, to copy the content for a site \`my-site\` from a preview channel \
   firebase hosting:clone my-site:foo my-site:live`,
   )
   .before(requireAuth)
-  .action(async (source = "", targetChannel = "", options: any = {}) => {
+  .action(async (source = "", targetChannel = "", options: Options) => {
     let sourceProjectId: string | undefined;
     let sourceSiteId: string | undefined;
     let sourceChannelId: string | undefined;
