@@ -37,6 +37,7 @@ import * as services from "../services";
 import { getDataConnectP4SA } from "../services/dataconnect";
 import { AUTH_BLOCKING_EVENTS } from "../../../functions/events/v1";
 import * as gce from "../../../gcp/computeEngine";
+import * as proto from "../../../gcp/proto";
 import { getHumanFriendlyPlatformName } from "../functionsDeployHelper";
 
 // TODO: Tune this for better performance.
@@ -952,6 +953,11 @@ export class Fabricator {
       await this.executor
         .run(() => run.setInvokerCreate(endpoint.project, serviceName, ["public"]))
         .catch(rethrowAs(endpoint, "set invoker"));
+    } else if (backend.isScheduleTriggered(endpoint)) {
+      const invoker = [await this.scheduleInvoker(endpoint)];
+      await this.executor
+        .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
+        .catch(rethrowAs(endpoint, "set invoker"));
     }
   }
 
@@ -988,6 +994,8 @@ export class Fabricator {
     let invoker: string[] | undefined;
     if (backend.isHttpsTriggered(endpoint)) {
       invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
+    } else if (backend.isScheduleTriggered(endpoint)) {
+      invoker = [await this.scheduleInvoker(endpoint)];
     }
 
     if (invoker) {
@@ -995,6 +1003,15 @@ export class Fabricator {
         .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!))
         .catch(rethrowAs(endpoint, "set invoker"));
     }
+  }
+
+  // The service account Cloud Scheduler signs its OIDC token with, which must hold run.invoker.
+  async scheduleInvoker(endpoint: backend.Endpoint): Promise<string> {
+    return proto.formatServiceAccount(
+      endpoint.serviceAccount ?? (await gce.getDefaultServiceAccount(this.projectNumber)),
+      endpoint.project,
+      true,
+    );
   }
 
   async deleteRunFunction(endpoint: backend.Endpoint): Promise<void> {
@@ -1048,11 +1065,9 @@ export class Fabricator {
       if (endpoint.platform === "gcfv1") {
         await this.upsertScheduleV1(endpoint);
         return;
-      } else if (endpoint.platform === "gcfv2") {
+      } else if (endpoint.platform === "gcfv2" || endpoint.platform === "run") {
         await this.upsertScheduleV2(endpoint);
         return;
-      } else if (endpoint.platform === "run") {
-        throw new FirebaseError("Schedule triggers for Cloud Run functions are not supported yet.");
       }
       assertExhaustive(endpoint.platform);
     } else if (backend.isTaskQueueTriggered(endpoint)) {
@@ -1075,11 +1090,9 @@ export class Fabricator {
       if (endpoint.platform === "gcfv1") {
         await this.deleteScheduleV1(endpoint);
         return;
-      } else if (endpoint.platform === "gcfv2") {
+      } else if (endpoint.platform === "gcfv2" || endpoint.platform === "run") {
         await this.deleteScheduleV2(endpoint);
         return;
-      } else if (endpoint.platform === "run") {
-        throw new FirebaseError("Schedule triggers for Cloud Run functions are not supported yet.");
       }
       assertExhaustive(endpoint.platform);
     } else if (backend.isTaskQueueTriggered(endpoint)) {

@@ -1429,6 +1429,18 @@ describe("Fabricator", () => {
       expect(upsertScheduleV2).to.have.been.called;
     });
 
+    it("sets schedule triggers for Cloud Run functions", async () => {
+      const ep = endpoint(
+        { scheduleTrigger: { schedule: "every 5 minutes" } },
+        { platform: "run" },
+      );
+      const upsertScheduleV2 = sinon.stub(fab, "upsertScheduleV2");
+      upsertScheduleV2.resolves();
+
+      await fab.setTrigger(ep);
+      expect(upsertScheduleV2).to.have.been.calledWith(ep);
+    });
+
     it("sets task queue triggers", async () => {
       const ep = endpoint({
         taskQueueTrigger: {},
@@ -1478,6 +1490,18 @@ describe("Fabricator", () => {
 
       await fab.deleteTrigger(ep);
       expect(deleteScheduleV2).to.have.been.called;
+    });
+
+    it("deletes schedule triggers for Cloud Run functions", async () => {
+      const ep = endpoint(
+        { scheduleTrigger: { schedule: "every 5 minutes" } },
+        { platform: "run" },
+      );
+      const deleteScheduleV2 = sinon.stub(fab, "deleteScheduleV2");
+      deleteScheduleV2.resolves();
+
+      await fab.deleteTrigger(ep);
+      expect(deleteScheduleV2).to.have.been.calledWith(ep);
     });
 
     it("deletes task queue triggers", async () => {
@@ -1951,6 +1975,28 @@ describe("Fabricator", () => {
   });
 
   describe("createRunFunction", () => {
+    it("grants run.invoker to the default compute service account for schedule triggers", async () => {
+      runv2.createService.resolves({ uri: "https://service", name: "service" } as any);
+      run.setInvokerCreate.resolves();
+      const getDefaultServiceAccount = sinon
+        .stub(gce, "getDefaultServiceAccount")
+        .resolves("default@test-project.iam.gserviceaccount.com");
+
+      const ep = endpoint(
+        { scheduleTrigger: { schedule: "every 5 minutes" } },
+        { platform: "run" },
+      );
+      await fab.createRunFunction(ep);
+
+      expect(getDefaultServiceAccount).to.have.been.calledOnceWith("1234567");
+      expect(run.setInvokerCreate).to.have.been.calledWith(
+        ep.project,
+        `projects/${ep.project}/locations/${ep.region}/services/${ep.id}`,
+        ["default@test-project.iam.gserviceaccount.com"],
+      );
+      expect(ep.uri).to.equal("https://service");
+    });
+
     it("creates a Cloud Run service with correct configuration", async () => {
       runv2.createService.resolves({ uri: "https://service", name: "service" } as any);
       run.setInvokerCreate.resolves();
@@ -2032,6 +2078,24 @@ describe("Fabricator", () => {
   });
 
   describe("updateRunFunction", () => {
+    it("grants run.invoker to the endpoint service account for schedule triggers", async () => {
+      runv2.updateService.resolves({ uri: "https://service", name: "service" } as any);
+      run.setInvokerUpdate.resolves();
+
+      const ep = endpoint(
+        { scheduleTrigger: { schedule: "every 5 minutes" } },
+        { platform: "run", serviceAccount: "scheduler@" },
+      );
+      await fab.updateRunFunction({ endpoint: ep });
+
+      expect(run.setInvokerUpdate).to.have.been.calledWith(
+        ep.project,
+        `projects/${ep.project}/locations/${ep.region}/services/${ep.id}`,
+        [`scheduler@${ep.project}.iam.gserviceaccount.com`],
+      );
+      expect(ep.uri).to.equal("https://service");
+    });
+
     it("updates a Cloud Run service with correct configuration", async () => {
       runv2.updateService.resolves({ uri: "https://service", name: "service" } as any);
       run.setInvokerUpdate.resolves();

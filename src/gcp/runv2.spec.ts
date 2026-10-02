@@ -391,6 +391,27 @@ describe("runv2", () => {
       expect(result.entryPoint).to.equal(SERVICE_ID);
     });
 
+    it("should preserve schedule trigger metadata for backend reconstruction", () => {
+      const scheduleTrigger: backend.ScheduleTrigger = {
+        schedule: "0 3 * * *",
+        timeZone: "Europe/Paris",
+        retryConfig: { retryCount: 2 },
+      };
+      const endpoint: backend.Endpoint = { ...BASE_ENDPOINT_RUN, scheduleTrigger };
+
+      const service = runv2.serviceFromEndpoint(endpoint, IMAGE_URI);
+      const metadata = JSON.parse(service.annotations![runv2.FIREBASE_FUNCTION_METADTA_ANNOTATION]);
+
+      expect(metadata).to.deep.equal({ functionId: FUNCTION_ID, scheduleTrigger });
+      const reconstructed = runv2.endpointFromService(service);
+      expect(backend.isScheduleTriggered(reconstructed)).to.be.true;
+      expect(backend.isHttpsTriggered(reconstructed)).to.be.false;
+      if (!backend.isScheduleTriggered(reconstructed)) {
+        throw new Error("Expected a schedule-triggered endpoint");
+      }
+      expect(reconstructed.scheduleTrigger).to.deep.equal(scheduleTrigger);
+    });
+
     it("should copy env vars and secrets", () => {
       const service: runv2.Service = JSON.parse(JSON.stringify(BASE_RUN_SERVICE));
       service.template.containers![0].env = [
