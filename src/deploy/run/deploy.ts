@@ -73,7 +73,7 @@ async function deployService(
       invokerIamDisabled: true,
       ingress: "INGRESS_TRAFFIC_ALL",
     },
-    { masterTimeout: SERVICE_OPERATION_TIMEOUT_MS },
+    { pollTimeoutMs: SERVICE_OPERATION_TIMEOUT_MS },
   );
 }
 
