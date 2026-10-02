@@ -224,7 +224,7 @@
     "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^5.9.0",
     "@typescript-eslint/parser": "^5.9.0",
-    "astro": "^2.2.3",
+    "astro": "^7.3.5",
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",
     "deep-equal-in-any-order": "^2.0.6",
