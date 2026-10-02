@@ -2,6 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import { Setup } from "..";
 import { Config } from "../../config";
+import * as deploy from "../../deploy";
 import * as prereqs from "../../deploy/run/prereqs";
 import * as run from "../../gcp/run";
 import * as runv2 from "../../gcp/runv2";
@@ -127,16 +128,17 @@ describe("init run", () => {
   describe("actuate", () => {
     it("does nothing when featureInfo.run is not set", async () => {
       const writeStub = sinon.stub(config, "writeProjectFile");
-      await actuate(setup(), config);
+      await actuate(setup(), config, options);
       expect(writeStub).to.not.have.been.called;
     });
 
-    it("saves the service to firebase.json", async () => {
+    it("saves the service to firebase.json and deploys it", async () => {
       const writeStub = sinon.stub(config, "writeProjectFile");
+      const deployStub = sinon.stub(deploy, "deploy").resolves();
       const s = setup();
       s.featureInfo = { run: { serviceId: "s", region: "r", baseImage: "", rootDir: "/" } };
 
-      await actuate(s, config);
+      await actuate(s, config, options);
 
       const runConfig = {
         serviceId: "s",
@@ -146,6 +148,11 @@ describe("init run", () => {
       };
       expect(config.src.run).to.deep.equal(runConfig);
       expect(writeStub).to.have.been.calledWith("firebase.json", config.src);
+      expect(deployStub).to.have.been.calledWith(
+        ["run"],
+        { projectId: "p", config, only: "run:s" },
+        { baseImage: null },
+      );
     });
   });
 
