@@ -106,7 +106,7 @@ export interface ProvisionRequest {
     sha1Hashes?: string[];
     sha256Hashes?: string[];
   };
-  webInput?: {};
-  firebaseAiLogicInput?: {};
+  webInput?: Record<string, unknown>;
+  firebaseAiLogicInput?: Record<string, unknown>;
   firebaseAuthInput?: FirebaseAuthInput;
 }

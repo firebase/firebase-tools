@@ -32,6 +32,8 @@ export const developerConnectP4SADomain = (): string =>
 
 export const artifactRegistryDomain = (): string =>
   utils.envOverride("ARTIFACT_REGISTRY_DOMAIN", "https://artifactregistry.googleapis.com");
+export const apiKeysOrigin = (): string =>
+  utils.envOverride("CLOUD_APIKEYS_URL", "https://apikeys.googleapis.com");
 export const appCheckOrigin = (): string =>
   utils.envOverride("FIREBASE_APPCHECK_URL", "https://firebaseappcheck.googleapis.com");
 export const appDistributionOrigin = (): string =>
@@ -128,8 +130,6 @@ export const messagingApiOrigin = (): string =>
   utils.envOverride("FIREBASE_MESSAGING_CONFIG_URL", "https://fcm.googleapis.com");
 export const crashlyticsApiOrigin = (): string =>
   utils.envOverride("FIREBASE_CRASHLYTICS_URL", "https://firebasecrashlytics.googleapis.com");
-export const firebaseTelemetryOrigin = (): string =>
-  utils.envOverride("FIREBASE_TELEMETRY_URL", "https://firebasetelemetry.googleapis.com");
 export const firebaseTelemetryAdminOrigin = (): string =>
   utils.envOverride(
     "FIREBASE_TELEMETRY_ADMIN_URL",

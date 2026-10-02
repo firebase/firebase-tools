@@ -1018,7 +1018,7 @@
                     "description": "Package details when resolved from a package repository.",
                     "properties": {
                         "name": {
-                            "description": "Package name (e.g., \"@firebase-functions-kits/firestore-bigquery-export\")",
+                            "description": "Package name (e.g., \"@firebase-function-kits/firestore-bigquery-export\")",
                             "type": "string"
                         }
                     },
@@ -1218,6 +1218,34 @@
             "required": [
                 "remoteSource",
                 "runtime"
+            ],
+            "type": "object"
+        },
+        "RunSingle": {
+            "additionalProperties": false,
+            "properties": {
+                "ignore": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "localBuild": {
+                    "type": "boolean"
+                },
+                "region": {
+                    "type": "string"
+                },
+                "rootDir": {
+                    "type": "string"
+                },
+                "serviceId": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "region",
+                "serviceId"
             ],
             "type": "object"
         },
@@ -2007,6 +2035,19 @@
         },
         "remoteconfig": {
             "$ref": "#/definitions/RemoteConfigConfig"
+        },
+        "run": {
+            "anyOf": [
+                {
+                    "$ref": "#/definitions/RunSingle"
+                },
+                {
+                    "items": {
+                        "$ref": "#/definitions/RunSingle"
+                    },
+                    "type": "array"
+                }
+            ]
         },
         "storage": {
             "anyOf": [

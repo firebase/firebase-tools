@@ -1,7 +1,6 @@
 import * as clc from "colorette";
 
 import * as args from "./args";
-import * as proto from "../../gcp/proto";
 import * as backend from "./backend";
 import * as build from "./build";
 import * as experiments from "../../experiments";
@@ -29,10 +28,13 @@ import {
   endpointMatchesAnyFilter,
   getEndpointFilters,
   groupEndpointsByCodebase,
+  isCodebasePartiallyFiltered,
   targetCodebases,
 } from "./functionsDeployHelper";
 import { logLabeledBullet, logLabeledWarning } from "../../utils";
 import { isDartEndpoint, classifyNonProductionEndpoints } from "./runtimes/dart/triggerSupport";
+import { DART_BUNDLE_EXECUTABLE_PATH, DART_COMPILE_EXE_PATH } from "./runtimes/dart";
+import { DartVersionFeatures } from "./runtimes/dart/features";
 import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import { needProjectId, needProjectNumber } from "../../projectUtils";
@@ -49,6 +51,7 @@ import {
   shouldUseRuntimeConfig,
   isKitConfig,
   addKitPrefix,
+  resolveConfigDir,
   ValidatedLocalSingle,
   ValidatedKitSingle,
 } from "../../functions/projectConfig";
@@ -105,12 +108,7 @@ export async function discoverSecurityDetails(
     (e) => !!e.labels?.[DECLARATIVE_SECURITY_ETAG_LABEL],
   )?.labels?.[DECLARATIVE_SECURITY_ETAG_LABEL];
 
-  const isPartiallyFiltered = !!(
-    filters &&
-    filters.some(
-      (f) => (!f.codebase || f.codebase === codebase) && f.idChunks && f.idChunks.length > 0,
-    )
-  );
+  const isPartiallyFiltered = isCodebasePartiallyFiltered(codebase, filters);
   const isEnrolling = !!requiredRoles && !existingManagedSA;
   const isUnenrolling = !requiredRoles && !!existingManagedSA && !!haveRolesEtag;
 
@@ -162,14 +160,15 @@ export async function discoverSecurityDetails(
     };
   }
 
+  await ensure.checkDeclarativeSecurityApisEnabled(projectId, codebase);
+
   let managedSA = existingManagedSA;
   if (!managedSA) {
     const saToCreate = await iam.generateManagedServiceAccountName(projectId, "firebase-fn");
     managedSA = `${saToCreate}@${projectId}.iam.gserviceaccount.com`;
   }
 
-  const existingSalt = haveRolesEtag ? haveRolesEtag.split("-")[0] : undefined;
-  const newEtag = iam.computeRolesEtag(requiredRoles!, existingSalt);
+  const newEtag = iam.computeRolesEtag(requiredRoles!);
 
   for (const endpoint of backend.allEndpoints(want)) {
     endpoint.serviceAccount = managedSA;
@@ -319,10 +318,9 @@ export async function prepare(
       projectAlias: options.projectAlias,
       projectDir: options.config.projectDir,
     };
-    if (isKitConfig(localCfg) && codebase in localCfg.instances) {
-      userEnvOpt.configDir = options.config.path(localCfg.instances[codebase]);
-    } else {
-      proto.convertIfPresent(userEnvOpt, localCfg, "configDir", (cd) => options.config.path(cd));
+    const configDir = resolveConfigDir(localCfg, codebase);
+    if (configDir) {
+      userEnvOpt.configDir = options.config.path(configDir);
     }
 
     const rawUserEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
@@ -337,7 +335,7 @@ export async function prepare(
     const parsedSecretRefs = mapObject<string, build.ParsedSecretRef>(secretRefs, (unparsed) =>
       build.parseSecretRef(unparsed),
     );
-    build.applyEnvSecretBindings(wantBuild, parsedSecretRefs);
+    await build.applyEnvSecretBindingsToBuild(wantBuild, parsedSecretRefs);
 
     const {
       backend: wantBackend,
@@ -349,12 +347,14 @@ export async function prepare(
       userEnvs,
       codebase,
       nonInteractive: options.nonInteractive,
-      force: options.force,
       isEmulator: false,
     });
 
     functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
-    if (experiments.isEnabled("secretEnvParams")) {
+    if (
+      experiments.isEnabled("secretEnvParams") &&
+      experiments.isEnabled("writeDefaultSecretBindings")
+    ) {
       functionsEnv.writeResolvedSecretRefs(resolvedSecretRefs, secretRefs, userEnvOpt);
     }
 
@@ -414,8 +414,10 @@ export async function prepare(
     context.codebaseDeployEvents[codebase].runtime = wantBuild.runtime;
   }
 
-  // ===Phase 2.5. Before proceeding further, let's make sure that we don't have conflicting function names.
+  // ===Phase 2.5. Before proceeding further, let's make sure that we don't have conflicting function
+  // names, and that nothing is taking over a name that already exists as a newer generation.
   validate.endpointsAreUnique(wantBackends);
+  validate.noGenerationDowngrades(wantBackends, existingBackend);
 
   // ===Phase 3. Prepare source for upload.
   context.sources = {};
@@ -446,13 +448,17 @@ export async function prepare(
         ? "tar.gz"
         : "zip";
 
-      const isDart = supported.runtimeIsLanguage(wantBuilds[codebase].runtime, "dart");
-      const executablePaths = isDart ? ["bin/server"] : [];
+      const executablePaths = await getExecutablePaths(wantBuilds[codebase].runtime, sourceDir);
+      const uploadCfg = await stripStaleDartBuildIgnore(
+        wantBuilds[codebase].runtime,
+        sourceDir,
+        localCfg,
+      );
 
       const packagedSource = await prepareFunctionsUpload(
         options.config.projectDir,
         sourceDir,
-        localCfg,
+        uploadCfg,
         [...schPathSet],
         undefined,
         { exportType, executablePaths },
@@ -541,7 +547,15 @@ export async function prepare(
     haveBackend,
     options.dryRun,
   );
-  await ensure.secretAccess(projectId, matchingBackend, haveBackend, options.dryRun);
+  // Actual granting of secret access permissions has been moved to the fabricator in release because declarative security may mean that the desired service account hasn't been created
+  if (options.dryRun) {
+    const secretAccessDelta = await ensure.secretsAccessDelta({
+      projectId,
+      wantBackend: matchingBackend,
+      haveBackend,
+    });
+    await ensure.checkSecretAccess(projectId, secretAccessDelta);
+  }
   /**
    * ===Phase 8 Generates the hashes for each of the functions now that secret versions have been resolved.
    * This must be called after `await validate.secretsAreValid`.
@@ -804,6 +818,18 @@ export async function loadCodebases(
     logger.debug(`Building ${runtimeDelegate.language} source`);
     await runtimeDelegate.build();
 
+    const userEnvOpt: functionsEnv.UserEnvsOpts = {
+      functionsSource: sourceDir,
+      projectId: projectId,
+      projectAlias: options.projectAlias,
+      projectDir: options.config.projectDir,
+    };
+    const configDir = resolveConfigDir(codebaseConfig, codebase);
+    if (configDir) {
+      userEnvOpt.configDir = options.config.path(configDir);
+    }
+    const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
+
     const firebaseEnvs = functionsEnv.loadFirebaseEnvs(
       firebaseConfig,
       projectId,
@@ -819,6 +845,7 @@ export async function loadCodebases(
       : { firebase: firebaseConfig };
 
     const discoveredBuild = await runtimeDelegate.discoverBuild(codebaseRuntimeConfig, {
+      ...userEnvs,
       ...firebaseEnvs,
       // Quota project is required when using GCP's Client-based APIs
       // Some GCP client SDKs, like Vertex AI, requires appropriate quota project setup
@@ -826,10 +853,16 @@ export async function loadCodebases(
       GOOGLE_CLOUD_QUOTA_PROJECT: projectId,
     });
     discoveredBuild.runtime = codebaseConfig.runtime;
+    // Mutate discoveredBuild to prevent collisions:
+    // - Endpoint names are prefixed with a kits instance ID, or a configured codebase prefix
+    // - The default resource ID a secret expects to find its backing Cloud Secret is prefixed with kits instance ID
     const prefix = isKitConfig(codebaseConfig)
       ? addKitPrefix(codebase)
       : codebaseConfig.prefix || "";
-    build.applyPrefix(discoveredBuild, prefix);
+    build.applyEndpointPrefix(discoveredBuild, prefix);
+    if (isKitConfig(codebaseConfig)) {
+      build.applyKitSecretRefPrefix(discoveredBuild, codebase);
+    }
     wantBuilds[codebase] = discoveredBuild;
   }
   return wantBuilds;
@@ -856,6 +889,55 @@ function warnIfDartBackendHasUnsupportedTriggers(want: backend.Backend): void {
         "See https://github.com/firebase/firebase-functions-dart for current trigger support.",
     );
   }
+}
+
+/**
+ * Returns the executable paths to mark as executable when packaging a codebase's source,
+ * relative to the runtime in use. Dart codebases produce their executable at
+ * DART_BUNDLE_EXECUTABLE_PATH when their declared language version supports native
+ * build hooks while cross-compiling (see DartVersionFeatures.isNativeAssetsAvailable),
+ * or DART_COMPILE_EXE_PATH otherwise.
+ */
+export async function getExecutablePaths(
+  runtime: supported.Runtime | undefined,
+  sourceDir: string,
+): Promise<string[]> {
+  if (!supported.runtimeIsLanguage(runtime, "dart")) {
+    return [];
+  }
+  const features = await DartVersionFeatures.detect(sourceDir);
+  return features.isNativeAssetsAvailable ? [DART_BUNDLE_EXECUTABLE_PATH] : [DART_COMPILE_EXE_PATH];
+}
+
+/**
+ * Strips a stale "build" ignore entry from a Dart codebase's local config.
+ *
+ * Before the switch to `dart build cli`, `firebase init` seeded Dart codebases with
+ * `functions.ignore` including "build", which was harmless since the compiled executable
+ * lived at `bin/server`. For projects whose declared language version supports native
+ * build hooks while cross-compiling, the bundle now lives under `build/` (see
+ * DART_BUNDLE_EXECUTABLE_PATH), so honoring that stale entry for codebases configured
+ * before this fix would silently strip the executable from the deploy archive.
+ */
+export async function stripStaleDartBuildIgnore<T extends { ignore?: string[] }>(
+  runtime: supported.Runtime | undefined,
+  sourceDir: string,
+  localCfg: T,
+): Promise<T> {
+  if (
+    !supported.runtimeIsLanguage(runtime, "dart") ||
+    !localCfg.ignore?.some((i) => i === "build" || i === "build/")
+  ) {
+    return localCfg;
+  }
+  const features = await DartVersionFeatures.detect(sourceDir);
+  if (!features.isNativeAssetsAvailable) {
+    return localCfg;
+  }
+  return {
+    ...localCfg,
+    ignore: localCfg.ignore.filter((i) => i !== "build" && i !== "build/"),
+  };
 }
 
 /**

@@ -95,19 +95,26 @@ describe("functionsDeployHelper", () => {
       expect(
         helper.endpointMatchesFilter(func, {
           ...BASE_FILTER,
-          codebase: "my-codebase",
+          codebase: DEFAULT_CODEBASE,
           idChunks: ["group", "subgroup", "func"],
         }),
       ).to.be.true;
       expect(
         helper.endpointMatchesFilter(func, {
           ...BASE_FILTER,
-          codebase: "my-codebase",
+          codebase: DEFAULT_CODEBASE,
           idChunks: ["group", "subgroup"],
         }),
       ).to.be.true;
       expect(helper.endpointMatchesFilter(func, { ...BASE_FILTER, idChunks: ["group"] })).to.be
         .true;
+      expect(
+        helper.endpointMatchesFilter(func, {
+          ...BASE_FILTER,
+          codebase: "non-default-codebase",
+          idChunks: ["group", "subgroup", "func"],
+        }),
+      ).to.be.false;
     });
 
     it("should match function matching ids given no codebase", () => {
@@ -134,6 +141,57 @@ describe("functionsDeployHelper", () => {
           idChunks: ["group"],
         }),
       ).to.be.true;
+    });
+
+    it("should match all functions in a codebase when idChunks is not provided", () => {
+      const func1 = { ...ENDPOINT, id: "func1", codebase: "my-codebase" };
+      const func2 = { ...ENDPOINT, id: "func2", codebase: "my-codebase" };
+      const otherFunc = { ...ENDPOINT, id: "func3", codebase: "other-codebase" };
+      const undefinedFunc = { ...ENDPOINT, id: "func4", codebase: undefined };
+
+      const filter: EndpointFilter = { codebase: "my-codebase" };
+      expect(helper.endpointMatchesFilter(func1, filter)).to.be.true;
+      expect(helper.endpointMatchesFilter(func2, filter)).to.be.true;
+      expect(helper.endpointMatchesFilter(otherFunc, filter)).to.be.false;
+      expect(helper.endpointMatchesFilter(undefinedFunc, filter)).to.be.false;
+    });
+
+    it("should match a specific function in a specific codebase when multiple codebases have functions with the same name", () => {
+      const funcInCodebaseA = { ...ENDPOINT, id: "foo", codebase: "codebaseA" };
+      const funcInCodebaseB = { ...ENDPOINT, id: "foo", codebase: "codebaseB" };
+
+      const filter: EndpointFilter = {
+        codebase: "codebaseA",
+        idChunks: ["foo"],
+      };
+
+      expect(helper.endpointMatchesFilter(funcInCodebaseA, filter)).to.be.true;
+      expect(helper.endpointMatchesFilter(funcInCodebaseB, filter)).to.be.false;
+    });
+
+    it("should not match overlapping codebase names", () => {
+      const instance1Func = { ...ENDPOINT, id: "foo", codebase: "kit-firestore-to-bigquery" };
+      const instance2Func = { ...ENDPOINT, id: "foo", codebase: "kit-firestore-to-bigquery-abcd" };
+
+      const filter: EndpointFilter = {
+        codebase: "kit-firestore-to-bigquery",
+      };
+
+      expect(helper.endpointMatchesFilter(instance1Func, filter)).to.be.true;
+      expect(helper.endpointMatchesFilter(instance2Func, filter)).to.be.false;
+    });
+
+    it("should not match functions with overlapping word prefixes", () => {
+      const appFunc = { ...ENDPOINT, id: "app-render" };
+      const appleFunc = { ...ENDPOINT, id: "apple-pay" };
+
+      const filter: EndpointFilter = {
+        codebase: DEFAULT_CODEBASE,
+        idChunks: ["app"],
+      };
+
+      expect(helper.endpointMatchesFilter(appFunc, filter)).to.be.true;
+      expect(helper.endpointMatchesFilter(appleFunc, filter)).to.be.false;
     });
   });
 
@@ -227,6 +285,20 @@ describe("functionsDeployHelper", () => {
           {
             codebase: "node",
             idChunks: ["g1", "func"],
+          },
+        ],
+      },
+      {
+        desc: "parses codebase-qualified selector (codebase:func)",
+        selector: "codebaseA:foo",
+        config: [
+          { source: "functions", codebase: "codebaseA" },
+          { source: "other", codebase: "codebaseB" },
+        ] as ValidatedConfig,
+        expected: [
+          {
+            codebase: "codebaseA",
+            idChunks: ["foo"],
           },
         ],
       },
@@ -500,6 +572,155 @@ describe("functionsDeployHelper", () => {
       for (const codebase of Object.keys(got)) {
         expect(endpointsOf(got[codebase])).to.have.members(endpointsOf(wantBackends[codebase]));
       }
+    });
+  });
+
+  describe("parseDeleteFilters", () => {
+    it("should return codebase filter when target matches an active codebase", () => {
+      const result = helper.parseDeleteFilters(["myCodebase"], ["default", "myCodebase"]);
+      expect(result).to.deep.equal([{ codebase: "myCodebase" }]);
+    });
+
+    it("should strip default codebase restriction for unqualified function name so it matches globally", () => {
+      const result = helper.parseDeleteFilters(["myFunc"], ["default", "myCodebase"]);
+      expect(result).to.deep.equal([{ idChunks: ["myFunc"] }]);
+    });
+
+    it("should retain codebase restriction when explicitly qualified with colon", () => {
+      const result = helper.parseDeleteFilters(["default:myFunc"], ["default", "myCodebase"]);
+      expect(result).to.deep.equal([{ codebase: "default", idChunks: ["myFunc"] }]);
+    });
+  });
+
+  describe("detectCodebaseAndIdCollisions", () => {
+    const ep1: backend.Endpoint = {
+      ...ENDPOINT,
+      id: "api",
+      codebase: "default",
+    };
+    const ep2: backend.Endpoint = {
+      ...ENDPOINT,
+      id: "api-func",
+      codebase: "python-cb",
+    };
+
+    it("should detect exact ID collision between codebase name and endpoint id", () => {
+      const collisions = helper.detectCodebaseAndIdCollisions(["api"], ["default", "api"], [ep1]);
+      expect(collisions).to.have.lengthOf(1);
+      expect(collisions[0]).to.deep.include({
+        filter: "api",
+        codebase: "default",
+        workaroundCommand: "firebase functions:delete default:api",
+      });
+    });
+
+    it("should detect group prefix collision between codebase name and endpoint id", () => {
+      const collisions = helper.detectCodebaseAndIdCollisions(
+        ["api"],
+        ["default", "api", "python-cb"],
+        [ep2],
+      );
+      expect(collisions).to.have.lengthOf(1);
+      expect(collisions[0]).to.deep.include({
+        filter: "api",
+        codebase: "python-cb",
+        workaroundCommand: "firebase functions:delete python-cb:api",
+      });
+    });
+
+    it("should return empty when filter is qualified with colon", () => {
+      const collisions = helper.detectCodebaseAndIdCollisions(
+        ["default:api"],
+        ["default", "api"],
+        [ep1],
+      );
+      expect(collisions).to.be.empty;
+    });
+
+    it("should return empty when filter is not an active codebase", () => {
+      const collisions = helper.detectCodebaseAndIdCollisions(["nonCodebase"], ["default"], [ep1]);
+      expect(collisions).to.be.empty;
+    });
+  });
+
+  describe("generationDowngradeMessage", () => {
+    const v1: backend.Endpoint = { ...ENDPOINT, platform: "gcfv1" };
+
+    it("rejects an existing gcfv2 function being redeployed as gcfv1", () => {
+      const have: backend.Endpoint = { ...ENDPOINT, platform: "gcfv2" };
+
+      expect(helper.generationDowngradeMessage(v1, have)).to.match(
+        /cannot be downgraded from GCFv2 to GCFv1/,
+      );
+    });
+
+    it("rejects an existing Cloud Run service being redeployed as gcfv1", () => {
+      const have: backend.Endpoint = { ...ENDPOINT, platform: "run" };
+
+      expect(helper.generationDowngradeMessage(v1, have)).to.match(
+        /cannot be downgraded from Cloud Run to GCFv1/,
+      );
+    });
+
+    it("tells the user how to recreate the function as gcfv1", () => {
+      const have: backend.Endpoint = { ...ENDPOINT, platform: "gcfv2" };
+
+      expect(helper.generationDowngradeMessage(v1, have)).to.contain(
+        "firebase functions:delete foo --region us-central1",
+      );
+    });
+
+    it("allows every other change of platform", () => {
+      for (const [want, have] of [
+        ["gcfv1", "gcfv1"],
+        ["gcfv2", "gcfv1"],
+        ["gcfv2", "run"],
+        ["run", "gcfv2"],
+      ] as const) {
+        expect(
+          helper.generationDowngradeMessage(
+            { ...ENDPOINT, platform: want },
+            { ...ENDPOINT, platform: have },
+          ),
+          `${have} to ${want}`,
+        ).to.be.undefined;
+      }
+    });
+  });
+
+  describe("isCodebasePartiallyFiltered", () => {
+    it("should return false when filters is undefined or empty", () => {
+      expect(helper.isCodebasePartiallyFiltered("codebaseA")).to.be.false;
+      expect(helper.isCodebasePartiallyFiltered("codebaseA", [])).to.be.false;
+    });
+
+    it("should return false when a filter targets the whole codebase without idChunks", () => {
+      expect(helper.isCodebasePartiallyFiltered("codebaseA", [{ codebase: "codebaseA" }])).to.be
+        .false;
+      expect(
+        helper.isCodebasePartiallyFiltered("codebaseA", [{ codebase: "codebaseA", idChunks: [] }]),
+      ).to.be.false;
+    });
+
+    it("should return false when filter with idChunks targets a different codebase", () => {
+      expect(
+        helper.isCodebasePartiallyFiltered("codebaseA", [
+          { codebase: "codebaseA" },
+          { codebase: "codebaseB", idChunks: ["funcB"] },
+        ]),
+      ).to.be.false;
+    });
+
+    it("should return true when filter with idChunks targets this codebase", () => {
+      expect(
+        helper.isCodebasePartiallyFiltered("codebaseA", [
+          { codebase: "codebaseA", idChunks: ["funcA"] },
+        ]),
+      ).to.be.true;
+    });
+
+    it("should return true when filter with idChunks has no codebase (wildcard filter)", () => {
+      expect(helper.isCodebasePartiallyFiltered("codebaseA", [{ idChunks: ["funcA"] }])).to.be.true;
     });
   });
 });

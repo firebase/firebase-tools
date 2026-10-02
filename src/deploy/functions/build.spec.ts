@@ -1,7 +1,9 @@
 import { expect } from "chai";
+import * as sinon from "sinon";
 import * as build from "./build";
 import { ParamValue, Param } from "./params";
 import { FirebaseError } from "../../error";
+import * as projects from "../../management/projects";
 
 describe("parseSecretRef", () => {
   it("can parse short form secrets", () => {
@@ -34,6 +36,11 @@ describe("parseSecretRef", () => {
     expect(
       build.parseSecretRef("projects/my-project-1234/secrets/foo/versions/latest"),
     ).to.deep.equal({ projectId: "my-project-1234", secretId: "foo", version: "latest" });
+    expect(build.parseSecretRef("projects/725885452845/secrets/foo/versions/1")).to.deep.equal({
+      projectId: "725885452845",
+      secretId: "foo",
+      version: "1",
+    });
   });
 
   it("errors on bad formats", () => {
@@ -447,8 +454,18 @@ describe("envWithType", () => {
   });
 });
 
-describe("applyEnvSecretBindings", () => {
-  it("throws an error if the secret explicitly references a different project ID", () => {
+describe("applyEnvSecretBindingsToBuild", () => {
+  let sandbox: sinon.SinonSandbox;
+
+  beforeEach(() => {
+    sandbox = sinon.createSandbox();
+  });
+
+  afterEach(() => {
+    sandbox.restore();
+  });
+
+  it("throws an error if the secret explicitly references a different project ID", async () => {
     const testBuild: build.Build = {
       endpoints: {
         func: {
@@ -469,12 +486,13 @@ describe("applyEnvSecretBindings", () => {
         secretId: "bar",
       },
     };
-    expect(() => build.applyEnvSecretBindings(testBuild, testSecretRefs)).to.throw(
+    await expect(build.applyEnvSecretBindingsToBuild(testBuild, testSecretRefs)).to.be.rejectedWith(
+      FirebaseError,
       /unsupported cross-project secret/,
     );
   });
 
-  it("merges resourceID and version fields into the SecretParam", () => {
+  it("merges resourceID and version fields into the SecretParam", async () => {
     const testBuild: build.Build = {
       endpoints: {
         func: {
@@ -503,7 +521,7 @@ describe("applyEnvSecretBindings", () => {
         version: "2",
       },
     };
-    build.applyEnvSecretBindings(testBuild, testSecretRefs);
+    await build.applyEnvSecretBindingsToBuild(testBuild, testSecretRefs);
     expect(testBuild.params).to.deep.equal([
       {
         type: "secret",
@@ -515,7 +533,93 @@ describe("applyEnvSecretBindings", () => {
     ]);
   });
 
-  it("is case-insensitive when matching SecretParam name and .env file key", () => {
+  it("converts numeric project numbers to project IDs and allows same-project secret references", async () => {
+    const getProjectStub = sandbox.stub(projects, "getProject").resolves({
+      projectId: "test-project",
+      projectNumber: "725885452845",
+      lifecycleState: "ACTIVE",
+      name: "projects/test-project",
+      createTime: "2026-01-01T00:00:00Z",
+      parent: { type: "organization", id: "123" },
+    });
+    const testBuild: build.Build = {
+      endpoints: {
+        func: {
+          region: "us-central1",
+          project: "test-project",
+          platform: "gcfv2",
+          runtime: "nodejs18",
+          entryPoint: "func1",
+          httpsTrigger: {},
+          secretEnvironmentVariables: [
+            {
+              key: "foo",
+              secret: "foo",
+              projectId: "test-project",
+            },
+          ],
+        },
+      },
+      params: [{ type: "secret", name: "FOO" }],
+      requiredAPIs: [],
+    };
+    const testSecretRefs: Record<string, build.ParsedSecretRef> = {
+      FOO: {
+        projectId: "725885452845",
+        secretId: "bar",
+        version: "1",
+      },
+    };
+    await build.applyEnvSecretBindingsToBuild(testBuild, testSecretRefs);
+    expect(getProjectStub).to.have.been.calledOnceWithExactly("725885452845");
+    expect(testBuild.params).to.deep.equal([
+      {
+        type: "secret",
+        name: "FOO",
+        resourceId: "bar",
+        version: "1",
+        inLocalEnvironment: true,
+      },
+    ]);
+  });
+
+  it("throws an error if a numeric project number resolves to a different project ID", async () => {
+    const getProjectStub = sandbox.stub(projects, "getProject").resolves({
+      projectId: "other-project",
+      projectNumber: "725885452845",
+      lifecycleState: "ACTIVE",
+      name: "projects/other-project",
+      createTime: "2026-01-01T00:00:00Z",
+      parent: { type: "organization", id: "123" },
+    });
+    const testBuild: build.Build = {
+      endpoints: {
+        func: {
+          region: "us-central1",
+          project: "test-project",
+          platform: "gcfv2",
+          runtime: "nodejs18",
+          entryPoint: "func1",
+          httpsTrigger: {},
+        },
+      },
+      params: [],
+      requiredAPIs: [],
+    };
+    const testSecretRefs: Record<string, build.ParsedSecretRef> = {
+      foo: {
+        projectId: "725885452845",
+        secretId: "bar",
+      },
+    };
+    await expect(build.applyEnvSecretBindingsToBuild(testBuild, testSecretRefs)).to.be.rejectedWith(
+      FirebaseError,
+      "Secret binding foo referenced unsupported cross-project secret in 'other-project'",
+    );
+    expect(getProjectStub).to.have.been.calledOnceWithExactly("725885452845");
+  });
+
+  it("is case-insensitive when matching SecretParam name and .env file key", async () => {
     const testBuild: build.Build = {
       endpoints: {
         func: {
@@ -544,7 +648,7 @@ describe("applyEnvSecretBindings", () => {
         version: "2",
       },
     };
-    build.applyEnvSecretBindings(testBuild, testSecretRefs);
+    await build.applyEnvSecretBindingsToBuild(testBuild, testSecretRefs);
     expect(testBuild.params).to.deep.equal([
       {
         type: "secret",
@@ -556,7 +660,7 @@ describe("applyEnvSecretBindings", () => {
     ]);
   });
 
-  it("should not add the referenced secret to secretEnvironmentVariables if not present", () => {
+  it("should not add the referenced secret to secretEnvironmentVariables if not present", async () => {
     const testBuildEmpty: build.Build = {
       endpoints: {
         func: {
@@ -598,9 +702,9 @@ describe("applyEnvSecretBindings", () => {
         secretId: "bar",
       },
     };
-    build.applyEnvSecretBindings(testBuildEmpty, testSecretRefs);
+    await build.applyEnvSecretBindingsToBuild(testBuildEmpty, testSecretRefs);
     expect(testBuildEmpty.endpoints["func"].secretEnvironmentVariables).to.be.undefined;
-    build.applyEnvSecretBindings(testBuildDifferent, testSecretRefs);
+    await build.applyEnvSecretBindingsToBuild(testBuildDifferent, testSecretRefs);
     expect(testBuildDifferent.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
       {
         key: "baz",
@@ -610,7 +714,7 @@ describe("applyEnvSecretBindings", () => {
     ]);
   });
 
-  it("should override a secret in secretEnvironmentVariables with the .env reference with the same key", () => {
+  it("should override a secret in secretEnvironmentVariables with the .env reference with the same key", async () => {
     const testBuild: build.Build = {
       endpoints: {
         func: {
@@ -638,7 +742,7 @@ describe("applyEnvSecretBindings", () => {
         secretId: "bar",
       },
     };
-    build.applyEnvSecretBindings(testBuild, testSecretRefs);
+    await build.applyEnvSecretBindingsToBuild(testBuild, testSecretRefs);
     expect(testBuild.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
       {
         key: "foo",
@@ -648,7 +752,7 @@ describe("applyEnvSecretBindings", () => {
     ]);
   });
 
-  it("should override a secret in secretEnvironmentVariables with the .env reference/version with the same key", () => {
+  it("should override a secret in secretEnvironmentVariables with the .env reference/version with the same key", async () => {
     const testBuild: build.Build = {
       endpoints: {
         func: {
@@ -677,7 +781,7 @@ describe("applyEnvSecretBindings", () => {
         version: "4",
       },
     };
-    build.applyEnvSecretBindings(testBuild, testSecretRefs);
+    await build.applyEnvSecretBindingsToBuild(testBuild, testSecretRefs);
     expect(testBuild.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
       {
         key: "foo",
@@ -690,7 +794,99 @@ describe("applyEnvSecretBindings", () => {
   });
 });
 
-describe("applyPrefix", () => {
+describe("applyKitSecretRefPrefix", () => {
+  it("prefixes only the secret params with a kit instance id", () => {
+    const testBuild: build.Build = {
+      endpoints: {
+        func: {
+          region: "us-central1",
+          project: "test-project",
+          platform: "gcfv2",
+          runtime: "nodejs18",
+          entryPoint: "func1",
+          httpsTrigger: {},
+          secretEnvironmentVariables: [
+            { key: "API_KEY", secret: "API_KEY", projectId: "test-project" },
+            { key: "SMTP_ADDRESS", secret: "SMTP_ADDRESS", projectId: "test-project" },
+          ],
+        },
+      },
+      params: [
+        { type: "secret", name: "API_KEY" },
+        { type: "int", name: "PORT" },
+        { type: "secret", name: "SMTP_ADDRESS" },
+      ],
+      requiredAPIs: [],
+    };
+    build.applyKitSecretRefPrefix(testBuild, "foo");
+    expect(testBuild.params).to.deep.equal([
+      { type: "secret", name: "API_KEY", resourceId: "kit-foo-API_KEY" },
+      { type: "int", name: "PORT" },
+      { type: "secret", name: "SMTP_ADDRESS", resourceId: "kit-foo-SMTP_ADDRESS" },
+    ]);
+  });
+
+  it("prefixes all of the secretEnvVars", () => {
+    const testBuild: build.Build = {
+      endpoints: {
+        func: {
+          region: "us-central1",
+          project: "test-project",
+          platform: "gcfv2",
+          runtime: "nodejs18",
+          entryPoint: "func1",
+          httpsTrigger: {},
+          secretEnvironmentVariables: [
+            { key: "API_KEY", secret: "API_KEY", projectId: "test-project" },
+            { key: "SMTP_ADDRESS", secret: "SMTP_ADDRESS", projectId: "test-project" },
+          ],
+        },
+      },
+      params: [
+        { type: "secret", name: "API_KEY" },
+        { type: "int", name: "PORT" },
+        { type: "secret", name: "SMTP_ADDRESS" },
+      ],
+      requiredAPIs: [],
+    };
+    build.applyKitSecretRefPrefix(testBuild, "foo");
+    expect(testBuild.endpoints.func.secretEnvironmentVariables).to.deep.equal([
+      { key: "API_KEY", secret: "kit-foo-API_KEY", projectId: "test-project" },
+      { key: "SMTP_ADDRESS", secret: "kit-foo-SMTP_ADDRESS", projectId: "test-project" },
+    ]);
+  });
+});
+
+describe("applyEnvSecretBindingsToParams", () => {
+  it("merges resourceId and version into matching SecretParams case-insensitively", () => {
+    const testParams: Param[] = [
+      { type: "secret", name: "foo" },
+      { type: "string", name: "other" },
+    ];
+    const testSecretRefs: Record<string, build.ParsedSecretRef> = {
+      FOO: {
+        secretId: "bar",
+        version: "3",
+      },
+    };
+    build.applyEnvSecretBindingsToParams(testParams, testSecretRefs);
+    expect(testParams).to.deep.equal([
+      {
+        type: "secret",
+        name: "foo",
+        resourceId: "bar",
+        version: "3",
+        inLocalEnvironment: true,
+      },
+      {
+        type: "string",
+        name: "other",
+      },
+    ]);
+  });
+});
+
+describe("applyEndpointPrefix", () => {
   const createTestBuild = (): build.Build => ({
     endpoints: {
       func1: {
@@ -716,7 +912,7 @@ describe("applyPrefix", () => {
 
   it("should update endpoint keys with prefix", () => {
     const testBuild = createTestBuild();
-    build.applyPrefix(testBuild, "test");
+    build.applyEndpointPrefix(testBuild, "test");
     expect(Object.keys(testBuild.endpoints).sort()).to.deep.equal(["test-func1", "test-func2"]);
     expect(testBuild.endpoints["test-func1"].entryPoint).to.equal("func1");
     expect(testBuild.endpoints["test-func2"].entryPoint).to.equal("func2");
@@ -724,54 +920,8 @@ describe("applyPrefix", () => {
 
   it("should do nothing for an empty prefix", () => {
     const testBuild = createTestBuild();
-    build.applyPrefix(testBuild, "");
+    build.applyEndpointPrefix(testBuild, "");
     expect(Object.keys(testBuild.endpoints).sort()).to.deep.equal(["func1", "func2"]);
-  });
-
-  it("should prefix secret names in secretEnvironmentVariables", () => {
-    const testBuild: build.Build = {
-      endpoints: {
-        func1: {
-          region: "us-central1",
-          project: "test-project",
-          platform: "gcfv2",
-          runtime: "nodejs18",
-          entryPoint: "func1",
-          httpsTrigger: {},
-          secretEnvironmentVariables: [
-            { key: "API_KEY", secret: "api-secret", projectId: "test-project" },
-            { key: "DB_PASSWORD", secret: "db-secret", projectId: "test-project" },
-          ],
-        },
-        func2: {
-          region: "us-west1",
-          project: "test-project",
-          platform: "gcfv1",
-          runtime: "nodejs16",
-          entryPoint: "func2",
-          httpsTrigger: {},
-          secretEnvironmentVariables: [
-            { key: "SERVICE_TOKEN", secret: "service-secret", projectId: "test-project" },
-          ],
-        },
-      },
-      params: [],
-      requiredAPIs: [],
-    };
-
-    build.applyPrefix(testBuild, "staging");
-
-    expect(Object.keys(testBuild.endpoints).sort()).to.deep.equal([
-      "staging-func1",
-      "staging-func2",
-    ]);
-    expect(testBuild.endpoints["staging-func1"].secretEnvironmentVariables).to.deep.equal([
-      { key: "API_KEY", secret: "staging-api-secret", projectId: "test-project" },
-      { key: "DB_PASSWORD", secret: "staging-db-secret", projectId: "test-project" },
-    ]);
-    expect(testBuild.endpoints["staging-func2"].secretEnvironmentVariables).to.deep.equal([
-      { key: "SERVICE_TOKEN", secret: "staging-service-secret", projectId: "test-project" },
-    ]);
   });
 
   it("throws if combined function id exceeds 63 characters", () => {
@@ -787,7 +937,9 @@ describe("applyPrefix", () => {
       },
     });
     const longPrefix = "p".repeat(30);
-    expect(() => build.applyPrefix(testBuild, longPrefix)).to.throw(/exceeds 63 characters/);
+    expect(() => build.applyEndpointPrefix(testBuild, longPrefix)).to.throw(
+      /exceeds 63 characters/,
+    );
   });
 
   it("throws if prefix makes function id invalid (must start with a letter)", () => {
@@ -801,7 +953,7 @@ describe("applyPrefix", () => {
         httpsTrigger: {},
       },
     });
-    expect(() => build.applyPrefix(testBuild, "1abc")).to.throw(
+    expect(() => build.applyEndpointPrefix(testBuild, "1abc")).to.throw(
       /Function names must start with a letter/,
     );
   });
@@ -835,7 +987,7 @@ describe("applyPrefix", () => {
       },
     };
 
-    build.applyPrefix(testBuild, "staging");
+    build.applyEndpointPrefix(testBuild, "staging");
 
     expect(testBuild.lifecycleHooks).to.deep.equal({
       afterFirstDeploy: {

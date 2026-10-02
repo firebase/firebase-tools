@@ -10,6 +10,10 @@ const BINDING = {
 };
 
 describe("iam", () => {
+  afterEach(() => {
+    nock.cleanAll();
+  });
+
   describe("mergeBindings", () => {
     it("should not update the policy when the bindings are present", () => {
       const policy = {
@@ -106,10 +110,6 @@ describe("iam", () => {
     const EMAIL = `${ACCOUNT_ID}@${PROJECT_ID}.iam.gserviceaccount.com`;
     const DISPLAY_NAME = "Test Account";
     const DESCRIPTION = "Test Description";
-
-    afterEach(() => {
-      nock.cleanAll();
-    });
 
     describe("createServiceAccount", () => {
       it("should create a service account", async () => {
@@ -276,6 +276,32 @@ describe("iam", () => {
         const name = await iam.generateManagedServiceAccountName(PROJECT_ID, "firebase-fn");
         expect(name).to.match(/^firebase-fn-\d{10}$/);
         expect(nock.isDone()).to.be.true;
+      });
+    });
+
+    describe("computeRolesEtag", () => {
+      it("should return a 32-character base38 hash starting with [a-z]", () => {
+        const etag = iam.computeRolesEtag(["roles/viewer"]);
+        expect(etag).to.have.lengthOf(32);
+        expect(etag).to.match(/^[a-z][a-z0-9_-]{31}$/);
+      });
+
+      it("should be deterministic regardless of role order", () => {
+        const etag1 = iam.computeRolesEtag(["roles/viewer", "roles/editor"]);
+        const etag2 = iam.computeRolesEtag(["roles/editor", "roles/viewer"]);
+        expect(etag1).to.equal(etag2);
+      });
+
+      it("should be deterministic regardless of duplicate roles", () => {
+        const etag1 = iam.computeRolesEtag(["roles/viewer"]);
+        const etag2 = iam.computeRolesEtag(["roles/viewer", "roles/viewer"]);
+        expect(etag1).to.equal(etag2);
+      });
+
+      it("should produce different etags for different role sets", () => {
+        const etag1 = iam.computeRolesEtag(["roles/viewer"]);
+        const etag2 = iam.computeRolesEtag(["roles/editor"]);
+        expect(etag1).to.not.equal(etag2);
       });
     });
   });

@@ -93,6 +93,7 @@ describe("Fabricator", () => {
     tasks.upsertQueue.rejects(new Error("unexpected tasks.upsertQueue"));
     tasks.createQueue.rejects(new Error("unexpected tasks.createQueue"));
     tasks.updateQueue.rejects(new Error("unexpected tasks.updateQueue"));
+    tasks.disableQueue.rejects(new Error("unexpected tasks.disableQueue"));
     tasks.deleteQueue.rejects(new Error("unexpected tasks.deleteQueue"));
     tasks.setEnqueuer.rejects(new Error("unexpected tasks.setEnqueuer"));
     tasks.setIamPolicy.rejects(new Error("unexpected tasks.setIamPolicy"));
@@ -674,7 +675,7 @@ describe("Fabricator", () => {
       } catch (err) {
         // do nothing, error is expected
       }
-      await expect(sc.getToken()).to.eventually.equal("magic token");
+      await expect(sc.withToken(async (t) => t)).to.eventually.equal("magic token");
     });
 
     it("deletes broken function and retries on cloud run quota exhaustion", async () => {
@@ -689,6 +690,62 @@ describe("Fabricator", () => {
 
       expect(gcfv2.createFunction).to.have.been.calledTwice;
       expect(gcfv2.deleteFunction).to.have.been.called;
+    });
+
+    it("retries createV2Function and succeeds when service account 404 occurs", async () => {
+      const queueExec = new executor.QueueExecutor({
+        retries: 5,
+        backoff: 1,
+        maxBackoff: 1,
+      });
+      const fabWithQueue = new fabricator.Fabricator({
+        ...ctorArgs,
+        functionExecutor: queueExec,
+      });
+
+      const saError = new FirebaseError(
+        "Service account sa@proj.iam.gserviceaccount.com was not found",
+        { status: 404 },
+      );
+
+      gcfv2.createFunction.onFirstCall().rejects(saError);
+      gcfv2.createFunction.onSecondCall().resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      run.setInvokerCreate.resolves();
+
+      const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
+      const sc = new scraper.SourceTokenScraper();
+      await fabWithQueue.createV2Function(ep, sc);
+
+      expect(gcfv2.createFunction).to.have.been.calledTwice;
+    });
+
+    it("retries createV2Function and succeeds when service account 400 propagation error occurs", async () => {
+      const queueExec = new executor.QueueExecutor({
+        retries: 5,
+        backoff: 1,
+        maxBackoff: 1,
+      });
+      const fabWithQueue = new fabricator.Fabricator({
+        ...ctorArgs,
+        functionExecutor: queueExec,
+      });
+
+      const saError = new FirebaseError(
+        "Validation failed for trigger: The request was invalid: invalid service account firebase-fn-123@proj.iam.gserviceaccount.com provided",
+        { status: 400 },
+      );
+
+      gcfv2.createFunction.onFirstCall().rejects(saError);
+      gcfv2.createFunction.onSecondCall().resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      run.setInvokerCreate.resolves();
+
+      const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
+      const sc = new scraper.SourceTokenScraper();
+      await fabWithQueue.createV2Function(ep, sc);
+
+      expect(gcfv2.createFunction).to.have.been.calledTwice;
     });
 
     it("throws on set invoker failure", async () => {
@@ -1058,7 +1115,7 @@ describe("Fabricator", () => {
       } catch (err) {
         // do nothing, error is expected
       }
-      await expect(sc.getToken()).to.eventually.equal("magic token");
+      await expect(sc.withToken(async (t) => t)).to.eventually.equal("magic token");
     });
   });
 
@@ -1162,6 +1219,30 @@ describe("Fabricator", () => {
         "delete topic",
       );
     });
+
+    it("ignores a 404 when the schedule or topic is already deleted", async () => {
+      scheduler.deleteJob.rejects(new FirebaseError("Job not found.", { status: 404 }));
+      pubsub.deleteTopic.rejects(new FirebaseError("Topic not found.", { status: 404 }));
+      await expect(fab.deleteScheduleV1(ep)).to.eventually.be.fulfilled;
+      expect(scheduler.deleteJob).to.have.been.called;
+      expect(pubsub.deleteTopic).to.have.been.called;
+    });
+
+    it("ignores a raw GCP 404 where the status is on err.code", async () => {
+      scheduler.deleteJob.rejects(Object.assign(new Error("Job not found."), { code: 404 }));
+      pubsub.deleteTopic.rejects(Object.assign(new Error("Topic not found."), { code: 404 }));
+      await expect(fab.deleteScheduleV1(ep)).to.eventually.be.fulfilled;
+      expect(scheduler.deleteJob).to.have.been.called;
+      expect(pubsub.deleteTopic).to.have.been.called;
+    });
+
+    it("still wraps non-404 errors", async () => {
+      scheduler.deleteJob.rejects(new FirebaseError("Permission denied.", { status: 403 }));
+      await expect(fab.deleteScheduleV1(ep)).to.eventually.be.rejectedWith(
+        reporter.DeploymentError,
+        "delete schedule",
+      );
+    });
   });
 
   describe("deleteScheduleV2", () => {
@@ -1182,6 +1263,20 @@ describe("Fabricator", () => {
 
     it("wraps errors", async () => {
       scheduler.deleteJob.rejects(new Error("Fail"));
+      await expect(fab.deleteScheduleV2(ep)).to.eventually.be.rejectedWith(
+        reporter.DeploymentError,
+        "delete schedule",
+      );
+    });
+
+    it("ignores a 404 when the schedule is already deleted", async () => {
+      scheduler.deleteJob.rejects(new FirebaseError("Job not found.", { status: 404 }));
+      await expect(fab.deleteScheduleV2(ep)).to.eventually.be.fulfilled;
+      expect(scheduler.deleteJob).to.have.been.called;
+    });
+
+    it("still wraps non-404 errors", async () => {
+      scheduler.deleteJob.rejects(new FirebaseError("Permission denied.", { status: 403 }));
       await expect(fab.deleteScheduleV2(ep)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
         "delete schedule",
@@ -1241,19 +1336,16 @@ describe("Fabricator", () => {
       const ep = endpoint({
         taskQueueTrigger: {},
       }) as backend.Endpoint & backend.TaskQueueTriggered;
-      tasks.updateQueue.resolves();
+      tasks.disableQueue.resolves();
       await fab.disableTaskQueue(ep);
-      expect(tasks.updateQueue).to.have.been.calledWith({
-        name: tasks.queueNameForEndpoint(ep),
-        state: "DISABLED",
-      });
+      expect(tasks.disableQueue).to.have.been.calledWith(tasks.queueNameForEndpoint(ep));
     });
 
     it("wraps errors", async () => {
       const ep = endpoint({
         taskQueueTrigger: {},
       }) as backend.Endpoint & backend.TaskQueueTriggered;
-      tasks.updateQueue.rejects(new Error("Not today"));
+      tasks.disableQueue.rejects(new Error("Not today"));
       await expect(fab.disableTaskQueue(ep)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
         "disable task queue",
