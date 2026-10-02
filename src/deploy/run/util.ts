@@ -110,7 +110,7 @@ export function deployRevision(
     },
     {
       updateMask: [...(annotations ? ["annotations"] : []), "template", "traffic"],
-      masterTimeout: SERVICE_OPERATION_TIMEOUT_MS,
+      pollTimeoutMs: SERVICE_OPERATION_TIMEOUT_MS,
     },
   );
 }

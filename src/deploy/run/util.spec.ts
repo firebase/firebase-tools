@@ -116,7 +116,7 @@ describe("run util", () => {
         },
         {
           updateMask: ["template", "traffic"],
-          masterTimeout: 600000,
+          pollTimeoutMs: 600000,
         },
       );
     });
