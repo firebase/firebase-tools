@@ -1,3 +1,4 @@
+- Updated Firebase Hosting API requests to be project-scoped, eliminating site-scoped requests and the use of `-` as a project identifier.
 - Added check for a default Hosting site and offer to create one during `firebase apps:create web`.
 - Added a check for a default Hosting site and offer to create one during `auth` initialization.
 - - [Fixed] Report the GCFv2-to-GCFv1 downgrade error during validation instead of a misleading CPU error (#5461).
