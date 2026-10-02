@@ -109,7 +109,6 @@ describe("run deploy", () => {
         serviceAccount: "sa",
         annotations: { "firebase.google.com/deploy-message": "old", keep: "me" },
         containers: [
-          { name: "sidecar", image: "side" },
           {
             name: "main",
             image: "old",
@@ -135,7 +134,6 @@ describe("run deploy", () => {
       serviceAccount: "sa",
       annotations: { keep: "me" },
       containers: [
-        { name: "sidecar", image: "side" },
         {
           name: "main",
           image: "us-central1-docker.pkg.dev/p/cloud-run-source-deploy/s:42",
