@@ -9,7 +9,6 @@ import {
   FIREBASE_APP_ANNOTATION,
   getExistingService,
   getServiceConfigs,
-  mainContainer,
   missingServiceMessage,
 } from "./util";
 
@@ -57,7 +56,7 @@ export async function updateService(serviceId: string, options: Options): Promis
     existing.push(svc);
   }
   let updateBaseImage = Boolean(newBaseImage || clearBaseImage);
-  if (clearBaseImage && existing.every((s) => !mainContainer(s.template)?.baseImageUri)) {
+  if (clearBaseImage && existing.every((s) => !s.template.containers?.[0]?.baseImageUri)) {
     logBullet(`Service ${clc.bold(serviceId)} does not have a base image.`);
     updateBaseImage = false;
   }

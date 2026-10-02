@@ -16,7 +16,6 @@ import {
   FIREBASE_APP_ANNOTATION,
   getExistingService,
   getServiceConfigs,
-  mainContainer,
   missingServiceMessage,
 } from "./util";
 
@@ -46,7 +45,7 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
   // Base images are sticky: deploys reuse the service's current base image unless told otherwise.
   const baseImage =
     context.baseImage === undefined
-      ? mainContainer(existing?.template)?.baseImageUri
+      ? existing?.template.containers?.[0]?.baseImageUri
       : context.baseImage || undefined;
   // App IDs are sticky: deploys reuse the service's current Firebase Web App unless told otherwise.
   const appId =
@@ -124,7 +123,7 @@ async function resolveAutoInitEnv(
     )) as WebConfig;
     const autoinitVars = getAutoinitEnvVars(webappConfig);
     if (appId === existing?.annotations?.[FIREBASE_APP_ANNOTATION]) {
-      for (const env of mainContainer(existing?.template)?.env || []) {
+      for (const env of existing?.template.containers?.[0]?.env || []) {
         if (Object.prototype.hasOwnProperty.call(autoinitVars, env.name)) {
           if ("value" in env && env.value !== undefined) {
             autoinitVars[env.name] = env.value;

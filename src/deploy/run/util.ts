@@ -15,7 +15,13 @@ export const FIREBASE_APP_ANNOTATION = "firebase.google.com/app-id";
  * Returns the Cloud Run services in firebase.json that match the --only filter.
  */
 export function getServiceConfigs(options: Options): RunSingle[] {
-  const configs = [options.config?.src?.run || []].flat();
+  const rawConfig = options.config?.src?.run;
+  const configs: RunSingle[] = [];
+  if (Array.isArray(rawConfig)) {
+    configs.push(...rawConfig);
+  } else if (rawConfig) {
+    configs.push(rawConfig);
+  }
   const selectors = options.only ? options.only.split(",") : ["run"];
   if (selectors.includes("run")) {
     return configs;
@@ -68,13 +74,6 @@ export function missingServiceMessage(config: RunSingle): string {
     ? `Create it with ${clc.bold("firebase init run")}, which also sets the base image that local builds need.`
     : `Create it with ${clc.bold("firebase init run")} or ${clc.bold(`firebase deploy --only run:${config.serviceId}`)}.`;
   return `Cloud Run service ${config.serviceId} doesn't exist in ${config.region} yet. ${how}`;
-}
-
-/**
- * Returns the container that serves traffic.
- */
-export function mainContainer(template?: runv2.RevisionTemplate): runv2.Container | undefined {
-  return template?.containers?.find((c) => c.ports?.length) ?? template?.containers?.[0];
 }
 
 /**

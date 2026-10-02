@@ -5,7 +5,7 @@ import { webApps } from "../../apphosting/app";
 import { Config } from "../../config";
 import { deploy } from "../../deploy";
 import { prereqs, RUN_PERMISSIONS } from "../../deploy/run/prereqs";
-import { FIREBASE_APP_ANNOTATION, getExistingService, mainContainer } from "../../deploy/run/util";
+import { FIREBASE_APP_ANNOTATION, getExistingService } from "../../deploy/run/util";
 import { FirebaseError } from "../../error";
 import { RunSingle } from "../../firebaseConfig";
 import * as run from "../../gcp/run";
@@ -14,6 +14,9 @@ import { Options } from "../../options";
 import { input, select } from "../../prompt";
 import { requirePermissions } from "../../requirePermissions";
 import { logBullet } from "../../utils";
+
+const DEFAULT_IGNORE = ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"];
+const SERVICE_ID_REGEX = /^[a-z]([-a-z0-9]{0,47}[a-z0-9])?$/;
 
 export interface RunInfo {
   serviceId: string;
@@ -45,45 +48,20 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
     default: "create",
   });
   if (action === "update") {
-    // Skip services that another product (e.g. Cloud Functions or App Hosting) manages.
-    const services = (await runv2.listServices(projectId, /* functionsOnly= */ false)).filter(
-      (s) => !s.labels?.[runv2.CLIENT_NAME_LABEL],
-    );
-    if (services.length) {
-      existing = await select<runv2.Service>({
-        message: "Which service would you like to update?",
-        choices: services.map((s) => {
-          const [, , , location, , id] = s.name.split("/");
-          return { name: `${id} (${location})`, value: s };
-        }),
-      });
-    } else {
-      logBullet("No Cloud Run services to update. Creating a new service instead.");
-    }
+    existing = await promptExistingService(projectId);
   }
 
   let serviceId: string;
   let region: string;
   if (existing) {
-    [, , , region, , serviceId] = existing.name.split("/");
+    ({ region, serviceId } = parseServiceName(existing.name));
   } else {
     region = await select({
       message: "Which region should this service be deployed to?",
       choices: await run.listLocations(projectId),
       default: "us-central1",
     });
-    serviceId = await input({
-      message: "Please enter a unique ID for your service",
-      validate: async (id) => {
-        if (!/^[a-z]([-a-z0-9]{0,47}[a-z0-9])?$/.test(id)) {
-          return "Use up to 49 lowercase letters, digits, and hyphens, starting with a letter and not ending with a hyphen.";
-        }
-        if (await getExistingService(projectId, region, id)) {
-          return `A service named ${id} already exists in ${region}.`;
-        }
-        return true;
-      },
-    });
+    serviceId = await promptNewServiceId(projectId, region);
   }
 
   let appId = existing?.annotations?.[FIREBASE_APP_ANNOTATION];
@@ -100,26 +78,25 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
     ],
     default: false,
   });
-  const baseImage = (
-    (await input({
-      message: "Which base image should your app use? (e.g. nodejs20, nodejs22)",
-      default:
-        (existing ? mainContainer(existing.template)?.baseImageUri : "nodejs22") ||
-        (localBuild ? "nodejs22" : undefined),
-      validate: (img) => !localBuild || !!img.trim() || "Local builds require a base image.",
-    })) || ""
-  ).trim();
-  const rootDir = await input({
-    message: "Specify your app's root directory relative to your firebase.json directory",
-    default: "/",
-    validate: (dir) => {
-      const absPath = path.join(config.projectDir, dir);
-      return (
-        Boolean(statSync(absPath, { throwIfNoEntry: false })?.isDirectory()) ||
-        `Directory ${absPath} does not exist. Please enter a valid directory.`
-      );
+
+  const existingBaseImage = existing?.template.containers?.[0]?.baseImageUri;
+  let defaultBaseImage: string | undefined = "nodejs22";
+  if (existing) {
+    defaultBaseImage = existingBaseImage || (localBuild ? "nodejs22" : undefined);
+  }
+  const rawBaseImage = await input({
+    message: "Which base image should your app use? (e.g. nodejs20, nodejs22)",
+    default: defaultBaseImage,
+    validate: (img: string) => {
+      if (localBuild && !img.trim()) {
+        return "Local builds require a base image.";
+      }
+      return true;
     },
   });
+  const baseImage = (rawBaseImage || "").trim();
+
+  const rootDir = await promptRootDir(config.projectDir);
 
   setup.featureInfo = {
     ...setup.featureInfo,
@@ -132,6 +109,64 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
       ...(appId && { appId }),
     },
   };
+}
+
+async function promptExistingService(projectId: string): Promise<runv2.Service | undefined> {
+  const allServices = await runv2.listServices(projectId, /* functionsOnly= */ false);
+  // Skip services that another product (e.g. Cloud Functions or App Hosting) manages.
+  const services = allServices.filter((s) => !s.labels?.[runv2.CLIENT_NAME_LABEL]);
+  if (services.length === 0) {
+    logBullet("No Cloud Run services to update. Creating a new service instead.");
+    return undefined;
+  }
+  const choices = services.map((service) => {
+    const { serviceId, region } = parseServiceName(service.name);
+    return { name: `${serviceId} (${region})`, value: service };
+  });
+  return select<runv2.Service>({
+    message: "Which service would you like to update?",
+    choices,
+  });
+}
+
+/**
+ * Extracts the region and service ID from a Cloud Run service resource name
+ * (projects/{project}/locations/{region}/services/{serviceId}).
+ */
+function parseServiceName(name: string): { region: string; serviceId: string } {
+  const parts = name.split("/");
+  return { region: parts[3], serviceId: parts[5] };
+}
+
+async function promptNewServiceId(projectId: string, region: string): Promise<string> {
+  return input({
+    message: "Please enter a unique ID for your service",
+    validate: async (id: string) => {
+      if (!SERVICE_ID_REGEX.test(id)) {
+        return "Use up to 49 lowercase letters, digits, and hyphens, starting with a letter and not ending with a hyphen.";
+      }
+      const existing = await getExistingService(projectId, region, id);
+      if (existing) {
+        return `A service named ${id} already exists in ${region}.`;
+      }
+      return true;
+    },
+  });
+}
+
+async function promptRootDir(projectDir: string): Promise<string> {
+  return input({
+    message: "Specify your app's root directory relative to your firebase.json directory",
+    default: "/",
+    validate: (dir: string) => {
+      const absPath = path.join(projectDir, dir);
+      const stat = statSync(absPath, { throwIfNoEntry: false });
+      if (!stat?.isDirectory()) {
+        return `Directory ${absPath} does not exist. Please enter a valid directory.`;
+      }
+      return true;
+    },
+  });
 }
 
 /**
@@ -148,7 +183,7 @@ export async function actuate(setup: Setup, config: Config, options: Options): P
       rootDir: info.rootDir,
       region: info.region,
       ...(info.localBuild && { localBuild: true }),
-      ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"],
+      ignore: DEFAULT_IGNORE,
     },
     config,
   );
@@ -168,22 +203,25 @@ export async function actuate(setup: Setup, config: Config, options: Options): P
  * about (e.g. a custom ignore list) are kept. Exported for unit testing.
  */
 export function upsertRunConfig(runConfig: RunSingle, config: Config): void {
-  const services = [config.src.run || []].flat();
-  const i = services.findIndex((c) => c.serviceId === runConfig.serviceId);
-  if (i < 0) {
+  if (!config.src.run) {
+    config.set("run", runConfig);
+    return;
+  }
+  const services = Array.isArray(config.src.run) ? [...config.src.run] : [config.src.run];
+  const existingIndex = services.findIndex((s) => s.serviceId === runConfig.serviceId);
+  if (existingIndex === -1) {
     services.push(runConfig);
   } else {
-    const { rootDir, region, localBuild } = runConfig;
-    services[i] = {
+    const existingConfig = services[existingIndex];
+    const updatedConfig: RunSingle = {
+      ...existingConfig,
       ...runConfig,
-      ...services[i],
-      rootDir,
-      region,
-      ...(localBuild && { localBuild }),
+      ignore: existingConfig.ignore ?? runConfig.ignore,
     };
-    if (!localBuild) {
-      delete services[i].localBuild;
+    if (!runConfig.localBuild) {
+      delete updatedConfig.localBuild;
     }
+    services[existingIndex] = updatedConfig;
   }
   config.set("run", services.length === 1 ? services[0] : services);
 }

@@ -19,7 +19,6 @@ import {
   copyTemplate,
   deployRevision,
   FIREBASE_APP_ANNOTATION,
-  mainContainer,
   SERVICE_OPERATION_TIMEOUT_MS,
   toAppHostingConfig,
 } from "./util";
@@ -107,7 +106,7 @@ async function deployService(
   const template = svc.existing
     ? copyTemplate(svc.existing)
     : { containers: [{ name: serviceId, image: "" }] };
-  const container = mainContainer(template);
+  const container = template.containers?.[0];
   if (!container) {
     throw new FirebaseError(`Service ${serviceId} has no containers.`);
   }
