@@ -2,6 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import { command } from "./apps-create";
+import { configstore } from "../configstore";
 import * as projectUtils from "../projectUtils";
 import * as apps from "../management/apps";
 import * as getDefaultHostingSiteMod from "../getDefaultHostingSite";
@@ -33,6 +34,7 @@ describe("apps:create", () => {
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
+    sandbox.stub(configstore, "get").returns({});
     sandbox.stub(projectUtils, "needProjectId").returns(PROJECT_ID);
     sdkInitStub = sandbox.stub(apps, "sdkInit");
   });
