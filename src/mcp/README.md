@@ -204,6 +204,7 @@ The Firebase MCP server provides three types of capabilities: **Tools** (functio
 | remoteconfig_get_template        | remoteconfig     | Retrieve the active or specified version of the Firebase Remote Config template.                                                                                       |
 | remoteconfig_update_template     | remoteconfig     | Publish a new Firebase Remote Config template or rollback to a previous version.                                                                                       |
 | storage_get_object_download_url  | storage          | Retrieve the download URL for an object in a Cloud Storage bucket.                                                                                                     |
+| storage_get_default_bucket       | storage          | Retrieve the linked default Firebase Storage bucket name for the selected project.                                                                                     |
 
 | Prompt Name                       | Feature Group | Description                                                                                                                                                       |
 | --------------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
