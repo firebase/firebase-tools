@@ -35,14 +35,6 @@ const SAMPLE_RESPONSE = {
 };
 
 describe("firedata", () => {
-  before(() => {
-    nock.disableNetConnect();
-  });
-  after(() => {
-    nock.cleanAll();
-    nock.enableNetConnect();
-  });
-
   describe("getTosStatus", () => {
     it("should return parsed GetTosStatusResponse", async () => {
       nock("https://mobilesdk-pa.googleapis.com")

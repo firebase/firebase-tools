@@ -104,7 +104,17 @@ module.exports = {
       env: {
         mocha: true,
       },
-      rules: {},
+      rules: {
+        "no-restricted-syntax": [
+          "error",
+          {
+            selector:
+              "CallExpression[callee.object.name='nock'][callee.property.name='enableNetConnect'][arguments.length=0]",
+            message:
+              "Unscoped nock.enableNetConnect() is prohibited in unit tests. Net-connect policies are managed globally by mocha-bootstrap.js. If specific host matching is required, provide an explicit host matcher argument.",
+          },
+        ],
+      },
     },
     {
       files: ["src/mcp/tools/**/*.ts", "src/mcp/prompts/**/*.ts", "src/mcp/resources/**/*.ts"],
