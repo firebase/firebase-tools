@@ -221,7 +221,7 @@ export async function submitBuild(
  */
 export async function updateService(
   service: Omit<Service, ServiceOutputFields>,
-  opts: { updateMask?: string[]; masterTimeout?: number } = {},
+  opts: { updateMask?: string[]; pollTimeoutMs?: number } = {},
 ): Promise<Service> {
   const updateMask = opts.updateMask ?? [
     ...proto.fieldMasks(service, /* doNotRecurseIn...*/ "labels", "annotations", "tags"),
@@ -241,7 +241,7 @@ export async function updateService(
     apiOrigin: runOrigin(),
     apiVersion: API_VERSION,
     operationResourceName: res.body.name,
-    masterTimeout: opts.masterTimeout,
+    masterTimeout: opts.pollTimeoutMs,
   });
   return svc;
 }
@@ -255,7 +255,7 @@ export async function createService(
   location: string,
   serviceId: string,
   service: Omit<Service, ServiceOutputFields>,
-  opts: { masterTimeout?: number } = {},
+  opts: { pollTimeoutMs?: number } = {},
 ): Promise<Service> {
   // The create API expects the name to be empty or unset, as the parent is in the URL
   // and resource ID is a query param.
@@ -274,7 +274,7 @@ export async function createService(
     apiOrigin: runOrigin(),
     apiVersion: API_VERSION,
     operationResourceName: res.body.name,
-    masterTimeout: opts.masterTimeout,
+    masterTimeout: opts.pollTimeoutMs,
   });
   return svc;
 }
