@@ -6,7 +6,7 @@ import { expect } from "chai";
 import { FunctionsRuntimeInstance, IPCConn } from "./functionsEmulator";
 import { EventEmitter } from "events";
 import { RuntimeWorker, RuntimeWorkerPool, RuntimeWorkerState } from "./functionsRuntimeWorker";
-import { EmulatedTriggerDefinition } from "./functionsEmulatorShared";
+import { DEBUG_MSG_HANDLED, EmulatedTriggerDefinition } from "./functionsEmulatorShared";
 import { EmulatorLog, FunctionsExecutionMode } from "./types";
 import { ChildProcess } from "child_process";
 
@@ -187,6 +187,41 @@ describe("FunctionsRuntimeWorker", () => {
       expect(counter.counts.FINISHING).to.eql(1);
       expect(counter.counts.FINISHED).to.eql(1);
       expect(counter.total).to.eql(5);
+    });
+
+    it("sendDebugMsg resolves only after the runtime confirms it handled the message", async () => {
+      const runtime = new MockRuntimeInstance();
+      runtime.process.send = ((msg: string, cb: (err: Error | null) => void) => {
+        cb(null);
+        return true;
+      }) as ChildProcess["send"];
+      const worker = new RuntimeWorker("trigger", runtime, {});
+
+      let resolved = false;
+      const sent = worker
+        .sendDebugMsg({ functionTarget: "fn", functionSignature: "http" })
+        .then(() => {
+          resolved = true;
+        });
+      await new Promise((r) => setImmediate(r));
+      expect(resolved).to.be.false;
+
+      runtime.events.emit("log", new EmulatorLog("SYSTEM", "runtime-status", DEBUG_MSG_HANDLED));
+      await sent;
+      expect(resolved).to.be.true;
+    });
+
+    it("sendDebugMsg rejects if the runtime exits before confirming", async () => {
+      const runtime = new MockRuntimeInstance();
+      runtime.process.send = ((msg: string, cb: (err: Error | null) => void) => {
+        cb(null);
+        return true;
+      }) as ChildProcess["send"];
+      const worker = new RuntimeWorker("trigger", runtime, {});
+
+      const sent = worker.sendDebugMsg({ functionTarget: "fn", functionSignature: "http" });
+      runtime.process.emit("exit");
+      await expect(sent).to.be.rejectedWith("exited before handling the debug message");
     });
   });
 

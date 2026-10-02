@@ -4,7 +4,7 @@ import * as http from "http";
 import * as fs from "fs/promises";
 import * as spawn from "cross-spawn";
 import * as path from "path";
-import { ChildProcess } from "child_process";
+import { ChildProcess, Serializable } from "child_process";
 
 import * as express from "express";
 import { Change } from "firebase-functions";
@@ -12,11 +12,13 @@ import { DocumentSnapshot } from "firebase-functions/v1/firestore";
 
 import { FunctionRuntimeBundles, TIMEOUT_LONG, MODULE_ROOT } from "./fixtures";
 import {
+  DEBUG_MSG_HANDLED,
   FunctionsRuntimeBundle,
   getTemporarySocketPath,
   SignatureType,
 } from "../../src/emulator/functionsEmulatorShared";
 import { streamToString } from "../../src/utils";
+import { EmulatorLog } from "../../src/emulator/types";
 
 const FUNCTIONS_DIR = `./scripts/emulator-tests/functions`;
 const ADMIN_SDK_CONFIG = {
@@ -179,8 +181,20 @@ async function sendReq(runtime: Runtime, opts: ReqOpts = {}): Promise<string> {
 }
 
 async function sendDebugBundle(runtime: Runtime, debug: FunctionsRuntimeBundle["debug"]) {
-  return new Promise((resolve) => {
-    runtime.proc.send(JSON.stringify(debug), resolve);
+  return new Promise<void>((resolve) => {
+    const onMessage = (message: Serializable) => {
+      const log = EmulatorLog.fromJSON(message.toString());
+      if (
+        log.level === "SYSTEM" &&
+        log.type === "runtime-status" &&
+        log.text === DEBUG_MSG_HANDLED
+      ) {
+        runtime.proc.off("message", onMessage);
+        resolve();
+      }
+    };
+    runtime.proc.on("message", onMessage);
+    runtime.proc.send(JSON.stringify(debug));
   });
 }
 

@@ -9,7 +9,12 @@ import * as _ from "lodash";
 import { EmulatorLog } from "./types";
 import { getErrMsg, getErrStack } from "../error";
 import { Constants } from "./constants";
-import { findModuleRoot, FunctionsRuntimeBundle, SignatureType } from "./functionsEmulatorShared";
+import {
+  DEBUG_MSG_HANDLED,
+  findModuleRoot,
+  FunctionsRuntimeBundle,
+  SignatureType,
+} from "./functionsEmulatorShared";
 import { compareVersionStrings, isLocalHost } from "./functionsEmulatorUtils";
 import { EventUtils } from "./events/types";
 
@@ -800,6 +805,8 @@ async function handleMessage(message: string) {
       new EmulatorLog("WARN", "runtime-warning", "Expected debug payload while in debug mode.");
     }
   }
+  // The parent waits for this before sending a request, since IPC and HTTP are not ordered.
+  new EmulatorLog("SYSTEM", "runtime-status", DEBUG_MSG_HANDLED).log();
 }
 
 async function main(): Promise<void> {
