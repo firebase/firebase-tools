@@ -538,6 +538,30 @@ describe("Backend", () => {
         expect(logLabeledWarning).to.have.been.called;
       });
     });
+
+    describe("assertAllRegionsReachable", () => {
+      it("does nothing when every region was reachable", async () => {
+        listAllFunctions.resolves({ functions: [], unreachable: [] });
+        listAllFunctionsV2.resolves({ functions: [], unreachable: [] });
+        const context = newContext();
+        await backend.existingBackend(context);
+
+        expect(() => backend.assertAllRegionsReachable(context)).to.not.throw();
+      });
+
+      it("throws naming the unreachable regions", async () => {
+        listAllFunctions.resolves({ functions: [], unreachable: ["us-central1"] });
+        listAllFunctionsV2.resolves({ functions: [], unreachable: ["europe-west1"] });
+        const context = newContext();
+        await backend.existingBackend(context);
+
+        expect(() => backend.assertAllRegionsReachable(context))
+          .to.throw(FirebaseError)
+          .with.property("message")
+          .that.includes("us-central1")
+          .and.includes("europe-west1");
+      });
+    });
   });
 
   describe("compareFunctions", () => {

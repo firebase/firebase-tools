@@ -690,6 +690,27 @@ async function loadCloudRunServices(
 }
 
 /**
+ * Throws if any region was unreachable when the existing backend was loaded. For callers that
+ * act on the absence of a function, such as destroying secret versions nothing appears to use,
+ * where a missing region must not read as "not in use".
+ * @param context A context object from the Command library, after existingBackend has run.
+ */
+export function assertAllRegionsReachable(context: Context): void {
+  const unreachable = [
+    ...(context.unreachableRegions?.gcfV1 || []),
+    ...(context.unreachableRegions?.gcfV2 || []),
+    ...(context.unreachableRegions?.run || []),
+  ];
+  if (unreachable.length) {
+    throw new FirebaseError(
+      "The following Cloud Functions regions are currently unreachable:\n\t" +
+        unreachable.join("\n\t") +
+        "\nFunctions in those regions could not be checked. Please try again in a few minutes.",
+    );
+  }
+}
+
+/**
  * A helper function that guards against unavailable regions affecting a backend deployment.
  * If the desired backend uses a region that is unavailable, a FirebaseError is thrown.
  * If a region is unavailable but the desired backend does not use it, a warning is logged
