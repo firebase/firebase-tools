@@ -223,11 +223,17 @@ export async function updateService(
   service: Omit<Service, ServiceOutputFields>,
   opts: { updateMask?: string[]; pollTimeoutMs?: number } = {},
 ): Promise<Service> {
-  const updateMask = opts.updateMask ?? [
-    ...proto.fieldMasks(service, /* doNotRecurseIn...*/ "labels", "annotations", "tags"),
+  let updateMask = opts.updateMask;
+  if (!updateMask) {
+    updateMask = proto.fieldMasks(
+      service,
+      /* doNotRecurseIn...*/ "labels",
+      "annotations",
+      "tags",
+    );
     // Always update revision name to ensure null generates a new unique revision name.
-    "template.revision",
-  ];
+    updateMask.push("template.revision");
+  }
   const res = await client.patch<Omit<Service, ServiceOutputFields>, LongRunningOperation<Service>>(
     service.name,
     service,
