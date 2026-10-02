@@ -146,7 +146,7 @@ describe("run prepare", () => {
       hasRolesStub = sinon.stub(resourceManager, "serviceAccountHasRoles").resolves(true);
       addRolesStub = sinon
         .stub(resourceManager, "addServiceAccountToRoles")
-        .resolves({ bindings: [] });
+        .resolves({ bindings: [], etag: "", version: 3 });
     });
 
     it("reuses the service's current appId and resolves build and runtime config", async () => {
