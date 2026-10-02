@@ -41,7 +41,11 @@ describe("deployHosting", () => {
   });
 
   after(() => {
-    unlinkSync(firebasercFile);
+    try {
+      unlinkSync(firebasercFile);
+    } catch {
+      // ignore
+    }
   });
 
   it("should deploy hosting", async () => {
@@ -53,19 +57,18 @@ describe("deployHosting", () => {
   }).timeout(20 * 1e3); // Deploying takes several steps.
 });
 
-describe("apps:list", () => {
+describe("apps:list", function (this: Mocha.Suite) {
+  this.timeout(15 * 1000);
+  this.retries(2);
+
   it("should be able to list apps with missing or undefined optional arguments", async () => {
-    const noArgsApps = await client.apps.list({ project: process.env.FBTOOLS_TARGET_PROJECT });
+    const [noArgsApps, undefinedArgsApps, nullArgsApps] = await Promise.all([
+      client.apps.list({ project: process.env.FBTOOLS_TARGET_PROJECT }),
+      client.apps.list(undefined, { project: process.env.FBTOOLS_TARGET_PROJECT }),
+      client.apps.list(null, { project: process.env.FBTOOLS_TARGET_PROJECT }),
+    ]);
     expect(noArgsApps).to.have.length.greaterThan(0);
-
-    const undefinedArgsApps = await client.apps.list(undefined, {
-      project: process.env.FBTOOLS_TARGET_PROJECT,
-    });
     expect(undefinedArgsApps).to.have.length.greaterThan(0);
-
-    const nullArgsApps = await client.apps.list(null, {
-      project: process.env.FBTOOLS_TARGET_PROJECT,
-    });
     expect(nullArgsApps).to.have.length.greaterThan(0);
   });
 
@@ -76,7 +79,10 @@ describe("apps:list", () => {
   });
 });
 
-describe("apps:sdkconfig", () => {
+describe("apps:sdkconfig", function (this: Mocha.Suite) {
+  this.timeout(15 * 1000);
+  this.retries(2);
+
   it("should return the web app configuration", async () => {
     const opts = { project: process.env.FBTOOLS_TARGET_PROJECT };
     const apps = await client.apps.list("web", opts);

@@ -16,7 +16,7 @@ Within your GraphQL files, you’ll see in-line Codelenses that can help you cre
 
 In your schema files, click on `Add Data` or `Read Data` to generate a corresponding operation to populate or read from your DB.
 
-To execute an operation, click on `Run Local` or `Run Production`. This will execute your operation against the emulators, or your production SQL Connect instance.
+To execute an operation, click on `Run Emulator` or `Run Production`. This will execute your operation against the emulators, or your production SQL Connect instance.
 
 Note: You’ll need to start the SQL Connect emulator in order to execute operations locally.
 

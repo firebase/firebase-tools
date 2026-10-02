@@ -1,8 +1,9 @@
+import * as experiments from "../experiments";
 import * as clc from "colorette";
 import { format } from "sql-formatter";
 
 import { IncompatibleSqlSchemaError, Diff, MAIN_SCHEMA_ID, SchemaValidation } from "./types";
-import { getSchema, upsertSchema, deleteConnector } from "./client";
+import { getSchema, upsertSchema, deleteConnector, executeSchemaMigration } from "./client";
 import {
   getIAMUser,
   executeSqlCmdsAsIamUser,
@@ -251,6 +252,7 @@ export async function migrateSchema(args: {
         databaseId,
         instanceId,
         schemaName,
+        schema,
         incompatibleSchemaError: incompatible,
         choice: migrationMode,
       });
@@ -300,6 +302,7 @@ export async function migrateSchema(args: {
           databaseId,
           instanceId,
           schemaName,
+          schema,
           incompatibleSchemaError: incompatible,
           choice: migrationMode,
         });
@@ -451,7 +454,8 @@ function suggestedCommand(serviceName: string, invalidConnectorNames: string[]):
   return `firebase deploy --only ${onlys}`;
 }
 
-async function handleIncompatibleSchemaError(args: {
+export async function handleIncompatibleSchemaError(args: {
+  schema: Schema;
   incompatibleSchemaError: IncompatibleSqlSchemaError;
   options: Options;
   instanceId: string;
@@ -459,7 +463,8 @@ async function handleIncompatibleSchemaError(args: {
   schemaName: string;
   choice: "all" | "safe" | "none";
 }): Promise<Diff[]> {
-  const { incompatibleSchemaError, options, instanceId, databaseId, schemaName, choice } = args;
+  const { schema, incompatibleSchemaError, options, instanceId, databaseId, schemaName, choice } =
+    args;
   const commandsToExecute = incompatibleSchemaError.diffs.filter((d) => {
     switch (choice) {
       case "all":
@@ -523,16 +528,26 @@ async function handleIncompatibleSchemaError(args: {
     }
 
     if (commandsToExecuteByOwner.length) {
-      await executeSqlCmdsAsIamUser(
-        options,
-        instanceId,
-        databaseId,
-        [
-          `SET ROLE "${firebaseowner(databaseId, schemaName)}"`,
-          ...commandsToExecuteByOwner.map((d) => d.sql),
-        ],
-        /** silent=*/ false,
-      );
+      if (experiments.isEnabled("fdcapimigration")) {
+        logLabeledBullet(
+          "dataconnect",
+          `[EXPERIMENTAL] Delegating SQL execution to FDC Backend...`,
+        );
+
+        const serviceName = serviceNameFromSchema(schema);
+        await executeSchemaMigration(serviceName, commandsToExecuteByOwner);
+      } else {
+        await executeSqlCmdsAsIamUser(
+          options,
+          instanceId,
+          databaseId,
+          [
+            `SET ROLE "${firebaseowner(databaseId, schemaName)}"`,
+            ...commandsToExecuteByOwner.map((d) => d.sql),
+          ],
+          /** silent=*/ false,
+        );
+      }
       return incompatibleSchemaError.diffs;
     }
   }

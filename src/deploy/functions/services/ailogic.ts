@@ -61,7 +61,7 @@ export class AILogicService implements Service {
    * Setting requiredProjectBindings here causes the ensureServiceAgentRoles
    * call during prepare phase to upsert the corresponding IAM binding.
    */
-  async requiredProjectBindings(projectNumber: string): Promise<Array<iam.Binding>> {
+  requiredProjectBindings = async (projectNumber: string): Promise<Array<iam.Binding>> => {
     return [
       {
         role: "roles/run.invoker",
@@ -70,7 +70,7 @@ export class AILogicService implements Service {
         ],
       },
     ];
-  }
+  };
 
   /**
    * Validate that there are no duplicate AI Logic triggers of the same type.
@@ -133,5 +133,12 @@ export class AILogicService implements Service {
         throw err;
       }
     }
+  }
+
+  async getDefaultRegion(endpoint: build.Endpoint): Promise<string> {
+    if (build.isBlockingTriggered(endpoint) && isGlobalAILogicTrigger(endpoint.blockingTrigger)) {
+      return "us-east1";
+    }
+    return "us-central1";
   }
 }

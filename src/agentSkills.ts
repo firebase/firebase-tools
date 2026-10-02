@@ -17,6 +17,7 @@ export interface InstallAgentSkillsOptions {
   global?: boolean;
   background?: boolean;
   agentName?: string;
+  skillPackage?: string;
 }
 
 export async function installAgentSkills(options: InstallAgentSkillsOptions): Promise<void> {
@@ -24,11 +25,12 @@ export async function installAgentSkills(options: InstallAgentSkillsOptions): Pr
     return;
   }
 
+  const skillPackage = options.skillPackage || "firebase/agent-skills";
   const args = [
     "-y", // npx -y to auto-confirm package install
     "skills",
     "add",
-    "firebase/agent-skills",
+    skillPackage,
     "--skill",
     "*",
     "-y",

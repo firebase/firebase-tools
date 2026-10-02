@@ -9,6 +9,8 @@ export const send_message = tool(
     name: "send_message",
     description:
       "Use this to send a message to a Firebase Cloud Messaging registration token or topic. ONLY ONE of `registration_token` or `topic` may be supplied in a specific call.",
+    humanReadableDescription:
+      "Send a Firebase Cloud Messaging push notification to a device registration token or topic.",
     inputSchema: z.object({
       registration_token: z
         .string()

@@ -31,7 +31,7 @@ export default {
     "/v1/accounts:createAuthUri": {
       post: {
         description:
-          "If an email identifier is specified, checks and returns if any user account is registered with the email. If there is a registered account, fetches all providers associated with the account's email. If the provider ID of an Identity Provider (IdP) is specified, creates an authorization URI for the IdP. The user can be directed to this URI to sign in with the IdP. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project.",
+          "If an email identifier is specified, checks and returns if any user account is registered with the email. If there is a registered account, fetches all providers associated with the account's email. If [email enumeration protection](https://cloud.google.com/identity-platform/docs/admin/email-enumeration-protection) is enabled, this method returns an empty list. If the provider ID of an Identity Provider (IdP) is specified, creates an authorization URI for the IdP. The user can be directed to this URI to sign in with the IdP. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project.",
         operationId: "identitytoolkit.accounts.createAuthUri",
         responses: {
           "200": {
@@ -281,7 +281,7 @@ export default {
     "/v1/accounts:sendVerificationCode": {
       post: {
         description:
-          "Sends a SMS verification code for phone number sign-in. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project.",
+          "Sends a SMS verification code for phone number sign-in. To localize the text of the SMS sent to the user, set the HTTP header `X-Firebase-Locale` to the language code that corresponds with the user's locale. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project.",
         operationId: "identitytoolkit.accounts.sendVerificationCode",
         responses: {
           "200": {
@@ -551,7 +551,7 @@ export default {
     "/v1/accounts:signInWithPhoneNumber": {
       post: {
         description:
-          "Completes a phone number authentication attempt. If a user already exists with the given phone number, an ID token is minted for that user. Otherwise, a new user is created and associated with the phone number. This method may also be used to link a phone number to an existing user. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project.",
+          "Completes a phone number authentication attempt. If a user already exists with the given phone number, an ID token is minted for that user. Otherwise, a new user is created and associated with the phone number. This method may also be used to link a phone number to an existing user. To localize the text of the SMS sent to the user, set the HTTP header `X-Firebase-Locale` to the language code that corresponds with the user's locale. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project.",
         operationId: "identitytoolkit.accounts.signInWithPhoneNumber",
         responses: {
           "200": {
@@ -4284,6 +4284,118 @@ export default {
         tags: ["emulator"],
       },
     },
+    "/v2/accounts/passkeyEnrollment:start": {
+      post: {
+        description: "Start passkey enrollment.",
+        operationId: "identitytoolkit.accounts.passkeyEnrollment.start",
+        requestBody: {
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2StartPasskeyEnrollmentRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Successful response",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2StartPasskeyEnrollmentResponse",
+                },
+              },
+            },
+          },
+        },
+        security: [{ apiKeyQuery: [] }, { apiKeyHeader: [] }],
+      },
+    },
+    "/v2/accounts/passkeyEnrollment:finalize": {
+      post: {
+        description: "Finalize passkey enrollment.",
+        operationId: "identitytoolkit.accounts.passkeyEnrollment.finalize",
+        requestBody: {
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2FinalizePasskeyEnrollmentRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Successful response",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2FinalizePasskeyEnrollmentResponse",
+                },
+              },
+            },
+          },
+        },
+        security: [{ apiKeyQuery: [] }, { apiKeyHeader: [] }],
+      },
+    },
+    "/v2/accounts/passkeySignIn:start": {
+      post: {
+        description: "Start passkey sign-in.",
+        operationId: "identitytoolkit.accounts.passkeySignIn.start",
+        requestBody: {
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2StartPasskeySignInRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Successful response",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2StartPasskeySignInResponse",
+                },
+              },
+            },
+          },
+        },
+        security: [{ apiKeyQuery: [] }, { apiKeyHeader: [] }],
+      },
+    },
+    "/v2/accounts/passkeySignIn:finalize": {
+      post: {
+        description: "Finalize passkey sign-in.",
+        operationId: "identitytoolkit.accounts.passkeySignIn.finalize",
+        requestBody: {
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2FinalizePasskeySignInRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Successful response",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2FinalizePasskeySignInResponse",
+                },
+              },
+            },
+          },
+        },
+        security: [{ apiKeyQuery: [] }, { apiKeyHeader: [] }],
+      },
+    },
   },
   components: {
     schemas: {
@@ -4488,7 +4600,7 @@ export default {
           },
           signinMethods: {
             description:
-              "The list of sign-in methods that the user has previously used. Each element is one of `password`, `emailLink`, or the provider ID of an IdP. Present only when a registered email identifier is set in the request.",
+              "The list of sign-in methods that the user has previously used. Each element is one of `password`, `emailLink`, or the provider ID of an IdP. Present only when a registered email identifier is set in the request. If [email enumeration protection](https://cloud.google.com/identity-platform/docs/admin/email-enumeration-protection) is enabled, this method returns an empty list.",
             items: { type: "string" },
             type: "array",
           },
@@ -4654,8 +4766,6 @@ export default {
             type: "array",
           },
           federatedUserId: {
-            description:
-              "The federated user identifier of one or more accounts to fetch. Should only be specified by authenticated requests bearing a Google OAuth 2.0 credential with proper [permissions](https://cloud.google.com/identity-platform/docs/access-control).",
             items: {
               $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1FederatedUserIdentifier",
             },
@@ -4778,6 +4888,11 @@ export default {
           idToken: {
             description:
               "An ID token for the account. It is required for VERIFY_AND_CHANGE_EMAIL and VERIFY_EMAIL requests unless return_oob_link is set to true.",
+            type: "string",
+          },
+          linkDomain: {
+            description:
+              "Optional. In order to ensure that the url used can be easily opened in iOS or Android, we create a Hosting link '/__/auth/links'. This optional field contains the domain to use when constructing a Hosting link. If not set, '.firebaseapp.com' domain will be used.",
             type: "string",
           },
           newEmail: {
@@ -4954,7 +5069,6 @@ export default {
             type: "integer",
           },
           provider: {
-            description: "Name of the identity provider.",
             enum: [
               "PROVIDER_UNSPECIFIED",
               "MSLIVE",
@@ -5132,8 +5246,6 @@ export default {
         description: "Request message for QueryUserInfo.",
         properties: {
           expression: {
-            description:
-              "Query conditions used to filter results. If more than one is passed, only the first SqlExpression is evaluated.",
             items: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1SqlExpression" },
             type: "array",
           },
@@ -5149,20 +5261,13 @@ export default {
             format: "int64",
             type: "string",
           },
-          order: {
-            description:
-              "The order for sorting query result. Defaults to __ascending__ order. Only valid when `return_user_info` is set to `true`.",
-            enum: ["ORDER_UNSPECIFIED", "ASC", "DESC"],
-            type: "string",
-          },
+          order: { enum: ["ORDER_UNSPECIFIED", "ASC", "DESC"], type: "string" },
           returnUserInfo: {
             description:
               "If `true`, this request will return the accounts matching the query. If `false`, only the __count__ of accounts matching the query will be returned. Defaults to `true`.",
             type: "boolean",
           },
           sortBy: {
-            description:
-              "The field to use for sorting user accounts. Defaults to `USER_ID`. Note: when `phone_number` is specified in `expression`, the result ignores the sorting. Only valid when `return_user_info` is set to `true`.",
             enum: [
               "SORT_BY_FIELD_UNSPECIFIED",
               "USER_ID",
@@ -5203,7 +5308,7 @@ export default {
         properties: {
           email: {
             description:
-              "The email of the account to be modified. Specify this and the old password in order to change an account's password without using an out-of-band code.",
+              "Optional. The email of the account to be modified. Specify this and the old password in order to change an account's password without using an out-of-band code.",
             type: "string",
           },
           newPassword: {
@@ -5222,7 +5327,8 @@ export default {
             type: "string",
           },
           tenantId: {
-            description: "The tenant ID of the Identity Platform tenant the account belongs to.",
+            description:
+              "Optional. The tenant ID of the Identity Platform tenant the account belongs to.",
             type: "string",
           },
         },
@@ -5258,14 +5364,30 @@ export default {
       },
       GoogleCloudIdentitytoolkitV1SendVerificationCodeRequest: {
         description:
-          "Request message for SendVerificationCode. At least one of (`ios_receipt` and `ios_secret`), `recaptcha_token`, or `safety_net_token` must be specified to verify the verification code is being sent on behalf of a real app and not an emulator.",
+          "Request message for SendVerificationCode. 'captcha_response' is required when reCAPTCHA enterprise is enabled, or otherwise at least one of (`ios_receipt` and `ios_secret`), `recaptcha_token`, or `play_integrity_token` must be specified to verify the verification code is being sent on behalf of a real app and not an emulator.",
         properties: {
           autoRetrievalInfo: {
             $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1AutoRetrievalInfo",
           },
+          captchaResponse: {
+            description:
+              "Optional. The reCAPTCHA Enterprise token provided by the reCAPTCHA client-side integration. Required when reCAPTCHA enterprise is enabled.",
+            type: "string",
+          },
+          clientType: {
+            description:
+              "Optional. The client type, web, android or ios. Required when reCAPTCHA Enterprise is enabled.",
+            enum: [
+              "CLIENT_TYPE_UNSPECIFIED",
+              "CLIENT_TYPE_WEB",
+              "CLIENT_TYPE_ANDROID",
+              "CLIENT_TYPE_IOS",
+            ],
+            type: "string",
+          },
           iosReceipt: {
             description:
-              "Receipt of successful iOS app token validation. At least one of (`ios_receipt` and `ios_secret`), `recaptcha_token`, or `safety_net_token` must be specified to verify the verification code is being sent on behalf of a real app and not an emulator. This should come from the response of verifyIosClient. If present, the caller should also provide the `ios_secret`, as well as a bundle ID in the `x-ios-bundle-identifier` header, which must match the bundle ID from the verifyIosClient request.",
+              "Receipt of successful iOS app token validation. At least one of (`ios_receipt` and `ios_secret`), `recaptcha_token`, or `play_integrity_token` must be specified to verify the verification code is being sent on behalf of a real app and not an emulator, if 'captcha_response' is not used (reCAPTCHA enterprise is not enabled). This should come from the response of verifyIosClient. If present, the caller should also provide the `ios_secret`, as well as a bundle ID in the `x-ios-bundle-identifier` header, which must match the bundle ID from the verifyIosClient request.",
             type: "string",
           },
           iosSecret: {
@@ -5279,17 +5401,23 @@ export default {
           },
           playIntegrityToken: {
             description:
-              "Android only. Used to assert application identity in place of a recaptcha token (and safety_net_token). At least one of (`ios_receipt` and `ios_secret`), `recaptcha_token`, , or `play_integrity_token` must be specified to verify the verification code is being sent on behalf of a real app and not an emulator. A Play Integrity Token can be generated via the [PlayIntegrity API](https://developer.android.com/google/play/integrity) with applying SHA256 to the `phone_number` field as the nonce.",
+              "Android only. Used to assert application identity in place of a recaptcha token (and safety_net_token). At least one of (`ios_receipt` and `ios_secret`), `recaptcha_token`, , or `play_integrity_token` must be specified to verify the verification code is being sent on behalf of a real app and not an emulator, if 'captcha_response' is not used (reCAPTCHA enterprise is not enabled). A Play Integrity Token can be generated via the [PlayIntegrity API](https://developer.android.com/google/play/integrity) with applying SHA256 to the `phone_number` field as the nonce.",
             type: "string",
           },
           recaptchaToken: {
             description:
-              "Recaptcha token for app verification. At least one of (`ios_receipt` and `ios_secret`), `recaptcha_token`, or `safety_net_token` must be specified to verify the verification code is being sent on behalf of a real app and not an emulator. The recaptcha should be generated by calling getRecaptchaParams and the recaptcha token will be generated on user completion of the recaptcha challenge.",
+              "Recaptcha token for app verification. At least one of (`ios_receipt` and `ios_secret`), `recaptcha_token`, or `play_integrity_token` must be specified to verify the verification code is being sent on behalf of a real app and not an emulator, if 'captcha_response' is not used (reCAPTCHA enterprise is not enabled). The recaptcha should be generated by calling getRecaptchaParams and the recaptcha token will be generated on user completion of the recaptcha challenge.",
+            type: "string",
+          },
+          recaptchaVersion: {
+            description:
+              "Optional. The reCAPTCHA version of the reCAPTCHA token in the captcha_response. Required when reCAPTCHA Enterprise is enabled.",
+            enum: ["RECAPTCHA_VERSION_UNSPECIFIED", "RECAPTCHA_ENTERPRISE"],
             type: "string",
           },
           safetyNetToken: {
             description:
-              "Android only. Used to assert application identity in place of a recaptcha token. At least one of (`ios_receipt` and `ios_secret`), `recaptcha_token`, or `safety_net_token` must be specified to verify the verification code is being sent on behalf of a real app and not an emulator. A SafetyNet Token can be generated via the [SafetyNet Android Attestation API](https://developer.android.com/training/safetynet/attestation.html), with the Base64 encoding of the `phone_number` field as the nonce.",
+              "Android only. Safety Net has been deprecated. Use play_integrity_token instead.",
             type: "string",
           },
           tenantId: {
@@ -5331,7 +5459,6 @@ export default {
           },
           delegatedProjectNumber: { deprecated: true, format: "int64", type: "string" },
           deleteAttribute: {
-            description: "The account's attributes to be deleted.",
             items: {
               enum: [
                 "USER_ATTRIBUTE_NAME_UNSPECIFIED",
@@ -5363,7 +5490,7 @@ export default {
           },
           email: {
             description:
-              "The user's new email to be updated in the account's attributes. The length of email should be less than 256 characters and in the format of `name@domain.tld`. The email should also match the [RFC 822](https://tools.ietf.org/html/rfc822) addr-spec production.",
+              "The user's new email to be updated in the account's attributes. The length of email should be less than 256 characters and in the format of `name@domain.tld`. The email should also match the [RFC 822](https://tools.ietf.org/html/rfc822) addr-spec production. If [email enumeration protection](https://cloud.google.com/identity-platform/docs/admin/email-enumeration-protection) is enabled, the email cannot be changed by the user without verifying the email first, but it can be changed by an administrator.",
             type: "string",
           },
           emailVerified: {
@@ -5438,6 +5565,11 @@ export default {
               "Specifies the minimum timestamp in seconds for an Identity Platform ID token to be considered valid.",
             format: "int64",
             type: "string",
+          },
+          deletePasskey: {
+            type: "array",
+            items: { type: "string" },
+            description: "Credential IDs of passkeys to delete.",
           },
         },
         type: "object",
@@ -5835,7 +5967,7 @@ export default {
           },
           needConfirmation: {
             description:
-              'Whether or not there is an existing Identity Platform user account with the same email address as the current account signed in at the IdP, and the account\'s email addresss is not verified at the IdP. The user will need to sign in to the existing Identity Platform account and then link the current credential from the IdP to it. Only present if the "One account per email address" setting is enabled.',
+              'Whether or not there is an existing Identity Platform user account with the same email address as the current account signed in at the IdP, and the account\'s email address is not verified at the IdP. The user will need to sign in to the existing Identity Platform account and then link the current credential from the IdP to it. Only present if the "One account per email address" setting is enabled.',
             type: "boolean",
           },
           needEmail: { deprecated: true, type: "boolean" },
@@ -6312,7 +6444,6 @@ export default {
             type: "integer",
           },
           passwordHashOrder: {
-            description: "Password and salt order when verify password.",
             enum: ["UNSPECIFIED_ORDER", "SALT_AND_PASSWORD", "PASSWORD_AND_SALT"],
             type: "string",
           },
@@ -6503,6 +6634,11 @@ export default {
               "The version of the account's password. Only accessible by requests bearing a Google OAuth2 credential with proper permissions.",
             format: "int32",
             type: "integer",
+          },
+          passkeyInfo: {
+            type: "array",
+            items: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1PasskeyInfo" },
+            description: "Passkeys enrolled for this user.",
           },
         },
         type: "object",
@@ -6702,11 +6838,19 @@ export default {
             $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2BlockingFunctionsConfig",
           },
           client: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2ClientConfig" },
+          defaultHostingSite: {
+            description: "Output only. Default Firebase hosting site name",
+            readOnly: true,
+            type: "string",
+          },
           emailPrivacyConfig: {
             $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2EmailPrivacyConfig",
           },
           mfa: {
             $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2MultiFactorAuthConfig",
+          },
+          mobileLinksConfig: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2MobileLinksConfig",
           },
           monitoring: {
             $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2MonitoringConfig",
@@ -6872,7 +7016,7 @@ export default {
       },
       GoogleCloudIdentitytoolkitAdminV2EmailTemplate: {
         description:
-          "Email template. The subject and body fields can contain the following placeholders which will be replaced with the appropriate values: %LINK% - The link to use to redeem the send OOB code. %EMAIL% - The email where the email is being sent. %NEW_EMAIL% - The new email being set for the account (when applicable). %APP_NAME% - The GCP project's display name. %DISPLAY_NAME% - The user's display name.",
+          "Email template. The subject and body fields can contain the following placeholders which will be replaced with the appropriate values: %LINK% - The link to use to redeem the send OOB code. %EMAIL% - The email where the email is being sent. %NEW_EMAIL% - The new email being set for the account (when applicable). %APP_NAME% - The Google Cloud project's display name. %DISPLAY_NAME% - The user's display name.",
         properties: {
           body: { description: "Email body", type: "string" },
           bodyFormat: {
@@ -7116,6 +7260,17 @@ export default {
         },
         type: "object",
       },
+      GoogleCloudIdentitytoolkitAdminV2MobileLinksConfig: {
+        description: "Configuration mobile links.",
+        properties: {
+          domain: {
+            description: "Open code in app domain to use for app links and universal links.",
+            enum: ["DOMAIN_UNSPECIFIED", "FIREBASE_DYNAMIC_LINK_DOMAIN", "HOSTING_DOMAIN"],
+            type: "string",
+          },
+        },
+        type: "object",
+      },
       GoogleCloudIdentitytoolkitAdminV2MonitoringConfig: {
         description: "Configuration related to monitoring project activity.",
         properties: {
@@ -7330,7 +7485,7 @@ export default {
         properties: {
           emailPasswordEnforcementState: {
             description:
-              "The reCAPTCHA config for email/password provider, containing the enforcement status. The email/password provider contains all related user flows protected by reCAPTCHA.",
+              "The reCAPTCHA config for email/password provider, containing the enforcement status. The email/password provider contains all email related user flows protected by reCAPTCHA.",
             enum: ["RECAPTCHA_PROVIDER_ENFORCEMENT_STATE_UNSPECIFIED", "OFF", "AUDIT", "ENFORCE"],
             type: "string",
           },
@@ -7342,15 +7497,38 @@ export default {
             },
             type: "array",
           },
+          phoneEnforcementState: {
+            description:
+              "The reCAPTCHA config for phone provider, containing the enforcement status. The phone provider contains all SMS related user flows protected by reCAPTCHA.",
+            enum: ["RECAPTCHA_PROVIDER_ENFORCEMENT_STATE_UNSPECIFIED", "OFF", "AUDIT", "ENFORCE"],
+            type: "string",
+          },
           recaptchaKeys: {
-            description: "Output only. The reCAPTCHA keys.",
+            description: "The reCAPTCHA keys.",
             items: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2RecaptchaKey" },
-            readOnly: true,
+            type: "array",
+          },
+          tollFraudManagedRules: {
+            description:
+              "The managed rules for the authentication action based on reCAPTCHA toll fraud risk scores. Toll fraud managed rules will only take effect when the phone_enforcement_state is AUDIT or ENFORCE and use_sms_toll_fraud_protection is true.",
+            items: {
+              $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2RecaptchaTollFraudManagedRule",
+            },
             type: "array",
           },
           useAccountDefender: {
             description:
               "Whether to use the account defender for reCAPTCHA assessment. Defaults to `false`.",
+            type: "boolean",
+          },
+          useSmsBotScore: {
+            description:
+              "Whether to use the rCE bot score for reCAPTCHA phone provider. Can only be true when the phone_enforcement_state is AUDIT or ENFORCE.",
+            type: "boolean",
+          },
+          useSmsTollFraudProtection: {
+            description:
+              "Whether to use the rCE sms toll fraud protection risk score for reCAPTCHA phone provider. Can only be true when the phone_enforcement_state is AUDIT or ENFORCE.",
             type: "boolean",
           },
         },
@@ -7386,6 +7564,25 @@ export default {
           endScore: {
             description:
               "The end score (inclusive) of the score range for an action. Must be a value between 0.0 and 1.0, at 11 discrete values; e.g. 0, 0.1, 0.2, 0.3, ... 0.9, 1.0. A score of 0.0 indicates the riskiest request (likely a bot), whereas 1.0 indicates the safest request (likely a human). See https://cloud.google.com/recaptcha-enterprise/docs/interpret-assessment.",
+            format: "float",
+            type: "number",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2RecaptchaTollFraudManagedRule: {
+        description:
+          "The config for a reCAPTCHA toll fraud assessment managed rule. Models a single interval [start_score, end_score]. The end_score is implicit. It is either the closest smaller end_score (if one is available) or 0. Intervals in aggregate span [0, 1] without overlapping.",
+        properties: {
+          action: {
+            description:
+              "The action taken if the reCAPTCHA score of a request is within the interval [start_score, end_score].",
+            enum: ["RECAPTCHA_ACTION_UNSPECIFIED", "BLOCK"],
+            type: "string",
+          },
+          startScore: {
+            description:
+              "The start score (inclusive) for an action. Must be a value between 0.0 and 1.0, at 11 discrete values; e.g. 0, 0.1, 0.2, 0.3, ... 0.9, 1.0. A score of 0.0 indicates the safest request (likely legitimate), whereas 1.0 indicates the riskiest request (likely toll fraud). See https://cloud.google.com/recaptcha-enterprise/docs/sms-fraud-detection#create-assessment-sms.",
             format: "float",
             type: "number",
           },
@@ -7548,7 +7745,7 @@ export default {
             type: "string",
           },
           startTime: {
-            description: "When this quota will take affect",
+            description: "When this quota will take effect",
             format: "google-datetime",
             type: "string",
           },
@@ -7592,6 +7789,9 @@ export default {
           },
           mfaConfig: {
             $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2MultiFactorAuthConfig",
+          },
+          mobileLinksConfig: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2MobileLinksConfig",
           },
           monitoring: {
             $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2MonitoringConfig",
@@ -7875,6 +8075,15 @@ export default {
               'The reCAPTCHA Enterprise key resource name, e.g. "projects/{project}/keys/{key}". This will only be returned when the reCAPTCHA enforcement state is AUDIT or ENFORCE on at least one of the reCAPTCHA providers.',
             type: "string",
           },
+          useSmsBotScore: {
+            description: "Whether to use the rCE bot score for reCAPTCHA phone provider.",
+            type: "boolean",
+          },
+          useSmsTollFraudProtection: {
+            description:
+              "Whether to use the rCE sms toll fraud protection risk score for reCAPTCHA phone provider.",
+            type: "boolean",
+          },
         },
         type: "object",
       },
@@ -7888,7 +8097,7 @@ export default {
           },
           provider: {
             description: "The provider that has reCAPTCHA protection.",
-            enum: ["RECAPTCHA_PROVIDER_UNSPECIFIED", "EMAIL_PASSWORD_PROVIDER"],
+            enum: ["RECAPTCHA_PROVIDER_UNSPECIFIED", "EMAIL_PASSWORD_PROVIDER", "PHONE_PROVIDER"],
             type: "string",
           },
         },
@@ -7971,6 +8180,22 @@ export default {
           autoRetrievalInfo: {
             $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2AutoRetrievalInfo",
           },
+          captchaResponse: {
+            description:
+              "The reCAPTCHA Enterprise token provided by the reCAPTCHA client-side integration. Required when reCAPTCHA enterprise is enabled.",
+            type: "string",
+          },
+          clientType: {
+            description:
+              "The client type, web, android or ios. Required when reCAPTCHA Enterprise is enabled.",
+            enum: [
+              "CLIENT_TYPE_UNSPECIFIED",
+              "CLIENT_TYPE_WEB",
+              "CLIENT_TYPE_ANDROID",
+              "CLIENT_TYPE_IOS",
+            ],
+            type: "string",
+          },
           iosReceipt: {
             description: "iOS only. Receipt of successful app token validation with APNS.",
             type: "string",
@@ -7989,6 +8214,12 @@ export default {
             type: "string",
           },
           recaptchaToken: { description: "Web only. Recaptcha solution.", type: "string" },
+          recaptchaVersion: {
+            description:
+              "The reCAPTCHA version of the reCAPTCHA token in the captcha_response. Required when reCAPTCHA Enterprise is enabled.",
+            enum: ["RECAPTCHA_VERSION_UNSPECIFIED", "RECAPTCHA_ENTERPRISE"],
+            type: "string",
+          },
           safetyNetToken: {
             description:
               "Android only. Used to assert application identity in place of a recaptcha token. A SafetyNet Token can be generated via the [SafetyNet Android Attestation API](https://developer.android.com/training/safetynet/attestation.html), with the Base64 encoding of the `phone_number` field as the nonce.",
@@ -8149,13 +8380,13 @@ export default {
           condition: { $ref: "#/components/schemas/GoogleTypeExpr" },
           members: {
             description:
-              "Specifies the principals requesting access for a Google Cloud resource. `members` can have the following values: * `allUsers`: A special identifier that represents anyone who is on the internet; with or without a Google account. * `allAuthenticatedUsers`: A special identifier that represents anyone who is authenticated with a Google account or a service account. Does not include identities that come from external identity providers (IdPs) through identity federation. * `user:{emailid}`: An email address that represents a specific Google account. For example, `alice@example.com` . * `serviceAccount:{emailid}`: An email address that represents a Google service account. For example, `my-other-app@appspot.gserviceaccount.com`. * `serviceAccount:{projectid}.svc.id.goog[{namespace}/{kubernetes-sa}]`: An identifier for a [Kubernetes service account](https://cloud.google.com/kubernetes-engine/docs/how-to/kubernetes-service-accounts). For example, `my-project.svc.id.goog[my-namespace/my-kubernetes-sa]`. * `group:{emailid}`: An email address that represents a Google group. For example, `admins@example.com`. * `domain:{domain}`: The G Suite domain (primary) that represents all the users of that domain. For example, `google.com` or `example.com`. * `deleted:user:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a user that has been recently deleted. For example, `alice@example.com?uid=123456789012345678901`. If the user is recovered, this value reverts to `user:{emailid}` and the recovered user retains the role in the binding. * `deleted:serviceAccount:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a service account that has been recently deleted. For example, `my-other-app@appspot.gserviceaccount.com?uid=123456789012345678901`. If the service account is undeleted, this value reverts to `serviceAccount:{emailid}` and the undeleted service account retains the role in the binding. * `deleted:group:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a Google group that has been recently deleted. For example, `admins@example.com?uid=123456789012345678901`. If the group is recovered, this value reverts to `group:{emailid}` and the recovered group retains the role in the binding.",
+              "Specifies the principals requesting access for a Google Cloud resource. `members` can have the following values: * `allUsers`: A special identifier that represents anyone who is on the internet; with or without a Google account. * `allAuthenticatedUsers`: A special identifier that represents anyone who is authenticated with a Google account or a service account. Does not include identities that come from external identity providers (IdPs) through identity federation. * `user:{emailid}`: An email address that represents a specific Google account. For example, `alice@example.com` . * `serviceAccount:{emailid}`: An email address that represents a Google service account. For example, `my-other-app@appspot.gserviceaccount.com`. * `serviceAccount:{projectid}.svc.id.goog[{namespace}/{kubernetes-sa}]`: An identifier for a [Kubernetes service account](https://cloud.google.com/kubernetes-engine/docs/how-to/kubernetes-service-accounts). For example, `my-project.svc.id.goog[my-namespace/my-kubernetes-sa]`. * `group:{emailid}`: An email address that represents a Google group. For example, `admins@example.com`. * `domain:{domain}`: The G Suite domain (primary) that represents all the users of that domain. For example, `google.com` or `example.com`. * `principal://iam.googleapis.com/locations/global/workforcePools/{pool_id}/subject/{subject_attribute_value}`: A single identity in a workforce identity pool. * `principalSet://iam.googleapis.com/locations/global/workforcePools/{pool_id}/group/{group_id}`: All workforce identities in a group. * `principalSet://iam.googleapis.com/locations/global/workforcePools/{pool_id}/attribute.{attribute_name}/{attribute_value}`: All workforce identities with a specific attribute value. * `principalSet://iam.googleapis.com/locations/global/workforcePools/{pool_id}/*`: All identities in a workforce identity pool. * `principal://iam.googleapis.com/projects/{project_number}/locations/global/workloadIdentityPools/{pool_id}/subject/{subject_attribute_value}`: A single identity in a workload identity pool. * `principalSet://iam.googleapis.com/projects/{project_number}/locations/global/workloadIdentityPools/{pool_id}/group/{group_id}`: A workload identity pool group. * `principalSet://iam.googleapis.com/projects/{project_number}/locations/global/workloadIdentityPools/{pool_id}/attribute.{attribute_name}/{attribute_value}`: All identities in a workload identity pool with a certain attribute. * `principalSet://iam.googleapis.com/projects/{project_number}/locations/global/workloadIdentityPools/{pool_id}/*`: All identities in a workload identity pool. * `deleted:user:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a user that has been recently deleted. For example, `alice@example.com?uid=123456789012345678901`. If the user is recovered, this value reverts to `user:{emailid}` and the recovered user retains the role in the binding. * `deleted:serviceAccount:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a service account that has been recently deleted. For example, `my-other-app@appspot.gserviceaccount.com?uid=123456789012345678901`. If the service account is undeleted, this value reverts to `serviceAccount:{emailid}` and the undeleted service account retains the role in the binding. * `deleted:group:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a Google group that has been recently deleted. For example, `admins@example.com?uid=123456789012345678901`. If the group is recovered, this value reverts to `group:{emailid}` and the recovered group retains the role in the binding. * `deleted:principal://iam.googleapis.com/locations/global/workforcePools/{pool_id}/subject/{subject_attribute_value}`: Deleted single identity in a workforce identity pool. For example, `deleted:principal://iam.googleapis.com/locations/global/workforcePools/my-pool-id/subject/my-subject-attribute-value`.",
             items: { type: "string" },
             type: "array",
           },
           role: {
             description:
-              "Role that is assigned to the list of `members`, or principals. For example, `roles/viewer`, `roles/editor`, or `roles/owner`.",
+              "Role that is assigned to the list of `members`, or principals. For example, `roles/viewer`, `roles/editor`, or `roles/owner`. For an overview of the IAM roles and permissions, see the [IAM documentation](https://cloud.google.com/iam/docs/roles-overview). For a list of the available pre-defined roles, see [here](https://cloud.google.com/iam/docs/understanding-roles).",
             type: "string",
           },
         },
@@ -8180,7 +8411,7 @@ export default {
       },
       GoogleIamV1Policy: {
         description:
-          'An Identity and Access Management (IAM) policy, which specifies access controls for Google Cloud resources. A `Policy` is a collection of `bindings`. A `binding` binds one or more `members`, or principals, to a single `role`. Principals can be user accounts, service accounts, Google groups, and domains (such as G Suite). A `role` is a named list of permissions; each `role` can be an IAM predefined role or a user-created custom role. For some types of Google Cloud resources, a `binding` can also specify a `condition`, which is a logical expression that allows access to a resource only if the expression evaluates to `true`. A condition can add constraints based on attributes of the request, the resource, or both. To learn which resources support conditions in their IAM policies, see the [IAM documentation](https://cloud.google.com/iam/help/conditions/resource-policies). **JSON example:** { "bindings": [ { "role": "roles/resourcemanager.organizationAdmin", "members": [ "user:mike@example.com", "group:admins@example.com", "domain:google.com", "serviceAccount:my-project-id@appspot.gserviceaccount.com" ] }, { "role": "roles/resourcemanager.organizationViewer", "members": [ "user:eve@example.com" ], "condition": { "title": "expirable access", "description": "Does not grant access after Sep 2020", "expression": "request.time < timestamp(\'2020-10-01T00:00:00.000Z\')", } } ], "etag": "BwWWja0YfJA=", "version": 3 } **YAML example:** bindings: - members: - user:mike@example.com - group:admins@example.com - domain:google.com - serviceAccount:my-project-id@appspot.gserviceaccount.com role: roles/resourcemanager.organizationAdmin - members: - user:eve@example.com role: roles/resourcemanager.organizationViewer condition: title: expirable access description: Does not grant access after Sep 2020 expression: request.time < timestamp(\'2020-10-01T00:00:00.000Z\') etag: BwWWja0YfJA= version: 3 For a description of IAM and its features, see the [IAM documentation](https://cloud.google.com/iam/docs/).',
+          'An Identity and Access Management (IAM) policy, which specifies access controls for Google Cloud resources. A `Policy` is a collection of `bindings`. A `binding` binds one or more `members`, or principals, to a single `role`. Principals can be user accounts, service accounts, Google groups, and domains (such as G Suite). A `role` is a named list of permissions; each `role` can be an IAM predefined role or a user-created custom role. For some types of Google Cloud resources, a `binding` can also specify a `condition`, which is a logical expression that allows access to a resource only if the expression evaluates to `true`. A condition can add constraints based on attributes of the request, the resource, or both. To learn which resources support conditions in their IAM policies, see the [IAM documentation](https://cloud.google.com/iam/help/conditions/resource-policies). **JSON example:** ``` { "bindings": [ { "role": "roles/resourcemanager.organizationAdmin", "members": [ "user:mike@example.com", "group:admins@example.com", "domain:google.com", "serviceAccount:my-project-id@appspot.gserviceaccount.com" ] }, { "role": "roles/resourcemanager.organizationViewer", "members": [ "user:eve@example.com" ], "condition": { "title": "expirable access", "description": "Does not grant access after Sep 2020", "expression": "request.time < timestamp(\'2020-10-01T00:00:00.000Z\')", } } ], "etag": "BwWWja0YfJA=", "version": 3 } ``` **YAML example:** ``` bindings: - members: - user:mike@example.com - group:admins@example.com - domain:google.com - serviceAccount:my-project-id@appspot.gserviceaccount.com role: roles/resourcemanager.organizationAdmin - members: - user:eve@example.com role: roles/resourcemanager.organizationViewer condition: title: expirable access description: Does not grant access after Sep 2020 expression: request.time < timestamp(\'2020-10-01T00:00:00.000Z\') etag: BwWWja0YfJA= version: 3 ``` For a description of IAM and its features, see the [IAM documentation](https://cloud.google.com/iam/docs/).',
         properties: {
           auditConfigs: {
             description: "Specifies cloud audit logging configuration for this policy.",
@@ -8332,6 +8563,10 @@ export default {
         description: "Emulator-specific configuration.",
         properties: {
           signIn: { properties: { allowDuplicateEmails: { type: "boolean" } }, type: "object" },
+          emailPrivacyConfig: {
+            properties: { enableImprovedEmailPrivacy: { type: "boolean" } },
+            type: "object",
+          },
         },
       },
       EmulatorV1ProjectsOobCodes: {
@@ -8368,6 +8603,57 @@ export default {
             },
           },
         },
+      },
+      GoogleCloudIdentitytoolkitV1PasskeyInfo: {
+        type: "object",
+        properties: { credentialId: { type: "string" }, name: { type: "string" } },
+      },
+      GoogleCloudIdentitytoolkitV2StartPasskeyEnrollmentRequest: {
+        type: "object",
+        properties: { idToken: { type: "string" }, tenantId: { type: "string" } },
+      },
+      GoogleCloudIdentitytoolkitV2StartPasskeyEnrollmentResponse: {
+        type: "object",
+        properties: { credentialCreationOptions: { type: "object" } },
+      },
+      GoogleCloudIdentitytoolkitV2FinalizePasskeyEnrollmentRequest: {
+        type: "object",
+        properties: {
+          idToken: { type: "string" },
+          tenantId: { type: "string" },
+          authenticatorRegistrationResponse: { type: "object" },
+          name: { type: "string" },
+          displayName: { type: "string" },
+        },
+      },
+      GoogleCloudIdentitytoolkitV2FinalizePasskeyEnrollmentResponse: {
+        type: "object",
+        properties: {
+          localId: { type: "string" },
+          idToken: { type: "string" },
+          refreshToken: { type: "string" },
+        },
+      },
+      GoogleCloudIdentitytoolkitV2StartPasskeySignInRequest: {
+        type: "object",
+        properties: { tenantId: { type: "string" } },
+      },
+      GoogleCloudIdentitytoolkitV2StartPasskeySignInResponse: {
+        type: "object",
+        properties: { credentialRequestOptions: { type: "object" } },
+      },
+      GoogleCloudIdentitytoolkitV2FinalizePasskeySignInRequest: {
+        type: "object",
+        properties: {
+          tenantId: { type: "string" },
+          authenticatorAuthenticationResponse: { type: "object" },
+          name: { type: "string" },
+          displayName: { type: "string" },
+        },
+      },
+      GoogleCloudIdentitytoolkitV2FinalizePasskeySignInResponse: {
+        type: "object",
+        properties: { idToken: { type: "string" }, refreshToken: { type: "string" } },
       },
     },
     parameters: {

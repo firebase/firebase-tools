@@ -318,6 +318,15 @@ async function injectAntigravityContext(
     global: installLocation === "global",
     background: false,
     agentName: "gemini-cli",
+    skillPackage: "firebase/agent-skills",
+  });
+
+  await installAgentSkills({
+    cwd: rootPath,
+    global: installLocation === "global",
+    background: false,
+    agentName: "gemini-cli",
+    skillPackage: "genkit-ai/skills",
   });
 
   // System Instructions

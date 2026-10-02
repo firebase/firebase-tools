@@ -338,7 +338,10 @@ export async function getSigninMethods(testAgent: TestAgent, email: string): Pro
   return res.body.signinMethods;
 }
 
-export async function updateProjectConfig(testAgent: TestAgent, config: {}): Promise<void> {
+export async function updateProjectConfig(
+  testAgent: TestAgent,
+  config: Record<string, unknown>,
+): Promise<void> {
   const res = await testAgent
     .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
     .set("Authorization", "Bearer owner")
@@ -349,7 +352,7 @@ export async function updateProjectConfig(testAgent: TestAgent, config: {}): Pro
 export async function updateAccountByLocalId(
   testAgent: TestAgent,
   localId: string,
-  fields: {},
+  fields: Record<string, unknown>,
 ): Promise<void> {
   const res = await testAgent
     .post("/identitytoolkit.googleapis.com/v1/accounts:update")
@@ -384,7 +387,10 @@ export async function enrollPhoneMfa(
   return { idToken: mfaFinalRes.body.idToken, refreshToken: mfaFinalRes.body.refreshToken };
 }
 
-export async function deleteAccount(testAgent: TestAgent, reqBody: {}): Promise<string> {
+export async function deleteAccount(
+  testAgent: TestAgent,
+  reqBody: Record<string, unknown>,
+): Promise<string> {
   const res = await testAgent
     .post("/identitytoolkit.googleapis.com/v1/accounts:delete")
     .send(reqBody)

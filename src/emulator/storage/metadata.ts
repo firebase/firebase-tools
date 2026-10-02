@@ -1,4 +1,3 @@
-import * as uuid from "uuid";
 import * as crypto from "crypto";
 import { EmulatorRegistry } from "../registry";
 import { Emulators } from "../types";
@@ -244,7 +243,7 @@ export class StoredFileMetadata {
   }
 
   addDownloadToken(shouldTrigger = true): void {
-    this.downloadTokens = [...(this.downloadTokens || []), uuid.v4()];
+    this.downloadTokens = [...(this.downloadTokens || []), crypto.randomUUID()];
     this.update({}, shouldTrigger);
   }
 

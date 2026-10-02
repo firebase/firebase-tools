@@ -9,13 +9,13 @@ IFS=$'\n\t'
 firebase experiments:enable internaltesting
 
 # Install yarn
-npm i -g yarn
+npm i -g yarn --prefer-offline --no-audit
 
 # Install pnpm
-npm install -g pnpm --force # it's okay to reinstall pnpm
+npm install -g pnpm --force --prefer-offline --no-audit # it's okay to reinstall pnpm
 
 for dir in ./scripts/functions-discover-tests/fixtures/*; do
   (cd $dir && ./install.sh)
 done
 
-mocha scripts/functions-discover-tests/tests.ts
+mocha --exit scripts/functions-discover-tests/tests.ts

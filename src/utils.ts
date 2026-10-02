@@ -12,7 +12,6 @@ import * as clc from "colorette";
 import * as open from "open";
 import * as ora from "ora";
 import * as process from "process";
-import { Readable } from "stream";
 import { AssertionError } from "assert";
 import { getPortPromise as getPort } from "portfinder";
 
@@ -309,34 +308,7 @@ export function explainStdin(): void {
   }
 }
 
-/**
- * Converts text input to a Readable stream.
- * @param text string to turn into a stream.
- * @return Readable stream, or undefined if text is empty.
- */
-export function stringToStream(text: string): Readable | undefined {
-  if (!text) {
-    return undefined;
-  }
-  const s = new Readable();
-  s.push(text);
-  s.push(null);
-  return s;
-}
-
-/**
- * Converts a Readable stream into a string.
- * @param s a readable stream.
- * @return a promise resolving to the string'd contents of the stream.
- */
-export function streamToString(s: NodeJS.ReadableStream): Promise<string> {
-  return new Promise((resolve, reject) => {
-    let b = "";
-    s.on("error", reject);
-    s.on("data", (d) => (b += `${d}`));
-    s.once("end", () => resolve(b));
-  });
-}
+export { stringToStream, streamToString } from "./streamUtils";
 
 /**
  * Sets the active project alias or id in the specified directory.
@@ -512,6 +484,59 @@ export async function promiseWithSpinner<T>(action: () => Promise<T>, message: s
 /** Creates a promise that resolves after a given timeout. await to "sleep". */
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Calculates the exponential backoff delay in milliseconds. */
+export function timeToWait(retryNumber: number, delay: number, maxDelay: number): number {
+  return Math.min(delay * Math.pow(2, retryNumber), maxDelay);
+}
+
+/** Creates a promise to wait for the nth exponential backoff delay. */
+export function backoff(retryNumber: number, delay: number, maxDelay: number): Promise<void> {
+  return sleep(timeToWait(retryNumber, delay, maxDelay));
+}
+
+export interface RetryWithBackoffOptions {
+  /**
+   * Predicate determining whether an error is retryable. Required so callers
+   * explicitly define expected transient error conditions rather than blindly retrying fatal errors.
+   */
+  retryPredicate: (err: unknown) => boolean;
+  /** Maximum number of retry attempts before giving up. Default: 0 (matches Throttler). */
+  retries?: number;
+  /** Initial delay in milliseconds for the first retry backoff. Default: 200ms (matches Throttler). */
+  delay?: number;
+  /** Maximum delay cap in milliseconds for any single backoff sleep. Default: 60000ms (matches Throttler). */
+  maxDelay?: number;
+}
+
+/**
+ * Runs an asynchronous operation and retries it with exponential backoff when errors match `retryPredicate`.
+ *
+ * Timing defaults:
+ * - `delay`: 200ms (matches Throttler).
+ * - `maxDelay`: 60000ms (matches Throttler).
+ * - `retries`: 0 (matches Throttler).
+ */
+export async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  options: RetryWithBackoffOptions,
+): Promise<T> {
+  const retries = options.retries ?? 0;
+  const delay = options.delay ?? 200;
+  const maxDelay = options.maxDelay ?? 60000;
+
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fn();
+    } catch (err: unknown) {
+      if (attempt < retries && options.retryPredicate(err)) {
+        await backoff(attempt, delay, maxDelay);
+        continue;
+      }
+      throw err;
+    }
+  }
 }
 
 /**
@@ -924,27 +949,6 @@ export function readSecretValue(prompt: string, dataFile?: string): Promise<stri
 }
 
 /**
- * Updates or creates a .gitignore file with the given entries in the given path
- */
-export function updateOrCreateGitignore(dirPath: string, entries: string[]) {
-  const gitignorePath = path.join(dirPath, ".gitignore");
-
-  if (!fs.existsSync(gitignorePath)) {
-    fs.writeFileSync(gitignorePath, entries.join("\n"));
-    return;
-  }
-
-  let content = fs.readFileSync(gitignorePath, "utf-8");
-  for (const entry of entries) {
-    if (!content.includes(entry)) {
-      content += `\n${entry}\n`;
-    }
-  }
-
-  fs.writeFileSync(gitignorePath, content);
-}
-
-/**
  * Prompts for a directory name, and reprompts if that path does not exist
  * N.B. Moved from the original prompt library to this file because it brings in a lot of
  * dependencies. Moved to "utils" because this file arleady brings in the world.
@@ -1066,4 +1070,154 @@ export function toLowerSnakeCase(s: string): string {
     .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
     .replace(/[-\s]+/g, "_")
     .toLowerCase();
+}
+
+/**
+ * Generates a 32-bit positive integer using the MurmurHash3 algorithm.
+ *
+ * Based on the open-source JavaScript implementation of MurmurHash3 by Gary Court.
+ * @see https://github.com/garycourt/murmurhash-js
+ *
+ * @param key - The string or byte array to hash.
+ * @param seed - Optional seed value (default is 0).
+ * @returns A 32-bit positive integer hash value.
+ */
+export function murmurHashV3(key: string | Uint8Array, seed = 0): number {
+  if (typeof key === "string") {
+    key = new TextEncoder().encode(key);
+  }
+  const remainder = key.length & 3;
+  const bytes = key.length - remainder;
+  const c1 = 3432918353;
+  const c2 = 461845907;
+
+  let h1 = seed;
+  let i = 0;
+  let k1 = 0;
+
+  while (i < bytes) {
+    k1 =
+      (key[i] & 255) |
+      ((key[++i] & 255) << 8) |
+      ((key[++i] & 255) << 16) |
+      ((key[++i] & 255) << 24);
+    ++i;
+    k1 = ((k1 & 65535) * c1 + ((((k1 >>> 16) * c1) & 65535) << 16)) & 4294967295;
+    k1 = (k1 << 15) | (k1 >>> 17);
+    k1 = ((k1 & 65535) * c2 + ((((k1 >>> 16) * c2) & 65535) << 16)) & 4294967295;
+    h1 ^= k1;
+    h1 = (h1 << 13) | (h1 >>> 19);
+    const h1b = ((h1 & 65535) * 5 + ((((h1 >>> 16) * 5) & 65535) << 16)) & 4294967295;
+    h1 = (h1b & 65535) + 27492 + ((((h1b >>> 16) + 58964) & 65535) << 16);
+  }
+  k1 = 0;
+  switch (remainder) {
+    case 3:
+      k1 ^= (key[i + 2] & 255) << 16;
+    // falls through
+    case 2:
+      k1 ^= (key[i + 1] & 255) << 8;
+    // falls through
+    case 1:
+      k1 ^= key[i] & 255;
+      k1 = ((k1 & 65535) * c1 + ((((k1 >>> 16) * c1) & 65535) << 16)) & 4294967295;
+      k1 = (k1 << 15) | (k1 >>> 17);
+      k1 = ((k1 & 65535) * c2 + ((((k1 >>> 16) * c2) & 65535) << 16)) & 4294967295;
+      h1 ^= k1;
+  }
+  h1 ^= key.length;
+  h1 ^= h1 >>> 16;
+  h1 = ((h1 & 65535) * 2246822507 + ((((h1 >>> 16) * 2246822507) & 65535) << 16)) & 4294967295;
+  h1 ^= h1 >>> 13;
+  h1 = ((h1 & 65535) * 3266489909 + ((((h1 >>> 16) * 3266489909) & 65535) << 16)) & 4294967295;
+  h1 ^= h1 >>> 16;
+  return h1 >>> 0;
+}
+
+/**
+ * Formats a byte count into a human-readable file size string.
+ */
+export function formatFilesize(bytes: number, decimals = 2): string {
+  if (bytes <= 0) return "0 Bytes";
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
+}
+
+export type Limit = <T>(fn: () => Promise<T>) => Promise<T>;
+
+/**
+ * A lightweight Promise concurrency limiter.
+ */
+export function pLimit(concurrency: number): Limit {
+  if (!Number.isInteger(concurrency) || concurrency <= 0) {
+    throw new FirebaseError(`pLimit concurrency must be a positive integer, got ${concurrency}`);
+  }
+
+  const queue: Array<() => void> = [];
+  let activeCount = 0;
+
+  const next = () => {
+    activeCount--;
+    if (queue.length > 0) {
+      queue.shift()?.();
+    }
+  };
+
+  return <T>(fn: () => Promise<T>): Promise<T> => {
+    return new Promise<T>((resolve, reject) => {
+      const run = () => {
+        activeCount++;
+        try {
+          Promise.resolve(fn()).then(resolve, reject).finally(next);
+        } catch (err) {
+          reject(err);
+          next();
+        }
+      };
+
+      if (activeCount < concurrency) {
+        run();
+      } else {
+        queue.push(run);
+      }
+    });
+  };
+}
+
+/**
+ * Calculates the Levenshtein distance between two strings.
+ */
+export function stringDistance(a: string, b: string): number {
+  if (a === b) return 0;
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+
+  // Make 's1' the shorter string to optimize space
+  const [s1, s2] = a.length <= b.length ? [a, b] : [b, a];
+  const v0 = new Array<number>(s1.length + 1);
+  const v1 = new Array<number>(s1.length + 1);
+
+  for (let i = 0; i <= s1.length; i++) {
+    v0[i] = i;
+  }
+
+  for (let i = 0; i < s2.length; i++) {
+    v1[0] = i + 1;
+    for (let j = 0; j < s1.length; j++) {
+      const cost = s1[j] === s2[i] ? 0 : 1;
+      v1[j + 1] = Math.min(
+        v1[j] + 1, // Insertion
+        v0[j + 1] + 1, // Deletion
+        v0[j] + cost, // Substitution
+      );
+    }
+    for (let j = 0; j <= s1.length; j++) {
+      v0[j] = v1[j];
+    }
+  }
+
+  return v0[s1.length];
 }

@@ -4,12 +4,18 @@ import * as clc from "colorette";
 import { FirebaseError } from "../../error";
 import { getSecretVersion, SecretVersion } from "../../gcp/secretManager";
 import { logger } from "../../logger";
-import { EndpointFilter, endpointMatchesFilter, getFunctionLabel } from "./functionsDeployHelper";
+import {
+  EndpointFilter,
+  endpointMatchesFilter,
+  generationDowngradeMessage,
+  getFunctionLabel,
+} from "./functionsDeployHelper";
 import { serviceForEndpoint } from "./services";
 import * as fsutils from "../../fsutils";
 import * as backend from "./backend";
 import * as utils from "../../utils";
 import * as secrets from "../../functions/secrets";
+import { assertExhaustive } from "../../functional";
 
 /**
  * GCF Gen 1 has a max timeout of 540s.
@@ -83,7 +89,11 @@ function validateScheduledTimeout(ep: backend.Endpoint): void {
 }
 
 /** Validate that the configuration for endpoints are valid. */
-export function endpointsAreValid(wantBackend: backend.Backend): void {
+export function endpointsAreValid(
+  wantBackend: backend.Backend,
+  existingBackend?: backend.Backend,
+): void {
+  validateLifecycleHooks(wantBackend, existingBackend);
   const endpoints = backend.allEndpoints(wantBackend);
   functionIdsAreValid(endpoints);
   validateTimeoutConfig(endpoints);
@@ -125,6 +135,30 @@ export function endpointsAreValid(wantBackend: backend.Backend): void {
     throw new FirebaseError(msg);
   }
   cpuConfigIsValid(endpoints);
+}
+
+/**
+ * Rejects an existing gcfv2 function or Cloud Run service being redeployed as gcfv1. Runs
+ * before the source is prepared, and before inferDetailsFromExisting copies settings that
+ * are only legal on the existing generation onto the gcfv1 endpoint.
+ */
+export function noGenerationDowngrades(
+  wantBackends: Record<string, backend.Backend>,
+  existingBackend: backend.Backend,
+): void {
+  const msgs: string[] = [];
+  for (const wantBackend of Object.values(wantBackends)) {
+    for (const want of backend.allEndpoints(wantBackend).sort(backend.compareFunctions)) {
+      const have = existingBackend.endpoints[want.region]?.[want.id];
+      const msg = have && generationDowngradeMessage(want, have);
+      if (msg) {
+        msgs.push(msg);
+      }
+    }
+  }
+  if (msgs.length) {
+    throw new FirebaseError(msgs.join("\n"));
+  }
 }
 
 /**
@@ -360,6 +394,13 @@ function validatePlatformTargets(endpoints: backend.Endpoint[]) {
  * A secret version is valid if:
  *   1) It exists.
  *   2) It's in state "enabled".
+ *
+ * By default, secrets versions are overriden to be the latest version at
+ * deploy time. This is distinct from being set to the string "latest"
+ * which would not have any pinning at all.
+ *
+ * We currently allow users to pin a specific, non-latest version only if
+ * the secret's binding came from a .env reference that specifies that version.
  */
 async function validateSecretVersions(projectId: string, endpoints: backend.Endpoint[]) {
   const toResolve: Set<string> = new Set();
@@ -369,9 +410,11 @@ async function validateSecretVersions(projectId: string, endpoints: backend.Endp
 
   const results = await utils.allSettled(
     Array.from(toResolve).map(async (secret): Promise<SecretVersion> => {
-      // We resolve the secret to its latest version - we do not allow CF3 customers to pin secret versions.
+      // We resolve the secret to its latest version - we usually do not allow CF3 customers to pin secret versions.
       const sv = await getSecretVersion(projectId, secret, "latest");
-      logger.debug(`Resolved secret version of ${clc.bold(secret)} to ${clc.bold(sv.versionId)}.`);
+      logger.debug(
+        `Resolved latest secret version of ${clc.bold(secret)} to ${clc.bold(sv.versionId)}.`,
+      );
       return sv;
     }),
   );
@@ -400,7 +443,11 @@ async function validateSecretVersions(projectId: string, endpoints: backend.Endp
 
   // Fill in versions.
   for (const s of secrets.of(endpoints)) {
-    s.version = secretVersions[s.secret].versionId;
+    if (!s.version || !s.allowVersionPinning) {
+      s.version = secretVersions[s.secret].versionId;
+    }
+    // This is a sentinel field that should not be exposed to Cloud Run.
+    delete s.allowVersionPinning;
     if (!s.version) {
       throw new FirebaseError(
         "Secret version is unexpectedly undefined. This should never happen.",
@@ -438,4 +485,62 @@ export function checkFiltersIntegrity(
       throw new FirebaseError(`No function matches the filter: ${parts.join(":")}`);
     }
   }
+}
+
+/** Validate that the lifecycle hooks target valid endpoints in the backend. */
+export function validateLifecycleHooks(
+  wantBackend: backend.Backend,
+  existingBackend?: backend.Backend,
+): void {
+  if (!wantBackend.lifecycleHooks) {
+    return;
+  }
+  const endpoints = [
+    ...backend.allEndpoints(wantBackend),
+    ...(existingBackend ? backend.allEndpoints(existingBackend) : []),
+  ];
+  for (const [eventType, hook] of Object.entries(wantBackend.lifecycleHooks)) {
+    const keys = Object.keys(hook).filter((k) => ["task", "call", "http"].includes(k));
+    if (keys.length !== 1) {
+      throw new FirebaseError(
+        `Lifecycle hook "${eventType}" must specify exactly one action (task, call, or http).`,
+      );
+    }
+
+    if ("task" in hook) {
+      const targetEndpoint = findAndValidateTargetEndpoint(
+        endpoints,
+        hook.task.function,
+        eventType,
+      );
+      if (!backend.isTaskQueueTriggered(targetEndpoint)) {
+        throw new FirebaseError(`Lifecycle hook "${eventType}" expects a task queue function.`);
+      }
+    } else if ("call" in hook) {
+      throw new FirebaseError(`Lifecycle hook action type "call" is not supported in the CLI yet.`);
+    } else if ("http" in hook) {
+      throw new FirebaseError(`Lifecycle hook action type "http" is not supported in the CLI yet.`);
+    } else {
+      assertExhaustive(hook);
+    }
+  }
+}
+
+function findAndValidateTargetEndpoint(
+  endpoints: backend.Endpoint[],
+  functionName: string,
+  eventType: string,
+): backend.Endpoint {
+  const targetEndpoint = endpoints.find((e) => e.id === functionName);
+  if (!targetEndpoint) {
+    throw new FirebaseError(
+      `Target endpoint "${functionName}" not found in backend for lifecycle hook "${eventType}".`,
+    );
+  }
+  if (targetEndpoint.platform === "gcfv1") {
+    throw new FirebaseError(
+      `Target endpoint "${functionName}" is a GCF Gen 1 function. Lifecycle hooks are only supported for GCF Gen 2 functions.`,
+    );
+  }
+  return targetEndpoint;
 }

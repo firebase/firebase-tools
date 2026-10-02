@@ -1,6 +1,6 @@
 import * as os from "os";
 import * as path from "path";
-import * as uuid from "uuid";
+import { randomUUID } from "crypto";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
@@ -48,7 +48,7 @@ export const command = new Command("crashlytics:symbols:upload <symbolFiles...>"
       generator,
       cachePath: path.join(
         SYMBOL_CACHE_ROOT_DIR,
-        `crashlytics-${uuid.v4()}`,
+        `crashlytics-${randomUUID()}`,
         "nativeSymbols",
         // Windows does not allow ":" in their directory names
         app.replace(/:/g, "-"),

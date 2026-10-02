@@ -1,9 +1,10 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
-import { localBuild, runUniversalMaker } from "./localbuilds";
+import { localBuild, runUniversalMaker, validateLocalBuildNodeVersion } from "./localbuilds";
 import * as secrets from "./secrets/index";
 import { EnvMap } from "./yaml";
 import * as childProcess from "child_process";
+import * as utils from "../utils";
 
 import * as universalMakerDownload from "./universalMakerDownload";
 import * as fsExtra from "fs-extra";
@@ -257,6 +258,39 @@ describe("localBuild", () => {
       await localBuild("test-project", "./", envMap, { nonInteractive: false });
       expect(confirmStub).to.have.been.calledOnce;
     });
+
+    describe("GOOGLE_BUILDABLE injection", () => {
+      const testCases: Array<{ input: string; expected: string | undefined; desc: string }> = [
+        { input: "/", expected: undefined, desc: "root slash '/'" },
+        { input: ".", expected: undefined, desc: "current directory '.'" },
+        { input: "./", expected: undefined, desc: "current directory relative './'" },
+        { input: "", expected: undefined, desc: "empty string ''" },
+        { input: "apps/web", expected: "apps/web", desc: "standard subdirectory 'apps/web'" },
+        { input: "/apps/web", expected: "apps/web", desc: "leading slash '/apps/web'" },
+        { input: "./apps/web", expected: "apps/web", desc: "dot-slash relative './apps/web'" },
+        { input: "apps/web/", expected: "apps/web", desc: "trailing slash 'apps/web/'" },
+        { input: "apps\\web", expected: "apps/web", desc: "windows backslashes 'apps\\web'" },
+      ];
+
+      for (const { input, expected, desc } of testCases) {
+        it(`handles ${desc} -> GOOGLE_BUILDABLE: ${expected ?? "undefined"}`, async () => {
+          const spawnStub = sinon.stub(childProcess, "spawnSync").returns({
+            status: 0,
+            output: ["", "mock output", ""],
+            pid: 12345,
+            stdout: "mock stdout",
+            stderr: "mock stderr",
+            signal: null,
+          });
+
+          await localBuild("test-project", "./", {}, { rootDir: input });
+
+          expect(spawnStub).to.have.been.calledOnce;
+          const env = spawnStub.firstCall.args[2]?.env;
+          expect(env?.GOOGLE_BUILDABLE).to.equal(expected);
+        });
+      }
+    });
   });
 
   describe("runUniversalMaker", () => {
@@ -310,6 +344,182 @@ describe("localBuild", () => {
         "Failed to execute the Universal Maker binary at /path/to/universal_maker due to permission constraints. Please assure you have set execution permissions (e.g., chmod +x) on the file.",
       );
       sinon.assert.calledOnce(downloadStub);
+    });
+  });
+
+  describe("validateLocalBuildNodeVersion", () => {
+    let logWarningStub: sinon.SinonStub;
+    let execSyncStub: sinon.SinonStub;
+    let readJsonStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      logWarningStub = sinon.stub(utils, "logLabeledWarning");
+      execSyncStub = sinon.stub(childProcess, "execSync");
+      readJsonStub = sinon.stub(fsExtra, "readJsonSync");
+    });
+
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it("throws error if ABIU is disabled", () => {
+      const backend = {
+        name: "projects/my-project/locations/us-central1/backends/foo",
+        runtime: { value: "nodejs" },
+      } as any;
+
+      expect(() => validateLocalBuildNodeVersion(backend, "./")).to.throw(
+        "Local builds are only supported for backends with ABIU",
+      );
+    });
+
+    it("logs warning and exits early if runtime version is not extractable", () => {
+      const backend = {
+        name: "projects/my-project/locations/us-central1/backends/foo",
+        runtime: { value: "invalid-runtime-string" },
+      } as any;
+
+      validateLocalBuildNodeVersion(backend, "./");
+
+      expect(logWarningStub).to.have.been.calledWith(
+        "apphosting",
+        sinon.match("Unable to extract Node.js major version from the backend runtime"),
+      );
+      expect(execSyncStub).to.not.have.been.called;
+    });
+
+    it("warns about package.json engines not being used for local build execution", () => {
+      const backend = {
+        name: "projects/my-project/locations/us-central1/backends/foo",
+        runtime: { value: "nodejs22" },
+      } as any;
+
+      execSyncStub.returns("v22.15.0");
+      readJsonStub.returns({
+        engines: { node: "22" },
+      });
+
+      validateLocalBuildNodeVersion(backend, "./");
+
+      expect(logWarningStub).to.have.been.calledOnceWith(
+        "apphosting",
+        sinon.match('local builds do NOT use the "engines" field'),
+      );
+    });
+
+    it("warns if package.json engines range does not satisfy the target version", () => {
+      const backend = {
+        name: "projects/my-project/locations/us-central1/backends/foo",
+        runtime: { value: "nodejs22" },
+      } as any;
+
+      execSyncStub.returns("v22.15.0");
+      readJsonStub.returns({
+        engines: { node: "20" },
+      });
+
+      validateLocalBuildNodeVersion(backend, "./");
+
+      expect(logWarningStub).to.have.been.calledTwice;
+      expect(logWarningStub.secondCall).to.have.been.calledWith(
+        "apphosting",
+        sinon.match("does not satisfy your backend's target ABIU runtime version"),
+      );
+    });
+
+    it("does not warn on minor/patch constraints in engines if target major is satisfied", () => {
+      const backend = {
+        name: "projects/my-project/locations/us-central1/backends/foo",
+        runtime: { value: "nodejs22" },
+      } as any;
+
+      execSyncStub.returns("v22.15.0");
+      readJsonStub.returns({
+        engines: { node: "^22.15.0" },
+      });
+
+      validateLocalBuildNodeVersion(backend, "./");
+
+      // Should only log the informational "engines not used for local build execution" warning
+      expect(logWarningStub).to.have.been.calledOnce;
+      expect(logWarningStub.firstCall).to.have.been.calledWith(
+        "apphosting",
+        sinon.match('local builds do NOT use the "engines" field'),
+      );
+    });
+
+    it("handles complex logical OR engines ranges correctly", () => {
+      const backend = {
+        name: "projects/my-project/locations/us-central1/backends/foo",
+        runtime: { value: "nodejs22" },
+      } as any;
+
+      execSyncStub.returns("v22.15.0");
+
+      // Case 1: Overlapping OR range (18 || 22) - Should NOT warn
+      readJsonStub.returns({
+        engines: { node: "18 || 22" },
+      });
+      validateLocalBuildNodeVersion(backend, "./");
+      expect(logWarningStub).to.have.been.calledOnce; // Only informational warning
+      logWarningStub.resetHistory();
+
+      // Case 2: Non-overlapping OR range (18 || 20) - Should warn!
+      readJsonStub.returns({
+        engines: { node: "18 || 20" },
+      });
+      validateLocalBuildNodeVersion(backend, "./");
+      expect(logWarningStub).to.have.been.calledTwice; // Informational + mismatch warning
+    });
+
+    it("warns if local host Node version doesn't match the target version", () => {
+      const backend = {
+        name: "projects/my-project/locations/us-central1/backends/foo",
+        runtime: { value: "nodejs22" },
+      } as any;
+
+      execSyncStub.returns("v24.10.0");
+      readJsonStub.returns({});
+
+      validateLocalBuildNodeVersion(backend, "./");
+
+      expect(logWarningStub).to.have.been.calledOnceWith(
+        "apphosting",
+        sinon.match(
+          "Local Node.js version (v24.10.0) does not match your backend's target Node.js version",
+        ),
+      );
+    });
+
+    it("does not log warnings when all versions are aligned", () => {
+      const backend = {
+        name: "projects/my-project/locations/us-central1/backends/foo",
+        runtime: { value: "nodejs22" },
+      } as any;
+
+      execSyncStub.returns("v22.15.0");
+      readJsonStub.returns({});
+
+      validateLocalBuildNodeVersion(backend, "./");
+
+      expect(logWarningStub).to.not.have.been.called;
+    });
+
+    it("warns if local Node.js version detection fails (e.g. node not in PATH)", () => {
+      const backend = {
+        name: "projects/my-project/locations/us-central1/backends/foo",
+        runtime: { value: "nodejs22" },
+      } as any;
+
+      execSyncStub.throws(new Error("command not found"));
+      readJsonStub.returns({});
+
+      validateLocalBuildNodeVersion(backend, "./");
+
+      expect(logWarningStub).to.have.been.calledOnceWith(
+        "apphosting",
+        sinon.match("Unable to detect your local Node.js version"),
+      );
     });
   });
 });

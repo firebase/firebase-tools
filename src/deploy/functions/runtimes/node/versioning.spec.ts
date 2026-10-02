@@ -30,6 +30,12 @@ describe("checkFunctionsSDKVersion", () => {
     expect(warningSpy).not.called;
   });
 
+  it("Should not warn for the development SDK version", () => {
+    latestVersion.returns("3.20.0");
+    versioning.checkFunctionsSDKVersion(versioning.FUNCTIONS_SDK_DEV_VERSION);
+    expect(warningSpy).not.called;
+  });
+
   it("Should give an upgrade warning", () => {
     latestVersion.returns("5.0.1");
     versioning.checkFunctionsSDKVersion("5.0.0");

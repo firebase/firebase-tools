@@ -11,7 +11,6 @@ const apiClient = new Client({
   urlPrefix: googleOrigin(),
 });
 
-// TODO: support for MFA at runtime was added in PR #3173, but this exporter currently ignores `mfaInfo` and loses the data on export.
 const EXPORTED_JSON_KEYS = [
   "localId",
   "email",
@@ -25,6 +24,7 @@ const EXPORTED_JSON_KEYS = [
   "phoneNumber",
   "disabled",
   "customAttributes",
+  "mfaInfo",
 ];
 const EXPORTED_JSON_KEYS_RENAMING: Record<string, string> = {
   lastLoginAt: "lastSignedInAt",
