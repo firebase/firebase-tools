@@ -1,5 +1,8 @@
 import { expect } from "chai";
-import * as admin from "firebase-admin";
+import { applicationDefault, cert, deleteApp, initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+import { getDatabase } from "firebase-admin/database";
+import { getStorage } from "firebase-admin/storage";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
@@ -126,7 +129,7 @@ describe("import/export end to end", () => {
     const config = readConfig();
     const port = config.emulators!.database.port;
     const host = await localhost();
-    const aApp = admin.initializeApp(
+    const aApp = initializeApp(
       {
         projectId: FIREBASE_PROJECT,
         databaseURL: `http://${host}:${port}?ns=namespace-a`,
@@ -134,7 +137,7 @@ describe("import/export end to end", () => {
       },
       "rtdb-export-a",
     );
-    const bApp = admin.initializeApp(
+    const bApp = initializeApp(
       {
         projectId: FIREBASE_PROJECT,
         databaseURL: `http://${host}:${port}?ns=namespace-b`,
@@ -142,7 +145,7 @@ describe("import/export end to end", () => {
       },
       "rtdb-export-b",
     );
-    const cApp = admin.initializeApp(
+    const cApp = initializeApp(
       {
         projectId: FIREBASE_PROJECT,
         databaseURL: `http://${host}:${port}?ns=namespace-c`,
@@ -152,13 +155,13 @@ describe("import/export end to end", () => {
     );
 
     // Write to two namespaces
-    const aRef = aApp.database().ref("ns");
+    const aRef = getDatabase(aApp).ref("ns");
     await aRef.set("namespace-a");
-    const bRef = bApp.database().ref("ns");
+    const bRef = getDatabase(bApp).ref("ns");
     await bRef.set("namespace-b");
 
     // Read from a third
-    const cRef = cApp.database().ref("ns");
+    const cRef = getDatabase(cApp).ref("ns");
     await cRef.once("value");
 
     // Ask for export
@@ -207,7 +210,7 @@ describe("import/export end to end", () => {
     }
 
     // Delete all the data in one namespace
-    await bApp.database().ref().set(null);
+    await getDatabase(bApp).ref().set(null);
 
     // Stop the CLI (which will export on exit)
     await importCLI.stop();
@@ -222,9 +225,9 @@ describe("import/export end to end", () => {
     expect(bData).to.equal(null);
 
     // Clean up the admin sdk instances to prevent "Firebase app named <name> already exists." errors in later tests
-    await aApp.delete();
-    await bApp.delete();
-    await cApp.delete();
+    await deleteApp(aApp);
+    await deleteApp(bApp);
+    await deleteApp(cApp);
   });
 
   it("should be able to import/export auth data", async function (this) {
@@ -247,19 +250,23 @@ describe("import/export end to end", () => {
     const port = config.emulators!.auth.port;
     try {
       process.env.FIREBASE_AUTH_EMULATOR_HOST = `${await localhost()}:${port}`;
-      const adminApp = admin.initializeApp(
+      const adminApp = initializeApp(
         {
           projectId: project,
           credential: ADMIN_CREDENTIAL,
         },
         "admin-app",
       );
-      await adminApp
-        .auth()
-        .createUser({ uid: "123", email: "foo@example.com", password: "testing" });
-      await adminApp
-        .auth()
-        .createUser({ uid: "456", email: "bar@example.com", emailVerified: true });
+      await getAuth(adminApp).createUser({
+        uid: "123",
+        email: "foo@example.com",
+        password: "testing",
+      });
+      await getAuth(adminApp).createUser({
+        uid: "456",
+        email: "bar@example.com",
+        emailVerified: true,
+      });
 
       // Ask for export
       const exportCLI = new CLIProcess("2", __dirname);
@@ -325,15 +332,15 @@ describe("import/export end to end", () => {
       );
 
       // Check users are indeed imported correctly
-      const user1 = await adminApp.auth().getUserByEmail("foo@example.com");
+      const user1 = await getAuth(adminApp).getUserByEmail("foo@example.com");
       expect(user1.passwordHash).to.match(/:password=testing$/);
-      const user2 = await adminApp.auth().getUser("456");
+      const user2 = await getAuth(adminApp).getUser("456");
       expect(user2.emailVerified).to.be.true;
 
       await importCLI.stop();
 
       // Clean up the admin sdk instance to prevent "Firebase app named <name> already exists." errors in later tests
-      await adminApp.delete();
+      await deleteApp(adminApp);
     } finally {
       delete process.env.FIREBASE_AUTH_EMULATOR_HOST;
     }
@@ -359,7 +366,7 @@ describe("import/export end to end", () => {
     const port = config.emulators!.auth.port;
     try {
       process.env.FIREBASE_AUTH_EMULATOR_HOST = `${await localhost()}:${port}`;
-      const adminApp = admin.initializeApp(
+      const adminApp = initializeApp(
         {
           projectId: project,
           credential: ADMIN_CREDENTIAL,
@@ -367,8 +374,8 @@ describe("import/export end to end", () => {
         "admin-app-auth-mutli-tenant",
       );
 
-      const defaultTenantAuth = adminApp.auth();
-      const secondTenantAuth = adminApp.auth().tenantManager().authForTenant("second-tenant");
+      const defaultTenantAuth = getAuth(adminApp);
+      const secondTenantAuth = getAuth(adminApp).tenantManager().authForTenant("second-tenant");
 
       await defaultTenantAuth.createUser({
         uid: "123",
@@ -499,7 +506,7 @@ describe("import/export end to end", () => {
       await importCLI.stop();
 
       // Clean up the admin sdk instance to prevent "Firebase app named <name> already exists." errors in later tests
-      await adminApp.delete();
+      await deleteApp(adminApp);
     } finally {
       delete process.env.FIREBASE_AUTH_EMULATOR_HOST;
     }
@@ -526,7 +533,7 @@ describe("import/export end to end", () => {
     const port = config.emulators!.auth.port;
     try {
       process.env.FIREBASE_AUTH_EMULATOR_HOST = `${await localhost()}:${port}`;
-      const adminApp = admin.initializeApp(
+      const adminApp = initializeApp(
         {
           projectId: project,
           credential: ADMIN_CREDENTIAL,
@@ -534,9 +541,11 @@ describe("import/export end to end", () => {
         "admin-app2",
       );
       for (let i = 0; i < accountCount; i++) {
-        await adminApp
-          .auth()
-          .createUser({ uid: `u${i}`, email: `u${i}@example.com`, password: "testing" });
+        await getAuth(adminApp).createUser({
+          uid: `u${i}`,
+          email: `u${i}@example.com`,
+          password: "testing",
+        });
       }
       // Ask for export
       const exportCLI = new CLIProcess("2", __dirname);
@@ -583,13 +592,13 @@ describe("import/export end to end", () => {
       );
 
       // Check users are indeed imported correctly
-      const user = await adminApp.auth().getUserByEmail(`u${accountCount - 1}@example.com`);
+      const user = await getAuth(adminApp).getUserByEmail(`u${accountCount - 1}@example.com`);
       expect(user.passwordHash).to.match(/:password=testing$/);
 
       await importCLI.stop();
 
       // Clean up the admin sdk instance to prevent "Firebase app named <name> already exists." errors in later tests
-      await adminApp.delete();
+      await deleteApp(adminApp);
     } finally {
       delete process.env.FIREBASE_AUTH_EMULATOR_HOST;
     }
@@ -671,16 +680,14 @@ describe("import/export end to end", () => {
     );
 
     const credPath = path.join(__dirname, "service-account-key.json");
-    const credential = fs.existsSync(credPath)
-      ? admin.credential.cert(credPath)
-      : admin.credential.applicationDefault();
+    const credential = fs.existsSync(credPath) ? cert(credPath) : applicationDefault();
 
     const config = readConfig();
     const port = config.emulators!.storage.port;
     process.env.STORAGE_EMULATOR_HOST = `http://${await localhost()}:${port}`;
 
     // Write some data to export
-    const aApp = admin.initializeApp(
+    const aApp = initializeApp(
       {
         projectId: FIREBASE_PROJECT,
         storageBucket: "bucket-a",
@@ -688,7 +695,7 @@ describe("import/export end to end", () => {
       },
       "storage-export-a",
     );
-    const bApp = admin.initializeApp(
+    const bApp = initializeApp(
       {
         projectId: FIREBASE_PROJECT,
         storageBucket: "bucket-b",
@@ -698,10 +705,10 @@ describe("import/export end to end", () => {
     );
 
     // Write data to two buckets
-    await aApp.storage().bucket().file("a/b.txt").save("a/b hello, world!");
-    await aApp.storage().bucket().file("c/d.txt").save("c/d hello, world!");
-    await bApp.storage().bucket().file("e/f.txt").save("e/f hello, world!");
-    await bApp.storage().bucket().file("g/h.txt").save("g/h hello, world!");
+    await getStorage(aApp).bucket().file("a/b.txt").save("a/b hello, world!");
+    await getStorage(aApp).bucket().file("c/d.txt").save("c/d hello, world!");
+    await getStorage(bApp).bucket().file("e/f.txt").save("e/f hello, world!");
+    await getStorage(bApp).bucket().file("g/h.txt").save("g/h hello, world!");
 
     // Ask for export
     const exportCLI = new CLIProcess("2", __dirname);
@@ -732,13 +739,13 @@ describe("import/export end to end", () => {
     );
 
     // List the files
-    const [aFiles] = await aApp.storage().bucket().getFiles({
+    const [aFiles] = await getStorage(aApp).bucket().getFiles({
       prefix: "a/",
     });
     const aFileNames = aFiles.map((f) => f.name).sort();
     expect(aFileNames).to.eql(["a/b.txt"]);
 
-    const [bFiles] = await bApp.storage().bucket().getFiles({
+    const [bFiles] = await getStorage(bApp).bucket().getFiles({
       prefix: "e/",
     });
     const bFileNames = bFiles.map((f) => f.name).sort();
@@ -755,8 +762,8 @@ describe("import/export end to end", () => {
     await importCLI.stop();
 
     // Clean up the admin sdk instances to prevent "Firebase app named <name> already exists." errors in later tests
-    await aApp.delete();
-    await bApp.delete();
+    await deleteApp(aApp);
+    await deleteApp(bApp);
   });
 
   it("should export all data when `--only` flag isn't used `emulators:export`", async function (this) {
@@ -773,16 +780,14 @@ describe("import/export end to end", () => {
     );
 
     const credPath = path.join(__dirname, "service-account-key.json");
-    const credential = fs.existsSync(credPath)
-      ? admin.credential.cert(credPath)
-      : admin.credential.applicationDefault();
+    const credential = fs.existsSync(credPath) ? cert(credPath) : applicationDefault();
 
     const config = readConfig();
     const storagePort = config.emulators!.storage.port;
     process.env.STORAGE_EMULATOR_HOST = `http://${await localhost()}:${storagePort}`;
 
     // Write some data to export
-    const aApp = admin.initializeApp(
+    const aApp = initializeApp(
       {
         projectId: FIREBASE_PROJECT,
         storageBucket: "bucket-a",
@@ -790,7 +795,7 @@ describe("import/export end to end", () => {
       },
       "storage-export-a",
     );
-    const bApp = admin.initializeApp(
+    const bApp = initializeApp(
       {
         projectId: FIREBASE_PROJECT,
         storageBucket: "bucket-b",
@@ -800,23 +805,23 @@ describe("import/export end to end", () => {
     );
 
     // Write data to two buckets
-    await aApp.storage().bucket().file("a/b.txt").save("a/b hello, world!");
-    await aApp.storage().bucket().file("c/d.txt").save("c/d hello, world!");
-    await bApp.storage().bucket().file("e/f.txt").save("e/f hello, world!");
-    await bApp.storage().bucket().file("g/h.txt").save("g/h hello, world!");
+    await getStorage(aApp).bucket().file("a/b.txt").save("a/b hello, world!");
+    await getStorage(aApp).bucket().file("c/d.txt").save("c/d hello, world!");
+    await getStorage(bApp).bucket().file("e/f.txt").save("e/f hello, world!");
+    await getStorage(bApp).bucket().file("g/h.txt").save("g/h hello, world!");
 
     // Create some accounts to export:
     const authPort = config.emulators!.auth.port;
     process.env.FIREBASE_AUTH_EMULATOR_HOST = `${await localhost()}:${authPort}`;
-    const cApp = admin.initializeApp(
+    const cApp = initializeApp(
       {
         projectId: FIREBASE_PROJECT,
         credential: ADMIN_CREDENTIAL,
       },
       "auth-export",
     );
-    await cApp.auth().createUser({ uid: "123", email: "foo@example.com", password: "testing" });
-    await cApp.auth().createUser({ uid: "456", email: "bar@example.com", emailVerified: true });
+    await getAuth(cApp).createUser({ uid: "123", email: "foo@example.com", password: "testing" });
+    await getAuth(cApp).createUser({ uid: "456", email: "bar@example.com", emailVerified: true });
 
     // Ask for export
     const exportCLI = new CLIProcess("2", __dirname);
@@ -847,29 +852,29 @@ describe("import/export end to end", () => {
     );
 
     // List the files
-    const [aFiles] = await aApp.storage().bucket().getFiles({
+    const [aFiles] = await getStorage(aApp).bucket().getFiles({
       prefix: "a/",
     });
     const aFileNames = aFiles.map((f) => f.name).sort();
     expect(aFileNames).to.eql(["a/b.txt"]);
 
-    const [bFiles] = await bApp.storage().bucket().getFiles({
+    const [bFiles] = await getStorage(bApp).bucket().getFiles({
       prefix: "e/",
     });
     const bFileNames = bFiles.map((f) => f.name).sort();
     expect(bFileNames).to.eql(["e/f.txt"]);
 
-    const user1 = await cApp.auth().getUserByEmail("foo@example.com");
+    const user1 = await getAuth(cApp).getUserByEmail("foo@example.com");
     expect(user1.passwordHash).to.match(/:password=testing$/);
-    const user2 = await cApp.auth().getUserByEmail("bar@example.com");
+    const user2 = await getAuth(cApp).getUserByEmail("bar@example.com");
     expect(user2.emailVerified).to.be.true;
 
     await importCLI.stop();
 
     // Clean up the admin sdk instances to prevent "Firebase app named <name> already exists." errors in later tests
-    await aApp.delete();
-    await bApp.delete();
-    await cApp.delete();
+    await deleteApp(aApp);
+    await deleteApp(bApp);
+    await deleteApp(cApp);
   });
 
   it("should export only storage data with `emulators:export --only storage`", async function (this) {
@@ -886,16 +891,14 @@ describe("import/export end to end", () => {
     );
 
     const credPath = path.join(__dirname, "service-account-key.json");
-    const credential = fs.existsSync(credPath)
-      ? admin.credential.cert(credPath)
-      : admin.credential.applicationDefault();
+    const credential = fs.existsSync(credPath) ? cert(credPath) : applicationDefault();
 
     const config = readConfig();
     const storagePort = config.emulators!.storage.port;
     process.env.STORAGE_EMULATOR_HOST = `http://${await localhost()}:${storagePort}`;
 
     // Write some data to export
-    const aApp = admin.initializeApp(
+    const aApp = initializeApp(
       {
         projectId: FIREBASE_PROJECT,
         storageBucket: "bucket-a",
@@ -903,7 +906,7 @@ describe("import/export end to end", () => {
       },
       "storage-export-a",
     );
-    const bApp = admin.initializeApp(
+    const bApp = initializeApp(
       {
         projectId: FIREBASE_PROJECT,
         storageBucket: "bucket-b",
@@ -913,23 +916,23 @@ describe("import/export end to end", () => {
     );
 
     // Write data to two buckets
-    await aApp.storage().bucket().file("a/b.txt").save("a/b hello, world!");
-    await aApp.storage().bucket().file("c/d.txt").save("c/d hello, world!");
-    await bApp.storage().bucket().file("e/f.txt").save("e/f hello, world!");
-    await bApp.storage().bucket().file("g/h.txt").save("g/h hello, world!");
+    await getStorage(aApp).bucket().file("a/b.txt").save("a/b hello, world!");
+    await getStorage(aApp).bucket().file("c/d.txt").save("c/d hello, world!");
+    await getStorage(bApp).bucket().file("e/f.txt").save("e/f hello, world!");
+    await getStorage(bApp).bucket().file("g/h.txt").save("g/h hello, world!");
 
     // Create some accounts to export:
     const authPort = config.emulators!.auth.port;
     process.env.FIREBASE_AUTH_EMULATOR_HOST = `${await localhost()}:${authPort}`;
-    const cApp = admin.initializeApp(
+    const cApp = initializeApp(
       {
         projectId: FIREBASE_PROJECT,
         credential: ADMIN_CREDENTIAL,
       },
       "auth-export",
     );
-    await cApp.auth().createUser({ uid: "123", email: "foo@example.com", password: "testing" });
-    await cApp.auth().createUser({ uid: "456", email: "bar@example.com", emailVerified: true });
+    await getAuth(cApp).createUser({ uid: "123", email: "foo@example.com", password: "testing" });
+    await getAuth(cApp).createUser({ uid: "456", email: "bar@example.com", emailVerified: true });
 
     // Ask for export
     const exportCLI = new CLIProcess("2", __dirname);
@@ -960,31 +963,31 @@ describe("import/export end to end", () => {
     );
 
     // List the files
-    const [aFiles] = await aApp.storage().bucket().getFiles({
+    const [aFiles] = await getStorage(aApp).bucket().getFiles({
       prefix: "a/",
     });
     const aFileNames = aFiles.map((f) => f.name).sort();
     expect(aFileNames).to.eql(["a/b.txt"]);
 
-    const [bFiles] = await bApp.storage().bucket().getFiles({
+    const [bFiles] = await getStorage(bApp).bucket().getFiles({
       prefix: "e/",
     });
     const bFileNames = bFiles.map((f) => f.name).sort();
     expect(bFileNames).to.eql(["e/f.txt"]);
 
-    await expect(cApp.auth().getUserByEmail("foo@example.com"))
+    await expect(getAuth(cApp).getUserByEmail("foo@example.com"))
       .to.eventually.be.rejectedWith(Error)
       .and.have.property("code", "auth/user-not-found");
-    await expect(cApp.auth().getUserByEmail("bar@example.com"))
+    await expect(getAuth(cApp).getUserByEmail("bar@example.com"))
       .to.eventually.be.rejectedWith(Error)
       .and.have.property("code", "auth/user-not-found");
 
     await importCLI.stop();
 
     // Clean up the admin sdk instances to prevent "Firebase app named <name> already exists." errors in later tests
-    await aApp.delete();
-    await bApp.delete();
-    await cApp.delete();
+    await deleteApp(aApp);
+    await deleteApp(bApp);
+    await deleteApp(cApp);
   });
 
   it("should be able to export using POST", async function (this) {
@@ -1001,7 +1004,7 @@ describe("import/export end to end", () => {
     );
 
     const config = readConfig();
-    const hubPort = config.emulators!.hub!.port;
+    const hubPort = config.emulators!.hub.port;
     const host = await localhost();
 
     // Ask for export using HTTP POST to hub
