@@ -456,7 +456,7 @@ export class Fabricator {
     if (update.endpoint.platform === "gcfv1") {
       await this.updateV1Function(update.endpoint, scraperV1);
     } else if (update.endpoint.platform === "gcfv2") {
-      await this.updateV2Function(update.endpoint, scraperV2);
+      await this.updateV2Function(update.endpoint, scraperV2, update.failedCreate);
     } else if (update.endpoint.platform === "run") {
       await this.updateRunFunction(update);
     } else {
@@ -675,6 +675,10 @@ export class Fabricator {
       );
       return;
     }
+    await this.setV2InvokerCreate(endpoint, serviceName);
+  }
+
+  private async setV2InvokerCreate(endpoint: backend.Endpoint, serviceName: string): Promise<void> {
     if (backend.isHttpsTriggered(endpoint)) {
       const invoker = endpoint.httpsTrigger.invoker || ["public"];
       if (!invoker.includes("private")) {
@@ -774,7 +778,11 @@ export class Fabricator {
     }
   }
 
-  async updateV2Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
+  async updateV2Function(
+    endpoint: backend.Endpoint,
+    scraper: SourceTokenScraper,
+    failedCreate = false,
+  ): Promise<void> {
     const storageSource = this.sources[endpoint.codebase!]?.storage;
     if (!storageSource) {
       logger.debug("Precondition failed. Cannot update a GCFv2 function without storage");
@@ -832,6 +840,11 @@ export class Fabricator {
         "functions",
         "Updated function is not associated with a service. This deployment is in an unexpected state - please re-deploy your functions.",
       );
+      return;
+    }
+    // A failed create never reached setV2InvokerCreate, so finish it the way a create would.
+    if (failedCreate) {
+      await this.setV2InvokerCreate(endpoint, serviceName);
       return;
     }
     let invoker: string[] | undefined;
