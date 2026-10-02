@@ -79,8 +79,14 @@ export class PostgresServer {
       socket.on("end", () => {
         logger.debug("Postgres client disconnected");
       });
+      // Log and destroy individual client socket errors instead of escalating them
+      // to server-level errors.
       socket.on("error", (err) => {
-        server.emit("error", err);
+        logger.debug(
+          "Postgres client socket error (if this happened during request cancellation, it is expected and harmless):",
+          err,
+        );
+        socket.destroy();
       });
     });
     this.server = server;

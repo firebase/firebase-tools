@@ -1109,7 +1109,7 @@ describe("buildFromV1Alpha", () => {
         specVersion: "v1alpha1",
         endpoints: {},
         lifecycleHooks: {
-          afterInstall: {
+          afterFirstDeploy: {
             task: {
               function: "myTaskFunc",
               body: { key: "value" },
@@ -1121,7 +1121,7 @@ describe("buildFromV1Alpha", () => {
       const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
       const expected: build.Build = build.empty();
       expected.lifecycleHooks = {
-        afterInstall: {
+        afterFirstDeploy: {
           task: {
             function: "myTaskFunc",
             body: { key: "value" },
@@ -1136,7 +1136,7 @@ describe("buildFromV1Alpha", () => {
         specVersion: "v1alpha1",
         endpoints: {},
         lifecycleHooks: {
-          afterUpdate: {
+          afterRedeploy: {
             call: {
               function: "myCallFunc",
               params: { foo: "bar" },
@@ -1148,7 +1148,7 @@ describe("buildFromV1Alpha", () => {
       const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
       const expected: build.Build = build.empty();
       expected.lifecycleHooks = {
-        afterUpdate: {
+        afterRedeploy: {
           call: {
             function: "myCallFunc",
             params: { foo: "bar" },
@@ -1163,7 +1163,7 @@ describe("buildFromV1Alpha", () => {
         specVersion: "v1alpha1",
         endpoints: {},
         lifecycleHooks: {
-          afterInstall: {
+          afterFirstDeploy: {
             http: {
               url: "https://example.com/hook",
               body: "some-body",
@@ -1175,7 +1175,7 @@ describe("buildFromV1Alpha", () => {
       const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
       const expected: build.Build = build.empty();
       expected.lifecycleHooks = {
-        afterInstall: {
+        afterFirstDeploy: {
           http: {
             url: "https://example.com/hook",
             body: "some-body",
@@ -1209,7 +1209,7 @@ describe("buildFromV1Alpha", () => {
         specVersion: "v1alpha1",
         endpoints: {},
         lifecycleHooks: {
-          afterInstall: {
+          afterFirstDeploy: {
             task: {},
           },
         },
@@ -1217,7 +1217,7 @@ describe("buildFromV1Alpha", () => {
 
       expect(() => v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME)).to.throw(
         FirebaseError,
-        /Invalid target "" for lifecycle hook "afterInstall"/,
+        /Invalid target "" for lifecycle hook "afterFirstDeploy"/,
       );
     });
 
@@ -1226,13 +1226,13 @@ describe("buildFromV1Alpha", () => {
         specVersion: "v1alpha1",
         endpoints: {},
         lifecycleHooks: {
-          afterInstall: {},
+          afterFirstDeploy: {},
         },
       };
 
       expect(() => v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME)).to.throw(
         FirebaseError,
-        /No action \(task, call, or http\) specified for lifecycle hook "afterInstall"/,
+        /No action \(task, call, or http\) specified for lifecycle hook "afterFirstDeploy"/,
       );
     });
   });

@@ -1,0 +1,185 @@
+import * as os from "os";
+import { ChildProcess } from "child_process";
+import { EventEmitter } from "events";
+
+import { expect } from "chai";
+import * as sinon from "sinon";
+
+import { killProcessTree, trackVirtualEnvChild, untrackVirtualEnvChild } from "./python";
+import { IS_WINDOWS } from "../utils";
+import { logger } from "../logger";
+
+// Windows has no process groups; killProcessTree shells out to taskkill there.
+const itPosix = IS_WINDOWS ? it.skip : it;
+
+describe("killProcessTree", () => {
+  let sandbox: sinon.SinonSandbox;
+  let killStub: sinon.SinonStub;
+
+  beforeEach(() => {
+    sandbox = sinon.createSandbox();
+    killStub = sandbox.stub(process, "kill");
+  });
+
+  afterEach(() => {
+    sandbox.restore();
+  });
+
+  itPosix("signals the whole process group, not just the shell pid", () => {
+    killProcessTree(4242);
+
+    // The negative pid is what reaches Python under the venv shell wrapper.
+    expect(killStub).to.have.been.calledOnceWithExactly(-4242, "SIGKILL");
+  });
+
+  itPosix("does not throw when the process group has already exited", () => {
+    const esrch = Object.assign(new Error("kill ESRCH"), { code: "ESRCH" });
+    killStub.throws(esrch);
+
+    expect(() => killProcessTree(4242)).to.not.throw();
+  });
+
+  itPosix("records why a kill failed, since the only other symptom is an orphan", () => {
+    const debugStub = sandbox.stub(logger, "debug");
+    killStub.throws(Object.assign(new Error("kill EPERM"), { code: "EPERM" }));
+
+    killProcessTree(4242);
+
+    expect(debugStub).to.have.been.calledWithMatch(/EPERM/);
+  });
+
+  for (const pid of [0, -1, NaN]) {
+    it(`refuses to signal anything for a pid of ${pid}`, () => {
+      // process.kill(-0, ...) would signal the CLI's own process group.
+      killProcessTree(pid);
+
+      expect(killStub).to.not.have.been.called;
+    });
+  }
+});
+
+describe("virtual env child tracking", () => {
+  const CLEANUP_SIGNALS: NodeJS.Signals[] = ["SIGINT", "SIGTERM", "SIGHUP", "SIGQUIT"];
+
+  let sandbox: sinon.SinonSandbox;
+  let killStub: sinon.SinonStub;
+  let child: ChildProcess;
+  let foreignListeners: Map<NodeJS.Signals, NodeJS.SignalsListener[]>;
+
+  beforeEach(() => {
+    sandbox = sinon.createSandbox();
+    killStub = sandbox.stub(process, "kill");
+    child = new EventEmitter() as ChildProcess;
+    // A live ChildProcess reports null for both, not undefined.
+    Object.assign(child, { pid: 4242, exitCode: null, signalCode: null });
+
+    // The re-raise is gated on nothing else listening, and nyc registers a
+    // listener per signal to flush coverage. Detach them for a bare process.
+    foreignListeners = new Map();
+    for (const signal of CLEANUP_SIGNALS) {
+      foreignListeners.set(signal, process.listeners(signal) as NodeJS.SignalsListener[]);
+      process.removeAllListeners(signal);
+    }
+  });
+
+  afterEach(() => {
+    untrackVirtualEnvChild(child);
+    sandbox.restore();
+    for (const [signal, listeners] of foreignListeners) {
+      process.removeAllListeners(signal);
+      for (const listener of listeners) {
+        process.on(signal, listener);
+      }
+    }
+  });
+
+  itPosix("force-kills tracked children on SIGTERM, the signal CI sends on cancellation", () => {
+    // A co-listener keeps listenerCount above zero, so the handler does not
+    // re-raise SIGQUIT and end the test run.
+    const coListener = (): void => undefined;
+    process.on("SIGTERM", coListener);
+    try {
+      trackVirtualEnvChild(child);
+      process.emit("SIGTERM", "SIGTERM");
+
+      expect(killStub).to.have.been.calledOnceWithExactly(-4242, "SIGKILL");
+    } finally {
+      process.removeListener("SIGTERM", coListener);
+    }
+  });
+
+  itPosix("re-raises the signal once cleanup is done so the exit code is preserved", () => {
+    trackVirtualEnvChild(child);
+    process.emit("SIGTERM", "SIGTERM");
+
+    // Once for the child's process group, once to re-raise on ourselves.
+    expect(killStub).to.have.been.calledWithExactly(-4242, "SIGKILL");
+    expect(killStub).to.have.been.calledWithExactly(process.pid, "SIGTERM");
+  });
+
+  itPosix("force-kills tracked children on SIGQUIT", () => {
+    // Ctrl-\ reaches the foreground process group only; a detached child is not in it.
+    const coListener = (): void => undefined;
+    process.on("SIGQUIT", coListener);
+    try {
+      trackVirtualEnvChild(child);
+      process.emit("SIGQUIT", "SIGQUIT");
+
+      expect(killStub).to.have.been.calledOnceWithExactly(-4242, "SIGKILL");
+    } finally {
+      process.removeListener("SIGQUIT", coListener);
+    }
+  });
+
+  itPosix("does not signal a child that has already exited", () => {
+    const coListener = (): void => undefined;
+    process.on("SIGTERM", coListener);
+    try {
+      trackVirtualEnvChild(child);
+      // Reaped by now, so the pid may belong to an unrelated process group.
+      Object.assign(child, { exitCode: 0 });
+      process.emit("SIGTERM", "SIGTERM");
+
+      expect(killStub).to.not.have.been.calledWith(-4242);
+    } finally {
+      process.removeListener("SIGTERM", coListener);
+    }
+  });
+
+  itPosix("exits rather than throwing when the platform cannot re-raise the signal", () => {
+    const exitStub = sandbox.stub(process, "exit");
+    // Windows throws ENOSYS for SIGHUP in process.kill, yet raises it when the
+    // console window closes.
+    killStub
+      .withArgs(process.pid, "SIGHUP")
+      .throws(Object.assign(new Error("kill ENOSYS"), { code: "ENOSYS" }));
+
+    trackVirtualEnvChild(child);
+    process.emit("SIGHUP", "SIGHUP");
+
+    expect(exitStub).to.have.been.calledOnceWithExactly(128 + os.constants.signals.SIGHUP);
+  });
+
+  it("restores default signal behaviour once nothing is left to clean up", () => {
+    const before = process.listenerCount("SIGTERM");
+    trackVirtualEnvChild(child);
+    expect(process.listenerCount("SIGTERM")).to.equal(before + 1);
+
+    untrackVirtualEnvChild(child);
+    expect(process.listenerCount("SIGTERM")).to.equal(before);
+  });
+
+  it("keeps handlers installed while other children are still tracked", () => {
+    const other = new EventEmitter() as ChildProcess;
+    Object.assign(other, { pid: 4343 });
+    const before = process.listenerCount("SIGTERM");
+
+    trackVirtualEnvChild(child);
+    trackVirtualEnvChild(other);
+    untrackVirtualEnvChild(child);
+    expect(process.listenerCount("SIGTERM")).to.equal(before + 1);
+
+    untrackVirtualEnvChild(other);
+    expect(process.listenerCount("SIGTERM")).to.equal(before);
+  });
+});

@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "../test/helpers/nock";
 
 import { resourceManagerOrigin } from "../api";
 import * as iam from "./iam";
@@ -10,6 +10,10 @@ const BINDING = {
 };
 
 describe("iam", () => {
+  afterEach(() => {
+    nock.cleanAll();
+  });
+
   describe("mergeBindings", () => {
     it("should not update the policy when the bindings are present", () => {
       const policy = {
@@ -107,10 +111,6 @@ describe("iam", () => {
     const DISPLAY_NAME = "Test Account";
     const DESCRIPTION = "Test Description";
 
-    afterEach(() => {
-      nock.cleanAll();
-    });
-
     describe("createServiceAccount", () => {
       it("should create a service account", async () => {
         nock("https://iam.googleapis.com")
@@ -156,6 +156,20 @@ describe("iam", () => {
           });
 
         const account = await iam.getServiceAccount(PROJECT_ID, ACCOUNT_ID);
+
+        expect(account.email).to.equal(EMAIL);
+        expect(nock.isDone()).to.be.true;
+      });
+
+      it("should get a service account when passed a full email address", async () => {
+        nock("https://iam.googleapis.com")
+          .get(`/v1/projects/${PROJECT_ID}/serviceAccounts/${EMAIL}`)
+          .reply(200, {
+            name: `projects/${PROJECT_ID}/serviceAccounts/${EMAIL}`,
+            email: EMAIL,
+          });
+
+        const account = await iam.getServiceAccount(PROJECT_ID, EMAIL);
 
         expect(account.email).to.equal(EMAIL);
         expect(nock.isDone()).to.be.true;
@@ -262,6 +276,32 @@ describe("iam", () => {
         const name = await iam.generateManagedServiceAccountName(PROJECT_ID, "firebase-fn");
         expect(name).to.match(/^firebase-fn-\d{10}$/);
         expect(nock.isDone()).to.be.true;
+      });
+    });
+
+    describe("computeRolesEtag", () => {
+      it("should return a 32-character base38 hash starting with [a-z]", () => {
+        const etag = iam.computeRolesEtag(["roles/viewer"]);
+        expect(etag).to.have.lengthOf(32);
+        expect(etag).to.match(/^[a-z][a-z0-9_-]{31}$/);
+      });
+
+      it("should be deterministic regardless of role order", () => {
+        const etag1 = iam.computeRolesEtag(["roles/viewer", "roles/editor"]);
+        const etag2 = iam.computeRolesEtag(["roles/editor", "roles/viewer"]);
+        expect(etag1).to.equal(etag2);
+      });
+
+      it("should be deterministic regardless of duplicate roles", () => {
+        const etag1 = iam.computeRolesEtag(["roles/viewer"]);
+        const etag2 = iam.computeRolesEtag(["roles/viewer", "roles/viewer"]);
+        expect(etag1).to.equal(etag2);
+      });
+
+      it("should produce different etags for different role sets", () => {
+        const etag1 = iam.computeRolesEtag(["roles/viewer"]);
+        const etag2 = iam.computeRolesEtag(["roles/editor"]);
+        expect(etag1).to.not.equal(etag2);
       });
     });
   });

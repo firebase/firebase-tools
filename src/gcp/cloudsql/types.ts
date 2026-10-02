@@ -35,7 +35,7 @@ export interface InstanceSettings {
   replicationType?: "SYNCHRONOUS" | "ASYNCHRONOUS";
   activationPolicy?: "ALWAYS" | "NEVER";
   ipConfiguration?: IpConfiguration;
-  locationPreference?: [Object];
+  locationPreference?: [Record<string, unknown>];
   databaseFlags?: DatabaseFlag[];
   dataDiskType?: "PD_SSD" | "PD_HDD";
   storageAutoResizeLimit?: string;

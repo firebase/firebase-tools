@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import * as express from "express";
-import * as nock from "nock";
+import nock from "../test/helpers/nock";
 import * as sinon from "sinon";
 import * as supertest from "supertest";
 
@@ -155,7 +155,7 @@ describe("cloudRunProxy", () => {
   });
 
   it("should cache calls to look up Cloud Run service URLs", async () => {
-    const multiCallOrigin = "https://multiLookup-hash-uc.a.run.app";
+    const multiCallOrigin = "https://multilookup-hash-uc.a.run.app";
     const multiNock = nock(cloudRunApiOrigin())
       .get("/v1/projects/project-foo/locations/us-central1/services/multiLookup")
       .reply(200, { status: { url: multiCallOrigin } });

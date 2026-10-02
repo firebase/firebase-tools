@@ -512,7 +512,7 @@ describe("validate", () => {
         };
         const want = backend.of(taskEp);
         want.lifecycleHooks = {
-          afterInstall: {
+          afterFirstDeploy: {
             task: {
               function: "mytaskfunc",
             },
@@ -527,14 +527,14 @@ describe("validate", () => {
           id: "myfunc",
         });
         want.lifecycleHooks = {
-          afterInstall: {
+          afterFirstDeploy: {
             task: {
               function: "nonexistent",
             },
           },
         };
         expect(() => validate.endpointsAreValid(want)).to.throw(
-          /Target endpoint "nonexistent" not found in backend for lifecycle hook "afterInstall"/,
+          /Target endpoint "nonexistent" not found in backend for lifecycle hook "afterFirstDeploy"/,
         );
       });
 
@@ -546,14 +546,14 @@ describe("validate", () => {
         };
         const want = backend.of(nonTaskEp);
         want.lifecycleHooks = {
-          afterInstall: {
+          afterFirstDeploy: {
             task: {
               function: "nontaskfunc",
             },
           },
         };
         expect(() => validate.endpointsAreValid(want)).to.throw(
-          /Lifecycle hook "afterInstall" expects a task queue function\./,
+          /Lifecycle hook "afterFirstDeploy" expects a task queue function\./,
         );
       });
 
@@ -566,7 +566,7 @@ describe("validate", () => {
         };
         const want = backend.of(v1Ep);
         want.lifecycleHooks = {
-          afterInstall: {
+          afterFirstDeploy: {
             task: {
               function: "v1func",
             },
@@ -583,7 +583,7 @@ describe("validate", () => {
           id: "myfunc",
         });
         want.lifecycleHooks = {
-          afterInstall: {
+          afterFirstDeploy: {
             call: {
               function: "myfunc",
             },
@@ -600,7 +600,7 @@ describe("validate", () => {
           id: "myfunc",
         });
         want.lifecycleHooks = {
-          afterInstall: {
+          afterFirstDeploy: {
             http: {
               url: "https://example.com/hook",
             },
@@ -610,6 +610,64 @@ describe("validate", () => {
           /Lifecycle hook action type "http" is not supported in the CLI yet./,
         );
       });
+    });
+  });
+
+  describe("noGenerationDowngrades", () => {
+    const ENDPOINT_BASE: backend.Endpoint = {
+      platform: "gcfv1",
+      id: "id",
+      region: "us-east1",
+      project: "project",
+      entryPoint: "func",
+      runtime: "nodejs16",
+      httpsTrigger: {},
+    };
+
+    it("rejects downgrading an existing gcfv2 function to gcfv1", () => {
+      const want = { default: backend.of(ENDPOINT_BASE) };
+      const have = backend.of({ ...ENDPOINT_BASE, platform: "gcfv2", cpu: 1 });
+
+      expect(() => validate.noGenerationDowngrades(want, have)).to.throw(
+        /cannot be downgraded from GCFv2 to GCFv1/,
+      );
+    });
+
+    it("rejects redeploying an existing Cloud Run service as gcfv1", () => {
+      const want = { default: backend.of(ENDPOINT_BASE) };
+      const have = backend.of({ ...ENDPOINT_BASE, platform: "run", cpu: 1 });
+
+      expect(() => validate.noGenerationDowngrades(want, have)).to.throw(
+        /cannot be downgraded from Cloud Run to GCFv1/,
+      );
+    });
+
+    it("reports every downgraded function, not just the first", () => {
+      const want = {
+        one: backend.of({ ...ENDPOINT_BASE, id: "a" }),
+        two: backend.of({ ...ENDPOINT_BASE, id: "b" }),
+      };
+      const have = backend.of(
+        { ...ENDPOINT_BASE, id: "a", platform: "gcfv2" },
+        { ...ENDPOINT_BASE, id: "b", platform: "run" },
+      );
+
+      let err: unknown;
+      try {
+        validate.noGenerationDowngrades(want, have);
+      } catch (e: unknown) {
+        err = e;
+      }
+
+      expect(err).to.be.instanceOf(FirebaseError);
+      expect((err as FirebaseError).message).to.match(/a\(us-east1\)[\s\S]*GCFv2/);
+      expect((err as FirebaseError).message).to.match(/b\(us-east1\)[\s\S]*Cloud Run/);
+    });
+
+    it("allows a gcfv1 function that does not exist yet", () => {
+      const want = { default: backend.of(ENDPOINT_BASE) };
+
+      expect(() => validate.noGenerationDowngrades(want, backend.empty())).to.not.throw();
     });
   });
 
@@ -801,6 +859,59 @@ describe("validate", () => {
               projectId: project,
               secret: "MY_SECRET",
               key: "MY_SECRET",
+            },
+          ],
+        });
+
+        await validate.secretsAreValid(project, b);
+        expect(backend.allEndpoints(b)[0].secretEnvironmentVariables![0].version).to.equal("2");
+      }
+    });
+
+    it("passes validation and allows version pinning to a non-latest version given valid secret config with sentinel set", async () => {
+      secretVersionStub.withArgs(project, secret.name, "latest").resolves({
+        secret,
+        versionId: "2",
+        state: "ENABLED",
+      });
+
+      for (const platform of ["gcfv1" as const, "gcfv2" as const]) {
+        const b = backend.of({
+          ...ENDPOINT,
+          platform,
+          secretEnvironmentVariables: [
+            {
+              projectId: project,
+              secret: "MY_SECRET",
+              key: "MY_SECRET",
+              version: "1",
+              allowVersionPinning: true,
+            },
+          ],
+        });
+
+        await validate.secretsAreValid(project, b);
+        expect(backend.allEndpoints(b)[0].secretEnvironmentVariables![0].version).to.equal("1");
+      }
+    });
+
+    it("passes validation and forces version ton latest given valid secret config with no sentinel", async () => {
+      secretVersionStub.withArgs(project, secret.name, "latest").resolves({
+        secret,
+        versionId: "2",
+        state: "ENABLED",
+      });
+
+      for (const platform of ["gcfv1" as const, "gcfv2" as const]) {
+        const b = backend.of({
+          ...ENDPOINT,
+          platform,
+          secretEnvironmentVariables: [
+            {
+              projectId: project,
+              secret: "MY_SECRET",
+              key: "MY_SECRET",
+              version: "1",
             },
           ],
         });

@@ -121,9 +121,3 @@ export const supportedRewritesObject: RoutesManifestRewriteObject = {
   beforeFiles: supportedRewritesArray,
   fallback: unsupportedRewritesArray, // should be ignored, only beforeFiles is used
 };
-
-export const unsupportedRewritesObject: RoutesManifestRewriteObject = {
-  afterFiles: unsupportedRewritesArray, // should be ignored, only beforeFiles is used
-  beforeFiles: unsupportedRewritesArray,
-  fallback: unsupportedRewritesArray, // should be ignored, only beforeFiles is used
-};

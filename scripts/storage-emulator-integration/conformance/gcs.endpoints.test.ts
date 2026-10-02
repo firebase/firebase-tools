@@ -176,6 +176,23 @@ describe("GCS endpoint conformance tests", () => {
           .then((res) => res.body);
         expect(String(data)).to.eql("hello world");
       });
+
+      it("should handle large JSON uploads", async () => {
+        const largeJson = { k: "a".repeat(130000) }; // ~130KB, > 100KB limit
+        await supertest(storageHost)
+          .post(`/upload/storage/v1/b/${storageBucket}/o?name=large.json&uploadType=media`)
+          .set(authHeader)
+          .set("Content-Type", "application/json")
+          .send(JSON.stringify(largeJson))
+          .expect(200);
+
+        const data = await supertest(storageHost)
+          .get(`/storage/v1/b/${storageBucket}/o/large.json?alt=media`)
+          .set(authHeader)
+          .expect(200)
+          .then((res) => res.body);
+        expect(data).to.eql(largeJson);
+      });
     });
 
     describe("resumable upload", () => {
@@ -329,6 +346,59 @@ describe("GCS endpoint conformance tests", () => {
 
         expect(returnedMetadata.contentType).to.equal("text/plain");
       });
+
+      emulatorOnly.it(
+        "should handle signed post policy uploads via the emulator endpoint",
+        async () => {
+          const boundary = "signed-post-policy-boundary";
+          const startBuffer = Buffer.from(`--${boundary}\r
+Content-Disposition: form-data; name="key"\r
+\r
+${TEST_FILE_NAME}\r
+--${boundary}\r
+Content-Disposition: form-data; name="Content-Type"\r
+\r
+text/plain\r
+--${boundary}\r
+Content-Disposition: form-data; name="Cache-Control"\r
+\r
+public, max-age=60\r
+--${boundary}\r
+Content-Disposition: form-data; name="Content-Disposition"\r
+\r
+inline\r
+--${boundary}\r
+Content-Disposition: form-data; name="x-goog-meta-color"\r
+\r
+blue\r
+--${boundary}\r
+Content-Disposition: form-data; name="file"; filename="testFile"\r
+Content-Type: text/plain\r
+\r
+`);
+          const endBuffer = Buffer.from(`\r
+--${boundary}--\r
+`);
+          const body = Buffer.concat([startBuffer, Buffer.from("hello world"), endBuffer]);
+
+          await supertest(storageHost)
+            .post(`/${storageBucket}`)
+            .set("content-type", `multipart/form-data; boundary=${boundary}`)
+            .send(body)
+            .expect(204);
+
+          const metadata = await supertest(storageHost)
+            .get(`/storage/v1/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}`)
+            .expect(200)
+            .then((res) => res.body);
+
+          expect(metadata.name).to.equal(TEST_FILE_NAME);
+          expect(metadata.contentType).to.equal("text/plain");
+          expect(metadata.cacheControl).to.equal("public, max-age=60");
+          expect(metadata.contentDisposition).to.equal("inline");
+          expect(metadata.metadata).to.deep.equal({ color: "blue" });
+        },
+      );
     });
   });
 
