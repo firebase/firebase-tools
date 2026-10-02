@@ -5,12 +5,7 @@ import { logLabeledBullet } from "../../utils";
 import { Context, Payload, ServiceDeploy } from "./args";
 import { BUILD_ENV_ANNOTATION, getBuildEnv, secretNames } from "./buildEnv";
 import { prereqs } from "./prereqs";
-import {
-  getExistingService,
-  getServiceConfigs,
-  mainContainer,
-  missingServiceMessage,
-} from "./util";
+import { getExistingService, getServiceConfigs, missingServiceMessage } from "./util";
 
 /**
  * Reads each service's current state from Cloud Run and resolves its base image and build env.
@@ -36,7 +31,7 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
   // Base images are sticky: deploys reuse the service's current base image unless told otherwise.
   const baseImage =
     context.baseImage === undefined
-      ? mainContainer(existing?.template)?.baseImageUri
+      ? existing?.template.containers?.[0]?.baseImageUri
       : context.baseImage || undefined;
 
   const buildEnv = getBuildEnv(existing);

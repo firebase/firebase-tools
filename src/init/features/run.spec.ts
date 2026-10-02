@@ -186,26 +186,66 @@ describe("init run", () => {
   });
 
   describe("upsertRunConfig", () => {
-    it("adds services, and updates them in place without dropping other settings", () => {
-      const a = { serviceId: "a", region: "r", rootDir: "/", ignore: ["x"] };
-      const b = { serviceId: "b", region: "r" };
-      upsertRunConfig(a, config);
-      expect(config.src.run).to.deep.equal(a);
-      upsertRunConfig(b, config);
-      expect(config.src.run).to.deep.equal([a, b]);
+    it("sets a single service object when firebase.json has no run config", () => {
+      const firstService = {
+        serviceId: "web",
+        region: "us-central1",
+        rootDir: "/",
+        ignore: ["node_modules"],
+      };
+      upsertRunConfig(firstService, config);
+      expect(config.src.run).to.deep.equal(firstService);
+    });
+
+    it("converts to an array when adding a second service", () => {
+      const firstService = { serviceId: "web", region: "us-central1" };
+      const secondService = { serviceId: "api", region: "us-east1" };
+      upsertRunConfig(firstService, config);
+      upsertRunConfig(secondService, config);
+      expect(config.src.run).to.deep.equal([firstService, secondService]);
+    });
+
+    it("updates an existing service in place while preserving custom ignore and updating localBuild", () => {
+      config.set("run", {
+        serviceId: "web",
+        region: "us-central1",
+        rootDir: "/",
+        ignore: ["custom-ignore"],
+      });
+
       upsertRunConfig(
-        { serviceId: "a", region: "r2", rootDir: "web", localBuild: true, ignore: ["y"] },
+        {
+          serviceId: "web",
+          region: "us-east1",
+          rootDir: "apps/web",
+          localBuild: true,
+          ignore: ["default-ignore"],
+        },
         config,
       );
-      expect(config.src.run).to.deep.equal([
-        { serviceId: "a", region: "r2", rootDir: "web", ignore: ["x"], localBuild: true },
-        b,
-      ]);
-      upsertRunConfig({ serviceId: "a", region: "r2", rootDir: "web", ignore: ["y"] }, config);
-      expect(config.src.run).to.deep.equal([
-        { serviceId: "a", region: "r2", rootDir: "web", ignore: ["x"] },
-        b,
-      ]);
+      expect(config.src.run).to.deep.equal({
+        serviceId: "web",
+        region: "us-east1",
+        rootDir: "apps/web",
+        localBuild: true,
+        ignore: ["custom-ignore"],
+      });
+
+      upsertRunConfig(
+        {
+          serviceId: "web",
+          region: "us-east1",
+          rootDir: "apps/web",
+          ignore: ["default-ignore"],
+        },
+        config,
+      );
+      expect(config.src.run).to.deep.equal({
+        serviceId: "web",
+        region: "us-east1",
+        rootDir: "apps/web",
+        ignore: ["custom-ignore"],
+      });
     });
   });
 });
