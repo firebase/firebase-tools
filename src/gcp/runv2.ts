@@ -92,6 +92,13 @@ export interface TrafficTarget {
   tag?: string;
 }
 
+export type IngressTraffic =
+  | "INGRESS_TRAFFIC_UNSPECIFIED"
+  | "INGRESS_TRAFFIC_ALL"
+  | "INGRESS_TRAFFIC_INTERNAL_ONLY"
+  | "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
+  | "INGRESS_TRAFFIC_NONE";
+
 // NOTE: This is a minmal copy of Cloud Run needed for our current API usage.
 // Add more as needed.
 // TODO: Can consider a helper where we have a second RecursiveKeysOf field for
@@ -121,7 +128,7 @@ export interface Service {
   traffic?: TrafficTarget[];
   trafficStatuses?: TrafficTarget[];
   invokerIamDisabled?: boolean;
-  ingress?: string;
+  ingress?: IngressTraffic;
   // Is this redundant with the Build API?
   buildConfig?: BuildConfig;
   uri?: string;
