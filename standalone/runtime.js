@@ -57,6 +57,23 @@ exports.Script_NodeJS = function() {
     });
 };
 
+function normalizeShellScriptArgs(args) {
+  args = [...args];
+
+  const index = args.indexOf("-c");
+  if (index !== -1) {
+    args.splice(index, 1);
+
+    if (args[index] === "--") {
+      args.splice(index, 1);
+    }
+  }
+
+  return args;
+}
+
+exports.normalizeShellScriptArgs = normalizeShellScriptArgs;
+
 /*
   -------------------------------------
   "sh" Command
@@ -74,17 +91,17 @@ exports.Script_ShellJS = async function() {
   const path = require("path");
   const child_process = require("child_process");
   const isWin = process.platform === "win32";
-  const args = process.argv.slice(2);
+  const args = normalizeShellScriptArgs(process.argv.slice(2));
+
+  if (!args[0]) {
+    process.stderr.write("shell.js: no command provided\n");
+    process.exit(1);
+  }
 
   appendToPath(isWin, [
     __dirname,
     path.join(process.cwd(), "node_modules/.bin")
   ]);
-
-  let index;
-  if ((index = args.indexOf("-c")) !== -1) {
-    args.splice(index, 1);
-  }
 
   args[0] = args[0].replace(process.execPath, "node");
   let [cmdRuntime, cmdScript, ...otherArgs] = args[0].split(" ");
