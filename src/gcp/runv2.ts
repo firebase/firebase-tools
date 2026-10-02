@@ -618,6 +618,7 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
       ? proto.secondsFromDuration(service.template.timeout)
       : 60,
     serviceAccount: service.template.serviceAccount || null,
+    runServiceId: svcId,
     ingressSettings: (service.annotations?.["run.googleapis.com/ingress"] === "internal"
       ? "ALLOW_INTERNAL_ONLY"
       : service.annotations?.["run.googleapis.com/ingress"] === "internal-and-cloud-load-balancing"

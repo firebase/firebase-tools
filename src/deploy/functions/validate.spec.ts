@@ -494,6 +494,181 @@ describe("validate", () => {
         "The following functions have timeouts that exceed the maximum allowed for their trigger typ",
       );
     });
+
+    describe("validateLifecycleHooks", () => {
+      it("succeeds when no lifecycle hooks are defined", () => {
+        const want = backend.of({
+          ...ENDPOINT_BASE,
+          id: "myfunc",
+        });
+        expect(() => validate.endpointsAreValid(want)).to.not.throw();
+      });
+
+      it("succeeds when a task queue hook targets a valid task queue function", () => {
+        const taskEp: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          id: "mytaskfunc",
+          taskQueueTrigger: {},
+        };
+        const want = backend.of(taskEp);
+        want.lifecycleHooks = {
+          afterFirstDeploy: {
+            task: {
+              function: "mytaskfunc",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.not.throw();
+      });
+
+      it("throws when a task queue hook targets a non-existent function", () => {
+        const want = backend.of({
+          ...ENDPOINT_BASE,
+          id: "myfunc",
+        });
+        want.lifecycleHooks = {
+          afterFirstDeploy: {
+            task: {
+              function: "nonexistent",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.throw(
+          /Target endpoint "nonexistent" not found in backend for lifecycle hook "afterFirstDeploy"/,
+        );
+      });
+
+      it("throws when a task queue hook targets a function that is not a task queue function", () => {
+        const nonTaskEp: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          id: "nontaskfunc",
+          httpsTrigger: {},
+        };
+        const want = backend.of(nonTaskEp);
+        want.lifecycleHooks = {
+          afterFirstDeploy: {
+            task: {
+              function: "nontaskfunc",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.throw(
+          /Lifecycle hook "afterFirstDeploy" expects a task queue function\./,
+        );
+      });
+
+      it("throws when a hook targets a GCF Gen 1 function", () => {
+        const v1Ep: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          id: "v1func",
+          platform: "gcfv1",
+          taskQueueTrigger: {},
+        };
+        const want = backend.of(v1Ep);
+        want.lifecycleHooks = {
+          afterFirstDeploy: {
+            task: {
+              function: "v1func",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.throw(
+          /Target endpoint "v1func" is a GCF Gen 1 function. Lifecycle hooks are only supported for GCF Gen 2 functions./,
+        );
+      });
+
+      it("throws when a call hook is specified", () => {
+        const want = backend.of({
+          ...ENDPOINT_BASE,
+          id: "myfunc",
+        });
+        want.lifecycleHooks = {
+          afterFirstDeploy: {
+            call: {
+              function: "myfunc",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.throw(
+          /Lifecycle hook action type "call" is not supported in the CLI yet./,
+        );
+      });
+
+      it("throws when an http hook is specified", () => {
+        const want = backend.of({
+          ...ENDPOINT_BASE,
+          id: "myfunc",
+        });
+        want.lifecycleHooks = {
+          afterFirstDeploy: {
+            http: {
+              url: "https://example.com/hook",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.throw(
+          /Lifecycle hook action type "http" is not supported in the CLI yet./,
+        );
+      });
+    });
+  });
+
+  describe("noGenerationDowngrades", () => {
+    const ENDPOINT_BASE: backend.Endpoint = {
+      platform: "gcfv1",
+      id: "id",
+      region: "us-east1",
+      project: "project",
+      entryPoint: "func",
+      runtime: "nodejs16",
+      httpsTrigger: {},
+    };
+
+    it("rejects downgrading an existing gcfv2 function to gcfv1", () => {
+      const want = { default: backend.of(ENDPOINT_BASE) };
+      const have = backend.of({ ...ENDPOINT_BASE, platform: "gcfv2", cpu: 1 });
+
+      expect(() => validate.noGenerationDowngrades(want, have)).to.throw(
+        /cannot be downgraded from GCFv2 to GCFv1/,
+      );
+    });
+
+    it("rejects redeploying an existing Cloud Run service as gcfv1", () => {
+      const want = { default: backend.of(ENDPOINT_BASE) };
+      const have = backend.of({ ...ENDPOINT_BASE, platform: "run", cpu: 1 });
+
+      expect(() => validate.noGenerationDowngrades(want, have)).to.throw(
+        /cannot be downgraded from Cloud Run to GCFv1/,
+      );
+    });
+
+    it("reports every downgraded function, not just the first", () => {
+      const want = {
+        one: backend.of({ ...ENDPOINT_BASE, id: "a" }),
+        two: backend.of({ ...ENDPOINT_BASE, id: "b" }),
+      };
+      const have = backend.of(
+        { ...ENDPOINT_BASE, id: "a", platform: "gcfv2" },
+        { ...ENDPOINT_BASE, id: "b", platform: "run" },
+      );
+
+      let err: unknown;
+      try {
+        validate.noGenerationDowngrades(want, have);
+      } catch (e: unknown) {
+        err = e;
+      }
+
+      expect(err).to.be.instanceOf(FirebaseError);
+      expect((err as FirebaseError).message).to.match(/a\(us-east1\)[\s\S]*GCFv2/);
+      expect((err as FirebaseError).message).to.match(/b\(us-east1\)[\s\S]*Cloud Run/);
+    });
+
+    it("allows a gcfv1 function that does not exist yet", () => {
+      const want = { default: backend.of(ENDPOINT_BASE) };
+
+      expect(() => validate.noGenerationDowngrades(want, backend.empty())).to.not.throw();
+    });
   });
 
   describe("endpointsAreUnqiue", () => {
@@ -684,6 +859,59 @@ describe("validate", () => {
               projectId: project,
               secret: "MY_SECRET",
               key: "MY_SECRET",
+            },
+          ],
+        });
+
+        await validate.secretsAreValid(project, b);
+        expect(backend.allEndpoints(b)[0].secretEnvironmentVariables![0].version).to.equal("2");
+      }
+    });
+
+    it("passes validation and allows version pinning to a non-latest version given valid secret config with sentinel set", async () => {
+      secretVersionStub.withArgs(project, secret.name, "latest").resolves({
+        secret,
+        versionId: "2",
+        state: "ENABLED",
+      });
+
+      for (const platform of ["gcfv1" as const, "gcfv2" as const]) {
+        const b = backend.of({
+          ...ENDPOINT,
+          platform,
+          secretEnvironmentVariables: [
+            {
+              projectId: project,
+              secret: "MY_SECRET",
+              key: "MY_SECRET",
+              version: "1",
+              allowVersionPinning: true,
+            },
+          ],
+        });
+
+        await validate.secretsAreValid(project, b);
+        expect(backend.allEndpoints(b)[0].secretEnvironmentVariables![0].version).to.equal("1");
+      }
+    });
+
+    it("passes validation and forces version ton latest given valid secret config with no sentinel", async () => {
+      secretVersionStub.withArgs(project, secret.name, "latest").resolves({
+        secret,
+        versionId: "2",
+        state: "ENABLED",
+      });
+
+      for (const platform of ["gcfv1" as const, "gcfv2" as const]) {
+        const b = backend.of({
+          ...ENDPOINT,
+          platform,
+          secretEnvironmentVariables: [
+            {
+              projectId: project,
+              secret: "MY_SECRET",
+              key: "MY_SECRET",
+              version: "1",
             },
           ],
         });

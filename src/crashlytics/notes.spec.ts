@@ -1,5 +1,5 @@
 import * as chai from "chai";
-import * as nock from "nock";
+import nock from "../test/helpers/nock";
 import * as chaiAsPromised from "chai-as-promised";
 
 import { createNote, deleteNote, listNotes } from "./notes";

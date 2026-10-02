@@ -1,6 +1,8 @@
 import * as backend from "../backend";
 import * as firestore from "../../../gcp/firestore";
 import { FirebaseError } from "../../../error";
+import * as build from "../build";
+import { FIRESTORE_DUAL_REGION_TO_REGION_MAPPING } from "../../../gcp/location";
 
 const dbCache = new Map<string, firestore.Database>();
 const dbPromiseCache = new Map<string, Promise<firestore.Database>>();
@@ -71,4 +73,17 @@ export async function ensureFirestoreTriggerRegion(
       "A firestore trigger location must match the firestore database region.",
     );
   }
+}
+
+/**
+ * Get the default region for a Firestore event trigger.
+ */
+export async function getDefaultRegion(endpoint: build.Endpoint): Promise<string> {
+  if (!build.isEventTriggered(endpoint)) {
+    throw new FirebaseError("Firestore getDefaultRegion requires an event-triggered endpoint");
+  }
+  const databaseId = endpoint.eventTrigger.eventFilters?.database || "(default)";
+  const db = await getDatabase(endpoint.project, databaseId);
+  const locationId = db.locationId.toLowerCase();
+  return FIRESTORE_DUAL_REGION_TO_REGION_MAPPING[locationId] || locationId;
 }

@@ -16,7 +16,7 @@ const SECRET_NAME_REGEX = new RegExp(
 );
 
 // Matches projects/{PROJECT}/secrets/{SECRET}/versions/{latest|VERSION}
-const SECRET_VERSION_NAME_REGEX = new RegExp(
+export const SECRET_VERSION_NAME_REGEX = new RegExp(
   SECRET_NAME_REGEX.source + "\\/versions\\/" + "(?<version>latest|[0-9]+)",
 );
 
@@ -40,7 +40,7 @@ export interface WireSecret {
 type SecretVersionState = "STATE_UNSPECIFIED" | "ENABLED" | "DISABLED" | "DESTROYED";
 
 export interface Replication {
-  automatic?: {};
+  automatic?: Record<string, unknown>;
   userManaged?: {
     replicas: Array<{
       location: string;

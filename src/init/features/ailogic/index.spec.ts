@@ -71,7 +71,8 @@ describe("init ailogic", () => {
       listFirebaseAppsStub.resolves([]); // No apps
 
       await expect(init.askQuestions(mockSetup)).to.be.rejectedWith(
-        "No Firebase apps found in this project. Please create an app first using the Firebase Console or 'firebase apps:create'.",
+        "There are no apps associated with this Firebase project.\n" +
+          "You can create an app for this project with 'firebase apps:create'",
       );
 
       sinon.assert.calledWith(listFirebaseAppsStub, "test-project", AppPlatform.ANY);

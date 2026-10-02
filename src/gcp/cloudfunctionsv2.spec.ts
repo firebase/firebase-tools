@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "../test/helpers/nock";
 import type { ParsedUrlQuery } from "querystring";
 
 import * as cloudfunctionsv2 from "./cloudfunctionsv2";
@@ -28,6 +28,7 @@ describe("cloudfunctionsv2", () => {
     ...FUNCTION_NAME,
     entryPoint: "function",
     runtime: "nodejs16",
+    region: "region",
     codebase: projectConfig.DEFAULT_CODEBASE,
     runServiceId: "service",
     source: { storageSource: CLOUD_FUNCTION_V2_SOURCE },
@@ -46,6 +47,9 @@ describe("cloudfunctionsv2", () => {
     },
     serviceConfig: {
       availableMemory: `${backend.DEFAULT_MEMORY}Mi`,
+      environmentVariables: {
+        FUNCTION_REGION: ENDPOINT.region,
+      },
     },
   };
 
@@ -110,7 +114,10 @@ describe("cloudfunctionsv2", () => {
         },
         serviceConfig: {
           ...CLOUD_FUNCTION_V2.serviceConfig,
-          environmentVariables: { FUNCTION_SIGNATURE_TYPE: "cloudevent" },
+          environmentVariables: {
+            FUNCTION_REGION: ENDPOINT.region,
+            FUNCTION_SIGNATURE_TYPE: "cloudevent",
+          },
         },
       };
       expect(cloudfunctionsv2.functionFromEndpoint(eventEndpoint)).to.deep.equal(eventGcfFunction);
@@ -149,7 +156,10 @@ describe("cloudfunctionsv2", () => {
         },
         serviceConfig: {
           ...CLOUD_FUNCTION_V2.serviceConfig,
-          environmentVariables: { FUNCTION_SIGNATURE_TYPE: "cloudevent" },
+          environmentVariables: {
+            FUNCTION_REGION: ENDPOINT.region,
+            FUNCTION_SIGNATURE_TYPE: "cloudevent",
+          },
         },
       });
 
@@ -257,6 +267,7 @@ describe("cloudfunctionsv2", () => {
           ...CLOUD_FUNCTION_V2.serviceConfig,
           environmentVariables: {
             FOO: "bar",
+            FUNCTION_REGION: ENDPOINT.region,
           },
           secretEnvironmentVariables: [
             {
@@ -382,7 +393,10 @@ describe("cloudfunctionsv2", () => {
           minInstanceCount: 1,
           timeoutSeconds: 15,
           availableMemory: "128Mi",
-          environmentVariables: { FUNCTION_SIGNATURE_TYPE: "cloudevent" },
+          environmentVariables: {
+            FUNCTION_REGION: ENDPOINT.region,
+            FUNCTION_SIGNATURE_TYPE: "cloudevent",
+          },
         },
       };
 
@@ -425,6 +439,7 @@ describe("cloudfunctionsv2", () => {
         serviceConfig: {
           ...CLOUD_FUNCTION_V2.serviceConfig,
           environmentVariables: {
+            FUNCTION_REGION: ENDPOINT.region,
             FUNCTION_SIGNATURE_TYPE: "cloudevent",
           },
           serviceAccountEmail: "sa@google.com",

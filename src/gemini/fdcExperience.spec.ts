@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { extractCodeBlock, generateSchema, generateOperation } from "./fdcExperience";
-import * as nock from "nock";
+import nock from "../test/helpers/nock";
 import { dataconnectOrigin } from "../api";
 import { Schema } from "./types";
 
@@ -73,6 +73,23 @@ describe("fdcExperience", () => {
         query: Query
       }`;
       expect(extractCodeBlock(text)).to.eq(expected);
+    });
+
+    it("should return entire text trimmed if no backticks but contains '{' (Scenario B)", () => {
+      const text = `
+      type User {
+        id: ID!
+      }
+      `;
+      const expected = `type User {
+        id: ID!
+      }`;
+      expect(extractCodeBlock(text)).to.eq(expected);
+    });
+
+    it("should return entire text trimmed if no backticks and no '{' (Scenario C)", () => {
+      const text = "random text without braces";
+      expect(extractCodeBlock(text)).to.eq(text);
     });
   });
 

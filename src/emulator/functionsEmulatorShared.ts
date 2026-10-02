@@ -26,7 +26,31 @@ const V2_EVENTS = [
   ...events.v2.STORAGE_EVENTS,
   ...events.v2.DATABASE_EVENTS,
   ...events.v2.FIRESTORE_EVENTS,
+  ...events.v2.AUTH_EVENTS,
 ];
+
+/**
+ * Extracts the tenant ID from an Auth event payload.
+ *
+ * For 2nd Gen Auth events, CloudEvents v1.0 extension attributes are stored at the top level
+ * using lowercase attribute names (`event.tenantid`), matching Eventarc's attribute-based filtering.
+ */
+export function getEventTenantId(
+  eventPayload: Record<string, unknown> | null | undefined,
+): string | undefined {
+  if (!eventPayload || typeof eventPayload !== "object") {
+    return undefined;
+  }
+
+  // 2nd Gen Eventarc CloudEvent top-level context attribute (`tenantid`).
+  // Per CloudEvents v1.0 specification, extension attribute names must be lowercase.
+  // In Firebase Auth 2nd Gen triggers, tenant filtering matches against this attribute.
+  if (typeof eventPayload.tenantid === "string") {
+    return eventPayload.tenantid;
+  }
+
+  return undefined;
+}
 
 /**
  * Label for eventarc event sources.
@@ -213,7 +237,7 @@ export function emulatedFunctionsFromEndpoints(
           resource: eventTrigger.eventFilters!.resource,
         };
       } else {
-        // TODO(colerogers): v2 events implemented are pubsub, storage, rtdb, and custom events
+        // v2 events implemented are pubsub, storage, rtdb, firestore, alerts, auth, and custom events
         if (!eventServiceImplemented(eventTrigger.eventType) && !eventTrigger.channel) {
           continue;
         }
@@ -385,12 +409,12 @@ export function getServiceFromEventType(eventType: string): string {
   if (eventType.includes("firebasealerts")) {
     return Constants.SERVICE_FIREALERTS;
   }
+  if (eventType.includes("auth")) {
+    return Constants.SERVICE_AUTH;
+  }
   // Below this point are services that do not have a emulator.
   if (eventType.includes("analytics")) {
     return Constants.SERVICE_ANALYTICS;
-  }
-  if (eventType.includes("auth")) {
-    return Constants.SERVICE_AUTH;
   }
   if (eventType.includes("crashlytics")) {
     return Constants.SERVICE_CRASHLYTICS;
@@ -500,7 +524,7 @@ export function getSecretLocalPath(backend: EmulatableBackend, projectDir: strin
 }
 
 /**
- * toBackendInfo transforms an EmulatableBackend into its correspondign API type, BackendInfo
+ * toBackendInfo transforms an EmulatableBackend into its corresponding API type, BackendInfo
  * @param e the emulatableBackend to transform
  * @param cf3Triggers a list of CF3 triggers. If e does not include predefinedTriggers, these will be used instead.
  */

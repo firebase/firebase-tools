@@ -3,7 +3,8 @@ import * as backend from "../backend";
 import * as iam from "../../../gcp/iam";
 import { logger } from "../../../logger";
 import { FirebaseError } from "../../../error";
-import { regionInLocation } from "../../../gcp/location";
+import { regionInLocation, STORAGE_MULTI_REGION_TO_REGION_MAPPING } from "../../../gcp/location";
+import * as build from "../build";
 
 const PUBSUB_PUBLISHER_ROLE = "roles/pubsub.publisher";
 
@@ -87,4 +88,20 @@ export async function ensureStorageTriggerRegion(
       `A function in region ${endpoint.region} cannot listen to a bucket in region ${eventTrigger.region}`,
     );
   }
+}
+
+/**
+ * Get the default region for a Storage event trigger.
+ */
+export async function getDefaultRegion(endpoint: build.Endpoint): Promise<string> {
+  if (!build.isEventTriggered(endpoint)) {
+    throw new FirebaseError("Storage getDefaultRegion requires an event-triggered endpoint");
+  }
+  const bucketName = endpoint.eventTrigger.eventFilters?.bucket;
+  if (!bucketName) {
+    throw new FirebaseError("Could not find bucket name in event trigger filters");
+  }
+  const bucket = await getBucket(bucketName);
+  const locationId = bucket.location.toLowerCase();
+  return STORAGE_MULTI_REGION_TO_REGION_MAPPING[locationId] || locationId;
 }

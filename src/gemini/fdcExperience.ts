@@ -14,10 +14,10 @@ import {
 const apiClient = new Client({ urlPrefix: dataconnectOrigin(), auth: true });
 
 export const PROMPT_GENERATE_CONNECTOR =
-  "Create 4 operations for an app using the instance schema with proper authentication.";
+  'Generate at least one create (insert/upsert), delete, update, get (read by key), and list operation for each table defined in the schema. For user-specific data, use the \'auth.uid\' server value (e.g., id_expr: "auth.uid") or correct filters to secure user-owned data and require authentication using @auth(level: USER). For publicly accessible data, use @auth(level: PUBLIC, insecureReason: "why is it OK to be public?")';
 
 export const PROMPT_GENERATE_SEED_DATA =
-  "Create a mutation to populate the database with some seed data.";
+  "Create a single mutation wrapped in a @transaction to populate the database with seed data. The mutation should call the insertMany action (e.g., table_insertMany) for all tables/entities defined in the schema, using fake data. Generate appropriate fake records (3 to 5 per table) conforming to the schema and including proper relationships/foreign keys.";
 
 // For debugging purposes
 function logCurl(method: string, path: string, body: GenerateRequest): void {
@@ -243,5 +243,12 @@ export function extractCodeBlock(text: string): string {
   if (match && match[1]) {
     return match[1].trim();
   }
+
+  // Loose parsing if no backticks are present
+  if (!text.includes("{")) {
+    logger.warn("[Agent Service] Response seems to be plain text, no GraphQL code block found.");
+  }
+
+  // Return the entire text if no markdown code block is found
   return text.trim();
 }

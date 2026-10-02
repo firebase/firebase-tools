@@ -1,3 +1,4 @@
-- Updated Pub/Sub emulator to version 0.8.32
-- Updated Firebase SQL Connect genAI features to use new Agent Service API
-- Fixes `CloudSQLConnectorError: The connector was closed` unhandled exception during Data Connect deployments. (#10555)
+- Added a check for a default Hosting site and offer to create one during `auth` initialization.
+- - [Fixed] Report the GCFv2-to-GCFv1 downgrade error during validation instead of a misleading CPU error (#5461).
+- Fixed `functions:delete` recreating an already-deleted Cloud Tasks queue for task queue functions. (#9305)
+- Batched function deletions across instances when uninstalling a Function Kit (#11189).

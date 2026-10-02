@@ -1,5 +1,6 @@
 import * as backend from "../backend";
 import { FirebaseError } from "../../../error";
+import * as build from "../build";
 import {
   getDatabaseInstanceDetails as getDetails,
   DatabaseInstance,
@@ -50,4 +51,25 @@ export function ensureDatabaseTriggerRegion(
     throw new FirebaseError("A database trigger location must match the function region.");
   }
   return Promise.resolve();
+}
+
+/**
+ * Get the default region for a Realtime Database event trigger.
+ */
+export async function getDefaultRegion(endpoint: build.Endpoint): Promise<string> {
+  if (!build.isEventTriggered(endpoint)) {
+    throw new FirebaseError("Database getDefaultRegion requires an event-triggered endpoint");
+  }
+  if (endpoint.eventTrigger.region) {
+    return endpoint.eventTrigger.region;
+  }
+
+  const instanceName = endpoint.eventTrigger.eventFilters?.instance;
+  if (instanceName) {
+    const details = await getDatabaseInstanceDetails(endpoint.project, instanceName);
+    if (details.location && details.location !== "-") {
+      return details.location.toLowerCase();
+    }
+  }
+  throw new FirebaseError("Could not resolve database instance location");
 }

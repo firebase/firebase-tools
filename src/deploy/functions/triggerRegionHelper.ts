@@ -5,6 +5,7 @@ import * as utils from "../../utils";
 import { getBucket } from "./services/storage";
 import { getDatabase } from "./services/firestore";
 import { getDatabaseInstanceDetails } from "./services/database";
+import { isUSRegion } from "../../gcp/location";
 
 /**
  * Ensures the trigger regions are set and correct
@@ -136,8 +137,4 @@ function extractInstanceName(resource: string | undefined): string | null {
   if (match) return match[1];
   if (!resource.includes("/")) return resource;
   return null;
-}
-
-function isUSRegion(region: string): boolean {
-  return region === "us" || region.startsWith("nam") || region.startsWith("us-");
 }

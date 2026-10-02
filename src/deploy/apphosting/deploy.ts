@@ -10,6 +10,7 @@ import { Context } from "./args";
 import * as util from "./util";
 import * as experiments from "../../experiments";
 import { logger } from "../../logger";
+import { CLOUD_RUN_SIZE_LIMIT_BYTES } from "../../apphosting/constants";
 
 /**
  * Uploads App Hosting source code or local build output to Google Cloud Storage.
@@ -76,19 +77,19 @@ export default async function (context: Context, options: Options): Promise<void
       let localBuildScratchDir: string | undefined;
       try {
         const isLocalBuild = cfg.localBuild;
-        let builtAppDir: string | undefined;
+        let outputFiles: string[] | undefined;
         if (isLocalBuild) {
           experiments.assertEnabled("apphostinglocalbuilds", "App Hosting local builds");
           const localBuild = context.backendLocalBuilds[cfg.backendId];
-          builtAppDir = localBuild?.buildDir;
+          outputFiles = localBuild?.outputFiles;
           localBuildScratchDir = localBuild?.localBuildScratchDir;
-          if (!builtAppDir || !localBuildScratchDir) {
-            throw new FirebaseError(`No local build dir found for ${cfg.backendId}`);
+          if (!outputFiles || !localBuildScratchDir) {
+            throw new FirebaseError(`No local build output files found for ${cfg.backendId}`);
           }
         }
 
         const zippedSourcePath = isLocalBuild
-          ? await util.createLocalBuildTarArchive(cfg, localBuildScratchDir!, builtAppDir)
+          ? await util.createLocalBuildTarArchive(cfg, localBuildScratchDir!, outputFiles ?? [])
           : await util.createSourceDeployArchive(cfg, rootDir);
 
         logLabeledBullet(
@@ -114,6 +115,7 @@ export default async function (context: Context, options: Options): Promise<void
           },
           bucketName,
           isLocalBuild ? gcs.ContentType.TAR : gcs.ContentType.ZIP,
+          isLocalBuild ? CLOUD_RUN_SIZE_LIMIT_BYTES : undefined,
         );
         logLabeledBullet("apphosting", `Uploaded at gs://${bucket}/${object}`);
         context.backendStorageUris[cfg.backendId] =

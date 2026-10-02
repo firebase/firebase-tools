@@ -244,6 +244,17 @@ describe("migrate", () => {
           global: false,
           background: false,
           agentName: "gemini-cli",
+          skillPackage: "firebase/agent-skills",
+        }),
+      ).to.be.true;
+
+      expect(
+        installSkillsStub.calledWith({
+          cwd: testRoot,
+          global: false,
+          background: false,
+          agentName: "gemini-cli",
+          skillPackage: "genkit-ai/skills",
         }),
       ).to.be.true;
     });
@@ -538,6 +549,7 @@ describe("migrate", () => {
           global: true,
           background: false,
           agentName: "gemini-cli",
+          skillPackage: "firebase/agent-skills",
         }),
       ).to.be.true;
     });

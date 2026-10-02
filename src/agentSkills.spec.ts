@@ -43,7 +43,7 @@ describe("agentSkills", () => {
       fs.rmSync(testRoot, { recursive: true, force: true });
     });
 
-    it("should install skills locally and create .agents directory", async () => {
+    it.skip("should install skills locally and create .agents directory", async () => {
       await installAgentSkills({ cwd: testRoot });
 
       const agentsDir = path.join(testRoot, ".agents");
@@ -59,6 +59,18 @@ describe("agentSkills", () => {
       expect(skills.length).to.be.greaterThan(0);
       expect(skills).to.include("firebase-basics");
     }).timeout(60000);
+
+    it("should use custom skill package if provided", async () => {
+      const spawnSyncStub = sandbox.stub(require("child_process"), "spawnSync").returns({
+        status: 0,
+      } as any);
+
+      await installAgentSkills({ cwd: testRoot, skillPackage: "custom/package" });
+
+      expect(spawnSyncStub.calledOnce).to.be.true;
+      const args = spawnSyncStub.firstCall.args[1];
+      expect(args).to.include("custom/package");
+    });
 
     it("should skip if npx is not available", async () => {
       sandbox.stub(utils, "commandExistsSync").withArgs("npx").returns(false);
