@@ -15,3 +15,4 @@
   - Declare and export enums selected only inside nested relations in generated JS and Admin Node SDKs.
 - Fixed deploying a 2nd gen scheduled function to a region without Cloud Scheduler: the deploy now fails before creating the function, and `functions:delete` can remove a function left behind by an earlier deploy. (#11453)
 - Restricted cross-origin access on the Cloud Functions emulator `/backends` endpoint to the active Emulator UI origin.
+- Added support for deploying scheduled Dart functions (`onSchedule`) to Cloud Run.

@@ -1363,6 +1363,15 @@ describe("prepare", () => {
       await expect(prepare.ensureScheduleRegionsSupported("project", want)).to.be.fulfilled;
     });
 
+    it("rejects Cloud Run scheduled functions in regions without Cloud Scheduler", async () => {
+      const want = backend.of(scheduled("dart", "europe-north1", "run"));
+
+      await expect(prepare.ensureScheduleRegionsSupported("project", want)).to.be.rejectedWith(
+        FirebaseError,
+        "dart(europe-north1)",
+      );
+    });
+
     it("ignores 1st gen scheduled functions", async () => {
       const want = backend.of(scheduled("v1", "europe-north1", "gcfv1"));
 

@@ -605,6 +605,7 @@ export const FIREBASE_FUNCTION_METADTA_ANNOTATION = "firebase-functions-metadata
 export interface FirebaseFunctionMetadata {
   functionId: string;
   eventTrigger?: backend.EventTrigger;
+  scheduleTrigger?: backend.ScheduleTrigger;
 }
 
 // Partial implementation. A full implementation may require more refactoring.
@@ -668,23 +669,25 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
         : "ALLOW_ALL") as backend.IngressSettings,
     ...(metadata.eventTrigger
       ? { eventTrigger: metadata.eventTrigger }
-      : signatureType === "cloudevent"
-        ? {
-            eventTrigger: {
-              eventType: service.annotations?.[TRIGGER_TYPE_ANNOTATION] || "unknown",
-              retry: false,
-            },
-          }
-        : !service.annotations?.[TRIGGER_TYPE_ANNOTATION] ||
-            service.annotations?.[TRIGGER_TYPE_ANNOTATION] === "HTTP_TRIGGER"
-          ? { httpsTrigger: {} }
-          : {
+      : metadata.scheduleTrigger
+        ? { scheduleTrigger: metadata.scheduleTrigger }
+        : signatureType === "cloudevent"
+          ? {
               eventTrigger: {
                 eventType: service.annotations?.[TRIGGER_TYPE_ANNOTATION] || "unknown",
-                // TODO: Figure out how to recover retry info for services not created by Firebase.
                 retry: false,
               },
-            }),
+            }
+          : !service.annotations?.[TRIGGER_TYPE_ANNOTATION] ||
+              service.annotations?.[TRIGGER_TYPE_ANNOTATION] === "HTTP_TRIGGER"
+            ? { httpsTrigger: {} }
+            : {
+                eventTrigger: {
+                  eventType: service.annotations?.[TRIGGER_TYPE_ANNOTATION] || "unknown",
+                  // TODO: Figure out how to recover retry info for services not created by Firebase.
+                  retry: false,
+                },
+              }),
   };
   endpoint.runServiceId = svcId;
   proto.renameIfPresent(endpoint, service.template, "concurrency", "maxInstanceRequestConcurrency");
@@ -745,6 +748,9 @@ export function serviceFromEndpoint(
     [FIREBASE_FUNCTION_METADTA_ANNOTATION]: JSON.stringify({
       functionId: endpoint.id,
       ...(backend.isEventTriggered(endpoint) ? { eventTrigger: endpoint.eventTrigger } : {}),
+      ...(backend.isScheduleTriggered(endpoint)
+        ? { scheduleTrigger: endpoint.scheduleTrigger }
+        : {}),
     }),
   };
 

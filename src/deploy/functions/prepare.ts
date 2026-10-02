@@ -908,7 +908,7 @@ export async function loadCodebases(
 }
 
 /**
- * Fails the deploy before anything is created when a 2nd gen scheduled function targets a
+ * Fails the deploy before anything is created when a 2nd gen or Cloud Run scheduled function targets a
  * region without Cloud Scheduler, since its job is created in the function's own region.
  * If the regions can't be listed, or none come back, the deploy goes ahead.
  */
@@ -918,7 +918,9 @@ export async function ensureScheduleRegionsSupported(
 ): Promise<void> {
   const scheduled = backend
     .allEndpoints(want)
-    .filter((ep) => backend.isScheduleTriggered(ep) && ep.platform === "gcfv2");
+    .filter(
+      (ep) => backend.isScheduleTriggered(ep) && (ep.platform === "gcfv2" || ep.platform === "run"),
+    );
   if (scheduled.length === 0) {
     return;
   }
