@@ -103,7 +103,7 @@ export const command = new Command("apps:create [platform] [displayName]")
         } else if (
           await confirm({
             message:
-              "A Firebase Hosting site is required for Web apps. Would you like to create a default site now?",
+              "A Firebase Hosting site is recommended for Web apps. Would you like to create a default site now?",
             default: true,
             nonInteractive: options.nonInteractive,
           })

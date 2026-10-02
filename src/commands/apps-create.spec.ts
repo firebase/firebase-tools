@@ -34,7 +34,15 @@ describe("apps:create", () => {
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    sandbox.stub(configstore, "get").returns({});
+    sandbox.stub(configstore, "get").callsFake((key: string) => {
+      if (key === "user") {
+        return { email: "user@example.com" };
+      }
+      if (key === "tokens") {
+        return { refresh_token: "fake_token" };
+      }
+      return undefined;
+    });
     sandbox.stub(projectUtils, "needProjectId").returns(PROJECT_ID);
     sdkInitStub = sandbox.stub(apps, "sdkInit");
   });
@@ -90,7 +98,7 @@ describe("apps:create", () => {
       expect(confirmStub.calledOnce).to.be.true;
       expect(confirmStub.firstCall.args[0]).to.deep.include({
         message:
-          "A Firebase Hosting site is required for Web apps. Would you like to create a default site now?",
+          "A Firebase Hosting site is recommended for Web apps. Would you like to create a default site now?",
         default: true,
         nonInteractive: false,
       });
