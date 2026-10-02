@@ -217,7 +217,7 @@ export async function submitBuild(
   });
   if (status !== "SUCCESS") {
     throw new FirebaseError(
-      `Cloud Build failed with status ${status}. View the build logs at ${cloudBuild.logUrl}`,
+      `Cloud Build failed with status ${status ?? "UNKNOWN"}. View the build logs at ${cloudBuild.logUrl ?? ""}`,
     );
   }
 }
@@ -233,12 +233,7 @@ export async function updateService(
   // If no explicit updateMask is provided, infer the mask from the fields set on the service.
   let updateMask = opts.updateMask;
   if (!updateMask) {
-    updateMask = proto.fieldMasks(
-      service,
-      /* doNotRecurseIn...*/ "labels",
-      "annotations",
-      "tags",
-    );
+    updateMask = proto.fieldMasks(service, /* doNotRecurseIn...*/ "labels", "annotations", "tags");
     // Always update revision name to ensure null generates a new unique revision name.
     updateMask.push("template.revision");
   }
