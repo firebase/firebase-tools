@@ -6,6 +6,7 @@ import * as chaiAsPromised from "chai-as-promised";
 import {
   createBucketName,
   getCrashlyticsP4sa,
+  resolveAndroidAppId,
   getProfilingManagerConfig,
   updateProfilingManagerConfig,
   ensureHeapDumpStorageBucket,
@@ -20,6 +21,8 @@ import { crashlyticsApiOrigin } from "../api";
 import * as storage from "../gcp/storage";
 import * as resourceManager from "../gcp/resourceManager";
 import * as serviceusage from "../gcp/serviceusage";
+import * as appsModule from "../management/apps";
+import * as promptModule from "../prompt";
 import { Policy } from "../gcp/iam";
 
 chai.use(chaiAsPromised);
@@ -67,6 +70,112 @@ describe("profilingManager", () => {
       expect(getCrashlyticsP4sa(projectNumber)).to.equal(
         `service-${projectNumber}@gcp-sa-crashlytics.iam.gserviceaccount.com`,
       );
+    });
+  });
+
+  describe("resolveAndroidAppId", () => {
+    it("should return the explicitly provided valid Android app ID", async () => {
+      const result = await resolveAndroidAppId(projectId, { app: appId });
+      expect(result).to.equal(appId);
+    });
+
+    it("should throw a FirebaseError when an invalid or non-Android app ID is provided", async () => {
+      await expect(
+        resolveAndroidAppId(projectId, { app: `1:${projectNumber}:ios:${hashedAppId}` }),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        "Heap dump collection is only supported for Android apps.",
+      );
+    });
+
+    it("should throw a FirebaseError when no Android apps exist in the project", async () => {
+      sinon.stub(appsModule, "listFirebaseApps").resolves([]);
+
+      await expect(resolveAndroidAppId(projectId, {})).to.be.rejectedWith(
+        FirebaseError,
+        `No Android apps found in project '${projectId}'`,
+      );
+    });
+
+    it("should automatically return the app ID when exactly one Android app exists", async () => {
+      sinon.stub(appsModule, "listFirebaseApps").resolves([
+        {
+          name: `projects/${projectId}/androidApps/${appId}`,
+          projectId,
+          appId,
+          platform: appsModule.AppPlatform.ANDROID,
+          packageName: "com.example.app",
+        },
+      ]);
+
+      const result = await resolveAndroidAppId(projectId, {});
+      expect(result).to.equal(appId);
+    });
+
+    it("should throw a FirebaseError when multiple Android apps exist in non-interactive mode", async () => {
+      const secondAppId = `1:${projectNumber}:android:fedcba654321`;
+      sinon.stub(appsModule, "listFirebaseApps").resolves([
+        {
+          name: `projects/${projectId}/androidApps/${appId}`,
+          projectId,
+          appId,
+          platform: appsModule.AppPlatform.ANDROID,
+          packageName: "com.example.one",
+        },
+        {
+          name: `projects/${projectId}/androidApps/${secondAppId}`,
+          projectId,
+          appId: secondAppId,
+          platform: appsModule.AppPlatform.ANDROID,
+          packageName: "com.example.two",
+        },
+      ]);
+
+      await expect(resolveAndroidAppId(projectId, { nonInteractive: true })).to.be.rejectedWith(
+        FirebaseError,
+        `Project '${projectId}' has multiple Android apps. Please specify an app ID with '--app <appID>'.`,
+      );
+    });
+
+    it("should prompt the user to select an app when multiple Android apps exist interactively", async () => {
+      const secondAppId = `1:${projectNumber}:android:fedcba654321`;
+      const thirdAppId = `1:${projectNumber}:android:111111222222`;
+      sinon.stub(appsModule, "listFirebaseApps").resolves([
+        {
+          name: `projects/${projectId}/androidApps/${appId}`,
+          projectId,
+          appId,
+          displayName: "First App",
+          platform: appsModule.AppPlatform.ANDROID,
+          packageName: "com.example.one",
+        },
+        {
+          name: `projects/${projectId}/androidApps/${secondAppId}`,
+          projectId,
+          appId: secondAppId,
+          platform: appsModule.AppPlatform.ANDROID,
+          packageName: "com.example.two",
+        },
+        {
+          name: `projects/${projectId}/androidApps/${thirdAppId}`,
+          projectId,
+          appId: thirdAppId,
+          platform: appsModule.AppPlatform.ANDROID,
+          packageName: "",
+        },
+      ]);
+      const selectStub = sinon.stub(promptModule, "select").resolves(secondAppId);
+
+      const result = await resolveAndroidAppId(projectId, {});
+      expect(result).to.equal(secondAppId);
+      expect(selectStub).to.have.been.calledOnceWith({
+        message: "Select an Android app:",
+        choices: [
+          { name: `First App (${appId})`, value: appId },
+          { name: `com.example.two (${secondAppId})`, value: secondAppId },
+          { name: `${thirdAppId} (${thirdAppId})`, value: thirdAppId },
+        ],
+      });
     });
   });
 
@@ -132,6 +241,23 @@ describe("profilingManager", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should default empty configuration fields when omitted", async () => {
+      nock(crashlyticsApiOrigin())
+        .post(`/v1/projects/${projectNumber}/apps/${appId}/appconfig:profilingManager`, {
+          projectNumber,
+          gmpAppId: appId,
+          configuration: {
+            gcsBucket: "",
+            heapDumpCollectionEnabled: false,
+          },
+        })
+        .reply(200, {});
+
+      await updateProfilingManagerConfig(appId, {});
+
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("should throw a FirebaseError if the appId is invalid", async () => {
       await expect(
         updateProfilingManagerConfig("invalid-app", {
@@ -180,6 +306,17 @@ describe("profilingManager", () => {
         },
         true,
       );
+    });
+
+    it("should rethrow non-404 errors from getBucket", async () => {
+      const forbiddenError = new FirebaseError("Forbidden", { status: 403 });
+      sinon.stub(storage, "getBucket").rejects(forbiddenError);
+      const createBucketStub = sinon.stub(storage, "createBucket");
+
+      await expect(ensureHeapDumpStorageBucket(projectId, appId)).to.be.rejectedWith(
+        forbiddenError,
+      );
+      expect(createBucketStub).to.not.have.been.called;
     });
 
     it("should patch CORS and lifecycle if bucket exists without either configuration", async () => {

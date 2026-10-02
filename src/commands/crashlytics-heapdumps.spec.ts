@@ -107,6 +107,34 @@ describe("crashlytics:heapdumps commands", () => {
       });
     });
 
+    it("should default location to DEFAULT_BUCKET_LOCATION when location option is empty", async () => {
+      await enableCommand.runner()({
+        project: projectId,
+        app: appId,
+        location: "",
+        force: true,
+      });
+
+      expect(ensureBucketStub).to.have.been.calledWith(
+        projectId,
+        appId,
+        profilingManager.DEFAULT_BUCKET_LOCATION,
+      );
+    });
+
+    it("should rethrow error when provisioning or enabling collection fails", async () => {
+      const boom = new FirebaseError("Storage failure");
+      ensureBucketStub.rejects(boom);
+
+      await expect(
+        enableCommand.runner()({
+          project: projectId,
+          app: appId,
+          force: true,
+        }),
+      ).to.be.rejectedWith(boom);
+    });
+
     it("should throw if an invalid app ID is supplied", async () => {
       await expect(
         enableCommand.runner()({
@@ -165,10 +193,23 @@ describe("crashlytics:heapdumps commands", () => {
         heapDumpCollectionEnabled: false,
       });
     });
+
+    it("should rethrow error when disabling collection fails", async () => {
+      const boom = new FirebaseError("Update failed");
+      updateConfigStub.rejects(boom);
+
+      await expect(
+        disableCommand.runner()({
+          project: projectId,
+          app: appId,
+          force: true,
+        }),
+      ).to.be.rejectedWith(boom);
+    });
   });
 
   describe("crashlytics:heapdumps:status", () => {
-    it("should return the status and configuration", async () => {
+    it("should return the status and configuration when enabled", async () => {
       sinon.stub(profilingManager, "getProfilingManagerConfig").resolves({
         gcsBucket: bucketName,
         heapDumpCollectionEnabled: true,
@@ -183,6 +224,24 @@ describe("crashlytics:heapdumps commands", () => {
         appId,
         gcsBucket: bucketName,
         heapDumpCollectionEnabled: true,
+      });
+    });
+
+    it("should return the status and configuration when disabled with no bucket", async () => {
+      sinon.stub(profilingManager, "getProfilingManagerConfig").resolves({
+        gcsBucket: "",
+        heapDumpCollectionEnabled: false,
+      });
+
+      const result = await statusCommand.runner()({
+        project: projectId,
+        app: appId,
+      });
+
+      expect(result).to.deep.equal({
+        appId,
+        gcsBucket: "",
+        heapDumpCollectionEnabled: false,
       });
     });
   });
