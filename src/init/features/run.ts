@@ -22,6 +22,7 @@ export interface RunInfo {
   region: string;
   baseImage: string;
   rootDir: string;
+  localBuild?: boolean;
 }
 
 /**
@@ -61,17 +62,38 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
     serviceId = await promptNewServiceId(projectId, region);
   }
 
+  const localBuild = await select({
+    message: "Would you like to build your app locally or remotely?",
+    choices: [
+      { name: "Build remotely on Cloud Build", value: false },
+      { name: "Build locally", value: true },
+    ],
+    default: false,
+  });
+
   const existingBaseImage = existing?.template.containers?.[0]?.baseImageUri;
-  const defaultBaseImage = existing ? existingBaseImage : "nodejs22";
+  let defaultBaseImage: string | undefined = "nodejs22";
+  if (existing) {
+    defaultBaseImage = existingBaseImage || (localBuild ? "nodejs22" : undefined);
+  }
   const rawBaseImage = await input({
     message: "Which base image should your app use? (e.g. nodejs20, nodejs22)",
     default: defaultBaseImage,
+    validate: (img: string) => {
+      if (localBuild && !img.trim()) {
+        return "Local builds require a base image.";
+      }
+      return true;
+    },
   });
   const baseImage = (rawBaseImage || "").trim();
 
   const rootDir = await promptRootDir(config.projectDir);
 
-  setup.featureInfo = { ...setup.featureInfo, run: { serviceId, region, baseImage, rootDir } };
+  setup.featureInfo = {
+    ...setup.featureInfo,
+    run: { serviceId, region, baseImage, rootDir, ...(localBuild && { localBuild }) },
+  };
 }
 
 async function promptExistingService(projectId: string): Promise<runv2.Service | undefined> {
@@ -145,6 +167,7 @@ export async function actuate(setup: Setup, config: Config, options: Options): P
       serviceId: info.serviceId,
       rootDir: info.rootDir,
       region: info.region,
+      ...(info.localBuild && { localBuild: true }),
       ignore: DEFAULT_IGNORE,
     },
     config,
@@ -159,7 +182,7 @@ export async function actuate(setup: Setup, config: Config, options: Options): P
 
 /**
  * Adds a service to firebase.json, or updates it in place. Settings that init doesn't ask
- * about (e.g. localBuild or a custom ignore list) are kept. Exported for unit testing.
+ * about (e.g. a custom ignore list) are kept. Exported for unit testing.
  */
 export function upsertRunConfig(runConfig: RunSingle, config: Config): void {
   if (!config.src.run) {
@@ -172,11 +195,15 @@ export function upsertRunConfig(runConfig: RunSingle, config: Config): void {
     services.push(runConfig);
   } else {
     const existingConfig = services[existingIndex];
-    services[existingIndex] = {
+    const updatedConfig: RunSingle = {
       ...existingConfig,
       ...runConfig,
       ignore: existingConfig.ignore ?? runConfig.ignore,
     };
+    if (!runConfig.localBuild) {
+      delete updatedConfig.localBuild;
+    }
+    services[existingIndex] = updatedConfig;
   }
   config.set("run", services.length === 1 ? services[0] : services);
 }

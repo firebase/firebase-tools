@@ -1,11 +1,13 @@
 import { expect } from "chai";
 import * as fs from "fs";
 import * as sinon from "sinon";
+import * as localbuilds from "../../apphosting/localbuilds";
 import * as artifactregistry from "../../gcp/artifactregistry";
 import * as runv2 from "../../gcp/runv2";
 import * as gcs from "../../gcp/storage";
 import * as getProjectNumber from "../../getProjectNumber";
 import { Options } from "../../options";
+import * as apphostingPrepare from "../apphosting/prepare";
 import * as apphostingUtil from "../apphosting/util";
 import { ServiceDeploy } from "./args";
 import { deploy } from "./deploy";
@@ -14,6 +16,7 @@ describe("run deploy", () => {
   const options = { config: { projectDir: "/p" } } as unknown as Options;
   const config = { serviceId: "s", region: "us-central1", rootDir: "web" };
   let sourceArchiveStub: sinon.SinonStub;
+  let tarArchiveStub: sinon.SinonStub;
   let rmSyncStub: sinon.SinonSpy;
   let submitBuildStub: sinon.SinonStub;
   let createServiceStub: sinon.SinonStub;
@@ -23,7 +26,7 @@ describe("run deploy", () => {
     return { config, ...overrides };
   }
 
-  async function deployOne(svc: ServiceDeploy, opts = options) {
+  async function deployOne(svc: ServiceDeploy, opts = options): Promise<ServiceDeploy> {
     await deploy({ projectId: "p" }, opts, { run: { services: [svc] } });
     return svc;
   }
@@ -37,6 +40,9 @@ describe("run deploy", () => {
     sinon.stub(fs, "createReadStream").returns("stream" as unknown as fs.ReadStream);
     rmSyncStub = sinon.spy(fs, "rmSync");
     sourceArchiveStub = sinon.stub(apphostingUtil, "createSourceDeployArchive").resolves("src.zip");
+    tarArchiveStub = sinon
+      .stub(apphostingUtil, "createLocalBuildTarArchive")
+      .resolves("out.tar.gz");
     sinon.stub(artifactregistry, "ensureDockerRepository").resolves();
     submitBuildStub = sinon.stub(runv2, "submitBuild").resolves();
     createServiceStub = sinon
@@ -101,6 +107,19 @@ describe("run deploy", () => {
     );
   });
 
+  it("passes build env to the build", async () => {
+    await deployOne(service({ baseImage: "nodejs22", buildEnv: { A: "1" } }));
+    expect(submitBuildStub.firstCall.args[2].buildpackBuild).to.deep.equal({
+      baseImage: "nodejs22",
+      enableAutomaticUpdates: true,
+      environmentVariables: {
+        A: "1",
+        X_GOOGLE_TARGET_PLATFORM: "fah",
+        FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
+      },
+    });
+  });
+
   it("updates the live revision template of an existing service", async () => {
     const existing = {
       name: "projects/p/locations/us-central1/services/s",
@@ -149,6 +168,128 @@ describe("run deploy", () => {
       { type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 },
     ]);
     expect(existing.template.revision).to.equal("s-1");
+  });
+
+  describe("local builds", () => {
+    const existing = {
+      name: "projects/p/locations/us-central1/services/s",
+      template: { containers: [{ name: "s", image: "old" }] },
+    } as unknown as runv2.Service;
+    const localService = (overrides: Partial<ServiceDeploy> = {}): ServiceDeploy =>
+      service({
+        config: { ...config, localBuild: true },
+        existing,
+        baseImage: "nodejs22",
+        ...overrides,
+      });
+    let validateNodeStub: sinon.SinonStub;
+    let localBuildStub: sinon.SinonStub;
+    let mkdtemp: sinon.SinonSpy;
+
+    beforeEach(() => {
+      sinon.stub(apphostingPrepare, "prepareLocalBuildScratchDirectory").resolves();
+      validateNodeStub = sinon.stub(localbuilds, "validateLocalBuildNodeVersion");
+      localBuildStub = sinon.stub(localbuilds, "localBuild").resolves({
+        outputFiles: [".next"],
+        buildConfig: { runCommand: "node server.js" },
+      });
+      mkdtemp = sinon.spy(fs, "mkdtempSync");
+    });
+
+    it("builds locally and deploys the output without building on Cloud Build", async () => {
+      await deployOne(localService());
+
+      const scratchDir = mkdtemp.firstCall.returnValue as string;
+      expect(validateNodeStub).to.have.been.calledWith(
+        { runtime: { value: "nodejs22" } },
+        "/p/web",
+      );
+      expect(localBuildStub).to.have.been.calledWith(
+        "p",
+        scratchDir,
+        {},
+        {
+          nonInteractive: undefined,
+          allowLocalBuildSecrets: true,
+          rootDir: "web",
+        },
+      );
+      expect(tarArchiveStub).to.have.been.calledWithMatch({ backendId: "s" }, scratchDir, [
+        ".next",
+      ]);
+      expect(submitBuildStub).not.to.have.been.called;
+      expect(updateServiceStub.firstCall.args[0].template.containers[0]).to.deep.equal({
+        name: "s",
+        image: "scratch",
+        sourceCode: { cloudStorageSource: { bucket: "bucket", object: "out.tar.gz" } },
+        command: ["node", "server.js"],
+        baseImageUri: "nodejs22",
+      });
+      expect(fs.existsSync(scratchDir)).to.be.false;
+    });
+
+    it("passes build env and secrets to the local build and merges runtime output env", async () => {
+      localBuildStub.resolves({
+        outputFiles: [".next"],
+        buildConfig: {
+          runCommand: "node server.js",
+          env: [
+            { variable: "NODE_ENV", value: "production", availability: ["RUNTIME"] },
+            { variable: "CUSTOM", value: "from-build", availability: ["RUNTIME"] },
+          ],
+        },
+      });
+      const svcWithEnv = {
+        ...existing,
+        template: {
+          containers: [{ name: "s", image: "old", env: [{ name: "CUSTOM", value: "user-val" }] }],
+        },
+      } as unknown as runv2.Service;
+
+      await deployOne(
+        localService({
+          existing: svcWithEnv,
+          buildEnv: { A: "1", TOKEN: { secret: "t", version: "2" } },
+        }),
+      );
+      expect(localBuildStub.firstCall.args[2]).to.deep.equal({
+        A: { value: "1", availability: ["BUILD"] },
+        TOKEN: { secret: "t@2", availability: ["BUILD"] },
+      });
+      expect(updateServiceStub.firstCall.args[0].template.containers[0].env).to.deep.equal([
+        { name: "CUSTOM", value: "user-val" },
+        { name: "NODE_ENV", value: "production" },
+      ]);
+    });
+
+    it("cleans up and deploys nothing if the local build fails", async () => {
+      localBuildStub.rejects(new Error("boom"));
+      await expect(deployOne(localService())).to.be.rejectedWith("boom");
+      expect(fs.existsSync(mkdtemp.firstCall.returnValue as string)).to.be.false;
+      expect(updateServiceStub).not.to.have.been.called;
+    });
+  });
+
+  it("switches a service from a local build back to a source build", async () => {
+    const existing = {
+      name: "projects/p/locations/us-central1/services/s",
+      template: {
+        containers: [
+          {
+            name: "s",
+            image: "scratch",
+            command: ["node", "server.js"],
+            sourceCode: { cloudStorageSource: { bucket: "b", object: "o" } },
+          },
+        ],
+      },
+    } as unknown as runv2.Service;
+
+    await deployOne(service({ existing }));
+
+    const container = updateServiceStub.firstCall.args[0].template.containers[0];
+    expect(container).not.to.have.property("sourceCode");
+    expect(container).not.to.have.property("command");
   });
 
   it("logs the deployed URL of each service during release", async () => {

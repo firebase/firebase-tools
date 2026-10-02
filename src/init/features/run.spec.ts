@@ -123,6 +123,32 @@ describe("init run", () => {
 
       expect(s.featureInfo?.run?.serviceId).to.equal("my-service");
     });
+
+    it("enables localBuild and requires a base image when building locally", async () => {
+      selectStub
+        .onFirstCall()
+        .resolves("create")
+        .onSecondCall()
+        .resolves("us-central1")
+        .onThirdCall()
+        .resolves(true);
+      inputStub.onFirstCall().resolves("my-service");
+      inputStub.callsFake((o) => Promise.resolve(o.default));
+      const s = setup();
+
+      await askQuestions(s, config, options);
+
+      const validateImg = inputStub.secondCall.args[0].validate;
+      expect(validateImg("nodejs22")).to.be.true;
+      expect(validateImg(" ")).to.include("Local builds require a base image");
+      expect(s.featureInfo?.run).to.deep.equal({
+        serviceId: "my-service",
+        region: "us-central1",
+        baseImage: "nodejs22",
+        rootDir: "/",
+        localBuild: true,
+      });
+    });
   });
 
   describe("actuate", () => {
@@ -136,7 +162,9 @@ describe("init run", () => {
       const writeStub = sinon.stub(config, "writeProjectFile");
       const deployStub = sinon.stub(deploy, "deploy").resolves();
       const s = setup();
-      s.featureInfo = { run: { serviceId: "s", region: "r", baseImage: "", rootDir: "/" } };
+      s.featureInfo = {
+        run: { serviceId: "s", region: "r", baseImage: "", rootDir: "/", localBuild: true },
+      };
 
       await actuate(s, config, options);
 
@@ -144,6 +172,7 @@ describe("init run", () => {
         serviceId: "s",
         rootDir: "/",
         region: "r",
+        localBuild: true,
         ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"],
       };
       expect(config.src.run).to.deep.equal(runConfig);
@@ -176,13 +205,30 @@ describe("init run", () => {
       expect(config.src.run).to.deep.equal([firstService, secondService]);
     });
 
-    it("updates an existing service in place while preserving existing ignore and localBuild settings", () => {
+    it("updates an existing service in place while preserving custom ignore and updating localBuild", () => {
       config.set("run", {
         serviceId: "web",
         region: "us-central1",
         rootDir: "/",
         ignore: ["custom-ignore"],
+      });
+
+      upsertRunConfig(
+        {
+          serviceId: "web",
+          region: "us-east1",
+          rootDir: "apps/web",
+          localBuild: true,
+          ignore: ["default-ignore"],
+        },
+        config,
+      );
+      expect(config.src.run).to.deep.equal({
+        serviceId: "web",
+        region: "us-east1",
+        rootDir: "apps/web",
         localBuild: true,
+        ignore: ["custom-ignore"],
       });
 
       upsertRunConfig(
@@ -194,13 +240,11 @@ describe("init run", () => {
         },
         config,
       );
-
       expect(config.src.run).to.deep.equal({
         serviceId: "web",
         region: "us-east1",
         rootDir: "apps/web",
         ignore: ["custom-ignore"],
-        localBuild: true,
       });
     });
   });
