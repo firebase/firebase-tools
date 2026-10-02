@@ -35,6 +35,9 @@ import {
 } from "./constants";
 import { dirExistsSync, fileExistsSync } from "../../fsutils";
 import { IS_WINDOWS } from "../../utils";
+import { spawn } from "cross-spawn";
+import { loadStreamJson } from "../../streamJson";
+import { NPM_COMMAND_TIMEOUT_MILLIES } from "../constants";
 import { execSync } from "child_process";
 import { FirebaseError } from "../../error";
 
@@ -342,6 +345,36 @@ export function allDependencyNames(mod: NpmLsDepdendency): string[] {
     [] as string[],
   );
   return dependencyNames;
+}
+
+/**
+ * Run `npm ls` in `sourceDir` and resolve the unique names of all (transitive) production
+ * dependencies.
+ */
+export async function getProductionDependencyNames(sourceDir: string): Promise<string[]> {
+  const { chain, many, parser, pick, streamObject } = await loadStreamJson();
+  return new Promise((resolve, reject) => {
+    const dependencies: string[] = [];
+    const npmLs = spawn("npm", ["ls", "--omit=dev", "--all", "--json=true"], {
+      cwd: sourceDir,
+      timeout: NPM_COMMAND_TIMEOUT_MILLIES,
+    });
+    npmLs.on("error", reject);
+    if (!npmLs.stdout) {
+      return reject(new FirebaseError("Failed to capture npm ls output"));
+    }
+    const pipeline = chain([
+      npmLs.stdout,
+      parser({ packValues: false, packKeys: true, streamValues: false }),
+      pick({ filter: "dependencies" }),
+      streamObject(),
+      ({ key, value }: { key: string; value: NpmLsDepdendency }) =>
+        many([key, ...allDependencyNames(value)]),
+    ]);
+    pipeline.on("data", (it: string) => dependencies.push(it));
+    pipeline.on("error", reject);
+    pipeline.on("end", () => resolve([...new Set(dependencies)]));
+  });
 }
 
 /**
