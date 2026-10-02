@@ -2,3 +2,4 @@
 - - [Fixed] Report the GCFv2-to-GCFv1 downgrade error during validation instead of a misleading CPU error (#5461).
 - Fixed `functions:delete` recreating an already-deleted Cloud Tasks queue for task queue functions. (#9305)
 - Batched function deletions across instances when uninstalling a Function Kit (#11189).
+- Fixed v2 function deploys with a custom `serviceAccount` failing when the default compute service account is deleted or disabled. The build now runs as the custom service account in that case. (#8841)

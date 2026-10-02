@@ -8,7 +8,7 @@ import {
   parseErrorCode,
 } from "./executor";
 import * as ensure from "../ensure";
-import { FirebaseError } from "../../../error";
+import { FirebaseError, getErrMsg, getErrStatus } from "../../../error";
 
 import { SourceTokenScraper } from "./sourceTokenScraper";
 import { Timer } from "./timer";
@@ -104,6 +104,7 @@ export class Fabricator {
   appEngineLocation: string;
   projectNumber: string;
   projectId: string;
+  private defaultComputeServiceAccountUsable?: Promise<boolean>;
 
   constructor(args: FabricatorArgs) {
     this.executor = args.executor;
@@ -554,6 +555,37 @@ export class Fabricator {
     }
   }
 
+  /**
+   * GCF v2 builds run as the default compute service account unless buildConfig.serviceAccount
+   * is set. The runtime service account may lack build permissions, so it is only used for the
+   * build when the default account is missing or disabled.
+   */
+  private async setBuildServiceAccount(apiFunction: gcfV2.InputCloudFunction): Promise<void> {
+    const email = apiFunction.serviceConfig.serviceAccountEmail;
+    if (!email) {
+      return;
+    }
+    this.defaultComputeServiceAccountUsable ??= this.isDefaultComputeServiceAccountUsable();
+    if (await this.defaultComputeServiceAccountUsable) {
+      return;
+    }
+    apiFunction.buildConfig.serviceAccount = `projects/-/serviceAccounts/${email}`;
+  }
+
+  private async isDefaultComputeServiceAccountUsable(): Promise<boolean> {
+    const email = await gce.getDefaultServiceAccount(this.projectNumber);
+    try {
+      const account = await iam.getServiceAccount(this.projectId, email);
+      return !account.disabled;
+    } catch (err: unknown) {
+      if (getErrStatus(err) === 404) {
+        return false;
+      }
+      logger.debug(`Unable to look up default compute service account ${email}: ${getErrMsg(err)}`);
+      return true;
+    }
+  }
+
   async createV2Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
     const storageSource = this.sources[endpoint.codebase!]?.storage;
     if (!storageSource) {
@@ -561,6 +593,7 @@ export class Fabricator {
       throw new Error("Precondition failed");
     }
     const apiFunction = gcfV2.functionFromEndpoint({ ...endpoint, source: { storageSource } });
+    await this.setBuildServiceAccount(apiFunction);
 
     // N.B. As of GCFv2 private preview GCF no longer creates Pub/Sub topics
     // for Pub/Sub event handlers. This may change, at which point this code
@@ -781,6 +814,7 @@ export class Fabricator {
       throw new Error("Precondition failed");
     }
     const apiFunction = gcfV2.functionFromEndpoint({ ...endpoint, source: { storageSource } });
+    await this.setBuildServiceAccount(apiFunction);
 
     // N.B. As of GCFv2 private preview the API chokes on any update call that
     // includes the pub/sub topic even if that topic is unchanged.
