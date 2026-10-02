@@ -7,7 +7,6 @@ import {
   deployRevision,
   getExistingService,
   getServiceConfigs,
-  mainContainer,
   toAppHostingConfig,
 } from "./util";
 
@@ -69,16 +68,6 @@ describe("run util", () => {
     it("rethrows other errors", async () => {
       sinon.stub(runv2, "getService").rejects({ status: 403 });
       await expect(getExistingService("p", "r", "s")).to.be.rejected;
-    });
-  });
-
-  describe("mainContainer", () => {
-    it("returns the container with ports, or else the first one", () => {
-      const sidecar = { name: "sidecar", image: "s" };
-      const main = { name: "main", image: "m", ports: [{ containerPort: 8080 }] };
-      expect(mainContainer({ containers: [sidecar, main] })).to.equal(main);
-      expect(mainContainer({ containers: [sidecar] })).to.equal(sidecar);
-      expect(mainContainer(undefined)).to.be.undefined;
     });
   });
 
