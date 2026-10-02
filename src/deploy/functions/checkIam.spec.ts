@@ -652,6 +652,123 @@ describe("checkIam", () => {
       const policy = setIamStub.firstCall.args[1];
       assertRunAndEventarcMembersExclude(policy, CUSTOM_SA);
     });
+
+    describe("runtime service account changes", () => {
+      const storageFn = (id: string, serviceAccount?: string): backend.Endpoint => ({
+        id,
+        entryPoint: id,
+        platform: "gcfv2",
+        ...(serviceAccount ? { serviceAccount } : {}),
+        eventTrigger: {
+          eventType: "google.cloud.storage.object.v1.finalized",
+          eventFilters: { bucket: "my-bucket" },
+          retry: false,
+        },
+        ...SPEC,
+        project: projectId,
+      });
+
+      beforeEach(() => {
+        getIamStub.resolves({ etag: "etag", version: 3, bindings: [BINDING] });
+        setIamStub.resolves({});
+      });
+
+      it("should expand a short-form service account to its full email", async () => {
+        storageStub.resolves(STORAGE_RES);
+
+        await checkIam.ensureServiceAgentRoles(
+          projectId,
+          projectNumber,
+          backend.of(storageFn("fn", "functions-runner@")),
+          backend.empty(),
+        );
+
+        const policy = setIamStub.firstCall.args[1];
+        assertRunAndEventarcMembers(policy, [CUSTOM_SA]);
+        assertRunAndEventarcMembersExclude(policy, "functions-runner@");
+      });
+
+      it("should grant roles to a custom SA on a new function when no service is new", async () => {
+        await checkIam.ensureServiceAgentRoles(
+          projectId,
+          projectNumber,
+          backend.of(storageFn("existing"), storageFn("added", CUSTOM_SA)),
+          backend.of(storageFn("existing", DEFAULT_COMPUTE_SA)),
+        );
+
+        expect(storageStub).to.not.have.been.called;
+        expect(setIamStub).to.have.been.calledOnce;
+        const policy = setIamStub.firstCall.args[1];
+        assertRunAndEventarcMembers(policy, [CUSTOM_SA]);
+        assertRunAndEventarcMembersExclude(policy, DEFAULT_COMPUTE_SA);
+      });
+
+      it("should grant roles when an existing function switches service account", async () => {
+        await checkIam.ensureServiceAgentRoles(
+          projectId,
+          projectNumber,
+          backend.of(storageFn("fn", "functions-runner@")),
+          backend.of(storageFn("fn", DEFAULT_COMPUTE_SA)),
+        );
+
+        expect(setIamStub).to.have.been.calledOnce;
+        assertRunAndEventarcMembers(setIamStub.firstCall.args[1], [CUSTOM_SA]);
+      });
+
+      it("should not touch IAM when an existing function keeps its short-form service account", async () => {
+        await checkIam.ensureServiceAgentRoles(
+          projectId,
+          projectNumber,
+          backend.of(storageFn("fn", "functions-runner@")),
+          backend.of(storageFn("fn", CUSTOM_SA)),
+        );
+
+        expect(gceStub).to.not.have.been.called;
+        expect(getIamStub).to.not.have.been.called;
+        expect(setIamStub).to.not.have.been.called;
+      });
+
+      it("should not grant roles to a declarative security managed service account", async () => {
+        const managedSA = `firebase-fn-123@${projectId}.iam.gserviceaccount.com`;
+
+        storageStub.resolves(STORAGE_RES);
+
+        await checkIam.ensureServiceAgentRoles(
+          projectId,
+          projectNumber,
+          backend.of(storageFn("fn", managedSA)),
+          backend.empty(),
+        );
+
+        expect(setIamStub).to.have.been.calledOnce;
+        assertRunAndEventarcMembersExclude(setIamStub.firstCall.args[1], managedSA);
+      });
+
+      it("should not grant roles to the service account of a v1 event function", async () => {
+        storageStub.resolves(STORAGE_RES);
+        const v1Fn: backend.Endpoint = {
+          ...storageFn("v1fn", CUSTOM_SA),
+          platform: "gcfv1",
+          eventTrigger: {
+            eventType: "google.storage.object.finalize",
+            eventFilters: { resource: "projects/_/buckets/my-bucket" },
+            retry: false,
+          },
+        };
+
+        await checkIam.ensureServiceAgentRoles(
+          projectId,
+          projectNumber,
+          backend.of(storageFn("v2fn"), v1Fn),
+          backend.empty(),
+        );
+
+        expect(setIamStub).to.have.been.calledOnce;
+        const policy = setIamStub.firstCall.args[1];
+        assertRunAndEventarcMembers(policy, [DEFAULT_COMPUTE_SA]);
+        assertRunAndEventarcMembersExclude(policy, CUSTOM_SA);
+      });
+    });
   });
 
   describe("ensureGenkitMonitoringRoles", () => {
