@@ -43,6 +43,12 @@ describe("profilingManager", () => {
       expect(result).to.equal(expectedBucketName);
     });
 
+    it("should lowercase uppercase characters in the hashed package name", () => {
+      const upperAppId = `1:${projectNumber}:android:ABCDEF123456`;
+      const result = createBucketName(upperAppId);
+      expect(result).to.equal(expectedBucketName);
+    });
+
     it("should throw a FirebaseError for an iOS app ID", () => {
       const iosAppId = `1:${projectNumber}:ios:${hashedAppId}`;
       expect(() => createBucketName(iosAppId)).to.throw(

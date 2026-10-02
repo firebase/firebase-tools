@@ -9,10 +9,12 @@ import * as serviceusage from "../gcp/serviceusage";
 import { AndroidAppMetadata, AppPlatform, listFirebaseApps } from "../management/apps";
 import { select } from "../prompt";
 
-export const CRASHLYTICS_V1_API_CLIENT = new Client({
-  urlPrefix: crashlyticsApiOrigin(),
-  apiVersion: "v1",
-});
+export function getCrashlyticsV1Client(): Client {
+  return new Client({
+    urlPrefix: crashlyticsApiOrigin(),
+    apiVersion: "v1",
+  });
+}
 
 export const CRASHLYTICS_SERVICE_NAME = "firebasecrashlytics.googleapis.com";
 export const STORAGE_OBJECT_CREATOR_ROLE = "roles/storage.objectCreator";
@@ -50,7 +52,7 @@ export function createBucketName(appId: string): string {
       `App ID ${appId} is not a valid Android app ID. Heap dump collection is only supported for Android apps.`,
     );
   }
-  const hashedPackageName = appIdSplit[3];
+  const hashedPackageName = appIdSplit[3].toLowerCase();
   return `firebasecrashlytics-heap-dumps-${hashedPackageName}`;
 }
 
@@ -115,16 +117,14 @@ export async function resolveAndroidAppId(
 export async function getProfilingManagerConfig(appId: string): Promise<ProfilingManagerConfig> {
   const projectNumber = parseProjectNumber(appId);
   logger.debug(`[crashlytics] getProfilingManagerConfig called with appId: ${appId}`);
-  const response = await CRASHLYTICS_V1_API_CLIENT.request<void, GetProfilingManagerConfigResponse>(
-    {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      path: `/projects/${projectNumber}/apps/${appId}/appconfig:profilingManager`,
-      timeout: TIMEOUT,
+  const response = await getCrashlyticsV1Client().request<void, GetProfilingManagerConfigResponse>({
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
     },
-  );
+    path: `/projects/${projectNumber}/apps/${appId}/appconfig:profilingManager`,
+    timeout: TIMEOUT,
+  });
   const config = response.body?.configuration || {};
   return {
     gcsBucket: config.gcsBucket || "",
@@ -145,7 +145,7 @@ export async function updateProfilingManagerConfig(
   logger.debug(
     `[crashlytics] updateProfilingManagerConfig called with appId: ${appId}, config: ${JSON.stringify(config)}`,
   );
-  await CRASHLYTICS_V1_API_CLIENT.request<UpdateProfilingManagerConfigRequest, void>({
+  await getCrashlyticsV1Client().request<UpdateProfilingManagerConfigRequest, void>({
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -209,8 +209,7 @@ export async function ensureHeapDumpStorageBucket(
     }
     return bucketName;
   } catch (err: unknown) {
-    const fe = err as FirebaseError;
-    const status = fe?.original ? getErrStatus(fe.original, fe.status) : getErrStatus(err);
+    const status = getErrStatus(err);
     if (status !== 404) {
       throw err;
     }

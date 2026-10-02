@@ -396,6 +396,7 @@ export async function patchBucket(
       "acl",
       "defaultObjectAcl",
       "lifecycle",
+      "cors",
     );
     const result = await localAPIClient.patch<Partial<BucketResponse>, BucketResponse>(
       `/storage/v1/b/${bucketName}`,
