@@ -8,6 +8,9 @@ import { cloneDeep } from "../../utils";
 /** Rolling out a new revision can take longer than the operation poller's default timeout. */
 export const SERVICE_OPERATION_TIMEOUT_MS = 10 * 60 * 1000;
 
+/** Annotation on the Cloud Run Service storing the linked Firebase Web App ID (go/crff-autoinit). */
+export const FIREBASE_APP_ANNOTATION = "firebase.google.com/app-id";
+
 /**
  * Returns the Cloud Run services in firebase.json that match the --only filter.
  */
@@ -88,6 +91,7 @@ export function copyTemplate(service: runv2.Service): runv2.RevisionTemplate {
 export function deployRevision(
   service: runv2.Service,
   template: runv2.RevisionTemplate,
+  annotations?: Record<string, string>,
 ): Promise<runv2.Service> {
   const tags = (service.traffic || [])
     .filter((t) => t.tag)
@@ -99,11 +103,12 @@ export function deployRevision(
   return runv2.updateService(
     {
       name: service.name,
+      ...(annotations && { annotations }),
       template,
       traffic: [{ type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 }, ...tags],
     },
     {
-      updateMask: ["template", "traffic"],
+      updateMask: [...(annotations ? ["annotations"] : []), "template", "traffic"],
       pollTimeoutMs: SERVICE_OPERATION_TIMEOUT_MS,
     },
   );

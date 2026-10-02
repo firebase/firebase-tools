@@ -28,12 +28,14 @@ describe("updateService", () => {
 
   afterEach(() => sinon.restore());
 
-  it("requires exactly one setting", async () => {
+  it("requires at least one valid setting", async () => {
     await expect(updateService("s", options())).to.be.rejectedWith(
-      "--base-image <baseImage> or --clear-base-image",
+      "--base-image <baseImage>, --clear-base-image, --app <appId>, or --clear-app",
     );
-    const both = options({ baseImage: "nodejs20", clearBaseImage: true });
-    await expect(updateService("s", both)).to.be.rejectedWith("not both");
+    const bothBase = options({ baseImage: "nodejs20", clearBaseImage: true });
+    await expect(updateService("s", bothBase)).to.be.rejectedWith("not both");
+    const bothApp = options({ app: "app-1", clearApp: true });
+    await expect(updateService("s", bothApp)).to.be.rejectedWith("not both");
   });
 
   it("requires the service to be in firebase.json with a region", async () => {
@@ -76,5 +78,33 @@ describe("updateService", () => {
     getServiceStub.resolves({ ...service, template: { containers: [{ name: "s", image: "i" }] } });
     await updateService("s", options({ clearBaseImage: true }));
     expect(deployStub).not.to.have.been.called;
+  });
+
+  it("links and clears a Firebase Web App", async () => {
+    await updateService("s", options({ app: "1:1:web:a" }));
+    expect(deployStub).to.have.been.calledOnceWith(["run"], sinon.match({ only: "run:s" }), {
+      appId: "1:1:web:a",
+    });
+
+    getServiceStub.resolves({
+      ...service,
+      annotations: { "firebase.google.com/app-id": "1:1:web:a" },
+    });
+    await updateService("s", options({ clearApp: true }));
+    expect(deployStub).to.have.been.calledWith(["run"], sinon.match({ only: "run:s" }), {
+      appId: null,
+    });
+  });
+
+  it("does nothing when clearing an app that isn't linked", async () => {
+    await updateService("s", options({ clearApp: true }));
+    expect(deployStub).not.to.have.been.called;
+  });
+
+  it("still updates baseImage when combined with a no-op --clear-app", async () => {
+    await updateService("s", options({ baseImage: "nodejs20", clearApp: true }));
+    expect(deployStub).to.have.been.calledOnceWith(["run"], sinon.match({ only: "run:s" }), {
+      baseImage: "nodejs20",
+    });
   });
 });

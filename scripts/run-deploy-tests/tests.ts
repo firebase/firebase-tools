@@ -6,6 +6,8 @@ import * as cli from "../functions-deploy-tests/cli";
 import * as runv2 from "../../src/gcp/runv2";
 import * as secretManager from "../../src/gcp/secretManager";
 import { BUILD_ENV_ANNOTATION } from "../../src/deploy/run/buildEnv";
+import { FIREBASE_APP_ANNOTATION } from "../../src/deploy/run/util";
+import { AppPlatform, createWebApp, listFirebaseApps } from "../../src/management/apps";
 import { requireAuth } from "../../src/requireAuth";
 
 const PROJECT = process.env.FBTOOLS_TARGET_PROJECT || process.env.GCLOUD_PROJECT || "";
@@ -235,6 +237,22 @@ describe("firebase deploy --only run", function (this: Mocha.Suite) {
     expect(res.proc.exitCode).to.equal(0);
     expect((await mainContainer()).baseImageUri).to.include("nodejs22");
     expect(await expectServing()).to.match(/^v22\./);
+  });
+
+  it("links and clears a Firebase Web App", async () => {
+    const apps = await listFirebaseApps(PROJECT, AppPlatform.WEB);
+    const appId =
+      apps[0]?.appId ?? (await createWebApp(PROJECT, { displayName: SERVICE_ID })).appId;
+
+    const { container } = await expectUpdated("--app", appId);
+    const linked = await runv2.getService(PROJECT, REGION, SERVICE_ID);
+    expect(linked.annotations?.[FIREBASE_APP_ANNOTATION]).to.equal(appId);
+    expect(container.env?.find((e) => e.name === "FIREBASE_CONFIG")?.value).to.include(PROJECT);
+
+    const { container: clearedContainer } = await expectUpdated("--clear-app");
+    const cleared = await runv2.getService(PROJECT, REGION, SERVICE_ID);
+    expect(cleared.annotations?.[FIREBASE_APP_ANNOTATION]).to.be.undefined;
+    expect(clearedContainer.env?.find((e) => e.name === "FIREBASE_CONFIG")).to.be.undefined;
   });
 
   it("rejects services that aren't in firebase.json", async () => {

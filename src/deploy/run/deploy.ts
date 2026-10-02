@@ -18,6 +18,7 @@ import { secretNames, toLocalBuildEnv } from "./buildEnv";
 import {
   copyTemplate,
   deployRevision,
+  FIREBASE_APP_ANNOTATION,
   SERVICE_OPERATION_TIMEOUT_MS,
   toAppHostingConfig,
 } from "./util";
@@ -139,6 +140,15 @@ async function deployService(
   } else {
     delete container.baseImageUri;
   }
+  if (svc.firebaseConfig) {
+    const env = (container.env || []).filter((e) => e.name !== "FIREBASE_CONFIG");
+    container.env = [...env, { name: "FIREBASE_CONFIG", value: svc.firebaseConfig }];
+  } else if (context.appId === null && container.env) {
+    container.env = container.env.filter((e) => e.name !== "FIREBASE_CONFIG");
+    if (!container.env.length) {
+      delete container.env;
+    }
+  }
   if (options.message) {
     template.annotations = {
       ...template.annotations,
@@ -148,8 +158,18 @@ async function deployService(
     delete template.annotations[DEPLOY_MESSAGE_ANNOTATION];
   }
 
+  let annotations: Record<string, string> | undefined;
+  if (svc.appId !== svc.existing?.annotations?.[FIREBASE_APP_ANNOTATION]) {
+    annotations = { ...svc.existing?.annotations };
+    if (svc.appId) {
+      annotations[FIREBASE_APP_ANNOTATION] = svc.appId;
+    } else {
+      delete annotations[FIREBASE_APP_ANNOTATION];
+    }
+  }
+
   if (svc.existing) {
-    return deployRevision(svc.existing, template);
+    return deployRevision(svc.existing, template, annotations);
   }
   return runv2.createService(
     projectId,
@@ -157,6 +177,7 @@ async function deployService(
     serviceId,
     {
       name: `projects/${projectId}/locations/${region}/services/${serviceId}`,
+      ...(annotations && Object.keys(annotations).length > 0 ? { annotations } : {}),
       template,
       client: "cli-firebase",
       invokerIamDisabled: true,

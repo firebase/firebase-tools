@@ -1,11 +1,25 @@
-import { FirebaseError } from "../../error";
+import { getAutoinitEnvVars } from "../../apphosting/utils";
+import { FirebaseError, getErrStatus } from "../../error";
+import { WebConfig } from "../../fetchWebSetup";
 import { RunSingle } from "../../firebaseConfig";
+import { getDefaultServiceAccount } from "../../gcp/computeEngine";
+import * as resourceManager from "../../gcp/resourceManager";
+import * as runv2 from "../../gcp/runv2";
+import { getProjectNumber } from "../../getProjectNumber";
+import * as managementApps from "../../management/apps";
 import { Options } from "../../options";
-import { logLabeledBullet } from "../../utils";
+import { logLabeledBullet, logLabeledWarning } from "../../utils";
 import { Context, Payload, ServiceDeploy } from "./args";
-import { BUILD_ENV_ANNOTATION, getBuildEnv, secretNames } from "./buildEnv";
+import { BUILD_ENV_ANNOTATION, BuildEnv, getBuildEnv, secretNames } from "./buildEnv";
 import { prereqs } from "./prereqs";
-import { getExistingService, getServiceConfigs, missingServiceMessage } from "./util";
+import {
+  FIREBASE_APP_ANNOTATION,
+  getExistingService,
+  getServiceConfigs,
+  missingServiceMessage,
+} from "./util";
+
+const ADMIN_SDK_ROLE = "roles/firebase.sdkAdminServiceAgent";
 
 /**
  * Reads each service's current state from Cloud Run and resolves its base image and build env.
@@ -33,19 +47,38 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
     context.baseImage === undefined
       ? existing?.template.containers?.[0]?.baseImageUri
       : context.baseImage || undefined;
+  // App IDs are sticky: deploys reuse the service's current Firebase Web App unless told otherwise.
+  const appId =
+    context.appId === undefined
+      ? existing?.annotations?.[FIREBASE_APP_ANNOTATION]
+      : context.appId || undefined;
 
-  const buildEnv = getBuildEnv(existing);
-  if (Object.keys(buildEnv).length) {
+  const autoInitEnv = await resolveAutoInitEnv(
+    serviceId,
+    appId,
+    existing,
+    Boolean(context.appId && context.appId !== existing?.annotations?.[FIREBASE_APP_ANNOTATION]),
+  );
+  if (autoInitEnv) {
+    await ensureAutoInitIam(context, existing);
+  }
+  const userBuildEnv = getBuildEnv(existing);
+  if (Object.keys(userBuildEnv).length) {
     logLabeledBullet(
       "run",
-      `Using build environment variables from ${BUILD_ENV_ANNOTATION}: ${Object.keys(buildEnv).join(", ")}`,
+      `Using build environment variables from ${BUILD_ENV_ANNOTATION}: ${Object.keys(userBuildEnv).join(", ")}`,
     );
   }
+  const buildEnv: BuildEnv = { ...autoInitEnv, ...userBuildEnv };
 
-  const svc: ServiceDeploy = { config, existing, baseImage };
-  if (Object.keys(buildEnv).length) {
-    svc.buildEnv = buildEnv;
-  }
+  const svc: ServiceDeploy = {
+    config,
+    existing,
+    baseImage,
+    appId,
+    ...(autoInitEnv?.FIREBASE_CONFIG && { firebaseConfig: autoInitEnv.FIREBASE_CONFIG }),
+    ...(Object.keys(buildEnv).length > 0 ? { buildEnv } : {}),
+  };
   if (!config.localBuild) {
     const secrets = secretNames(buildEnv);
     if (secrets.length) {
@@ -68,4 +101,94 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
     );
   }
   return svc;
+}
+
+/**
+ * Fetches Firebase Web App config for SDK auto-initialization, respecting any user-configured
+ * overrides on the container's runtime environment unless a new appId is being set.
+ */
+async function resolveAutoInitEnv(
+  serviceId: string,
+  appId: string | undefined,
+  existing: runv2.Service | undefined,
+  requireValidApp: boolean,
+): Promise<Record<string, string> | undefined> {
+  if (!appId) {
+    return undefined;
+  }
+  try {
+    const webappConfig = (await managementApps.getAppConfig(
+      appId,
+      managementApps.AppPlatform.WEB,
+    )) as WebConfig;
+    const autoinitVars = getAutoinitEnvVars(webappConfig);
+    if (appId === existing?.annotations?.[FIREBASE_APP_ANNOTATION]) {
+      for (const env of existing?.template.containers?.[0]?.env || []) {
+        if (Object.prototype.hasOwnProperty.call(autoinitVars, env.name)) {
+          if ("value" in env && env.value !== undefined) {
+            autoinitVars[env.name] = env.value;
+          } else {
+            delete autoinitVars[env.name];
+          }
+        }
+      }
+    }
+    return Object.keys(autoinitVars).length ? autoinitVars : undefined;
+  } catch (err: unknown) {
+    if (requireValidApp) {
+      throw new FirebaseError(
+        `Unable to lookup details for Firebase Web App ${appId} on service ${serviceId}.`,
+        { original: err instanceof Error ? err : undefined },
+      );
+    }
+    logLabeledWarning(
+      "run",
+      `Unable to lookup details for Firebase Web App ${appId} on service ${serviceId}. Firebase SDK autoinit will not be available.`,
+    );
+    return undefined;
+  }
+}
+
+/**
+ * Ensures the service's runtime service account has the IAM role needed for Firebase Admin SDK
+ * auto-initialization.
+ */
+async function ensureAutoInitIam(
+  context: Context,
+  existing: runv2.Service | undefined,
+): Promise<void> {
+  const serviceAccount =
+    existing?.template?.serviceAccount ||
+    (await getDefaultServiceAccount(await getProjectNumber(context)));
+  try {
+    if (
+      await resourceManager.serviceAccountHasRoles(
+        context.projectId,
+        serviceAccount,
+        [ADMIN_SDK_ROLE],
+        /* skipAccountLookup= */ true,
+      )
+    ) {
+      return;
+    }
+    logLabeledWarning(
+      "run",
+      `Service account ${serviceAccount} is missing role ${ADMIN_SDK_ROLE} required for Firebase Admin SDK auto-initialization. Granting ${ADMIN_SDK_ROLE} to ${serviceAccount}...`,
+    );
+    await resourceManager.addServiceAccountToRoles(
+      context.projectId,
+      serviceAccount,
+      [ADMIN_SDK_ROLE],
+      /* skipAccountLookup= */ true,
+    );
+  } catch (err: unknown) {
+    if (getErrStatus(err) === 403) {
+      logLabeledWarning(
+        "run",
+        `Failed to grant ${ADMIN_SDK_ROLE} to ${serviceAccount}. Make sure you have the resourcemanager.projects.setIamPolicy permission.`,
+      );
+    } else {
+      throw err;
+    }
+  }
 }
