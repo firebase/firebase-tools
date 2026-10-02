@@ -5,12 +5,7 @@ import * as runv2 from "../../gcp/runv2";
 import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
 import { logBullet } from "../../utils";
-import {
-  getExistingService,
-  getServiceConfigs,
-  mainContainer,
-  missingServiceMessage,
-} from "./util";
+import { getExistingService, getServiceConfigs, missingServiceMessage } from "./util";
 
 /**
  * Updates a service's settings, then builds and deploys it like `firebase deploy` does.
@@ -45,7 +40,7 @@ export async function updateService(serviceId: string, options: Options): Promis
     }
     existing.push(svc);
   }
-  if (clearBaseImage && existing.every((s) => !mainContainer(s.template)?.baseImageUri)) {
+  if (clearBaseImage && existing.every((s) => !s.template.containers?.[0]?.baseImageUri)) {
     logBullet(`Service ${clc.bold(serviceId)} does not have a base image.`);
     return;
   }
