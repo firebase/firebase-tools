@@ -5,8 +5,8 @@ import { command as disableCommand } from "./crashlytics-heapdumps-disable";
 import { command as statusCommand } from "./crashlytics-heapdumps-status";
 import * as profilingManager from "../crashlytics/profilingManager";
 import * as cloudbilling from "../gcp/cloudbilling";
-import * as requireAuthModule from "../requireAuth";
 import * as promptModule from "../prompt";
+import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
 
 describe("crashlytics:heapdumps commands", () => {
@@ -16,12 +16,27 @@ describe("crashlytics:heapdumps commands", () => {
   const appId = `1:${projectNumber}:android:${hashedAppId}`;
   const bucketName = `firebasecrashlytics-heap-dumps-${hashedAppId}`;
 
+  const originalEnableBefores = [...(enableCommand["befores"] || [])];
+  const originalDisableBefores = [...(disableCommand["befores"] || [])];
+  const originalStatusBefores = [...(statusCommand["befores"] || [])];
+
   beforeEach(() => {
-    sinon.stub(requireAuthModule, "requireAuth").resolves();
+    enableCommand["befores"] = [];
+    disableCommand["befores"] = [];
+    statusCommand["befores"] = [];
   });
 
   afterEach(() => {
+    enableCommand["befores"] = [...originalEnableBefores];
+    disableCommand["befores"] = [...originalDisableBefores];
+    statusCommand["befores"] = [...originalStatusBefores];
     sinon.restore();
+  });
+
+  it("should require authentication on all heapdumps commands", () => {
+    expect(originalEnableBefores).to.deep.equal([{ fn: requireAuth, args: [] }]);
+    expect(originalDisableBefores).to.deep.equal([{ fn: requireAuth, args: [] }]);
+    expect(originalStatusBefores).to.deep.equal([{ fn: requireAuth, args: [] }]);
   });
 
   describe("crashlytics:heapdumps:enable", () => {
