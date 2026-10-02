@@ -3,7 +3,11 @@ import { randomUUID } from "crypto";
 
 import { FunctionsRuntimeInstance } from "./functionsEmulator";
 import { EmulatorLog, Emulators, FunctionsExecutionMode } from "./types";
-import { EmulatedTriggerDefinition, FunctionsRuntimeBundle } from "./functionsEmulatorShared";
+import {
+  DEBUG_MSG_HANDLED,
+  EmulatedTriggerDefinition,
+  FunctionsRuntimeBundle,
+} from "./functionsEmulatorShared";
 import { EventEmitter } from "events";
 import { EmulatorLogger, ExtensionLogInfo } from "./emulatorLogger";
 import { FirebaseError } from "../error";
@@ -117,11 +121,30 @@ export class RuntimeWorker {
 
   sendDebugMsg(debug: FunctionsRuntimeBundle["debug"]): Promise<void> {
     return new Promise((resolve, reject) => {
+      const onLog = (log: EmulatorLog) => {
+        if (
+          log.level === "SYSTEM" &&
+          log.type === "runtime-status" &&
+          log.text === DEBUG_MSG_HANDLED
+        ) {
+          cleanup();
+          resolve();
+        }
+      };
+      const onExit = () => {
+        cleanup();
+        reject(new FirebaseError("Functions runtime exited before handling the debug message."));
+      };
+      const cleanup = () => {
+        this.runtime.events.off("log", onLog);
+        this.runtime.process.off("exit", onExit);
+      };
+      this.runtime.events.on("log", onLog);
+      this.runtime.process.once("exit", onExit);
       this.runtime.process.send(JSON.stringify(debug), (err) => {
         if (err) {
+          cleanup();
           reject(err);
-        } else {
-          resolve();
         }
       });
     });

@@ -59,6 +59,9 @@ export function getEventTenantId(
  */
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 
+/** Text of the runtime-status log a Node runtime sends once it has handled a debug message. */
+export const DEBUG_MSG_HANDLED = "debug-msg-handled";
+
 export type SignatureType = "http" | "event" | "cloudevent";
 
 export interface ParsedTriggerDefinition {
