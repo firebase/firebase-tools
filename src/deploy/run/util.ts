@@ -18,10 +18,3 @@ export async function getExistingService(
     throw err;
   }
 }
-
-/**
- * Returns the container that serves traffic.
- */
-export function mainContainer(template?: runv2.RevisionTemplate): runv2.Container | undefined {
-  return template?.containers?.find((c) => c.ports?.length) ?? template?.containers?.[0];
-}
