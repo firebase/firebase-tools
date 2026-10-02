@@ -223,6 +223,7 @@ export async function updateService(
   service: Omit<Service, ServiceOutputFields>,
   opts: { updateMask?: string[]; pollTimeoutMs?: number } = {},
 ): Promise<Service> {
+  // If no explicit updateMask is provided, infer the mask from the fields set on the service.
   let updateMask = opts.updateMask;
   if (!updateMask) {
     updateMask = proto.fieldMasks(
