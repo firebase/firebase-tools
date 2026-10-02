@@ -105,7 +105,7 @@ export function deployRevision(
     },
     {
       updateMask: ["template", "traffic"],
-      masterTimeout: SERVICE_OPERATION_TIMEOUT_MS,
+      pollTimeoutMs: SERVICE_OPERATION_TIMEOUT_MS,
     },
   );
 }

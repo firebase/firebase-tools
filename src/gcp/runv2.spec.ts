@@ -686,13 +686,13 @@ describe("runv2", () => {
       );
     });
 
-    it("updateService uses explicit updateMask and masterTimeout when provided", async () => {
+    it("updateService uses explicit updateMask and pollTimeoutMs when provided", async () => {
       patchStub.resolves({ body: { name: "operations/op1" } });
       pollStub.resolves(BASE_RUN_SERVICE);
 
       await runv2.updateService(BASE_RUN_SERVICE, {
         updateMask: ["template", "traffic"],
-        masterTimeout: 60000,
+        pollTimeoutMs: 60000,
       });
 
       expect(patchStub).to.have.been.calledOnceWithExactly(
@@ -711,7 +711,7 @@ describe("runv2", () => {
       pollStub.resolves(BASE_RUN_SERVICE);
 
       await runv2.createService(PROJECT_ID, LOCATION, SERVICE_ID, BASE_RUN_SERVICE, {
-        masterTimeout: 60000,
+        pollTimeoutMs: 60000,
       });
 
       const expectedBody: Partial<runv2.Service> = { ...BASE_RUN_SERVICE };
