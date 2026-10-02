@@ -35,6 +35,8 @@ import { EmulatorRegistry } from "../../registry";
 const lock = new AsyncLock();
 const synchonizationKey = "key";
 
+const FIRESTORE_DOCUMENT_READ_LIMIT = 2;
+
 export interface RulesetVerificationOpts {
   file: {
     before?: RulesResourceMetadata;
@@ -391,6 +393,7 @@ export class StorageRulesRuntime {
     projectId: string,
     runtimeActionRequest: RuntimeActionBundle,
     overrideId?: number,
+    firestoreDocumentPaths: Set<string> = new Set(),
   ): Promise<{
     permitted?: boolean;
     issues: StorageRulesIssues;
@@ -401,8 +404,24 @@ export class StorageRulesRuntime {
     )) as RuntimeActionVerifyResponse;
 
     if ("context" in response) {
-      const dataResponse = await fetchFirestoreDocument(projectId, response);
-      return this._completeVerifyWithRuleset(projectId, dataResponse, response.server_request_id);
+      const documentPath = response.context.path;
+      let dataResponse: RuntimeActionFirestoreDataResponse;
+      if (!firestoreDocumentPaths.has(documentPath) && firestoreDocumentPaths.size >= FIRESTORE_DOCUMENT_READ_LIMIT) {
+        dataResponse = {
+          status: DataLoadStatus.INVALID_STATE,
+          warnings: [],
+          errors: [],
+        };
+      } else {
+        firestoreDocumentPaths.add(documentPath);
+        dataResponse = await fetchFirestoreDocument(projectId, response);
+      }
+      return this._completeVerifyWithRuleset(
+        projectId,
+        dataResponse,
+        response.server_request_id,
+        firestoreDocumentPaths,
+      );
     }
 
     if (!response.errors) response.errors = [];
