@@ -542,8 +542,14 @@ export class ProfileReport {
           }
         }
       });
-      rl.on("error", () => {
-        reject();
+      rl.on("error", (err) => {
+        reject(
+          err instanceof Error
+            ? err
+            : new FirebaseError("There was an error creating the report.", {
+                original: err as any,
+              }),
+        );
       });
       outStream.on("error", () => {
         errored = true;
