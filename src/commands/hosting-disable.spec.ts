@@ -3,6 +3,7 @@ import * as sinon from "sinon";
 import nock from "../test/helpers/nock";
 
 import { command } from "./hosting-disable";
+import { configstore } from "../configstore";
 import { hostingApiOrigin } from "../api";
 import * as prompt from "../prompt";
 
@@ -13,6 +14,7 @@ describe("hosting:disable", () => {
   let confirmStub: sinon.SinonStub;
 
   beforeEach(() => {
+    sinon.stub(configstore, "get").returns({});
     confirmStub = sinon.stub(prompt, "confirm").resolves(true);
   });
 

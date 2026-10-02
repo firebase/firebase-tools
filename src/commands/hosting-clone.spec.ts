@@ -2,6 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import { command } from "./hosting-clone";
+import { configstore } from "../configstore";
 import * as hostingApi from "../hosting/api";
 
 describe("hosting:clone", () => {
@@ -19,6 +20,7 @@ describe("hosting:clone", () => {
   let addAuthDomainsStub: sinon.SinonStub;
 
   beforeEach(() => {
+    sinon.stub(configstore, "get").returns({});
     getChannelStub = sinon.stub(hostingApi, "getChannel");
     createChannelStub = sinon.stub(hostingApi, "createChannel");
     cloneVersionStub = sinon.stub(hostingApi, "cloneVersion");
