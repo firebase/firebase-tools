@@ -560,6 +560,7 @@ export const FIREBASE_FUNCTION_METADTA_ANNOTATION = "firebase-functions-metadata
 export interface FirebaseFunctionMetadata {
   functionId: string;
   // TODO: Trigger type since we cannot set cloudfunctions.googleapis.com/trigger-type
+  scheduleTrigger?: backend.ScheduleTrigger;
 }
 
 // Partial implementation. A full implementation may require more refactoring.
@@ -625,16 +626,18 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
         ? "ALLOW_INTERNAL_AND_GCLB"
         : "ALLOW_ALL") as backend.IngressSettings,
     // TODO: Figure out how to encode all trigger types to the underlying Run service that is compatible with both V2 functions and "direct to run" functions
-    ...(!service.annotations?.[TRIGGER_TYPE_ANNOTATION] ||
-    service.annotations?.[TRIGGER_TYPE_ANNOTATION] === "HTTP_TRIGGER"
-      ? { httpsTrigger: {} }
-      : {
-          eventTrigger: {
-            eventType: service.annotations?.[TRIGGER_TYPE_ANNOTATION] || "unknown",
-            // TODO: Figure out how to recover the retry info from Run (vs Functions API) as we currently default to false.
-            retry: false,
-          },
-        }),
+    ...(metadata.scheduleTrigger
+      ? { scheduleTrigger: metadata.scheduleTrigger }
+      : !service.annotations?.[TRIGGER_TYPE_ANNOTATION] ||
+          service.annotations?.[TRIGGER_TYPE_ANNOTATION] === "HTTP_TRIGGER"
+        ? { httpsTrigger: {} }
+        : {
+            eventTrigger: {
+              eventType: service.annotations?.[TRIGGER_TYPE_ANNOTATION] || "unknown",
+              // TODO: Figure out how to recover the retry info from Run (vs Functions API) as we currently default to false.
+              retry: false,
+            },
+          }),
   };
   proto.renameIfPresent(endpoint, service.template, "concurrency", "maxInstanceRequestConcurrency");
   proto.renameIfPresent(endpoint, service.labels || {}, "codebase", CODEBASE_LABEL);
@@ -691,6 +694,9 @@ export function serviceFromEndpoint(
   const annotations: Record<string, string> = {
     [FIREBASE_FUNCTION_METADTA_ANNOTATION]: JSON.stringify({
       functionId: endpoint.id,
+      ...(backend.isScheduleTriggered(endpoint)
+        ? { scheduleTrigger: endpoint.scheduleTrigger }
+        : {}),
     }),
   };
 
