@@ -146,10 +146,10 @@ export class ProfileReport {
     }
     opStats.times += 1;
 
-    if (data.hasOwnProperty("millis")) {
+    if (Object.prototype.hasOwnProperty.call(data, "millis")) {
       opStats.millis += data.millis;
     }
-    if (data.hasOwnProperty("pendingTime")) {
+    if (Object.prototype.hasOwnProperty.call(data, "pendingTime")) {
       opStats.pendingCount++;
       opStats.pendingTime += data.pendingTime;
     }
@@ -177,10 +177,10 @@ export class ProfileReport {
      * connects, disconnects, listens, unlistens). Such a request may
      * have non-trivial `pendingTime`.
      */
-    if (data.hasOwnProperty("millis")) {
+    if (Object.prototype.hasOwnProperty.call(data, "millis")) {
       node.millis += data.millis;
     }
-    if (data.hasOwnProperty("pendingTime")) {
+    if (Object.prototype.hasOwnProperty.call(data, "pendingTime")) {
       node.pendingCount++;
       node.pendingTime += data.pendingTime;
     }
