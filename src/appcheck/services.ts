@@ -80,7 +80,7 @@ const AUTO_ENFORCED_SERVICE_IDS: ReadonlySet<string> = new Set(["firebaseml.goog
  * The day App Check enforcement becomes mandatory for Firebase AI Logic.
  *
  * From this date Firebase automatically enforces App Check for all Gemini API
- * requests via AI Logic, and App Check cannot be un-enforced for AI Logic, so
+ * requests via AI Logic, and App Check cannot be unenforced for AI Logic, so
  * any relaxed state a developer leaves behind stops working then. The wording
  * of the warnings follows the customer notice Firebase sent about this change.
  */
@@ -158,7 +158,7 @@ export function assertReplayProtectionAllowed(
 ): void {
   if (MODE_RANK[replayProtection] > MODE_RANK[enforcement]) {
     throw new FirebaseError(
-      `Replay protection cannot be stronger than enforcement. Set enforcement to ${replayProtection.toLowerCase()} first, or lower the replay protection level.`,
+      `Replay protection cannot be stronger than baseline enforcement. Set enforcement to ${replayProtection.toLowerCase()} first, or lower the replay protection level.`,
     );
   }
 }
@@ -243,9 +243,9 @@ export function confirmationForModeChange(
     }
     return (
       `${alias} is enforced by default to help protect your project resources and mitigate ` +
-      `Gemini API abuse. Turning enforcement ${next.toLowerCase()} leaves it open to abuse.\n\n` +
+      `Gemini API abuse. Setting enforcement to ${next.toLowerCase()} leaves it open to abuse.\n\n` +
       `Starting ${AI_LOGIC_ENFORCEMENT_DATE}, Firebase will automatically enforce App Check for ` +
-      `all Gemini API requests via Firebase AI Logic, and App Check cannot be un-enforced for AI ` +
+      `all Gemini API requests via Firebase AI Logic, and App Check cannot be unenforced for AI ` +
       `Logic. Requests to AI Logic without a valid App Check token will be rejected, and users ` +
       `running versions of your app that do not have App Check implemented will experience ` +
       `service disruption.\n\n` +
