@@ -97,15 +97,21 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
  * Stop the Hosting servers.
  */
 export async function stop(): Promise<void> {
+  const errors: unknown[] = [];
   await Promise.all(
     Array.from(serverDestroyers, async (destroyServer) => {
       try {
         await destroyServer();
+      } catch (err) {
+        errors.push(err);
       } finally {
         serverDestroyers.delete(destroyServer);
       }
     }),
   );
+  if (errors.length > 0) {
+    throw errors[0];
+  }
 }
 
 /**

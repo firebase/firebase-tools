@@ -189,10 +189,18 @@ describe("hosting", () => {
       expect(second).to.have.been.calledOnce;
     });
 
-    it("should try every server when one shutdown fails", async () => {
+    it("should wait for every server before reporting a shutdown failure", async () => {
       const error = new Error("shutdown failed");
+      let finish!: () => void;
+      const closing = new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+      let secondFinished = false;
       const first = sandbox.stub().rejects(error);
-      const second = sandbox.stub().resolves();
+      const second = sandbox.stub().callsFake(async () => {
+        await closing;
+        secondFinished = true;
+      });
       hostingConfigStub.returns([
         { site: "site-one", public: "public" },
         { site: "site-two", public: "public" },
@@ -201,7 +209,27 @@ describe("hosting", () => {
       createDestroyerStub.onSecondCall().returns(second);
       await hosting.start({ port: 8080, host: "localhost" });
 
-      await expect(hosting.stop()).to.be.rejectedWith(error);
+      let stopFinished = false;
+      let stopError: unknown;
+      const stopping = hosting.stop().then(
+        () => {
+          stopFinished = true;
+        },
+        (err: unknown) => {
+          stopFinished = true;
+          stopError = err;
+        },
+      );
+      try {
+        await new Promise<void>((resolve) => setImmediate(resolve));
+        expect(stopFinished).to.equal(false);
+      } finally {
+        finish();
+        await stopping;
+      }
+
+      expect(stopError).to.equal(error);
+      expect(secondFinished).to.equal(true);
       expect(first).to.have.been.calledOnce;
       expect(second).to.have.been.calledOnce;
     });
