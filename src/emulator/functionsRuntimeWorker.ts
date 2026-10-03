@@ -39,6 +39,22 @@ export enum RuntimeWorkerState {
  */
 const FREE_WORKER_KEY = "~free~";
 
+function onceResponseEnds(resp: http.ServerResponse, fn: () => void): void {
+  if (resp.writableEnded || resp.destroyed) {
+    fn();
+    return;
+  }
+  let called = false;
+  const once = (): void => {
+    if (!called) {
+      called = true;
+      fn();
+    }
+  };
+  resp.once("finish", once);
+  resp.once("close", once);
+}
+
 export class RuntimeWorker {
   readonly id: string;
   readonly triggerKey: string;
@@ -147,7 +163,7 @@ export class RuntimeWorker {
     const startHrTime = process.hrtime();
 
     this.state = RuntimeWorkerState.BUSY;
-    const onFinish = (): void => {
+    const onFinish = (deferKill?: (kill: () => void) => void): void => {
       if (this.triggerKey !== FREE_WORKER_KEY) {
         const elapsedHrTime = process.hrtime(startHrTime);
         this.logInfo(
@@ -161,7 +177,11 @@ export class RuntimeWorker {
         this.state = RuntimeWorkerState.IDLE;
       } else if (this.state === RuntimeWorkerState.FINISHING) {
         this.logDebug(`IDLE --> FINISHING`);
-        this.kill();
+        if (deferKill) {
+          deferKill(() => this.kill());
+        } else {
+          this.kill();
+        }
       }
     };
     return new Promise((resolve) => {
@@ -182,7 +202,9 @@ export class RuntimeWorker {
           this.logger.log("DEBUG", `Finishing up request with event=${event}`);
           if (!finished) {
             finished = true;
-            onFinish();
+            // A paused response is still streaming (backpressure), so a worker
+            // retired by a reload must wait for it to end before being killed.
+            onFinish(event === "pause" ? (kill) => onceResponseEnds(resp, kill) : undefined);
             resolve();
           }
         };

@@ -67,12 +67,7 @@ import { AUTH_BLOCKING_EVENTS, BEFORE_CREATE_EVENT } from "../functions/events/v
 import { BlockingFunctionsConfig } from "../gcp/identityPlatform";
 import { resolveBackend } from "../deploy/functions/build";
 import { getCredentialsEnvironment, setEnvVarsForEmulators } from "./env";
-import {
-  killProcessTree,
-  runWithVirtualEnv,
-  trackVirtualEnvChild,
-  untrackVirtualEnvChild,
-} from "../functions/python";
+import { killProcessTree, runWithVirtualEnv } from "../functions/python";
 import { runtimeIsLanguage, Runtime } from "../deploy/functions/runtimes/supported";
 import { DART_ENTRY_POINT } from "../deploy/functions/runtimes/dart";
 import {
@@ -174,6 +169,13 @@ export class TCPConn {
       host: this.host,
       port: this.port,
     };
+  }
+}
+
+function killPythonRuntime(childProcess: ChildProcess): void {
+  // An exited child's pid may already belong to an unrelated process group.
+  if (childProcess.pid && childProcess.exitCode === null && childProcess.signalCode === null) {
+    killProcessTree(childProcess.pid);
   }
 }
 
@@ -1789,19 +1791,18 @@ export class FunctionsEmulator implements EmulatorInstance {
       },
       { detached: !IS_WINDOWS },
     );
-    trackVirtualEnvChild(childProcess);
-    childProcess.once("exit", () => untrackVirtualEnvChild(childProcess));
+    // Signals go through the emulator's own coordinated shutdown, which drains
+    // in-flight requests before killing; this only covers an exit that skips it.
+    const killOnExit = (): void => killPythonRuntime(childProcess);
+    process.once("exit", killOnExit);
+    childProcess.once("exit", () => process.removeListener("exit", killOnExit));
 
     return {
       process: childProcess,
       events: new EventEmitter(),
       cwd: backend.functionsDir,
       conn: new TCPConn("127.0.0.1", port),
-      kill: () => {
-        if (childProcess.pid) {
-          killProcessTree(childProcess.pid);
-        }
-      },
+      kill: () => killPythonRuntime(childProcess),
     };
   }
 

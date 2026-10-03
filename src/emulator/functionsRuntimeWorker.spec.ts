@@ -131,6 +131,32 @@ describe("FunctionsRuntimeWorker", () => {
   }
 
   describe("RuntimeWorker", () => {
+    it("waits for a paused response to end before killing a finishing worker", async () => {
+      let upstream: PassThrough | undefined;
+      requestStub.callsFake((options: any, callback: any) => {
+        upstream = new PassThrough();
+        (upstream as any).statusCode = 200;
+        (upstream as any).headers = {};
+        process.nextTick(() => callback(upstream));
+        return new PassThrough() as any;
+      });
+      const runtime = new MockRuntimeInstance();
+      const kill = sinon.spy(runtime.process, "kill");
+      const worker = new RuntimeWorker("trigger", runtime, {});
+      worker.readyForWork();
+      const resp = httpMocks.createResponse({ eventEmitter: EventEmitter });
+
+      const done = worker.request({ method: "GET", path: "/" }, resp);
+      await new Promise((resolve) => setImmediate(resolve));
+      worker.state = RuntimeWorkerState.FINISHING;
+      upstream!.emit("pause");
+      await done;
+
+      expect(kill.called).to.be.false;
+      resp.emit("finish");
+      expect(kill.calledOnce).to.be.true;
+    });
+
     it("goes from created --> idle --> busy --> idle in normal operation", async () => {
       mockSuccessfulRequest(200);
 
