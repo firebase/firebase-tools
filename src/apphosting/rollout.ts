@@ -10,7 +10,7 @@ import {
 } from "../apphosting/githubConnections";
 import * as poller from "../operation-poller";
 
-import { logBullet, sleep } from "../utils";
+import { backoff, logBullet, timeToWait } from "../utils";
 import { apphostingOrigin, consoleOrigin } from "../api";
 import { DeepOmit } from "../metaprogramming";
 import { getBackend } from "./backend";
@@ -23,6 +23,14 @@ const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationRes
 };
 
 const GIT_COMMIT_SHA_REGEX = /^(?:[0-9a-f]{40}|[0-9a-f]{7})$/;
+
+// createBuild resolves as soon as the operation is accepted, but the build
+// resource takes a moment to become visible, and CreateRollout validation
+// answers 400 "build was not found" until it is. Retry validation on the same
+// backoff policy as the poller below, for a couple of minutes.
+const ROLLOUT_VALIDATION_BACKOFF_MS = 1_000;
+const ROLLOUT_VALIDATION_MAX_BACKOFF_MS = 10_000;
+const ROLLOUT_VALIDATION_BUDGET_MS = 2 * 60 * 1_000;
 
 /**
  * Create a new App Hosting rollout for a backend.
@@ -150,10 +158,11 @@ export async function orchestrateRollout(
     build: `projects/${projectId}/locations/${location}/backends/${backendId}/builds/${buildId}`,
   };
 
-  let tries = 0;
-  let done = false;
-  while (!done) {
-    tries++;
+  // The build may not be visible to validation yet. A slow control plane used
+  // to blow through a fixed five one-second tries and report the rollout as
+  // failed even though the build was on its way.
+  let waitedMs = 0;
+  for (let attempt = 0; ; attempt++) {
     try {
       const validateOnly = true;
       await apphosting.createRollout(
@@ -164,16 +173,21 @@ export async function orchestrateRollout(
         rolloutBody,
         validateOnly,
       );
-      done = true;
+      break;
     } catch (err: unknown) {
-      if (err instanceof FirebaseError && err.status === 400) {
-        if (tries >= 5) {
-          throw err;
-        }
-        await sleep(1000);
-      } else {
+      if (!(err instanceof FirebaseError && err.status === 400)) {
         throw err;
       }
+      const delay = timeToWait(
+        attempt,
+        ROLLOUT_VALIDATION_BACKOFF_MS,
+        ROLLOUT_VALIDATION_MAX_BACKOFF_MS,
+      );
+      if (waitedMs + delay > ROLLOUT_VALIDATION_BUDGET_MS) {
+        throw err;
+      }
+      waitedMs += delay;
+      await backoff(attempt, ROLLOUT_VALIDATION_BACKOFF_MS, ROLLOUT_VALIDATION_MAX_BACKOFF_MS);
     }
   }
 
