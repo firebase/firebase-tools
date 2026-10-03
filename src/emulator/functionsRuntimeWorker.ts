@@ -39,6 +39,22 @@ export enum RuntimeWorkerState {
  */
 const FREE_WORKER_KEY = "~free~";
 
+function onceResponseEnds(resp: http.ServerResponse, fn: () => void): void {
+  if (resp.writableEnded || resp.destroyed) {
+    fn();
+    return;
+  }
+  let called = false;
+  const once = (): void => {
+    if (!called) {
+      called = true;
+      fn();
+    }
+  };
+  resp.once("finish", once);
+  resp.once("close", once);
+}
+
 export class RuntimeWorker {
   readonly id: string;
   readonly triggerKey: string;
@@ -104,11 +120,19 @@ export class RuntimeWorker {
         if (log.level === "FATAL") {
           // Something went wrong, if we don't kill the process it'll wait for timeoutMs.
           this.runtime.events.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
-          this.runtime.process.kill();
+          this.kill();
         }
       });
     }
     return lines[lines.length - 1];
+  }
+
+  kill(): void {
+    if (this.runtime.kill) {
+      this.runtime.kill();
+    } else {
+      this.runtime.process.kill();
+    }
   }
 
   readyForWork(): void {
@@ -139,7 +163,7 @@ export class RuntimeWorker {
     const startHrTime = process.hrtime();
 
     this.state = RuntimeWorkerState.BUSY;
-    const onFinish = (): void => {
+    const onFinish = (deferKill?: (kill: () => void) => void): void => {
       if (this.triggerKey !== FREE_WORKER_KEY) {
         const elapsedHrTime = process.hrtime(startHrTime);
         this.logInfo(
@@ -153,7 +177,11 @@ export class RuntimeWorker {
         this.state = RuntimeWorkerState.IDLE;
       } else if (this.state === RuntimeWorkerState.FINISHING) {
         this.logDebug(`IDLE --> FINISHING`);
-        this.runtime.process.kill();
+        if (deferKill) {
+          deferKill(() => this.kill());
+        } else {
+          this.kill();
+        }
       }
     };
     return new Promise((resolve) => {
@@ -174,7 +202,9 @@ export class RuntimeWorker {
           this.logger.log("DEBUG", `Finishing up request with event=${event}`);
           if (!finished) {
             finished = true;
-            onFinish();
+            // A paused response is still streaming (backpressure), so a worker
+            // retired by a reload must wait for it to end before being killed.
+            onFinish(event === "pause" ? (kill) => onceResponseEnds(resp, kill) : undefined);
             resolve();
           }
         };
@@ -200,7 +230,7 @@ export class RuntimeWorker {
         resp.writeHead(500);
         resp.write(JSON.stringify(err));
         resp.end();
-        this.runtime.process.kill();
+        this.kill();
         resolve();
       });
       if (body) {
@@ -324,7 +354,7 @@ export class RuntimeWorkerPool {
         if (w.state === RuntimeWorkerState.IDLE) {
           this.log(`Shutting down IDLE worker (${w.triggerKey})`);
           w.state = RuntimeWorkerState.FINISHING;
-          w.runtime.process.kill();
+          w.kill();
         } else if (w.state === RuntimeWorkerState.BUSY) {
           this.log(`Marking BUSY worker to finish (${w.triggerKey})`);
           w.state = RuntimeWorkerState.FINISHING;
@@ -338,13 +368,7 @@ export class RuntimeWorkerPool {
    */
   exit(): void {
     for (const arr of this.workers.values()) {
-      arr.forEach((w) => {
-        if (w.state === RuntimeWorkerState.IDLE) {
-          w.runtime.process.kill();
-        } else {
-          w.runtime.process.kill();
-        }
-      });
+      arr.forEach((w) => w.kill());
     }
   }
 

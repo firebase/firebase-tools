@@ -131,6 +131,32 @@ describe("FunctionsRuntimeWorker", () => {
   }
 
   describe("RuntimeWorker", () => {
+    it("waits for a paused response to end before killing a finishing worker", async () => {
+      let upstream: PassThrough | undefined;
+      requestStub.callsFake((options: any, callback: any) => {
+        upstream = new PassThrough();
+        (upstream as any).statusCode = 200;
+        (upstream as any).headers = {};
+        process.nextTick(() => callback(upstream));
+        return new PassThrough() as any;
+      });
+      const runtime = new MockRuntimeInstance();
+      const kill = sinon.spy(runtime.process, "kill");
+      const worker = new RuntimeWorker("trigger", runtime, {});
+      worker.readyForWork();
+      const resp = httpMocks.createResponse({ eventEmitter: EventEmitter });
+
+      const done = worker.request({ method: "GET", path: "/" }, resp);
+      await new Promise((resolve) => setImmediate(resolve));
+      worker.state = RuntimeWorkerState.FINISHING;
+      upstream!.emit("pause");
+      await done;
+
+      expect(kill.called).to.be.false;
+      resp.emit("finish");
+      expect(kill.calledOnce).to.be.true;
+    });
+
     it("goes from created --> idle --> busy --> idle in normal operation", async () => {
       mockSuccessfulRequest(200);
 
@@ -269,6 +295,21 @@ describe("FunctionsRuntimeWorker", () => {
       expect(idleWorkerCounter.counts.IDLE).to.eql(1);
       expect(idleWorkerCounter.counts.FINISHED).to.eql(1);
       expect(idleWorkerCounter.total).to.eql(2);
+    });
+
+    it("exit() stops a runtime through its own kill() when it has one", () => {
+      const pool = new RuntimeWorkerPool();
+      const runtime = new MockRuntimeInstance();
+      const processKill = sinon.spy(runtime.process, "kill");
+      const runtimeKill = sinon.spy(() => runtime.process.emit("exit"));
+      const worker = pool.addWorker(mockTrigger("trigger1"), { ...runtime, kill: runtimeKill }, {});
+      worker.readyForWork();
+
+      pool.exit();
+
+      expect(runtimeKill.calledOnce).to.be.true;
+      expect(processKill.called).to.be.false;
+      expect(worker.state).to.eql(RuntimeWorkerState.FINISHED);
     });
 
     it("refresh() kills idle workers and marks busy ones as finishing", async () => {

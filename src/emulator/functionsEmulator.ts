@@ -43,7 +43,14 @@ import { RuntimeWorker, RuntimeWorkerPool } from "./functionsRuntimeWorker";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { FirebaseError } from "../error";
 import { WorkQueue, Work } from "./workQueue";
-import { allSettled, connectableHostname, createDestroyer, debounce, randomInt } from "../utils";
+import {
+  allSettled,
+  connectableHostname,
+  createDestroyer,
+  debounce,
+  IS_WINDOWS,
+  randomInt,
+} from "../utils";
 import {
   AdminSdkConfig,
   constructDefaultAdminSdkConfig,
@@ -60,7 +67,7 @@ import { AUTH_BLOCKING_EVENTS, BEFORE_CREATE_EVENT } from "../functions/events/v
 import { BlockingFunctionsConfig } from "../gcp/identityPlatform";
 import { resolveBackend } from "../deploy/functions/build";
 import { getCredentialsEnvironment, setEnvVarsForEmulators } from "./env";
-import { runWithVirtualEnv } from "../functions/python";
+import { killProcessTree, runWithVirtualEnv } from "../functions/python";
 import { runtimeIsLanguage, Runtime } from "../deploy/functions/runtimes/supported";
 import { DART_ENTRY_POINT } from "../deploy/functions/runtimes/dart";
 import {
@@ -165,6 +172,13 @@ export class TCPConn {
   }
 }
 
+function killPythonRuntime(childProcess: ChildProcess): void {
+  // An exited child's pid may already belong to an unrelated process group.
+  if (childProcess.pid && childProcess.exitCode === null && childProcess.signalCode === null) {
+    killProcessTree(childProcess.pid);
+  }
+}
+
 export interface FunctionsRuntimeInstance {
   process: ChildProcess;
   // An emitter which sends our EmulatorLog events from the runtime.
@@ -173,6 +187,8 @@ export interface FunctionsRuntimeInstance {
   cwd: string;
   // Communication info for the runtime
   conn: IPCConn | TCPConn;
+  // Stops the runtime. Defaults to process.kill() when unset.
+  kill?: () => void;
 }
 
 export interface InvokeRuntimeOpts {
@@ -1758,21 +1774,35 @@ export class FunctionsEmulator implements EmulatorInstance {
     const port = await portfinder.getPortPromise({
       port: 8081 + randomInt(0, 1000), // Add a small jitter to avoid race condition.
     });
-    const childProcess = runWithVirtualEnv(args, backend.functionsDir, {
-      ...envs,
-      // Required to flush stdout/stderr immediately to the piped channels.
-      PYTHONUNBUFFERED: "1",
-      // Required to prevent flask development server to reload on code changes.
-      DEBUG: "False",
-      HOST: "127.0.0.1",
-      PORT: port.toString(),
-    });
+    // runWithVirtualEnv spawns through a shell, so process.kill() would only
+    // stop the shell and orphan functions-framework. Detaching makes the shell
+    // a process group leader that killProcessTree() can take down whole.
+    const childProcess = runWithVirtualEnv(
+      args,
+      backend.functionsDir,
+      {
+        ...envs,
+        // Required to flush stdout/stderr immediately to the piped channels.
+        PYTHONUNBUFFERED: "1",
+        // Required to prevent flask development server to reload on code changes.
+        DEBUG: "False",
+        HOST: "127.0.0.1",
+        PORT: port.toString(),
+      },
+      { detached: !IS_WINDOWS },
+    );
+    // Signals go through the emulator's own coordinated shutdown, which drains
+    // in-flight requests before killing; this only covers an exit that skips it.
+    const killOnExit = (): void => killPythonRuntime(childProcess);
+    process.once("exit", killOnExit);
+    childProcess.once("exit", () => process.removeListener("exit", killOnExit));
 
     return {
       process: childProcess,
       events: new EventEmitter(),
       cwd: backend.functionsDir,
       conn: new TCPConn("127.0.0.1", port),
+      kill: () => killPythonRuntime(childProcess),
     };
   }
 
