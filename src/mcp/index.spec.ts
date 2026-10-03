@@ -120,3 +120,45 @@ describe("FirebaseMcpServer.mcpCallTool", () => {
     expect(toolFn.firstCall.args[0]).to.deep.equal({ foo: "bar" });
   });
 });
+
+describe("FirebaseMcpServer project detection", () => {
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it("does not start project detection when constructed", () => {
+    const detectStub = sinon.stub(FirebaseMcpServer.prototype, "detectProjectSetup").resolves();
+
+    new FirebaseMcpServer({});
+
+    expect(detectStub.called).to.be.false;
+  });
+
+  it("starts project detection when started", async () => {
+    const detectStub = sinon.stub(FirebaseMcpServer.prototype, "detectProjectSetup").resolves();
+    const server = new FirebaseMcpServer({});
+    sinon.stub(server.server, "connect").resolves();
+
+    await server.start();
+
+    expect(detectStub.calledOnce).to.be.true;
+  });
+
+  it("handles rejection in background project detection without unhandled rejection", async () => {
+    sinon
+      .stub(FirebaseMcpServer.prototype, "detectProjectSetup")
+      .rejects(new Error("detection failed"));
+    const server = new FirebaseMcpServer({});
+    sinon.stub(server.server, "connect").resolves();
+    const debugStub = sinon.stub();
+    sinon.stub(server, "logger").get(() => ({
+      debug: debugStub,
+    }));
+
+    await server.start();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(debugStub.calledOnce).to.be.true;
+    expect(debugStub.firstCall.args[0]).to.include("Background project detection failed");
+  });
+});
