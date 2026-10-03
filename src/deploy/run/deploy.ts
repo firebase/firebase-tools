@@ -37,7 +37,7 @@ export async function deploy(context: Context, options: Options, payload: Payloa
       svc.deployed = await deployService(context, options, svc);
     } finally {
       if (svc.localBuild) {
-        fs.rmSync(svc.localBuild.scratchDir, { recursive: true, force: true });
+        removeTempPath(svc.localBuild.scratchDir);
       }
     }
   }
@@ -89,7 +89,7 @@ async function buildLocally(
       .map((e) => ({ name: e.variable, value: e.value! }));
     return { scratchDir, outputFiles, runCommand: buildConfig.runCommand, env };
   } catch (err: unknown) {
-    fs.rmSync(scratchDir, { recursive: true, force: true });
+    removeTempPath(scratchDir);
     throw err;
   }
 }

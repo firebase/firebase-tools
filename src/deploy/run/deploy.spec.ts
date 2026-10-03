@@ -285,6 +285,16 @@ describe("run deploy", () => {
       expect(fs.existsSync(mkdtemp.firstCall.returnValue as string)).to.be.false;
       expect(updateServiceStub).not.to.have.been.called;
     });
+
+    it("reports the local build error, not the cleanup error, when both fail", async () => {
+      localBuildStub.rejects(new Error("boom"));
+      rmSyncStub.restore();
+      sinon.stub(fs, "rmSync").throws(new Error("EBUSY"));
+
+      await expect(deployOne(localService())).to.be.rejectedWith("boom");
+
+      fs.rmdirSync(mkdtemp.firstCall.returnValue as string);
+    });
   });
 
   it("switches a service from a local build back to a source build", async () => {
