@@ -55,7 +55,7 @@ describe("run deploy", () => {
     } as Options);
 
     expect(sourceArchiveStub).to.have.been.calledWithMatch({ backendId: "s" }, "/p/web");
-    expect(rmSyncStub).to.have.been.calledWith("src.zip", { force: true });
+    expect(rmSyncStub).to.have.been.calledWith("src.zip", { recursive: true, force: true });
     const imageUri = "us-central1-docker.pkg.dev/p/cloud-run-source-deploy/s:42";
     expect(submitBuildStub).to.have.been.calledWith("p", "us-central1", {
       storageSource: { bucket: "bucket", object: "src.zip" },
@@ -86,6 +86,23 @@ describe("run deploy", () => {
       ingress: "INGRESS_TRAFFIC_ALL",
     });
     expect(svc.deployed).to.deep.equal({ uri: "new" });
+  });
+
+  it("still deploys if the source archive can't be deleted", async () => {
+    rmSyncStub.restore();
+    sinon.stub(fs, "rmSync").throws(new Error("EBUSY"));
+
+    const svc = await deployOne(service());
+
+    expect(svc.deployed).to.deep.equal({ uri: "new" });
+  });
+
+  it("reports the upload error, not the cleanup error, when both fail", async () => {
+    rmSyncStub.restore();
+    sinon.stub(fs, "rmSync").throws(new Error("EBUSY"));
+    (gcs.uploadObject as sinon.SinonStub).rejects(new Error("upload failed"));
+
+    await expect(deployOne(service())).to.be.rejectedWith("upload failed");
   });
 
   it("builds without a base image", async () => {
