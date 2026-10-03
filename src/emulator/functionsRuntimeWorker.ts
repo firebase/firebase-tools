@@ -104,11 +104,19 @@ export class RuntimeWorker {
         if (log.level === "FATAL") {
           // Something went wrong, if we don't kill the process it'll wait for timeoutMs.
           this.runtime.events.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
-          this.runtime.process.kill();
+          this.kill();
         }
       });
     }
     return lines[lines.length - 1];
+  }
+
+  kill(): void {
+    if (this.runtime.kill) {
+      this.runtime.kill();
+    } else {
+      this.runtime.process.kill();
+    }
   }
 
   readyForWork(): void {
@@ -153,7 +161,7 @@ export class RuntimeWorker {
         this.state = RuntimeWorkerState.IDLE;
       } else if (this.state === RuntimeWorkerState.FINISHING) {
         this.logDebug(`IDLE --> FINISHING`);
-        this.runtime.process.kill();
+        this.kill();
       }
     };
     return new Promise((resolve) => {
@@ -200,7 +208,7 @@ export class RuntimeWorker {
         resp.writeHead(500);
         resp.write(JSON.stringify(err));
         resp.end();
-        this.runtime.process.kill();
+        this.kill();
         resolve();
       });
       if (body) {
@@ -324,7 +332,7 @@ export class RuntimeWorkerPool {
         if (w.state === RuntimeWorkerState.IDLE) {
           this.log(`Shutting down IDLE worker (${w.triggerKey})`);
           w.state = RuntimeWorkerState.FINISHING;
-          w.runtime.process.kill();
+          w.kill();
         } else if (w.state === RuntimeWorkerState.BUSY) {
           this.log(`Marking BUSY worker to finish (${w.triggerKey})`);
           w.state = RuntimeWorkerState.FINISHING;
@@ -338,13 +346,7 @@ export class RuntimeWorkerPool {
    */
   exit(): void {
     for (const arr of this.workers.values()) {
-      arr.forEach((w) => {
-        if (w.state === RuntimeWorkerState.IDLE) {
-          w.runtime.process.kill();
-        } else {
-          w.runtime.process.kill();
-        }
-      });
+      arr.forEach((w) => w.kill());
     }
   }
 

@@ -271,6 +271,21 @@ describe("FunctionsRuntimeWorker", () => {
       expect(idleWorkerCounter.total).to.eql(2);
     });
 
+    it("exit() stops a runtime through its own kill() when it has one", () => {
+      const pool = new RuntimeWorkerPool();
+      const runtime = new MockRuntimeInstance();
+      const processKill = sinon.spy(runtime.process, "kill");
+      const runtimeKill = sinon.spy(() => runtime.process.emit("exit"));
+      const worker = pool.addWorker(mockTrigger("trigger1"), { ...runtime, kill: runtimeKill }, {});
+      worker.readyForWork();
+
+      pool.exit();
+
+      expect(runtimeKill.calledOnce).to.be.true;
+      expect(processKill.called).to.be.false;
+      expect(worker.state).to.eql(RuntimeWorkerState.FINISHED);
+    });
+
     it("refresh() kills idle workers and marks busy ones as finishing", async () => {
       const pool = new RuntimeWorkerPool();
       const triggerId = "trigger1";
