@@ -3,7 +3,7 @@ import * as clc from "colorette";
 import { stringDistance } from "./utils";
 
 import { logger } from "./logger";
-import { isCommandModule, CLIClient } from "./command";
+import { argvWithCommandFirst, isCommandModule, CLIClient } from "./command";
 
 const pkg = require("../package.json");
 
@@ -95,29 +95,41 @@ const RENAMED_COMMANDS: Record<string, string> = {
   "prefs:token": "login:ci",
 };
 
-// Default handler, this is called when no other command action matches.
-program.action((_, args) => {
-  const cmd = args[0];
-  const keys = cmd.split(":");
-  let obj = client;
-  let hit = true;
-  for (const key of keys) {
+function findCommandModule(name: string): unknown {
+  let obj: unknown = client;
+  for (const key of name.split(":")) {
     if (!obj || (typeof obj !== "object" && typeof obj !== "function")) {
-      hit = false;
-      break;
+      return undefined;
     }
     const nextKey = Object.keys(obj).find((k) => k.toLowerCase() === key.toLowerCase());
     if (!nextKey) {
-      hit = false;
+      return undefined;
+    }
+    obj = (obj as Record<string, unknown>)[nextKey];
+  }
+  return obj;
+}
+
+// Default handler, this is called when no other command action matches.
+program.action((_, args: string[]) => {
+  // Command-specific options placed before the command name (e.g.
+  // `firebase --instance foo database:get /`) end up in args ahead of it, so
+  // look for the first arg that names a command rather than taking args[0].
+  let cmd = args[0];
+  let obj: unknown;
+  for (const arg of args) {
+    const found = arg.startsWith("-") ? undefined : findCommandModule(arg);
+    if (isCommandModule(found)) {
+      cmd = arg;
+      obj = found;
       break;
     }
-    obj = obj[nextKey];
   }
 
-  if (hit && isCommandModule(obj)) {
+  if (isCommandModule(obj)) {
     obj.load();
     client.cli.allowUnknownOption(false);
-    client.cli.parse(process.argv);
+    client.cli.parse(argvWithCommandFirst(process.argv, cmd));
     return;
   }
 

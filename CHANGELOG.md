@@ -3,3 +3,4 @@
 - - [Fixed] Report the GCFv2-to-GCFv1 downgrade error during validation instead of a misleading CPU error (#5461).
 - Fixed `functions:delete` recreating an already-deleted Cloud Tasks queue for task queue functions. (#9305)
 - Batched function deletions across instances when uninstalling a Function Kit (#11189).
+- Fixed command-specific options placed before the command name (e.g. `firebase --instance foo database:get /`) failing with "is not a Firebase command" (#8275).
