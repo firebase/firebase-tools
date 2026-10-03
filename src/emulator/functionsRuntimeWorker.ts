@@ -346,13 +346,7 @@ export class RuntimeWorkerPool {
    */
   exit(): void {
     for (const arr of this.workers.values()) {
-      arr.forEach((w) => {
-        if (w.state === RuntimeWorkerState.IDLE) {
-          w.kill();
-        } else {
-          w.kill();
-        }
-      });
+      arr.forEach((w) => w.kill());
     }
   }
 
