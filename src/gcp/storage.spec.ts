@@ -346,4 +346,74 @@ describe("storage", () => {
       ).to.be.rejectedWith(FirebaseError, "Expected a file name ending in .zip");
     });
   });
+
+  describe("getBucket", () => {
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it("should return bucket metadata on success", async () => {
+      const mockBucket = { name: "my-bucket", location: "US-EAST1" } as storage.BucketResponse;
+      const getStub = sinon.stub(Client.prototype, "get").resolves({
+        status: 200,
+        response: new Response(),
+        body: mockBucket,
+      });
+
+      const result = await storage.getBucket("my-bucket");
+
+      expect(result).to.deep.equal(mockBucket);
+      expect(getStub).to.be.calledOnceWith("/storage/v1/b/my-bucket");
+    });
+
+    it("should throw FirebaseError with status when request fails", async () => {
+      const apiError = new FirebaseError("Not Found", { status: 404 });
+      sinon.stub(Client.prototype, "get").rejects(apiError);
+
+      try {
+        await storage.getBucket("missing-bucket");
+        expect.fail("Expected getBucket to throw");
+      } catch (err: unknown) {
+        expect(err).to.be.instanceOf(FirebaseError);
+        expect((err as FirebaseError).message).to.equal("Failed to obtain the storage bucket");
+        expect((err as FirebaseError).status).to.equal(404);
+      }
+    });
+  });
+
+  describe("patchBucket", () => {
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it("should patch bucket metadata with non-recursing updateMask for cors and lifecycle", async () => {
+      const metadata: Partial<storage.BucketResponse> = {
+        cors: [{ origin: ["https://console.firebase.google.com"], method: ["GET"] }],
+        lifecycle: { rule: [{ action: { type: "Delete" }, condition: { age: 90 } }] },
+      };
+      const mockBucket = { name: "my-bucket", ...metadata } as storage.BucketResponse;
+      const patchStub = sinon.stub(Client.prototype, "patch").resolves({
+        status: 200,
+        response: new Response(),
+        body: mockBucket,
+      });
+
+      const result = await storage.patchBucket("my-bucket", metadata);
+
+      expect(result).to.deep.equal(mockBucket);
+      expect(patchStub).to.be.calledOnceWith("/storage/v1/b/my-bucket", metadata, {
+        queryParams: { updateMask: "cors,lifecycle" },
+      });
+    });
+
+    it("should throw FirebaseError when patch request fails", async () => {
+      const apiError = new FirebaseError("Forbidden", { status: 403 });
+      sinon.stub(Client.prototype, "patch").rejects(apiError);
+
+      await expect(storage.patchBucket("my-bucket", { cors: [] })).to.be.rejectedWith(
+        FirebaseError,
+        "Failed to patch the storage bucket",
+      );
+    });
+  });
 });

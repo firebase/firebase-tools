@@ -18,7 +18,7 @@ export enum ContentType {
 }
 
 /** Bucket Interface */
-interface BucketResponse {
+export interface BucketResponse {
   kind: string;
   id: string;
   selfLink: string;
@@ -94,34 +94,9 @@ interface BucketResponse {
   versioning: {
     enabled: boolean;
   };
-  cors: [
-    {
-      origin: [string];
-      method: [string];
-      responseHeader: [string];
-      maxAgeSeconds: number;
-    },
-  ];
-  lifecycle: {
-    rule: [
-      {
-        action: {
-          type: string;
-          storageClass: string;
-        };
-        condition: {
-          age: number;
-          createdBefore: string;
-          customTimeBefore: string;
-          daysSinceCustomTime: number;
-          daysSinceNoncurrentTime: number;
-          isLive: boolean;
-          matchesStorageClass: [string];
-          noncurrentTimeBefore: string;
-          numNewerVersions: number;
-        };
-      },
-    ];
+  cors?: CorsRule[];
+  lifecycle?: {
+    rule: LifecycleRule[];
   };
   labels: Record<string, string>;
   storageClass: string;
@@ -145,6 +120,13 @@ interface GetDefaultBucketResponse {
   };
 }
 
+export interface CorsRule {
+  origin?: string[];
+  method?: string[];
+  responseHeader?: string[];
+  maxAgeSeconds?: number;
+}
+
 export interface UpsertBucketRequest {
   baseName: string;
   location: string;
@@ -158,17 +140,27 @@ export interface CreateBucketRequest {
   name: string;
   location: string;
   labels?: Record<string, string>;
-  lifecycle: {
+  lifecycle?: {
     rule: LifecycleRule[];
   };
+  cors?: CorsRule[];
 }
 
 export interface LifecycleRule {
   action: {
     type: string;
+    storageClass?: string;
   };
   condition: {
-    age: number;
+    age?: number;
+    createdBefore?: string;
+    customTimeBefore?: string;
+    daysSinceCustomTime?: number;
+    daysSinceNoncurrentTime?: number;
+    isLive?: boolean;
+    matchesStorageClass?: string[];
+    noncurrentTimeBefore?: string;
+    numNewerVersions?: number;
   };
 }
 
@@ -343,6 +335,7 @@ export async function getBucket(bucketName: string): Promise<BucketResponse> {
     logger.debug(err);
     throw new FirebaseError("Failed to obtain the storage bucket", {
       original: err,
+      status: getErrStatus(err),
     });
   }
 }
@@ -403,6 +396,7 @@ export async function patchBucket(
       "acl",
       "defaultObjectAcl",
       "lifecycle",
+      "cors",
     );
     const result = await localAPIClient.patch<Partial<BucketResponse>, BucketResponse>(
       `/storage/v1/b/${bucketName}`,
