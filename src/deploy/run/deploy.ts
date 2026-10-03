@@ -1,10 +1,11 @@
 import * as fs from "fs";
 import * as path from "path";
-import { FirebaseError } from "../../error";
+import { FirebaseError, getErrMsg } from "../../error";
 import * as artifactregistry from "../../gcp/artifactregistry";
 import * as runv2 from "../../gcp/runv2";
 import * as gcs from "../../gcp/storage";
 import { getProjectNumber } from "../../getProjectNumber";
+import { logger } from "../../logger";
 import { Options } from "../../options";
 import { logLabeledBullet } from "../../utils";
 import { createSourceDeployArchive } from "../apphosting/util";
@@ -109,7 +110,7 @@ async function uploadSource(
     );
     return { bucket, object };
   } finally {
-    fs.rmSync(archive, { force: true });
+    removeTempPath(archive);
   }
 }
 
@@ -135,4 +136,16 @@ async function buildImage(
     },
   });
   return imageUri;
+}
+
+/**
+ * Deletes a temporary file or directory. Failures are only logged: a leftover temp file
+ * shouldn't fail a deploy that succeeded or hide the error from one that didn't.
+ */
+function removeTempPath(tempPath: string): void {
+  try {
+    fs.rmSync(tempPath, { recursive: true, force: true });
+  } catch (err: unknown) {
+    logger.debug(`Failed to clean up ${tempPath}: ${getErrMsg(err)}`);
+  }
 }
