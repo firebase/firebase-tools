@@ -107,4 +107,18 @@ describe("updateService", () => {
       baseImage: "nodejs20",
     });
   });
+
+  it("does nothing when linking the app that's already linked", async () => {
+    getServiceStub.resolves({
+      ...service,
+      annotations: { "firebase.google.com/app-id": "1:1:web:a" },
+    });
+    await updateService("s", options({ app: "1:1:web:a" }));
+    expect(deployStub).not.to.have.been.called;
+
+    await updateService("s", options({ app: "1:1:web:a", baseImage: "nodejs20" }));
+    expect(deployStub).to.have.been.calledOnceWith(["run"], sinon.match({ only: "run:s" }), {
+      baseImage: "nodejs20",
+    });
+  });
 });

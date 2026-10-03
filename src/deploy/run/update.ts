@@ -65,6 +65,10 @@ export async function updateService(serviceId: string, options: Options): Promis
     logBullet(`Service ${clc.bold(serviceId)} does not have a linked Firebase Web App.`);
     updateApp = false;
   }
+  if (newAppId && existing.every((s) => s.annotations?.[FIREBASE_APP_ANNOTATION] === newAppId)) {
+    logBullet(`Service ${clc.bold(serviceId)} is already linked to Firebase Web App ${newAppId}.`);
+    updateApp = false;
+  }
   if (!updateBaseImage && !updateApp) {
     return;
   }

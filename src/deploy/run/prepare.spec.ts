@@ -6,6 +6,7 @@ import * as runv2 from "../../gcp/runv2";
 import * as getProjectNumber from "../../getProjectNumber";
 import * as managementApps from "../../management/apps";
 import { Options } from "../../options";
+import * as utils from "../../utils";
 import { Context, Payload } from "./args";
 import { BUILD_ENV_ANNOTATION } from "./buildEnv";
 import { prepare } from "./prepare";
@@ -195,10 +196,12 @@ describe("run prepare", () => {
     });
 
     it("warns and continues if granting roles/firebase.sdkAdminServiceAgent fails with 403", async () => {
+      const warnStub = sinon.stub(utils, "logLabeledWarning");
       hasRolesStub.resolves(false);
       addRolesStub.rejects({ status: 403 });
       const svc = await prepareOne({}, { appId: "1:1:web:a" });
       expect(svc.appId).to.equal("1:1:web:a");
+      expect(warnStub).to.have.been.calledWithMatch("run", /or ask an admin to grant this role/);
     });
 
     it("lets the context set or clear the appId", async () => {
@@ -263,23 +266,22 @@ describe("run prepare", () => {
       expect(svc.buildEnv).to.deep.equal({ FIREBASE_WEBAPP_CONFIG: webappConfig });
     });
 
-    it("warns and continues without autoinit if getAppConfig fails for an existing annotation", async () => {
+    it("fails if the linked Firebase Web App can't be looked up", async () => {
       getServiceStub.resolves({
         ...existing,
         annotations: { [FIREBASE_APP_ANNOTATION]: "1:1:web:a" },
       });
       getAppConfigStub.rejects(new Error("boom"));
-      const svc = await prepareOne();
-      expect(svc.appId).to.equal("1:1:web:a");
-      expect(svc.firebaseConfig).to.be.undefined;
-      expect(svc.buildEnv).to.be.undefined;
+      await expect(prepareOne()).to.be.rejectedWith(
+        "Unable to look up Firebase Web App 1:1:web:a for service s: boom",
+      );
       expect(hasRolesStub).not.to.have.been.called;
     });
 
-    it("throws if getAppConfig fails when explicitly setting a new appId", async () => {
+    it("fails if a newly linked Firebase Web App can't be looked up", async () => {
       getAppConfigStub.rejects(new Error("boom"));
       await expect(prepareOne({}, { appId: "bad-app" })).to.be.rejectedWith(
-        "Unable to lookup details for Firebase Web App bad-app on service s.",
+        "Unable to look up Firebase Web App bad-app for service s: boom",
       );
       expect(hasRolesStub).not.to.have.been.called;
     });

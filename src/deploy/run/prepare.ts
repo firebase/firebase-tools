@@ -1,5 +1,5 @@
 import { getAutoinitEnvVars } from "../../apphosting/utils";
-import { FirebaseError, getErrStatus } from "../../error";
+import { FirebaseError, getErrMsg, getError, getErrStatus } from "../../error";
 import { WebConfig } from "../../fetchWebSetup";
 import { RunSingle } from "../../firebaseConfig";
 import { getDefaultServiceAccount } from "../../gcp/computeEngine";
@@ -53,13 +53,9 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
       ? existing?.annotations?.[FIREBASE_APP_ANNOTATION]
       : context.appId || undefined;
 
-  const autoInitEnv = await resolveAutoInitEnv(
-    serviceId,
-    appId,
-    existing,
-    Boolean(context.appId && context.appId !== existing?.annotations?.[FIREBASE_APP_ANNOTATION]),
-  );
-  if (autoInitEnv) {
+  let autoInitEnv: Record<string, string> = {};
+  if (appId) {
+    autoInitEnv = await resolveAutoInitEnv(serviceId, appId, existing);
     await ensureAutoInitIam(context, existing);
   }
   const userBuildEnv = getBuildEnv(existing);
@@ -76,7 +72,7 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
     existing,
     baseImage,
     appId,
-    ...(autoInitEnv?.FIREBASE_CONFIG && { firebaseConfig: autoInitEnv.FIREBASE_CONFIG }),
+    firebaseConfig: autoInitEnv.FIREBASE_CONFIG,
     ...(Object.keys(buildEnv).length > 0 ? { buildEnv } : {}),
   };
   if (!config.localBuild) {
@@ -104,48 +100,59 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
 }
 
 /**
- * Fetches Firebase Web App config for SDK auto-initialization, respecting any user-configured
- * overrides on the container's runtime environment unless a new appId is being set.
+ * Returns the env vars that let Firebase SDKs auto-initialize with the service's Firebase Web App:
+ * FIREBASE_WEBAPP_CONFIG (the app's config, for the client SDK) and FIREBASE_CONFIG (the part of
+ * it the Admin SDK reads).
  */
 async function resolveAutoInitEnv(
   serviceId: string,
-  appId: string | undefined,
+  appId: string,
   existing: runv2.Service | undefined,
-  requireValidApp: boolean,
-): Promise<Record<string, string> | undefined> {
-  if (!appId) {
-    return undefined;
+): Promise<Record<string, string>> {
+  const autoInitEnv = getAutoinitEnvVars(await getWebAppConfig(serviceId, appId));
+  // Env vars set on the container take precedence, unless the service is being linked to a
+  // different app: then they were meant for the old one.
+  if (appId === existing?.annotations?.[FIREBASE_APP_ANNOTATION]) {
+    applyContainerOverrides(autoInitEnv, existing.template.containers?.[0]?.env);
   }
+  return autoInitEnv;
+}
+
+/**
+ * Fetches the Firebase Web App's config. Fails instead of deploying a service that can't
+ * auto-initialize Firebase SDKs.
+ */
+async function getWebAppConfig(serviceId: string, appId: string): Promise<WebConfig> {
   try {
-    const webappConfig = (await managementApps.getAppConfig(
-      appId,
-      managementApps.AppPlatform.WEB,
-    )) as WebConfig;
-    const autoinitVars = getAutoinitEnvVars(webappConfig);
-    if (appId === existing?.annotations?.[FIREBASE_APP_ANNOTATION]) {
-      for (const env of existing?.template.containers?.[0]?.env || []) {
-        if (Object.prototype.hasOwnProperty.call(autoinitVars, env.name)) {
-          if ("value" in env && env.value !== undefined) {
-            autoinitVars[env.name] = env.value;
-          } else {
-            delete autoinitVars[env.name];
-          }
-        }
-      }
-    }
-    return Object.keys(autoinitVars).length ? autoinitVars : undefined;
+    return (await managementApps.getAppConfig(appId, managementApps.AppPlatform.WEB)) as WebConfig;
   } catch (err: unknown) {
-    if (requireValidApp) {
-      throw new FirebaseError(
-        `Unable to lookup details for Firebase Web App ${appId} on service ${serviceId}.`,
-        { original: err instanceof Error ? err : undefined },
-      );
-    }
-    logLabeledWarning(
-      "run",
-      `Unable to lookup details for Firebase Web App ${appId} on service ${serviceId}. Firebase SDK autoinit will not be available.`,
+    throw new FirebaseError(
+      `Unable to look up Firebase Web App ${appId} for service ${serviceId}: ${getErrMsg(err)}\n` +
+        `To use a different app, run "firebase run:services:update ${serviceId} --app <appId>". ` +
+        `To deploy without Firebase SDK auto-initialization, run ` +
+        `"firebase run:services:update ${serviceId} --clear-app".`,
+      { original: getError(err) },
     );
-    return undefined;
+  }
+}
+
+/**
+ * Lets env vars set on the container override the matching auto-init vars. A secret-backed var
+ * can't be read here, so it's dropped and the container keeps its secret.
+ */
+function applyContainerOverrides(
+  autoInitEnv: Record<string, string>,
+  containerEnv: runv2.Container["env"] = [],
+): void {
+  for (const env of containerEnv) {
+    if (!Object.prototype.hasOwnProperty.call(autoInitEnv, env.name)) {
+      continue;
+    }
+    if ("value" in env) {
+      autoInitEnv[env.name] = env.value;
+    } else {
+      delete autoInitEnv[env.name];
+    }
   }
 }
 
@@ -185,7 +192,7 @@ async function ensureAutoInitIam(
     if (getErrStatus(err) === 403) {
       logLabeledWarning(
         "run",
-        `Failed to grant ${ADMIN_SDK_ROLE} to ${serviceAccount}. Make sure you have the resourcemanager.projects.setIamPolicy permission.`,
+        `Failed to grant ${ADMIN_SDK_ROLE} to ${serviceAccount}. Make sure you have the resourcemanager.projects.setIamPolicy permission, or ask an admin to grant this role.`,
       );
     } else {
       throw err;
