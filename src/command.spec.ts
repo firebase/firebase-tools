@@ -5,7 +5,7 @@ import * as rc from "./rc";
 import nock from "./test/helpers/nock";
 import { configstore } from "./configstore";
 
-import { Command, CLIClient, validateProjectId } from "./command";
+import { argvWithCommandFirst, CLIClient, Command, validateProjectId } from "./command";
 import { FirebaseError } from "./error";
 
 describe("Command", () => {
@@ -300,5 +300,50 @@ describe("validateProjectId", () => {
     expect(() => validateProjectId("EXAMPLE")).to.throw(FirebaseError, /lowercase/);
     expect(() => validateProjectId("Example")).to.throw(FirebaseError, /lowercase/);
     expect(() => validateProjectId("Example-Project")).to.throw(FirebaseError, /lowercase/);
+  });
+});
+
+describe("argvWithCommandFirst", () => {
+  const bin = ["node", "firebase"];
+
+  it("leaves argv alone when the command already comes first", () => {
+    const argv = [...bin, "database:get", "/", "--instance", "foo"];
+    expect(argvWithCommandFirst(argv, "database:get")).to.deep.equal(argv);
+  });
+
+  it("moves the command in front of options that preceded it", () => {
+    const argv = [...bin, "--project", "p", "--instance", "foo", "database:get", "/"];
+    expect(argvWithCommandFirst(argv, "database:get")).to.deep.equal([
+      ...bin,
+      "database:get",
+      "--project",
+      "p",
+      "--instance",
+      "foo",
+      "/",
+    ]);
+  });
+
+  it("does not mistake an option value for the command name", () => {
+    const argv = [...bin, "--project", "deploy", "--debug", "deploy", "--only", "hosting"];
+    expect(argvWithCommandFirst(argv, "deploy", ["-P", "--project"])).to.deep.equal([
+      ...bin,
+      "deploy",
+      "--project",
+      "deploy",
+      "--debug",
+      "--only",
+      "hosting",
+    ]);
+  });
+
+  it("does not treat the node or script path as the command", () => {
+    const argv = ["deploy", "deploy", "--only", "hosting"];
+    expect(argvWithCommandFirst(argv, "deploy")).to.deep.equal(argv);
+  });
+
+  it("leaves argv alone when the command is missing", () => {
+    const argv = [...bin, "--instance", "foo"];
+    expect(argvWithCommandFirst(argv, "database:get")).to.deep.equal(argv);
   });
 });

@@ -24,6 +24,32 @@ export interface CommandModule {
   load: () => void;
 }
 
+/**
+ * Moves the command name in front of any options that preceded it, since
+ * commander only hands options to a subcommand when they follow its name.
+ * `valueFlags` are options that take a separate value (e.g. `--project`), whose
+ * value is skipped so a project named like the command isn't mistaken for it.
+ */
+export function argvWithCommandFirst(
+  argv: string[],
+  cmd: string,
+  valueFlags: string[] = [],
+): string[] {
+  let index = -1;
+  for (let i = 2; i < argv.length; i++) {
+    if (valueFlags.includes(argv[i])) {
+      i++;
+    } else if (argv[i] === cmd) {
+      index = i;
+      break;
+    }
+  }
+  if (index === -1) {
+    return argv;
+  }
+  return [...argv.slice(0, 2), cmd, ...argv.slice(2, index), ...argv.slice(index + 1)];
+}
+
 export function isCommandModule(value: unknown): value is CommandModule {
   return typeof value === "function" && typeof (value as any).load === "function";
 }
