@@ -118,7 +118,7 @@ function runTargetCommands(
     });
 }
 
-function getReleventConfigs(target: string, options: Options) {
+export function getReleventConfigs(target: string, options: Options) {
   let targetConfigs = options.config.get(target);
   if (!targetConfigs) {
     return [];
@@ -147,19 +147,21 @@ function getReleventConfigs(target: string, options: Options) {
   if (target === "functions") {
     let onlyConfigs = [];
     const matched = onlyTargets.reduce(
-      (matched: object, target: string) => ({ ...matched, [target]: false }),
+      (matched: Record<string, boolean>, target: string) => ({ ...matched, [target]: false }),
       {},
     );
     for (const config of targetConfigs) {
       if (!config.codebase) {
         onlyConfigs.push(config);
       } else {
-        const found = onlyTargets.find(
+        const found = onlyTargets.filter(
           (individualOnly) => config.codebase === individualOnly.split(":")[0],
         );
-        if (found) {
+        if (found.length) {
           onlyConfigs.push(config);
-          matched[found] = true;
+          for (const individualOnly of found) {
+            matched[individualOnly] = true;
+          }
         }
       }
     }
