@@ -24,30 +24,61 @@ export interface CommandModule {
   load: () => void;
 }
 
+interface OptionShape {
+  required?: boolean;
+  optional?: boolean;
+  short?: string;
+  long?: string;
+}
+
+/** The flags ("-P", "--project") of options that take a value. */
+export function valueTakingFlags(options: OptionShape[]): string[] {
+  return options
+    .filter((option) => option.required || option.optional)
+    .flatMap((option) => [option.short, option.long])
+    .filter((flag): flag is string => !!flag);
+}
+
 /**
- * Moves the command name in front of any options that preceded it, since
- * commander only hands options to a subcommand when they follow its name.
- * `valueFlags` are options that take a separate value (e.g. `--project`), whose
- * value is skipped so a project named like the command isn't mistaken for it.
+ * Where `cmd` sits in argv as a real argument, or -1 when it only appears as
+ * an option's value or after `--`. Values of `valueFlags` are skipped,
+ * including in combined short flags (`-jP deploy`: -P takes "deploy").
  */
-export function argvWithCommandFirst(
-  argv: string[],
-  cmd: string,
-  valueFlags: string[] = [],
-): string[] {
-  let index = -1;
+export function findCommandIndex(argv: string[], cmd: string, valueFlags: string[]): number {
   for (let i = 2; i < argv.length; i++) {
-    if (valueFlags.includes(argv[i])) {
-      i++;
-    } else if (argv[i] === cmd) {
-      index = i;
-      break;
+    const arg = argv[i];
+    if (arg === "--") {
+      return -1;
+    }
+    if (arg === cmd) {
+      return i;
+    }
+    if (arg.startsWith("--")) {
+      if (!arg.includes("=") && valueFlags.includes(arg)) {
+        i++;
+      }
+    } else if (arg.startsWith("-") && arg.length > 1) {
+      // Letters are flags until one takes a value, which consumes the rest of
+      // the token or, when nothing is left, the next argument.
+      for (let j = 1; j < arg.length; j++) {
+        if (valueFlags.includes(`-${arg[j]}`)) {
+          if (j === arg.length - 1) {
+            i++;
+          }
+          break;
+        }
+      }
     }
   }
-  if (index === -1) {
-    return argv;
-  }
-  return [...argv.slice(0, 2), cmd, ...argv.slice(2, index), ...argv.slice(index + 1)];
+  return -1;
+}
+
+/**
+ * Moves the argument at `index` in front of any options that preceded it,
+ * since commander only hands options to a subcommand when they follow its name.
+ */
+export function argvWithCommandFirst(argv: string[], index: number): string[] {
+  return [...argv.slice(0, 2), argv[index], ...argv.slice(2, index), ...argv.slice(index + 1)];
 }
 
 export function isCommandModule(value: unknown): value is CommandModule {

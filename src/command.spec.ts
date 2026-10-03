@@ -5,7 +5,13 @@ import * as rc from "./rc";
 import nock from "./test/helpers/nock";
 import { configstore } from "./configstore";
 
-import { argvWithCommandFirst, CLIClient, Command, validateProjectId } from "./command";
+import {
+  argvWithCommandFirst,
+  CLIClient,
+  Command,
+  findCommandIndex,
+  validateProjectId,
+} from "./command";
 import { FirebaseError } from "./error";
 
 describe("Command", () => {
@@ -303,18 +309,54 @@ describe("validateProjectId", () => {
   });
 });
 
-describe("argvWithCommandFirst", () => {
+describe("findCommandIndex", () => {
   const bin = ["node", "firebase"];
+  const flags = ["-P", "--project", "-m", "--message", "--instance"];
 
-  it("leaves argv alone when the command already comes first", () => {
-    const argv = [...bin, "database:get", "/", "--instance", "foo"];
-    expect(argvWithCommandFirst(argv, "database:get")).to.deep.equal(argv);
+  it("finds a command that already comes first", () => {
+    expect(findCommandIndex([...bin, "deploy", "--only", "hosting"], "deploy", flags)).to.equal(2);
   });
 
-  it("moves the command in front of options that preceded it", () => {
+  it("finds a command after options and their values", () => {
     const argv = [...bin, "--project", "p", "--instance", "foo", "database:get", "/"];
-    expect(argvWithCommandFirst(argv, "database:get")).to.deep.equal([
-      ...bin,
+    expect(findCommandIndex(argv, "database:get", flags)).to.equal(6);
+  });
+
+  it("skips an option value that equals the command name", () => {
+    const argv = [...bin, "--project", "deploy", "--debug", "deploy", "--only", "hosting"];
+    expect(findCommandIndex(argv, "deploy", flags)).to.equal(5);
+  });
+
+  it("does not treat a command option's value as the command", () => {
+    expect(findCommandIndex([...bin, "--message", "deploy", "release"], "deploy", flags)).to.equal(
+      -1,
+    );
+  });
+
+  it("skips the value of a value-taking flag in combined short flags", () => {
+    const argv = [...bin, "-jP", "deploy", "--debug", "deploy", "--only", "hosting"];
+    expect(findCommandIndex(argv, "deploy", flags)).to.equal(5);
+  });
+
+  it("treats the rest of a combined short flag as its value", () => {
+    expect(findCommandIndex([...bin, "-jPdeploy", "deploy"], "deploy", flags)).to.equal(3);
+  });
+
+  it("does not read a value after --option=value", () => {
+    expect(findCommandIndex([...bin, "--project=p", "deploy"], "deploy", flags)).to.equal(3);
+  });
+
+  it("ignores anything after --", () => {
+    expect(findCommandIndex([...bin, "--", "-P", "deploy"], "deploy", flags)).to.equal(-1);
+  });
+});
+
+describe("argvWithCommandFirst", () => {
+  it("moves the argument at the index in front of the options before it", () => {
+    const argv = ["node", "firebase", "--project", "p", "--instance", "foo", "database:get", "/"];
+    expect(argvWithCommandFirst(argv, 6)).to.deep.equal([
+      "node",
+      "firebase",
       "database:get",
       "--project",
       "p",
@@ -324,26 +366,8 @@ describe("argvWithCommandFirst", () => {
     ]);
   });
 
-  it("does not mistake an option value for the command name", () => {
-    const argv = [...bin, "--project", "deploy", "--debug", "deploy", "--only", "hosting"];
-    expect(argvWithCommandFirst(argv, "deploy", ["-P", "--project"])).to.deep.equal([
-      ...bin,
-      "deploy",
-      "--project",
-      "deploy",
-      "--debug",
-      "--only",
-      "hosting",
-    ]);
-  });
-
-  it("does not treat the node or script path as the command", () => {
-    const argv = ["deploy", "deploy", "--only", "hosting"];
-    expect(argvWithCommandFirst(argv, "deploy")).to.deep.equal(argv);
-  });
-
-  it("leaves argv alone when the command is missing", () => {
-    const argv = [...bin, "--instance", "foo"];
-    expect(argvWithCommandFirst(argv, "database:get")).to.deep.equal(argv);
+  it("leaves argv unchanged when the command is already first", () => {
+    const argv = ["node", "firebase", "deploy", "--only", "hosting"];
+    expect(argvWithCommandFirst(argv, 2)).to.deep.equal(argv);
   });
 });

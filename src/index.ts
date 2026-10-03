@@ -3,7 +3,13 @@ import * as clc from "colorette";
 import { stringDistance } from "./utils";
 
 import { logger } from "./logger";
-import { argvWithCommandFirst, isCommandModule, CLIClient } from "./command";
+import {
+  argvWithCommandFirst,
+  findCommandIndex,
+  isCommandModule,
+  valueTakingFlags,
+  CLIClient,
+} from "./command";
 
 const pkg = require("../package.json");
 
@@ -128,13 +134,20 @@ program.action((_, args: string[]) => {
 
   if (isCommandModule(obj)) {
     obj.load();
-    client.cli.allowUnknownOption(false);
-    const valueFlags = (program.options as program.Option[])
-      .filter((option) => option.required || option.optional)
-      .flatMap((option) => [option.short, option.long])
-      .filter((flag): flag is string => !!flag);
-    client.cli.parse(argvWithCommandFirst(process.argv, cmd, valueFlags));
-    return;
+    // Loading registers the command, so its own options' arity is known too:
+    // in `firebase --message deploy release`, "deploy" is --message's value.
+    const registered = (client.cli.commands as program.Command[]).find((c) => c.name() === cmd);
+    const valueFlags = valueTakingFlags([
+      ...(program.options as program.Option[]),
+      ...((registered as unknown as { options?: program.Option[] })?.options ?? []),
+    ]);
+    const index = findCommandIndex(process.argv, cmd, valueFlags);
+    if (index !== -1) {
+      client.cli.allowUnknownOption(false);
+      client.cli.parse(argvWithCommandFirst(process.argv, index));
+      return;
+    }
+    cmd = args[0];
   }
 
   logger.error(clc.bold(clc.red("Error:")), clc.bold(cmd), "is not a Firebase command");
