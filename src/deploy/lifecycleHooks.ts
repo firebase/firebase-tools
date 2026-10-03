@@ -146,9 +146,8 @@ export function getReleventConfigs(target: string, options: Options) {
 
   if (target === "functions") {
     let onlyConfigs = [];
-    const matched = onlyTargets.reduce(
-      (matched: Record<string, boolean>, target: string) => ({ ...matched, [target]: false }),
-      {},
+    const matched: Record<string, boolean> = Object.fromEntries(
+      onlyTargets.map((target) => [target, false]),
     );
     for (const config of targetConfigs) {
       if (!config.codebase) {
