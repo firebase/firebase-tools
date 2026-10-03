@@ -129,7 +129,11 @@ program.action((_, args: string[]) => {
   if (isCommandModule(obj)) {
     obj.load();
     client.cli.allowUnknownOption(false);
-    client.cli.parse(argvWithCommandFirst(process.argv, cmd));
+    const valueFlags = (program.options as program.Option[])
+      .filter((option) => option.required || option.optional)
+      .flatMap((option) => [option.short, option.long])
+      .filter((flag): flag is string => !!flag);
+    client.cli.parse(argvWithCommandFirst(process.argv, cmd, valueFlags));
     return;
   }
 

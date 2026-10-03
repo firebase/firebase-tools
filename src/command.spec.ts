@@ -324,6 +324,19 @@ describe("argvWithCommandFirst", () => {
     ]);
   });
 
+  it("does not mistake an option value for the command name", () => {
+    const argv = [...bin, "--project", "deploy", "--debug", "deploy", "--only", "hosting"];
+    expect(argvWithCommandFirst(argv, "deploy", ["-P", "--project"])).to.deep.equal([
+      ...bin,
+      "deploy",
+      "--project",
+      "deploy",
+      "--debug",
+      "--only",
+      "hosting",
+    ]);
+  });
+
   it("does not treat the node or script path as the command", () => {
     const argv = ["deploy", "deploy", "--only", "hosting"];
     expect(argvWithCommandFirst(argv, "deploy")).to.deep.equal(argv);
