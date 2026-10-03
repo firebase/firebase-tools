@@ -43,7 +43,14 @@ import { RuntimeWorker, RuntimeWorkerPool } from "./functionsRuntimeWorker";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { FirebaseError } from "../error";
 import { WorkQueue, Work } from "./workQueue";
-import { allSettled, connectableHostname, createDestroyer, debounce, randomInt } from "../utils";
+import {
+  allSettled,
+  connectableHostname,
+  createDestroyer,
+  debounce,
+  IS_WINDOWS,
+  randomInt,
+} from "../utils";
 import {
   AdminSdkConfig,
   constructDefaultAdminSdkConfig,
@@ -60,7 +67,12 @@ import { AUTH_BLOCKING_EVENTS, BEFORE_CREATE_EVENT } from "../functions/events/v
 import { BlockingFunctionsConfig } from "../gcp/identityPlatform";
 import { resolveBackend } from "../deploy/functions/build";
 import { getCredentialsEnvironment, setEnvVarsForEmulators } from "./env";
-import { runWithVirtualEnv } from "../functions/python";
+import {
+  killProcessTree,
+  runWithVirtualEnv,
+  trackVirtualEnvChild,
+  untrackVirtualEnvChild,
+} from "../functions/python";
 import { runtimeIsLanguage, Runtime } from "../deploy/functions/runtimes/supported";
 import { DART_ENTRY_POINT } from "../deploy/functions/runtimes/dart";
 import {
@@ -173,6 +185,8 @@ export interface FunctionsRuntimeInstance {
   cwd: string;
   // Communication info for the runtime
   conn: IPCConn | TCPConn;
+  // Stops the runtime. Defaults to process.kill() when unset.
+  kill?: () => void;
 }
 
 export interface InvokeRuntimeOpts {
@@ -1758,21 +1772,36 @@ export class FunctionsEmulator implements EmulatorInstance {
     const port = await portfinder.getPortPromise({
       port: 8081 + randomInt(0, 1000), // Add a small jitter to avoid race condition.
     });
-    const childProcess = runWithVirtualEnv(args, backend.functionsDir, {
-      ...envs,
-      // Required to flush stdout/stderr immediately to the piped channels.
-      PYTHONUNBUFFERED: "1",
-      // Required to prevent flask development server to reload on code changes.
-      DEBUG: "False",
-      HOST: "127.0.0.1",
-      PORT: port.toString(),
-    });
+    // runWithVirtualEnv spawns through a shell, so process.kill() would only
+    // stop the shell and orphan functions-framework. Detaching makes the shell
+    // a process group leader that killProcessTree() can take down whole.
+    const childProcess = runWithVirtualEnv(
+      args,
+      backend.functionsDir,
+      {
+        ...envs,
+        // Required to flush stdout/stderr immediately to the piped channels.
+        PYTHONUNBUFFERED: "1",
+        // Required to prevent flask development server to reload on code changes.
+        DEBUG: "False",
+        HOST: "127.0.0.1",
+        PORT: port.toString(),
+      },
+      { detached: !IS_WINDOWS },
+    );
+    trackVirtualEnvChild(childProcess);
+    childProcess.once("exit", () => untrackVirtualEnvChild(childProcess));
 
     return {
       process: childProcess,
       events: new EventEmitter(),
       cwd: backend.functionsDir,
       conn: new TCPConn("127.0.0.1", port),
+      kill: () => {
+        if (childProcess.pid) {
+          killProcessTree(childProcess.pid);
+        }
+      },
     };
   }
 
