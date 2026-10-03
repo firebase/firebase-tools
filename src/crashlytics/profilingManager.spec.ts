@@ -98,7 +98,7 @@ describe("profilingManager", () => {
     });
 
     it("should automatically return the app ID when exactly one Android app exists", async () => {
-      sinon.stub(appsModule, "listFirebaseApps").resolves([
+      const mockApps: appsModule.AndroidAppMetadata[] = [
         {
           name: `projects/${projectId}/androidApps/${appId}`,
           projectId,
@@ -106,7 +106,8 @@ describe("profilingManager", () => {
           platform: appsModule.AppPlatform.ANDROID,
           packageName: "com.example.app",
         },
-      ]);
+      ];
+      sinon.stub(appsModule, "listFirebaseApps").resolves(mockApps);
 
       const result = await resolveAndroidAppId(projectId, {});
       expect(result).to.equal(appId);
@@ -114,7 +115,7 @@ describe("profilingManager", () => {
 
     it("should throw a FirebaseError when multiple Android apps exist in non-interactive mode", async () => {
       const secondAppId = `1:${projectNumber}:android:fedcba654321`;
-      sinon.stub(appsModule, "listFirebaseApps").resolves([
+      const mockApps: appsModule.AndroidAppMetadata[] = [
         {
           name: `projects/${projectId}/androidApps/${appId}`,
           projectId,
@@ -129,7 +130,8 @@ describe("profilingManager", () => {
           platform: appsModule.AppPlatform.ANDROID,
           packageName: "com.example.two",
         },
-      ]);
+      ];
+      sinon.stub(appsModule, "listFirebaseApps").resolves(mockApps);
 
       await expect(resolveAndroidAppId(projectId, { nonInteractive: true })).to.be.rejectedWith(
         FirebaseError,
@@ -140,7 +142,7 @@ describe("profilingManager", () => {
     it("should prompt the user to select an app when multiple Android apps exist interactively", async () => {
       const secondAppId = `1:${projectNumber}:android:fedcba654321`;
       const thirdAppId = `1:${projectNumber}:android:111111222222`;
-      sinon.stub(appsModule, "listFirebaseApps").resolves([
+      const mockApps: appsModule.AndroidAppMetadata[] = [
         {
           name: `projects/${projectId}/androidApps/${appId}`,
           projectId,
@@ -163,7 +165,8 @@ describe("profilingManager", () => {
           platform: appsModule.AppPlatform.ANDROID,
           packageName: "",
         },
-      ]);
+      ];
+      sinon.stub(appsModule, "listFirebaseApps").resolves(mockApps);
       const selectStub = sinon.stub(promptModule, "select").resolves(secondAppId);
 
       const result = await resolveAndroidAppId(projectId, {});
