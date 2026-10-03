@@ -24,6 +24,18 @@ export interface CommandModule {
   load: () => void;
 }
 
+/**
+ * Moves the command name in front of any options that preceded it, since
+ * commander only hands options to a subcommand when they follow its name.
+ */
+export function argvWithCommandFirst(argv: string[], cmd: string): string[] {
+  const index = argv.indexOf(cmd, 2);
+  if (index === -1) {
+    return argv;
+  }
+  return [...argv.slice(0, 2), cmd, ...argv.slice(2, index), ...argv.slice(index + 1)];
+}
+
 export function isCommandModule(value: unknown): value is CommandModule {
   return typeof value === "function" && typeof (value as any).load === "function";
 }
