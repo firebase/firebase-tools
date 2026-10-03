@@ -507,7 +507,9 @@ export class FirebaseMcpServer {
 
   async start(options?: { useSSE?: boolean; port?: number }): Promise<void> {
     // Background detection starts when the server is started, not when it is constructed, so constructing a server (as unit tests do) has no side effects.
-    void this.detectProjectSetup();
+    void this.detectProjectSetup().catch((err: unknown) => {
+      this.logger.debug(`[mcp] Background project detection failed: ${err}`);
+    });
 
     if (options?.useSSE) {
       const app = express();
