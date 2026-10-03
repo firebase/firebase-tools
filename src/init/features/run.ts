@@ -1,4 +1,3 @@
-import { statSync } from "fs";
 import * as path from "path";
 import { Setup } from "..";
 import { Config } from "../../config";
@@ -7,6 +6,7 @@ import { prereqs, RUN_PERMISSIONS } from "../../deploy/run/prereqs";
 import { getExistingService } from "../../deploy/run/util";
 import { FirebaseError } from "../../error";
 import { RunSingle } from "../../firebaseConfig";
+import { dirExistsSync } from "../../fsutils";
 import * as run from "../../gcp/run";
 import * as runv2 from "../../gcp/runv2";
 import { Options } from "../../options";
@@ -123,8 +123,7 @@ async function promptRootDir(projectDir: string): Promise<string> {
     default: "/",
     validate: (dir: string) => {
       const absPath = path.join(projectDir, dir);
-      const stat = statSync(absPath, { throwIfNoEntry: false });
-      if (!stat?.isDirectory()) {
+      if (!dirExistsSync(absPath)) {
         return `Directory ${absPath} does not exist. Please enter a valid directory.`;
       }
       return true;
