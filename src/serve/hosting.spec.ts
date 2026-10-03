@@ -8,6 +8,15 @@ import * as hosting from "./hosting";
 import * as requireHostingSite from "../requireHostingSite";
 import * as utils from "../utils";
 import { Writable } from "stream";
+import { once } from "events";
+import { Server } from "http";
+import { AddressInfo } from "net";
+import * as fs from "fs/promises";
+import * as os from "os";
+import * as path from "path";
+
+const realSuperstatic = superstatic.server;
+const realCreateDestroyer = utils.createDestroyer;
 
 describe("hosting", () => {
   const sandbox = sinon.createSandbox();
@@ -45,12 +54,16 @@ describe("hosting", () => {
       }),
     };
     superstaticStub = sandbox.stub(superstatic, "server").returns(superstaticServer as any);
-    createDestroyerStub = sandbox.stub(utils, "createDestroyer");
+    createDestroyerStub = sandbox.stub(utils, "createDestroyer").returns(sandbox.stub().resolves());
     sandbox.stub(Writable.prototype, "_write").resolves();
   });
 
-  afterEach(() => {
-    sandbox.restore();
+  afterEach(async () => {
+    try {
+      await hosting.stop();
+    } finally {
+      sandbox.restore();
+    }
   });
 
   describe("start", () => {
@@ -112,6 +125,131 @@ describe("hosting", () => {
   });
 
   describe("stop", () => {
+    it("should stop every hosting site", async () => {
+      const first = sandbox.stub().resolves();
+      const second = sandbox.stub().resolves();
+      hostingConfigStub.returns([
+        { site: "site-one", public: "public" },
+        { site: "site-two", public: "public" },
+      ]);
+      createDestroyerStub.onFirstCall().returns(first);
+      createDestroyerStub.onSecondCall().returns(second);
+
+      await hosting.start({ port: 8080, host: "localhost" });
+      await hosting.stop();
+
+      expect(first).to.have.been.calledOnce;
+      expect(second).to.have.been.calledOnce;
+    });
+
+    it("should wait for an in-progress shutdown when stopped again", async () => {
+      let finish!: () => void;
+      const closing = new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+      createDestroyerStub.returns(() => closing);
+      await hosting.start({ port: 8080, host: "localhost" });
+
+      const firstStop = hosting.stop();
+      let secondFinished = false;
+      const secondStop = hosting.stop().then(() => {
+        secondFinished = true;
+      });
+      try {
+        await new Promise<void>((resolve) => setImmediate(resolve));
+        expect(secondFinished).to.equal(false);
+      } finally {
+        finish();
+        await Promise.all([firstStop, secondStop]);
+      }
+      expect(secondFinished).to.equal(true);
+    });
+
+    it("should retain a server started while an earlier server is stopping", async () => {
+      let finish!: () => void;
+      const closing = new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+      const first = sandbox.stub().returns(closing);
+      const second = sandbox.stub().resolves();
+      createDestroyerStub.onFirstCall().returns(first);
+      createDestroyerStub.onSecondCall().returns(second);
+      await hosting.start({ port: 8080, host: "localhost" });
+      const firstStop = hosting.stop();
+      try {
+        await hosting.start({ port: 9090, host: "localhost" });
+      } finally {
+        finish();
+        await firstStop;
+      }
+
+      expect(second).to.not.have.been.called;
+      await hosting.stop();
+      expect(first).to.have.been.calledOnce;
+      expect(second).to.have.been.calledOnce;
+    });
+
+    it("should try every server when one shutdown fails", async () => {
+      const error = new Error("shutdown failed");
+      const first = sandbox.stub().rejects(error);
+      const second = sandbox.stub().resolves();
+      hostingConfigStub.returns([
+        { site: "site-one", public: "public" },
+        { site: "site-two", public: "public" },
+      ]);
+      createDestroyerStub.onFirstCall().returns(first);
+      createDestroyerStub.onSecondCall().returns(second);
+      await hosting.start({ port: 8080, host: "localhost" });
+
+      await expect(hosting.stop()).to.be.rejectedWith(error);
+      expect(first).to.have.been.calledOnce;
+      expect(second).to.have.been.calledOnce;
+    });
+
+    it("should close both real HTTP listeners after serving multiple sites", async () => {
+      const directory = await fs.mkdtemp(path.join(os.tmpdir(), "firebase-hosting-stop-"));
+      const servers: Server[] = [];
+      const destroyers: (() => Promise<void>)[] = [];
+      try {
+        await fs.writeFile(path.join(directory, "index.html"), "multi-site hosting");
+        await fs.writeFile(path.join(directory, "firebase.json"), "{}");
+        hostingConfigStub.returns([
+          { site: "site-one", public: "." },
+          { site: "site-two", public: "." },
+        ]);
+        // Let the OS choose a free port for each real server.
+        superstaticStub.callsFake((options: Parameters<typeof realSuperstatic>[0]) =>
+          realSuperstatic({ ...options, port: 0 }),
+        );
+        createDestroyerStub.callsFake((server: Server) => {
+          servers.push(server);
+          const destroyer = realCreateDestroyer(server);
+          destroyers.push(destroyer);
+          return destroyer;
+        });
+        await hosting.start({ port: 8080, host: "127.0.0.1", cwd: directory });
+        await Promise.all(
+          servers.map((server) =>
+            server.listening ? Promise.resolve() : once(server, "listening"),
+          ),
+        );
+        expect(servers).to.have.length(2);
+        for (const server of servers) {
+          const response = await fetch(
+            `http://127.0.0.1:${(server.address() as AddressInfo).port}/`,
+          );
+          expect(response.status).to.equal(200);
+          expect(await response.text()).to.equal("multi-site hosting");
+        }
+
+        await hosting.stop();
+        expect(servers.map((server) => server.listening)).to.deep.equal([false, false]);
+      } finally {
+        await Promise.all(destroyers.map((destroy) => destroy()));
+        await fs.rm(directory, { recursive: true, force: true });
+      }
+    });
+
     it("should call the destroyer if the server was started", async () => {
       const destroyer = sandbox.stub().resolves();
       createDestroyerStub.returns(destroyer);
