@@ -1,16 +1,8 @@
-import * as clc from "colorette";
 import { deploy } from "..";
 import { FirebaseError } from "../../error";
-import * as runv2 from "../../gcp/runv2";
 import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
-import { logBullet } from "../../utils";
-import {
-  FIREBASE_APP_ANNOTATION,
-  getExistingService,
-  getServiceConfigs,
-  missingServiceMessage,
-} from "./util";
+import { getExistingService, getServiceConfigs, missingServiceMessage } from "./util";
 
 /**
  * Updates a service's settings, then builds and deploys it like `firebase deploy` does. It always
@@ -29,7 +21,9 @@ export async function updateService(serviceId: string, options: Options): Promis
   if (newAppId && clearApp) {
     throw new FirebaseError("Use either --app or --clear-app, not both.");
   }
-  if (!newBaseImage && !clearBaseImage && !newAppId && !clearApp) {
+  const updateBaseImage = Boolean(newBaseImage || clearBaseImage);
+  const updateApp = Boolean(newAppId || clearApp);
+  if (!updateBaseImage && !updateApp) {
     throw new FirebaseError(
       "Specify a setting to update: --base-image <baseImage>, --clear-base-image, --app <appId>, or --clear-app.",
     );
@@ -38,7 +32,6 @@ export async function updateService(serviceId: string, options: Options): Promis
   const projectId = needProjectId(options);
   const only = `run:${serviceId}`;
   const configs = getServiceConfigs({ ...options, only });
-  const existing: runv2.Service[] = [];
   for (const config of configs) {
     if (!config.region) {
       throw new FirebaseError(
@@ -50,24 +43,9 @@ export async function updateService(serviceId: string, options: Options): Promis
         `Cannot clear the base image of ${serviceId}: local builds need one.`,
       );
     }
-    const svc = await getExistingService(projectId, config.region, serviceId);
-    if (!svc) {
+    if (!(await getExistingService(projectId, config.region, serviceId))) {
       throw new FirebaseError(`${missingServiceMessage(config)} Then you can update it.`);
     }
-    existing.push(svc);
-  }
-  const updateBaseImage = Boolean(newBaseImage || clearBaseImage);
-  let updateApp = Boolean(newAppId || clearApp);
-  if (clearApp && existing.every((s) => !s.annotations?.[FIREBASE_APP_ANNOTATION])) {
-    logBullet(`Service ${clc.bold(serviceId)} does not have a linked Firebase Web App.`);
-    updateApp = false;
-  }
-  if (newAppId && existing.every((s) => s.annotations?.[FIREBASE_APP_ANNOTATION] === newAppId)) {
-    logBullet(`Service ${clc.bold(serviceId)} is already linked to Firebase Web App ${newAppId}.`);
-    updateApp = false;
-  }
-  if (!updateBaseImage && !updateApp) {
-    return;
   }
 
   await deploy(

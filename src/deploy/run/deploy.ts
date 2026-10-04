@@ -148,7 +148,9 @@ async function deployService(
   if (svc.firebaseConfig) {
     const env = (container.env || []).filter((e) => e.name !== "FIREBASE_CONFIG");
     container.env = [...env, { name: "FIREBASE_CONFIG", value: svc.firebaseConfig }];
-  } else if (context.appId === null && container.env) {
+  } else if (svc.existing?.annotations?.[FIREBASE_APP_ANNOTATION] && container.env) {
+    // The service is being unlinked. Remove the FIREBASE_CONFIG that was set for its app, but
+    // leave one alone on a service that was never linked: the user set that one.
     container.env = container.env.filter((e) => e.name !== "FIREBASE_CONFIG");
     if (!container.env.length) {
       delete container.env;

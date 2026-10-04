@@ -98,29 +98,29 @@ describe("updateService", () => {
     });
   });
 
-  it("does nothing when clearing an app that isn't linked", async () => {
+  it("still rebuilds and deploys when clearing an app that isn't linked", async () => {
     await updateService("s", options({ clearApp: true }));
-    expect(deployStub).not.to.have.been.called;
-  });
-
-  it("still updates baseImage when combined with a no-op --clear-app", async () => {
-    await updateService("s", options({ baseImage: "nodejs20", clearApp: true }));
     expect(deployStub).to.have.been.calledOnceWith(["run"], sinon.match({ only: "run:s" }), {
-      baseImage: "nodejs20",
+      appId: null,
     });
   });
 
-  it("does nothing when linking the app that's already linked", async () => {
+  it("still rebuilds and deploys when linking the app that's already linked", async () => {
     getServiceStub.resolves({
       ...service,
       annotations: { "firebase.google.com/app-id": "1:1:web:a" },
     });
     await updateService("s", options({ app: "1:1:web:a" }));
-    expect(deployStub).not.to.have.been.called;
+    expect(deployStub).to.have.been.calledOnceWith(["run"], sinon.match({ only: "run:s" }), {
+      appId: "1:1:web:a",
+    });
+  });
 
-    await updateService("s", options({ app: "1:1:web:a", baseImage: "nodejs20" }));
+  it("updates the base image and the app together", async () => {
+    await updateService("s", options({ baseImage: "nodejs20", clearApp: true }));
     expect(deployStub).to.have.been.calledOnceWith(["run"], sinon.match({ only: "run:s" }), {
       baseImage: "nodejs20",
+      appId: null,
     });
   });
 });

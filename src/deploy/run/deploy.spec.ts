@@ -231,6 +231,18 @@ describe("run deploy", () => {
     expect(updateServiceStub.secondCall.args[0].template.containers[0]).not.to.have.property("env");
   });
 
+  it("keeps a FIREBASE_CONFIG the user set when clearing the app of a service that wasn't linked", async () => {
+    const env = [{ name: "FIREBASE_CONFIG", value: '{"projectId":"mine"}' }];
+    const existing = {
+      name: "projects/p/locations/us-central1/services/s",
+      template: { containers: [{ name: "s", image: "old", env }] },
+    } as unknown as runv2.Service;
+    await deploy({ projectId: "p", appId: null }, options, {
+      run: { services: [service({ existing })] },
+    });
+    expect(updateServiceStub.firstCall.args[0].template.containers[0].env).to.deep.equal(env);
+  });
+
   describe("local builds", () => {
     const existing = {
       name: "projects/p/locations/us-central1/services/s",
