@@ -1,14 +1,12 @@
-import * as clc from "colorette";
 import { deploy } from "..";
 import { FirebaseError } from "../../error";
-import * as runv2 from "../../gcp/runv2";
 import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
-import { logBullet } from "../../utils";
 import { getExistingService, getServiceConfigs, missingServiceMessage } from "./util";
 
 /**
- * Updates a service's settings, then builds and deploys it like `firebase deploy` does.
+ * Updates a service's settings, then builds and deploys it like `firebase deploy` does. It always
+ * rebuilds and deploys, even if the service already has those settings.
  * Changing the base image always needs a rebuild: images built for a base image leave out the
  * OS and runtime, and images built without one bring their own, which override the base image.
  */
@@ -27,7 +25,6 @@ export async function updateService(serviceId: string, options: Options): Promis
   const projectId = needProjectId(options);
   const only = `run:${serviceId}`;
   const configs = getServiceConfigs({ ...options, only });
-  const existing: runv2.Service[] = [];
   for (const config of configs) {
     if (!config.region) {
       throw new FirebaseError(
@@ -39,15 +36,9 @@ export async function updateService(serviceId: string, options: Options): Promis
         `Cannot clear the base image of ${serviceId}: local builds need one.`,
       );
     }
-    const svc = await getExistingService(projectId, config.region, serviceId);
-    if (!svc) {
+    if (!(await getExistingService(projectId, config.region, serviceId))) {
       throw new FirebaseError(`${missingServiceMessage(config)} Then you can update it.`);
     }
-    existing.push(svc);
-  }
-  if (clearBaseImage && existing.every((s) => !s.template.containers?.[0]?.baseImageUri)) {
-    logBullet(`Service ${clc.bold(serviceId)} does not have a base image.`);
-    return;
   }
 
   await deploy(["run"], { ...options, only }, { baseImage: newBaseImage ?? null });
