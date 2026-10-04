@@ -74,10 +74,12 @@ describe("updateService", () => {
     await expect(updateService("s", opts)).to.be.rejectedWith("local builds need one");
   });
 
-  it("does nothing when clearing a base image that isn't set", async () => {
+  it("still rebuilds and deploys when clearing a base image that isn't set", async () => {
     getServiceStub.resolves({ ...service, template: { containers: [{ name: "s", image: "i" }] } });
     await updateService("s", options({ clearBaseImage: true }));
-    expect(deployStub).not.to.have.been.called;
+    expect(deployStub).to.have.been.calledOnceWith(["run"], sinon.match({ only: "run:s" }), {
+      baseImage: null,
+    });
   });
 
   it("links and clears a Firebase Web App", async () => {

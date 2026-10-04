@@ -13,7 +13,8 @@ import {
 } from "./util";
 
 /**
- * Updates a service's settings, then builds and deploys it like `firebase deploy` does.
+ * Updates a service's settings, then builds and deploys it like `firebase deploy` does. It always
+ * rebuilds and deploys, even if the service already has those settings.
  * Changing the base image always needs a rebuild: images built for a base image leave out the
  * OS and runtime, and images built without one bring their own, which override the base image.
  */
@@ -55,11 +56,7 @@ export async function updateService(serviceId: string, options: Options): Promis
     }
     existing.push(svc);
   }
-  let updateBaseImage = Boolean(newBaseImage || clearBaseImage);
-  if (clearBaseImage && existing.every((s) => !s.template.containers?.[0]?.baseImageUri)) {
-    logBullet(`Service ${clc.bold(serviceId)} does not have a base image.`);
-    updateBaseImage = false;
-  }
+  const updateBaseImage = Boolean(newBaseImage || clearBaseImage);
   let updateApp = Boolean(newAppId || clearApp);
   if (clearApp && existing.every((s) => !s.annotations?.[FIREBASE_APP_ANNOTATION])) {
     logBullet(`Service ${clc.bold(serviceId)} does not have a linked Firebase Web App.`);
