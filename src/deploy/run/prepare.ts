@@ -55,7 +55,7 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
 
   let autoInitEnv: Record<string, string> = {};
   if (appId) {
-    autoInitEnv = await resolveAutoInitEnv(serviceId, appId, existing);
+    autoInitEnv = getAutoinitEnvVars(await getWebAppConfig(serviceId, appId));
     await ensureAutoInitIam(context, existing);
   }
   const userBuildEnv = getBuildEnv(existing);
@@ -100,25 +100,6 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
 }
 
 /**
- * Returns the env vars that let Firebase SDKs auto-initialize with the service's Firebase Web App:
- * FIREBASE_WEBAPP_CONFIG (the app's config, for the client SDK) and FIREBASE_CONFIG (the part of
- * it the Admin SDK reads).
- */
-async function resolveAutoInitEnv(
-  serviceId: string,
-  appId: string,
-  existing: runv2.Service | undefined,
-): Promise<Record<string, string>> {
-  const autoInitEnv = getAutoinitEnvVars(await getWebAppConfig(serviceId, appId));
-  // Env vars set on the container take precedence, unless the service is being linked to a
-  // different app: then they were meant for the old one.
-  if (appId === existing?.annotations?.[FIREBASE_APP_ANNOTATION]) {
-    applyContainerOverrides(autoInitEnv, existing.template.containers?.[0]?.env);
-  }
-  return autoInitEnv;
-}
-
-/**
  * Fetches the Firebase Web App's config. Fails instead of deploying a service that can't
  * auto-initialize Firebase SDKs.
  */
@@ -133,26 +114,6 @@ async function getWebAppConfig(serviceId: string, appId: string): Promise<WebCon
         `"firebase run:services:update ${serviceId} --clear-app".`,
       { original: getError(err) },
     );
-  }
-}
-
-/**
- * Lets env vars set on the container override the matching auto-init vars. A secret-backed var
- * can't be read here, so it's dropped and the container keeps its secret.
- */
-function applyContainerOverrides(
-  autoInitEnv: Record<string, string>,
-  containerEnv: runv2.Container["env"] = [],
-): void {
-  for (const env of containerEnv) {
-    if (!Object.prototype.hasOwnProperty.call(autoInitEnv, env.name)) {
-      continue;
-    }
-    if ("value" in env) {
-      autoInitEnv[env.name] = env.value;
-    } else {
-      delete autoInitEnv[env.name];
-    }
   }
 }
 

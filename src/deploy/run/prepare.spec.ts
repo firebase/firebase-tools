@@ -216,33 +216,7 @@ describe("run prepare", () => {
       expect(cleared.buildEnv).to.be.undefined;
     });
 
-    it("lets user buildEnv and container env override autoinit vars", async () => {
-      getServiceStub.resolves({
-        ...existing,
-        annotations: {
-          [FIREBASE_APP_ANNOTATION]: "1:1:web:a",
-          [BUILD_ENV_ANNOTATION]: JSON.stringify({ FIREBASE_WEBAPP_CONFIG: "custom-webapp" }),
-        },
-        template: {
-          containers: [
-            {
-              name: "s",
-              image: "i",
-              baseImageUri: nodejs22,
-              env: [{ name: "FIREBASE_CONFIG", value: "custom-runtime" }],
-            },
-          ],
-        },
-      });
-      const svc = await prepareOne({}, { appId: "1:1:web:a" });
-      expect(svc.firebaseConfig).to.equal("custom-runtime");
-      expect(svc.buildEnv).to.deep.equal({
-        FIREBASE_WEBAPP_CONFIG: "custom-webapp",
-        FIREBASE_CONFIG: "custom-runtime",
-      });
-    });
-
-    it("preserves secret-backed FIREBASE_CONFIG on the container without overwriting it", async () => {
+    it("always uses the linked app's current config, not the one on the container", async () => {
       getServiceStub.resolves({
         ...existing,
         annotations: { [FIREBASE_APP_ANNOTATION]: "1:1:web:a" },
@@ -251,19 +225,32 @@ describe("run prepare", () => {
             {
               name: "s",
               image: "i",
-              env: [
-                {
-                  name: "FIREBASE_CONFIG",
-                  valueSource: { secretKeyRef: { secret: "sec", version: "1" } },
-                },
-              ],
+              baseImageUri: nodejs22,
+              env: [{ name: "FIREBASE_CONFIG", value: '{"projectId":"p"}' }],
             },
           ],
         },
       });
       const svc = await prepareOne();
-      expect(svc.firebaseConfig).to.be.undefined;
-      expect(svc.buildEnv).to.deep.equal({ FIREBASE_WEBAPP_CONFIG: webappConfig });
+      expect(svc.firebaseConfig).to.equal(firebaseConfig);
+      expect(svc.buildEnv).to.deep.equal({
+        FIREBASE_WEBAPP_CONFIG: webappConfig,
+        FIREBASE_CONFIG: firebaseConfig,
+      });
+    });
+
+    it("lets the build env annotation override autoinit vars at build time only", async () => {
+      const userBuildEnv = { FIREBASE_WEBAPP_CONFIG: "custom-webapp", FIREBASE_CONFIG: "custom" };
+      getServiceStub.resolves({
+        ...existing,
+        annotations: {
+          [FIREBASE_APP_ANNOTATION]: "1:1:web:a",
+          [BUILD_ENV_ANNOTATION]: JSON.stringify(userBuildEnv),
+        },
+      });
+      const svc = await prepareOne();
+      expect(svc.buildEnv).to.deep.equal(userBuildEnv);
+      expect(svc.firebaseConfig).to.equal(firebaseConfig);
     });
 
     it("fails if the linked Firebase Web App can't be looked up", async () => {

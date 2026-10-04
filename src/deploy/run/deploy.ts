@@ -141,8 +141,10 @@ async function deployService(
   } else {
     delete container.baseImageUri;
   }
-  // FIREBASE_CONFIG is how the Admin SDK auto-initializes at runtime. The client SDK's
-  // FIREBASE_WEBAPP_CONFIG is only needed at build time, so it isn't set on the container.
+  // FIREBASE_CONFIG is how the Admin SDK auto-initializes at runtime. While an app is linked, it's
+  // always rewritten from the app's current config, so changes like enabling Storage reach the
+  // service. The client SDK's FIREBASE_WEBAPP_CONFIG is only needed at build time, so it isn't set
+  // on the container.
   if (svc.firebaseConfig) {
     const env = (container.env || []).filter((e) => e.name !== "FIREBASE_CONFIG");
     container.env = [...env, { name: "FIREBASE_CONFIG", value: svc.firebaseConfig }];
