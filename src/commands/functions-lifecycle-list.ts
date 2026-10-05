@@ -2,6 +2,7 @@ import { Command } from "../command";
 import { Options } from "../options";
 import { logger } from "../logger";
 import { loadCodebases } from "../deploy/functions/prepare";
+import { getCodebasesFromConfig } from "../deploy/functions/functionsDeployHelper";
 import { normalizeAndValidate, shouldUseRuntimeConfig } from "../functions/projectConfig";
 import { getProjectAdminSdkConfigOrCached } from "../emulator/adminSdkConfig";
 import { needProjectId } from "../projectUtils";
@@ -19,7 +20,7 @@ export async function loadCodebaseBuild(codebase: string, options: Options): Pro
   }
   const fnConfig = normalizeAndValidate(options.config.src.functions);
 
-  const hasCodebase = fnConfig.some((c) => c.codebase === codebase);
+  const hasCodebase = getCodebasesFromConfig(fnConfig).includes(codebase);
   if (!hasCodebase) {
     throw new FirebaseError(`Codebase "${codebase}" is not defined in firebase.json.`);
   }
@@ -50,13 +51,9 @@ export async function loadCodebaseBuild(codebase: string, options: Options): Pro
     }
   }
 
-  const wantBuilds = await loadCodebases(
-    fnConfig,
-    options,
-    firebaseConfig,
-    runtimeConfig,
-    undefined, // no filters
-  );
+  const wantBuilds = await loadCodebases(fnConfig, options, firebaseConfig, runtimeConfig, [
+    { codebase },
+  ]);
 
   const codebaseBuild = wantBuilds[codebase];
   if (!codebaseBuild) {
