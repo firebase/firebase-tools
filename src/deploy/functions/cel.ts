@@ -53,196 +53,75 @@ function isDualComparisonExpression(value: CelExpression): value is DualComparis
 export class ExprParseError extends FirebaseError {}
 
 interface TernaryParts {
-  condition: CelExpression;
-  ifTrue: CelExpression;
-  ifFalse: CelExpression;
-}
-
-type TernarySplit =
-  // The body is a ternary and here are its parts.
-  | ({ kind: "ternary" } & TernaryParts)
-  // The body holds no delimiter, so it's one of the other forms of expression
-  // or a terminal branch value.
-  | { kind: "none" }
-  // The body holds delimiters that don't pair up, so it's a broken ternary and
-  // nothing else.
-  | { kind: "malformed" };
-
-type TernaryScan =
-  | TernarySplit
-  // The scan gave up because the body's quote characters don't line up with its
-  // tokens, so nothing it worked out about literals can be trusted.
-  | { kind: "misquoted" }
-  // The body holds a " : " with no " ? " in front of it anywhere, so it isn't a
-  // ternary at all rather than being a broken one.
-  | { kind: "strayColon" };
-
-/**
- * Tests whether a quote character sits where a string literal can start or end.
- *
- * The SDK writes every string operand as `"${value}"` without escaping the
- * value, so a value holding a double quote leaves quotes in the body that open
- * and close nothing. A quote that really does delimit a literal is at the edge
- * of a token, which means it's next to a space, a list bracket, a comma, or the
- * end of the body. Anything else is a value's own quote, and it means the scan
- * has lost track of where the literals are.
- */
-function isLiteralEdge(body: string, i: number, closing: boolean): boolean {
-  const neighbor = closing ? body[i + 1] : body[i - 1];
-  return neighbor === undefined || [" ", ",", "[", "]"].includes(neighbor);
+  condition: string;
+  ifTrue: string;
+  ifFalse: string;
 }
 
 /**
- * Scans the body of an expression, meaning everything between the "{{ " and
- * the " }}", for the delimiters of a ternary.
- *
- * This can't be done with a regexp. Ternaries nest, the SDK emits them without
- * parentheses, and they associate to the right, so pairing a " ? " with the
- * " : " that belongs to it means counting delimiters. A quoted string literal
- * is also allowed to contain either token. Both of those need a left to right
- * scan.
- *
- * Quote tracking is skipped entirely when ignoreQuotes is set, which is how
- * splitTernary() copes with a body whose quotes don't line up.
+ * Splits a ternary into its condition and branches, or returns undefined if the
+ * expression isn't a ternary. Ternaries are right associative and the SDK emits
+ * them without parentheses, so the " : " that pairs with the first " ? " is
+ * found by counting delimiters outside of string literals.
  */
-function scanTernary(body: string, ignoreQuotes: boolean): TernaryScan {
-  let inLiteral = false;
+function parseTernary(expr: CelExpression): TernaryParts | undefined {
+  if (!expr.startsWith(exprPrefix) || !expr.endsWith(exprSuffix)) {
+    return undefined;
+  }
+  const body = expr.slice(exprPrefix.length, -exprSuffix.length);
+
+  let inQuotes = false;
   let depth = 0;
   let question = -1;
-  let strayColon = false;
-  const candidates: number[] = [];
+  let colon = -1;
 
   for (let i = 0; i < body.length; i++) {
-    if (!ignoreQuotes) {
-      if (inLiteral && body[i] === "\\") {
-        i++; // whatever follows is escaped, so it's content and not a delimiter
-        continue;
-      }
-      if (body[i] === '"') {
-        if (!isLiteralEdge(body, i, inLiteral)) {
-          return { kind: "misquoted" };
-        }
-        inLiteral = !inLiteral;
-        continue;
-      }
-      if (inLiteral) {
-        continue;
-      }
+    if (inQuotes && body[i] === "\\") {
+      i++; // skip escaped character
+      continue;
     }
+    if (body[i] === '"') {
+      inQuotes = !inQuotes;
+      continue;
+    }
+    if (inQuotes) continue;
+
     if (body.startsWith(questionToken, i)) {
-      if (question === -1) {
+      if (depth === 0) {
         question = i;
-      } else {
-        depth++;
       }
-      i += questionToken.length - 1; // skip past the token we just consumed
-      continue;
+      depth++;
+      i += questionToken.length - 1;
+    } else if (body.startsWith(colonToken, i)) {
+      if (depth > 0) {
+        depth--;
+        if (depth === 0) {
+          colon = i;
+          break; // found matching colon for the condition's question mark
+        }
+      }
+      i += colonToken.length - 1;
     }
-    if (!body.startsWith(colonToken, i)) {
-      continue;
-    }
-    if (question === -1) {
-      // A branch delimiter with no condition delimiter in front of it. The scan
-      // carries on, because whether a " ? " turns up later is what separates a
-      // broken ternary from an expression that was never a ternary.
-      strayColon = true;
-    } else if (depth > 0) {
-      depth--;
-    } else {
-      candidates.push(i);
-    }
-    i += colonToken.length - 1; // skip past the token we just consumed
   }
 
-  if (inLiteral) {
-    return { kind: "misquoted" };
-  }
   if (question === -1) {
-    return strayColon ? { kind: "strayColon" } : { kind: "none" };
+    return undefined;
   }
-  if (strayColon) {
-    // A " : " ahead of the " ? " belongs to neither this ternary nor a nested one.
-    return { kind: "malformed" };
+  // A " ? " without its " : " raises here. Returning undefined would let the
+  // comparison forms, or a nested branch, read the broken ternary as a value.
+  if (colon === -1) {
+    throw new ExprParseError(`Malformed CEL ternary expression '${expr}'`);
   }
-  // Delimiters that pair up cleanly leave one candidate, because everything
-  // after it is part of the false branch. More than one means a value's own
-  // double quote hid the real delimiter from the scan and offered one of its
-  // own, so a candidate that cuts a branch in half gives way to the next.
-  for (const colon of candidates) {
-    const ifTrue = body.slice(question + questionToken.length, colon);
-    const ifFalse = body.slice(colon + colonToken.length);
-    if (isSoundBranch(ifTrue) && isSoundBranch(ifFalse)) {
-      return { kind: "ternary", condition: body.slice(0, question), ifTrue, ifFalse };
-    }
-  }
-  // A condition delimiter that never found its branch delimiter is a broken
-  // ternary. Calling it a non ternary would let the comparison evaluators
-  // reinterpret it, and they'd return a boolean for whatever type was asked for.
-  return { kind: "malformed" };
-}
 
-/**
- * Tests that a branch is something a ternary can really have as a branch: a
- * ternary itself, or a value with no delimiter left loose in it. A branch that
- * fails this was cut out of the middle of a value, which is what a value's own
- * double quote does to the scan.
- *
- * A loose " : " is read strictly here, unlike in splitTernary(), where it means
- * the body was never a ternary and belongs to another form of expression. A
- * branch has nowhere else to go, so the only thing a loose delimiter can tell
- * us is that the split which produced it was the wrong one.
- */
-function isSoundBranch(branch: CelExpression): boolean {
-  const scanned = scanTernary(branch, false);
-  const kind = scanned.kind === "misquoted" ? scanTernary(branch, true).kind : scanned.kind;
-  return kind === "ternary" || kind === "none";
-}
+  const condition = body.slice(0, question).trim();
+  const ifTrue = body.slice(question + questionToken.length, colon).trim();
+  const ifFalse = body.slice(colon + colonToken.length).trim();
 
-/**
- * Splits the body of an expression as a ternary.
- *
- * A body holding a value with a double quote in it has quotes that delimit no
- * literal, and the scan says so rather than guessing which ones are real. The
- * regexps this replaced had no notion of quoting at all, so reading such a body
- * again with quote tracking off keeps those expressions resolving to what
- * they've always resolved to.
- */
-function splitTernary(body: string): TernarySplit {
-  const scanned = scanTernary(body, false);
-  if (scanned.kind === "strayColon") {
-    // The quotes line up, so this really is a branch delimiter with no
-    // condition delimiter in front of it, which is a broken ternary.
-    return { kind: "malformed" };
+  if (!condition || !ifTrue || !ifFalse) {
+    throw new ExprParseError(`Malformed CEL ternary expression '${expr}'`);
   }
-  if (scanned.kind !== "misquoted") {
-    return scanned;
-  }
-  const rescanned = scanTernary(body, true);
-  if (rescanned.kind === "strayColon") {
-    // Reading the quotes some other way is the only thing that could pair this
-    // " : " up, and the scan has just given up on them, so the body goes to the
-    // forms of expression that never had a notion of quoting. A comparison
-    // against a value holding a " : " lands here and resolves as it always has.
-    return { kind: "none" };
-  }
-  // The second scan doesn't track quoting, so it can't come back misquoted.
-  return rescanned.kind === "misquoted" ? { kind: "none" } : rescanned;
-}
 
-/**
- * Pulls the body out of a whole CEL expression and splits it as a ternary,
- * returning null if the expression isn't a ternary. A ternary whose delimiters
- * don't pair up raises instead, so that it can't fall through to another form.
- */
-function parseTernary(expr: CelExpression): TernaryParts | null {
-  if (!expr.startsWith(exprPrefix) || !expr.endsWith(exprSuffix)) {
-    return null;
-  }
-  const split = splitTernary(expr.slice(exprPrefix.length, -exprSuffix.length));
-  if (split.kind === "malformed") {
-    throw new ExprParseError("Malformed CEL ternary expression '" + expr + "'");
-  }
-  return split.kind === "ternary" ? split : null;
+  return { condition, ifTrue, ifFalse };
 }
 
 /**
@@ -269,19 +148,17 @@ export function resolveExpression(
   // first and resolve them. This isn't (and can't be) recursive, but the fact that
   // we only support string[] types mostly saves us here.
   expr = preprocessLists(wantType, expr, params);
-  // N.B: Some of these regexps are supersets of others (anything that is
-  // params\.(\S+) is also (.+)), so the order in which they are tested matters.
-  // The ternary is parsed ahead of the chain below, rather than tested inside
-  // it, because the split it produces is reused to evaluate the expression.
+  // N.B: Since some of these regexps are supersets of others--anything that is
+  // params\.(\S+) is also (.+)--the order in which they are tested matters
   if (isIdentityExpression(expr)) {
     return resolveIdentity(wantType, expr, params);
   }
   const ternary = parseTernary(expr);
   if (ternary) {
     return resolveTernary(wantType, expr, ternary, params);
-  } else if (isDualComparisonExpression(expr)) {
+  } else if (wantType === "boolean" && isDualComparisonExpression(expr)) {
     return resolveDualComparison(expr, params);
-  } else if (isComparisonExpression(expr)) {
+  } else if (wantType === "boolean" && isComparisonExpression(expr)) {
     return resolveComparison(expr, params);
   } else {
     throw new ExprParseError("CEL expression '" + expr + "' is of an unsupported form");
@@ -582,29 +459,27 @@ function resolveTernaryCondition(
   const match = identityRegexp.exec(conditionExpr);
   if (!match) {
     throw new ExprParseError(
-      "CEL ternary expression '" + expr + "' is conditioned on an unsupported form",
+      `CEL ternary expression '${expr}' is conditioned on an unsupported form`,
     );
   }
   const paramName = match[1];
   const paramValue = params[paramName];
   if (!paramValue) {
     throw new ExprParseError(
-      "CEL ternary expression '" + expr + "' references missing param " + paramName,
+      `CEL ternary expression '${expr}' references missing param ${paramName}`,
     );
   }
   if (!paramValue.legalBoolean) {
     throw new ExprParseError(
-      "CEL ternary expression '" + expr + "' is conditional on non-boolean param " + paramName,
+      `CEL ternary expression '${expr}' is conditional on non-boolean param ${paramName}`,
     );
   }
   return paramValue.asBoolean();
 }
 
 /**
- * A branch of a ternary is either another ternary or a terminal value: a
- * reference to a param, a list, or a literal. A branch left holding a delimiter
- * that pairs with nothing is neither, so it raises rather than being read as a
- * value with punctuation in it.
+ * A branch of a ternary is either another ternary or a reference to a param,
+ * a list, or a literal.
  */
 function resolveTernaryBranch(
   wantType: L,
@@ -612,11 +487,8 @@ function resolveTernaryBranch(
   branch: CelExpression,
   params: Record<string, ParamValue>,
 ): Literal {
-  const nested = splitTernary(branch);
-  if (nested.kind === "malformed") {
-    throw new ExprParseError("Malformed CEL ternary expression '" + expr + "'");
-  }
-  if (nested.kind === "ternary") {
+  const nested = parseTernary(`${exprPrefix}${branch}${exprSuffix}`);
+  if (nested) {
     return resolveTernary(wantType, expr, nested, params);
   }
   // N.B: lists were already expanded by the preprocessLists() call that started
@@ -649,14 +521,8 @@ function resolveLiteral(wantType: L, value: string): Literal {
 
   if (wantType === "string[]") {
     // N.B: value being a literal list that can just be JSON.parsed should be guaranteed
-    // by the preprocessLists() invocation at the beginning of CEL resolution, so
-    // reaching the catch means something upstream handed this a fragment of one.
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(value);
-    } catch {
-      throw new ExprParseError("CEL literal " + value + " does not seem to be a list");
-    }
+    // by the preprocessLists() invocation at the beginning of CEL resolution
+    const parsed = JSON.parse(value);
     if (!Array.isArray(parsed)) {
       throw new ExprParseError(`CEL tried to read non-list ${JSON.stringify(parsed)} as a list`);
     }

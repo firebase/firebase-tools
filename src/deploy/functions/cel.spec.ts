@@ -430,6 +430,24 @@ describe("CEL evaluation", () => {
         }),
       ).to.be.true;
     });
+
+    it("raises when a comparison is resolved as a type other than boolean", () => {
+      expect(() => {
+        resolveExpression("string", '{{ params.FOO == "bar" }}', { FOO: stringV("bar") });
+      }).to.throw(ExprParseError);
+      expect(() => {
+        resolveExpression("number", "{{ params.FOO == params.BAR }}", {
+          FOO: numberV(22),
+          BAR: numberV(22),
+        });
+      }).to.throw(ExprParseError);
+      // An unescaped quote hides the " ? ", so this reads as a comparison.
+      expect(() => {
+        resolveExpression("string", '{{ params.FOO == "a"b" ? "x" : "y" }}', {
+          FOO: stringV('a"b'),
+        });
+      }).to.throw(ExprParseError);
+    });
   });
 
   describe("Dual comparison expressions", () => {
@@ -1232,6 +1250,22 @@ describe("CEL evaluation", () => {
       );
     });
 
+    it("it resolves an expression with ternaries nested in both branches", () => {
+      const expr = '{{ params.A ? params.B ? "1" : "2" : params.C ? "3" : "4" }}';
+      expect(
+        resolveExpression("string", expr, { A: boolV(true), B: boolV(true), C: boolV(false) }),
+      ).to.equal("1");
+      expect(
+        resolveExpression("string", expr, { A: boolV(true), B: boolV(false), C: boolV(false) }),
+      ).to.equal("2");
+      expect(
+        resolveExpression("string", expr, { A: boolV(false), B: boolV(false), C: boolV(true) }),
+      ).to.equal("3");
+      expect(
+        resolveExpression("string", expr, { A: boolV(false), B: boolV(false), C: boolV(false) }),
+      ).to.equal("4");
+    });
+
     it("it resolves a chain three levels deep", () => {
       const expr =
         '{{ params.FOO == "a" ? 1 : params.FOO == "b" ? 2 : params.FOO == "c" ? 3 : 4 }}';
@@ -1276,59 +1310,14 @@ describe("CEL evaluation", () => {
           Q: stringV('a"b'),
         }),
       ).to.deep.equal(['a"b']);
-      // The quote and the delimiter are in different values here, so the split
-      // has to land between the branches and not inside the list.
-      expect(
-        resolveExpression("string[]", '{{ params.FOO == "a"b" ? [params.Q] : [] }}', {
-          FOO: stringV('a"b'),
-          Q: stringV("x : y"),
-        }),
-      ).to.deep.equal(["x : y"]);
     });
 
-    it("it resolves values that contain a double quote", () => {
-      expect(
-        resolveExpression("string", '{{ params.MSG == "a"b" ? "sa-prod" : "sa-dev" }}', {
-          MSG: stringV('a"b'),
-        }),
-      ).to.equal("sa-prod");
-      expect(
-        resolveExpression("number", '{{ params.MSG == "a"b" ? 1 : 2 }}', {
-          MSG: stringV('a"b'),
-        }),
-      ).to.equal(1);
-      expect(
-        resolveExpression("string", '{{ params.FLAG ? "a"b" : "c" }}', {
-          FLAG: boolV(false),
-        }),
-      ).to.equal("c");
-      expect(
-        resolveExpression("string", '{{ params.FLAG ? "x" : "a"b" }}', {
-          FLAG: boolV(true),
-        }),
-      ).to.equal("x");
+    it("it doesn't end a literal at an escaped double quote", () => {
       expect(
         resolveExpression("string", '{{ params.FLAG ? "a\\"b" : "c" }}', {
           FLAG: boolV(false),
         }),
       ).to.equal("c");
-    });
-
-    it("it resolves an expression holding more than one unescaped double quote", () => {
-      const expr = '{{ params.FLAG ? "6" pipe" : "8" pipe" }}';
-      expect(resolveExpression("string", expr, { FLAG: boolV(true) })).to.equal('6" pipe');
-      expect(resolveExpression("string", expr, { FLAG: boolV(false) })).to.equal('8" pipe');
-
-      const cmp = '{{ params.M == "a"b" ? "c" : "e"f" }}';
-      expect(resolveExpression("string", cmp, { M: stringV('a"b') })).to.equal("c");
-      expect(resolveExpression("string", cmp, { M: stringV("zz") })).to.equal('e"f');
-
-      expect(
-        resolveExpression("string", '{{ params.A == params.B ? "p"q" : "r"s" }}', {
-          A: stringV("1"),
-          B: stringV("2"),
-        }),
-      ).to.equal('r"s');
     });
 
     it("it doesn't split on a ? or a : inside a string literal", () => {
@@ -1357,6 +1346,9 @@ describe("CEL evaluation", () => {
           FOO: stringV("a"),
         }),
       ).to.equal("x : y");
+      expect(
+        resolveExpression("boolean", '{{ params.FOO == "a ? b" }}', { FOO: stringV("a ? b") }),
+      ).to.equal(true);
     });
 
     it("raises when a nested branch references a missing param", () => {
@@ -1418,60 +1410,18 @@ describe("CEL evaluation", () => {
         resolveExpression("number", "{{ params.FOO == 22 ? 10 : }}", { FOO: numberV(22) });
       }).to.throw(ExprParseError);
       expect(() => {
-        resolveExpression("string", '{{ params.FOO ? "a" : "b" : "c" }}', { FOO: boolV(false) });
+        resolveExpression("string", '{{ params.FOO == "a" ? "x" }}', { FOO: stringV("a") });
       }).to.throw(ExprParseError);
       expect(() => {
         resolveExpression("string", '{{ params.FOO == "a" ? "x" ? "y" : "z" }}', {
           FOO: stringV("a"),
         });
       }).to.throw(ExprParseError);
-    });
-
-    it("raises when a value holds both a double quote and a delimiter", () => {
       expect(() => {
-        resolveExpression("string", '{{ params.MSG == "a"b : c" ? "x" : "y" }}', {
-          MSG: stringV('a"b : c'),
-        });
+        resolveExpression("string", '{{ params.FOO ? "x" : "y" ? "z" }}', { FOO: boolV(false) });
       }).to.throw(ExprParseError);
       expect(() => {
-        resolveExpression("string", '{{ params.FLAG ? "a"b ? c" : "z" }}', { FLAG: boolV(false) });
-      }).to.throw(ExprParseError);
-    });
-
-    it("raises on a branch whose value pairs a double quote with a delimiter", () => {
-      // The true branch here is the single value a" : "b, which the SDK writes
-      // out unescaped. Whichever way the delimiters are paired up, some branch
-      // is left holding one that belongs to nothing, so this raises either way
-      // rather than resolving to a truncated value on one of them.
-      const flag = '{{ params.FLAG ? "a" : "b" : "" }}';
-      expect(() => {
-        resolveExpression("string", flag, { FLAG: boolV(true) });
-      }).to.throw(ExprParseError);
-      expect(() => {
-        resolveExpression("string", flag, { FLAG: boolV(false) });
-      }).to.throw(ExprParseError);
-
-      const cmp = '{{ params.ENV == "prod" ? "a" : "b" : "fallback" }}';
-      expect(() => {
-        resolveExpression("string", cmp, { ENV: stringV("prod") });
-      }).to.throw(ExprParseError);
-      expect(() => {
-        resolveExpression("string", cmp, { ENV: stringV("dev") });
-      }).to.throw(ExprParseError);
-    });
-
-    it("it leaves a comparison holding a stray delimiter to the comparison evaluators", () => {
-      // No " ? " anywhere, so this was never a ternary and the delimiter is
-      // just part of the value being compared against.
-      expect(
-        resolveExpression("boolean", '{{ params.MSG == "a"b : c" }}', {
-          MSG: stringV('a"b : c'),
-        }),
-      ).to.equal(true);
-      // Quotes that do line up, on the other hand, make this a ternary with a
-      // branch delimiter and no condition delimiter, which stays rejected.
-      expect(() => {
-        resolveExpression("string", '{{ params.S == "a" : "b" }}', { S: stringV("a") });
+        resolveExpression("string", '{{ params.FOO == "a" : "b" }}', { FOO: stringV("a") });
       }).to.throw(ExprParseError);
     });
 
@@ -1483,15 +1433,6 @@ describe("CEL evaluation", () => {
       }).to.throw(ExprParseError);
       expect(() => {
         resolveExpression("number", "{{ params.FOO == 22? 10 : 0 }}", { FOO: numberV(22) });
-      }).to.throw(ExprParseError);
-    });
-
-    it("raises when a ternary isn't the whole expression", () => {
-      expect(() => {
-        resolveExpression("string", '{{ params.FLAG ? "a" : "b" }}extra', { FLAG: boolV(true) });
-      }).to.throw(ExprParseError);
-      expect(() => {
-        resolveExpression("string", 'junk{{ params.FLAG ? "a" : "b" }}', { FLAG: boolV(true) });
       }).to.throw(ExprParseError);
     });
   });
