@@ -11,6 +11,7 @@ import { FirebaseError } from "../error";
 import { Options } from "../options";
 import * as requirePermissions from "../requirePermissions";
 import * as experiments from "../experiments";
+import * as ensureApiEnabled from "../ensureApiEnabled";
 
 describe("functions:lifecycle commands", () => {
   let sandbox: sinon.SinonSandbox;
@@ -45,7 +46,7 @@ describe("functions:lifecycle commands", () => {
     it("should throw FirebaseError if codebase is not defined in firebase.json", async () => {
       await expect(loadCodebaseBuild("non-existent", options)).to.be.rejectedWith(
         FirebaseError,
-        'Codebase "non-existent" is not defined in firebase.json.',
+        "No functions config found for codebase or kit instance non-existent",
       );
     });
 
@@ -77,9 +78,10 @@ describe("functions:lifecycle commands", () => {
       );
     });
 
-    it("should load function kit instance build successfully", async () => {
+    it("should load function kit instance build without checking runtime config", async () => {
       experiments.setEnabled("kits", true);
       options.config.src.functions = [
+        { codebase: "my-codebase", source: "functions" },
         {
           kit: "my-kit",
           source: "kits/my-kit",
@@ -100,12 +102,14 @@ describe("functions:lifecycle commands", () => {
           },
         },
       };
+      const ensureCheckStub = sandbox.stub(ensureApiEnabled, "check");
       const loadCodebasesStub = sandbox.stub(prepare, "loadCodebases").resolves({
         inst1: mockBuild,
       });
 
       const build = await loadCodebaseBuild("inst1", options);
       expect(build).to.deep.equal(mockBuild);
+      expect(ensureCheckStub).to.not.have.been.called;
       expect(loadCodebasesStub).to.have.been.calledOnceWithExactly(
         sinon.match.array,
         options,

@@ -2,8 +2,11 @@ import { Command } from "../command";
 import { Options } from "../options";
 import { logger } from "../logger";
 import { loadCodebases } from "../deploy/functions/prepare";
-import { getCodebasesFromConfig } from "../deploy/functions/functionsDeployHelper";
-import { normalizeAndValidate, shouldUseRuntimeConfig } from "../functions/projectConfig";
+import {
+  configForCodebase,
+  normalizeAndValidate,
+  shouldUseRuntimeConfig,
+} from "../functions/projectConfig";
 import { getProjectAdminSdkConfigOrCached } from "../emulator/adminSdkConfig";
 import { needProjectId } from "../projectUtils";
 import { FirebaseError } from "../error";
@@ -19,11 +22,7 @@ export async function loadCodebaseBuild(codebase: string, options: Options): Pro
     throw new FirebaseError("Not in a Firebase project directory (firebase.json not found).");
   }
   const fnConfig = normalizeAndValidate(options.config.src.functions);
-
-  const hasCodebase = getCodebasesFromConfig(fnConfig).includes(codebase);
-  if (!hasCodebase) {
-    throw new FirebaseError(`Codebase "${codebase}" is not defined in firebase.json.`);
-  }
+  const codebaseConfig = configForCodebase(fnConfig, codebase);
 
   const firebaseConfig = await getProjectAdminSdkConfigOrCached(projectId);
   if (!firebaseConfig) {
@@ -34,7 +33,7 @@ export async function loadCodebaseBuild(codebase: string, options: Options): Pro
 
   let runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
 
-  if (fnConfig.some(shouldUseRuntimeConfig)) {
+  if (shouldUseRuntimeConfig(codebaseConfig)) {
     try {
       const runtimeConfigApiEnabled = await ensureApiEnabled.check(
         projectId,
