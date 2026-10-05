@@ -175,7 +175,13 @@ export async function orchestrateRollout(
       );
       break;
     } catch (err: unknown) {
-      if (!(err instanceof FirebaseError && err.status === 400)) {
+      // Only a missing build means it is still becoming visible; any other 400
+      // is a genuine bad request and must not be retried.
+      const buildNotVisibleYet =
+        err instanceof FirebaseError &&
+        err.status === 400 &&
+        err.message.toLowerCase().includes("not found");
+      if (!buildNotVisibleYet) {
         throw err;
       }
       const delay = timeToWait(

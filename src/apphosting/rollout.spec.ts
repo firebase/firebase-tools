@@ -249,7 +249,9 @@ describe("apphosting rollouts", () => {
       it("should retry createRollout call on HTTP 400 errors", async () => {
         getNextRolloutIdStub.resolves(buildAndRolloutId);
         createBuildStub.resolves(buildOp);
-        createRolloutStub.onFirstCall().rejects(new FirebaseError("error", { status: 400 }));
+        createRolloutStub
+          .onFirstCall()
+          .rejects(new FirebaseError("build was not found", { status: 400 }));
         createRolloutStub.resolves(rolloutOp);
         pollOperationStub.onFirstCall().resolves(rollout);
         pollOperationStub.onSecondCall().resolves(build);
@@ -267,13 +269,34 @@ describe("apphosting rollouts", () => {
         expect(pollOperationStub).to.be.called;
       });
 
+      it("should not retry an HTTP 400 that is not a missing build", async () => {
+        getNextRolloutIdStub.resolves(buildAndRolloutId);
+        createBuildStub.resolves(buildOp);
+        createRolloutStub.rejects(new FirebaseError("invalid build config", { status: 400 }));
+
+        await expect(
+          orchestrateRollout({
+            projectId,
+            location,
+            backendId,
+            buildInput,
+          }),
+        ).to.be.rejectedWith(/invalid build config/);
+
+        // A permanent bad request must fail at once, not after the backoff budget.
+        expect(createRolloutStub).to.be.calledOnce;
+        expect(backoffStub).to.not.have.been.called;
+      });
+
       it("should keep validating while the build is still becoming visible", async () => {
         getNextRolloutIdStub.resolves(buildAndRolloutId);
         createBuildStub.resolves(buildOp);
         // A slow control plane takes more than a handful of tries to make the
         // new build visible to validation.
         for (let i = 0; i < 8; i++) {
-          createRolloutStub.onCall(i).rejects(new FirebaseError("error", { status: 400 }));
+          createRolloutStub
+            .onCall(i)
+            .rejects(new FirebaseError("build was not found", { status: 400 }));
         }
         createRolloutStub.resolves(rolloutOp);
         pollOperationStub.onFirstCall().resolves(rollout);
