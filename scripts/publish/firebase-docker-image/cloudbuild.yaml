@@ -29,6 +29,7 @@ steps:
           -t "$${STAGING_REPO}:$${VERSION_NUM}" \
           -t "$${STAGING_REPO}:latest" \
           -t "$${STAGING_REPO}:$${EXTRA_TAG}" \
+          -t "$${STAGING_REPO}:$BUILD_ID" \
           -f ./Dockerfile .
         echo "Pushing image to staging repository..."
         docker push "$${STAGING_REPO}:$${VERSION_NUM}"
@@ -36,7 +37,7 @@ steps:
         docker push "$${STAGING_REPO}:$${EXTRA_TAG}"
 
 images:
-  - "us-docker.pkg.dev/${_TARGET_PROJECT_ID}/staging/firebase"
+  - "us-docker.pkg.dev/${_TARGET_PROJECT_ID}/staging/firebase:$BUILD_ID"
 
 options:
   requestedVerifyOption: VERIFIED
