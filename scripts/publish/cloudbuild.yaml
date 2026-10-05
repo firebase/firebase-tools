@@ -192,7 +192,7 @@ steps:
         VERSION_NUM="$$(cat /workspace/version_number.txt)"
         STAGING_REPO="us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/staging/firebase"
         if [ "${_VERSION}" = "preview" ]; then
-          RANDOM_HASH="$$(tr -dc 'a-f0-9' < /dev/urandom | head -c 16)"
+          RANDOM_HASH="$$(LC_ALL=C tr -dc 'a-f0-9' < /dev/urandom | head -c 16)"
           EXTRA_TAG="no-new-use-public-image-$${RANDOM_HASH}"
         else
           EXTRA_TAG="public-image-$${VERSION_NUM}"
@@ -201,6 +201,7 @@ steps:
         docker build \
           -t "$${STAGING_REPO}:$${VERSION_NUM}" \
           -t "$${STAGING_REPO}:$${EXTRA_TAG}" \
+          -t "$${STAGING_REPO}:$BUILD_ID" \
           -f ./firebase-docker-image/Dockerfile ./firebase-docker-image
         echo "Pushing Docker image to staging repository..."
         docker push "$${STAGING_REPO}:$${VERSION_NUM}"
@@ -213,7 +214,7 @@ steps:
         fi
 
 images:
-  - "us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/staging/firebase"
+  - "us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/staging/firebase:$BUILD_ID"
 
 timeout: 4200s # 70 minutes
 
