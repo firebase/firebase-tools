@@ -56,7 +56,7 @@ steps:
           exit 1
         fi
 
-        OP_NAME=$$(python3 -c "import sys, json; print(json.loads(sys.stdin.read()).get('name', ''))" <<< "$${RESP}")
+        OP_NAME=$$(python3 -c "import sys, json; print(json.loads(sys.stdin.read()).get('name', ''))" <<< "$${RESP}" 2>/dev/null || echo "")
         if [ -z "$${OP_NAME}" ]; then
           echo "Error: Failed to initiate promotion operation. Response: $${RESP}" >&2
           exit 1
