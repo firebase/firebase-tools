@@ -1,27 +1,30 @@
-import { CLIClient } from "../command";
+import { CLIClient, Command } from "../command";
 import * as experiments from "../experiments";
 
-type CommandRunner = ((...args: any[]) => Promise<any>) & { load: () => void };
+type CommandRunner = ((...args: unknown[]) => Promise<unknown>) & { load: () => void };
 
 /**
  * Loads all commands for our parser.
  */
 export function load(client: CLIClient): CLIClient {
   function loadCommand(name: string): CommandRunner {
-    const load = () => {
-      const { command: cmd } = require(`./${name}`);
+    const load = (): ((...a: unknown[]) => Promise<unknown>) => {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { command: cmd } = require(`./${name}`) as { command: Command };
       cmd.register(client);
       return cmd.runner();
     };
 
-    const runner = (async (...args: any[]) => {
+    const runner = (async (...args: unknown[]) => {
       const run = load();
       return run(...args);
     }) as CommandRunner;
 
     // Store the load function on the runner so we can trigger it without running.
     runner.load = () => {
-      require(`./${name}`).command.register(client);
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { command: cmd } = require(`./${name}`) as { command: Command };
+      cmd.register(client);
     };
 
     return runner;
@@ -93,10 +96,12 @@ export function load(client: CLIClient): CLIClient {
     client.crashlytics.sourcemap = {};
     client.crashlytics.sourcemap.upload = loadCommand("crashlytics-sourcemap-upload");
   }
-  client.crashlytics.heapdumps = {};
-  client.crashlytics.heapdumps.enable = loadCommand("crashlytics-heapdumps-enable");
-  client.crashlytics.heapdumps.disable = loadCommand("crashlytics-heapdumps-disable");
-  client.crashlytics.heapdumps.status = loadCommand("crashlytics-heapdumps-status");
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+  client.crashlytics.heapdumps = {
+    enable: loadCommand("crashlytics-heapdumps-enable"),
+    disable: loadCommand("crashlytics-heapdumps-disable"),
+    status: loadCommand("crashlytics-heapdumps-status"),
+  };
   client.database = {};
   client.database.get = loadCommand("database-get");
   client.database.import = loadCommand("database-import");

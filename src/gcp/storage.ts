@@ -331,10 +331,10 @@ export async function getBucket(bucketName: string): Promise<BucketResponse> {
     const localAPIClient = new Client({ urlPrefix: storageOrigin() });
     const result = await localAPIClient.get<BucketResponse>(`/storage/v1/b/${bucketName}`);
     return result.body;
-  } catch (err: any) {
-    logger.debug(err);
+  } catch (err: unknown) {
+    logger.debug(err as Error);
     throw new FirebaseError("Failed to obtain the storage bucket", {
-      original: err,
+      original: err as Error,
       status: getErrStatus(err),
     });
   }
@@ -404,10 +404,10 @@ export async function patchBucket(
       { queryParams: { updateMask: mask.join(",") } },
     );
     return result.body;
-  } catch (err: any) {
-    logger.debug(err);
+  } catch (err: unknown) {
+    logger.debug(err as Error);
     throw new FirebaseError("Failed to patch the storage bucket", {
-      original: err,
+      original: err as Error,
     });
   }
 }

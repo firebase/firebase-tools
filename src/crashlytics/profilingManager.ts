@@ -9,6 +9,9 @@ import * as serviceusage from "../gcp/serviceusage";
 import { AndroidAppMetadata, AppPlatform, listFirebaseApps } from "../management/apps";
 import { select } from "../prompt";
 
+/**
+ * Returns an authenticated v1 API client for the Firebase Crashlytics API.
+ */
 export function getCrashlyticsV1Client(): Client {
   return new Client({
     urlPrefix: crashlyticsApiOrigin(),

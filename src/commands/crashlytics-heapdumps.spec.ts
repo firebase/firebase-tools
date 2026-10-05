@@ -74,7 +74,7 @@ describe("crashlytics:heapdumps commands", () => {
     it("should cancel if user denies confirmation", async () => {
       confirmStub.resolves(false);
 
-      const result = await enableCommand.runner()({
+      const result: unknown = await enableCommand.runner()({
         project: projectId,
         app: appId,
       });
@@ -85,7 +85,7 @@ describe("crashlytics:heapdumps commands", () => {
     });
 
     it("should successfully provision bucket, grant P4SA role, and enable collection", async () => {
-      const result = await enableCommand.runner()({
+      const result: unknown = await enableCommand.runner()({
         project: projectId,
         app: appId,
         location: "us-central1",
@@ -166,7 +166,7 @@ describe("crashlytics:heapdumps commands", () => {
     it("should cancel if user denies confirmation", async () => {
       confirmStub.resolves(false);
 
-      const result = await disableCommand.runner()({
+      const result: unknown = await disableCommand.runner()({
         project: projectId,
         app: appId,
       });
@@ -176,7 +176,7 @@ describe("crashlytics:heapdumps commands", () => {
     });
 
     it("should successfully disable collection", async () => {
-      const result = await disableCommand.runner()({
+      const result: unknown = await disableCommand.runner()({
         project: projectId,
         app: appId,
         force: true,
@@ -215,7 +215,7 @@ describe("crashlytics:heapdumps commands", () => {
         heapDumpCollectionEnabled: true,
       });
 
-      const result = await statusCommand.runner()({
+      const result: unknown = await statusCommand.runner()({
         project: projectId,
         app: appId,
       });
@@ -233,7 +233,7 @@ describe("crashlytics:heapdumps commands", () => {
         heapDumpCollectionEnabled: false,
       });
 
-      const result = await statusCommand.runner()({
+      const result: unknown = await statusCommand.runner()({
         project: projectId,
         app: appId,
       });
