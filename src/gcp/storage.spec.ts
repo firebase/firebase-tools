@@ -406,14 +406,18 @@ describe("storage", () => {
       });
     });
 
-    it("should throw FirebaseError when patch request fails", async () => {
+    it("should throw FirebaseError with status when patch request fails", async () => {
       const apiError = new FirebaseError("Forbidden", { status: 403 });
       sinon.stub(Client.prototype, "patch").rejects(apiError);
 
-      await expect(storage.patchBucket("my-bucket", { cors: [] })).to.be.rejectedWith(
-        FirebaseError,
-        "Failed to patch the storage bucket",
-      );
+      try {
+        await storage.patchBucket("my-bucket", { cors: [] });
+        expect.fail("Expected patchBucket to throw");
+      } catch (err: unknown) {
+        expect(err).to.be.instanceOf(FirebaseError);
+        expect((err as FirebaseError).message).to.equal("Failed to patch the storage bucket");
+        expect((err as FirebaseError).status).to.equal(403);
+      }
     });
   });
 });

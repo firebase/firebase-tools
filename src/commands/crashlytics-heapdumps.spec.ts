@@ -1,5 +1,8 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
+import * as program from "commander";
+import { CLIClient } from "../command";
+import { load } from "./index";
 import { command as enableCommand } from "./crashlytics-heapdumps-enable";
 import { command as disableCommand } from "./crashlytics-heapdumps-disable";
 import { command as statusCommand } from "./crashlytics-heapdumps-status";
@@ -242,6 +245,38 @@ describe("crashlytics:heapdumps commands", () => {
         appId,
         gcsBucket: "",
         heapDumpCollectionEnabled: false,
+      });
+    });
+
+    it("should register and run crashlytics.heapdumps commands via command loader", async () => {
+      sinon.stub(profilingManager, "getProfilingManagerConfig").resolves({
+        gcsBucket: bucketName,
+        heapDumpCollectionEnabled: true,
+      });
+
+      const client: CLIClient = {
+        cli: program,
+        errorOut: sinon.stub(),
+      };
+      load(client);
+      const heapdumps = (
+        client.crashlytics as {
+          heapdumps: {
+            status: ((options: Record<string, unknown>) => Promise<unknown>) & { load: () => void };
+          };
+        }
+      ).heapdumps;
+
+      heapdumps.status.load();
+      const result: unknown = await heapdumps.status({
+        project: projectId,
+        app: appId,
+      });
+
+      expect(result).to.deep.equal({
+        appId,
+        gcsBucket: bucketName,
+        heapDumpCollectionEnabled: true,
       });
     });
   });

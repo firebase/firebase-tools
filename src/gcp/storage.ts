@@ -408,6 +408,7 @@ export async function patchBucket(
     logger.debug(err as Error);
     throw new FirebaseError("Failed to patch the storage bucket", {
       original: err as Error,
+      status: getErrStatus(err),
     });
   }
 }
