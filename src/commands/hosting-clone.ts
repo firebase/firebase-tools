@@ -85,7 +85,7 @@ For example, to copy the content for a site \`my-site\` from a preview channel \
     const equalChannelIds = sourceChannelId === targetChannelId;
     if (equalProjectIds && equalSiteIds && equalChannelIds) {
       throw new FirebaseError(
-        `Source and destination cannot be equal. Please pick a different source or desination.`,
+        `Source and destination cannot be equal. Please pick a different source or destination.`,
       );
     }
 
@@ -108,6 +108,10 @@ For example, to copy the content for a site \`my-site\` from a preview channel \
           )}.`,
         );
       }
+    }
+
+    if (!sourceVersionName) {
+      throw new FirebaseError(`Could not find a version to clone for site ${bold(sourceSiteId)}.`);
     }
 
     let tChannel = await getChannel(targetProjectId, targetSiteId, targetChannelId);
@@ -157,17 +161,17 @@ For example, to copy the content for a site \`my-site\` from a preview channel \
         const targetVersion = await cloneVersion(
           targetProjectId,
           targetSiteId,
-          sourceVersionName!,
+          sourceVersionName,
           true,
         );
         if (!targetVersion) {
           throw new FirebaseError(
-            `Could not clone the version ${bold(sourceVersion || sourceVersionName!)} for site ${bold(targetSiteId)}.`,
+            `Could not clone the version ${bold(sourceVersion || sourceVersionName)} for site ${bold(targetSiteId)}.`,
           );
         }
         targetVersionName = targetVersion.name;
       }
-      await createRelease(targetProjectId, targetSiteId, targetChannelId, targetVersionName!);
+      await createRelease(targetProjectId, targetSiteId, targetChannelId, targetVersionName);
     } catch (err: any) {
       spinner.fail();
       throw err;
@@ -176,7 +180,7 @@ For example, to copy the content for a site \`my-site\` from a preview channel \
     spinner.succeed();
     utils.logSuccess(
       `Site ${bold(sourceSiteId)} ${sourceChannelId ? "channel" : "version"} ${bold(
-        sourceChannelId || sourceVersion!,
+        sourceChannelId || sourceVersion || sourceVersionName,
       )} has been cloned to site ${bold(targetSiteId)} channel ${bold(targetChannelId)}.`,
     );
     utils.logSuccess(`Channel URL (${targetChannelId}): ${tChannel.url}`);
