@@ -28,12 +28,21 @@ npm run format                   # Auto-fix formatting issues
 - **Look for existing utilities first:** Before writing common helper functions (e.g., for logging, file system operations, promises, string manipulation), check `src/utils.ts` to see if a suitable function already exists.
 - **Use the central `logger`** (`src/logger.ts`); never use `console.log()` for user-facing output.
 - **Throw `FirebaseError`** (`src/error.ts`) for expected, user-facing errors. If the error is due to a violation of a precondition (e.g. something
-  that is null but should never be), specify a non-zero exit code. Error messages should clearly explain what failed and why; when actionable, provide concrete remediation guidance (e.g. suggesting `--force` or a prerequisite command).
-- **Extract magic numbers and static constants:** Define static IDs, default timeouts, millisecond offsets, and repeated strings as top-level constants (`UPPER_SNAKE_CASE`) instead of inlining magic values inside functions.
+  that is null but should never be), specify a non-zero exit code (`{ exit: 1 }`). Error messages should clearly explain what failed and why; when actionable, provide concrete remediation guidance (e.g. the expected format, a `--force` flag, or a discovery command like `firebase <entity>:list`).
+- **Extract magic numbers and static constants:** Define static IDs, default timeouts, millisecond offsets, and repeated strings as top-level constants (`UPPER_SNAKE_CASE`) instead of inlining magic values inside functions. Mark static configuration arrays and lookup tables as `readonly` or `as const`.
 - **API calls must use `apiv2.ts`** for authenticated requests.
 - **Reduce nesting as much as possible:** Code should avoid unnecessarily deep nesting or long periods of nesting. Use early returns, `continue`, and `break` statements in functions and loops to handle edge cases early and keep main logic flat. Consider helper functions to encapsulate complex branching.
-- **Keep CLI commands thin:** Code in `src/commands/` should handle argument parsing and validation only; move business logic and API calls to dedicated modules in `src/` (outside of `src/commands/`).
-- **Machine-composable output:** When `--json` is enabled, route all human-readable logging, spinners, and warnings to `stderr` so `stdout` remains parseable JSON.
+
+### Command Architecture & Lifecycle (`src/command.ts`)
+
+- **Keep CLI commands thin:** Code in `src/commands/` should handle argument parsing, option declaration, and validation only; move business logic, multi-step orchestration, and API calls to dedicated modules in `src/` (outside of `src/commands/`).
+- **Standardize command options and hooks:**
+  - Use `.before()` hooks for standard prerequisite gating (e.g. `requireAuth`, `needProjectId`, `requirePermissions`) rather than manual ad-hoc checks inside command actions.
+  - Use `Command.withForce()` for destructive or confirmable actions so `-f, --force` is consistently supported across commands.
+- **Machine-composable output & stream discipline:**
+  - `stdout`: Reserved exclusively for machine-parseable data when `--json` is enabled, or primary command output in human mode. Actions should return data so the runner can serialize it under `--json`.
+  - `stderr`: Used for interactive spinners (`ora`), diagnostic logging (`logger.debug`), and warnings.
+  - **Stream isolation**: Never interleave active `ora` spinners with un-buffered `logger.info` or `logLabeledBullet` calls; stop or complete spinners before printing sequential step logs.
 
 ### TypeScript
 
