@@ -1,6 +1,9 @@
 import { expect } from "chai";
+import * as sinon from "sinon";
 import { createAuthExpressionValue, StorageRulesRuntime } from "./runtime";
-import { RulesetOperationMethod, RuntimeActionResponse } from "./types";
+import { EmulatorRegistry } from "../../registry";
+import { DataLoadStatus, RulesetOperationMethod, RuntimeActionResponse } from "./types";
+import { Client } from "../../../apiv2";
 
 // Reaches the private stdout handler and pending-request map so we can drive the
 // framing logic directly, without spawning the Java rules runtime.
@@ -26,6 +29,139 @@ function runtimeWithPendingIds(ids: number[]): {
 }
 
 describe("Storage Rules Runtime", () => {
+  describe("Firestore document read limit", () => {
+    let sandbox: sinon.SinonSandbox;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    function mockFirestoreDocumentReads(runtime: StorageRulesRuntime, evaluations: string[][]) {
+      const clientMock = sandbox.createStubInstance(Client);
+      const firestoreGet = clientMock.get;
+      firestoreGet.resolves({
+        status: 200,
+        response: {} as Response,
+        body: { name: "projects/test/databases/(default)/documents/test/doc", fields: {} },
+      });
+      sandbox.stub(EmulatorRegistry, "client").returns(clientMock);
+
+      const sendRequest = sandbox.stub(runtime as any, "_sendRequest");
+      let evaluationIndex = -1;
+      let pathIndex = 0;
+      let serverRequestId = 0;
+      sendRequest.callsFake((request: RuntimeActionResponse) => {
+        if (request.action === "verify") {
+          evaluationIndex++;
+          pathIndex = 0;
+        } else if (request.status === DataLoadStatus.INVALID_STATE) {
+          return Promise.resolve({ errors: ["Rules evaluation failed"], warnings: [] });
+        }
+
+        const path = evaluations[evaluationIndex][pathIndex++];
+        if (path) {
+          return Promise.resolve({
+            action: "fetch_firestore_document",
+            context: { path },
+            server_request_id: ++serverRequestId,
+            warnings: [],
+            errors: [],
+          } as RuntimeActionResponse);
+        }
+        return Promise.resolve({ result: { permit: true }, errors: [], warnings: [] });
+      });
+
+      return { clientMock, sendRequest };
+    }
+
+    async function verifyDocumentReads(paths: string[]) {
+      const runtime = new StorageRulesRuntime();
+      const { clientMock, sendRequest } = mockFirestoreDocumentReads(runtime, [paths]);
+
+      const result = await runtime.verifyWithRuleset("test-ruleset", {
+        file: {},
+        method: RulesetOperationMethod.GET,
+        path: "/b/test/o/file",
+        projectId: "test-project",
+      });
+
+      return { result, clientMock, sendRequest };
+    }
+
+    it("allows one unique Firestore document", async () => {
+      const { result } = await verifyDocumentReads(["/documents/one"]);
+
+      expect(result.permitted).to.be.true;
+    });
+
+    it("allows two unique Firestore documents", async () => {
+      const { result } = await verifyDocumentReads(["/documents/one", "/documents/two"]);
+
+      expect(result.permitted).to.be.true;
+    });
+
+    it("denies access to a third unique Firestore document", async () => {
+      const { result, clientMock, sendRequest } = await verifyDocumentReads([
+        "/documents/one",
+        "/documents/two",
+        "/documents/three",
+      ]);
+
+      expect(result.permitted).to.be.undefined;
+      expect(result.issues.errors).to.deep.equal(["Rules evaluation failed"]);
+      expect(clientMock.get.callCount).to.equal(2);
+      expect(clientMock.get.calledWith("projects/test-project/documents/three")).to.be.false;
+      expect(sendRequest.getCall(3).args[0].status).to.equal(DataLoadStatus.INVALID_STATE);
+    });
+
+    it("counts repeated reads of the same document only once", async () => {
+      const { result, clientMock } = await verifyDocumentReads([
+        "/documents/one",
+        "/documents/one",
+        "/documents/one",
+      ]);
+
+      expect(result.permitted).to.be.true;
+      expect(clientMock.get.callCount).to.equal(3);
+    });
+
+    it("allows repeated reads among two unique Firestore documents", async () => {
+      const { result, clientMock } = await verifyDocumentReads([
+        "/documents/one",
+        "/documents/two",
+        "/documents/one",
+      ]);
+
+      expect(result.permitted).to.be.true;
+      expect(clientMock.get.callCount).to.equal(3);
+    });
+
+    it("tracks Firestore documents independently for each Rules evaluation", async () => {
+      const runtime = new StorageRulesRuntime();
+      const { clientMock } = mockFirestoreDocumentReads(runtime, [
+        ["/documents/one", "/documents/two"],
+        ["/documents/three", "/documents/four"],
+      ]);
+
+      const opts = {
+        file: {},
+        method: RulesetOperationMethod.GET,
+        path: "/b/test/o/file",
+        projectId: "test-project",
+      };
+      const first = await runtime.verifyWithRuleset("test-ruleset", opts);
+      const second = await runtime.verifyWithRuleset("test-ruleset", opts);
+
+      expect(first.permitted).to.be.true;
+      expect(second.permitted).to.be.true;
+      expect(clientMock.get.callCount).to.equal(4);
+    });
+  });
+
   describe("createAuthExpressionValue", () => {
     it("should return null if token is missing", () => {
       const opts = {
