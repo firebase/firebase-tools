@@ -4,3 +4,5 @@
 - - [Fixed] Report the GCFv2-to-GCFv1 downgrade error during validation instead of a misleading CPU error (#5461).
 - Fixed `functions:delete` recreating an already-deleted Cloud Tasks queue for task queue functions. (#9305)
 - Batched function deletions across instances when uninstalling a Function Kit (#11189).
+- Fixed an issue where 2nd-gen functions with parameterized trigger event filters failed default region resolution (#11020).
+- Fixed `functions:lifecycle:list` and `functions:lifecycle:run` failing to detect Function Kit instances (#11240).
