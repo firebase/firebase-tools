@@ -1,30 +1,27 @@
-import { CLIClient, Command } from "../command";
+import { CLIClient } from "../command";
 import * as experiments from "../experiments";
 
-type CommandRunner = ((...args: unknown[]) => Promise<unknown>) & { load: () => void };
+type CommandRunner = ((...args: any[]) => Promise<any>) & { load: () => void };
 
 /**
  * Loads all commands for our parser.
  */
 export function load(client: CLIClient): CLIClient {
   function loadCommand(name: string): CommandRunner {
-    const load = (): ((...a: unknown[]) => Promise<unknown>) => {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { command: cmd } = require(`./${name}`) as { command: Command };
+    const load = () => {
+      const { command: cmd } = require(`./${name}`);
       cmd.register(client);
       return cmd.runner();
     };
 
-    const runner = (async (...args: unknown[]) => {
+    const runner = (async (...args: any[]) => {
       const run = load();
       return run(...args);
     }) as CommandRunner;
 
     // Store the load function on the runner so we can trigger it without running.
     runner.load = () => {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { command: cmd } = require(`./${name}`) as { command: Command };
-      cmd.register(client);
+      require(`./${name}`).command.register(client);
     };
 
     return runner;
