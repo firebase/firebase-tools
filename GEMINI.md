@@ -25,7 +25,9 @@ npm run format                   # Auto-fix formatting issues
 
 ### Code Quality & Utilities
 
-- **Look for existing utilities first:** Before writing common helper functions (e.g., for logging, file system operations, promises, string manipulation), check `src/utils.ts` to see if a suitable function already exists.
+- **Survey prior art & harmonize utilities:** Before writing or adding any method that could be a common, reusable helper (e.g. retries, backoff, string parsing, path containment, domain transformations):
+  - **Check existing patterns first:** Search the codebase (`src/utils.ts` and relevant subsystems) to see if other code is doing a similar thing and how.
+  - **Reuse or unify immediately:** Either reuse how existing code does it, or if introducing a new common utility, unify it with existing custom implementations across the codebase immediately rather than creating diverging parallel implementations.
 - **Use the central `logger`** (`src/logger.ts`); never use `console.log()` for user-facing output.
 - **Throw `FirebaseError`** (`src/error.ts`) for expected, user-facing errors. If the error is due to a violation of a precondition (e.g. something
   that is null but should never be), specify a non-zero exit code (`{ exit: 1 }`). Error messages should clearly explain what failed and why; when actionable, provide concrete remediation guidance (e.g. the expected format, a `--force` flag, or a discovery command like `firebase <entity>:list`).
