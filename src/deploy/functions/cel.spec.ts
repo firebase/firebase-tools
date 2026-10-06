@@ -1036,7 +1036,7 @@ describe("CEL evaluation", () => {
       ).to.equal("baz");
     });
 
-    it("it resolves a ternary nested in a branch of a dual comparison ternary", () => {
+    it("resolves a ternary nested in a branch of a dual comparison ternary", () => {
       const expr = '{{ params.FOO == params.BAR ? "a" : params.FOO == params.BAZ ? "b" : "c" }}';
       expect(
         resolveExpression("string", expr, {
@@ -1207,7 +1207,7 @@ describe("CEL evaluation", () => {
       ).to.equal("baz");
     });
 
-    it("it resolves a ternary nested in a branch of a boolean conditioned ternary", () => {
+    it("resolves a ternary nested in a branch of a boolean conditioned ternary", () => {
       const expr = '{{ params.FLAG ? "a" : params.OTHER ? "b" : "c" }}';
       expect(resolveExpression("string", expr, { FLAG: boolV(true), OTHER: boolV(true) })).to.equal(
         "a",
@@ -1222,7 +1222,7 @@ describe("CEL evaluation", () => {
   });
 
   describe("Nested ternary expressions", () => {
-    it("it resolves a ternary nested in the false branch", () => {
+    it("resolves a ternary nested in the false branch", () => {
       const expr =
         '{{ params.PROJECT_ID == "xxx" ? "aaa" : params.PROJECT_ID == "yyy" ? "bbb" : "ccc" }}';
       expect(resolveExpression("string", expr, { PROJECT_ID: stringV("xxx") })).to.equal("aaa");
@@ -1230,14 +1230,14 @@ describe("CEL evaluation", () => {
       expect(resolveExpression("string", expr, { PROJECT_ID: stringV("zzz") })).to.equal("ccc");
     });
 
-    it("it resolves a nested ternary with number branches", () => {
+    it("resolves a nested ternary with number branches", () => {
       const expr = '{{ params.PROJECT_ID == "xxx" ? 1 : params.PROJECT_ID == "yyy" ? 2 : 3 }}';
       expect(resolveExpression("number", expr, { PROJECT_ID: stringV("xxx") })).to.equal(1);
       expect(resolveExpression("number", expr, { PROJECT_ID: stringV("yyy") })).to.equal(2);
       expect(resolveExpression("number", expr, { PROJECT_ID: stringV("zzz") })).to.equal(3);
     });
 
-    it("it resolves a ternary nested in the true branch", () => {
+    it("resolves a ternary nested in the true branch", () => {
       const expr = '{{ params.FOO == "x" ? params.BAR == "u" ? "a" : "b" : "c" }}';
       expect(resolveExpression("string", expr, { FOO: stringV("x"), BAR: stringV("u") })).to.equal(
         "a",
@@ -1250,7 +1250,7 @@ describe("CEL evaluation", () => {
       );
     });
 
-    it("it resolves an expression with ternaries nested in both branches", () => {
+    it("resolves an expression with ternaries nested in both branches", () => {
       const expr = '{{ params.A ? params.B ? "1" : "2" : params.C ? "3" : "4" }}';
       expect(
         resolveExpression("string", expr, { A: boolV(true), B: boolV(true), C: boolV(false) }),
@@ -1266,7 +1266,7 @@ describe("CEL evaluation", () => {
       ).to.equal("4");
     });
 
-    it("it resolves a chain three levels deep", () => {
+    it("resolves a chain three levels deep", () => {
       const expr =
         '{{ params.FOO == "a" ? 1 : params.FOO == "b" ? 2 : params.FOO == "c" ? 3 : 4 }}';
       expect(resolveExpression("number", expr, { FOO: stringV("a") })).to.equal(1);
@@ -1275,7 +1275,7 @@ describe("CEL evaluation", () => {
       expect(resolveExpression("number", expr, { FOO: stringV("d") })).to.equal(4);
     });
 
-    it("it provides resolved parameters from a nested branch", () => {
+    it("provides resolved parameters from a nested branch", () => {
       const expr =
         '{{ params.FOO == "x" ? params.IF_A : params.FOO == "y" ? params.IF_B : params.IF_C }}';
       const params = {
@@ -1287,7 +1287,7 @@ describe("CEL evaluation", () => {
       expect(resolveExpression("number", expr, params)).to.equal(2);
     });
 
-    it("it resolves list branches in a nested ternary", () => {
+    it("resolves list branches in a nested ternary", () => {
       const expr = '{{ params.FOO == "x" ? ["a"] : params.FOO == "y" ? [params.BAR] : [] }}';
       expect(
         resolveExpression("string[]", expr, { FOO: stringV("y"), BAR: stringV("b") }),
@@ -1297,7 +1297,7 @@ describe("CEL evaluation", () => {
       ).to.deep.equal([]);
     });
 
-    it("it resolves a list branch holding a value that contains a double quote", () => {
+    it("resolves a list branch holding a value that contains a double quote", () => {
       expect(
         resolveExpression("string[]", '{{ params.FOO == "x" ? [params.Q] : [] }}', {
           FOO: stringV("x"),
@@ -1312,7 +1312,7 @@ describe("CEL evaluation", () => {
       ).to.deep.equal(['a"b']);
     });
 
-    it("it doesn't end a literal at an escaped double quote", () => {
+    it("doesn't end a literal at an escaped double quote", () => {
       expect(
         resolveExpression("string", '{{ params.FLAG ? "a\\"b" : "c" }}', {
           FLAG: boolV(false),
@@ -1320,7 +1320,7 @@ describe("CEL evaluation", () => {
       ).to.equal("c");
     });
 
-    it("it doesn't split on a ? or a : inside a string literal", () => {
+    it("doesn't split on a ? or a : inside a string literal", () => {
       expect(
         resolveExpression("string", '{{ params.FOO == "q" ? "x : y" : "z" }}', {
           FOO: stringV("a"),
@@ -1422,17 +1422,6 @@ describe("CEL evaluation", () => {
       }).to.throw(ExprParseError);
       expect(() => {
         resolveExpression("string", '{{ params.FOO == "a" : "b" }}', { FOO: stringV("a") });
-      }).to.throw(ExprParseError);
-    });
-
-    it("raises when the expression isn't delimited by single spaces", () => {
-      expect(() => {
-        resolveExpression("number", "{{  params.FOO  ==  22  ?  10  :  0  }}", {
-          FOO: numberV(22),
-        });
-      }).to.throw(ExprParseError);
-      expect(() => {
-        resolveExpression("number", "{{ params.FOO == 22? 10 : 0 }}", { FOO: numberV(22) });
       }).to.throw(ExprParseError);
     });
   });

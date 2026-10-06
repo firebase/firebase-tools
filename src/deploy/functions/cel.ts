@@ -19,10 +19,10 @@ const dualComparisonRegexp = new RegExp(
 );
 const comparisonRegexp = new RegExp(/{{ params\.(\S+) CMP (.+) }}/.source.replace("CMP", CMP));
 
-const exprPrefix = "{{ ";
-const exprSuffix = " }}";
-const questionToken = " ? ";
-const colonToken = " : ";
+const EXPR_PREFIX = "{{ ";
+const EXPR_SUFFIX = " }}";
+const QUESTION_TOKEN = " ? ";
+const COLON_TOKEN = " : ";
 
 /**
  * An array equality test for use on resolved list literal ParamValues only;
@@ -65,10 +65,10 @@ interface TernaryParts {
  * found by counting delimiters outside of string literals.
  */
 function parseTernary(expr: CelExpression): TernaryParts | undefined {
-  if (!expr.startsWith(exprPrefix) || !expr.endsWith(exprSuffix)) {
+  if (!expr.startsWith(EXPR_PREFIX) || !expr.endsWith(EXPR_SUFFIX)) {
     return undefined;
   }
-  const body = expr.slice(exprPrefix.length, -exprSuffix.length);
+  const body = expr.slice(EXPR_PREFIX.length, -EXPR_SUFFIX.length);
 
   let inQuotes = false;
   let depth = 0;
@@ -86,13 +86,13 @@ function parseTernary(expr: CelExpression): TernaryParts | undefined {
     }
     if (inQuotes) continue;
 
-    if (body.startsWith(questionToken, i)) {
+    if (body.startsWith(QUESTION_TOKEN, i)) {
       if (depth === 0) {
         question = i;
       }
       depth++;
-      i += questionToken.length - 1;
-    } else if (body.startsWith(colonToken, i)) {
+      i += QUESTION_TOKEN.length - 1;
+    } else if (body.startsWith(COLON_TOKEN, i)) {
       if (depth > 0) {
         depth--;
         if (depth === 0) {
@@ -100,7 +100,7 @@ function parseTernary(expr: CelExpression): TernaryParts | undefined {
           break; // found matching colon for the condition's question mark
         }
       }
-      i += colonToken.length - 1;
+      i += COLON_TOKEN.length - 1;
     }
   }
 
@@ -114,8 +114,8 @@ function parseTernary(expr: CelExpression): TernaryParts | undefined {
   }
 
   const condition = body.slice(0, question).trim();
-  const ifTrue = body.slice(question + questionToken.length, colon).trim();
-  const ifFalse = body.slice(colon + colonToken.length).trim();
+  const ifTrue = body.slice(question + QUESTION_TOKEN.length, colon).trim();
+  const ifFalse = body.slice(colon + COLON_TOKEN.length).trim();
 
   if (!condition || !ifTrue || !ifFalse) {
     throw new ExprParseError(`Malformed CEL ternary expression '${expr}'`);
@@ -155,7 +155,7 @@ export function resolveExpression(
   }
   const ternary = parseTernary(expr);
   if (ternary) {
-    return resolveTernary(wantType, expr, ternary, params);
+    return resolveTernary({ wantType, expr, parts: ternary, params });
   } else if (wantType === "boolean" && isDualComparisonExpression(expr)) {
     return resolveDualComparison(expr, params);
   } else if (wantType === "boolean" && isComparisonExpression(expr)) {
@@ -424,20 +424,28 @@ function resolveDualComparison(
   }
 }
 
+interface ResolveTernaryOptions {
+  wantType: L;
+  expr: TernaryExpression;
+  parts: TernaryParts;
+  params: Record<string, ParamValue>;
+}
+
 /**
  *  {{ params.foo == 24 ? "asdf" : params.jkl }}
  *  {{ params.foo > params.bar ? "asdf" : params.jkl }}
  *  {{ params.foo ? "asdf" : params.jkl }}, when foo is of boolean type
  *  Either branch can be a ternary itself, to any depth.
  */
-function resolveTernary(
-  wantType: L,
-  expr: TernaryExpression,
-  parts: TernaryParts,
-  params: Record<string, ParamValue>,
-): Literal {
+function resolveTernary(options: ResolveTernaryOptions): Literal {
+  const { wantType, expr, parts, params } = options;
   const isTrue = resolveTernaryCondition(expr, parts.condition, params);
-  return resolveTernaryBranch(wantType, expr, isTrue ? parts.ifTrue : parts.ifFalse, params);
+  return resolveTernaryBranch({
+    wantType,
+    expr,
+    branch: isTrue ? parts.ifTrue : parts.ifFalse,
+    params,
+  });
 }
 
 /**
@@ -449,7 +457,7 @@ function resolveTernaryCondition(
   condition: CelExpression,
   params: Record<string, ParamValue>,
 ): boolean {
-  const conditionExpr = `${exprPrefix}${condition}${exprSuffix}`;
+  const conditionExpr = `${EXPR_PREFIX}${condition}${EXPR_SUFFIX}`;
   if (isDualComparisonExpression(conditionExpr)) {
     return resolveDualComparison(conditionExpr, params);
   } else if (isComparisonExpression(conditionExpr)) {
@@ -477,19 +485,22 @@ function resolveTernaryCondition(
   return paramValue.asBoolean();
 }
 
+interface ResolveTernaryBranchOptions {
+  wantType: L;
+  expr: TernaryExpression;
+  branch: CelExpression;
+  params: Record<string, ParamValue>;
+}
+
 /**
  * A branch of a ternary is either another ternary or a reference to a param,
  * a list, or a literal.
  */
-function resolveTernaryBranch(
-  wantType: L,
-  expr: TernaryExpression,
-  branch: CelExpression,
-  params: Record<string, ParamValue>,
-): Literal {
-  const nested = parseTernary(`${exprPrefix}${branch}${exprSuffix}`);
+function resolveTernaryBranch(options: ResolveTernaryBranchOptions): Literal {
+  const { wantType, expr, branch, params } = options;
+  const nested = parseTernary(`${EXPR_PREFIX}${branch}${EXPR_SUFFIX}`);
   if (nested) {
-    return resolveTernary(wantType, expr, nested, params);
+    return resolveTernary({ wantType, expr, parts: nested, params });
   }
   // N.B: lists were already expanded by the preprocessLists() call that started
   // this resolution, so a branch must not be run through it a second time.
