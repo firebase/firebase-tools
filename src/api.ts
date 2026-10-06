@@ -22,6 +22,8 @@ export const cloudloggingOrigin = (): string =>
   utils.envOverride("FIREBASE_CLOUDLOGGING_URL", "https://logging.googleapis.com");
 export const cloudMonitoringOrigin = (): string =>
   utils.envOverride("CLOUD_MONITORING_URL", "https://monitoring.googleapis.com");
+export const cloudTraceOrigin = (): string =>
+  utils.envOverride("CLOUD_TRACE_URL", "https://cloudtrace.googleapis.com");
 export const containerRegistryDomain = (): string =>
   utils.envOverride("CONTAINER_REGISTRY_DOMAIN", "gcr.io");
 
