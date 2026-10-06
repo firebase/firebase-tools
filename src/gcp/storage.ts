@@ -5,7 +5,7 @@ import { randomInt } from "crypto";
 
 import { firebaseStorageOrigin, storageOrigin } from "../api";
 import { Client } from "../apiv2";
-import { FirebaseError, getErrStatus } from "../error";
+import { FirebaseError, getError, getErrStatus } from "../error";
 import { logger } from "../logger";
 import { ensure } from "../ensureApiEnabled";
 import * as utils from "../utils";
@@ -332,9 +332,10 @@ export async function getBucket(bucketName: string): Promise<BucketResponse> {
     const result = await localAPIClient.get<BucketResponse>(`/storage/v1/b/${bucketName}`);
     return result.body;
   } catch (err: unknown) {
-    logger.debug(err as Error);
+    const error = getError(err);
+    logger.debug(error);
     throw new FirebaseError("Failed to obtain the storage bucket", {
-      original: err as Error,
+      original: error,
       status: getErrStatus(err),
     });
   }
@@ -405,9 +406,10 @@ export async function patchBucket(
     );
     return result.body;
   } catch (err: unknown) {
-    logger.debug(err as Error);
+    const error = getError(err);
+    logger.debug(error);
     throw new FirebaseError("Failed to patch the storage bucket", {
-      original: err as Error,
+      original: error,
       status: getErrStatus(err),
     });
   }

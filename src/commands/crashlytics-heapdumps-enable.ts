@@ -1,5 +1,4 @@
 import * as clc from "colorette";
-import * as ora from "ora";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
@@ -8,16 +7,14 @@ import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { confirm } from "../prompt";
 import { requireAuth } from "../requireAuth";
+import { consoleUrl } from "../utils";
 import * as cloudbilling from "../gcp/cloudbilling";
-import { parseProjectNumber } from "../crashlytics/utils";
 import {
   createBucketName,
   DEFAULT_BUCKET_LOCATION,
   DEFAULT_FILE_TTL_DAYS,
-  ensureHeapDumpP4saRole,
-  ensureHeapDumpStorageBucket,
+  enableHeapDumpCollection,
   resolveAndroidAppId,
-  updateProfilingManagerConfig,
 } from "../crashlytics/profilingManager";
 
 interface CommandOptions extends Options {
@@ -33,20 +30,19 @@ export const command = new Command("crashlytics:heapdumps:enable")
     `the location for the Cloud Storage bucket (default: ${DEFAULT_BUCKET_LOCATION})`,
     DEFAULT_BUCKET_LOCATION,
   )
-  .option("--force", "automatically configure without prompting for confirmation")
+  .withForce("automatically configure without prompting for confirmation")
   .before(requireAuth)
   .action(async (options: CommandOptions) => {
     const projectId = needProjectId(options);
     const appId = await resolveAndroidAppId(projectId, options);
-    const projectNumber = parseProjectNumber(appId);
     const location = options.location || DEFAULT_BUCKET_LOCATION;
 
     // 1. Verify project billing is enabled (required for GCS bucket creation and storage)
     const isBillingEnabled = await cloudbilling.checkBillingEnabled(projectId);
     if (!isBillingEnabled) {
       throw new FirebaseError(
-        `Project '${projectId}' does not have billing enabled. Crashlytics Heap Dump Collection requires a metered (Blaze) billing plan for Google Cloud Storage.\n` +
-          `To enable billing, visit: https://console.firebase.google.com/project/${projectId}/usage/details`,
+        `Project '${projectId}' is not on the Blaze (pay-as-you-go) plan. Crashlytics heap dump collection requires the Blaze plan for Google Cloud Storage.\n` +
+          `To upgrade your project, visit: ${consoleUrl(projectId, "/usage/details")}`,
       );
     }
 
@@ -66,22 +62,8 @@ export const command = new Command("crashlytics:heapdumps:enable")
       return;
     }
 
-    // 4. Provision / configure GCS bucket and IAM roles
-    const spinner = ora("Configuring Google Cloud Storage bucket...").start();
-    try {
-      await ensureHeapDumpStorageBucket(projectId, appId, location);
-      spinner.text = "Configuring service agent permissions...";
-      await ensureHeapDumpP4saRole(projectId, projectNumber);
-      spinner.text = "Enabling Crashlytics heap dump collection...";
-      await updateProfilingManagerConfig(appId, {
-        gcsBucket: bucketName,
-        heapDumpCollectionEnabled: true,
-      });
-      spinner.succeed("Successfully enabled Crashlytics heap dump collection!");
-    } catch (err: unknown) {
-      spinner.fail("Failed to enable Crashlytics heap dump collection.");
-      throw err;
-    }
+    // 4. Provision / configure GCS bucket, IAM roles, and Profiling Manager config
+    await enableHeapDumpCollection(projectId, appId, location);
 
     logger.info("");
     logger.info(clc.bold("Heap Dump Collection Details:"));
@@ -91,7 +73,7 @@ export const command = new Command("crashlytics:heapdumps:enable")
     logger.info(`  Status:     ${clc.green("Enabled")}`);
     logger.info("");
     logger.info(
-      `View collected heap dumps in the Firebase Console: https://console.firebase.google.com/project/${projectId}/crashlytics/app/${appId}`,
+      `View collected heap dumps in the Firebase Console: ${consoleUrl(projectId, `/crashlytics/app/${appId}`)}`,
     );
 
     return {

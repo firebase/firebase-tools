@@ -96,12 +96,10 @@ export function load(client: CLIClient): CLIClient {
     client.crashlytics.sourcemap = {};
     client.crashlytics.sourcemap.upload = loadCommand("crashlytics-sourcemap-upload");
   }
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-  client.crashlytics.heapdumps = {
-    enable: loadCommand("crashlytics-heapdumps-enable"),
-    disable: loadCommand("crashlytics-heapdumps-disable"),
-    status: loadCommand("crashlytics-heapdumps-status"),
-  };
+  client.crashlytics.heapdumps = {};
+  client.crashlytics.heapdumps.enable = loadCommand("crashlytics-heapdumps-enable");
+  client.crashlytics.heapdumps.disable = loadCommand("crashlytics-heapdumps-disable");
+  client.crashlytics.heapdumps.status = loadCommand("crashlytics-heapdumps-status");
   client.database = {};
   client.database.get = loadCommand("database-get");
   client.database.import = loadCommand("database-import");

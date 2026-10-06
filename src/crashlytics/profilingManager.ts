@@ -2,12 +2,12 @@ import { Client } from "../apiv2";
 import { crashlyticsApiOrigin } from "../api";
 import { FirebaseError, getErrStatus } from "../error";
 import { logger } from "../logger";
+import { logLabeledBullet, logLabeledSuccess } from "../utils";
 import { parseProjectNumber, TIMEOUT } from "./utils";
 import * as storage from "../gcp/storage";
 import * as resourceManager from "../gcp/resourceManager";
 import * as serviceusage from "../gcp/serviceusage";
-import { AndroidAppMetadata, AppPlatform, listFirebaseApps } from "../management/apps";
-import { select } from "../prompt";
+import { AppPlatform, listFirebaseApps, selectAppInteractively } from "../management/apps";
 
 /**
  * Returns an authenticated v1 API client for the Firebase Crashlytics API.
@@ -21,9 +21,25 @@ export function getCrashlyticsV1Client(): Client {
 
 export const CRASHLYTICS_SERVICE_NAME = "firebasecrashlytics.googleapis.com";
 export const STORAGE_OBJECT_CREATOR_ROLE = "roles/storage.objectCreator";
+export const HEAP_DUMP_BUCKET_PREFIX = "firebasecrashlytics-heap-dumps-";
 export const DEFAULT_CORS_ORIGINS = ["https://console.firebase.google.com"];
 export const DEFAULT_BUCKET_LOCATION = "us-east1";
 export const DEFAULT_FILE_TTL_DAYS = 90;
+export const DEFAULT_CORS_RULES: storage.CorsRule[] = [
+  {
+    origin: DEFAULT_CORS_ORIGINS,
+    method: ["GET", "HEAD", "OPTIONS"],
+    responseHeader: ["Content-Type", "Access-Control-Allow-Origin", "Content-Length"],
+  },
+];
+export const DEFAULT_LIFECYCLE_RULES: storage.LifecycleRule[] = [
+  {
+    action: { type: "Delete" },
+    condition: { age: DEFAULT_FILE_TTL_DAYS },
+  },
+];
+
+const ANDROID_APP_ID_REGEX = /^\d+:(\d+):android:([a-fA-F0-9]+)$/;
 
 export interface ProfilingManagerConfig {
   gcsBucket?: string;
@@ -44,19 +60,28 @@ export interface UpdateProfilingManagerConfigRequest {
 }
 
 /**
+ * Validates an Android GMP App ID and returns its lowercased hashed package name segment.
+ * @param appId GMP App ID (e.g. 1:123456789:android:abcdef123456)
+ */
+export function parseAndroidHashedId(appId: string): string {
+  const match = ANDROID_APP_ID_REGEX.exec(appId);
+  if (!match) {
+    throw new FirebaseError(
+      `App ID '${appId}' is not a valid Android app ID (expected format '1:<project-number>:android:<hash>'). ` +
+        "Heap dump collection is only supported for Android apps. " +
+        "Run 'firebase apps:list ANDROID' to view valid Android app IDs for your project.",
+    );
+  }
+  return match[2].toLowerCase();
+}
+
+/**
  * Creates a deterministic GCS bucket name for the given GMP App ID.
  * Follows the convention: firebasecrashlytics-heap-dumps-${hashedPackageName}
  * @param appId GMP App ID (e.g. 1:123456789:android:abcdef123456)
  */
 export function createBucketName(appId: string): string {
-  const appIdSplit = appId.split(":");
-  if (appIdSplit.length < 4 || appIdSplit[2] !== "android") {
-    throw new FirebaseError(
-      `App ID ${appId} is not a valid Android app ID. Heap dump collection is only supported for Android apps.`,
-    );
-  }
-  const hashedPackageName = appIdSplit[3].toLowerCase();
-  return `firebasecrashlytics-heap-dumps-${hashedPackageName}`;
+  return `${HEAP_DUMP_BUCKET_PREFIX}${parseAndroidHashedId(appId)}`;
 }
 
 /**
@@ -75,12 +100,7 @@ export async function resolveAndroidAppId(
   options: { app?: string; nonInteractive?: boolean },
 ): Promise<string> {
   if (options.app) {
-    const appIdParts = options.app.split(":");
-    if (appIdParts.length < 4 || appIdParts[2] !== "android") {
-      throw new FirebaseError(
-        `App ID '${options.app}' is not a valid Android app ID. Heap dump collection is only supported for Android apps.`,
-      );
-    }
+    parseAndroidHashedId(options.app);
     return options.app;
   }
 
@@ -102,15 +122,10 @@ export async function resolveAndroidAppId(
     );
   }
 
-  const choices = (apps as AndroidAppMetadata[]).map((app) => ({
-    name: `${app.displayName || app.packageName || app.appId} (${app.appId})`,
-    value: app.appId,
-  }));
-
-  return await select<string>({
+  const selectedApp = await selectAppInteractively(apps, AppPlatform.ANDROID, {
     message: "Select an Android app:",
-    choices,
   });
+  return selectedApp.appId;
 }
 
 /**
@@ -179,30 +194,29 @@ export async function ensureHeapDumpStorageBucket(
   location: string = DEFAULT_BUCKET_LOCATION,
 ): Promise<string> {
   const bucketName = createBucketName(appId);
-  const corsRules: storage.CorsRule[] = [
-    {
-      origin: DEFAULT_CORS_ORIGINS,
-      method: ["GET", "HEAD", "OPTIONS"],
-      responseHeader: ["Content-Type", "Access-Control-Allow-Origin", "Content-Length"],
-    },
-  ];
-  const lifecycle: { rule: storage.LifecycleRule[] } = {
-    rule: [
-      {
-        action: { type: "Delete" },
-        condition: { age: DEFAULT_FILE_TTL_DAYS },
-      },
-    ],
-  };
+  const projectNumber = parseProjectNumber(appId);
 
   try {
     const bucket = await storage.getBucket(bucketName);
-    const patchPayload: Partial<storage.BucketResponse> = {};
-    if (!bucket.cors || bucket.cors.length === 0) {
-      patchPayload.cors = corsRules;
+    if (bucket.projectNumber && String(bucket.projectNumber) !== projectNumber) {
+      throw new FirebaseError(
+        `Cloud Storage bucket '${bucketName}' already exists and is owned by another project.`,
+      );
     }
-    if (!bucket.lifecycle?.rule || bucket.lifecycle.rule.length === 0) {
-      patchPayload.lifecycle = lifecycle;
+    const patchPayload: Partial<storage.BucketResponse> = {};
+    const hasConsoleCors = bucket.cors?.some((rule) =>
+      DEFAULT_CORS_ORIGINS.every((origin) => rule.origin?.includes(origin)),
+    );
+    if (!hasConsoleCors) {
+      patchPayload.cors = [...(bucket.cors ?? []), ...DEFAULT_CORS_RULES];
+    }
+    const hasDeleteLifecycle = bucket.lifecycle?.rule?.some(
+      (rule) => rule.action.type === "Delete" && rule.condition.age !== undefined,
+    );
+    if (!hasDeleteLifecycle) {
+      patchPayload.lifecycle = {
+        rule: [...(bucket.lifecycle?.rule ?? []), ...DEFAULT_LIFECYCLE_RULES],
+      };
     }
     if (Object.keys(patchPayload).length > 0) {
       logger.debug(
@@ -224,8 +238,8 @@ export async function ensureHeapDumpStorageBucket(
     {
       name: bucketName,
       location,
-      cors: corsRules,
-      lifecycle,
+      cors: DEFAULT_CORS_RULES,
+      lifecycle: { rule: DEFAULT_LIFECYCLE_RULES },
     },
     true /* projectPrivate */,
   );
@@ -262,4 +276,44 @@ export async function ensureHeapDumpP4saRole(
       true /* skipAccountLookup */,
     );
   }
+}
+
+/**
+ * Provisions the GCS bucket, configures Crashlytics service agent permissions,
+ * and enables heap dump collection for the specified Android app.
+ * @param projectId Cloud Project ID
+ * @param appId GMP App ID
+ * @param location Bucket location / region
+ */
+export async function enableHeapDumpCollection(
+  projectId: string,
+  appId: string,
+  location: string = DEFAULT_BUCKET_LOCATION,
+): Promise<string> {
+  const projectNumber = parseProjectNumber(appId);
+  logLabeledBullet("crashlytics", "Configuring Google Cloud Storage bucket...");
+  const bucketName = await ensureHeapDumpStorageBucket(projectId, appId, location);
+  logLabeledBullet("crashlytics", "Configuring service agent permissions...");
+  await ensureHeapDumpP4saRole(projectId, projectNumber);
+  logLabeledBullet("crashlytics", "Enabling Crashlytics heap dump collection...");
+  await updateProfilingManagerConfig(appId, {
+    gcsBucket: bucketName,
+    heapDumpCollectionEnabled: true,
+  });
+  logLabeledSuccess("crashlytics", "Successfully enabled Crashlytics heap dump collection!");
+  return bucketName;
+}
+
+/**
+ * Disables heap dump collection for the specified Android app while preserving its bucket configuration.
+ * @param appId GMP App ID
+ */
+export async function disableHeapDumpCollection(appId: string): Promise<void> {
+  logLabeledBullet("crashlytics", "Disabling Crashlytics heap dump collection...");
+  const currentConfig = await getProfilingManagerConfig(appId);
+  await updateProfilingManagerConfig(appId, {
+    gcsBucket: currentConfig.gcsBucket,
+    heapDumpCollectionEnabled: false,
+  });
+  logLabeledSuccess("crashlytics", "Successfully disabled Crashlytics heap dump collection!");
 }

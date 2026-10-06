@@ -44,18 +44,14 @@ describe("crashlytics:heapdumps commands", () => {
 
   describe("crashlytics:heapdumps:enable", () => {
     let checkBillingStub: sinon.SinonStub;
-    let ensureBucketStub: sinon.SinonStub;
-    let ensureP4saStub: sinon.SinonStub;
-    let updateConfigStub: sinon.SinonStub;
+    let enableCollectionStub: sinon.SinonStub;
     let confirmStub: sinon.SinonStub;
 
     beforeEach(() => {
       checkBillingStub = sinon.stub(cloudbilling, "checkBillingEnabled").resolves(true);
-      ensureBucketStub = sinon
-        .stub(profilingManager, "ensureHeapDumpStorageBucket")
+      enableCollectionStub = sinon
+        .stub(profilingManager, "enableHeapDumpCollection")
         .resolves(bucketName);
-      ensureP4saStub = sinon.stub(profilingManager, "ensureHeapDumpP4saRole").resolves();
-      updateConfigStub = sinon.stub(profilingManager, "updateProfilingManagerConfig").resolves();
       confirmStub = sinon.stub(promptModule, "confirm").resolves(true);
     });
 
@@ -68,10 +64,9 @@ describe("crashlytics:heapdumps commands", () => {
           app: appId,
           force: true,
         }),
-      ).to.be.rejectedWith(FirebaseError, "does not have billing enabled");
+      ).to.be.rejectedWith(FirebaseError, "is not on the Blaze (pay-as-you-go) plan");
 
-      expect(ensureBucketStub).to.not.have.been.called;
-      expect(updateConfigStub).to.not.have.been.called;
+      expect(enableCollectionStub).to.not.have.been.called;
     });
 
     it("should cancel if user denies confirmation", async () => {
@@ -83,8 +78,7 @@ describe("crashlytics:heapdumps commands", () => {
       });
 
       expect(result).to.be.undefined;
-      expect(ensureBucketStub).to.not.have.been.called;
-      expect(updateConfigStub).to.not.have.been.called;
+      expect(enableCollectionStub).to.not.have.been.called;
     });
 
     it("should successfully provision bucket, grant P4SA role, and enable collection", async () => {
@@ -102,12 +96,7 @@ describe("crashlytics:heapdumps commands", () => {
       });
 
       expect(checkBillingStub).to.have.been.calledWith(projectId);
-      expect(ensureBucketStub).to.have.been.calledWith(projectId, appId, "us-central1");
-      expect(ensureP4saStub).to.have.been.calledWith(projectId, projectNumber);
-      expect(updateConfigStub).to.have.been.calledWith(appId, {
-        gcsBucket: bucketName,
-        heapDumpCollectionEnabled: true,
-      });
+      expect(enableCollectionStub).to.have.been.calledOnceWith(projectId, appId, "us-central1");
     });
 
     it("should default location to DEFAULT_BUCKET_LOCATION when location option is empty", async () => {
@@ -118,7 +107,7 @@ describe("crashlytics:heapdumps commands", () => {
         force: true,
       });
 
-      expect(ensureBucketStub).to.have.been.calledWith(
+      expect(enableCollectionStub).to.have.been.calledOnceWith(
         projectId,
         appId,
         profilingManager.DEFAULT_BUCKET_LOCATION,
@@ -127,7 +116,7 @@ describe("crashlytics:heapdumps commands", () => {
 
     it("should rethrow error when provisioning or enabling collection fails", async () => {
       const boom = new FirebaseError("Storage failure");
-      ensureBucketStub.rejects(boom);
+      enableCollectionStub.rejects(boom);
 
       await expect(
         enableCommand.runner()({
@@ -153,16 +142,11 @@ describe("crashlytics:heapdumps commands", () => {
   });
 
   describe("crashlytics:heapdumps:disable", () => {
-    let getConfigStub: sinon.SinonStub;
-    let updateConfigStub: sinon.SinonStub;
+    let disableCollectionStub: sinon.SinonStub;
     let confirmStub: sinon.SinonStub;
 
     beforeEach(() => {
-      getConfigStub = sinon.stub(profilingManager, "getProfilingManagerConfig").resolves({
-        gcsBucket: bucketName,
-        heapDumpCollectionEnabled: true,
-      });
-      updateConfigStub = sinon.stub(profilingManager, "updateProfilingManagerConfig").resolves();
+      disableCollectionStub = sinon.stub(profilingManager, "disableHeapDumpCollection").resolves();
       confirmStub = sinon.stub(promptModule, "confirm").resolves(true);
     });
 
@@ -175,7 +159,7 @@ describe("crashlytics:heapdumps commands", () => {
       });
 
       expect(result).to.be.undefined;
-      expect(updateConfigStub).to.not.have.been.called;
+      expect(disableCollectionStub).to.not.have.been.called;
     });
 
     it("should successfully disable collection", async () => {
@@ -190,16 +174,12 @@ describe("crashlytics:heapdumps commands", () => {
         heapDumpCollectionEnabled: false,
       });
 
-      expect(getConfigStub).to.have.been.calledWith(appId);
-      expect(updateConfigStub).to.have.been.calledWith(appId, {
-        gcsBucket: bucketName,
-        heapDumpCollectionEnabled: false,
-      });
+      expect(disableCollectionStub).to.have.been.calledOnceWith(appId);
     });
 
     it("should rethrow error when disabling collection fails", async () => {
       const boom = new FirebaseError("Update failed");
-      updateConfigStub.rejects(boom);
+      disableCollectionStub.rejects(boom);
 
       await expect(
         disableCommand.runner()({
