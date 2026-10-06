@@ -241,8 +241,7 @@ export class StorageRulesRuntime {
 
       if (rap.status !== "ok" && !("action" in rap)) {
         console.warn(`[RULES] ${rap.status}: ${rap.message}`);
-        rap.errors.forEach(console.warn.bind(console));
-        continue;
+        (rap.errors || []).forEach(console.warn.bind(console));
       }
 
       if (request) {

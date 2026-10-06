@@ -237,5 +237,12 @@ describe("Storage Rules Runtime", () => {
       internals.handleRuntimeStdout(`us":"ok"}\n`);
       expect(received).to.deep.equal([1, 2]);
     });
+    it("dispatches error responses without an action", () => {
+      const { internals, received } = runtimeWithPendingIds([1]);
+
+      internals.handleRuntimeStdout(`{"id":1,"status":"error","message":"Rules evaluation failed","errors":["Rules evaluation failed"]}\n`);
+
+      expect(received).to.deep.equal([1]);
+    });
   });
 });
