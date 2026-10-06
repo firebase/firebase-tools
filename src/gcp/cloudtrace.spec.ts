@@ -55,7 +55,7 @@ describe("cloudtrace", () => {
 
       await expect(cloudtrace.provisionTraceStorage("test-project")).to.be.rejectedWith(
         FirebaseError,
-        "Failed to provision trace storage for project test-project",
+        "Failed to provision trace storage for project test-project: Request to https://cloudtrace.googleapis.com/v2/projects/test-project/traces:batchWrite had HTTP Error: 500, Internal error",
       );
     });
   });

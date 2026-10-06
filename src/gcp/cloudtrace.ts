@@ -1,6 +1,6 @@
 import { cloudTraceOrigin } from "../api";
 import { Client } from "../apiv2";
-import { FirebaseError, getError } from "../error";
+import { FirebaseError, getErrMsg, getError } from "../error";
 
 const API_VERSION = "v2";
 
@@ -56,8 +56,11 @@ export async function provisionTraceStorage(projectId: string): Promise<void> {
       payload,
     );
   } catch (err: unknown) {
-    throw new FirebaseError(`Failed to provision trace storage for project ${projectId}`, {
-      original: getError(err),
-    });
+    throw new FirebaseError(
+      `Failed to provision trace storage for project ${projectId}: ${getErrMsg(err)}`,
+      {
+        original: getError(err),
+      },
+    );
   }
 }

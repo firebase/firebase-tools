@@ -304,6 +304,19 @@ describe("onboarding", () => {
     expect(res.config.enablementState).to.equal("ENABLED");
   });
 
+  it("should successfully onboard web app and log a warning if provisionTraceStorage throws an error", async () => {
+    const fakeError = new FirebaseError(
+      "Failed to provision trace storage for project test-project",
+    );
+    provisionTraceStub.rejects(fakeError);
+
+    const res = await onboarding.onboardCrashlyticsWeb("test-project", "1:123:web:456");
+
+    expect(provisionTraceStub).to.have.been.calledOnce;
+    expect(logLabeledWarningStub).to.have.been.calledWith("crashlytics", fakeError.message);
+    expect(res.config.enablementState).to.equal("ENABLED");
+  });
+
   it("should throw in non-interactive mode if billing is not enabled", async () => {
     checkBillingStub.resolves(false);
 

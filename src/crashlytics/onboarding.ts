@@ -132,8 +132,12 @@ export async function onboardCrashlyticsWeb(
 
   if (experiments.isEnabled("crashlyticsWebTrace")) {
     logLabeledBullet("crashlytics", "Provisioning Cloud Trace storage...");
-    await provisionTraceStorage(projectId);
-    logLabeledSuccess("crashlytics", "Cloud Trace storage provisioned.");
+    try {
+      await provisionTraceStorage(projectId);
+      logLabeledSuccess("crashlytics", "Cloud Trace storage provisioned.");
+    } catch (err: unknown) {
+      logLabeledWarning("crashlytics", getErrMsg(err));
+    }
   }
 
   logLabeledBullet("crashlytics", "Configuring Crashlytics telemetry for web app...");
