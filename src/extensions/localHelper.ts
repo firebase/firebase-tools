@@ -19,7 +19,7 @@ export async function getLocalExtensionSpec(directory: string): Promise<Extensio
   const spec = await parseYAML(readFile(path.resolve(directory, EXTENSIONS_SPEC_FILE)));
 
   // lifecycleEvents are formatted differently once they have been uploaded
-  if (spec.lifecycleEvents as Object) {
+  if (spec.lifecycleEvents as object) {
     spec.lifecycleEvents = fixLifecycleEvents(spec.lifecycleEvents);
   }
 
