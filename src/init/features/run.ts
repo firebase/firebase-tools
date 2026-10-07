@@ -61,11 +61,11 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
     serviceId = await promptNewServiceId(projectId, region);
   }
 
-  const existingBaseImage = existing?.template.containers?.[0]?.baseImageUri;
-  const defaultBaseImage = existing ? existingBaseImage : "nodejs22";
+  // A base image turns on automatic base image updates, which are off by default. So there's no
+  // default base image, except that an existing service keeps its own.
   const rawBaseImage = await input({
-    message: "Which base image should your app use? (e.g. nodejs20, nodejs22)",
-    default: defaultBaseImage,
+    message: "Which base image should your app use, if any? (e.g. nodejs20, nodejs22)",
+    default: existing?.template.containers?.[0]?.baseImageUri,
   });
   const baseImage = (rawBaseImage || "").trim();
 
