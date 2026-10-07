@@ -35,7 +35,12 @@ export async function release(
       };
 
       const versionId = utils.last(deploy.version.split("/"));
-      const finalizedVersion = await api.updateVersion(deploy.config.site, versionId, update);
+      const finalizedVersion = await api.updateVersion(
+        context.projectId,
+        deploy.config.site,
+        versionId,
+        update,
+      );
 
       logger.debug(`[hosting] finalized version for ${deploy.config.site}:${finalizedVersion}`);
       utils.logLabeledSuccess(`hosting[${deploy.config.site}]`, "version finalized");
@@ -50,6 +55,7 @@ export async function release(
         otherReleaseOpts.message = options.message;
       }
       const release = await api.createRelease(
+        context.projectId,
         deploy.config.site,
         context.hostingChannel || "live",
         deploy.version,
