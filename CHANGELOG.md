@@ -1,7 +1,9 @@
-- [fixed] Improve error message when billing is not enabled
-- Fixed a crash in `setEnqueuer` when deploying Cloud Tasks functions whose IAM policy has no bindings (#11184).
-- Updated dependencies to address security vulnerabilities, including `protobufjs`, `tar`, `@grpc/grpc-js`, `express`, `undici`, `hono`, `tmp`, and `form-data`.
-- Updated the Firebase SQL Connect local toolkit to v3.4.22, which includes the following changes:
-  - [fixed] Disallow using the GraphQL root operation type names (`Query`, `Mutation`, `Subscription`) as `@table` or `@view` types.
-- Added an optional step to configure Crashlytics email alerts during `crashlytics:onboard:web`.
-- Fix `404` errors during `crashlytics:sourcemap:upload` when re-uploading a source map with the same obfuscated file path across different app versions
+- Updated Firebase Hosting API requests to be project-scoped, eliminating site-scoped requests and the use of `-` as a project identifier.
+- Added check for a default Hosting site and offer to create one during `firebase apps:create web`.
+- Added a check for a default Hosting site and offer to create one during `auth` initialization.
+- - [Fixed] Report the GCFv2-to-GCFv1 downgrade error during validation instead of a misleading CPU error (#5461).
+- Fixed `functions:delete` recreating an already-deleted Cloud Tasks queue for task queue functions. (#9305)
+- Batched function deletions across instances when uninstalling a Function Kit (#11189).
+- Fixed an issue where 2nd-gen functions with parameterized trigger event filters failed default region resolution (#11020).
+- Fixed `functions:lifecycle:list` and `functions:lifecycle:run` failing to detect Function Kit instances (#11240).
+- Fixed nested ternary CEL expressions in function parameters, which previously failed to load or selected the wrong branch. (#7755)
