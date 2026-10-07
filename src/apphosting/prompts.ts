@@ -1,7 +1,6 @@
 import { select, Choice } from "../prompt";
 import { logWarning, logBullet } from "../utils";
 import * as apphosting from "../gcp/apphosting";
-import { isEnabled } from "../experiments";
 
 export const DEFAULT_RUNTIME = "nodejs";
 
@@ -59,9 +58,6 @@ export async function resolveRuntime(
 ): Promise<string | undefined> {
   if (runtimeOption !== undefined) {
     return runtimeOption;
-  }
-  if (!isEnabled("abiu")) {
-    return undefined;
   }
   if (nonInteractive) {
     return DEFAULT_RUNTIME;

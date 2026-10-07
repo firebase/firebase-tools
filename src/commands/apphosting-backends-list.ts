@@ -6,7 +6,7 @@ import { needProjectId } from "../projectUtils";
 import { requireAuth } from "../requireAuth";
 import { Options } from "../options";
 import * as apphosting from "../gcp/apphosting";
-import { isEnabled } from "../experiments";
+
 import * as Table from "cli-table3";
 
 export const command = new Command("apphosting:backends:list")
@@ -35,12 +35,7 @@ export const command = new Command("apphosting:backends:list")
  * Prints a table given a list of backends
  */
 export function printBackendsTable(backends: apphosting.Backend[]): void {
-  const abiuEnabled = isEnabled("abiu");
-  const head = ["Backend", "Repository", "URL", "Primary Region"];
-  if (abiuEnabled) {
-    head.push("ABIU");
-    head.push("Runtime");
-  }
+  const head = ["Backend", "Repository", "URL", "Primary Region", "ABIU", "Runtime"];
   head.push("Updated Date");
 
   const table = new Table({
@@ -57,18 +52,16 @@ export function printBackendsTable(backends: apphosting.Backend[]): void {
       backend.uri.startsWith("https:") ? backend.uri : "https://" + backend.uri,
       location,
     ];
-    if (abiuEnabled) {
-      let abiuStatus = "N/A";
-      const runtimeValue = backend.runtime?.value ?? "";
-      // We know these runtimes do not support ABIU
-      if (runtimeValue === "" || runtimeValue === "nodejs") {
-        abiuStatus = "Disabled";
-      } else {
-        abiuStatus = backend.automaticBaseImageUpdatesDisabled ? "Disabled" : "Enabled";
-      }
-      row.push(abiuStatus);
-      row.push(backend.runtime?.value ?? "N/A");
+    let abiuStatus = "N/A";
+    const runtimeValue = backend.runtime?.value ?? "";
+    // We know these runtimes do not support ABIU
+    if (runtimeValue === "" || runtimeValue === "nodejs") {
+      abiuStatus = "Disabled";
+    } else {
+      abiuStatus = backend.automaticBaseImageUpdatesDisabled ? "Disabled" : "Enabled";
     }
+    row.push(abiuStatus);
+    row.push(backend.runtime?.value ?? "N/A");
     row.push(datetimeString(new Date(backend.updateTime)));
     table.push(row);
   }
