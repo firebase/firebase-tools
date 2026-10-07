@@ -1004,3 +1004,48 @@ describe("applyEndpointPrefix", () => {
     });
   });
 });
+
+describe("resolveBackend", () => {
+  it("resolves parameters and executes resolveRegions hook before generating backend", async () => {
+    const testBuild = build.of({
+      myFunc: {
+        platform: "gcfv2",
+        entryPoint: "myFunc",
+        runtime: "nodejs16",
+        project: "test-project",
+        region: [build.REGION_TBD],
+        httpsTrigger: {},
+        vpc: {
+          connector: "my-connector",
+        },
+      },
+    });
+
+    let hookCalled = false;
+    let hookParamValues: Record<string, ParamValue> | undefined;
+
+    const result = await build.resolveBackend({
+      build: testBuild,
+      firebaseConfig: { projectId: "test-project" },
+      userEnvs: {},
+      codebase: "default",
+      isEmulator: false,
+      resolveRegions: async (b, paramValues) => {
+        hookCalled = true;
+        hookParamValues = paramValues;
+        b.endpoints["myFunc"].region = ["europe-west1"];
+      },
+    });
+
+    expect(hookCalled).to.be.true;
+    expect(hookParamValues).to.deep.equal({
+      PROJECT_ID: new ParamValue("test-project", true, { string: true }),
+      GCLOUD_PROJECT: new ParamValue("test-project", true, { string: true }),
+    });
+    expect(result.backend.endpoints["europe-west1"]["myFunc"]).to.exist;
+    expect(result.backend.endpoints["europe-west1"]["myFunc"].region).to.equal("europe-west1");
+    expect(result.backend.endpoints["europe-west1"]["myFunc"].vpc?.connector).to.equal(
+      "projects/test-project/locations/europe-west1/connectors/my-connector",
+    );
+  });
+});

@@ -1,6 +1,10 @@
+- Updated Firebase Hosting API requests to be project-scoped, eliminating site-scoped requests and the use of `-` as a project identifier.
 - Added check for a default Hosting site and offer to create one during `firebase apps:create web`.
 - Added a check for a default Hosting site and offer to create one during `auth` initialization.
 - - [Fixed] Report the GCFv2-to-GCFv1 downgrade error during validation instead of a misleading CPU error (#5461).
 - Fixed `functions:delete` recreating an already-deleted Cloud Tasks queue for task queue functions. (#9305)
 - Batched function deletions across instances when uninstalling a Function Kit (#11189).
+- Fixed an issue where 2nd-gen functions with parameterized trigger event filters failed default region resolution (#11020).
+- Fixed `functions:lifecycle:list` and `functions:lifecycle:run` failing to detect Function Kit instances (#11240).
+- Fixed nested ternary CEL expressions in function parameters, which previously failed to load or selected the wrong branch. (#7755)
 - Fixed the Functions emulator repeating the "External network resource requested!" and "Google API requested!" warnings for a URL it has already reported. (#4939)
