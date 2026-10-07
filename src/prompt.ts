@@ -1,5 +1,6 @@
 import * as inquirer from "@inquirer/prompts";
 import { FirebaseError } from "./error";
+import * as programStatus from "./programStatus";
 
 export { Separator } from "@inquirer/prompts";
 
@@ -78,15 +79,14 @@ export async function input(message: string): Promise<string>;
 export async function input(opts: InputConfig): Promise<string>;
 
 export async function input(opts: InputConfig | string): Promise<string> {
-  if (typeof opts === "string") {
-    opts = { message: opts };
-  } else {
+  const config = typeof opts === "string" ? { message: opts } : opts;
+  if (typeof opts !== "string") {
     const { shouldReturn, value } = guard(opts);
     if (shouldReturn) {
       return value;
     }
   }
-  return inquirer.input(opts);
+  return programStatus.withBlockedStatus("question", config.message, () => inquirer.input(config));
 }
 
 /**
@@ -110,9 +110,8 @@ export async function confirm(message: string): Promise<boolean>;
 export async function confirm(opts: ConfirmConfig): Promise<boolean>;
 
 export async function confirm(opts: string | ConfirmConfig) {
-  if (typeof opts === "string") {
-    opts = { message: opts };
-  } else {
+  const config = typeof opts === "string" ? { message: opts } : opts;
+  if (typeof opts !== "string") {
     if (opts.force) {
       // TODO: Should we print what we've forced?
       return true;
@@ -123,7 +122,9 @@ export async function confirm(opts: string | ConfirmConfig) {
     }
   }
 
-  return inquirer.confirm(opts);
+  return programStatus.withBlockedStatus("permission", config.message, () =>
+    inquirer.confirm(config),
+  );
 }
 
 /**
@@ -181,10 +182,12 @@ export async function checkbox<Value>(opts: CheckboxOptions<Value>): Promise<Val
   if (shouldReturn) {
     return value;
   }
-  return inquirer.checkbox({
-    ...opts,
-    loop: true,
-  });
+  return programStatus.withBlockedStatus("question", opts.message, () =>
+    inquirer.checkbox({
+      ...opts,
+      loop: true,
+    }),
+  );
 }
 
 /**
@@ -215,11 +218,13 @@ export async function select<Value>(opts: SelectOptions<Value>): Promise<Value> 
     typeof opts.instructions === "string"
       ? { navigation: opts.instructions, pager: opts.instructions }
       : opts.instructions;
-  return inquirer.select({
-    ...opts,
-    instructions,
-    loop: false,
-  });
+  return programStatus.withBlockedStatus("question", opts.message, () =>
+    inquirer.select({
+      ...opts,
+      instructions,
+      loop: false,
+    }),
+  );
 }
 
 /**
@@ -254,16 +259,17 @@ export async function number(
 ): Promise<number | undefined>;
 
 export async function number(opts: string | NumberOptions): Promise<number | undefined> {
-  if (typeof opts === "string") {
-    opts = { message: opts };
-  } else {
+  const config = typeof opts === "string" ? { message: opts } : opts;
+  if (typeof opts !== "string") {
     const { shouldReturn, value } = guard(opts);
     if (shouldReturn) {
       return value;
     }
   }
 
-  return await inquirer.number({ required: true, ...opts });
+  return programStatus.withBlockedStatus("question", config.message, () =>
+    inquirer.number({ required: true, ...config }),
+  );
 }
 
 /**
@@ -288,17 +294,18 @@ export async function password(message: string): Promise<string>;
 export async function password(opts: PasswordOptions): Promise<string>;
 
 export async function password(opts: string | PasswordOptions): Promise<string> {
-  if (typeof opts === "string") {
-    opts = { message: opts };
-  } else {
+  const config = typeof opts === "string" ? { message: opts } : opts;
+  if (typeof opts !== "string") {
     // Note, without default can basically only throw
     guard(opts);
   }
 
-  return inquirer.password({
-    ...opts,
-    mask: "",
-  });
+  return programStatus.withBlockedStatus("auth", config.message, () =>
+    inquirer.password({
+      ...config,
+      mask: "",
+    }),
+  );
 }
 
 /**
@@ -329,5 +336,5 @@ export async function search<Value>(opts: SearchOptions<Value>): Promise<Value> 
   if (shouldReturn) {
     return value;
   }
-  return inquirer.search(opts);
+  return programStatus.withBlockedStatus("question", opts.message, () => inquirer.search(opts));
 }

@@ -22,6 +22,14 @@ export const ALL_EXPERIMENTS = experiments({
   experiments: {
     shortDescription: "enables the experiments family of commands",
   },
+  programstatus: {
+    shortDescription: "Emit OSC 7501 Program Status Protocol reports in compatible terminals",
+    fullDescription:
+      "Emit OSC 7501 terminal status sequences so compatible terminals (e.g. Rex) " +
+      "can display program status, progress, and attention notifications.",
+    public: true,
+    default: true,
+  },
 
   // Realtime Database experiments
   rtdbrules: {

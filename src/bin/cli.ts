@@ -22,6 +22,7 @@ import * as utils from "../utils";
 import { fetchMOTD } from "../fetchMOTD";
 
 import { isCommandModule } from "../command";
+import * as programStatus from "../programStatus";
 import { detectAIAgent } from "../env";
 
 /**
@@ -79,6 +80,8 @@ export function cli(pkg: any) {
   const hasJson = args.includes("--json") || args.includes("-j");
   if (!hasJson) {
     useConsoleLoggers();
+  } else {
+    programStatus.setProgramStatusSupported(false);
   }
 
   logger.debug("-".repeat(70));
@@ -98,6 +101,9 @@ export function cli(pkg: any) {
 
   process.on("exit", (code) => {
     code = typeof process.exitCode === "number" ? process.exitCode : code;
+    if (code === 130) {
+      programStatus.markUserInterrupted();
+    }
     if (!process.env.DEBUG && code < 2 && fsutils.fileExistsSync(logFilename)) {
       fs.unlinkSync(logFilename);
     }

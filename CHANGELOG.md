@@ -1,0 +1,1 @@
+- Added support for the OSC 7501 Program Status Protocol, enabling compatible terminal emulators to display live program status, progress, and attention indicators.

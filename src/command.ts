@@ -19,6 +19,7 @@ import { isFirebaseStudio, detectAIAgent } from "./env";
 import * as experiments from "./experiments";
 import { showDeprecationWarningBefore, showDeprecationWarningAfter } from "./extensions/warnings";
 import { setNonInteractive } from "./prompt";
+import * as programStatus from "./programStatus";
 
 export interface CommandModule {
   load: () => void;
@@ -216,9 +217,15 @@ export class Command {
         void trackEmulator("command_start", { command_name: this.name });
       }
 
+      void programStatus.detectProgramStatusSupport();
+      const isJson = Boolean(getInheritedOption(options, "json"));
+      if (!isJson) {
+        programStatus.setWorkingStatus({ msg: `Running firebase ${this.name}` });
+      }
+
       runner(...args)
         .then(async (result) => {
-          if (getInheritedOption(options, "json")) {
+          if (isJson) {
             await new Promise((resolve) => {
               process.stdout.write(
                 JSON.stringify(
@@ -232,6 +239,8 @@ export class Command {
                 resolve,
               );
             });
+          } else {
+            programStatus.setDoneStatus(`Finished firebase ${this.name}`);
           }
           const duration = Math.floor((process.uptime() - start) * 1000);
           const trackSuccess = trackGA4(
@@ -260,7 +269,7 @@ export class Command {
           process.exit();
         })
         .catch(async (err) => {
-          if (getInheritedOption(options, "json")) {
+          if (isJson) {
             await new Promise((resolve) => {
               process.stdout.write(
                 JSON.stringify(
@@ -274,6 +283,12 @@ export class Command {
                 resolve,
               );
             });
+          } else {
+            if (programStatus.isUserCancellationError(err)) {
+              programStatus.markUserInterrupted();
+            } else {
+              programStatus.setErrorStatus(err.message || `Error in firebase ${this.name}`);
+            }
           }
           const duration = Math.floor((process.uptime() - start) * 1000);
           await withTimeout(
@@ -327,6 +342,9 @@ export class Command {
     }
 
     setNonInteractive(!!options.nonInteractive);
+    if (getInheritedOption(options, "json")) {
+      programStatus.setProgramStatusSupported(false);
+    }
 
     if (getInheritedOption(options, "debug")) {
       options.debug = true;
