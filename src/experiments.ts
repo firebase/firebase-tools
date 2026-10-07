@@ -252,6 +252,11 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: false,
   },
+  crashlyticsWebTrace: {
+    shortDescription: "Enable provisioning Cloud Trace storage during web app onboarding.",
+    default: false,
+    public: false,
+  },
   secretEnvParams: {
     shortDescription:
       "Enable reading the backing resource binding for a Functions secret param from .env",
