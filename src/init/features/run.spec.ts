@@ -50,9 +50,9 @@ describe("init run", () => {
       ).to.be.rejectedWith("Cloud Run requires a Firebase project");
     });
 
-    it("asks how to create a new service", async () => {
+    it("asks how to create a new service, with no default base image", async () => {
       selectStub.onFirstCall().resolves("create").onSecondCall().resolves("us-east1");
-      inputStub.onFirstCall().resolves("my-service").onSecondCall().resolves("nodejs22");
+      inputStub.onFirstCall().resolves("my-service").onSecondCall().resolves("");
       inputStub.onThirdCall().resolves("/");
       const s = setup();
 
@@ -63,7 +63,7 @@ describe("init run", () => {
         default: "us-central1",
       });
       expect(getOrCreateWebAppStub).to.have.been.calledWith("p", null, "my-service");
-      expect(inputStub.secondCall.args[0].default).to.equal("nodejs22");
+      expect(inputStub.secondCall.args[0].default).to.be.undefined;
       const validateDir = inputStub.thirdCall.args[0].validate;
       expect(validateDir(".")).to.be.true;
       expect(validateDir("nonexistent-dir-xyz")).to.include("does not exist");
@@ -71,7 +71,7 @@ describe("init run", () => {
       expect(s.featureInfo?.run).to.deep.equal({
         serviceId: "my-service",
         region: "us-east1",
-        baseImage: "nodejs22",
+        baseImage: "",
         rootDir: "/",
         appId: "1:1:web:a",
       });
@@ -142,15 +142,16 @@ describe("init run", () => {
         .resolves("us-central1")
         .onThirdCall()
         .resolves(true);
-      inputStub.onFirstCall().resolves("my-service");
-      inputStub.callsFake((o) => Promise.resolve(o.default));
+      inputStub.onFirstCall().resolves("my-service").onSecondCall().resolves("nodejs22");
+      inputStub.onThirdCall().resolves("/");
       const s = setup();
 
       await askQuestions(s, config, options);
 
-      const validateImg = inputStub.secondCall.args[0].validate;
-      expect(validateImg("nodejs22")).to.be.true;
-      expect(validateImg(" ")).to.include("Local builds require a base image");
+      const baseImagePrompt = inputStub.secondCall.args[0];
+      expect(baseImagePrompt.default).to.be.undefined;
+      expect(baseImagePrompt.validate("nodejs22")).to.be.true;
+      expect(baseImagePrompt.validate(" ")).to.include("Local builds require a base image");
       expect(s.featureInfo?.run).to.deep.equal({
         serviceId: "my-service",
         region: "us-central1",

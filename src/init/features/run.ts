@@ -79,14 +79,13 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
     default: false,
   });
 
-  const existingBaseImage = existing?.template.containers?.[0]?.baseImageUri;
-  let defaultBaseImage: string | undefined = "nodejs22";
-  if (existing) {
-    defaultBaseImage = existingBaseImage || (localBuild ? "nodejs22" : undefined);
-  }
+  // A base image turns on automatic base image updates, which are off by default. So there's no
+  // default base image, except that an existing service keeps its own. Local builds need one.
   const rawBaseImage = await input({
-    message: "Which base image should your app use? (e.g. nodejs20, nodejs22)",
-    default: defaultBaseImage,
+    message: localBuild
+      ? "Which base image should your app use? (e.g. nodejs20, nodejs22)"
+      : "Which base image should your app use, if any? (e.g. nodejs20, nodejs22)",
+    default: existing?.template.containers?.[0]?.baseImageUri,
     validate: (img: string) => {
       if (localBuild && !img.trim()) {
         return "Local builds require a base image.";
