@@ -270,7 +270,7 @@ export async function setAllowSmsRegionPolicy(
 ): Promise<boolean> {
   const res = await apiClient.patch<
     { sms_region_config: { allowlist_only: { allowed_regions: string[] } } },
-    {}
+    Record<string, unknown>
   >(`/admin/v2/projects/${project}/config?updateMask=sms_region_config`, {
     sms_region_config: {
       allowlist_only: {
@@ -296,7 +296,7 @@ export async function setDenySmsRegionPolicy(
 ): Promise<boolean> {
   const res = await apiClient.patch<
     { sms_region_config: { allow_by_default: { disallowed_regions: string[] } } },
-    {}
+    Record<string, unknown>
   >(`/admin/v2/projects/${project}/config?updateMask=sms_region_config`, {
     sms_region_config: {
       allow_by_default: {
