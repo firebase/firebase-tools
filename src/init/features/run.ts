@@ -143,7 +143,6 @@ export async function actuate(setup: Setup, config: Config): Promise<void> {
       serviceId: info.serviceId,
       rootDir: info.rootDir,
       region: info.region,
-      ignore: DEFAULT_IGNORE,
     },
     config,
   );
@@ -151,25 +150,26 @@ export async function actuate(setup: Setup, config: Config): Promise<void> {
 }
 
 /**
- * Adds a service to firebase.json, or updates it in place. Settings that init doesn't ask
- * about (e.g. localBuild or a custom ignore list) are kept. Exported for unit testing.
+ * Adds the service to firebase.json, or updates its rootDir and region if it's already there.
+ * Other settings, like a custom ignore list, are kept. Any service without an ignore list gets
+ * the default one. Exported for unit testing.
  */
-export function upsertRunConfig(runConfig: RunSingle, config: Config): void {
-  if (!config.src.run) {
-    config.set("run", runConfig);
-    return;
-  }
-  const services = Array.isArray(config.src.run) ? [...config.src.run] : [config.src.run];
-  const existingIndex = services.findIndex((s) => s.serviceId === runConfig.serviceId);
-  if (existingIndex === -1) {
-    services.push(runConfig);
+export function upsertRunConfig(
+  service: { serviceId: string; rootDir: string; region: string },
+  config: Config,
+): void {
+  // "run" can be one service or a list of them. Work with a list.
+  const entries: RunSingle[] = [config.src.run ?? []].flat();
+
+  const existing = entries.find((e) => e.serviceId === service.serviceId);
+  if (existing) {
+    existing.rootDir = service.rootDir;
+    existing.region = service.region;
+    existing.ignore ??= DEFAULT_IGNORE;
   } else {
-    const existingConfig = services[existingIndex];
-    services[existingIndex] = {
-      ...existingConfig,
-      ...runConfig,
-      ignore: existingConfig.ignore ?? runConfig.ignore,
-    };
+    entries.push({ ...service, ignore: DEFAULT_IGNORE });
   }
-  config.set("run", services.length === 1 ? services[0] : services);
+
+  // Save a single service as an object, not a one-item list.
+  config.set("run", entries.length === 1 ? entries[0] : entries);
 }
