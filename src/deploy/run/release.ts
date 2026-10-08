@@ -12,7 +12,7 @@ export async function release(
   for (const { config, deployed } of payload.run?.services || []) {
     logLabeledSuccess(
       "run",
-      `Deployed service ${config.serviceId}${deployed?.uri ? ` to ${deployed.uri}` : ""}`,
+      `Deployed service ${config.serviceId} in ${config.region}${deployed?.uri ? ` to ${deployed.uri}` : ""}`,
     );
   }
 }

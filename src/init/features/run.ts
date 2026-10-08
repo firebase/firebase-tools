@@ -3,7 +3,7 @@ import { Setup } from "..";
 import { Config } from "../../config";
 import { deploy } from "../../deploy";
 import { prereqs, RUN_PERMISSIONS } from "../../deploy/run/prereqs";
-import { getExistingService } from "../../deploy/run/util";
+import { fullServiceName, getExistingService } from "../../deploy/run/util";
 import { FirebaseError } from "../../error";
 import { RunSingle } from "../../firebaseConfig";
 import { dirExistsSync } from "../../fsutils";
@@ -154,9 +154,8 @@ export async function actuate(setup: Setup, config: Config, options: Options): P
   );
   await deploy(
     ["run"],
-    { ...options, projectId: setup.projectId, config, only: `run:${info.serviceId}` },
-    // Pass the region so deploy skips services with the same ID in other regions.
-    { region: info.region, baseImage: info.baseImage || null },
+    { ...options, projectId: setup.projectId, config, only: `run:${fullServiceName(info)}` },
+    { baseImage: info.baseImage || null },
   );
 }
 
