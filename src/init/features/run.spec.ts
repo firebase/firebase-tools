@@ -144,12 +144,11 @@ describe("init run", () => {
 
   describe("actuate", () => {
     it("does nothing when featureInfo.run is not set", async () => {
-      const writeStub = sinon.stub(config, "writeProjectFile");
       await actuate(setup(), config);
-      expect(writeStub).to.not.have.been.called;
+      expect(config.src.run).to.be.undefined;
     });
 
-    it("saves the service to firebase.json", async () => {
+    it("adds the service to the config that init writes to firebase.json", async () => {
       const writeStub = sinon.stub(config, "writeProjectFile");
       const s = setup();
       s.featureInfo = { run: { serviceId: "s", region: "r", baseImage: "", rootDir: "/" } };
@@ -163,7 +162,8 @@ describe("init run", () => {
         ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"],
       };
       expect(config.src.run).to.deep.equal(runConfig);
-      expect(writeStub).to.have.been.calledWith("firebase.json", config.src);
+      // Init writes the file once all features are set up, so a failed init leaves it untouched.
+      expect(writeStub).to.not.have.been.called;
     });
   });
 

@@ -134,7 +134,8 @@ async function promptRootDir(projectDir: string, defaultDir: string): Promise<st
 }
 
 /**
- * Adds the service to firebase.json.
+ * Adds the service to firebase.json. Init writes the file once every feature is set up, so a
+ * failed init leaves it untouched.
  */
 export async function actuate(setup: Setup, config: Config): Promise<void> {
   const info = setup.featureInfo?.run;
@@ -149,7 +150,6 @@ export async function actuate(setup: Setup, config: Config): Promise<void> {
     },
     config,
   );
-  config.writeProjectFile("firebase.json", config.src);
 }
 
 /**
