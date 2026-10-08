@@ -1,5 +1,6 @@
 #!/bin/bash
 ## Script for testing Docker image creation without running a full release.
+set -e
 
 # Default values
 REPO_NAME="us"
@@ -43,4 +44,15 @@ cd "$( dirname "${BASH_SOURCE[0]}" )"
 gcloud --project $BUILD_PROJECT \
   builds \
   submit \
-  --substitutions=_REPO_NAME=$REPO_NAME,_TARGET_PROJECT_ID=$TARGET_PROJECT_ID
+  --config=cloudbuild.yaml \
+  --substitutions=_REPO_NAME=$REPO_NAME,_TARGET_PROJECT_ID=$TARGET_PROJECT_ID \
+  .
+
+if [[ "$REPO_NAME" != "staging" ]]; then
+  gcloud --project $BUILD_PROJECT \
+    builds \
+    submit \
+    --no-source \
+    --config=cloudbuild-promote.yaml \
+    --substitutions=_TARGET_PROJECT_ID=$TARGET_PROJECT_ID
+fi
