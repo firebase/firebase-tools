@@ -61,6 +61,9 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
     serviceId = await promptNewServiceId(projectId, region);
   }
 
+  // If firebase.json already has this service, its saved settings are the defaults.
+  const savedEntry = findRunEntry(getRunEntries(config), serviceId, region);
+
   // A base image turns on automatic base image updates, which are off by default. So there's no
   // default base image, except that an existing service keeps its own.
   const rawBaseImage = await input({
@@ -69,7 +72,7 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
   });
   const baseImage = (rawBaseImage || "").trim();
 
-  const rootDir = await promptRootDir(config.projectDir);
+  const rootDir = await promptRootDir(config.projectDir, savedEntry?.rootDir ?? "/");
 
   setup.featureInfo = { ...setup.featureInfo, run: { serviceId, region, baseImage, rootDir } };
 }
@@ -117,10 +120,10 @@ async function promptNewServiceId(projectId: string, region: string): Promise<st
   });
 }
 
-async function promptRootDir(projectDir: string): Promise<string> {
+async function promptRootDir(projectDir: string, defaultDir: string): Promise<string> {
   return input({
     message: "Specify your app's root directory relative to your firebase.json directory",
-    default: "/",
+    default: defaultDir,
     validate: (dir: string) => {
       const absPath = path.join(projectDir, dir);
       if (!dirExistsSync(absPath)) {
@@ -157,24 +160,42 @@ export async function actuate(setup: Setup, config: Config, options: Options): P
 
 /**
  * Adds a new service to firebase.json with the default ignore list. If the service is already
- * there, only its rootDir and region change; nothing else in the entry is added or removed.
+ * there (same service ID and region), only its rootDir changes; nothing else in the entry is added
+ * or removed.
  * Exported for unit testing.
  */
 export function upsertRunConfig(
   service: { serviceId: string; rootDir: string; region: string },
   config: Config,
 ): void {
-  // "run" can be one service or a list of them. Work with a list.
-  const entries: RunSingle[] = [config.src.run ?? []].flat();
+  const entries = getRunEntries(config);
 
-  const existing = entries.find((e) => e.serviceId === service.serviceId);
+  const existing = findRunEntry(entries, service.serviceId, service.region);
   if (existing) {
     existing.rootDir = service.rootDir;
-    existing.region = service.region;
   } else {
     entries.push({ ...service, ignore: DEFAULT_IGNORE });
   }
 
   // Save a single service as an object, not a one-item list.
   config.set("run", entries.length === 1 ? entries[0] : entries);
+}
+
+/**
+ * Returns the Cloud Run services in firebase.json as a list. "run" can be one service or a list.
+ */
+function getRunEntries(config: Config): RunSingle[] {
+  return [config.src.run ?? []].flat();
+}
+
+/**
+ * Finds a service's firebase.json entry. Cloud Run service IDs are only unique within a region,
+ * so the region has to match too.
+ */
+function findRunEntry(
+  entries: RunSingle[],
+  serviceId: string,
+  region: string,
+): RunSingle | undefined {
+  return entries.find((e) => e.serviceId === serviceId && e.region === region);
 }
