@@ -179,6 +179,15 @@ export const ALL_EXPERIMENTS = experiments({
     public: true,
   },
 
+  directcloudrun: {
+    shortDescription: "Build and deploy web apps directly to Cloud Run services",
+    fullDescription:
+      "Enables `firebase init run`, `firebase deploy --only run`, and the " +
+      "`firebase run:services:update` command. " +
+      "These are in preview and may change.",
+    public: false,
+  },
+
   // TODO(joehanley): Delete this once weve scrubbed all references to experiment from docs.
   dataconnect: {
     shortDescription: "Deprecated. Previosuly, enabled SQL Connect related features.",
@@ -240,6 +249,11 @@ export const ALL_EXPERIMENTS = experiments({
   },
   crashlyticsWebAlerts: {
     shortDescription: "Enable configuring Crashlytics email alerts during web app onboarding.",
+    default: false,
+    public: false,
+  },
+  crashlyticsWebTrace: {
+    shortDescription: "Enable provisioning Cloud Trace storage during web app onboarding.",
     default: false,
     public: false,
   },
