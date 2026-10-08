@@ -3,6 +3,7 @@ import * as sinon from "sinon";
 import { errorOut } from "./errorOut";
 import { FirebaseError } from "./error";
 import * as logError from "./logError";
+import * as programStatus from "./programStatus";
 
 describe("errorOut", () => {
   let sandbox: sinon.SinonSandbox;
@@ -48,5 +49,24 @@ describe("errorOut", () => {
     expect(process.exitCode).to.equal(2);
     clock.tick(251);
     expect(processExitStub).to.have.been.calledOnce;
+  });
+
+  it("should report error status via programStatus for unexpected errors", () => {
+    const setErrorStub = sandbox.stub(programStatus, "setErrorStatus");
+    const error = new FirebaseError("First line\nSecond line", { exit: 1 });
+    sandbox.stub(process, "exit");
+    errorOut(error);
+    expect(setErrorStub).to.have.been.calledOnceWithExactly("First line");
+  });
+
+  it("should mark user interrupted instead of error status when cancelled via ExitPromptError", () => {
+    const setErrorStub = sandbox.stub(programStatus, "setErrorStatus");
+    const markInterruptedStub = sandbox.stub(programStatus, "markUserInterrupted");
+    const cancelError = new Error("User force closed the prompt with SIGINT");
+    cancelError.name = "ExitPromptError";
+    sandbox.stub(process, "exit");
+    errorOut(cancelError);
+    expect(markInterruptedStub).to.have.been.calledOnce;
+    expect(setErrorStub).to.not.have.been.called;
   });
 });

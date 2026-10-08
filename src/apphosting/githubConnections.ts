@@ -379,7 +379,10 @@ export async function getOrCreateOauthConnection(
       "Authorize the GitHub app",
     );
     utils.logBullet(`\t${url}`);
-    await input("Press Enter once you have authorized the GitHub App.");
+    await input({
+      message: "Press Enter once you have authorized the GitHub App.",
+      statusKind: "auth",
+    });
     cleanup();
     const { projectId, location, id } = parseConnectionName(conn.name)!;
     conn = await devConnect.getConnection(projectId, location, id);

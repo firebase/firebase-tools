@@ -12,6 +12,7 @@ import { FirebaseError, getErrMsg } from "./error";
 import * as utils from "./utils";
 import { logger } from "./logger";
 import { input } from "./prompt";
+import { restoreWorkingStatus, setBlockedStatus } from "./programStatus";
 import * as scopes from "./scopes";
 import { clearCredentials } from "./defaultCredentials";
 import { randomBytes, createHash, randomUUID } from "crypto";
@@ -556,7 +557,7 @@ async function loginRemotely(): Promise<UserCredentials> {
   logger.info("3. Paste or enter the authorization code below once you have it:");
   logger.info();
 
-  const code = await input({ message: "Enter authorization code:" });
+  const code = await input({ message: "Enter authorization code:", statusKind: "auth" });
 
   return loginRemotelyComplete(code, codeVerifier);
 }
@@ -607,6 +608,7 @@ async function loginWithLocalhost<ResultType>(
 ): Promise<ResultType> {
   return new Promise<ResultType>((resolve, reject) => {
     const server = http.createServer(async (req, res) => {
+      restoreWorkingStatus();
       const query = url.parse(`${req.url}`, true).query || {};
       const queryState = query.state;
       const queryCode = query.code;
@@ -638,11 +640,13 @@ async function loginWithLocalhost<ResultType>(
       logger.info(clc.bold(clc.underline(authUrl)));
       logger.info();
       logger.info("Waiting for authentication...");
+      setBlockedStatus({ kind: "auth", msg: "Waiting for authentication in browser..." });
 
       open(authUrl);
     });
 
     server.on("error", (err) => {
+      restoreWorkingStatus();
       reject(err);
     });
   });

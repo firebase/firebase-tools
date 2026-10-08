@@ -19,6 +19,13 @@ import { isFirebaseStudio, detectAIAgent } from "./env";
 import * as experiments from "./experiments";
 import { showDeprecationWarningBefore, showDeprecationWarningAfter } from "./extensions/warnings";
 import { setNonInteractive } from "./prompt";
+import {
+  detectProgramStatusSupport,
+  isUserCancellationError,
+  markUserInterrupted,
+  setDoneStatus,
+  setWorkingStatus,
+} from "./programStatus";
 
 export interface CommandModule {
   load: () => void;
@@ -233,6 +240,7 @@ export class Command {
               );
             });
           }
+          setDoneStatus(`Completed firebase ${this.name}`);
           const duration = Math.floor((process.uptime() - start) * 1000);
           const trackSuccess = trackGA4(
             "command_execution",
@@ -298,6 +306,9 @@ export class Command {
             ]),
           );
 
+          if (isUserCancellationError(err)) {
+            markUserInterrupted();
+          }
           client.errorOut(err);
         });
     });
@@ -327,6 +338,7 @@ export class Command {
     }
 
     setNonInteractive(!!options.nonInteractive);
+    await detectProgramStatusSupport();
 
     if (getInheritedOption(options, "debug")) {
       options.debug = true;
@@ -478,6 +490,7 @@ export class Command {
 
       const options = last(args);
       await this.prepare(options);
+      setWorkingStatus({ msg: `Running firebase ${this.name}` });
 
       if (this.name.startsWith("ext:") && experiments.isEnabled("extdeprecationwarnings")) {
         await showDeprecationWarningBefore(this.name, options, args);

@@ -5,6 +5,7 @@ import { trackEmulator } from "../track";
 import { getProjectId } from "../projectUtils";
 import { Constants } from "../emulator/constants";
 import * as config from "../hosting/config";
+import { markUserInterrupted, setIdleStatus, setWorkingStatus } from "../programStatus";
 
 const { FunctionsServer } = require("./functions");
 
@@ -49,16 +50,24 @@ export async function serve(options: any): Promise<void> {
     count_all: targetNames.length,
     is_demo_project: String(isDemoProject),
   });
-  await new Promise((resolve) => {
+  setIdleStatus("Serving local targets");
+  await new Promise<void>((resolve) => {
     process.on("SIGINT", () => {
       logger.info("Shutting down...");
+      setWorkingStatus({ msg: "Shutting down..." });
       Promise.all(
         targetNames.map((targetName: string) => {
           return TARGETS[targetName].stop(options);
         }),
       )
-        .then(resolve)
-        .catch(resolve);
+        .then(() => {
+          markUserInterrupted();
+          resolve();
+        })
+        .catch(() => {
+          markUserInterrupted();
+          resolve();
+        });
     });
   });
 }

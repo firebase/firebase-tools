@@ -1,5 +1,6 @@
 import * as inquirer from "@inquirer/prompts";
 import { FirebaseError } from "./error";
+import { BlockedKind, withBlockedStatus } from "./programStatus";
 
 export { Separator } from "@inquirer/prompts";
 
@@ -27,6 +28,7 @@ export interface BasicOptions<T> {
   default?: T;
   force?: boolean;
   nonInteractive?: boolean;
+  statusKind?: BlockedKind;
 }
 
 /**
@@ -86,7 +88,10 @@ export async function input(opts: InputConfig | string): Promise<string> {
       return value;
     }
   }
-  return inquirer.input(opts);
+  const { statusKind, ...inquirerOpts } = opts;
+  return withBlockedStatus(statusKind ?? "question", opts.message, () =>
+    inquirer.input(inquirerOpts),
+  );
 }
 
 /**
@@ -123,7 +128,10 @@ export async function confirm(opts: string | ConfirmConfig) {
     }
   }
 
-  return inquirer.confirm(opts);
+  const { statusKind, ...inquirerOpts } = opts;
+  return withBlockedStatus(statusKind ?? "permission", opts.message, () =>
+    inquirer.confirm(inquirerOpts),
+  );
 }
 
 /**
@@ -181,10 +189,13 @@ export async function checkbox<Value>(opts: CheckboxOptions<Value>): Promise<Val
   if (shouldReturn) {
     return value;
   }
-  return inquirer.checkbox({
-    ...opts,
-    loop: true,
-  });
+  const { statusKind, ...inquirerOpts } = opts;
+  return withBlockedStatus(statusKind ?? "question", opts.message, () =>
+    inquirer.checkbox({
+      ...inquirerOpts,
+      loop: true,
+    }),
+  );
 }
 
 /**
@@ -215,11 +226,14 @@ export async function select<Value>(opts: SelectOptions<Value>): Promise<Value> 
     typeof opts.instructions === "string"
       ? { navigation: opts.instructions, pager: opts.instructions }
       : opts.instructions;
-  return inquirer.select({
-    ...opts,
-    instructions,
-    loop: false,
-  });
+  const { statusKind, ...inquirerOpts } = opts;
+  return withBlockedStatus(statusKind ?? "question", opts.message, () =>
+    inquirer.select({
+      ...inquirerOpts,
+      instructions,
+      loop: false,
+    }),
+  );
 }
 
 /**
@@ -263,7 +277,10 @@ export async function number(opts: string | NumberOptions): Promise<number | und
     }
   }
 
-  return await inquirer.number({ required: true, ...opts });
+  const { statusKind, ...inquirerOpts } = opts;
+  return await withBlockedStatus(statusKind ?? "question", opts.message, () =>
+    inquirer.number({ required: true, ...inquirerOpts }),
+  );
 }
 
 /**
@@ -295,10 +312,13 @@ export async function password(opts: string | PasswordOptions): Promise<string> 
     guard(opts);
   }
 
-  return inquirer.password({
-    ...opts,
-    mask: "",
-  });
+  const { statusKind, ...inquirerOpts } = opts;
+  return withBlockedStatus(statusKind ?? "auth", opts.message, () =>
+    inquirer.password({
+      ...inquirerOpts,
+      mask: "",
+    }),
+  );
 }
 
 /**
@@ -329,5 +349,8 @@ export async function search<Value>(opts: SearchOptions<Value>): Promise<Value> 
   if (shouldReturn) {
     return value;
   }
-  return inquirer.search(opts);
+  const { statusKind, ...inquirerOpts } = opts;
+  return withBlockedStatus(statusKind ?? "question", opts.message, () =>
+    inquirer.search(inquirerOpts),
+  );
 }

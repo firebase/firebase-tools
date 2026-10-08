@@ -22,6 +22,7 @@ import * as Table from "cli-table3";
 import { emulatorSession } from "../track";
 import { setEnvVarsForEmulators } from "./env";
 import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook";
+import { markUserInterrupted, setWorkingStatus } from "../programStatus";
 
 export const FLAG_ONLY = "--only <emulators>";
 export const DESC_ONLY =
@@ -292,6 +293,7 @@ function processKillSignal(
           `Please wait for a clean shutdown or send the ${signalDisplay} signal again to stop right now.`,
         );
         // in case of a double 'Ctrl-C' we do not want to cleanly exit with onExit/cleanShutdown
+        setWorkingStatus({ msg: "Shutting down emulators..." });
         await controller.onExit(options);
         await controller.cleanShutdown();
       } else {
@@ -333,6 +335,7 @@ function processKillSignal(
           logger.info(clc.bold(`kill ${pids.join(" ")}\n`));
         }
       }
+      markUserInterrupted();
       res();
     } catch (e: unknown) {
       logger.debug(e as any);

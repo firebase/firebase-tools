@@ -11,6 +11,7 @@ import { ExtensionsEmulator } from "../emulator/extensionsEmulator";
 import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook";
 import { Options } from "../options";
 import * as Table from "cli-table3";
+import { setIdleStatus } from "../programStatus";
 
 function stylizeLink(url: string): string {
   return clc.underline(clc.bold(url));
@@ -46,6 +47,8 @@ export const command = new Command("emulators:start")
         for (const notice of deprecationNotices) {
           logLabeledWarning("emulators", notice, "warn");
         }
+
+        setIdleStatus("All emulators ready");
 
         // Hang until explicitly killed
         return killSignalPromise;

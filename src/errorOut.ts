@@ -1,5 +1,6 @@
 import { logError } from "./logError";
 import { FirebaseError } from "./error";
+import { isUserCancellationError, markUserInterrupted, setErrorStatus } from "./programStatus";
 
 /**
  * Errors out by calling `process.exit` with an exit code of 2.
@@ -14,6 +15,13 @@ export function errorOut(error: Error): void {
       original: error,
       exit: 2,
     });
+  }
+
+  if (isUserCancellationError(error) || isUserCancellationError(fbError)) {
+    markUserInterrupted();
+  } else {
+    const firstLine = fbError.message.split("\n")[0] || "Command failed";
+    setErrorStatus(firstLine);
   }
 
   logError(fbError);

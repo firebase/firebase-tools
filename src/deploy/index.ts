@@ -25,6 +25,7 @@ import { Context as HostingContext } from "./hosting/context";
 import { addPinnedFunctionsToOnlyString, hasPinnedFunctions } from "./hosting/prepare";
 import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
+import { clearRecord, setChildRecordStatus, setWorkingStatus } from "../programStatus";
 import { HostingConfig } from "../firebaseConfig";
 import {
   Context as DataConnectContext,
@@ -216,10 +217,43 @@ export const deploy = async function (
     }
 
     predeploys.push(lifecycleHooks(targetName, "predeploy"));
-    prepares.push(target.prepare);
+    prepares.push(async (ctx: any, opts: any, pay: any) => {
+      setChildRecordStatus(`deploy/${targetName}`, {
+        state: "working",
+        title: targetName,
+        msg: `Preparing ${targetName}...`,
+      });
+      await target.prepare(ctx, opts, pay);
+      if (options.dryRun) {
+        setChildRecordStatus(`deploy/${targetName}`, {
+          state: "done",
+          title: targetName,
+          msg: `Prepared ${targetName}`,
+        });
+      }
+    });
     if (!options.dryRun) {
-      deploys.push(target.deploy);
-      releases.push(target.release);
+      deploys.push(async (ctx: any, opts: any, pay: any) => {
+        setChildRecordStatus(`deploy/${targetName}`, {
+          state: "working",
+          title: targetName,
+          msg: `Deploying ${targetName}...`,
+        });
+        await target.deploy(ctx, opts, pay);
+      });
+      releases.push(async (ctx: any, opts: any, pay: any) => {
+        setChildRecordStatus(`deploy/${targetName}`, {
+          state: "working",
+          title: targetName,
+          msg: `Releasing ${targetName}...`,
+        });
+        await target.release(ctx, opts, pay);
+        setChildRecordStatus(`deploy/${targetName}`, {
+          state: "done",
+          title: targetName,
+          msg: `Deployed ${targetName}`,
+        });
+      });
       postdeploys.push(lifecycleHooks(targetName, "postdeploy"));
     }
   }
@@ -229,6 +263,9 @@ export const deploy = async function (
   logger.info();
 
   logBullet("deploying " + bold(targetNames.join(", ")));
+  setWorkingStatus({
+    msg: `Deploying to '${projectId}' (${targetNames.join(", ")})`,
+  });
 
   let result = "predeploys_error";
   try {
@@ -243,6 +280,7 @@ export const deploy = async function (
     await chain(postdeploys, context, options, payload);
     result = "success";
   } finally {
+    clearRecord("deploy");
     const baseParams: AnalyticsParams = {
       interactive: options.nonInteractive ? "false" : "true",
       dry_run: options.dryRun ? "true" : "false",

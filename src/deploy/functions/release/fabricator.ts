@@ -38,6 +38,7 @@ import { getDataConnectP4SA } from "../services/dataconnect";
 import { AUTH_BLOCKING_EVENTS } from "../../../functions/events/v1";
 import * as gce from "../../../gcp/computeEngine";
 import { getHumanFriendlyPlatformName } from "../functionsDeployHelper";
+import { setChildRecordStatus } from "../../../programStatus";
 
 // TODO: Tune this for better performance.
 const gcfV1PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
@@ -104,6 +105,8 @@ export class Fabricator {
   appEngineLocation: string;
   projectNumber: string;
   projectId: string;
+  private totalOperations = 0;
+  private completedOperations = 0;
 
   constructor(args: FabricatorArgs) {
     this.executor = args.executor;
@@ -265,6 +268,15 @@ export class Fabricator {
     for (const codebasePlan of Object.values(plan)) {
       allChangesets.push(...Object.values(codebasePlan.regionalChangesets));
     }
+    this.totalOperations = allChangesets.reduce(
+      (sum, cs) =>
+        sum +
+        cs.endpointsToCreate.length +
+        cs.endpointsToUpdate.length +
+        cs.endpointsToDelete.length,
+      0,
+    );
+    this.completedOperations = 0;
 
     // Phase 1: Creates and Updates
     const createAndUpdatePromises = allChangesets.map((changes) => {
@@ -417,6 +429,19 @@ export class Fabricator {
       this.logOpSuccess(op, endpoint);
     } catch (err: any) {
       result.error = err as Error;
+    }
+    this.completedOperations += 1;
+    if (this.totalOperations > 0) {
+      const progress = Math.min(
+        100,
+        Math.floor((this.completedOperations / this.totalOperations) * 100),
+      );
+      setChildRecordStatus("deploy/functions", {
+        state: "working",
+        title: "functions",
+        msg: `${this.completedOperations}/${this.totalOperations} functions deployed`,
+        progress,
+      });
     }
     result.durationMs = timer.stop();
     return result as reporter.DeployResult;

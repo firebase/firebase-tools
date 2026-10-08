@@ -142,6 +142,27 @@ export class Uploader {
     await Promise.all([this.hashQueue.wait(), this.populateQueue.wait(), this.uploadQueue.wait()]);
   }
 
+  progressPercent(): number {
+    if (this.fileCount === 0) {
+      return 100;
+    }
+    if (!this.hashQueue.finished) {
+      return Math.floor((this.hashQueue.complete / this.fileCount) * 33);
+    }
+    if (!this.populateQueue.finished) {
+      const populated = Math.min(this.fileCount, this.populateQueue.complete * 1000);
+      return 33 + Math.floor((populated / this.fileCount) * 33);
+    }
+    if (!this.uploadQueue.finished) {
+      const totalUploads = this.uploadQueue.stats().total;
+      if (totalUploads === 0) {
+        return 99;
+      }
+      return 66 + Math.floor((this.uploadQueue.complete / totalUploads) * 34);
+    }
+    return 100;
+  }
+
   statusMessage(): string {
     if (!this.hashQueue.finished) {
       return progressMessage("hashing files", this.hashQueue.complete, this.fileCount);

@@ -17,6 +17,7 @@ import { Constants } from "./emulator/constants";
 import { Options } from "./options";
 import { HTTPS_SENTINEL } from "./localFunction";
 import { needProjectId } from "./projectUtils";
+import { setIdleStatus } from "./programStatus";
 
 const serveFunctions = new FunctionsServer();
 
@@ -140,6 +141,7 @@ export const actionFunction = async (options: Options) => {
       });
       initializeContext(replServer.context);
       replServer.on("reset", initializeContext);
+      setIdleStatus("Functions shell ready");
 
       return new Promise((resolve) => {
         replServer.on("exit", () => {

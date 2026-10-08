@@ -192,7 +192,7 @@ export async function getOrCreateOauthConnection(
       "Authorize the GitHub app",
     );
     utils.logBullet(`\t${url}`);
-    await input("Press Enter once you have authorized the app");
+    await input({ message: "Press Enter once you have authorized the app", statusKind: "auth" });
     cleanup();
     const { projectId, location, id } = parseConnectionName(conn.name)!;
     conn = await gcb.getConnection(projectId, location, id);

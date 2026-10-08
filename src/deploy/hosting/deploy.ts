@@ -9,6 +9,7 @@ import { Context, HostingDeploy } from "./context";
 import { Options } from "../../options";
 import { dirExistsSync } from "../../fsutils";
 import { FirebaseError } from "../../error";
+import { setChildRecordStatus } from "../../programStatus";
 
 /**
  * Uploads static assets to the upcoming Hosting versions.
@@ -19,12 +20,25 @@ export async function deploy(context: Context, options: Options): Promise<void> 
   }
 
   const spinner = ora();
-  function updateSpinner(newMessage: string, debugging: boolean): void {
+  function updateSpinner(
+    newMessage: string,
+    debugging: boolean,
+    site?: string,
+    progress?: number,
+  ): void {
     // don't try to rewrite lines if debugging since it's likely to get interrupted
     if (debugging) {
       logLabeledBullet("hosting", newMessage);
     } else {
       spinner.text = `${bold(cyan(" hosting:"))} ${newMessage}`;
+    }
+    if (site) {
+      setChildRecordStatus(`deploy/hosting/${site}`, {
+        state: "working",
+        title: `hosting:${site}`,
+        msg: newMessage,
+        progress,
+      });
     }
   }
 
@@ -77,7 +91,13 @@ export async function deploy(context: Context, options: Options): Promise<void> 
     });
 
     const progressInterval = setInterval(
-      () => updateSpinner(uploader.statusMessage(), debugging),
+      () =>
+        updateSpinner(
+          uploader.statusMessage(),
+          debugging,
+          deploy.config.site,
+          uploader.progressPercent(),
+        ),
       debugging ? 2000 : 200,
     );
 
@@ -89,7 +109,12 @@ export async function deploy(context: Context, options: Options): Promise<void> 
       await uploader.start();
     } finally {
       clearInterval(progressInterval);
-      updateSpinner(uploader.statusMessage(), debugging);
+      updateSpinner(
+        uploader.statusMessage(),
+        debugging,
+        deploy.config.site,
+        uploader.progressPercent(),
+      );
     }
 
     if (!debugging) {
@@ -97,6 +122,12 @@ export async function deploy(context: Context, options: Options): Promise<void> 
     }
 
     logLabeledSuccess(`hosting[${deploy.config.site}]`, "file upload complete");
+    setChildRecordStatus(`deploy/hosting/${deploy.config.site}`, {
+      state: "done",
+      title: `hosting:${deploy.config.site}`,
+      msg: "file upload complete",
+      progress: 100,
+    });
     const dt = Date.now() - t0;
     logger.debug(`[hosting] deploy completed after ${dt}ms`);
     return runDeploys(deploys, debugging);

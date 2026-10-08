@@ -7,3 +7,4 @@
 - Fixed an issue where 2nd-gen functions with parameterized trigger event filters failed default region resolution (#11020).
 - Fixed `functions:lifecycle:list` and `functions:lifecycle:run` failing to detect Function Kit instances (#11240).
 - Fixed nested ternary CEL expressions in function parameters, which previously failed to load or selected the wrong branch. (#7755)
+- Added support for the terminal Program Status Protocol (OSC 7501).

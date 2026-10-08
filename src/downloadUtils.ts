@@ -7,6 +7,7 @@ import * as tmp from "tmp";
 import { Client } from "./apiv2";
 import { FirebaseError } from "./error";
 import { streamToString } from "./streamUtils";
+import { setWorkingStatus } from "./programStatus";
 
 /**
  * Downloads the resource at `remoteUrl` to a temporary file.
@@ -38,9 +39,23 @@ export async function downloadToTmp(remoteUrl: string, auth = false): Promise<st
   const total = parseInt(res.response.headers.get("content-length") || "0", 10);
   const totalMb = Math.ceil(total / 1000000);
   const bar = new ProgressBar(`Progress: :bar (:percent of ${totalMb}MB)`, { total, head: ">" });
+  const resourceName = u.pathname.split("/").pop() || "resource";
+  let downloaded = 0;
+  let lastReportedPct = -1;
 
   res.body.on("data", (chunk: string) => {
     bar.tick(chunk.length);
+    if (total > 0) {
+      downloaded += chunk.length;
+      const pct = Math.min(100, Math.floor((downloaded / total) * 100));
+      if (pct !== lastReportedPct) {
+        lastReportedPct = pct;
+        setWorkingStatus({
+          msg: `Downloading ${resourceName} (${totalMb}MB)`,
+          progress: pct,
+        });
+      }
+    }
   });
 
   await new Promise<void>((resolve) => {

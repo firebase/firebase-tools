@@ -20,6 +20,7 @@ import { FirebaseError, getErrMsg, getError } from "./error";
 import { logger, LogLevel } from "./logger";
 import { LogDataOrUndefined } from "./emulator/loggingEmulator";
 import { input, password } from "./prompt";
+import { withWorkingStatus } from "./programStatus";
 import { readTemplateSync } from "./templates";
 import { isVSCodeExtension } from "./vsCodeUtils";
 import { Config } from "./config";
@@ -471,7 +472,7 @@ export async function promiseWithSpinner<T>(action: () => Promise<T>, message: s
   const spinner = ora(message).start();
   let data;
   try {
-    data = await action();
+    data = await withWorkingStatus(message, action);
     spinner.succeed();
   } catch (err: unknown) {
     spinner.fail();
