@@ -251,18 +251,17 @@ describe("init run", () => {
       });
     });
 
-    it("adds the default ignore list to an existing service only if it has none", () => {
+    it("doesn't add an ignore list to an existing service", () => {
       config.set("run", [
         { serviceId: "web", region: "us-central1" },
         { serviceId: "api", region: "us-central1", ignore: [] },
       ]);
 
-      upsertRunConfig({ serviceId: "web", region: "us-central1", rootDir: "/" }, config);
-      upsertRunConfig({ serviceId: "api", region: "us-central1", rootDir: "api" }, config);
+      upsertRunConfig({ serviceId: "web", region: "us-east1", rootDir: "/" }, config);
 
       expect(config.src.run).to.deep.equal([
-        { serviceId: "web", region: "us-central1", rootDir: "/", ignore: DEFAULT_IGNORE },
-        { serviceId: "api", region: "us-central1", rootDir: "api", ignore: [] },
+        { serviceId: "web", region: "us-east1", rootDir: "/" },
+        { serviceId: "api", region: "us-central1", ignore: [] },
       ]);
     });
   });

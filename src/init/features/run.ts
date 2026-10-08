@@ -178,9 +178,9 @@ export async function actuate(setup: Setup, config: Config, options: Options): P
 }
 
 /**
- * Adds the service to firebase.json, or updates its rootDir, region, and localBuild if it's
- * already there. Other settings, like a custom ignore list, are kept. Any service without an
- * ignore list gets the default one. Exported for unit testing.
+ * Adds a new service to firebase.json with the default ignore list. If the service is already
+ * there, only its rootDir, region, and localBuild change; nothing else in the entry is added or
+ * removed. Exported for unit testing.
  */
 export function upsertRunConfig(
   service: { serviceId: string; rootDir: string; region: string; localBuild?: boolean },
@@ -198,7 +198,6 @@ export function upsertRunConfig(
     } else {
       delete existing.localBuild;
     }
-    existing.ignore ??= DEFAULT_IGNORE;
   } else {
     entries.push({ ...service, ignore: DEFAULT_IGNORE });
   }
