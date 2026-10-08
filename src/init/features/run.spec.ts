@@ -64,6 +64,7 @@ describe("init run", () => {
       });
       expect(getOrCreateWebAppStub).to.have.been.calledWith("p", null, "my-service");
       expect(inputStub.secondCall.args[0].default).to.be.undefined;
+      expect(inputStub.thirdCall.args[0].default).to.equal("/");
       const validateDir = inputStub.thirdCall.args[0].validate;
       expect(validateDir(".")).to.be.true;
       expect(validateDir("nonexistent-dir-xyz")).to.include("does not exist");
@@ -122,6 +123,23 @@ describe("init run", () => {
       });
     });
 
+    it("defaults the root directory to the one saved for the same service and region", async () => {
+      const existing = { name: "projects/p/locations/europe-west1/services/web", template: {} };
+      sinon.stub(runv2, "listServices").resolves([existing] as unknown as runv2.Service[]);
+      selectStub.onFirstCall().resolves("update").onSecondCall().resolves(existing);
+      inputStub.callsFake((o) => Promise.resolve(o.default));
+      // The same service ID in another region is a different service, so its entry is skipped.
+      config.set("run", [
+        { serviceId: "web", region: "us-central1", rootDir: "other-region" },
+        { serviceId: "web", region: "europe-west1", rootDir: "internal/folder" },
+      ]);
+      const s = setup();
+
+      await askQuestions(s, config, options);
+
+      expect(s.featureInfo?.run?.rootDir).to.equal("internal/folder");
+    });
+
     it("creates a service if there are none to update", async () => {
       sinon.stub(runv2, "listServices").resolves([]);
       selectStub.onFirstCall().resolves("update").onSecondCall().resolves("us-central1");
@@ -148,6 +166,7 @@ describe("init run", () => {
 
       await askQuestions(s, config, options);
 
+      expect(selectStub.thirdCall.args[0].default).to.be.false;
       const baseImagePrompt = inputStub.secondCall.args[0];
       expect(baseImagePrompt.default).to.be.undefined;
       expect(baseImagePrompt.validate("nodejs22")).to.be.true;
@@ -160,6 +179,29 @@ describe("init run", () => {
         localBuild: true,
         appId: "1:1:web:a",
       });
+    });
+
+    it("defaults to building locally if the saved entry for the service does", async () => {
+      const existing = {
+        name: "projects/p/locations/europe-west1/services/web",
+        template: { containers: [{ name: "web", image: "i", baseImageUri: "nodejs22" }] },
+      };
+      sinon.stub(runv2, "listServices").resolves([existing] as unknown as runv2.Service[]);
+      selectStub.onFirstCall().resolves("update").onSecondCall().resolves(existing);
+      selectStub.onThirdCall().callsFake((o) => Promise.resolve(o.default));
+      inputStub.callsFake((o) => Promise.resolve(o.default));
+      config.set("run", {
+        serviceId: "web",
+        region: "europe-west1",
+        rootDir: "/",
+        localBuild: true,
+      });
+      const s = setup();
+
+      await askQuestions(s, config, options);
+
+      expect(selectStub.thirdCall.args[0].default).to.be.true;
+      expect(s.featureInfo?.run?.localBuild).to.be.true;
     });
   });
 
@@ -239,7 +281,7 @@ describe("init run", () => {
       upsertRunConfig(
         {
           serviceId: "web",
-          region: "us-east1",
+          region: "us-central1",
           rootDir: "apps/web",
           localBuild: true,
         },
@@ -247,7 +289,7 @@ describe("init run", () => {
       );
       expect(config.src.run).to.deep.equal({
         serviceId: "web",
-        region: "us-east1",
+        region: "us-central1",
         rootDir: "apps/web",
         localBuild: true,
         ignore: ["custom-ignore"],
@@ -256,14 +298,14 @@ describe("init run", () => {
       upsertRunConfig(
         {
           serviceId: "web",
-          region: "us-east1",
+          region: "us-central1",
           rootDir: "apps/web",
         },
         config,
       );
       expect(config.src.run).to.deep.equal({
         serviceId: "web",
-        region: "us-east1",
+        region: "us-central1",
         rootDir: "apps/web",
         ignore: ["custom-ignore"],
       });
@@ -275,11 +317,23 @@ describe("init run", () => {
         { serviceId: "api", region: "us-central1", ignore: [] },
       ]);
 
-      upsertRunConfig({ serviceId: "web", region: "us-east1", rootDir: "/" }, config);
+      upsertRunConfig({ serviceId: "web", region: "us-central1", rootDir: "/" }, config);
 
       expect(config.src.run).to.deep.equal([
-        { serviceId: "web", region: "us-east1", rootDir: "/" },
+        { serviceId: "web", region: "us-central1", rootDir: "/" },
         { serviceId: "api", region: "us-central1", ignore: [] },
+      ]);
+    });
+
+    it("adds a separate entry for the same service ID in another region", () => {
+      const saved = { serviceId: "web", region: "us-central1", rootDir: "apps/web", ignore: [] };
+      config.set("run", { ...saved });
+
+      upsertRunConfig({ serviceId: "web", region: "europe-west1", rootDir: "/" }, config);
+
+      expect(config.src.run).to.deep.equal([
+        saved,
+        { serviceId: "web", region: "europe-west1", rootDir: "/", ignore: DEFAULT_IGNORE },
       ]);
     });
   });
