@@ -25,7 +25,11 @@ const ADMIN_SDK_ROLE = "roles/firebase.sdkAdminServiceAgent";
  * Reads each service's current state from Cloud Run and resolves its base image and build env.
  */
 export async function prepare(context: Context, options: Options, payload: Payload): Promise<void> {
-  const configs = getServiceConfigs(options);
+  let configs = getServiceConfigs(options);
+  if (context.region) {
+    // --only run:<id> matches services with that ID in every region.
+    configs = configs.filter((c) => c.region === context.region);
+  }
   if (!configs.length) {
     return;
   }

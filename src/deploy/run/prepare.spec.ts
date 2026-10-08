@@ -273,4 +273,27 @@ describe("run prepare", () => {
       expect(hasRolesStub).not.to.have.been.called;
     });
   });
+
+  it("deploys a service ID in every region unless the context names a region", async () => {
+    const sameIdTwoRegions = {
+      only: "run:s",
+      config: {
+        src: {
+          run: [
+            { serviceId: "s", region: "us-central1" },
+            { serviceId: "s", region: "europe-west1" },
+          ],
+        },
+        projectDir: "/p",
+      },
+    } as unknown as Options;
+    const preparedRegions = async (context: Partial<Context>) => {
+      const payload: Payload = {};
+      await prepare({ projectId: "p", ...context }, sameIdTwoRegions, payload);
+      return payload.run!.services.map((svc) => svc.config.region);
+    };
+
+    expect(await preparedRegions({})).to.deep.equal(["us-central1", "europe-west1"]);
+    expect(await preparedRegions({ region: "europe-west1" })).to.deep.equal(["europe-west1"]);
+  });
 });
