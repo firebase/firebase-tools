@@ -8,6 +8,7 @@ import {
   BLOCKING_FUNCTION_HOST,
   DISPLAY_NAME,
   enrollPhoneMfa,
+  enrollTotpMfa,
   expectStatusCode,
   getAccountInfoByIdToken,
   getAccountInfoByLocalId,
@@ -26,6 +27,7 @@ import {
 } from "./testing/helpers";
 import { MfaEnrollment } from "./types";
 import { FirebaseJwtPayload } from "./operations";
+import { generateTotpCode, verifyTotpCode } from "./totp";
 
 describeAuthEmulator("mfa enrollment", ({ authApi, getClock }) => {
   it("should error if account does not have email verified", async () => {
@@ -651,5 +653,471 @@ describeAuthEmulator("mfa enrollment", ({ authApi, getClock }) => {
           expect(res.body.error).to.have.property("message").equals("USER_DISABLED");
         });
     });
+  });
+});
+
+describeAuthEmulator("mfa with TOTP", ({ authApi, getClock }) => {
+  const password = "testing123";
+
+  async function registerVerifiedUser(
+    email: string,
+    tenantId?: string,
+  ): Promise<{ idToken: string; localId: string }> {
+    const { idToken, localId } = await registerUser(authApi(), { email, password, tenantId });
+    await updateAccountByLocalId(authApi(), localId, { emailVerified: true, tenantId });
+    return { idToken, localId };
+  }
+
+  async function startTotpEnrollment(
+    idToken: string,
+  ): Promise<{ sessionInfo: string; sharedSecretKey: string }> {
+    const res = await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:start")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, totpEnrollmentInfo: {} });
+    expectStatusCode(200, res);
+    return res.body.totpSessionInfo;
+  }
+
+  function decodeIdToken(idToken: string): FirebaseJwtPayload {
+    const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
+      header: JwtHeader;
+      payload: FirebaseJwtPayload;
+    } | null;
+    expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
+    return decoded!.payload;
+  }
+
+  // A six digit code that is not valid for the secret right now.
+  function wrongCode(secret: string): string {
+    return verifyTotpCode(secret, "000000", 5) ? "111111" : "000000";
+  }
+
+  it("should return a shared secret on mfaEnrollment:start", async () => {
+    const { idToken } = await registerVerifiedUser("alice@example.com");
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:start")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, totpEnrollmentInfo: {} })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body).not.to.have.property("phoneSessionInfo");
+        const info = res.body.totpSessionInfo;
+        expect(info.sharedSecretKey).to.match(/^[A-Z2-7]{32}$/);
+        expect(info.verificationCodeLength).to.equal(6);
+        expect(info.hashingAlgorithm).to.equal("SHA1");
+        expect(info.periodSec).to.equal(30);
+        expect(info.sessionInfo).to.be.a("string");
+        expect(new Date(info.finalizeEnrollmentTime).getTime()).to.be.greaterThan(Date.now());
+      });
+  });
+
+  it("should enroll a TOTP second factor with a valid code", async () => {
+    const { idToken } = await registerVerifiedUser("alice@example.com");
+    const { sessionInfo, sharedSecretKey } = await startTotpEnrollment(idToken);
+
+    const res = await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:finalize")
+      .query({ key: "fake-api-key" })
+      .send({
+        idToken,
+        displayName: "Authenticator app",
+        totpVerificationInfo: { sessionInfo, verificationCode: generateTotpCode(sharedSecretKey) },
+      });
+    expectStatusCode(200, res);
+    expect(res.body.idToken).to.be.a("string");
+    expect(res.body.refreshToken).to.be.a("string");
+
+    const userInfo = await getAccountInfoByIdToken(authApi(), res.body.idToken);
+    expect(userInfo.mfaInfo).to.be.an("array").with.lengthOf(1);
+    const enrollment = userInfo.mfaInfo![0];
+    expect(enrollment.totpInfo).to.eql({});
+    expect(enrollment.displayName).to.equal("Authenticator app");
+    expect(enrollment).not.to.have.property("phoneInfo");
+    // The shared secret must never be sent back to clients.
+    expect(enrollment).not.to.have.property("emulatorTotpSecret");
+    expect(JSON.stringify(userInfo)).not.to.contain(sharedSecretKey);
+
+    const payload = decodeIdToken(res.body.idToken);
+    expect(payload.firebase.sign_in_second_factor).to.equal("totp");
+    expect(payload.firebase.second_factor_identifier).to.equal(enrollment.mfaEnrollmentId);
+
+    // Enrollment sessions can only be used once.
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:finalize")
+      .query({ key: "fake-api-key" })
+      .send({
+        idToken: res.body.idToken,
+        totpVerificationInfo: { sessionInfo, verificationCode: generateTotpCode(sharedSecretKey) },
+      })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("INVALID_SESSION_INFO");
+      });
+  });
+
+  it("should error on mfaEnrollment:finalize if the TOTP code is wrong", async () => {
+    const { idToken } = await registerVerifiedUser("alice@example.com");
+    const { sessionInfo, sharedSecretKey } = await startTotpEnrollment(idToken);
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:finalize")
+      .query({ key: "fake-api-key" })
+      .send({
+        idToken,
+        totpVerificationInfo: { sessionInfo, verificationCode: wrongCode(sharedSecretKey) },
+      })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("INVALID_CODE");
+      });
+
+    const userInfo = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(userInfo.mfaInfo || []).to.have.lengthOf(0);
+  });
+
+  it("should error on mfaEnrollment:finalize if the TOTP code has expired", async () => {
+    const { idToken } = await registerVerifiedUser("alice@example.com");
+    const { sessionInfo, sharedSecretKey } = await startTotpEnrollment(idToken);
+    const verificationCode = generateTotpCode(sharedSecretKey);
+
+    // Codes from up to 5 intervals before or after now are accepted by default.
+    getClock().tick(6 * 30 * 1000);
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:finalize")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, totpVerificationInfo: { sessionInfo, verificationCode } })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("INVALID_CODE");
+      });
+  });
+
+  it("should use the configured adjacentIntervals", async () => {
+    const { tenantId } = await registerTenant(authApi(), PROJECT_ID, {
+      disableAuth: false,
+      allowPasswordSignup: true,
+      mfaConfig: {
+        providerConfigs: [{ state: "ENABLED", totpProviderConfig: { adjacentIntervals: 0 } }],
+      },
+    });
+    const { idToken } = await registerVerifiedUser("alice@example.com", tenantId);
+    const start = await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:start")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, tenantId, totpEnrollmentInfo: {} });
+    expectStatusCode(200, start);
+    const { sessionInfo, sharedSecretKey } = start.body.totpSessionInfo as {
+      sessionInfo: string;
+      sharedSecretKey: string;
+    };
+    const staleCode = generateTotpCode(sharedSecretKey);
+
+    // With no adjacent intervals, a code from the previous interval is rejected
+    // even though the default of 5 would accept it.
+    getClock().tick(30 * 1000);
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:finalize")
+      .query({ key: "fake-api-key" })
+      .send({
+        idToken,
+        tenantId,
+        totpVerificationInfo: { sessionInfo, verificationCode: staleCode },
+      })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("INVALID_CODE");
+      });
+
+    // The code for the current interval still works with the same session.
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:finalize")
+      .query({ key: "fake-api-key" })
+      .send({
+        idToken,
+        tenantId,
+        totpVerificationInfo: { sessionInfo, verificationCode: generateTotpCode(sharedSecretKey) },
+      })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.idToken).to.be.a("string");
+      });
+  });
+
+  it("should error on mfaEnrollment:finalize with the session of another user", async () => {
+    const alice = await registerVerifiedUser("alice@example.com");
+    const bob = await registerVerifiedUser("bob@example.com");
+    const { sessionInfo, sharedSecretKey } = await startTotpEnrollment(alice.idToken);
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:finalize")
+      .query({ key: "fake-api-key" })
+      .send({
+        idToken: bob.idToken,
+        totpVerificationInfo: { sessionInfo, verificationCode: generateTotpCode(sharedSecretKey) },
+      })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("INVALID_SESSION_INFO");
+      });
+  });
+
+  it("should error on TOTP requests if TOTP is not an enabled provider", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, {
+      disableAuth: false,
+      mfaConfig: { state: "ENABLED", enabledProviders: ["PHONE_SMS"] },
+    });
+    const requests: [string, Record<string, unknown>][] = [
+      ["mfaEnrollment:start", { totpEnrollmentInfo: {} }],
+      ["mfaEnrollment:finalize", { totpVerificationInfo: {} }],
+      ["mfaSignIn:finalize", { totpVerificationInfo: {} }],
+    ];
+    for (const [method, body] of requests) {
+      await authApi()
+        .post(`/identitytoolkit.googleapis.com/v2/accounts/${method}`)
+        .query({ key: "fake-api-key" })
+        .send({ tenantId: tenant.tenantId, ...body })
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error)
+            .to.have.property("message")
+            .equals("OPERATION_NOT_ALLOWED : TOTP based MFA not enabled.");
+        });
+    }
+  });
+
+  it("should sign in with a TOTP second factor", async () => {
+    const email = "alice@example.com";
+    const { idToken, localId } = await registerVerifiedUser(email);
+    const { sharedSecretKey } = await enrollTotpMfa(authApi(), idToken);
+
+    getClock().tick(30 * 1000);
+
+    const { mfaPendingCredential, mfaEnrollmentId } = await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
+      .query({ key: "fake-api-key" })
+      .send({ email, password })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body).not.to.have.property("idToken");
+        const mfaInfo = res.body.mfaInfo as MfaEnrollment[];
+        expect(mfaInfo).to.be.an("array").with.lengthOf(1);
+        expect(mfaInfo[0].totpInfo).to.eql({});
+        expect(mfaInfo[0]).not.to.have.property("phoneInfo");
+        expect(JSON.stringify(res.body)).not.to.contain(sharedSecretKey);
+        return {
+          mfaPendingCredential: res.body.mfaPendingCredential as string,
+          mfaEnrollmentId: mfaInfo[0].mfaEnrollmentId,
+        };
+      });
+
+    getClock().tick(5555);
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaSignIn:finalize")
+      .query({ key: "fake-api-key" })
+      .send({
+        mfaPendingCredential,
+        mfaEnrollmentId,
+        totpVerificationInfo: { verificationCode: generateTotpCode(sharedSecretKey) },
+      })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.idToken).to.be.a("string");
+        expect(res.body.refreshToken).to.be.a("string");
+        const payload = decodeIdToken(res.body.idToken);
+        expect(payload.firebase.sign_in_second_factor).to.equal("totp");
+        expect(payload.firebase.second_factor_identifier).to.equal(mfaEnrollmentId);
+      });
+
+    const afterMfa = await getAccountInfoByLocalId(authApi(), localId);
+    expect(afterMfa.lastLoginAt).to.equal(Date.now().toString());
+  });
+
+  it("should error on mfaSignIn:finalize with a wrong TOTP code or enrollment", async () => {
+    const email = "alice@example.com";
+    const { idToken } = await registerVerifiedUser(email);
+    const { sharedSecretKey } = await enrollTotpMfa(authApi(), idToken);
+    const { mfaPendingCredential, mfaEnrollmentId } = await signInWithPassword(
+      authApi(),
+      email,
+      password,
+      true,
+    );
+
+    const cases: [Record<string, unknown>, string][] = [
+      [
+        { mfaEnrollmentId, totpVerificationInfo: { verificationCode: wrongCode(sharedSecretKey) } },
+        "INVALID_CODE",
+      ],
+      [
+        { mfaEnrollmentId: "unknown", totpVerificationInfo: { verificationCode: "123456" } },
+        "MFA_ENROLLMENT_NOT_FOUND",
+      ],
+      [
+        { totpVerificationInfo: { verificationCode: "123456" } },
+        "MISSING_MFA_ENROLLMENT_ID : No second factor identifier is provided.",
+      ],
+    ];
+    for (const [body, message] of cases) {
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v2/accounts/mfaSignIn:finalize")
+        .query({ key: "fake-api-key" })
+        .send({ mfaPendingCredential, ...body })
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error).to.have.property("message").equals(message);
+        });
+    }
+  });
+
+  it("should allow profile updates for a user with a TOTP second factor", async () => {
+    const { idToken: firstToken, localId } = await registerVerifiedUser("alice@example.com");
+    const { idToken } = await enrollTotpMfa(authApi(), firstToken);
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, displayName: DISPLAY_NAME })
+      .then((res) => expectStatusCode(200, res));
+    await updateAccountByLocalId(authApi(), localId, { photoUrl: PHOTO_URL });
+
+    const userInfo = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(userInfo.displayName).to.equal(DISPLAY_NAME);
+    expect(userInfo.photoUrl).to.equal(PHOTO_URL);
+    expect(userInfo.mfaInfo).to.have.lengthOf(1);
+  });
+
+  it("should allow withdrawing a TOTP second factor", async () => {
+    const email = "alice@example.com";
+    const { idToken: firstToken } = await registerVerifiedUser(email);
+    const { idToken } = await enrollTotpMfa(authApi(), firstToken);
+    const { mfaInfo } = await getAccountInfoByIdToken(authApi(), idToken);
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:withdraw")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, mfaEnrollmentId: mfaInfo![0].mfaEnrollmentId })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(decodeIdToken(res.body.idToken).firebase).not.to.have.property(
+          "sign_in_second_factor",
+        );
+      });
+
+    const after = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(after.mfaInfo).to.have.lengthOf(0);
+    const signIn = await signInWithPassword(authApi(), email, password);
+    expect(signIn.idToken).to.be.a("string");
+  });
+
+  it("should keep TOTP sign in working after export and import", async () => {
+    const email = "alice@example.com";
+    const { idToken } = await registerVerifiedUser(email);
+    const { sharedSecretKey } = await enrollTotpMfa(authApi(), idToken);
+
+    // Export reads accounts with accounts:batchGet and import writes them back
+    // with accounts:batchCreate.
+    const users = await authApi()
+      .get(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchGet`)
+      .query({ maxResults: -1 })
+      .set("Authorization", "Bearer owner")
+      .then((res) => {
+        expectStatusCode(200, res);
+        return res.body.users as { mfaInfo: MfaEnrollment[] }[];
+      });
+    expect(users[0].mfaInfo[0].emulatorTotpSecret).to.equal(sharedSecretKey);
+
+    await authApi()
+      .delete(`/emulator/v1/projects/${PROJECT_ID}/accounts`)
+      .send()
+      .then((res) => expectStatusCode(200, res));
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchCreate`)
+      .set("Authorization", "Bearer owner")
+      .send({ users })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.error || []).to.have.length(0);
+      });
+
+    const { mfaPendingCredential, mfaEnrollmentId } = await signInWithPassword(
+      authApi(),
+      email,
+      password,
+      true,
+    );
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaSignIn:finalize")
+      .query({ key: "fake-api-key" })
+      .send({
+        mfaPendingCredential,
+        mfaEnrollmentId,
+        totpVerificationInfo: { verificationCode: generateTotpCode(sharedSecretKey) },
+      })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(decodeIdToken(res.body.idToken).firebase.sign_in_second_factor).to.equal("totp");
+      });
+  });
+
+  it("should not import a TOTP enrollment without its shared secret", async () => {
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchCreate`)
+      .set("Authorization", "Bearer owner")
+      .send({
+        users: [
+          {
+            localId: "totp-user",
+            email: "alice@example.com",
+            emailVerified: true,
+            mfaInfo: [{ mfaEnrollmentId: "enrollment-id", totpInfo: {} }],
+          },
+        ],
+      })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.error).to.eql([{ index: 0, message: "Second factor not supported." }]);
+      });
+  });
+
+  it("should ask for the TOTP factor when TOTP is the only MFA provider", async () => {
+    // Production enables TOTP through providerConfigs alone, so the top level
+    // state stays DISABLED.
+    const tenant = await registerTenant(authApi(), PROJECT_ID, {
+      disableAuth: false,
+      allowPasswordSignup: true,
+      mfaConfig: { providerConfigs: [{ state: "ENABLED", totpProviderConfig: {} }] },
+    });
+    const { tenantId } = tenant;
+    const email = "alice@example.com";
+    const { idToken } = await registerVerifiedUser(email, tenantId);
+    const { sharedSecretKey } = await enrollTotpMfa(authApi(), idToken, tenantId);
+
+    const { mfaPendingCredential, mfaInfo } = await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
+      .query({ key: "fake-api-key" })
+      .send({ email, password, tenantId })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body).not.to.have.property("idToken");
+        return res.body as { mfaPendingCredential: string; mfaInfo: MfaEnrollment[] };
+      });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/mfaSignIn:finalize")
+      .query({ key: "fake-api-key" })
+      .send({
+        tenantId,
+        mfaPendingCredential,
+        mfaEnrollmentId: mfaInfo[0].mfaEnrollmentId,
+        totpVerificationInfo: { verificationCode: generateTotpCode(sharedSecretKey) },
+      })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.idToken).to.be.a("string");
+      });
   });
 });

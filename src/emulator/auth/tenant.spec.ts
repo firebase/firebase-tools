@@ -95,6 +95,7 @@ describeAuthEmulator("tenant management", ({ authApi }) => {
         enableEmailLinkSignin: true,
         mfaConfig: {
           enabledProviders: ["PHONE_SMS"],
+          providerConfigs: [{ state: "ENABLED", totpProviderConfig: { adjacentIntervals: 5 } }],
           state: "ENABLED",
         },
       };

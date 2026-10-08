@@ -35,8 +35,17 @@ import {
   TenantProjectState,
   MfaConfig,
   BlockingFunctionEvents,
+  DEFAULT_TOTP_ADJACENT_INTERVALS,
 } from "./state";
-import { MfaEnrollments, Schemas } from "./types";
+import { MfaEnrollment, MfaEnrollments, Schemas } from "./types";
+import {
+  TOTP_CODE_LENGTH,
+  TOTP_FACTOR_ID,
+  TOTP_HASHING_ALGORITHM,
+  TOTP_PERIOD_SEC,
+  redactTotpSecrets,
+  verifyTotpCode,
+} from "./totp";
 import { FirebaseError } from "../../error";
 
 /**
@@ -323,7 +332,7 @@ function lookup(
   } else {
     assert(reqBody.idToken, "MISSING_ID_TOKEN");
     const { user } = parseIdToken(state, reqBody.idToken);
-    users.push(redactPasswordHash(user));
+    users.push(redactPasswordHash({ ...user, mfaInfo: redactTotpSecrets(user.mfaInfo) }));
   }
   return {
     kind: "identitytoolkit#GetAccountInfoResponse",
@@ -487,12 +496,17 @@ function batchCreate(
           }
         }
 
-        for (const enrollment of userInfo.mfaInfo) {
+        for (const enrollment of userInfo.mfaInfo as MfaEnrollments) {
           enrollment.mfaEnrollmentId = enrollment.mfaEnrollmentId || newRandomId(28, existingIds);
           enrollment.enrolledAt = enrollment.enrolledAt || new Date().toISOString();
-          assert(enrollment.phoneInfo, "Second factor not supported.");
-          assert(isValidPhoneNumber(enrollment.phoneInfo), "Phone number format is invalid");
-          enrollment.unobfuscatedPhoneInfo = enrollment.phoneInfo;
+          if (enrollment.totpInfo) {
+            // Only TOTP enrollments exported from the emulator have the secret.
+            assert(enrollment.emulatorTotpSecret, "Second factor not supported.");
+          } else {
+            assert(enrollment.phoneInfo, "Second factor not supported.");
+            assert(isValidPhoneNumber(enrollment.phoneInfo), "Phone number format is invalid");
+            enrollment.unobfuscatedPhoneInfo = enrollment.phoneInfo;
+          }
           fields.mfaInfo.push(enrollment);
         }
       }
@@ -2042,11 +2056,7 @@ function mfaEnrollmentStart(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV2StartMfaEnrollmentRequest"],
 ): Schemas["GoogleCloudIdentitytoolkitV2StartMfaEnrollmentResponse"] {
   assert(!state.disableAuth, "PROJECT_DISABLED");
-  assert(
-    (state.mfaConfig.state === "ENABLED" || state.mfaConfig.state === "MANDATORY") &&
-      state.mfaConfig.enabledProviders?.includes("PHONE_SMS"),
-    "OPERATION_NOT_ALLOWED : SMS based MFA not enabled.",
-  );
+  assertMfaProviderEnabled(state, !!reqBody.totpEnrollmentInfo);
   assert(reqBody.idToken, "MISSING_ID_TOKEN");
 
   const { user, signInProvider } = parseIdToken(state, reqBody.idToken);
@@ -2058,6 +2068,22 @@ function mfaEnrollmentStart(
     user.emailVerified,
     "UNVERIFIED_EMAIL : Need to verify email first before enrolling second factors.",
   );
+
+  if (reqBody.totpEnrollmentInfo) {
+    const { sessionInfo, sharedSecretKey } = state.createTotpEnrollmentSession(user.localId);
+    return {
+      totpSessionInfo: {
+        sharedSecretKey,
+        verificationCodeLength: TOTP_CODE_LENGTH,
+        hashingAlgorithm: TOTP_HASHING_ALGORITHM,
+        periodSec: TOTP_PERIOD_SEC,
+        sessionInfo,
+        // Clients expect a deadline, but the emulator does not enforce it since
+        // enrollment sessions never expire.
+        finalizeEnrollmentTime: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      },
+    };
+  }
 
   assert(reqBody.phoneEnrollmentInfo, "INVALID_ARGUMENT : ((Missing phoneEnrollmentInfo.))");
   // recaptchaToken, safetyNetToken, iosReceipt, and iosSecret are intentionally
@@ -2095,32 +2121,45 @@ function mfaEnrollmentFinalize(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV2FinalizeMfaEnrollmentRequest"],
 ): Schemas["GoogleCloudIdentitytoolkitV2FinalizeMfaEnrollmentResponse"] {
   assert(!state.disableAuth, "PROJECT_DISABLED");
-  assert(
-    (state.mfaConfig.state === "ENABLED" || state.mfaConfig.state === "MANDATORY") &&
-      state.mfaConfig.enabledProviders?.includes("PHONE_SMS"),
-    "OPERATION_NOT_ALLOWED : SMS based MFA not enabled.",
-  );
+  assertMfaProviderEnabled(state, !!reqBody.totpVerificationInfo);
   assert(reqBody.idToken, "MISSING_ID_TOKEN");
   let { user, signInProvider } = parseIdToken(state, reqBody.idToken);
   assert(
     !MFA_INELIGIBLE_PROVIDER.has(signInProvider),
     "UNSUPPORTED_FIRST_FACTOR : MFA is not available for the given first factor.",
   );
-  assert(reqBody.phoneVerificationInfo, "INVALID_ARGUMENT : ((Missing phoneVerificationInfo.))");
 
-  if (reqBody.phoneVerificationInfo.androidVerificationProof) {
-    throw new NotImplementedError("androidVerificationProof is unsupported!");
+  let factor: MfaEnrollment;
+  if (reqBody.totpVerificationInfo) {
+    const { sessionInfo, verificationCode } = reqBody.totpVerificationInfo;
+    assert(verificationCode, "MISSING_CODE");
+    assert(sessionInfo, "MISSING_SESSION_INFO");
+    const session = state.getTotpEnrollmentSession(sessionInfo);
+    assert(session && session.localId === user.localId, "INVALID_SESSION_INFO");
+    assert(
+      verifyTotpCode(session.sharedSecretKey, verificationCode, getTotpAdjacentIntervals(state)),
+      "INVALID_CODE",
+    );
+    state.deleteTotpEnrollmentSession(sessionInfo);
+    factor = { totpInfo: {}, emulatorTotpSecret: session.sharedSecretKey };
+  } else {
+    assert(reqBody.phoneVerificationInfo, "INVALID_ARGUMENT : ((Missing phoneVerificationInfo.))");
+
+    if (reqBody.phoneVerificationInfo.androidVerificationProof) {
+      throw new NotImplementedError("androidVerificationProof is unsupported!");
+    }
+    const { code, sessionInfo } = reqBody.phoneVerificationInfo;
+
+    assert(code, "MISSING_CODE");
+    assert(sessionInfo, "MISSING_SESSION_INFO");
+
+    const phoneNumber = verifyPhoneNumber(state, sessionInfo, code);
+    assert(
+      !user.mfaInfo?.some((enrollment) => enrollment.unobfuscatedPhoneInfo === phoneNumber),
+      "SECOND_FACTOR_EXISTS : Phone number already enrolled as second factor for this account.",
+    );
+    factor = { phoneInfo: phoneNumber, unobfuscatedPhoneInfo: phoneNumber };
   }
-  const { code, sessionInfo } = reqBody.phoneVerificationInfo;
-
-  assert(code, "MISSING_CODE");
-  assert(sessionInfo, "MISSING_SESSION_INFO");
-
-  const phoneNumber = verifyPhoneNumber(state, sessionInfo, code);
-  assert(
-    !user.mfaInfo?.some((enrollment) => enrollment.unobfuscatedPhoneInfo === phoneNumber),
-    "SECOND_FACTOR_EXISTS : Phone number already enrolled as second factor for this account.",
-  );
 
   const existingFactors = user.mfaInfo || [];
   const existingIds = new Set<string>();
@@ -2133,8 +2172,7 @@ function mfaEnrollmentFinalize(
     displayName: reqBody.displayName,
     enrolledAt: new Date().toISOString(),
     mfaEnrollmentId: newRandomId(28, existingIds),
-    phoneInfo: phoneNumber,
-    unobfuscatedPhoneInfo: phoneNumber,
+    ...factor,
   };
   user = state.updateUserByLocalId(user.localId, {
     mfaInfo: [...existingFactors, enrollment],
@@ -2143,7 +2181,10 @@ function mfaEnrollmentFinalize(
   // TODO: Generate OOB code for reverting enrollment.
 
   const { idToken, refreshToken } = issueTokens(state, user, signInProvider, {
-    secondFactor: { identifier: enrollment.mfaEnrollmentId, provider: PROVIDER_PHONE },
+    secondFactor: {
+      identifier: enrollment.mfaEnrollmentId,
+      provider: factor.totpInfo ? TOTP_FACTOR_ID : PROVIDER_PHONE,
+    },
   });
 
   return {
@@ -2179,11 +2220,7 @@ function mfaSignInStart(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV2StartMfaSignInRequest"],
 ): Schemas["GoogleCloudIdentitytoolkitV2StartMfaSignInResponse"] {
   assert(!state.disableAuth, "PROJECT_DISABLED");
-  assert(
-    (state.mfaConfig.state === "ENABLED" || state.mfaConfig.state === "MANDATORY") &&
-      state.mfaConfig.enabledProviders?.includes("PHONE_SMS"),
-    "OPERATION_NOT_ALLOWED : SMS based MFA not enabled.",
-  );
+  assertMfaProviderEnabled(state, false);
   assert(
     reqBody.mfaPendingCredential,
     "MISSING_MFA_PENDING_CREDENTIAL : Request does not have MFA pending credential.",
@@ -2225,49 +2262,69 @@ async function mfaSignInFinalize(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV2FinalizeMfaSignInRequest"],
 ): Promise<Schemas["GoogleCloudIdentitytoolkitV2FinalizeMfaSignInResponse"]> {
   assert(!state.disableAuth, "PROJECT_DISABLED");
-  assert(
-    (state.mfaConfig.state === "ENABLED" || state.mfaConfig.state === "MANDATORY") &&
-      state.mfaConfig.enabledProviders?.includes("PHONE_SMS"),
-    "OPERATION_NOT_ALLOWED : SMS based MFA not enabled.",
-  );
+  assertMfaProviderEnabled(state, !!reqBody.totpVerificationInfo);
   // Inconsistent with mfaSignInStart (where MISSING_MFA_PENDING_CREDENTIAL is
   // returned), but matches production behavior.
   assert(reqBody.mfaPendingCredential, "MISSING_CREDENTIAL : Please set MFA Pending Credential.");
-  assert(reqBody.phoneVerificationInfo, "INVALID_ARGUMENT : MFA provider not supported!");
 
-  if (reqBody.phoneVerificationInfo.androidVerificationProof) {
-    throw new NotImplementedError("androidVerificationProof is unsupported!");
+  let user: UserInfo;
+  let signInProvider: string;
+  let enrollment: MfaEnrollment | undefined;
+  if (reqBody.totpVerificationInfo) {
+    // TOTP sign in has no mfaSignIn:start step. The client sends the code with
+    // the enrollment ID directly.
+    const { verificationCode } = reqBody.totpVerificationInfo;
+    assert(
+      reqBody.mfaEnrollmentId,
+      "MISSING_MFA_ENROLLMENT_ID : No second factor identifier is provided.",
+    );
+    assert(verificationCode, "MISSING_CODE");
+    ({ user, signInProvider } = parsePendingCredential(state, reqBody.mfaPendingCredential));
+    enrollment = user.mfaInfo?.find((factor) => factor.mfaEnrollmentId === reqBody.mfaEnrollmentId);
+    const secret = enrollment?.emulatorTotpSecret;
+    assert(secret, "MFA_ENROLLMENT_NOT_FOUND");
+    assert(
+      verifyTotpCode(secret, verificationCode, getTotpAdjacentIntervals(state)),
+      "INVALID_CODE",
+    );
+  } else {
+    assert(reqBody.phoneVerificationInfo, "INVALID_ARGUMENT : MFA provider not supported!");
+
+    if (reqBody.phoneVerificationInfo.androidVerificationProof) {
+      throw new NotImplementedError("androidVerificationProof is unsupported!");
+    }
+    const { code, sessionInfo } = reqBody.phoneVerificationInfo;
+    assert(code, "MISSING_CODE");
+    assert(sessionInfo, "MISSING_SESSION_INFO");
+
+    const phoneNumber = verifyPhoneNumber(state, sessionInfo, code);
+
+    ({ user, signInProvider } = parsePendingCredential(state, reqBody.mfaPendingCredential));
+    enrollment = user.mfaInfo?.find((enrollment) => {
+      // All but firebase-ios-sdk finalize with unobfuscated phone number.
+      if (enrollment.unobfuscatedPhoneInfo === phoneNumber) {
+        return true;
+      }
+
+      // But firebase-ios-sdk finalizes with an obfuscated number. This works against
+      // cloud auth, so emulator should attempt to find enrollment obfuscated as well.
+      if (
+        !!enrollment.unobfuscatedPhoneInfo &&
+        obfuscatePhoneNumber(enrollment.unobfuscatedPhoneInfo) === phoneNumber
+      ) {
+        return true;
+      }
+
+      return false;
+    });
   }
-  const { code, sessionInfo } = reqBody.phoneVerificationInfo;
-  assert(code, "MISSING_CODE");
-  assert(sessionInfo, "MISSING_SESSION_INFO");
-
-  const phoneNumber = verifyPhoneNumber(state, sessionInfo, code);
-
-  let { user, signInProvider } = parsePendingCredential(state, reqBody.mfaPendingCredential);
-  const enrollment = user.mfaInfo?.find((enrollment) => {
-    // All but firebase-ios-sdk finalize with unobfuscated phone number.
-    if (enrollment.unobfuscatedPhoneInfo === phoneNumber) {
-      return true;
-    }
-
-    // But firebase-ios-sdk finalizes with an obfuscated number. This works against
-    // cloud auth, so emulator should attempt to find enrollment obfuscated as well.
-    if (
-      !!enrollment.unobfuscatedPhoneInfo &&
-      obfuscatePhoneNumber(enrollment.unobfuscatedPhoneInfo) === phoneNumber
-    ) {
-      return true;
-    }
-
-    return false;
-  });
+  const secondFactorProvider = enrollment?.totpInfo ? TOTP_FACTOR_ID : PROVIDER_PHONE;
 
   const { updates, extraClaims } = await fetchBlockingFunction(
     state,
     BlockingFunctionEvents.BEFORE_SIGN_IN,
     user,
-    { signInMethod: signInProvider, signInSecondFactor: "phone" },
+    { signInMethod: signInProvider, signInSecondFactor: secondFactorProvider },
   );
   user = state.updateUserByLocalId(user.localId, {
     ...updates,
@@ -2281,7 +2338,7 @@ async function mfaSignInFinalize(
 
   const { idToken, refreshToken } = issueTokens(state, user, signInProvider, {
     extraClaims,
-    secondFactor: { identifier: enrollment.mfaEnrollmentId, provider: PROVIDER_PHONE },
+    secondFactor: { identifier: enrollment.mfaEnrollmentId, provider: secondFactorProvider },
   });
   return {
     idToken,
@@ -3032,8 +3089,6 @@ function handleIdpSignUp(
   };
 }
 
-type MfaEnrollment = Schemas["GoogleCloudIdentitytoolkitV1MfaEnrollment"];
-
 interface MfaPendingCredential {
   _AuthEmulatorMfaPendingCredential: string;
   localId: string;
@@ -3080,6 +3135,7 @@ function redactMfaInfo(mfaInfo: MfaEnrollment): MfaEnrollment {
     phoneInfo: mfaInfo.unobfuscatedPhoneInfo
       ? obfuscatePhoneNumber(mfaInfo.unobfuscatedPhoneInfo)
       : undefined,
+    totpInfo: mfaInfo.totpInfo ? {} : undefined,
   };
 }
 
@@ -3210,9 +3266,36 @@ function updateTenant(
 
 function isMfaEnabled(state: ProjectState, user: UserInfo) {
   return (
-    (state.mfaConfig.state === "ENABLED" || state.mfaConfig.state === "MANDATORY") &&
-    user.mfaInfo?.length
+    ((state.mfaConfig.state === "ENABLED" || state.mfaConfig.state === "MANDATORY") &&
+      user.mfaInfo?.length) ||
+    // TOTP can be enabled through providerConfigs alone, without the top level state.
+    (getEnabledTotpConfig(state) && user.mfaInfo?.some((enrollment) => enrollment.totpInfo))
   );
+}
+
+function assertMfaProviderEnabled(state: ProjectState, totp: boolean): void {
+  if (totp) {
+    assert(getEnabledTotpConfig(state), "OPERATION_NOT_ALLOWED : TOTP based MFA not enabled.");
+  } else {
+    assert(
+      (state.mfaConfig.state === "ENABLED" || state.mfaConfig.state === "MANDATORY") &&
+        state.mfaConfig.enabledProviders?.includes("PHONE_SMS"),
+      "OPERATION_NOT_ALLOWED : SMS based MFA not enabled.",
+    );
+  }
+}
+
+function getEnabledTotpConfig(
+  state: ProjectState,
+): Schemas["GoogleCloudIdentitytoolkitAdminV2TotpMfaProviderConfig"] | undefined {
+  return state.mfaConfig.providerConfigs?.find(
+    (config) =>
+      config.totpProviderConfig && (config.state === "ENABLED" || config.state === "MANDATORY"),
+  )?.totpProviderConfig;
+}
+
+function getTotpAdjacentIntervals(state: ProjectState): number {
+  return getEnabledTotpConfig(state)?.adjacentIntervals ?? DEFAULT_TOTP_ADJACENT_INTERVALS;
 }
 
 // TODO: Timeout is 60s. Should we make the timeout an emulator configuration?
@@ -3463,7 +3546,7 @@ function generateBlockingFunctionJwt(
         display_name: mfaEnrollment.displayName,
         enrollment_time: mfaEnrollment.enrolledAt,
         phone_number: mfaEnrollment.phoneInfo,
-        factor_id: PROVIDER_PHONE,
+        factor_id: mfaEnrollment.totpInfo ? TOTP_FACTOR_ID : PROVIDER_PHONE,
       };
       enrolledFactors.push(enrolledFactor);
     }
