@@ -1,3 +1,4 @@
+const path = require("path");
 const chai = require("chai");
 const chaiAsPromised = require("chai-as-promised");
 const sinon = require("sinon");
@@ -20,6 +21,26 @@ if (typeof nodeFetch.Headers.prototype.getSetCookie !== "function") {
 // Force nock to execute its side-effects (patching http/https) immediately on load
 void nock;
 
+const LOOPBACK_REGEXP = /^(localhost|127\.0\.0\.1|\[::1\]|::1)(:\d+)?$/;
+
+function isIntegrationTestFile(filePath) {
+  if (!filePath) {
+    return false;
+  }
+  const rel = path.relative(process.cwd(), filePath);
+  return /^(scripts|dev[/\\]scripts)[/\\]/.test(rel);
+}
+
+function enforceNetConnectPolicy(ctx) {
+  const currentFile = ctx && ctx.currentTest && ctx.currentTest.file;
+  if (isIntegrationTestFile(currentFile)) {
+    nock.enableNetConnect();
+  } else {
+    nock.disableNetConnect();
+    nock.enableNetConnect(LOOPBACK_REGEXP);
+  }
+}
+
 chai.use(chaiAsPromised);
 chai.use(sinonChai);
 
@@ -33,8 +54,9 @@ let suiteFakes = new Set();
  * Global teardown hook executed after every test case.
  * Hermetically restores Sinon stubs, spies, and mocks created during the test,
  * resets standard Nock HTTP interceptors, and resets custom Undici Nock interceptors if loaded.
+ * @param {object} [ctx] - Mocha context for the completed test.
  */
-function cleanup() {
+function cleanup(ctx) {
   if (typeof sinon.getFakes === "function") {
     for (const fake of sinon.getFakes()) {
       if (!suiteFakes.has(fake)) {
@@ -48,6 +70,7 @@ function cleanup() {
   }
 
   nock.cleanAll();
+  enforceNetConnectPolicy(ctx);
 
   // Safely clean up custom nock (src/test/helpers/nock.ts) if required by tests
   for (const key of Object.keys(require.cache)) {
@@ -69,7 +92,10 @@ function cleanup() {
 
 exports.mochaHooks = {
   beforeEach() {
+    enforceNetConnectPolicy(this);
     suiteFakes = new Set(typeof sinon.getFakes === "function" ? sinon.getFakes() : []);
   },
-  afterEach: cleanup,
+  afterEach() {
+    cleanup(this);
+  },
 };
