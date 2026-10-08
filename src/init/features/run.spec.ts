@@ -145,12 +145,13 @@ describe("init run", () => {
 
   describe("actuate", () => {
     it("does nothing when featureInfo.run is not set", async () => {
-      const writeStub = sinon.stub(config, "writeProjectFile");
+      const deployStub = sinon.stub(deploy, "deploy").resolves();
       await actuate(setup(), config, options);
-      expect(writeStub).to.not.have.been.called;
+      expect(config.src.run).to.be.undefined;
+      expect(deployStub).to.not.have.been.called;
     });
 
-    it("saves the service to firebase.json and deploys it", async () => {
+    it("adds the service to the config and deploys it", async () => {
       const writeStub = sinon.stub(config, "writeProjectFile");
       const deployStub = sinon.stub(deploy, "deploy").resolves();
       const s = setup();
@@ -165,12 +166,24 @@ describe("init run", () => {
         ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"],
       };
       expect(config.src.run).to.deep.equal(runConfig);
-      expect(writeStub).to.have.been.calledWith("firebase.json", config.src);
+      // Init writes firebase.json once all features are set up.
+      expect(writeStub).to.not.have.been.called;
       expect(deployStub).to.have.been.calledWith(
         ["run"],
         { projectId: "p", config, only: "run:s" },
         { region: "r", baseImage: null },
       );
+    });
+
+    it("doesn't write firebase.json if the deploy fails", async () => {
+      const writeStub = sinon.stub(config, "writeProjectFile");
+      sinon.stub(deploy, "deploy").rejects(new Error("build failed"));
+      const s = setup();
+      s.featureInfo = { run: { serviceId: "s", region: "r", baseImage: "", rootDir: "/" } };
+
+      await expect(actuate(s, config, options)).to.be.rejectedWith("build failed");
+
+      expect(writeStub).to.not.have.been.called;
     });
   });
 
