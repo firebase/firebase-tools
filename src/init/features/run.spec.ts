@@ -223,7 +223,7 @@ describe("init run", () => {
       expect(deployStub).to.have.been.calledWith(
         ["run"],
         { projectId: "p", config, only: "run:s" },
-        { baseImage: null },
+        { region: "r", baseImage: null },
       );
     });
   });

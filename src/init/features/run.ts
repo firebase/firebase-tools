@@ -176,7 +176,8 @@ export async function actuate(setup: Setup, config: Config, options: Options): P
   await deploy(
     ["run"],
     { ...options, projectId: setup.projectId, config, only: `run:${info.serviceId}` },
-    { baseImage: info.baseImage || null },
+    // Pass the region so deploy skips services with the same ID in other regions.
+    { region: info.region, baseImage: info.baseImage || null },
   );
 }
 
