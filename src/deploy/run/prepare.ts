@@ -5,17 +5,18 @@ import { logLabeledBullet } from "../../utils";
 import { Context, Payload, ServiceDeploy } from "./args";
 import { BUILD_ENV_ANNOTATION, getBuildEnv, secretNames } from "./buildEnv";
 import { prereqs } from "./prereqs";
-import { getExistingService, getServiceConfigs, missingServiceMessage } from "./util";
+import {
+  fullServiceName,
+  getExistingService,
+  getServiceConfigs,
+  missingServiceMessage,
+} from "./util";
 
 /**
  * Reads each service's current state from Cloud Run and resolves its base image and build env.
  */
 export async function prepare(context: Context, options: Options, payload: Payload): Promise<void> {
-  let configs = getServiceConfigs(options);
-  if (context.region) {
-    // --only run:<id> matches services with that ID in every region.
-    configs = configs.filter((c) => c.region === context.region);
-  }
+  const configs = getServiceConfigs(options);
   if (!configs.length) {
     return;
   }
@@ -42,7 +43,8 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
   if (Object.keys(buildEnv).length) {
     logLabeledBullet(
       "run",
-      `Using build environment variables from ${BUILD_ENV_ANNOTATION}: ${Object.keys(buildEnv).join(", ")}`,
+      `Using build environment variables for service ${serviceId} in ${region} from ` +
+        `${BUILD_ENV_ANNOTATION}: ${Object.keys(buildEnv).join(", ")}`,
     );
   }
 
@@ -54,9 +56,9 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
     const secrets = secretNames(buildEnv);
     if (secrets.length) {
       throw new FirebaseError(
-        `Service ${serviceId} has build secrets (${secrets.join(", ")}), which builds on ` +
-          `Cloud Build don't support yet. To use them, build locally by setting "localBuild": true ` +
-          `for this service in firebase.json.`,
+        `Service ${serviceId} in ${region} has build secrets (${secrets.join(", ")}), which ` +
+          `builds on Cloud Build don't support yet. To use them, build locally by setting ` +
+          `"localBuild": true for this service in firebase.json.`,
       );
     }
     return svc;
@@ -67,8 +69,8 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
       throw new FirebaseError(missingServiceMessage(config));
     }
     throw new FirebaseError(
-      `Local builds require a base image. Set one for service ${serviceId} with ` +
-        `"firebase run:services:update ${serviceId} --base-image <baseImage>".`,
+      `Local builds require a base image. Set one for service ${serviceId} in ${region} with ` +
+        `"firebase run:services:update ${fullServiceName(config)} --base-image <baseImage>".`,
     );
   }
   return svc;

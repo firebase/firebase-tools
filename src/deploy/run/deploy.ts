@@ -49,14 +49,14 @@ async function buildLocally(
   svc: ServiceDeploy,
 ): Promise<NonNullable<ServiceDeploy["localBuild"]>> {
   const { config } = svc;
-  const { serviceId } = config;
+  const { serviceId, region } = config;
   const buildEnv = svc.buildEnv || {};
   const cfg = toAppHostingConfig(config);
   validateLocalBuildNodeVersion(
     { runtime: { value: svc.baseImage?.split("/").pop() } } as Backend,
     path.join(options.config.projectDir, cfg.rootDir),
   );
-  logLabeledBullet("run", `Starting local build for service ${serviceId}`);
+  logLabeledBullet("run", `Starting local build for service ${serviceId} in ${region}`);
   const secrets = secretNames(buildEnv);
   if (secrets.length) {
     logLabeledBullet(
@@ -108,7 +108,7 @@ async function deployService(
     : { containers: [{ name: serviceId, image: "" }] };
   const container = template.containers?.[0];
   if (!container) {
-    throw new FirebaseError(`Service ${serviceId} has no containers.`);
+    throw new FirebaseError(`Service ${serviceId} in ${region} has no containers.`);
   }
   if (svc.localBuild) {
     // Cloud Run runs locally built apps directly from source on top of the base image.
@@ -193,7 +193,7 @@ async function uploadSource(
   try {
     logLabeledBullet(
       "run",
-      `Uploading ${svc.localBuild ? "built app" : "source"} for service ${serviceId}...`,
+      `Uploading ${svc.localBuild ? "built app" : "source"} for service ${serviceId} in ${region}...`,
     );
     const { bucket, object } = await gcs.uploadObject(
       { file: archive, stream: fs.createReadStream(archive) },
@@ -215,7 +215,7 @@ async function buildImage(
   const { serviceId, region } = svc.config;
   await artifactregistry.ensureDockerRepository(projectId, region, "cloud-run-source-deploy");
   const imageUri = `${region}-docker.pkg.dev/${projectId}/cloud-run-source-deploy/${serviceId}:${Date.now()}`;
-  logLabeledBullet("run", `Building service ${serviceId}...`);
+  logLabeledBullet("run", `Building service ${serviceId} in ${region}...`);
   await runv2.submitBuild(projectId, region, {
     storageSource: source,
     imageUri,
