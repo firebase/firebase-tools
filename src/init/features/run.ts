@@ -156,7 +156,9 @@ async function promptRootDir(projectDir: string, defaultDir: string): Promise<st
 }
 
 /**
- * Adds the service to firebase.json and deploys it, since Cloud Run services only change on deploy.
+ * Adds the service to firebase.json and deploys it, since Cloud Run services only change on
+ * deploy. Init writes the file once every feature is set up, so a failed deploy leaves it
+ * untouched.
  */
 export async function actuate(setup: Setup, config: Config, options: Options): Promise<void> {
   const info = setup.featureInfo?.run;
@@ -172,7 +174,6 @@ export async function actuate(setup: Setup, config: Config, options: Options): P
     },
     config,
   );
-  config.writeProjectFile("firebase.json", config.src);
   await deploy(
     ["run"],
     { ...options, projectId: setup.projectId, config, only: `run:${info.serviceId}` },
