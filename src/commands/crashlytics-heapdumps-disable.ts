@@ -4,7 +4,6 @@ import { Command } from "../command";
 import { logger } from "../logger";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
-import { confirm } from "../prompt";
 import { requireAuth } from "../requireAuth";
 import { disableHeapDumpCollection, resolveAndroidAppId } from "../crashlytics/profilingManager";
 
@@ -15,23 +14,10 @@ interface CommandOptions extends Options {
 export const command = new Command("crashlytics:heapdumps:disable")
   .description("disable Crashlytics heap dump collection for an Android app")
   .option("--app <appID>", "the app id of your Firebase Android app")
-  .withForce("automatically disable without prompting for confirmation")
   .before(requireAuth)
   .action(async (options: CommandOptions) => {
     const projectId = needProjectId(options);
     const appId = await resolveAndroidAppId(projectId, options);
-
-    const confirmed = await confirm({
-      message: `Disable Crashlytics heap dump collection for ${appId}?`,
-      default: true,
-      force: options.force,
-      nonInteractive: options.nonInteractive,
-    });
-
-    if (!confirmed) {
-      logger.info("Heap dump collection disablement canceled.");
-      return;
-    }
 
     await disableHeapDumpCollection(appId);
 

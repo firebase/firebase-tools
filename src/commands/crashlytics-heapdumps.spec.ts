@@ -143,30 +143,15 @@ describe("crashlytics:heapdumps commands", () => {
 
   describe("crashlytics:heapdumps:disable", () => {
     let disableCollectionStub: sinon.SinonStub;
-    let confirmStub: sinon.SinonStub;
 
     beforeEach(() => {
       disableCollectionStub = sinon.stub(profilingManager, "disableHeapDumpCollection").resolves();
-      confirmStub = sinon.stub(promptModule, "confirm").resolves(true);
-    });
-
-    it("should cancel if user denies confirmation", async () => {
-      confirmStub.resolves(false);
-
-      const result: unknown = await disableCommand.runner()({
-        project: projectId,
-        app: appId,
-      });
-
-      expect(result).to.be.undefined;
-      expect(disableCollectionStub).to.not.have.been.called;
     });
 
     it("should successfully disable collection", async () => {
       const result: unknown = await disableCommand.runner()({
         project: projectId,
         app: appId,
-        force: true,
       });
 
       expect(result).to.deep.equal({
@@ -185,7 +170,6 @@ describe("crashlytics:heapdumps commands", () => {
         disableCommand.runner()({
           project: projectId,
           app: appId,
-          force: true,
         }),
       ).to.be.rejectedWith(boom);
     });
