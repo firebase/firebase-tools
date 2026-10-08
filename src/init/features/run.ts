@@ -4,7 +4,11 @@ import { webApps } from "../../apphosting/app";
 import { Config } from "../../config";
 import { deploy } from "../../deploy";
 import { prereqs, RUN_PERMISSIONS } from "../../deploy/run/prereqs";
-import { FIREBASE_APP_ANNOTATION, getExistingService } from "../../deploy/run/util";
+import {
+  FIREBASE_APP_ANNOTATION,
+  fullServiceName,
+  getExistingService,
+} from "../../deploy/run/util";
 import { FirebaseError } from "../../error";
 import { RunSingle } from "../../firebaseConfig";
 import { dirExistsSync } from "../../fsutils";
@@ -191,10 +195,8 @@ export async function actuate(setup: Setup, config: Config, options: Options): P
   );
   await deploy(
     ["run"],
-    { ...options, projectId: setup.projectId, config, only: `run:${info.serviceId}` },
-    // Pass the region so deploy skips services with the same ID in other regions.
+    { ...options, projectId: setup.projectId, config, only: `run:${fullServiceName(info)}` },
     {
-      region: info.region,
       baseImage: info.baseImage || null,
       ...(info.appId !== undefined && { appId: info.appId || null }),
     },

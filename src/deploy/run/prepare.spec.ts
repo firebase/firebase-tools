@@ -77,7 +77,7 @@ describe("run prepare", () => {
   it("requires a base image for local builds", async () => {
     getServiceStub.resolves({ ...existing, template: { containers: [{ name: "s", image: "i" }] } });
     await expect(prepareOne({ localBuild: true })).to.be.rejectedWith(
-      "Local builds require a base image",
+      /Local builds require a base image.*firebase run:services:update s:us-central1 --base-image/,
     );
   });
 
@@ -114,7 +114,7 @@ describe("run prepare", () => {
     it("rejects build secrets on Cloud Build", async () => {
       getServiceStub.resolves(withBuildEnv({ A: "1", TOKEN: { secret: "t" } }));
       await expect(prepareOne()).to.be.rejectedWith(
-        /Service s has build secrets \(TOKEN\).*"localBuild": true/,
+        /Service s in us-central1 has build secrets \(TOKEN\).*"localBuild": true/,
       );
     });
 
@@ -260,7 +260,7 @@ describe("run prepare", () => {
       });
       getAppConfigStub.rejects(new Error("boom"));
       await expect(prepareOne()).to.be.rejectedWith(
-        "Unable to look up Firebase Web App 1:1:web:a for service s: boom",
+        /Unable to look up Firebase Web App 1:1:web:a for service s in us-central1: boom\n.*firebase run:services:update s:us-central1 --app <appId>.*firebase run:services:update s:us-central1 --clear-app/,
       );
       expect(hasRolesStub).not.to.have.been.called;
     });
@@ -268,15 +268,16 @@ describe("run prepare", () => {
     it("fails if a newly linked Firebase Web App can't be looked up", async () => {
       getAppConfigStub.rejects(new Error("boom"));
       await expect(prepareOne({}, { appId: "bad-app" })).to.be.rejectedWith(
-        "Unable to look up Firebase Web App bad-app for service s: boom",
+        "Unable to look up Firebase Web App bad-app for service s in us-central1: boom",
       );
       expect(hasRolesStub).not.to.have.been.called;
     });
   });
 
-  it("deploys a service ID in every region unless the context names a region", async () => {
+  it("only prepares the services that --only selects", async () => {
+    const payload: Payload = {};
     const sameIdTwoRegions = {
-      only: "run:s",
+      only: "run:s:europe-west1",
       config: {
         src: {
           run: [
@@ -287,13 +288,10 @@ describe("run prepare", () => {
         projectDir: "/p",
       },
     } as unknown as Options;
-    const preparedRegions = async (context: Partial<Context>) => {
-      const payload: Payload = {};
-      await prepare({ projectId: "p", ...context }, sameIdTwoRegions, payload);
-      return payload.run!.services.map((svc) => svc.config.region);
-    };
 
-    expect(await preparedRegions({})).to.deep.equal(["us-central1", "europe-west1"]);
-    expect(await preparedRegions({ region: "europe-west1" })).to.deep.equal(["europe-west1"]);
+    await prepare({ projectId: "p" }, sameIdTwoRegions, payload);
+
+    expect(payload.run!.services.map((svc) => svc.config.region)).to.deep.equal(["europe-west1"]);
+    expect(getServiceStub).to.have.been.calledOnceWith("p", "europe-west1", "s");
   });
 });

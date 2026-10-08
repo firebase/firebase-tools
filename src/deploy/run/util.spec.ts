@@ -2,6 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import * as runv2 from "../../gcp/runv2";
 import { Options } from "../../options";
+import * as utils from "../../utils";
 import {
   copyTemplate,
   deployRevision,
@@ -16,7 +17,13 @@ describe("run util", () => {
   describe("getServiceConfigs", () => {
     const a = { serviceId: "a", region: "us-central1" };
     const b = { serviceId: "b", region: "us-east1" };
+    const aEurope = { serviceId: "a", region: "europe-west1" };
     const opts = (run: unknown, only?: string) => ({ config: { src: { run } }, only }) as Options;
+    let logStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      logStub = sinon.stub(utils, "logLabeledBullet");
+    });
 
     it("returns all services when --only is 'run' or unset", () => {
       expect(getServiceConfigs(opts([a, b], "run"))).to.deep.equal([a, b]);
@@ -26,11 +33,49 @@ describe("run util", () => {
 
     it("filters to services named in --only", () => {
       expect(getServiceConfigs(opts([a, b], "hosting,run:b"))).to.deep.equal([b]);
+      expect(logStub).not.to.have.been.called;
+    });
+
+    it("deploys a service ID in every region it's listed in, and says so", () => {
+      expect(getServiceConfigs(opts([a, b, aEurope], "run:a"))).to.deep.equal([a, aEurope]);
+      expect(logStub).to.have.been.calledOnceWithExactly(
+        "run",
+        "run:a matches 2 services in firebase.json: a:us-central1, a:europe-west1. " +
+          "Deploying all of them. To deploy just one, use --only run:a:<region>.",
+      );
+    });
+
+    it("deploys one service with run:<serviceId>:<region>", () => {
+      expect(getServiceConfigs(opts([a, aEurope], "run:a:europe-west1"))).to.deep.equal([aEurope]);
+      expect(logStub).not.to.have.been.called;
+    });
+
+    it("deploys each service once, in firebase.json order", () => {
+      expect(
+        getServiceConfigs(opts([a, b, aEurope], "run:b,run:a:europe-west1,run:a")),
+      ).to.deep.equal([a, b, aEurope]);
     });
 
     it("throws when --only names a service not in firebase.json", () => {
       expect(() => getServiceConfigs(opts([a], "run:a,run:missing"))).to.throw(
-        "Cloud Run service IDs missing not detected in firebase.json",
+        "Cloud Run service missing not detected in firebase.json.",
+      );
+      expect(() => getServiceConfigs(opts([a], "run:a:us-east1,run:b"))).to.throw(
+        "Cloud Run services a:us-east1, b not detected in firebase.json.",
+      );
+    });
+
+    it("rejects malformed service names", () => {
+      for (const name of ["", ":us-central1", "a:", "a:us-central1:extra"]) {
+        expect(() => getServiceConfigs(opts([a], `run:${name}`))).to.throw(
+          `Invalid Cloud Run service "${name}". Use <serviceId> or <serviceId>:<region>.`,
+        );
+      }
+    });
+
+    it("throws if firebase.json lists the same service twice", () => {
+      expect(() => getServiceConfigs(opts([a, aEurope, { ...a, rootDir: "web" }]))).to.throw(
+        "Cloud Run service a:us-central1 is listed more than once in firebase.json.",
       );
     });
   });

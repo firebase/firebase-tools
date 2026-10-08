@@ -242,8 +242,8 @@ describe("init run", () => {
       expect(writeStub).to.not.have.been.called;
       expect(deployStub).to.have.been.calledWith(
         ["run"],
-        { projectId: "p", config, only: "run:s" },
-        { region: "r", baseImage: null, appId: "1:1:web:a" },
+        { projectId: "p", config, only: "run:s:r" },
+        { baseImage: null, appId: "1:1:web:a" },
       );
     });
 

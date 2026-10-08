@@ -4,7 +4,10 @@ import { release } from "./release";
 
 export { prepare, deploy, release };
 
-export const help = "Builds and deploys web apps to Cloud Run services listed in firebase.json.";
+export const help =
+  "Builds and deploys web apps to Cloud Run services listed in firebase.json. Supports filtering:\n" +
+  "  --only run:serviceId (in every region firebase.json lists it in)\n" +
+  "  --only run:serviceId:region (in one region)";
 export const detailedHelp =
   "Deploys Cloud Run services from local source, or from a local build if localBuild is set.\n\n" +
   "Configuration in firebase.json:\n" +

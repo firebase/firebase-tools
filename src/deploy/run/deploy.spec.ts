@@ -388,7 +388,7 @@ describe("run deploy", () => {
 
     expect(logStub).to.have.been.calledOnceWithExactly(
       "run",
-      "Deployed service s to https://s-123.run.app",
+      "Deployed service s in us-central1 to https://s-123.run.app",
     );
   });
 });

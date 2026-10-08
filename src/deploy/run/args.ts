@@ -32,11 +32,6 @@ export interface Payload {
 
 export interface Context {
   projectId: string;
-  /**
-   * Only deploys services in this region. Init sets it so that it deploys just the service it set
-   * up, even if another region has a service with the same ID.
-   */
-  region?: string;
   /** Overrides the service's base image. null clears it; undefined keeps the current one. */
   baseImage?: string | null;
   /** Overrides the service's Firebase Web App ID. null clears it; undefined keeps the current one. */
