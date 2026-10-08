@@ -71,7 +71,7 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
       { name: "Build remotely on Cloud Build", value: false },
       { name: "Build locally", value: true },
     ],
-    default: false,
+    default: savedEntry?.localBuild === true,
   });
 
   // A base image turns on automatic base image updates, which are off by default. So there's no

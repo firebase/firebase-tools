@@ -156,6 +156,7 @@ describe("init run", () => {
 
       await askQuestions(s, config, options);
 
+      expect(selectStub.thirdCall.args[0].default).to.be.false;
       const baseImagePrompt = inputStub.secondCall.args[0];
       expect(baseImagePrompt.default).to.be.undefined;
       expect(baseImagePrompt.validate("nodejs22")).to.be.true;
@@ -167,6 +168,29 @@ describe("init run", () => {
         rootDir: "/",
         localBuild: true,
       });
+    });
+
+    it("defaults to building locally if the saved entry for the service does", async () => {
+      const existing = {
+        name: "projects/p/locations/europe-west1/services/web",
+        template: { containers: [{ name: "web", image: "i", baseImageUri: "nodejs22" }] },
+      };
+      sinon.stub(runv2, "listServices").resolves([existing] as unknown as runv2.Service[]);
+      selectStub.onFirstCall().resolves("update").onSecondCall().resolves(existing);
+      selectStub.onThirdCall().callsFake((o) => Promise.resolve(o.default));
+      inputStub.callsFake((o) => Promise.resolve(o.default));
+      config.set("run", {
+        serviceId: "web",
+        region: "europe-west1",
+        rootDir: "/",
+        localBuild: true,
+      });
+      const s = setup();
+
+      await askQuestions(s, config, options);
+
+      expect(selectStub.thirdCall.args[0].default).to.be.true;
+      expect(s.featureInfo?.run?.localBuild).to.be.true;
     });
   });
 
