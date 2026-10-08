@@ -1,0 +1,1 @@
+- [fixed] Retry Cloud Functions creation on HTTP 403 service account propagation errors.

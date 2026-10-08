@@ -35,15 +35,16 @@ export const isTransientError: RetryPredicate = (err: any): boolean =>
 export const isServiceAccountPropagationError: RetryPredicate = (err: any): boolean => {
   const code = parseErrorCode(err);
   // Newly created service accounts take time to propagate across IAM systems.
-  // When downstream services (such as Eventarc trigger creation) validate the request,
-  // an unpropagated service account fails input validation and is reported as HTTP 400
-  // (INVALID_ARGUMENT: "The request was invalid: invalid service account ... provided")
+  // When downstream services (such as Eventarc trigger creation or Cloud Run service creation)
+  // validate the request, an unpropagated service account fails validation and is reported as:
+  // - HTTP 400 (INVALID_ARGUMENT: "The request was invalid: invalid service account ... provided")
+  // - HTTP 403 (PERMISSION_DENIED: "Permission 'iam.serviceaccounts.actAs' denied on service account ... (or it may not exist)")
   // rather than HTTP 404 (which is reserved for missing API URL resources).
   //
-  // To avoid false positives on user typos with custom service accounts, HTTP 400
-  // retries are restricted to declarative security service accounts (firebase-fn-[0-9]+@),
-  // which are provisioned dynamically on the fly during deployment.
-  if (code !== 404 && code !== 400) {
+  // To avoid false positives on user typos or real permission errors with custom service accounts,
+  // HTTP 400 and 403 retries are restricted to declarative security service accounts
+  // (firebase-fn-[0-9]+@), which are provisioned dynamically on the fly during deployment.
+  if (code !== 404 && code !== 400 && code !== 403) {
     return false;
   }
   let message = "";
@@ -71,7 +72,17 @@ export const isServiceAccountPropagationError: RetryPredicate = (err: any): bool
     return true;
   }
 
-  return message.includes("invalid service account") && /\bfirebase-fn-[0-9]+@/i.test(message);
+  if (!/\bfirebase-fn-[0-9]+@/i.test(message)) {
+    return false;
+  }
+
+  if (code === 400) {
+    return message.includes("invalid service account");
+  }
+
+  return (
+    message.includes("iam.serviceaccounts.actas") || message.includes("does not have permission")
+  );
 };
 
 export const isCloudRunResourceExhausted: RetryPredicate = (err: any): boolean =>

@@ -123,7 +123,7 @@ describe("Executor", () => {
       expect(executor.isServiceAccountPropagationError(err3)).to.be.true;
     });
 
-    it("does not match non-404/400 errors or non-service-account errors", () => {
+    it("does not match non-404/400/403 errors or non-service-account errors", () => {
       const err1 = new FirebaseError("Service account missing", { status: 500 });
       expect(executor.isServiceAccountPropagationError(err1)).to.be.false;
 
@@ -132,6 +132,9 @@ describe("Executor", () => {
 
       const err3 = new FirebaseError("Invalid function name: my-func", { status: 400 });
       expect(executor.isServiceAccountPropagationError(err3)).to.be.false;
+
+      const err4 = new FirebaseError("Caller is missing permission on project", { status: 403 });
+      expect(executor.isServiceAccountPropagationError(err4)).to.be.false;
     });
 
     it("matches 400 errors caused by service account propagation delays", () => {
@@ -156,6 +159,32 @@ describe("Executor", () => {
       const err4 = new FirebaseError(
         "Service account firebase-fn-123@p.iam.gserviceaccount.com has permission denied",
         { status: 400 },
+      );
+      expect(executor.isServiceAccountPropagationError(err4)).to.be.false;
+    });
+
+    it("matches 403 errors caused by service account propagation delays", () => {
+      const err1 = new FirebaseError(
+        "Could not create Cloud Run service projects/p/locations/l/services/s. Permission 'iam.serviceaccounts.actAs' denied on service account firebase-fn-1701862598@p.iam.gserviceaccount.com (or it may not exist).",
+        { status: 403 },
+      );
+      expect(executor.isServiceAccountPropagationError(err1)).to.be.true;
+
+      const err2 = new FirebaseError(
+        "Google Cloud Run Service Agent does not have permission to get access tokens for the service account firebase-fn-1701862598@p.iam.gserviceaccount.com.",
+        { status: 403 },
+      );
+      expect(executor.isServiceAccountPropagationError(err2)).to.be.true;
+
+      const err3 = new FirebaseError(
+        "Permission 'iam.serviceaccounts.actAs' denied on service account custom-sa@p.iam.gserviceaccount.com (or it may not exist).",
+        { status: 403 },
+      );
+      expect(executor.isServiceAccountPropagationError(err3)).to.be.false;
+
+      const err4 = new FirebaseError(
+        "Service account firebase-fn-1701862598@p.iam.gserviceaccount.com is disabled.",
+        { status: 403 },
       );
       expect(executor.isServiceAccountPropagationError(err4)).to.be.false;
     });
