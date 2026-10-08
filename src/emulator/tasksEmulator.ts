@@ -5,6 +5,7 @@ import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
 import { createDestroyer } from "../utils";
 import { EmulatorLogger } from "./emulatorLogger";
 import { TaskQueue } from "./taskQueue";
+import { hostValidationMiddleware } from "./hostValidation";
 import * as cors from "cors";
 
 export interface TasksEmulatorArgs {
@@ -196,6 +197,7 @@ export class TasksEmulator implements EmulatorInstance {
   }
   createHubServer(): express.Application {
     const hub = express();
+    hub.use(hostValidationMiddleware([this.getInfo().host]));
 
     const createTaskQueueRoute = `/projects/:project_id/locations/:location_id/queues/:queue_name`;
     const createTaskQueueHandler: express.Handler = (req, res) => {

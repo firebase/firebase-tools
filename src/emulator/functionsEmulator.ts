@@ -39,6 +39,7 @@ import {
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
+import { hostValidationMiddleware } from "./hostValidation";
 import { RuntimeWorker, RuntimeWorkerPool } from "./functionsRuntimeWorker";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { FirebaseError } from "../error";
@@ -312,6 +313,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     this.workQueue.start();
 
     const hub = express();
+    hub.use(hostValidationMiddleware([this.getInfo().host]));
 
     const dataMiddleware: express.RequestHandler = (req, res, next) => {
       const chunks: Buffer[] = [];
