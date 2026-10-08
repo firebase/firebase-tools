@@ -187,23 +187,27 @@ describe("init run", () => {
   });
 
   describe("upsertRunConfig", () => {
+    const DEFAULT_IGNORE = ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"];
+
     it("sets a single service object when firebase.json has no run config", () => {
-      const firstService = {
+      upsertRunConfig({ serviceId: "web", region: "us-central1", rootDir: "/" }, config);
+      expect(config.src.run).to.deep.equal({
         serviceId: "web",
         region: "us-central1",
         rootDir: "/",
-        ignore: ["node_modules"],
-      };
-      upsertRunConfig(firstService, config);
-      expect(config.src.run).to.deep.equal(firstService);
+        ignore: DEFAULT_IGNORE,
+      });
     });
 
     it("converts to an array when adding a second service", () => {
-      const firstService = { serviceId: "web", region: "us-central1" };
-      const secondService = { serviceId: "api", region: "us-east1" };
+      const firstService = { serviceId: "web", region: "us-central1", rootDir: "/" };
+      const secondService = { serviceId: "api", region: "us-east1", rootDir: "api" };
       upsertRunConfig(firstService, config);
       upsertRunConfig(secondService, config);
-      expect(config.src.run).to.deep.equal([firstService, secondService]);
+      expect(config.src.run).to.deep.equal([
+        { ...firstService, ignore: DEFAULT_IGNORE },
+        { ...secondService, ignore: DEFAULT_IGNORE },
+      ]);
     });
 
     it("updates an existing service in place while preserving custom ignore and updating localBuild", () => {
@@ -220,7 +224,6 @@ describe("init run", () => {
           region: "us-east1",
           rootDir: "apps/web",
           localBuild: true,
-          ignore: ["default-ignore"],
         },
         config,
       );
@@ -237,7 +240,6 @@ describe("init run", () => {
           serviceId: "web",
           region: "us-east1",
           rootDir: "apps/web",
-          ignore: ["default-ignore"],
         },
         config,
       );
@@ -247,6 +249,21 @@ describe("init run", () => {
         rootDir: "apps/web",
         ignore: ["custom-ignore"],
       });
+    });
+
+    it("adds the default ignore list to an existing service only if it has none", () => {
+      config.set("run", [
+        { serviceId: "web", region: "us-central1" },
+        { serviceId: "api", region: "us-central1", ignore: [] },
+      ]);
+
+      upsertRunConfig({ serviceId: "web", region: "us-central1", rootDir: "/" }, config);
+      upsertRunConfig({ serviceId: "api", region: "us-central1", rootDir: "api" }, config);
+
+      expect(config.src.run).to.deep.equal([
+        { serviceId: "web", region: "us-central1", rootDir: "/", ignore: DEFAULT_IGNORE },
+        { serviceId: "api", region: "us-central1", rootDir: "api", ignore: [] },
+      ]);
     });
   });
 });
