@@ -42,7 +42,7 @@ async function deployService(
     : { containers: [{ name: serviceId, image: "" }] };
   const container = template.containers?.[0];
   if (!container) {
-    throw new FirebaseError(`Service ${serviceId} has no containers.`);
+    throw new FirebaseError(`Service ${serviceId} in ${region} has no containers.`);
   }
   container.image = await buildImage(projectId, svc, source);
   if (svc.baseImage) {
@@ -102,7 +102,7 @@ async function uploadSource(
     path.join(options.config.projectDir, cfg.rootDir),
   );
   try {
-    logLabeledBullet("run", `Uploading source for service ${serviceId}...`);
+    logLabeledBullet("run", `Uploading source for service ${serviceId} in ${region}...`);
     const { bucket, object } = await gcs.uploadObject(
       { file: archive, stream: fs.createReadStream(archive) },
       bucketName,
@@ -122,7 +122,7 @@ async function buildImage(
   const { serviceId, region } = svc.config;
   await artifactregistry.ensureDockerRepository(projectId, region, "cloud-run-source-deploy");
   const imageUri = `${region}-docker.pkg.dev/${projectId}/cloud-run-source-deploy/${serviceId}:${Date.now()}`;
-  logLabeledBullet("run", `Building service ${serviceId}...`);
+  logLabeledBullet("run", `Building service ${serviceId} in ${region}...`);
   await runv2.submitBuild(projectId, region, {
     storageSource: source,
     imageUri,

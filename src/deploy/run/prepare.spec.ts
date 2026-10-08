@@ -67,9 +67,10 @@ describe("run prepare", () => {
     expect((await prepareOne({}, { baseImage: null })).baseImage).to.be.undefined;
   });
 
-  it("deploys a service ID in every region unless the context names a region", async () => {
+  it("only prepares the services that --only selects", async () => {
+    const payload: Payload = {};
     const sameIdTwoRegions = {
-      only: "run:s",
+      only: "run:s:europe-west1",
       config: {
         src: {
           run: [
@@ -80,13 +81,10 @@ describe("run prepare", () => {
         projectDir: "/p",
       },
     } as unknown as Options;
-    const preparedRegions = async (context: Partial<Context>) => {
-      const payload: Payload = {};
-      await prepare({ projectId: "p", ...context }, sameIdTwoRegions, payload);
-      return payload.run!.services.map((svc) => svc.config.region);
-    };
 
-    expect(await preparedRegions({})).to.deep.equal(["us-central1", "europe-west1"]);
-    expect(await preparedRegions({ region: "europe-west1" })).to.deep.equal(["europe-west1"]);
+    await prepare({ projectId: "p" }, sameIdTwoRegions, payload);
+
+    expect(payload.run!.services.map((svc) => svc.config.region)).to.deep.equal(["europe-west1"]);
+    expect(getServiceStub).to.have.been.calledOnceWith("p", "europe-west1", "s");
   });
 });
