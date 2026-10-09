@@ -336,7 +336,7 @@ function processKillSignal(
       res();
     } catch (e: unknown) {
       logger.debug(e as any);
-      rej();
+      rej(getError(e));
     }
   };
 }
@@ -394,7 +394,11 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
   return new Promise((resolve, reject) => {
     proc.on("error", (err: any) => {
       utils.logWarning(`There was an error running the script: ${JSON.stringify(err)}`);
-      reject();
+      reject(
+        new FirebaseError("There was an error running the script.", {
+          original: err instanceof Error ? err : undefined,
+        }),
+      );
     });
 
     // Due to the async nature of the node child_process library, sometimes
@@ -406,7 +410,9 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
     proc.once("exit", (code, signal) => {
       if (signal) {
         utils.logWarning(`Script exited with signal: ${signal}`);
-        setTimeout(reject, exitDelayMs);
+        setTimeout(() => {
+          reject(new FirebaseError(`Script exited with signal: ${signal}`));
+        }, exitDelayMs);
         return;
       }
 

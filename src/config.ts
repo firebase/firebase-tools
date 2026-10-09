@@ -34,6 +34,7 @@ export class Config {
     "apphosting",
     "auth",
     "ailogic",
+    "run",
   ];
 
   public options: any;
