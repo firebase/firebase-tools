@@ -1,31 +1,24 @@
+import * as clc from "colorette";
 import { deploy } from "..";
 import { FirebaseError } from "../../error";
 import { RunSingle } from "../../firebaseConfig";
 import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
-import {
-  findServices,
-  fullServiceName,
-  getAllServiceConfigs,
-  getExistingService,
-  missingServiceMessage,
-} from "./util";
+import { findServices, fullServiceName, getAllServiceConfigs, getExistingService } from "./util";
 
 /**
- * Updates a service's settings, then builds and deploys it like `firebase deploy` does. It always
- * rebuilds and deploys, even if the service already has those settings.
- * Changing the base image always needs a rebuild: images built for a base image leave out the
- * OS and runtime, and images built without one bring their own, which override the base image.
- * `name` is a service ID, or <serviceId>:<region> to pick one region of a service ID that
- * firebase.json lists in more than one.
+ * Changes a service's settings by deploying it with them, like `firebase deploy` does. It always
+ * rebuilds, even if nothing changed: a new base image needs a new build, because images built for
+ * a base image leave out the OS and runtime that other images bring.
+ * `name` is <serviceId>, or <serviceId>:<region> if firebase.json lists the ID in several regions.
  */
 export async function updateService(name: string, options: Options): Promise<void> {
-  const newBaseImage = options.baseImage as string | undefined;
-  const clearBaseImage = !!options.clearBaseImage;
-  if (newBaseImage && clearBaseImage) {
-    throw new FirebaseError("Use either --base-image or --clear-base-image, not both.");
-  }
-  if (!newBaseImage && !clearBaseImage) {
+  // Deploy reads each setting as an override: a value sets it, null clears it, and undefined keeps
+  // the service's current value.
+  const settings = {
+    baseImage: readFlagPair(options.baseImage, options.clearBaseImage, "base-image"),
+  };
+  if (Object.values(settings).every((value) => value === undefined)) {
     throw new FirebaseError(
       "Specify a setting to update: --base-image <baseImage> or --clear-base-image.",
     );
@@ -34,14 +27,24 @@ export async function updateService(name: string, options: Options): Promise<voi
   const projectId = needProjectId(options);
   const config = findServiceToUpdate(name, options);
   if (!(await getExistingService(projectId, config.region, config.serviceId))) {
-    throw new FirebaseError(`${missingServiceMessage(config)} Then you can update it.`);
+    const howToCreate =
+      `${clc.bold("firebase init run")} or ` +
+      clc.bold(`firebase deploy --only run:${fullServiceName(config)}`);
+    throw new FirebaseError(
+      `Cloud Run service ${config.serviceId} doesn't exist in ${config.region} yet. ` +
+        `Create it with ${howToCreate}, then update it.`,
+    );
   }
 
-  await deploy(
-    ["run"],
-    { ...options, only: `run:${fullServiceName(config)}` },
-    { baseImage: newBaseImage ?? null },
-  );
+  await deploy(["run"], { ...options, only: `run:${fullServiceName(config)}` }, settings);
+}
+
+/** Reads a `--<flag> <value>` / `--clear-<flag>` pair as a setting override. */
+function readFlagPair(value: unknown, clear: unknown, flag: string): string | null | undefined {
+  if (value && clear) {
+    throw new FirebaseError(`Use either --${flag} or --clear-${flag}, not both.`);
+  }
+  return clear ? null : (value as string | undefined);
 }
 
 /**
