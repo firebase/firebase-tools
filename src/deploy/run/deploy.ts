@@ -28,9 +28,13 @@ type RevisionCode = { image: string } | { builtApp: runv2.StorageSource };
 export async function deploy(context: Context, options: Options, payload: Payload): Promise<void> {
   const { projectId } = context;
   for (const svc of payload.run?.services || []) {
+    // A local build runs in a scratch copy of the source, which is deleted afterwards.
+    const scratchDir = svc.config.localBuild
+      ? fs.mkdtempSync(path.join(os.tmpdir(), `run-local-build-${svc.config.serviceId}-`))
+      : undefined;
     try {
-      if (svc.config.localBuild) {
-        svc.localBuild = await buildLocally(context, options, svc);
+      if (scratchDir) {
+        svc.localBuild = await buildLocally(context, options, svc, scratchDir);
       }
       const uploaded = await uploadSource(projectId, options, svc);
       // Cloud Run runs a local build's output as is. Other source is built into an image first.
@@ -42,8 +46,8 @@ export async function deploy(context: Context, options: Options, payload: Payloa
         ? await deployRevision(svc.existing, template)
         : await createService(projectId, svc.config, template);
     } finally {
-      if (svc.localBuild) {
-        removeTempPath(svc.localBuild.scratchDir);
+      if (scratchDir) {
+        removeTempPath(scratchDir);
       }
     }
   }
@@ -54,40 +58,36 @@ async function buildLocally(
   context: Context,
   options: Options,
   svc: ServiceDeploy,
+  scratchDir: string,
 ): Promise<NonNullable<ServiceDeploy["localBuild"]>> {
   const { config } = svc;
   const { serviceId, region } = config;
   const cfg = toAppHostingConfig(config);
+  // App Hosting's check reads the Node.js version from a backend's runtime, e.g. "nodejs22".
   validateLocalBuildNodeVersion(
     { runtime: { value: svc.baseImage?.split("/").pop() } } as Backend,
     path.join(options.config.projectDir, cfg.rootDir),
   );
   logLabeledBullet("run", `Starting local build for service ${serviceId} in ${region}`);
-  const scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), `run-local-build-${serviceId}-`));
-  try {
-    await prepareLocalBuildScratchDirectory(options.config.projectDir, scratchDir, cfg);
-    const { outputFiles, buildConfig } = await localBuild(
-      context.projectId,
-      scratchDir,
-      {},
-      {
-        rootDir: config.rootDir,
-      },
-    );
-    // Keep the env vars that the app needs at runtime, not just during the build.
-    const env = (buildConfig.env || [])
-      .filter(
-        (e) =>
-          e.variable &&
-          e.value !== undefined &&
-          (!e.availability || e.availability.includes("RUNTIME")),
-      )
-      .map((e) => ({ name: e.variable, value: e.value! }));
-    return { scratchDir, outputFiles, runCommand: buildConfig.runCommand, env };
-  } catch (err: unknown) {
-    removeTempPath(scratchDir);
-    throw err;
-  }
+  await prepareLocalBuildScratchDirectory(options.config.projectDir, scratchDir, cfg);
+  const { outputFiles, buildConfig } = await localBuild(
+    context.projectId,
+    scratchDir,
+    {},
+    {
+      rootDir: config.rootDir,
+    },
+  );
+  // Keep the env vars that the app needs at runtime, not just during the build.
+  const env = (buildConfig.env || [])
+    .filter(
+      (e) =>
+        e.variable &&
+        e.value !== undefined &&
+        (!e.availability || e.availability.includes("RUNTIME")),
+    )
+    .map((e) => ({ name: e.variable, value: e.value! }));
+  return { scratchDir, outputFiles, runCommand: buildConfig.runCommand, env };
 }
 
 /** Uploads the service's source, or its local build's output, to the region's source bucket. */

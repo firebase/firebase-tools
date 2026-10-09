@@ -81,12 +81,8 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
       ? "Which base image should your app use? (e.g. nodejs20, nodejs22)"
       : "Which base image should your app use, if any? (e.g. nodejs20, nodejs22)",
     default: existing?.template.containers?.[0]?.baseImageUri,
-    validate: (img: string) => {
-      if (localBuild && !img.trim()) {
-        return "Local builds require a base image.";
-      }
-      return true;
-    },
+    validate: (img: string) =>
+      localBuild && !img.trim() ? "Local builds require a base image." : true,
   });
   const baseImage = (rawBaseImage || "").trim();
 
