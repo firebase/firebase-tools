@@ -491,10 +491,10 @@ export class Fabricator {
     if (apiFunction.httpsTrigger) {
       apiFunction.httpsTrigger.securityLevel = "SECURE_ALWAYS";
     }
-    const resultFunction = await this.functionExecutor
-      .run(
-        () =>
-          scraper.withToken(async (token) => {
+    const resultFunction = await scraper
+      .withToken((token) =>
+        this.functionExecutor.run(
+          async () => {
             // Clear any token from a previous attempt so retries do not send a stale token.
             // Explicitly delete instead of setting undefined so proto.fieldMasks() omits it.
             delete apiFunction.sourceToken;
@@ -508,8 +508,9 @@ export class Fabricator {
               operationResourceName: op.name,
               onPoll: scraper.poller,
             });
-          }),
-        { retryPredicates: [isTransientError, isServiceAccountPropagationError] },
+          },
+          { retryPredicates: [isTransientError, isServiceAccountPropagationError] },
+        ),
       )
       .catch(rethrowAs<gcf.CloudFunction>(endpoint, "create"));
 
@@ -627,10 +628,10 @@ export class Fabricator {
 
     let resultFunction: gcfV2.OutputCloudFunction | null = null;
     while (!resultFunction) {
-      resultFunction = await this.functionExecutor
-        .run(
-          () =>
-            scraper.withToken(async (token) => {
+      resultFunction = await scraper
+        .withToken((token) =>
+          this.functionExecutor.run(
+            async () => {
               if (apiFunction.buildConfig) {
                 // Clear any token from a previous attempt so retries do not send a stale token.
                 // Explicitly delete instead of setting undefined so proto.fieldMasks() omits it.
@@ -646,8 +647,9 @@ export class Fabricator {
                 operationResourceName: op.name,
                 onPoll: scraper.poller,
               });
-            }),
-          { retryPredicates: [isTransientError, isServiceAccountPropagationError] },
+            },
+            { retryPredicates: [isTransientError, isServiceAccountPropagationError] },
+          ),
         )
         .catch(async (err: any) => {
           // If the createFunction call returns RPC error code RESOURCE_EXHAUSTED (8),
@@ -733,10 +735,10 @@ export class Fabricator {
     }
     const apiFunction = gcf.functionFromEndpoint(endpoint, sourceUrl);
 
-    const resultFunction = await this.functionExecutor
-      .run(
-        () =>
-          scraper.withToken(async (token) => {
+    const resultFunction = await scraper
+      .withToken((token) =>
+        this.functionExecutor.run(
+          async () => {
             // Clear any token from a previous attempt so retries do not send a stale token.
             // Explicitly delete instead of setting undefined so proto.fieldMasks() omits it.
             delete apiFunction.sourceToken;
@@ -750,8 +752,9 @@ export class Fabricator {
               operationResourceName: op.name,
               onPoll: scraper.poller,
             });
-          }),
-        { retryPredicates: [isTransientError, isServiceAccountPropagationError] },
+          },
+          { retryPredicates: [isTransientError, isServiceAccountPropagationError] },
+        ),
       )
       .catch(rethrowAs<gcf.CloudFunction>(endpoint, "update"));
 
@@ -790,10 +793,10 @@ export class Fabricator {
       delete apiFunction.eventTrigger.pubsubTopic;
     }
 
-    const resultFunction = await this.functionExecutor
-      .run(
-        () =>
-          scraper.withToken(async (token) => {
+    const resultFunction = await scraper
+      .withToken((token) =>
+        this.functionExecutor.run(
+          async () => {
             if (apiFunction.buildConfig) {
               // Clear any token from a previous attempt so retries do not send a stale token.
               // Explicitly delete instead of setting undefined so proto.fieldMasks() omits it.
@@ -809,14 +812,15 @@ export class Fabricator {
               operationResourceName: op.name,
               onPoll: scraper.poller,
             });
-          }),
-        {
-          retryPredicates: [
-            isTransientError,
-            isCloudRunResourceExhausted,
-            isServiceAccountPropagationError,
-          ],
-        },
+          },
+          {
+            retryPredicates: [
+              isTransientError,
+              isCloudRunResourceExhausted,
+              isServiceAccountPropagationError,
+            ],
+          },
+        ),
       )
       .catch((err: any) => {
         logger.error((err as Error).message);

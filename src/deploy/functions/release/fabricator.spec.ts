@@ -158,6 +158,123 @@ describe("Fabricator", () => {
     } as backend.Endpoint;
   }
 
+  const saNotFoundError = new FirebaseError(
+    "Service account sa@proj.iam.gserviceaccount.com was not found",
+    { status: 404 },
+  );
+  const saPropagationError = new FirebaseError(
+    "Validation failed for trigger: The request was invalid: invalid service account firebase-fn-123@proj.iam.gserviceaccount.com provided",
+    { status: 400 },
+  );
+
+  function fabricatorWithRetries(retries = 5): fabricator.Fabricator {
+    return new fabricator.Fabricator({
+      ...ctorArgs,
+      functionExecutor: new executor.QueueExecutor({
+        retries,
+        backoff: 1,
+        maxBackoff: 1,
+      }),
+    });
+  }
+
+  interface TokenArg {
+    name: string;
+    sourceToken?: string;
+    buildConfig?: { sourceToken?: string };
+  }
+
+  async function verifyScraperBlocksAcrossRetries(
+    method: "createV1Function" | "updateV1Function" | "createV2Function" | "updateV2Function",
+  ): Promise<void> {
+    const isV2 = method.includes("V2");
+    const fabWithQueue = fabricatorWithRetries();
+    const apiStub =
+      method === "createV1Function"
+        ? gcf.createFunction
+        : method === "updateV1Function"
+          ? gcf.updateFunction
+          : method === "createV2Function"
+            ? gcfv2.createFunction
+            : gcfv2.updateFunction;
+    const getToken = (fn: Partial<TokenArg>): string | undefined =>
+      isV2 ? fn.buildConfig?.sourceToken : fn.sourceToken;
+
+    apiStub.onFirstCall().rejects(saPropagationError);
+    apiStub.onSecondCall().resolves({ name: "op1", type: "create", done: false });
+    apiStub.onThirdCall().callsFake((fn: Partial<TokenArg>): Promise<never> => {
+      expect(getToken(fn)).to.equal("scraped-token");
+      return Promise.reject(saPropagationError);
+    });
+    apiStub.onCall(3).resolves({ name: "op2", type: "create", done: false });
+    poller.pollOperation.callsFake((opts: pollerNS.OperationPollerOptions) => {
+      if (opts.operationResourceName === "op1") {
+        opts.onPoll?.({
+          metadata: {
+            sourceToken: "scraped-token",
+            target: "projects/test-project/locations/us-central1/functions/fn1",
+          },
+        });
+      }
+      return Promise.resolve(isV2 ? { serviceConfig: { service: "service" } } : undefined);
+    });
+    gcf.setInvokerCreate.resolves();
+    run.setInvokerCreate.resolves();
+
+    const platform = isV2 ? "gcfv2" : "gcfv1";
+    const ep1 = endpoint({ httpsTrigger: {} }, { id: "fn1", platform });
+    const ep2 = endpoint({ httpsTrigger: {} }, { id: "fn2", platform });
+    const sc = new scraper.SourceTokenScraper();
+
+    await Promise.all([fabWithQueue[method](ep1, sc), fabWithQueue[method](ep2, sc)]);
+
+    const calls = apiStub.getCalls().map((c) => c.args[0] as TokenArg);
+    expect(calls).to.have.lengthOf(4);
+    expect(calls[0].name).to.equal(backend.functionName(ep1));
+    expect(getToken(calls[0])).to.be.undefined;
+    expect(calls[1].name).to.equal(backend.functionName(ep1));
+    expect(getToken(calls[1])).to.be.undefined;
+    expect(calls[2].name).to.equal(backend.functionName(ep2));
+    expect(calls[3].name).to.equal(backend.functionName(ep2));
+    expect(getToken(calls[3])).to.equal("scraped-token");
+  }
+
+  async function verifyTokenAbortAfterRetries(
+    method: "createV2Function" | "updateV2Function",
+  ): Promise<void> {
+    const fabWithQueue = fabricatorWithRetries(1);
+    const sc = new scraper.SourceTokenScraper();
+    const apiStub = method === "createV2Function" ? gcfv2.createFunction : gcfv2.updateFunction;
+
+    apiStub.onFirstCall().rejects(saNotFoundError);
+    apiStub.onSecondCall().rejects(saNotFoundError);
+    apiStub.onThirdCall().resolves({ name: "op2", done: false });
+    poller.pollOperation.callsFake((opts: pollerNS.OperationPollerOptions) => {
+      opts.onPoll?.({
+        metadata: {
+          sourceToken: "magic token",
+          target: "projects/p/locations/l/functions/f",
+        },
+      });
+      return Promise.resolve({ serviceConfig: { service: "service" } });
+    });
+    run.setInvokerCreate.resolves();
+
+    const ep1 = endpoint({ httpsTrigger: {} }, { id: "fn1", platform: "gcfv2" });
+    const ep2 = endpoint({ httpsTrigger: {} }, { id: "fn2", platform: "gcfv2" });
+    const fn1 = fabWithQueue[method](ep1, sc);
+    const fn2 = fabWithQueue[method](ep2, sc);
+    await expect(fn1).to.be.rejectedWith(
+      reporter.DeploymentError,
+      method === "createV2Function" ? "create" : "update",
+    );
+    await fn2;
+
+    expect(apiStub).to.have.been.calledThrice;
+    expect(apiStub.thirdCall.args[0].buildConfig?.sourceToken).to.be.undefined;
+    await expect(sc.withToken(async (t) => t)).to.eventually.equal("magic token");
+  }
+
   describe("createV1Function", () => {
     it("throws on create function failure", async () => {
       gcf.createFunction.rejects(new Error("Server failure"));
@@ -345,6 +462,10 @@ describe("Fabricator", () => {
       await fab.createV1Function(ep1, new scraper.SourceTokenScraper());
       expect(gcf.setInvokerCreate).to.not.have.been.called;
     });
+
+    it("keeps waiting functions blocked on scraper while first function retries a transient error", async () => {
+      await verifyScraperBlocksAcrossRetries("createV1Function");
+    });
   });
 
   describe("updateV1Function", () => {
@@ -432,6 +553,10 @@ describe("Fabricator", () => {
 
       await fab.updateV1Function(ep, new scraper.SourceTokenScraper());
       expect(gcf.setInvokerUpdate).to.not.have.been.called;
+    });
+
+    it("keeps waiting functions blocked on scraper while first function retries a transient error", async () => {
+      await verifyScraperBlocksAcrossRetries("updateV1Function");
     });
   });
 
@@ -635,27 +760,7 @@ describe("Fabricator", () => {
     });
 
     it("tries to grab new token on abort", async () => {
-      const sc = new scraper.SourceTokenScraper();
-      sc.poller({
-        metadata: {
-          sourceToken: "magic token",
-          target: "projects/p/locations/l/functions/f",
-        },
-      });
-
-      gcfv2.createFunction.onFirstCall().rejects({ message: "unknown" });
-      gcfv2.createFunction.resolves({ name: "op", done: true });
-
-      const ep1 = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
-      const ep2 = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
-      const fn1 = fab.createV2Function(ep1, sc);
-      const fn2 = fab.createV2Function(ep2, sc);
-      try {
-        await Promise.all([fn1, fn2]);
-      } catch (err) {
-        // do nothing, error is expected
-      }
-      await expect(sc.withToken(async (t) => t)).to.eventually.equal("magic token");
+      await verifyTokenAbortAfterRetries("createV2Function");
     });
 
     it("deletes broken function and retries on cloud run quota exhaustion", async () => {
@@ -673,22 +778,9 @@ describe("Fabricator", () => {
     });
 
     it("retries createV2Function and succeeds when service account 404 occurs", async () => {
-      const queueExec = new executor.QueueExecutor({
-        retries: 5,
-        backoff: 1,
-        maxBackoff: 1,
-      });
-      const fabWithQueue = new fabricator.Fabricator({
-        ...ctorArgs,
-        functionExecutor: queueExec,
-      });
+      const fabWithQueue = fabricatorWithRetries();
 
-      const saError = new FirebaseError(
-        "Service account sa@proj.iam.gserviceaccount.com was not found",
-        { status: 404 },
-      );
-
-      gcfv2.createFunction.onFirstCall().rejects(saError);
+      gcfv2.createFunction.onFirstCall().rejects(saNotFoundError);
       gcfv2.createFunction.onSecondCall().resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
       run.setInvokerCreate.resolves();
@@ -701,22 +793,9 @@ describe("Fabricator", () => {
     });
 
     it("retries createV2Function and succeeds when service account 400 propagation error occurs", async () => {
-      const queueExec = new executor.QueueExecutor({
-        retries: 5,
-        backoff: 1,
-        maxBackoff: 1,
-      });
-      const fabWithQueue = new fabricator.Fabricator({
-        ...ctorArgs,
-        functionExecutor: queueExec,
-      });
+      const fabWithQueue = fabricatorWithRetries();
 
-      const saError = new FirebaseError(
-        "Validation failed for trigger: The request was invalid: invalid service account firebase-fn-123@proj.iam.gserviceaccount.com provided",
-        { status: 400 },
-      );
-
-      gcfv2.createFunction.onFirstCall().rejects(saError);
+      gcfv2.createFunction.onFirstCall().rejects(saPropagationError);
       gcfv2.createFunction.onSecondCall().resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
       run.setInvokerCreate.resolves();
@@ -726,6 +805,10 @@ describe("Fabricator", () => {
       await fabWithQueue.createV2Function(ep, sc);
 
       expect(gcfv2.createFunction).to.have.been.calledTwice;
+    });
+
+    it("keeps waiting functions blocked on scraper while first function retries a transient error", async () => {
+      await verifyScraperBlocksAcrossRetries("createV2Function");
     });
 
     it("throws on set invoker failure", async () => {
@@ -1070,27 +1153,11 @@ describe("Fabricator", () => {
     });
 
     it("tries to grab new token on abort", async () => {
-      const sc = new scraper.SourceTokenScraper();
-      sc.poller({
-        metadata: {
-          sourceToken: "magic token",
-          target: "projects/p/locations/l/functions/f",
-        },
-      });
+      await verifyTokenAbortAfterRetries("updateV2Function");
+    });
 
-      gcfv2.updateFunction.onFirstCall().rejects({ message: "unknown" });
-      gcfv2.updateFunction.resolves({ name: "op", done: true });
-
-      const ep1 = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
-      const ep2 = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
-      const fn1 = fab.updateV2Function(ep1, sc);
-      const fn2 = fab.updateV2Function(ep2, sc);
-      try {
-        await Promise.all([fn1, fn2]);
-      } catch (err) {
-        // do nothing, error is expected
-      }
-      await expect(sc.withToken(async (t) => t)).to.eventually.equal("magic token");
+    it("keeps waiting functions blocked on scraper while first function retries a transient error", async () => {
+      await verifyScraperBlocksAcrossRetries("updateV2Function");
     });
   });
 
