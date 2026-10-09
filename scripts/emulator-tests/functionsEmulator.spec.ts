@@ -92,7 +92,7 @@ interface UseFunctionOptions {
 async function useFunction(
   emu: FunctionsEmulator,
   triggerName: string,
-  triggerSource: () => {},
+  triggerSource: () => unknown,
   options: UseFunctionOptions = {},
 ): Promise<void> {
   const { regions = ["us-central1"], backend = TEST_BACKEND, triggerOverrides } = options;
