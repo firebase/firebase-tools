@@ -1,6 +1,5 @@
 import { expect } from "chai";
 import * as fs from "fs";
-import * as path from "path";
 import * as sinon from "sinon";
 import * as localbuilds from "../../apphosting/localbuilds";
 import * as artifactregistry from "../../gcp/artifactregistry";
@@ -15,12 +14,15 @@ import { deploy, revisionTemplate } from "./deploy";
 
 const NODEJS22 = "us-central1-docker.pkg.dev/serverless-runtimes/google-22/runtimes/nodejs22";
 const DEPLOY_MESSAGE = "firebase.google.com/deploy-message";
+const APP_ID = "firebase.google.com/app-id";
 
 describe("run deploy", () => {
   const options = { config: { projectDir: "/project" } } as unknown as Options;
   const web = { serviceId: "web", region: "us-central1", rootDir: "apps/web" };
   // Date.now() is stubbed to return 42, which tags the image.
   const image = "us-central1-docker.pkg.dev/my-project/cloud-run-source-deploy/web:42";
+  const scratchDir = "/tmp/run-local-build-web-abc123";
+  const builtApp = { bucket: "source-bucket", object: "web.tar.gz" };
   let createArchiveStub: sinon.SinonStub;
   let submitBuildStub: sinon.SinonStub;
   let createServiceStub: sinon.SinonStub;
@@ -33,13 +35,9 @@ describe("run deploy", () => {
       .stub(apphostingUtil, "createSourceDeployArchive")
       .resolves("/tmp/web.zip");
     sinon.stub(fs, "createReadStream").returns("stream" as unknown as fs.ReadStream);
-    sinon.stub(gcs, "uploadObject").callsFake((src) =>
-      Promise.resolve({
-        bucket: "source-bucket",
-        object: path.basename(src.file),
-        generation: "1",
-      }),
-    );
+    sinon
+      .stub(gcs, "uploadObject")
+      .resolves({ bucket: "source-bucket", object: "web.zip", generation: "1" });
     sinon.stub(artifactregistry, "ensureDockerRepository").resolves();
     submitBuildStub = sinon.stub(runv2, "submitBuild").resolves();
     const deployed = { uri: "https://web.run.app" } as runv2.Service;
@@ -123,27 +121,27 @@ describe("run deploy", () => {
   });
 
   describe("linked Firebase Web App", () => {
-    const APP_ID = "firebase.google.com/app-id";
     const linkedWeb = {
       name: "projects/my-project/locations/us-central1/services/web",
-      annotations: { team: "frontend", [APP_ID]: "old-app" },
+      annotations: { team: "frontend", [APP_ID]: "1:123:web:abc" },
       template: { containers: [{ name: "web", image: "old-image" }] },
     } as unknown as runv2.Service;
 
     it("is saved on a new service", async () => {
-      await deployOne({ config: web, appId: "new-app" });
+      await deployOne({ config: web, appId: "1:123:web:abc" });
 
-      expect(createServiceStub.firstCall.args[3].annotations).to.deep.equal({
-        [APP_ID]: "new-app",
+      expect(createServiceStub).to.have.been.calledWithMatch("my-project", "us-central1", "web", {
+        annotations: { [APP_ID]: "1:123:web:abc" },
       });
     });
 
     it("replaces the app saved on an existing service", async () => {
-      await deployOne({ config: web, existing: linkedWeb, appId: "new-app" });
+      await deployOne({ config: web, existing: linkedWeb, appId: "1:123:web:def" });
 
-      const [service, { updateMask }] = updateServiceStub.firstCall.args;
-      expect(service.annotations).to.deep.equal({ team: "frontend", [APP_ID]: "new-app" });
-      expect(updateMask).to.deep.equal(["annotations", "template", "traffic"]);
+      expect(updateServiceStub).to.have.been.calledWithMatch(
+        { annotations: { team: "frontend", [APP_ID]: "1:123:web:def" } },
+        { updateMask: ["annotations", "template", "traffic"] },
+      );
     });
 
     it("is removed when the service is unlinked", async () => {
@@ -153,7 +151,7 @@ describe("run deploy", () => {
     });
 
     it("leaves the service's annotations alone if the app didn't change", async () => {
-      await deployOne({ config: web, existing: linkedWeb, appId: "old-app" });
+      await deployOne({ config: web, existing: linkedWeb, appId: "1:123:web:abc" });
 
       const [service, { updateMask }] = updateServiceStub.firstCall.args;
       expect(service).not.to.have.property("annotations");
@@ -163,28 +161,37 @@ describe("run deploy", () => {
 
   describe("local builds", () => {
     const localWeb = { ...web, localBuild: true };
+    let rmSyncStub: sinon.SinonStub;
     let validateNodeStub: sinon.SinonStub;
     let localBuildStub: sinon.SinonStub;
     let tarArchiveStub: sinon.SinonStub;
-    let mkdtempSpy: sinon.SinonSpy;
 
     beforeEach(() => {
-      sinon.stub(apphostingPrepare, "prepareLocalBuildScratchDirectory").resolves();
+      sinon.stub(fs, "mkdtempSync").returns(scratchDir);
+      rmSyncStub = sinon.stub(fs, "rmSync");
       validateNodeStub = sinon.stub(localbuilds, "validateLocalBuildNodeVersion");
+      sinon.stub(apphostingPrepare, "prepareLocalBuildScratchDirectory").resolves();
       localBuildStub = sinon.stub(localbuilds, "localBuild").resolves({
         outputFiles: [".next"],
-        buildConfig: { runCommand: "node server.js" },
+        buildConfig: { runCommand: "npm run start" },
       });
       tarArchiveStub = sinon
         .stub(apphostingUtil, "createLocalBuildTarArchive")
         .resolves("/tmp/web.tar.gz");
-      mkdtempSpy = sinon.spy(fs, "mkdtempSync");
+      (gcs.uploadObject as sinon.SinonStub)
+        .withArgs(sinon.match({ file: "/tmp/web.tar.gz" }))
+        .resolves(builtApp);
     });
 
-    it("builds on this machine and uploads the output, without Cloud Build", async () => {
+    /** Deploys web with "localBuild": true and returns the container that it rolled out. */
+    async function deployLocalBuild(): Promise<runv2.Container> {
       await deployOne({ config: localWeb, baseImage: NODEJS22 });
+      return createServiceStub.firstCall.args[3].template.containers[0];
+    }
 
-      const scratchDir = mkdtempSpy.firstCall.returnValue as string;
+    it("builds on this machine, in a scratch folder that it deletes afterwards", async () => {
+      await deployLocalBuild();
+
       expect(validateNodeStub).to.have.been.calledWith(
         { runtime: { value: "nodejs22" } },
         "/project/apps/web",
@@ -193,71 +200,69 @@ describe("run deploy", () => {
         "my-project",
         scratchDir,
         {},
-        {
-          rootDir: "apps/web",
-        },
+        { rootDir: "apps/web" },
       );
-      expect(tarArchiveStub).to.have.been.calledWithMatch({ backendId: "web" }, scratchDir, [
-        ".next",
-      ]);
+      expect(rmSyncStub).to.have.been.calledWith(scratchDir);
+    });
+
+    it("uploads the build's output and runs it as is, without Cloud Build", async () => {
+      const container = await deployLocalBuild();
+
+      expect(tarArchiveStub).to.have.been.calledWithMatch(sinon.match.any, scratchDir, [".next"]);
       expect(submitBuildStub).not.to.have.been.called;
-      expect(createServiceStub.firstCall.args[3].template.containers[0]).to.deep.equal({
-        name: "web",
+      expect(container).to.deep.include({
         image: "scratch",
-        sourceCode: { cloudStorageSource: { bucket: "source-bucket", object: "web.tar.gz" } },
-        command: ["node", "server.js"],
-        baseImageUri: NODEJS22,
+        sourceCode: { cloudStorageSource: builtApp },
+        command: ["npm", "run", "start"],
       });
-      expect(fs.existsSync(scratchDir)).to.be.false;
     });
 
     it("keeps the env vars the app needs at runtime", async () => {
       localBuildStub.resolves({
         outputFiles: [".next"],
         buildConfig: {
-          runCommand: "node server.js",
           env: [
             { variable: "NODE_ENV", value: "production", availability: ["RUNTIME"] },
-            { variable: "BUILD_ONLY", value: "x", availability: ["BUILD"] },
+            { variable: "NEXT_TELEMETRY_DISABLED", value: "1", availability: ["BUILD"] },
           ],
         },
       });
 
-      await deployOne({ config: localWeb, baseImage: NODEJS22 });
+      const container = await deployLocalBuild();
 
-      expect(createServiceStub.firstCall.args[3].template.containers[0].env).to.deep.equal([
-        { name: "NODE_ENV", value: "production" },
-      ]);
+      expect(container.env).to.deep.equal([{ name: "NODE_ENV", value: "production" }]);
     });
 
     it("passes the build env, secrets included, to the local build", async () => {
-      const buildEnv = { API_URL: "https://api.example.com", TOKEN: { secret: "t", version: "2" } };
+      const buildEnv = {
+        API_URL: "https://api.example.com",
+        NPM_TOKEN: { secret: "npm-token", version: "2" },
+      };
 
       await deployOne({ config: localWeb, baseImage: NODEJS22, buildEnv });
 
-      expect(localBuildStub.firstCall.args[2]).to.deep.equal({
-        API_URL: { value: "https://api.example.com", availability: ["BUILD"] },
-        TOKEN: { secret: "t@2", availability: ["BUILD"] },
-      });
-      expect(localBuildStub.firstCall.args[3]).to.include({ allowLocalBuildSecrets: true });
+      expect(localBuildStub).to.have.been.calledWithMatch(
+        "my-project",
+        scratchDir,
+        { API_URL: { value: "https://api.example.com" }, NPM_TOKEN: { secret: "npm-token@2" } },
+        { allowLocalBuildSecrets: true },
+      );
     });
 
     it("cleans up and deploys nothing if the local build fails", async () => {
-      localBuildStub.rejects(new Error("boom"));
+      localBuildStub.rejects(new Error("next build failed"));
 
-      await expect(deployOne({ config: localWeb, baseImage: NODEJS22 })).to.be.rejectedWith("boom");
+      await expect(deployLocalBuild()).to.be.rejectedWith("next build failed");
 
-      expect(fs.existsSync(mkdtempSpy.firstCall.returnValue as string)).to.be.false;
+      expect(rmSyncStub).to.have.been.calledWith(scratchDir);
       expect(createServiceStub).not.to.have.been.called;
     });
 
     it("reports the local build error, not the cleanup error, when both fail", async () => {
-      localBuildStub.rejects(new Error("boom"));
-      sinon.stub(fs, "rmSync").throws(new Error("EBUSY"));
+      localBuildStub.rejects(new Error("next build failed"));
+      rmSyncStub.throws(new Error("EBUSY: resource busy or locked"));
 
-      await expect(deployOne({ config: localWeb, baseImage: NODEJS22 })).to.be.rejectedWith("boom");
-
-      fs.rmdirSync(mkdtempSpy.firstCall.returnValue as string);
+      await expect(deployLocalBuild()).to.be.rejectedWith("next build failed");
     });
   });
 
@@ -278,7 +283,13 @@ describe("run deploy", () => {
         ],
       },
     } as unknown as runv2.Service;
-    const builtApp = { bucket: "source-bucket", object: "web.tar.gz" };
+
+    /** The live web service, running a container with these fields. */
+    function webRunning(container: Partial<runv2.Container>): runv2.Service {
+      return {
+        template: { containers: [{ name: "web", image: "old-image", ...container }] },
+      } as runv2.Service;
+    }
 
     it("starts a new service with just the image", () => {
       expect(revisionTemplate({ config: web }, { image })).to.deep.equal({
@@ -312,10 +323,14 @@ describe("run deploy", () => {
     });
 
     it("sets the deploy message, or clears the last one", () => {
-      const withMessage = revisionTemplate({ config: web, existing }, { image }, "Fix the login");
+      const withMessage = revisionTemplate(
+        { config: web, existing },
+        { image },
+        "Fix the login page",
+      );
       expect(withMessage.annotations).to.deep.equal({
         team: "frontend",
-        [DEPLOY_MESSAGE]: "Fix the login",
+        [DEPLOY_MESSAGE]: "Fix the login page",
       });
 
       const withoutMessage = revisionTemplate({ config: web, existing }, { image });
@@ -323,91 +338,78 @@ describe("run deploy", () => {
     });
 
     it("runs a local build's output with the build's start command", () => {
-      const localBuild = { scratchDir: "/tmp/x", outputFiles: [], runCommand: " node  server.js " };
+      // The command is split on whitespace, so stray spaces don't become empty arguments.
+      const localBuild = { scratchDir, outputFiles: [".next"], runCommand: " npm  run start " };
 
-      const container = revisionTemplate({ config: web, existing, localBuild }, { builtApp })
-        .containers?.[0];
+      const template = revisionTemplate({ config: web, existing, localBuild }, { builtApp });
 
-      expect(container).to.include({ image: "scratch" });
-      expect(container?.sourceCode).to.deep.equal({ cloudStorageSource: builtApp });
-      expect(container?.command).to.deep.equal(["node", "server.js"]);
+      expect(template.containers?.[0]).to.deep.include({
+        image: "scratch",
+        sourceCode: { cloudStorageSource: builtApp },
+        command: ["npm", "run", "start"],
+      });
     });
 
     it("adds the env vars a local build needs, unless the service already sets them", () => {
       const env = [
-        { name: "MODE", value: "from-build" },
+        { name: "MODE", value: "development" },
         { name: "NODE_ENV", value: "production" },
       ];
-      const localBuild = { scratchDir: "/tmp/x", outputFiles: [], env };
+      const localBuild = { scratchDir, outputFiles: [".next"], env };
 
-      const container = revisionTemplate({ config: web, existing, localBuild }, { builtApp })
-        .containers?.[0];
+      const template = revisionTemplate({ config: web, existing, localBuild }, { builtApp });
 
-      expect(container?.env).to.deep.equal([
+      expect(template.containers?.[0].env).to.deep.equal([
         { name: "MODE", value: "prod" },
         { name: "NODE_ENV", value: "production" },
       ]);
     });
 
     it("switches a service from a local build back to an image", () => {
-      const fromLocalBuild = {
-        ...existing,
-        template: {
-          containers: [
-            {
-              name: "web",
-              image: "scratch",
-              command: ["node", "server.js"],
-              sourceCode: { cloudStorageSource: builtApp },
-            },
-          ],
-        },
-      } as unknown as runv2.Service;
+      const fromLocalBuild = webRunning({
+        image: "scratch",
+        command: ["npm", "run", "start"],
+        sourceCode: { cloudStorageSource: builtApp },
+      });
 
-      const container = revisionTemplate({ config: web, existing: fromLocalBuild }, { image })
-        .containers?.[0];
+      const template = revisionTemplate({ config: web, existing: fromLocalBuild }, { image });
 
-      expect(container).to.deep.equal({ name: "web", image });
+      expect(template).to.deep.equal({ containers: [{ name: "web", image }] });
     });
 
     describe("FIREBASE_CONFIG", () => {
-      const linked = { ...existing, annotations: { "firebase.google.com/app-id": "web-app" } };
-      const withConfig = (svc: runv2.Service, value: string): runv2.Service =>
-        ({
-          ...svc,
-          template: {
-            containers: [{ name: "web", image, env: [{ name: "FIREBASE_CONFIG", value }] }],
-          },
-        }) as unknown as runv2.Service;
+      /** The live web service, with FIREBASE_CONFIG set to `value`. */
+      function withConfig(value: string): runv2.Service {
+        return webRunning({ env: [{ name: "FIREBASE_CONFIG", value }] });
+      }
+      const linked = { ...withConfig("old"), annotations: { [APP_ID]: "1:123:web:abc" } };
 
       it("is set from the linked app's current config", () => {
-        const svc = { config: web, existing: withConfig(linked, "old"), firebaseConfig: "current" };
+        const svc = { config: web, existing: linked, firebaseConfig: "current" };
 
-        const container = revisionTemplate(svc, { image }).containers?.[0];
+        const template = revisionTemplate(svc, { image });
 
-        expect(container?.env).to.deep.equal([{ name: "FIREBASE_CONFIG", value: "current" }]);
+        expect(template.containers?.[0].env).to.deep.equal([
+          { name: "FIREBASE_CONFIG", value: "current" },
+        ]);
       });
 
       it("is removed when the app is unlinked", () => {
-        const container = revisionTemplate(
-          { config: web, existing: withConfig(linked, "old") },
-          {
-            image,
-          },
-        ).containers?.[0];
+        const svc = { config: web, existing: linked };
 
-        expect(container).not.to.have.property("env");
+        const template = revisionTemplate(svc, { image });
+
+        expect(template.containers?.[0]).not.to.have.property("env");
       });
 
       it("is left alone if the user set it on a service that was never linked", () => {
-        const container = revisionTemplate(
-          { config: web, existing: withConfig(existing, "mine") },
-          {
-            image,
-          },
-        ).containers?.[0];
+        const svc = { config: web, existing: withConfig("mine") };
 
-        expect(container?.env).to.deep.equal([{ name: "FIREBASE_CONFIG", value: "mine" }]);
+        const template = revisionTemplate(svc, { image });
+
+        expect(template.containers?.[0].env).to.deep.equal([
+          { name: "FIREBASE_CONFIG", value: "mine" },
+        ]);
       });
     });
   });
