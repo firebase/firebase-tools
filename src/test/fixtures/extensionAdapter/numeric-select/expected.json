@@ -1,0 +1,66 @@
+{
+  "requiredAPIs": [],
+  "endpoints": {
+    "testFunction": {
+      "entryPoint": "testFunction",
+      "platform": "gcfv1",
+      "project": "test-project",
+      "runtime": "nodejs18",
+      "region": ["us-central1"],
+      "availableMemoryMb": "{{ params.FUNCTION_MEMORY }}",
+      "httpsTrigger": {}
+    }
+  },
+  "params": [
+    {
+      "type": "int",
+      "name": "FUNCTION_MEMORY",
+      "label": "Cloud Function memory",
+      "description": "Memory allocation for the function",
+      "default": 1024,
+      "input": {
+        "select": {
+          "options": [
+            {
+              "label": "512 MB",
+              "value": 512
+            },
+            {
+              "label": "1 GB",
+              "value": 1024
+            },
+            {
+              "label": "2 GB",
+              "value": 2048
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "string",
+      "name": "ENVIRONMENT",
+      "label": "Environment",
+      "description": "Deployment environment (string select)",
+      "default": "dev",
+      "input": {
+        "select": {
+          "options": [
+            {
+              "label": "Development",
+              "value": "dev"
+            },
+            {
+              "label": "Staging",
+              "value": "staging"
+            },
+            {
+              "label": "Production",
+              "value": "prod"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
