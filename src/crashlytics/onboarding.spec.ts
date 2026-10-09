@@ -33,14 +33,6 @@ describe("onboarding", () => {
   let requireAuthStub: sinon.SinonStub;
   let isEnabledStub: sinon.SinonStub;
 
-  before(() => {
-    nock.disableNetConnect();
-  });
-
-  after(() => {
-    nock.enableNetConnect();
-  });
-
   beforeEach(() => {
     checkBillingStub = sinon.stub(cloudbilling, "checkBillingEnabled").resolves(true);
     ensureStub = sinon.stub(ensureApiEnabled, "ensure").resolves();
