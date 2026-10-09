@@ -68,6 +68,8 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
     serviceId = await promptNewServiceId(projectId, region);
   }
 
+  // Firebase SDKs auto-initialize from a linked Firebase Web App. Keep the service's app, or link a
+  // new one named after the service.
   let appId = existing?.annotations?.[FIREBASE_APP_ANNOTATION];
   if (!appId) {
     const webApp = await webApps.getOrCreateWebApp(projectId, null, serviceId);
@@ -93,12 +95,8 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
       ? "Which base image should your app use? (e.g. nodejs20, nodejs22)"
       : "Which base image should your app use, if any? (e.g. nodejs20, nodejs22)",
     default: existing?.template.containers?.[0]?.baseImageUri,
-    validate: (img: string) => {
-      if (localBuild && !img.trim()) {
-        return "Local builds require a base image.";
-      }
-      return true;
-    },
+    validate: (img: string) =>
+      localBuild && !img.trim() ? "Local builds require a base image." : true,
   });
   const baseImage = (rawBaseImage || "").trim();
 
@@ -199,7 +197,7 @@ export async function actuate(setup: Setup, config: Config, options: Options): P
     { ...options, projectId: setup.projectId, config, only: `run:${fullServiceName(info)}` },
     {
       baseImage: info.baseImage || null,
-      ...(info.appId !== undefined && { appId: info.appId || null }),
+      ...(info.appId && { appId: info.appId }),
     },
   );
 }

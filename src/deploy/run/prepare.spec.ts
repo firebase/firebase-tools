@@ -52,13 +52,7 @@ describe("run prepare", () => {
 
   it("checks the APIs and finds that a new service doesn't exist yet", async () => {
     expect(await prepareRun(web)).to.deep.equal([
-      {
-        config: web,
-        existing: undefined,
-        baseImage: undefined,
-        appId: undefined,
-        firebaseConfig: undefined,
-      },
+      { config: web, existing: undefined, baseImage: undefined },
     ]);
     expect(prereqsStub).to.have.been.calledWith("my-project");
     expect(getServiceStub).to.have.been.calledWith("my-project", "us-central1", "web");
@@ -67,13 +61,7 @@ describe("run prepare", () => {
   it("reuses an existing service's base image", async () => {
     getServiceStub.resolves(liveWeb);
     expect(await prepareRun(web)).to.deep.equal([
-      {
-        config: web,
-        existing: liveWeb,
-        baseImage: nodejs22,
-        appId: undefined,
-        firebaseConfig: undefined,
-      },
+      { config: web, existing: liveWeb, baseImage: nodejs22 },
     ]);
   });
 
@@ -98,7 +86,7 @@ describe("run prepare", () => {
 
     it("point new services to init, which sets a base image", async () => {
       await expect(prepareRun(localWeb)).to.be.rejectedWith(
-        /doesn't exist in us-central1 yet.*which also sets the base image/,
+        'Local builds require a base image. Set one for service web in us-central1 with "firebase init run".',
       );
     });
 
@@ -117,16 +105,10 @@ describe("run prepare", () => {
         annotations: { [BUILD_ENV_ANNOTATION]: JSON.stringify(env) },
       }) as unknown as runv2.Service;
 
-    it("passes plain build env to Cloud Build", async () => {
+    it("reads the build env from the service's annotation", async () => {
       getServiceStub.resolves(withBuildEnv({ API_URL: "https://api.example.com" }));
       const [svc] = await prepareRun(web);
       expect(svc.buildEnv).to.deep.equal({ API_URL: "https://api.example.com" });
-    });
-
-    it("leaves build env unset without the annotation", async () => {
-      getServiceStub.resolves(liveWeb);
-      const [svc] = await prepareRun(web);
-      expect(svc).not.to.have.property("buildEnv");
     });
 
     it("rejects build secrets on Cloud Build", async () => {

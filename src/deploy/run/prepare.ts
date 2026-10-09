@@ -10,20 +10,20 @@ import * as managementApps from "../../management/apps";
 import { Options } from "../../options";
 import { logLabeledBullet, logLabeledWarning } from "../../utils";
 import { Context, Payload, ServiceDeploy } from "./args";
-import { BUILD_ENV_ANNOTATION, BuildEnv, getBuildEnv, secretNames } from "./buildEnv";
+import { BUILD_ENV_ANNOTATION, getBuildEnv, secretNames } from "./buildEnv";
 import { prereqs } from "./prereqs";
 import {
   FIREBASE_APP_ANNOTATION,
   fullServiceName,
   getExistingService,
   getServiceConfigs,
-  missingServiceMessage,
 } from "./util";
 
 const ADMIN_SDK_ROLE = "roles/firebase.sdkAdminServiceAgent";
 
 /**
- * Reads each service's current state from Cloud Run and resolves its base image and build env.
+ * Reads each service's current state from Cloud Run and resolves its base image, build env, and
+ * linked Firebase Web App.
  */
 export async function prepare(context: Context, options: Options, payload: Payload): Promise<void> {
   const configs = getServiceConfigs(options);
@@ -45,55 +45,49 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
     context.baseImage === undefined
       ? existing?.template.containers?.[0]?.baseImageUri
       : context.baseImage || undefined;
-  // App IDs are sticky: deploys reuse the service's current Firebase Web App unless told otherwise.
+  // So are linked Firebase Web Apps.
   const appId =
     context.appId === undefined
       ? existing?.annotations?.[FIREBASE_APP_ANNOTATION]
       : context.appId || undefined;
-
-  let autoInitEnv: Record<string, string> = {};
-  if (appId) {
-    autoInitEnv = getAutoinitEnvVars(await getWebAppConfig(config, appId));
-    await ensureAutoInitIam(context, existing);
+  // Local builds run on top of the base image, so they need one.
+  if (config.localBuild && !baseImage) {
+    const fix = existing
+      ? `firebase run:services:update ${fullServiceName(config)} --base-image <baseImage>`
+      : "firebase init run";
+    throw new FirebaseError(
+      `Local builds require a base image. Set one for service ${serviceId} in ${region} with "${fix}".`,
+    );
   }
-  const userBuildEnv = getBuildEnv(existing);
-  if (Object.keys(userBuildEnv).length) {
+
+  const buildEnv = getBuildEnv(existing);
+  const secrets = secretNames(buildEnv);
+  // Local builds read secrets with your credentials. Cloud Build can't read them yet.
+  if (secrets.length && !config.localBuild) {
+    throw new FirebaseError(
+      `Service ${serviceId} in ${region} has build secrets (${secrets.join(", ")}), which ` +
+        `builds on Cloud Build don't support yet. To use them, build locally by setting ` +
+        `"localBuild": true for this service in firebase.json.`,
+    );
+  }
+
+  const svc: ServiceDeploy = { config, existing, baseImage };
+  if (Object.keys(buildEnv).length) {
     logLabeledBullet(
       "run",
       `Using build environment variables for service ${serviceId} in ${region} from ` +
-        `${BUILD_ENV_ANNOTATION}: ${Object.keys(userBuildEnv).join(", ")}`,
+        `${BUILD_ENV_ANNOTATION}: ${Object.keys(buildEnv).join(", ")}`,
     );
+    svc.buildEnv = buildEnv;
   }
-  const buildEnv: BuildEnv = { ...autoInitEnv, ...userBuildEnv };
-
-  const svc: ServiceDeploy = {
-    config,
-    existing,
-    baseImage,
-    appId,
-    firebaseConfig: autoInitEnv.FIREBASE_CONFIG,
-    ...(Object.keys(buildEnv).length > 0 ? { buildEnv } : {}),
-  };
-  if (!config.localBuild) {
-    const secrets = secretNames(buildEnv);
-    if (secrets.length) {
-      throw new FirebaseError(
-        `Service ${serviceId} in ${region} has build secrets (${secrets.join(", ")}), which ` +
-          `builds on Cloud Build don't support yet. To use them, build locally by setting ` +
-          `"localBuild": true for this service in firebase.json.`,
-      );
-    }
-    return svc;
-  }
-
-  if (!baseImage) {
-    if (!existing && context.baseImage === undefined) {
-      throw new FirebaseError(missingServiceMessage(config));
-    }
-    throw new FirebaseError(
-      `Local builds require a base image. Set one for service ${serviceId} in ${region} with ` +
-        `"firebase run:services:update ${fullServiceName(config)} --base-image <baseImage>".`,
-    );
+  if (appId) {
+    // Firebase SDKs auto-initialize from the app's config. The build gets both config env vars (the
+    // build env annotation can override them), and the container gets FIREBASE_CONFIG.
+    const autoInitEnv = getAutoinitEnvVars(await getWebAppConfig(config, appId));
+    await ensureAutoInitIam(context, existing);
+    svc.appId = appId;
+    svc.firebaseConfig = autoInitEnv.FIREBASE_CONFIG;
+    svc.buildEnv = { ...autoInitEnv, ...buildEnv };
   }
   return svc;
 }

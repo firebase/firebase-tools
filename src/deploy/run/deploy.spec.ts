@@ -189,13 +189,11 @@ describe("run deploy", () => {
         { runtime: { value: "nodejs22" } },
         "/project/apps/web",
       );
-      expect(localBuildStub).to.have.been.calledWith(
+      expect(localBuildStub).to.have.been.calledWithMatch(
         "my-project",
         scratchDir,
         {},
         {
-          nonInteractive: undefined,
-          allowLocalBuildSecrets: true,
           rootDir: "apps/web",
         },
       );
@@ -213,7 +211,7 @@ describe("run deploy", () => {
       expect(fs.existsSync(scratchDir)).to.be.false;
     });
 
-    it("passes build env to the local build, and keeps the env vars the app needs at runtime", async () => {
+    it("keeps the env vars the app needs at runtime", async () => {
       localBuildStub.resolves({
         outputFiles: [".next"],
         buildConfig: {
@@ -224,6 +222,15 @@ describe("run deploy", () => {
           ],
         },
       });
+
+      await deployOne({ config: localWeb, baseImage: NODEJS22 });
+
+      expect(createServiceStub.firstCall.args[3].template.containers[0].env).to.deep.equal([
+        { name: "NODE_ENV", value: "production" },
+      ]);
+    });
+
+    it("passes the build env, secrets included, to the local build", async () => {
       const buildEnv = { API_URL: "https://api.example.com", TOKEN: { secret: "t", version: "2" } };
 
       await deployOne({ config: localWeb, baseImage: NODEJS22, buildEnv });
@@ -232,9 +239,7 @@ describe("run deploy", () => {
         API_URL: { value: "https://api.example.com", availability: ["BUILD"] },
         TOKEN: { secret: "t@2", availability: ["BUILD"] },
       });
-      expect(createServiceStub.firstCall.args[3].template.containers[0].env).to.deep.equal([
-        { name: "NODE_ENV", value: "production" },
-      ]);
+      expect(localBuildStub.firstCall.args[3]).to.include({ allowLocalBuildSecrets: true });
     });
 
     it("cleans up and deploys nothing if the local build fails", async () => {
