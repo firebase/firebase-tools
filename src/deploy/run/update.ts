@@ -69,13 +69,6 @@ function findServiceToUpdate(name: string, options: Options): RunSingle {
   if (!matches.length) {
     throw new FirebaseError(`Cloud Run service ${name} not detected in firebase.json.`);
   }
-  // Check this first: the error below lists each match's region.
-  const noRegion = matches.find((c) => !c.region);
-  if (noRegion) {
-    throw new FirebaseError(
-      `Cloud Run service ${noRegion.serviceId} is missing a region in firebase.json.`,
-    );
-  }
   if (matches.length > 1) {
     const names = matches.map(fullServiceName);
     throw new FirebaseError(
