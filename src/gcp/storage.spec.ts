@@ -10,7 +10,10 @@ import { Client } from "../apiv2";
 describe("storage", () => {
   describe("upsertBucket", () => {
     let listBucketsStub: sinon.SinonStub;
-    let createBucketStub: sinon.SinonStub;
+    let createBucketStub: sinon.SinonStub<
+      Parameters<typeof storage.createBucket>,
+      ReturnType<typeof storage.createBucket>
+    >;
     let patchBucketStub: sinon.SinonStub;
     let logLabeledBulletStub: sinon.SinonStub;
     let logLabeledWarningStub: sinon.SinonStub;
@@ -39,7 +42,7 @@ describe("storage", () => {
       listBucketsStub.resolves([
         { name: bucketName, labels: { [PURPOSE_LABEL]: "true" } },
         { name: "another-bucket", labels: {} },
-      ] as any);
+      ] as unknown as storage.BucketResponse[]);
 
       const result = await storage.upsertBucket({
         product: "test",
@@ -60,7 +63,9 @@ describe("storage", () => {
 
     it("should patch an existing bucket if it does not have a purpose label", async () => {
       const bucketName = "existing-unmanaged-bucket";
-      listBucketsStub.resolves([{ name: bucketName, labels: {} }] as any);
+      listBucketsStub.resolves([
+        { name: bucketName, labels: {} },
+      ] as unknown as storage.BucketResponse[]);
 
       const result = await storage.upsertBucket({
         product: "test",
@@ -83,8 +88,10 @@ describe("storage", () => {
     });
 
     it("should create a new bucket if no bucket with the purpose label is found", async () => {
-      listBucketsStub.resolves([{ name: "another-bucket", labels: {} }] as any);
-      createBucketStub.resolves({ name: BASE_BUCKET_NAME } as any);
+      listBucketsStub.resolves([
+        { name: "another-bucket", labels: {} },
+      ] as unknown as storage.BucketResponse[]);
+      createBucketStub.resolves({ name: BASE_BUCKET_NAME } as unknown as storage.BucketResponse);
 
       const result = await storage.upsertBucket({
         product: "test",
@@ -136,13 +143,17 @@ describe("storage", () => {
     });
 
     it("should retry with a new name on createBucket conflict", async () => {
-      const conflictError = new FirebaseError("Conflict", { original: { status: 409 } as any });
+      const conflictError = new FirebaseError("Conflict", {
+        original: new FirebaseError("Conflict", { status: 409 }),
+      });
       const randomSuffix = "abcdef";
       const newBucketName = `${BASE_BUCKET_NAME}-${randomSuffix}`;
 
       listBucketsStub.resolves([]);
       createBucketStub.onFirstCall().rejects(conflictError);
-      createBucketStub.onSecondCall().resolves({ name: newBucketName } as any);
+      createBucketStub.onSecondCall().resolves({
+        name: newBucketName,
+      } as unknown as storage.BucketResponse);
 
       const result = await storage.upsertBucket({
         product: "test",
@@ -164,7 +175,9 @@ describe("storage", () => {
     });
 
     it("should error out after 5 createBucket conflicts", async () => {
-      const conflictError = new FirebaseError("Conflict", { original: { status: 409 } as any });
+      const conflictError = new FirebaseError("Conflict", {
+        original: new FirebaseError("Conflict", { status: 409 }),
+      });
       listBucketsStub.resolves([]);
       createBucketStub.rejects(conflictError);
 
@@ -187,7 +200,7 @@ describe("storage", () => {
 
     it("should handle permission errors on createBucket", async () => {
       const permError = new FirebaseError("Permission denied", {
-        original: { status: 403 } as any,
+        original: new FirebaseError("Forbidden", { status: 403 }),
       });
       listBucketsStub.resolves([]);
       createBucketStub.rejects(permError);
@@ -212,7 +225,7 @@ describe("storage", () => {
 
     it("should forward unexpected errors from createBucket", async () => {
       const unexpectedError = new FirebaseError("Unexpected error", {
-        original: { status: 500 } as any,
+        original: new FirebaseError("Server Error", { status: 500 }),
       });
       listBucketsStub.resolves([]);
       createBucketStub.rejects(unexpectedError);
@@ -344,6 +357,80 @@ describe("storage", () => {
       await expect(
         storage.uploadObject(source, "my-bucket", storage.ContentType.ZIP),
       ).to.be.rejectedWith(FirebaseError, "Expected a file name ending in .zip");
+    });
+  });
+
+  describe("getBucket", () => {
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it("should return bucket metadata on success", async () => {
+      const mockBucket = { name: "my-bucket", location: "US-EAST1" } as storage.BucketResponse;
+      const getStub = sinon.stub(Client.prototype, "get").resolves({
+        status: 200,
+        response: new Response(),
+        body: mockBucket,
+      });
+
+      const result = await storage.getBucket("my-bucket");
+
+      expect(result).to.deep.equal(mockBucket);
+      expect(getStub).to.be.calledOnceWith("/storage/v1/b/my-bucket");
+    });
+
+    it("should throw FirebaseError with status when request fails", async () => {
+      const apiError = new FirebaseError("Not Found", { status: 404 });
+      sinon.stub(Client.prototype, "get").rejects(apiError);
+
+      try {
+        await storage.getBucket("missing-bucket");
+        expect.fail("Expected getBucket to throw");
+      } catch (err: unknown) {
+        expect(err).to.be.instanceOf(FirebaseError);
+        expect((err as FirebaseError).message).to.equal("Failed to obtain the storage bucket");
+        expect((err as FirebaseError).status).to.equal(404);
+      }
+    });
+  });
+
+  describe("patchBucket", () => {
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it("should patch bucket metadata with non-recursing updateMask for cors and lifecycle", async () => {
+      const metadata: Partial<storage.BucketResponse> = {
+        cors: [{ origin: ["https://console.firebase.google.com"], method: ["GET"] }],
+        lifecycle: { rule: [{ action: { type: "Delete" }, condition: { age: 90 } }] },
+      };
+      const mockBucket = { name: "my-bucket", ...metadata } as storage.BucketResponse;
+      const patchStub = sinon.stub(Client.prototype, "patch").resolves({
+        status: 200,
+        response: new Response(),
+        body: mockBucket,
+      });
+
+      const result = await storage.patchBucket("my-bucket", metadata);
+
+      expect(result).to.deep.equal(mockBucket);
+      expect(patchStub).to.be.calledOnceWith("/storage/v1/b/my-bucket", metadata, {
+        queryParams: { updateMask: "cors,lifecycle" },
+      });
+    });
+
+    it("should throw FirebaseError with status when patch request fails", async () => {
+      const apiError = new FirebaseError("Forbidden", { status: 403 });
+      sinon.stub(Client.prototype, "patch").rejects(apiError);
+
+      try {
+        await storage.patchBucket("my-bucket", { cors: [] });
+        expect.fail("Expected patchBucket to throw");
+      } catch (err: unknown) {
+        expect(err).to.be.instanceOf(FirebaseError);
+        expect((err as FirebaseError).message).to.equal("Failed to patch the storage bucket");
+        expect((err as FirebaseError).status).to.equal(403);
+      }
     });
   });
 });
