@@ -168,7 +168,9 @@ export class EventarcEmulator implements EmulatorInstance {
   async triggerEventFunction(channel: string, event: CloudEvent<any>): Promise<void[]> {
     if (!EmulatorRegistry.isRunning(Emulators.FUNCTIONS)) {
       this.logger.log("INFO", "Functions emulator not found. This should not happen.");
-      return Promise.reject();
+      return Promise.reject(
+        new FirebaseError("Functions emulator not found. This should not happen."),
+      );
     }
     const key = `${event.type}-${channel}`;
     const triggers = this.events[key] || [];
