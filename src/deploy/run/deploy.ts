@@ -74,9 +74,7 @@ async function buildLocally(
     context.projectId,
     scratchDir,
     {},
-    {
-      rootDir: config.rootDir,
-    },
+    { rootDir: config.rootDir },
   );
   // Keep the env vars that the app needs at runtime, not just during the build.
   const env = (buildConfig.env || [])
