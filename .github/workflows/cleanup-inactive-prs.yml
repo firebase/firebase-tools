@@ -1,0 +1,55 @@
+name: Cleanup Inactive Pull Requests
+
+on:
+  schedule:
+    # Run once daily at 04:00 UTC
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (preview actions without modifying GitHub)"
+        required: true
+        type: boolean
+        default: false
+      inactive_threshold_days:
+        description: "Days of inactivity before tagging as inactive (default: 60)"
+        required: false
+        type: number
+        default: 60
+      grace_period_days:
+        description: "Days before closing tagged inactive PRs (default: 5)"
+        required: false
+        type: number
+        default: 5
+      tag_batch_limit:
+        description: "Max PRs to tag in a single run (0 for unlimited, default: 30)"
+        required: false
+        type: number
+        default: 30
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: cleanup-inactive-prs
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Run Inactive PR Cleanup
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          INPUT_INACTIVE_DAYS: ${{ inputs.inactive_threshold_days }}
+          INPUT_GRACE_DAYS: ${{ inputs.grace_period_days }}
+          INPUT_TAG_LIMIT: ${{ inputs.tag_batch_limit }}
+        run: python3 scripts/cleanup_inactive_prs.py
