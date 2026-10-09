@@ -1,2 +1,2 @@
 - Added `crashlytics:heapdumps:{enable,disable,status}` commands to manage Crashlytics Android heap dump collection. (#11225)
-- [fixed] Retry Cloud Functions creation on HTTP 403 service account propagation errors. (#11251)
+- Fixed an issue where Cloud Functions creation did not retry on HTTP 403 service account propagation errors. (#11251)
