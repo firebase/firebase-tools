@@ -93,8 +93,8 @@ export const ALL_EXPERIMENTS = experiments({
   kits: {
     shortDescription: "Enable Functions Kits.",
     fullDescription: "Adds support for Function Kits.",
-    public: false,
-    default: false,
+    public: true,
+    default: true,
   },
 
   // Emulator experiments
@@ -179,6 +179,15 @@ export const ALL_EXPERIMENTS = experiments({
     public: true,
   },
 
+  directcloudrun: {
+    shortDescription: "Build and deploy web apps directly to Cloud Run services",
+    fullDescription:
+      "Enables `firebase init run`, `firebase deploy --only run`, and the " +
+      "`firebase run:services:update` command. " +
+      "These are in preview and may change.",
+    public: false,
+  },
+
   // TODO(joehanley): Delete this once weve scrubbed all references to experiment from docs.
   dataconnect: {
     shortDescription: "Deprecated. Previosuly, enabled SQL Connect related features.",
@@ -238,11 +247,21 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: true,
   },
-  secretEnvParams: {
-    shortDescription:
-      "Enable writing the backing resource binding for a Functions secret param to .env",
+  crashlyticsWebAlerts: {
+    shortDescription: "Enable configuring Crashlytics email alerts during web app onboarding.",
     default: false,
     public: false,
+  },
+  crashlyticsWebTrace: {
+    shortDescription: "Enable provisioning Cloud Trace storage during web app onboarding.",
+    default: false,
+    public: false,
+  },
+  secretEnvParams: {
+    shortDescription:
+      "Enable reading the backing resource binding for a Functions secret param from .env",
+    default: true,
+    public: true,
   },
   extdeprecationwarnings: {
     shortDescription: "Show deprecation warnings for Firebase Extensions CLI commands.",
@@ -252,8 +271,8 @@ export const ALL_EXPERIMENTS = experiments({
   extMigrationFeatures: {
     shortDescription:
       "Enable features intended to assist with the migration of Extension instances to Kits.",
-    default: false,
-    public: false,
+    default: true,
+    public: true,
   },
   fdcapimigration: {
     shortDescription: "Enable the FDC API schema migration path.",

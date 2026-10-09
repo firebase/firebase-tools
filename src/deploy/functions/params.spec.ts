@@ -57,6 +57,21 @@ describe("CEL resolution", () => {
     ).to.equal("asdf jkl;");
   });
 
+  it("can interpolate a nested ternary into a CEL expression", () => {
+    const ternary =
+      '{{ params.PROJECT_ID == "xxx" ? "aaa" : params.PROJECT_ID == "yyy" ? "bbb" : "ccc" }}';
+    const projectId = {
+      PROJECT_ID: new params.ParamValue("yyy", false, { string: true }),
+    };
+    expect(params.resolveString(`sa-${ternary}@proj.iam`, projectId)).to.equal("sa-bbb@proj.iam");
+    expect(
+      params.resolveString(`${ternary}/{{ params.REGION }}`, {
+        ...projectId,
+        REGION: new params.ParamValue("west1", false, { string: true }),
+      }),
+    ).to.equal("bbb/west1");
+  });
+
   it("throws instead of coercing a param value with the wrong type", () => {
     expect(() =>
       params.resolveString("{{ params.foo }}", {
@@ -414,6 +429,72 @@ describe("resolveParams", () => {
       );
     } finally {
       checkbox.restore();
+    }
+  });
+
+  it("preselects a boolean default in a select prompt", async () => {
+    const select = sinon.stub(prompt, "select").resolves("false");
+    try {
+      const paramsToResolve: params.Param[] = [
+        {
+          name: "MAKE_PUBLIC",
+          type: "boolean",
+          default: false,
+          input: {
+            select: {
+              options: [
+                { label: "Yes", value: true },
+                { label: "No", value: false },
+              ],
+            },
+          },
+        },
+      ];
+      const resolved = await params.resolveParams({
+        params: paramsToResolve,
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "default",
+      });
+      expect(select.firstCall.args[0].default).to.equal("false");
+      expect(resolved.paramValues.MAKE_PUBLIC).to.deep.equal(
+        new params.ParamValue("false", false, { string: false, number: false, boolean: true }),
+      );
+    } finally {
+      select.restore();
+    }
+  });
+
+  it("preselects an int default in a select prompt", async () => {
+    const select = sinon.stub(prompt, "select").resolves("2");
+    try {
+      const paramsToResolve: params.Param[] = [
+        {
+          name: "REPLICAS",
+          type: "int",
+          default: 2,
+          input: {
+            select: {
+              options: [
+                { label: "One", value: 1 },
+                { label: "Two", value: 2 },
+              ],
+            },
+          },
+        },
+      ];
+      const resolved = await params.resolveParams({
+        params: paramsToResolve,
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "default",
+      });
+      expect(select.firstCall.args[0].default).to.equal("2");
+      expect(resolved.paramValues.REPLICAS).to.deep.equal(
+        new params.ParamValue("2", false, { string: false, number: true, boolean: false }),
+      );
+    } finally {
+      select.restore();
     }
   });
 

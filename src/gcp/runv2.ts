@@ -36,6 +36,7 @@ export interface Container {
   command?: string[];
   args?: string[];
   env?: EnvVar[];
+  ports?: Array<{ name?: string; containerPort?: number }>;
   resources?: {
     limits?: {
       cpu?: string; // e.g. "1", "2", "4"
@@ -84,6 +85,20 @@ export interface BuildConfig {
   serviceAccount?: string;
 }
 
+export interface TrafficTarget {
+  type?: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST" | "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION";
+  revision?: string;
+  percent?: number;
+  tag?: string;
+}
+
+export type IngressTraffic =
+  | "INGRESS_TRAFFIC_UNSPECIFIED"
+  | "INGRESS_TRAFFIC_ALL"
+  | "INGRESS_TRAFFIC_INTERNAL_ONLY"
+  | "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
+  | "INGRESS_TRAFFIC_NONE";
+
 // NOTE: This is a minmal copy of Cloud Run needed for our current API usage.
 // Add more as needed.
 // TODO: Can consider a helper where we have a second RecursiveKeysOf field for
@@ -110,7 +125,10 @@ export interface Service {
 
   etag: string;
   template: RevisionTemplate;
+  traffic?: TrafficTarget[];
+  trafficStatuses?: TrafficTarget[];
   invokerIamDisabled?: boolean;
+  ingress?: IngressTraffic;
   // Is this redundant with the Build API?
   buildConfig?: BuildConfig;
   uri?: string;
@@ -151,17 +169,21 @@ export interface Build {
   functionTarget?: string;
   storageSource: StorageSource;
   imageUri: string;
-  buildpacksBuild: BuildpacksBuild;
+  buildpackBuild: BuildpacksBuild;
 }
 
 export interface SubmitBuildResponse {
-  buildOperation: string;
+  buildOperation: {
+    metadata?: { build?: { name: string; logUrl?: string } };
+  };
   baseImageUri?: string;
   baseImageWarning?: string;
 }
 
+const PENDING_BUILD_STATUSES = ["STATUS_UNKNOWN", "PENDING", "QUEUED", "WORKING"];
+
 /**
- * Submits a build to Cloud Build using the v2 API, tracking the long-running operation.
+ * Submits a build to Cloud Build using the v2 API and waits for the build to finish.
  * Used for building source code into container images.
  */
 export async function submitBuild(
@@ -170,38 +192,57 @@ export async function submitBuild(
   build: Build,
 ): Promise<void> {
   const res = await client.post<Build, SubmitBuildResponse>(
-    `/projects/${projectId}/locations/${location}/builds`,
+    `/projects/${projectId}/locations/${location}/builds:submit`,
     build,
   );
-  if (res.status !== 200) {
-    throw new FirebaseError(`Failed to submit build: ${res.status} ${res.body}`);
+  if (res.body?.baseImageWarning) {
+    logger.warn(res.body.baseImageWarning);
   }
+  const cloudBuild = res.body?.buildOperation?.metadata?.build;
+  if (!cloudBuild) {
+    throw new FirebaseError("Failed to submit build: no build was returned.");
+  }
+  // The returned operation can't be polled for regional builds, so poll the build itself.
+  let status: string | undefined;
   await pollOperation({
     apiOrigin: cloudbuildOrigin(),
     apiVersion: "v1",
-    operationResourceName: res.body.buildOperation,
+    operationResourceName: cloudBuild.name,
+    masterTimeout: 30 * 60 * 1000,
+    maxBackoff: 10_000,
+    doneFn: (b?: { status?: string }) => {
+      status = b?.status;
+      return !b?.status || !PENDING_BUILD_STATUSES.includes(b.status);
+    },
   });
+  if (status !== "SUCCESS") {
+    throw new FirebaseError(
+      `Cloud Build failed with status ${status ?? "UNKNOWN"}. View the build logs at ${cloudBuild.logUrl ?? ""}`,
+    );
+  }
 }
 
 /**
  * Updates an existing Cloud Run service.
  * Tracks the long-running operation until completion.
  */
-export async function updateService(service: Omit<Service, ServiceOutputFields>): Promise<Service> {
-  const fieldMask = proto.fieldMasks(
-    service,
-    /* doNotRecurseIn...*/ "labels",
-    "annotations",
-    "tags",
-  );
-  // Always update revision name to ensure null generates a new unique revision name.
-  fieldMask.push("template.revision");
+export async function updateService(
+  service: Omit<Service, ServiceOutputFields>,
+  opts: { updateMask?: string[]; pollTimeoutMs?: number } = {},
+): Promise<Service> {
+  // If no explicit updateMask is provided, infer the mask from the fields set on the service.
+  let updateMask = opts.updateMask;
+  if (!updateMask) {
+    updateMask = proto.fieldMasks(service, /* doNotRecurseIn...*/ "labels", "annotations", "tags");
+    // Always update revision name to ensure null generates a new unique revision name.
+    updateMask.push("template.revision");
+  }
   const res = await client.patch<Omit<Service, ServiceOutputFields>, LongRunningOperation<Service>>(
     service.name,
     service,
     {
       queryParams: {
-        updateMask: fieldMask.join(","),
+        updateMask: updateMask.join(","),
       },
     },
   );
@@ -209,6 +250,7 @@ export async function updateService(service: Omit<Service, ServiceOutputFields>)
     apiOrigin: runOrigin(),
     apiVersion: API_VERSION,
     operationResourceName: res.body.name,
+    masterTimeout: opts.pollTimeoutMs,
   });
   return svc;
 }
@@ -222,6 +264,7 @@ export async function createService(
   location: string,
   serviceId: string,
   service: Omit<Service, ServiceOutputFields>,
+  opts: { pollTimeoutMs?: number } = {},
 ): Promise<Service> {
   // The create API expects the name to be empty or unset, as the parent is in the URL
   // and resource ID is a query param.
@@ -240,6 +283,7 @@ export async function createService(
     apiOrigin: runOrigin(),
     apiVersion: API_VERSION,
     operationResourceName: res.body.name,
+    masterTimeout: opts.pollTimeoutMs,
   });
   return svc;
 }
@@ -278,10 +322,10 @@ export async function getService(
 /**
  * Lists Cloud Run services in the given project.
  *
- * This method only returns services with the "goog-managed-by" label set to
+ * By default, this method only returns services with the "goog-managed-by" label set to
  * "cloud-functions" or "firebase-functions".
  */
-export async function listServices(projectId: string): Promise<Service[]> {
+export async function listServices(projectId: string, functionsOnly = true): Promise<Service[]> {
   const allServices: Service[] = [];
   let pageToken: string | undefined = undefined;
 
@@ -305,6 +349,7 @@ export async function listServices(projectId: string): Promise<Service[]> {
     if (res.body.services) {
       for (const service of res.body.services) {
         if (
+          !functionsOnly ||
           service.labels?.[CLIENT_NAME_LABEL] === "cloud-functions" ||
           service.labels?.[CLIENT_NAME_LABEL] === "cloudfunctions" ||
           service.labels?.[CLIENT_NAME_LABEL] === "firebase-functions"

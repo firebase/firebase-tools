@@ -97,7 +97,7 @@ export type BUILD_TARGET_PURPOSE = "deploy" | "test" | "emulate";
 
 // TODO pull from @firebase/util when published
 export interface FirebaseDefaults {
-  config?: Object;
+  config?: object;
   emulatorHosts?: Record<string, string>;
   _authTokenSyncURL?: string;
 }

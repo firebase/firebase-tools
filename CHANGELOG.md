@@ -1,3 +1,2 @@
-- [fixed] Increased retries for IAM policy updates to further reduce deployment flakiness from service account propagation delays.
-- [fixed] Preselect the default values of list function params in multi-select prompts.
-- [fixed] Fixed `ERR_REQUIRE_ESM` crash (e.g. on `emulators:start`) in the standalone binary and on Node.js versions earlier than 20.19 / 22.12. (#11168)
+- Added `crashlytics:heapdumps:{enable,disable,status}` commands to manage Crashlytics Android heap dump collection. (#11225)
+- Removed unused dependencies `proxy-agent`, `universal-analytics`, and `@apphosting/common`.
