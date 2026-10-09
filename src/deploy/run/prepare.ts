@@ -1,12 +1,14 @@
 import { FirebaseError } from "../../error";
 import { RunSingle } from "../../firebaseConfig";
 import { Options } from "../../options";
+import { logLabeledBullet } from "../../utils";
 import { Context, Payload, ServiceDeploy } from "./args";
+import { BUILD_ENV_ANNOTATION, getBuildEnv, secretNames } from "./buildEnv";
 import { prereqs } from "./prereqs";
 import { fullServiceName, getExistingService, getServiceConfigs } from "./util";
 
 /**
- * Reads each service's current state from Cloud Run and resolves its base image.
+ * Reads each service's current state from Cloud Run and resolves its base image and build env.
  */
 export async function prepare(context: Context, options: Options, payload: Payload): Promise<void> {
   const configs = getServiceConfigs(options);
@@ -37,5 +39,26 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
       `Local builds require a base image. Set one for service ${serviceId} in ${region} with "${fix}".`,
     );
   }
-  return { config, existing, baseImage };
+
+  const buildEnv = getBuildEnv(existing);
+  const secrets = secretNames(buildEnv);
+  // Local builds read secrets with your credentials. Cloud Build can't read them yet.
+  if (secrets.length && !config.localBuild) {
+    throw new FirebaseError(
+      `Service ${serviceId} in ${region} has build secrets (${secrets.join(", ")}), which ` +
+        `builds on Cloud Build don't support yet. To use them, build locally by setting ` +
+        `"localBuild": true for this service in firebase.json.`,
+    );
+  }
+
+  const svc: ServiceDeploy = { config, existing, baseImage };
+  if (Object.keys(buildEnv).length) {
+    logLabeledBullet(
+      "run",
+      `Using build environment variables for service ${serviceId} in ${region} from ` +
+        `${BUILD_ENV_ANNOTATION}: ${Object.keys(buildEnv).join(", ")}`,
+    );
+    svc.buildEnv = buildEnv;
+  }
+  return svc;
 }

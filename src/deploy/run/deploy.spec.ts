@@ -84,6 +84,13 @@ describe("run deploy", () => {
     expect(buildpackBuild).not.to.have.property("enableAutomaticUpdates");
   });
 
+  it("passes the service's build env to Cloud Build", async () => {
+    await deployOne({ config: web, buildEnv: { API_URL: "https://api.example.com" } });
+
+    const { environmentVariables } = submitBuildStub.firstCall.args[2].buildpackBuild;
+    expect(environmentVariables).to.include({ API_URL: "https://api.example.com" });
+  });
+
   it("rolls out a new revision of an existing service with all traffic, keeping its tags", async () => {
     const existing = {
       name: "projects/my-project/locations/us-central1/services/web",
@@ -143,7 +150,7 @@ describe("run deploy", () => {
         { runtime: { value: "nodejs22" } },
         "/project/apps/web",
       );
-      expect(localBuildStub).to.have.been.calledWith(
+      expect(localBuildStub).to.have.been.calledWithMatch(
         "my-project",
         scratchDir,
         {},
@@ -182,6 +189,18 @@ describe("run deploy", () => {
       expect(createServiceStub.firstCall.args[3].template.containers[0].env).to.deep.equal([
         { name: "NODE_ENV", value: "production" },
       ]);
+    });
+
+    it("passes the build env, secrets included, to the local build", async () => {
+      const buildEnv = { API_URL: "https://api.example.com", TOKEN: { secret: "t", version: "2" } };
+
+      await deployOne({ config: localWeb, baseImage: NODEJS22, buildEnv });
+
+      expect(localBuildStub.firstCall.args[2]).to.deep.equal({
+        API_URL: { value: "https://api.example.com", availability: ["BUILD"] },
+        TOKEN: { secret: "t@2", availability: ["BUILD"] },
+      });
+      expect(localBuildStub.firstCall.args[3]).to.include({ allowLocalBuildSecrets: true });
     });
 
     it("cleans up and deploys nothing if the local build fails", async () => {
