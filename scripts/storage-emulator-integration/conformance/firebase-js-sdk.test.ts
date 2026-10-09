@@ -104,6 +104,12 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
     browser = await puppeteer.launch({
       headless: !TEST_ENV.showBrowser,
       devtools: true,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-web-security",
+        "--disable-features=IsolateOrigins,site-per-process,BlockInsecurePrivateNetworkRequests",
+      ],
     });
     page = await browser.newPage();
     await page.goto("https://example.com", { waitUntil: "networkidle2" });

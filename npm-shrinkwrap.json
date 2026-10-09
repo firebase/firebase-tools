@@ -17423,12 +17423,6 @@
         "node": ">= 0.10"
       }
     },
-    "node_modules/proxy-from-env": {
-      "version": "1.1.0",
-      "resolved": "https://registry.npmjs.org/proxy-from-env/-/proxy-from-env-1.1.0.tgz",
-      "integrity": "sha512-D+zkORCbA9f1tdWRK0RaCR3GPv50cMxcrz4X8k5LTSUD1Dkw47mKJEZQNunItRTkWwgtaUSo1RVFRIG9ZXiFYg==",
-      "dev": true
-    },
     "node_modules/proxy/node_modules/debug": {
       "version": "4.3.1",
       "resolved": "https://registry.npmjs.org/debug/-/debug-4.3.1.tgz",
@@ -34157,12 +34151,6 @@
         "forwarded": "0.2.0",
         "ipaddr.js": "1.9.1"
       }
-    },
-    "proxy-from-env": {
-      "version": "1.1.0",
-      "resolved": "https://registry.npmjs.org/proxy-from-env/-/proxy-from-env-1.1.0.tgz",
-      "integrity": "sha512-D+zkORCbA9f1tdWRK0RaCR3GPv50cMxcrz4X8k5LTSUD1Dkw47mKJEZQNunItRTkWwgtaUSo1RVFRIG9ZXiFYg==",
-      "dev": true
     },
     "pseudomap": {
       "version": "1.0.2",
