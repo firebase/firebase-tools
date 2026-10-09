@@ -59,8 +59,6 @@ query($cursor: String) {
         title
         url
         createdAt
-        updatedAt
-        isDraft
         headRefName
         author {
           login
@@ -70,7 +68,7 @@ query($cursor: String) {
             name
           }
         }
-        comments(last: 5) {
+        comments(last: 10) {
           totalCount
           nodes {
             createdAt
@@ -118,7 +116,7 @@ query($number: Int!) {
       author {
         login
       }
-      timelineItems(itemTypes: [LABELED_EVENT, ISSUE_COMMENT, PULL_REQUEST_COMMIT], last: 40) {
+      timelineItems(itemTypes: [LABELED_EVENT, ISSUE_COMMENT, PULL_REQUEST_COMMIT], last: 100) {
         nodes {
           __typename
           ... on LabeledEvent {
@@ -169,12 +167,25 @@ Thank you for contributing to `firebase-tools`! If you would like to revisit thi
 ACTIVITY_DETECTED_COMMENT = """Activity detected on this pull request! Removing the `{label}` label. Thank you for your continued contribution!"""
 
 
+def get_nested(d: Any, *keys: str, default: Any = None) -> Any:
+    """Safely retrieves nested dictionary keys guarding against None intermediate values."""
+    for key in keys:
+        if isinstance(d, dict):
+            d = d.get(key)
+        else:
+            return default
+    return d if d is not None else default
+
+
 def parse_iso(dt_str: Optional[str]) -> Optional[datetime]:
     if not dt_str:
         return None
     if dt_str.endswith("Z"):
         dt_str = dt_str[:-1] + "+00:00"
-    return datetime.fromisoformat(dt_str)
+    try:
+        return datetime.fromisoformat(dt_str)
+    except (ValueError, TypeError):
+        return None
 
 
 def run_gh_graphql(query: str, variables: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -189,7 +200,16 @@ def run_gh_graphql(query: str, variables: Optional[Dict[str, Any]] = None) -> Di
     res = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if res.returncode != 0:
         raise RuntimeError(f"GitHub GraphQL query failed: {res.stderr.strip()}")
-    return json.loads(res.stdout)
+
+    try:
+        res_json = json.loads(res.stdout)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"Failed to parse GraphQL response as JSON: {e}. Output: {res.stdout}") from e
+
+    if "errors" in res_json:
+        raise RuntimeError(f"GitHub GraphQL query returned errors: {json.dumps(res_json['errors'])}")
+
+    return res_json
 
 
 def fetch_all_open_prs(owner: str, repo: str) -> List[Dict[str, Any]]:
@@ -219,39 +239,58 @@ def fetch_all_open_prs(owner: str, repo: str) -> List[Dict[str, Any]]:
 def get_last_activity(pr: Dict[str, Any]) -> Tuple[str, datetime]:
     dates: List[Tuple[str, datetime]] = []
 
-    if pr.get("createdAt"):
-        dates.append(("created", parse_iso(pr["createdAt"])))  # type: ignore
+    created_at = pr.get("createdAt")
+    if created_at:
+        dt = parse_iso(created_at)
+        if dt is not None:
+            dates.append(("created", dt))
 
-    commits = pr.get("commits", {}).get("nodes", [])
-    if commits and commits[0].get("commit", {}).get("committedDate"):
-        dates.append(("commit", parse_iso(commits[0]["commit"]["committedDate"])))  # type: ignore
+    commits = get_nested(pr, "commits", "nodes", default=[])
+    if commits:
+        committed_date = get_nested(commits[0], "commit", "committedDate")
+        if committed_date:
+            dt = parse_iso(committed_date)
+            if dt is not None:
+                dates.append(("commit", dt))
 
-    comments = pr.get("comments", {}).get("nodes", [])
-    if comments and comments[-1].get("createdAt"):
-        dates.append(("comment", parse_iso(comments[-1]["createdAt"])))  # type: ignore
+    # Filter comments to exclude automated bot accounts
+    comments = get_nested(pr, "comments", "nodes", default=[])
+    for c in reversed(comments):
+        c_author = get_nested(c, "author", "login")
+        if c_author not in BOT_USERS and c.get("createdAt"):
+            dt = parse_iso(c["createdAt"])
+            if dt is not None:
+                dates.append(("comment", dt))
+                break
 
-    reviews = pr.get("reviews", {}).get("nodes", [])
-    if reviews and reviews[-1].get("submittedAt"):
-        dates.append(("review", parse_iso(reviews[-1]["submittedAt"])))  # type: ignore
+    reviews = get_nested(pr, "reviews", "nodes", default=[])
+    if reviews:
+        review_submitted_at = get_nested(reviews[-1], "submittedAt")
+        if review_submitted_at:
+            dt = parse_iso(review_submitted_at)
+            if dt is not None:
+                dates.append(("review", dt))
 
-    if pr.get("updatedAt"):
-        dates.append(("updated", parse_iso(pr["updatedAt"])))  # type: ignore
+    # Note: We intentionally omit updatedAt because background CI checks,
+    # label mutations, and issue cross-references bump updatedAt without contributor activity.
 
     dates.sort(key=lambda x: x[1], reverse=True)
-    return dates[0] if dates else ("created", parse_iso(pr.get("createdAt")))  # type: ignore
+    fallback_dt = parse_iso(pr.get("createdAt")) or datetime.now(timezone.utc)
+    return dates[0] if dates else ("created", fallback_dt)
 
 
 def is_protected_pr(pr: Dict[str, Any]) -> Tuple[bool, str]:
-    head = pr.get("headRefName", "") or ""
-    title = pr.get("title", "") or ""
-    author = pr.get("author", {}).get("login", "") if pr.get("author") else ""
+    head = pr.get("headRefName") or ""
+    title = pr.get("title") or ""
+    author = get_nested(pr, "author", "login", default="")
 
     # 1. Autonomous AI improvement tasks (Buganizer component 2268168)
     if head.startswith("ai-improve-") or "[AI Improvement]" in title or (author == "joehan" and "[Task]" in title):
         return True, "Active AI Improvement task (Buganizer component 2268168)"
 
     # 2. Explicit exempt labels
-    labels = {l["name"] for l in pr.get("labels", {}).get("nodes", [])}
+    label_nodes = get_nested(pr, "labels", "nodes", default=[])
+    labels = {l.get("name") for l in label_nodes if isinstance(l, dict) and l.get("name")}
     intersect = labels.intersection(EXEMPT_LABELS)
     if intersect:
         return True, f"Carries exempt label: {', '.join(intersect)}"
@@ -271,7 +310,7 @@ def process_existing_inactive_prs(
     print("\n--- PHASE 1: Processing PRs currently labeled 'inactive' ---")
     labeled_prs = [
         p for p in all_prs
-        if any(l["name"] == INACTIVE_LABEL for l in p.get("labels", {}).get("nodes", []))
+        if any(l.get("name") == INACTIVE_LABEL for l in get_nested(p, "labels", "nodes", default=[]))
     ]
 
     print(f"Discovered {len(labeled_prs)} open PRs currently carrying the '{INACTIVE_LABEL}' label.")
@@ -288,11 +327,11 @@ def process_existing_inactive_prs(
             break
 
         pr_num = pr["number"]
-        author = pr["author"]["login"] if pr.get("author") else "ghost"
+        author = get_nested(pr, "author", "login", default="ghost")
 
         try:
             timeline_res = run_gh_graphql(timeline_template, {"number": pr_num})
-            nodes = timeline_res["data"]["repository"]["pullRequest"]["timelineItems"]["nodes"]
+            nodes = get_nested(timeline_res, "data", "repository", "pullRequest", "timelineItems", "nodes", default=[])
         except Exception as e:
             print(f"  Error fetching timeline for #{pr_num}: {e}", file=sys.stderr)
             continue
@@ -300,14 +339,14 @@ def process_existing_inactive_prs(
         # Find latest LabeledEvent for 'inactive'
         label_events = [
             n for n in nodes
-            if n["__typename"] == "LabeledEvent" and n.get("label", {}).get("name") == INACTIVE_LABEL
+            if n.get("__typename") == "LabeledEvent" and get_nested(n, "label", "name") == INACTIVE_LABEL
         ]
 
         if not label_events:
             print(f"  #{pr_num}: '{INACTIVE_LABEL}' label event not found in recent timeline. Skipping.")
             continue
 
-        latest_label_dt = parse_iso(label_events[-1]["createdAt"])
+        latest_label_dt = parse_iso(label_events[-1].get("createdAt"))
         if not latest_label_dt:
             continue
 
@@ -316,16 +355,16 @@ def process_existing_inactive_prs(
         # Check for activity after labeling
         new_activity: List[Tuple[str, str, datetime]] = []
         for n in nodes:
-            tname = n["__typename"]
+            tname = n.get("__typename")
             if tname == "IssueComment":
-                c_dt = parse_iso(n["createdAt"])
-                user = n.get("author", {}).get("login", "")
+                c_dt = parse_iso(n.get("createdAt"))
+                user = get_nested(n, "author", "login", default="")
                 if c_dt and c_dt > latest_label_dt and user not in BOT_USERS:
                     new_activity.append(("comment", user, c_dt))
             elif tname == "PullRequestCommit":
-                c_dt = parse_iso(n.get("commit", {}).get("committedDate"))
+                c_dt = parse_iso(get_nested(n, "commit", "committedDate"))
                 if c_dt and c_dt > latest_label_dt:
-                    committer = n.get("commit", {}).get("author", {}).get("user", {}).get("login", "")
+                    committer = get_nested(n, "commit", "author", "user", "login", default="")
                     new_activity.append(("commit", committer, c_dt))
 
         if new_activity:
@@ -334,28 +373,44 @@ def process_existing_inactive_prs(
                 print(f"    [DRY-RUN] Would remove '{INACTIVE_LABEL}' label and post activity comment.")
             else:
                 print(f"    Removing '{INACTIVE_LABEL}' label from #{pr_num}...")
-                subprocess.run(
+                res = subprocess.run(
                     ["gh", "pr", "edit", str(pr_num), "--repo", f"{owner}/{repo}", "--remove-label", INACTIVE_LABEL],
+                    capture_output=True,
+                    text=True,
                     check=False,
                 )
+                if res.returncode != 0:
+                    print(f"    Failed to remove label from #{pr_num}: {res.stderr.strip()}", file=sys.stderr)
+                    continue
+
                 msg = ACTIVITY_DETECTED_COMMENT.format(label=INACTIVE_LABEL)
-                subprocess.run(
+                res_comment = subprocess.run(
                     ["gh", "pr", "comment", str(pr_num), "--repo", f"{owner}/{repo}", "--body", msg],
+                    capture_output=True,
+                    text=True,
                     check=False,
                 )
+                if res_comment.returncode != 0:
+                    print(f"    Failed to post activity comment on #{pr_num}: {res_comment.stderr.strip()}", file=sys.stderr)
             continue
 
         if days_labeled >= grace_days:
             print(f"  #{pr_num} by @{author}: Labeled {days_labeled:.1f} days ago (>= {grace_days}d). Closing.")
             if dry_run:
-                print(f"    [DRY-RUN] Would close #{pr_num} with 5-day grace expiration comment.")
+                print(f"    [DRY-RUN] Would close #{pr_num} with {grace_days}-day grace expiration comment.")
+                closed_count += 1
             else:
                 close_msg = CLOSURE_COMMENT.format(grace_days=int(grace_days), label=INACTIVE_LABEL)
-                subprocess.run(
+                res = subprocess.run(
                     ["gh", "pr", "close", str(pr_num), "--repo", f"{owner}/{repo}", "--comment", close_msg],
+                    capture_output=True,
+                    text=True,
                     check=False,
                 )
-            closed_count += 1
+                if res.returncode != 0:
+                    print(f"    Failed to close #{pr_num}: {res.stderr.strip()}", file=sys.stderr)
+                    continue
+                closed_count += 1
         else:
             remaining = grace_days - days_labeled
             print(f"  #{pr_num} by @{author}: Labeled {days_labeled:.1f}d ago. In grace period ({remaining:.1f}d remaining).")
@@ -381,7 +436,7 @@ def tag_new_inactive_prs(
 
     for pr in all_prs:
         # Skip PRs that already have the inactive label
-        if any(l["name"] == INACTIVE_LABEL for l in pr.get("labels", {}).get("nodes", [])):
+        if any(l.get("name") == INACTIVE_LABEL for l in get_nested(pr, "labels", "nodes", default=[])):
             continue
 
         protected, reason = is_protected_pr(pr)
@@ -409,7 +464,7 @@ def tag_new_inactive_prs(
     tagged_count = 0
     for pr, days_inactive in candidates:
         pr_num = pr["number"]
-        author = pr["author"]["login"] if pr.get("author") else "ghost"
+        author = get_nested(pr, "author", "login", default="ghost")
         is_dependabot = author in ["dependabot", "dependabot[bot]", "app/dependabot"]
         title = pr.get("title", "")
 
@@ -446,12 +501,14 @@ def tag_new_inactive_prs(
                 grace_days=int(grace_days),
             )
 
-        subprocess.run(
+        res_com = subprocess.run(
             ["gh", "pr", "comment", str(pr_num), "--repo", f"{owner}/{repo}", "--body", comment_body],
             capture_output=True,
             text=True,
             check=False,
         )
+        if res_com.returncode != 0:
+            print(f"    Warning: Failed to comment on #{pr_num}: {res_com.stderr.strip()}", file=sys.stderr)
 
         tagged_count += 1
         time.sleep(0.8)  # Politeness interval
@@ -460,13 +517,30 @@ def tag_new_inactive_prs(
 
 
 def main() -> None:
+    env_dry_run = os.environ.get("INPUT_DRY_RUN", "").lower() == "true"
+    env_inactive_days = (
+        float(os.environ["INPUT_INACTIVE_DAYS"])
+        if os.environ.get("INPUT_INACTIVE_DAYS")
+        else DEFAULT_INACTIVE_DAYS
+    )
+    env_grace_days = (
+        float(os.environ["INPUT_GRACE_DAYS"])
+        if os.environ.get("INPUT_GRACE_DAYS")
+        else DEFAULT_GRACE_DAYS
+    )
+    env_tag_limit = (
+        int(os.environ["INPUT_TAG_LIMIT"])
+        if os.environ.get("INPUT_TAG_LIMIT")
+        else DEFAULT_TAG_LIMIT
+    )
+
     parser = argparse.ArgumentParser(description="Manage inactive PR lifecycle on firebase-tools.")
     parser.add_argument("--repo", default=os.environ.get("GITHUB_REPOSITORY", DEFAULT_REPO), help="GitHub repo (owner/repo).")
-    parser.add_argument("--inactive-days", type=float, default=DEFAULT_INACTIVE_DAYS, help="Inactivity threshold in days (default: 60).")
-    parser.add_argument("--grace-days", type=float, default=DEFAULT_GRACE_DAYS, help="Grace period before closing tagged PRs (default: 5).")
-    parser.add_argument("--tag-limit", type=int, default=DEFAULT_TAG_LIMIT, help="Max PRs to tag per run (default: 30, 0 for unlimited).")
+    parser.add_argument("--inactive-days", type=float, default=env_inactive_days, help=f"Inactivity threshold in days (default: {env_inactive_days}).")
+    parser.add_argument("--grace-days", type=float, default=env_grace_days, help=f"Grace period before closing tagged PRs (default: {env_grace_days}).")
+    parser.add_argument("--tag-limit", type=int, default=env_tag_limit, help=f"Max PRs to tag per run (default: {env_tag_limit}, 0 for unlimited).")
     parser.add_argument("--close-limit", type=int, default=DEFAULT_CLOSE_LIMIT, help="Max PRs to close per run (default: 50, 0 for unlimited).")
-    parser.add_argument("--dry-run", action="store_true", help="Preview actions without modifying GitHub.")
+    parser.add_argument("--dry-run", action="store_true", default=env_dry_run, help="Preview actions without modifying GitHub.")
     args = parser.parse_args()
 
     owner, repo = args.repo.split("/", 1)

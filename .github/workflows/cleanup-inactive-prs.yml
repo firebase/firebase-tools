@@ -48,23 +48,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          EVENT_NAME: ${{ github.event_name }}
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
           INPUT_INACTIVE_DAYS: ${{ inputs.inactive_threshold_days }}
           INPUT_GRACE_DAYS: ${{ inputs.grace_period_days }}
           INPUT_TAG_LIMIT: ${{ inputs.tag_batch_limit }}
-        run: |
-          ARGS=""
-          if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$INPUT_DRY_RUN" = "true" ]; then
-            ARGS="$ARGS --dry-run"
-          fi
-          if [ -n "$INPUT_INACTIVE_DAYS" ]; then
-            ARGS="$ARGS --inactive-days $INPUT_INACTIVE_DAYS"
-          fi
-          if [ -n "$INPUT_GRACE_DAYS" ]; then
-            ARGS="$ARGS --grace-days $INPUT_GRACE_DAYS"
-          fi
-          if [ -n "$INPUT_TAG_LIMIT" ]; then
-            ARGS="$ARGS --tag-limit $INPUT_TAG_LIMIT"
-          fi
-          python3 scripts/cleanup_inactive_prs.py $ARGS
+        run: python3 scripts/cleanup_inactive_prs.py
