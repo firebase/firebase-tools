@@ -84,13 +84,6 @@ describe("run deploy", () => {
     expect(buildpackBuild).not.to.have.property("enableAutomaticUpdates");
   });
 
-  it("passes the service's build env to Cloud Build", async () => {
-    await deployOne({ config: web, buildEnv: { API_URL: "https://api.example.com" } });
-
-    const { environmentVariables } = submitBuildStub.firstCall.args[2].buildpackBuild;
-    expect(environmentVariables).to.include({ API_URL: "https://api.example.com" });
-  });
-
   it("rolls out a new revision of an existing service with all traffic, keeping its tags", async () => {
     const existing = {
       name: "projects/my-project/locations/us-central1/services/web",
@@ -155,8 +148,6 @@ describe("run deploy", () => {
         scratchDir,
         {},
         {
-          nonInteractive: undefined,
-          allowLocalBuildSecrets: true,
           rootDir: "apps/web",
         },
       );
@@ -174,7 +165,7 @@ describe("run deploy", () => {
       expect(fs.existsSync(scratchDir)).to.be.false;
     });
 
-    it("passes build env to the local build, and keeps the env vars the app needs at runtime", async () => {
+    it("keeps the env vars the app needs at runtime", async () => {
       localBuildStub.resolves({
         outputFiles: [".next"],
         buildConfig: {
@@ -185,14 +176,9 @@ describe("run deploy", () => {
           ],
         },
       });
-      const buildEnv = { API_URL: "https://api.example.com", TOKEN: { secret: "t", version: "2" } };
 
-      await deployOne({ config: localWeb, baseImage: NODEJS22, buildEnv });
+      await deployOne({ config: localWeb, baseImage: NODEJS22 });
 
-      expect(localBuildStub.firstCall.args[2]).to.deep.equal({
-        API_URL: { value: "https://api.example.com", availability: ["BUILD"] },
-        TOKEN: { secret: "t@2", availability: ["BUILD"] },
-      });
       expect(createServiceStub.firstCall.args[3].template.containers[0].env).to.deep.equal([
         { name: "NODE_ENV", value: "production" },
       ]);
