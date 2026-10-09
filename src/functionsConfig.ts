@@ -39,6 +39,17 @@ To run this legacy command temporarily, run the following command and try again:
   firebase experiments:enable ${LEGACY_RUNTIME_CONFIG_EXPERIMENT}
 `;
 
+// adminSdkConfig 404s for any project this account can't see, so the message
+// must not assert a cause. The addfirebase hint covers the Cloud-project case.
+const projectNotFoundMessage = (projectId: string): string =>
+  `Firebase project ${clc.bold(projectId)} was not found.
+Make sure the project exists and that your account has access to it.
+
+If ${clc.bold(projectId)} is a Google Cloud project without Firebase, add Firebase to it:
+
+  firebase projects:addfirebase ${projectId}
+`;
+
 export function getFunctionsConfigDeprecationMessage(): string {
   return FUNCTIONS_CONFIG_DEPRECATION_MESSAGE;
 }
@@ -114,10 +125,21 @@ export function getAppEngineLocation(config: any): string {
 
 export async function getFirebaseConfig(options: any): Promise<args.FirebaseConfig> {
   const projectId = needProjectId(options);
-  const response = await apiClient.get<args.FirebaseConfig>(
-    `/v1beta1/projects/${projectId}/adminSdkConfig`,
-  );
-  return response.body;
+  try {
+    const response = await apiClient.get<args.FirebaseConfig>(
+      `/v1beta1/projects/${projectId}/adminSdkConfig`,
+    );
+    return response.body;
+  } catch (err: unknown) {
+    if (err instanceof FirebaseError && err.status === 404) {
+      throw new FirebaseError(projectNotFoundMessage(projectId), {
+        original: err,
+        exit: 1,
+        status: 404,
+      });
+    }
+    throw err;
+  }
 }
 
 // If you make changes to this function, run "node scripts/test-functions-config.js"
