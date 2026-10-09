@@ -46,6 +46,10 @@ function readConfig(): FrameworkOptions {
 }
 
 const CONFIG = readConfig();
+if (!CONFIG.emulators) {
+  throw new FirebaseError("firebase.json is missing required 'emulators' configuration");
+}
+const EMULATORS = CONFIG.emulators;
 
 /**
  * Polls until the specified port is closed and released.
@@ -82,8 +86,8 @@ describe("import/export end to end", () => {
   it("should be able to import/export firestore data", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
     await Promise.all([
-      waitForPortClosed(CONFIG.emulators!.hub.port),
-      waitForPortClosed(CONFIG.emulators!.firestore.port),
+      waitForPortClosed(EMULATORS.hub.port),
+      waitForPortClosed(EMULATORS.firestore.port),
     ]);
 
     // Start up emulator suite
@@ -136,8 +140,8 @@ describe("import/export end to end", () => {
   it("should be able to import/export rtdb data", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
     await Promise.all([
-      waitForPortClosed(CONFIG.emulators!.hub.port),
-      waitForPortClosed(CONFIG.emulators!.database.port),
+      waitForPortClosed(EMULATORS.hub.port),
+      waitForPortClosed(EMULATORS.database.port),
     ]);
 
     // Start up emulator suite
@@ -262,8 +266,8 @@ describe("import/export end to end", () => {
   it("should be able to import/export auth data", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
     await Promise.all([
-      waitForPortClosed(CONFIG.emulators!.hub.port),
-      waitForPortClosed(CONFIG.emulators!.auth.port),
+      waitForPortClosed(EMULATORS.hub.port),
+      waitForPortClosed(EMULATORS.auth.port),
     ]);
 
     // Start up emulator suite
@@ -377,8 +381,8 @@ describe("import/export end to end", () => {
   it("should be able to import/export multi-tenant auth data", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
     await Promise.all([
-      waitForPortClosed(CONFIG.emulators!.hub.port),
-      waitForPortClosed(CONFIG.emulators!.auth.port),
+      waitForPortClosed(EMULATORS.hub.port),
+      waitForPortClosed(EMULATORS.auth.port),
     ]);
 
     // Start up emulator suite
@@ -546,8 +550,8 @@ describe("import/export end to end", () => {
   it("should be able to import/export auth data with many users", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
     await Promise.all([
-      waitForPortClosed(CONFIG.emulators!.hub.port),
-      waitForPortClosed(CONFIG.emulators!.auth.port),
+      waitForPortClosed(EMULATORS.hub.port),
+      waitForPortClosed(EMULATORS.auth.port),
     ]);
 
     // Start up emulator suite
@@ -639,8 +643,8 @@ describe("import/export end to end", () => {
   it("should be able to export / import auth data with no users", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
     await Promise.all([
-      waitForPortClosed(CONFIG.emulators!.hub.port),
-      waitForPortClosed(CONFIG.emulators!.auth.port),
+      waitForPortClosed(EMULATORS.hub.port),
+      waitForPortClosed(EMULATORS.auth.port),
     ]);
 
     // Start up emulator suite
@@ -704,8 +708,8 @@ describe("import/export end to end", () => {
   it("should be able to import/export storage data", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
     await Promise.all([
-      waitForPortClosed(CONFIG.emulators!.hub.port),
-      waitForPortClosed(CONFIG.emulators!.storage.port),
+      waitForPortClosed(EMULATORS.hub.port),
+      waitForPortClosed(EMULATORS.storage.port),
     ]);
 
     // Start up emulator suite
@@ -809,9 +813,9 @@ describe("import/export end to end", () => {
   it("should export all data when `--only` flag isn't used `emulators:export`", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
     await Promise.all([
-      waitForPortClosed(CONFIG.emulators!.hub.port),
-      waitForPortClosed(CONFIG.emulators!.storage.port),
-      waitForPortClosed(CONFIG.emulators!.auth.port),
+      waitForPortClosed(EMULATORS.hub.port),
+      waitForPortClosed(EMULATORS.storage.port),
+      waitForPortClosed(EMULATORS.auth.port),
     ]);
 
     // Start up emulator suite
@@ -926,9 +930,9 @@ describe("import/export end to end", () => {
   it("should export only storage data with `emulators:export --only storage`", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
     await Promise.all([
-      waitForPortClosed(CONFIG.emulators!.hub.port),
-      waitForPortClosed(CONFIG.emulators!.storage.port),
-      waitForPortClosed(CONFIG.emulators!.auth.port),
+      waitForPortClosed(EMULATORS.hub.port),
+      waitForPortClosed(EMULATORS.storage.port),
+      waitForPortClosed(EMULATORS.auth.port),
     ]);
 
     // Start up emulator suite
@@ -1045,8 +1049,8 @@ describe("import/export end to end", () => {
   it("should be able to export using POST", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
     await Promise.all([
-      waitForPortClosed(CONFIG.emulators!.hub.port),
-      waitForPortClosed(CONFIG.emulators!.firestore.port),
+      waitForPortClosed(EMULATORS.hub.port),
+      waitForPortClosed(EMULATORS.firestore.port),
     ]);
 
     // Start up emulator suite
