@@ -168,7 +168,7 @@ const throttlerTest = (ThrottlerConstructor: ThrottlerConstructorType): void => 
       if (count > 2) {
         return Promise.resolve();
       }
-      return Promise.reject();
+      return Promise.reject(new Error("retry"));
     };
 
     const q = new ThrottlerConstructor({
