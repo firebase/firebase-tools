@@ -80,7 +80,7 @@ describe("run prepare", () => {
 
     it("point new services to init, which sets a base image", async () => {
       await expect(prepareRun(localWeb)).to.be.rejectedWith(
-        /doesn't exist in us-central1 yet.*which also sets the base image/,
+        'Local builds require a base image. Set one for service web in us-central1 with "firebase init run".',
       );
     });
 

@@ -5,12 +5,7 @@ import { logLabeledBullet } from "../../utils";
 import { Context, Payload, ServiceDeploy } from "./args";
 import { BUILD_ENV_ANNOTATION, getBuildEnv, secretNames } from "./buildEnv";
 import { prereqs } from "./prereqs";
-import {
-  fullServiceName,
-  getExistingService,
-  getServiceConfigs,
-  missingServiceMessage,
-} from "./util";
+import { fullServiceName, getExistingService, getServiceConfigs } from "./util";
 
 /**
  * Reads each service's current state from Cloud Run and resolves its base image and build env.
@@ -61,13 +56,13 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
     return svc;
   }
 
+  // Local builds run on top of the base image, so they need one.
   if (!baseImage) {
-    if (!existing && context.baseImage === undefined) {
-      throw new FirebaseError(missingServiceMessage(config));
-    }
+    const fix = existing
+      ? `firebase run:services:update ${fullServiceName(config)} --base-image <baseImage>`
+      : "firebase init run";
     throw new FirebaseError(
-      `Local builds require a base image. Set one for service ${serviceId} in ${region} with ` +
-        `"firebase run:services:update ${fullServiceName(config)} --base-image <baseImage>".`,
+      `Local builds require a base image. Set one for service ${serviceId} in ${region} with "${fix}".`,
     );
   }
   return svc;
