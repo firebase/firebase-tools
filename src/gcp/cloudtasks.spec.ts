@@ -3,6 +3,7 @@ import * as sinon from "sinon";
 
 import * as iam from "./iam";
 import * as backend from "../deploy/functions/backend";
+import { FirebaseError } from "../error";
 import * as cloudtasks from "./cloudtasks";
 import * as proto from "./proto";
 
@@ -25,6 +26,7 @@ describe("CloudTasks", () => {
     ct.triggerFromQueue.restore();
     ct.setEnqueuer.restore();
     ct.upsertQueue.restore();
+    ct.disableQueue.restore();
   });
 
   afterEach(() => {
@@ -179,6 +181,39 @@ describe("CloudTasks", () => {
     });
   });
 
+  describe("disableQueue", () => {
+    const NAME = "projects/p/locations/r/queues/f";
+
+    it("issues the update only when the queue exists", async () => {
+      ct.getQueue.resolves({ name: NAME, ...cloudtasks.DEFAULT_SETTINGS });
+      ct.updateQueue.resolves({ name: NAME });
+
+      await cloudtasks.disableQueue(NAME);
+
+      // queues.patch cannot actually change `state` (it is output only); we only
+      // assert that the long-standing PATCH is still issued for an existing queue.
+      expect(ct.getQueue).to.have.been.calledWith(NAME);
+      expect(ct.updateQueue).to.have.been.calledWith({ name: NAME, state: "DISABLED" });
+    });
+
+    it("is a no-op when the queue no longer exists", async () => {
+      ct.getQueue.rejects({ context: { response: { statusCode: 404 } } });
+
+      await cloudtasks.disableQueue(NAME);
+
+      expect(ct.getQueue).to.have.been.calledWith(NAME);
+      expect(ct.updateQueue).to.not.have.been.called;
+    });
+
+    it("rethrows non-404 errors without patching", async () => {
+      const err = new FirebaseError("boom", { context: { response: { statusCode: 500 } } });
+      ct.getQueue.rejects(err);
+
+      await expect(cloudtasks.disableQueue(NAME)).to.be.rejectedWith(err);
+      expect(ct.updateQueue).to.not.have.been.called;
+    });
+  });
+
   describe("setEnqueuer", () => {
     const NAME = "projects/p/locations/r/queues/f";
     const ADMIN_BINDING: iam.Binding = {
@@ -244,6 +279,21 @@ describe("CloudTasks", () => {
       expect(ct.getIamPolicy).to.have.been.called;
       expect(ct.setIamPolicy).to.have.been.calledWith(NAME, {
         bindings: [ADMIN_BINDING, PUBLIC_ENQUEUER_BINDING],
+        etag: "",
+        version: 3,
+      });
+    });
+
+    it("handles missing bindings in IAM policy", async () => {
+      ct.getIamPolicy.resolves({
+        etag: "",
+        version: 3,
+      } as iam.Policy);
+
+      await cloudtasks.setEnqueuer(NAME, ["public"]);
+      expect(ct.getIamPolicy).to.have.been.called;
+      expect(ct.setIamPolicy).to.have.been.calledWith(NAME, {
+        bindings: [PUBLIC_ENQUEUER_BINDING],
         etag: "",
         version: 3,
       });

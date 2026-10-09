@@ -77,7 +77,7 @@ async function waitForSocketReady(socketPath: string): Promise<void> {
 async function startRuntime(
   triggerName: string,
   signatureType: SignatureType,
-  triggerSource: () => {},
+  triggerSource: () => unknown,
   runtimeEnvs?: Record<string, string>,
 ): Promise<Runtime> {
   const env: Record<string, string> = { ...runtimeEnvs };
