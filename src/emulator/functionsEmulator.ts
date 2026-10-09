@@ -175,12 +175,6 @@ export interface FunctionsRuntimeInstance {
   conn: IPCConn | TCPConn;
 }
 
-export interface InvokeRuntimeOpts {
-  nodeBinary: string;
-  extensionTriggers?: ParsedTriggerDefinition[];
-  ignore_warnings?: boolean;
-}
-
 interface RequestWithRawBody extends express.Request {
   rawBody: Buffer;
 }
