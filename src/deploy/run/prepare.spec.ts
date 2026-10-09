@@ -2,29 +2,34 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import * as runv2 from "../../gcp/runv2";
 import { Options } from "../../options";
-import { Context, Payload } from "./args";
+import { Context, Payload, ServiceDeploy } from "./args";
 import { BUILD_ENV_ANNOTATION } from "./buildEnv";
 import { prepare } from "./prepare";
 import * as prereqs from "./prereqs";
 
 describe("run prepare", () => {
   const nodejs22 = "us-central1-docker.pkg.dev/serverless-runtimes/google-22/runtimes/nodejs22";
-  const existing = {
-    name: "projects/p/locations/us-central1/services/s",
-    template: { containers: [{ name: "s", image: "i", baseImageUri: nodejs22 }] },
+  const web = { serviceId: "web", region: "us-central1" };
+  const localWeb = { ...web, localBuild: true };
+  const liveWeb = {
+    name: "projects/my-project/locations/us-central1/services/web",
+    template: { containers: [{ name: "web", image: "old-image", baseImageUri: nodejs22 }] },
   } as unknown as runv2.Service;
   let prereqsStub: sinon.SinonStub;
   let getServiceStub: sinon.SinonStub;
 
-  const options = (run: Record<string, unknown>): Options =>
-    ({
-      config: { src: { run: { serviceId: "s", region: "us-central1", ...run } }, projectDir: "/p" },
-    }) as unknown as Options;
-
-  async function prepareOne(run: Record<string, unknown> = {}, context: Partial<Context> = {}) {
+  /** Runs prepare on a firebase.json "run" config and returns the services it will deploy. */
+  async function prepareRun(
+    run: unknown,
+    { context = {}, only }: { context?: Partial<Context>; only?: string } = {},
+  ): Promise<ServiceDeploy[]> {
+    const options = {
+      config: { src: { run }, projectDir: "/project" },
+      only,
+    } as unknown as Options;
     const payload: Payload = {};
-    await prepare({ projectId: "p", ...context }, options(run), payload);
-    return payload.run!.services[0];
+    await prepare({ projectId: "my-project", ...context }, options, payload);
+    return payload.run?.services ?? [];
   }
 
   beforeEach(() => {
@@ -34,109 +39,96 @@ describe("run prepare", () => {
 
   afterEach(() => sinon.restore());
 
-  it("does nothing if no services are being deployed", async () => {
-    const payload: Payload = {};
-    await prepare({ projectId: "p" }, { config: { src: {} } } as unknown as Options, payload);
+  it("does nothing if firebase.json has no Cloud Run services", async () => {
+    expect(await prepareRun(undefined)).to.deep.equal([]);
     expect(prereqsStub).not.to.have.been.called;
-    expect(payload.run).to.be.undefined;
   });
 
-  it("requires a region", async () => {
-    await expect(prepareOne({ region: undefined })).to.be.rejectedWith(
-      "Cloud Run service s is missing a region in firebase.json.",
-    );
+  it("checks the APIs and finds that a new service doesn't exist yet", async () => {
+    expect(await prepareRun(web)).to.deep.equal([
+      { config: web, existing: undefined, baseImage: undefined },
+    ]);
+    expect(prereqsStub).to.have.been.calledWith("my-project");
+    expect(getServiceStub).to.have.been.calledWith("my-project", "us-central1", "web");
   });
 
-  it("reads the service", async () => {
-    const svc = await prepareOne();
-    expect(prereqsStub).to.have.been.calledWith("p");
-    expect(getServiceStub).to.have.been.calledWith("p", "us-central1", "s");
-    expect(svc.existing).to.be.undefined;
-    expect(svc.baseImage).to.be.undefined;
-  });
-
-  it("reuses the service's current base image", async () => {
-    getServiceStub.resolves(existing);
-    const svc = await prepareOne();
-    expect(svc.existing).to.equal(existing);
-    expect(svc.baseImage).to.equal(nodejs22);
+  it("reuses an existing service's base image", async () => {
+    getServiceStub.resolves(liveWeb);
+    expect(await prepareRun(web)).to.deep.equal([
+      { config: web, existing: liveWeb, baseImage: nodejs22 },
+    ]);
   });
 
   it("lets the context set or clear the base image", async () => {
-    getServiceStub.resolves(existing);
-    expect((await prepareOne({}, { baseImage: "nodejs20" })).baseImage).to.equal("nodejs20");
-    expect((await prepareOne({}, { baseImage: null })).baseImage).to.be.undefined;
+    getServiceStub.resolves(liveWeb);
+    const [withNewImage] = await prepareRun(web, { context: { baseImage: "nodejs24" } });
+    expect(withNewImage.baseImage).to.equal("nodejs24");
+    const [cleared] = await prepareRun(web, { context: { baseImage: null } });
+    expect(cleared.baseImage).to.be.undefined;
   });
 
-  it("requires a base image for local builds", async () => {
-    getServiceStub.resolves({ ...existing, template: { containers: [{ name: "s", image: "i" }] } });
-    await expect(prepareOne({ localBuild: true })).to.be.rejectedWith(
-      /Local builds require a base image.*firebase run:services:update s:us-central1 --base-image/,
-    );
-  });
+  describe("local builds", () => {
+    it("require a base image", async () => {
+      getServiceStub.resolves({
+        ...liveWeb,
+        template: { containers: [{ name: "web", image: "old-image" }] },
+      });
+      await expect(prepareRun(localWeb)).to.be.rejectedWith(
+        /Local builds require a base image.*firebase run:services:update web:us-central1 --base-image/,
+      );
+    });
 
-  it("points new local build services to init, which sets a base image", async () => {
-    await expect(prepareOne({ localBuild: true })).to.be.rejectedWith(
-      /doesn't exist in us-central1 yet.*which also sets the base image/,
-    );
-  });
+    it("point new services to init, which sets a base image", async () => {
+      await expect(prepareRun(localWeb)).to.be.rejectedWith(
+        /doesn't exist in us-central1 yet.*which also sets the base image/,
+      );
+    });
 
-  it("doesn't build locally", async () => {
-    getServiceStub.resolves(existing);
-    const svc = await prepareOne({ localBuild: true });
-    expect(svc.baseImage).to.equal(nodejs22);
-    expect(svc).not.to.have.property("localBuild");
+    it("are left to the deploy step", async () => {
+      getServiceStub.resolves(liveWeb);
+      const [svc] = await prepareRun(localWeb);
+      expect(svc.baseImage).to.equal(nodejs22);
+      expect(svc).not.to.have.property("localBuild");
+    });
   });
 
   describe("build env", () => {
     const withBuildEnv = (env: Record<string, unknown>): runv2.Service =>
       ({
-        ...existing,
+        ...liveWeb,
         annotations: { [BUILD_ENV_ANNOTATION]: JSON.stringify(env) },
       }) as unknown as runv2.Service;
 
     it("passes plain build env to Cloud Build", async () => {
-      getServiceStub.resolves(withBuildEnv({ A: "1" }));
-      expect((await prepareOne()).buildEnv).to.deep.equal({ A: "1" });
+      getServiceStub.resolves(withBuildEnv({ API_URL: "https://api.example.com" }));
+      const [svc] = await prepareRun(web);
+      expect(svc.buildEnv).to.deep.equal({ API_URL: "https://api.example.com" });
     });
 
     it("leaves build env unset without the annotation", async () => {
-      getServiceStub.resolves(existing);
-      expect(await prepareOne()).not.to.have.property("buildEnv");
+      getServiceStub.resolves(liveWeb);
+      const [svc] = await prepareRun(web);
+      expect(svc).not.to.have.property("buildEnv");
     });
 
     it("rejects build secrets on Cloud Build", async () => {
-      getServiceStub.resolves(withBuildEnv({ A: "1", TOKEN: { secret: "t" } }));
-      await expect(prepareOne()).to.be.rejectedWith(
-        /Service s in us-central1 has build secrets \(TOKEN\).*"localBuild": true/,
+      getServiceStub.resolves(withBuildEnv({ TOKEN: { secret: "t" } }));
+      await expect(prepareRun(web)).to.be.rejectedWith(
+        /Service web in us-central1 has build secrets \(TOKEN\).*"localBuild": true/,
       );
     });
 
     it("keeps build secrets for local builds", async () => {
-      getServiceStub.resolves(withBuildEnv({ A: "1", TOKEN: { secret: "t", version: "2" } }));
-      const svc = await prepareOne({ localBuild: true });
-      expect(svc.buildEnv).to.deep.equal({ A: "1", TOKEN: { secret: "t", version: "2" } });
+      getServiceStub.resolves(withBuildEnv({ TOKEN: { secret: "t", version: "2" } }));
+      const [svc] = await prepareRun(localWeb);
+      expect(svc.buildEnv).to.deep.equal({ TOKEN: { secret: "t", version: "2" } });
     });
   });
 
   it("only prepares the services that --only selects", async () => {
-    const payload: Payload = {};
-    const sameIdTwoRegions = {
-      only: "run:s:europe-west1",
-      config: {
-        src: {
-          run: [
-            { serviceId: "s", region: "us-central1" },
-            { serviceId: "s", region: "europe-west1" },
-          ],
-        },
-        projectDir: "/p",
-      },
-    } as unknown as Options;
-
-    await prepare({ projectId: "p" }, sameIdTwoRegions, payload);
-
-    expect(payload.run!.services.map((svc) => svc.config.region)).to.deep.equal(["europe-west1"]);
-    expect(getServiceStub).to.have.been.calledOnceWith("p", "europe-west1", "s");
+    const webEurope = { serviceId: "web", region: "europe-west1" };
+    const services = await prepareRun([web, webEurope], { only: "run:web:europe-west1" });
+    expect(services.map((svc) => svc.config)).to.deep.equal([webEurope]);
+    expect(getServiceStub).to.have.been.calledOnceWith("my-project", "europe-west1", "web");
   });
 });
