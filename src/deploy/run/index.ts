@@ -19,4 +19,4 @@ export const detailedHelp =
   '    "ignore": ["node_modules", ".git"]\n' +
   "  }\n" +
   "}\n\n" +
-  "Each deploy reuses the service's current base image.";
+  "Base images are configured on the service with firebase run:services:update --base-image and are reused on every deploy.";
