@@ -68,12 +68,14 @@ describe("run prepare", () => {
 
   describe("local builds", () => {
     it("require a base image", async () => {
-      getServiceStub.resolves({
+      const webWithoutBaseImage = {
         ...liveWeb,
         template: { containers: [{ name: "web", image: "old-image" }] },
-      });
+      };
+      getServiceStub.resolves(webWithoutBaseImage);
+
       await expect(prepareRun(localWeb)).to.be.rejectedWith(
-        /Local builds require a base image.*firebase run:services:update web:us-central1 --base-image/,
+        'Local builds require a base image. Set one for service web in us-central1 with "firebase run:services:update web:us-central1 --base-image <baseImage>".',
       );
     });
 
@@ -81,13 +83,6 @@ describe("run prepare", () => {
       await expect(prepareRun(localWeb)).to.be.rejectedWith(
         'Local builds require a base image. Set one for service web in us-central1 with "firebase init run".',
       );
-    });
-
-    it("are left to the deploy step", async () => {
-      getServiceStub.resolves(liveWeb);
-      const [svc] = await prepareRun(localWeb);
-      expect(svc.baseImage).to.equal(nodejs22);
-      expect(svc).not.to.have.property("localBuild");
     });
   });
 

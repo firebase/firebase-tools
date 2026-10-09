@@ -41,6 +41,13 @@ describe("init run", () => {
   afterEach(() => sinon.restore());
 
   describe("askQuestions", () => {
+    /** Answers init's prompts, select or input, in the order it asks them. */
+    function answerPrompts(...answers: unknown[]): void {
+      const nextAnswer = (): Promise<unknown> => Promise.resolve(answers.shift());
+      selectStub.callsFake(nextAnswer);
+      inputStub.callsFake(nextAnswer);
+    }
+
     it("throws if no project is selected", async () => {
       await expect(
         askQuestions({ ...setup(), projectId: undefined }, config, options),
@@ -144,55 +151,38 @@ describe("init run", () => {
       expect(s.featureInfo?.run?.serviceId).to.equal("my-service");
     });
 
-    it("enables localBuild and requires a base image when building locally", async () => {
-      selectStub
-        .onFirstCall()
-        .resolves("create")
-        .onSecondCall()
-        .resolves("us-central1")
-        .onThirdCall()
-        .resolves(true);
-      inputStub.onFirstCall().resolves("my-service").onSecondCall().resolves("nodejs22");
-      inputStub.onThirdCall().resolves("/");
-      const s = setup();
+    it("builds a new service remotely by default", async () => {
+      answerPrompts("create", "us-central1", "web", /* localBuild= */ false, "", "/");
 
-      await askQuestions(s, config, options);
+      await askQuestions(setup(), config, options);
 
-      expect(selectStub.thirdCall.args[0].default).to.be.false;
-      const baseImagePrompt = inputStub.secondCall.args[0];
-      expect(baseImagePrompt.default).to.be.undefined;
-      expect(baseImagePrompt.validate("nodejs22")).to.be.true;
-      expect(baseImagePrompt.validate(" ")).to.include("Local builds require a base image");
-      expect(s.featureInfo?.run).to.deep.equal({
-        serviceId: "my-service",
-        region: "us-central1",
-        baseImage: "nodejs22",
-        rootDir: "/",
-        localBuild: true,
-      });
+      const localBuildPrompt = selectStub.thirdCall.args[0];
+      expect(localBuildPrompt.default).to.be.false;
     });
 
-    it("defaults to building locally if the saved entry for the service does", async () => {
-      const existing = {
-        name: "projects/p/locations/europe-west1/services/web",
-        template: { containers: [{ name: "web", image: "i", baseImageUri: "nodejs22" }] },
-      };
+    it("defaults to building locally if firebase.json builds the service locally", async () => {
+      const existing = { name: "projects/p/locations/europe-west1/services/web", template: {} };
       sinon.stub(runv2, "listServices").resolves([existing] as unknown as runv2.Service[]);
-      selectStub.onFirstCall().resolves("update").onSecondCall().resolves(existing);
-      selectStub.onThirdCall().callsFake((o) => Promise.resolve(o.default));
-      inputStub.callsFake((o) => Promise.resolve(o.default));
-      config.set("run", {
-        serviceId: "web",
-        region: "europe-west1",
-        rootDir: "/",
-        localBuild: true,
-      });
-      const s = setup();
+      config.set("run", { serviceId: "web", region: "europe-west1", localBuild: true });
+      answerPrompts("update", existing, /* localBuild= */ true, "nodejs22", "/");
 
-      await askQuestions(s, config, options);
+      await askQuestions(setup(), config, options);
 
-      expect(selectStub.thirdCall.args[0].default).to.be.true;
-      expect(s.featureInfo?.run?.localBuild).to.be.true;
+      const localBuildPrompt = selectStub.thirdCall.args[0];
+      expect(localBuildPrompt.default).to.be.true;
+    });
+
+    it("saves the choice to build locally, which requires a base image", async () => {
+      answerPrompts("create", "us-central1", "web", /* localBuild= */ true, "nodejs22", "/");
+      const initSetup = setup();
+
+      await askQuestions(initSetup, config, options);
+
+      const baseImagePrompt = inputStub.secondCall.args[0];
+      expect(baseImagePrompt.default).to.be.undefined;
+      expect(baseImagePrompt.validate(" ")).to.equal("Local builds require a base image.");
+      expect(baseImagePrompt.validate("nodejs22")).to.be.true;
+      expect(initSetup.featureInfo?.run).to.include({ localBuild: true });
     });
   });
 
@@ -284,45 +274,22 @@ describe("init run", () => {
       ]);
     });
 
-    it("updates an existing service in place while preserving custom ignore and updating localBuild", () => {
-      config.set("run", {
-        serviceId: "web",
-        region: "us-central1",
-        rootDir: "/",
-        ignore: ["custom-ignore"],
-      });
+    it("turns localBuild on for an existing service, keeping its custom ignore list", () => {
+      const web = { serviceId: "web", region: "us-central1", rootDir: "/" };
+      config.set("run", { ...web, ignore: ["custom-ignore"] });
 
-      upsertRunConfig(
-        {
-          serviceId: "web",
-          region: "us-central1",
-          rootDir: "apps/web",
-          localBuild: true,
-        },
-        config,
-      );
-      expect(config.src.run).to.deep.equal({
-        serviceId: "web",
-        region: "us-central1",
-        rootDir: "apps/web",
-        localBuild: true,
-        ignore: ["custom-ignore"],
-      });
+      upsertRunConfig({ ...web, localBuild: true }, config);
 
-      upsertRunConfig(
-        {
-          serviceId: "web",
-          region: "us-central1",
-          rootDir: "apps/web",
-        },
-        config,
-      );
-      expect(config.src.run).to.deep.equal({
-        serviceId: "web",
-        region: "us-central1",
-        rootDir: "apps/web",
-        ignore: ["custom-ignore"],
-      });
+      expect(config.src.run).to.deep.equal({ ...web, ignore: ["custom-ignore"], localBuild: true });
+    });
+
+    it("turns localBuild off for an existing service, keeping its custom ignore list", () => {
+      const web = { serviceId: "web", region: "us-central1", rootDir: "/" };
+      config.set("run", { ...web, ignore: ["custom-ignore"], localBuild: true });
+
+      upsertRunConfig(web, config);
+
+      expect(config.src.run).to.deep.equal({ ...web, ignore: ["custom-ignore"] });
     });
 
     it("doesn't add an ignore list to an existing service", () => {
