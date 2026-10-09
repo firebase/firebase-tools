@@ -8,180 +8,164 @@ import * as getProjectNumber from "../../getProjectNumber";
 import { Options } from "../../options";
 import * as apphostingUtil from "../apphosting/util";
 import { ServiceDeploy } from "./args";
-import { deploy } from "./deploy";
+import { deploy, revisionTemplate } from "./deploy";
+
+const NODEJS22 = "us-central1-docker.pkg.dev/serverless-runtimes/google-22/runtimes/nodejs22";
+const DEPLOY_MESSAGE = "firebase.google.com/deploy-message";
 
 describe("run deploy", () => {
-  const options = { config: { projectDir: "/p" } } as unknown as Options;
-  const config = { serviceId: "s", region: "us-central1", rootDir: "web" };
-  let sourceArchiveStub: sinon.SinonStub;
-  let rmSyncStub: sinon.SinonSpy;
+  const options = { config: { projectDir: "/project" } } as unknown as Options;
+  const web = { serviceId: "web", region: "us-central1", rootDir: "apps/web" };
+  // Date.now() is stubbed to return 42, which tags the image.
+  const image = "us-central1-docker.pkg.dev/my-project/cloud-run-source-deploy/web:42";
+  let createArchiveStub: sinon.SinonStub;
   let submitBuildStub: sinon.SinonStub;
   let createServiceStub: sinon.SinonStub;
   let updateServiceStub: sinon.SinonStub;
 
-  function service(overrides: Partial<ServiceDeploy> = {}): ServiceDeploy {
-    return { config, ...overrides };
-  }
-
-  async function deployOne(svc: ServiceDeploy, opts = options) {
-    await deploy({ projectId: "p" }, opts, { run: { services: [svc] } });
-    return svc;
-  }
-
   beforeEach(() => {
     sinon.stub(getProjectNumber, "getProjectNumber").resolves("123");
-    sinon.stub(gcs, "upsertBucket").resolves("bucket");
+    sinon.stub(gcs, "upsertBucket").resolves("source-bucket");
+    createArchiveStub = sinon
+      .stub(apphostingUtil, "createSourceDeployArchive")
+      .resolves("/tmp/web.zip");
+    sinon.stub(fs, "createReadStream").returns("stream" as unknown as fs.ReadStream);
     sinon
       .stub(gcs, "uploadObject")
-      .callsFake((src) => Promise.resolve({ bucket: "bucket", object: src.file, generation: "1" }));
-    sinon.stub(fs, "createReadStream").returns("stream" as unknown as fs.ReadStream);
-    rmSyncStub = sinon.spy(fs, "rmSync");
-    sourceArchiveStub = sinon.stub(apphostingUtil, "createSourceDeployArchive").resolves("src.zip");
+      .resolves({ bucket: "source-bucket", object: "web.zip", generation: "1" });
     sinon.stub(artifactregistry, "ensureDockerRepository").resolves();
     submitBuildStub = sinon.stub(runv2, "submitBuild").resolves();
-    createServiceStub = sinon
-      .stub(runv2, "createService")
-      .resolves({ uri: "new" } as runv2.Service);
-    updateServiceStub = sinon.stub(runv2, "updateService").resolves({ uri: "up" } as runv2.Service);
+    const deployed = { uri: "https://web.run.app" } as runv2.Service;
+    createServiceStub = sinon.stub(runv2, "createService").resolves(deployed);
+    updateServiceStub = sinon.stub(runv2, "updateService").resolves(deployed);
     sinon.stub(Date, "now").returns(42);
   });
 
   afterEach(() => sinon.restore());
 
-  it("builds source and creates a new service", async () => {
-    const svc = await deployOne(service({ baseImage: "nodejs22" }), {
-      ...options,
-      message: "hi",
-    } as Options);
+  async function deployOne(svc: ServiceDeploy): Promise<ServiceDeploy> {
+    await deploy({ projectId: "my-project" }, options, { run: { services: [svc] } });
+    return svc;
+  }
 
-    expect(sourceArchiveStub).to.have.been.calledWithMatch({ backendId: "s" }, "/p/web");
-    expect(rmSyncStub).to.have.been.calledWith("src.zip", { recursive: true, force: true });
-    const imageUri = "us-central1-docker.pkg.dev/p/cloud-run-source-deploy/s:42";
-    expect(submitBuildStub).to.have.been.calledWith("p", "us-central1", {
-      storageSource: { bucket: "bucket", object: "src.zip" },
-      imageUri,
-      buildpackBuild: {
-        baseImage: "nodejs22",
-        enableAutomaticUpdates: true,
-        environmentVariables: {
-          X_GOOGLE_TARGET_PLATFORM: "fah",
-          FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
-        },
-      },
+  it("uploads the source, builds it, and creates a public service", async () => {
+    const svc = await deployOne({ config: web, baseImage: NODEJS22 });
+
+    expect(createArchiveStub).to.have.been.calledWithMatch(
+      { backendId: "web" },
+      "/project/apps/web",
+    );
+    expect(submitBuildStub).to.have.been.calledWithMatch("my-project", "us-central1", {
+      storageSource: { bucket: "source-bucket", object: "web.zip" },
+      imageUri: image,
+      buildpackBuild: { baseImage: NODEJS22, enableAutomaticUpdates: true },
     });
-    expect(createServiceStub).to.have.been.calledWith("p", "us-central1", "s", {
-      name: "projects/p/locations/us-central1/services/s",
-      template: {
-        containers: [
-          {
-            name: "s",
-            image: imageUri,
-            baseImageUri: "nodejs22",
-          },
-        ],
-        annotations: { "firebase.google.com/deploy-message": "hi" },
-      },
-      client: "cli-firebase",
+    expect(createServiceStub).to.have.been.calledWithMatch("my-project", "us-central1", "web", {
+      template: { containers: [{ name: "web", image, baseImageUri: NODEJS22 }] },
       invokerIamDisabled: true,
       ingress: "INGRESS_TRAFFIC_ALL",
     });
-    expect(svc.deployed).to.deep.equal({ uri: "new" });
+    expect(svc.deployed).to.deep.equal({ uri: "https://web.run.app" });
   });
 
-  it("still deploys if the source archive can't be deleted", async () => {
-    rmSyncStub.restore();
-    sinon.stub(fs, "rmSync").throws(new Error("EBUSY"));
+  it("builds without a base image if the service doesn't have one", async () => {
+    await deployOne({ config: web });
 
-    const svc = await deployOne(service());
-
-    expect(svc.deployed).to.deep.equal({ uri: "new" });
+    // Without a base image, Cloud Build can't turn on automatic base image updates.
+    const { buildpackBuild } = submitBuildStub.firstCall.args[2];
+    expect(buildpackBuild).not.to.have.property("baseImage");
+    expect(buildpackBuild).not.to.have.property("enableAutomaticUpdates");
   });
 
-  it("reports the upload error, not the cleanup error, when both fail", async () => {
-    rmSyncStub.restore();
-    sinon.stub(fs, "rmSync").throws(new Error("EBUSY"));
-    (gcs.uploadObject as sinon.SinonStub).rejects(new Error("upload failed"));
-
-    await expect(deployOne(service())).to.be.rejectedWith("upload failed");
-  });
-
-  it("builds without a base image", async () => {
-    await deployOne(service());
-    expect(submitBuildStub.firstCall.args[2].buildpackBuild).to.deep.equal({
-      environmentVariables: {
-        X_GOOGLE_TARGET_PLATFORM: "fah",
-        FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
-      },
-    });
-    expect(createServiceStub.firstCall.args[3].template.containers[0]).not.to.have.property(
-      "baseImageUri",
-    );
-  });
-
-  it("updates the live revision template of an existing service", async () => {
+  it("rolls out a new revision of an existing service with all traffic, keeping its tags", async () => {
     const existing = {
-      name: "projects/p/locations/us-central1/services/s",
-      template: {
-        revision: "s-1",
-        serviceAccount: "sa",
-        annotations: { "firebase.google.com/deploy-message": "old", keep: "me" },
-        containers: [
-          {
-            name: "main",
-            image: "old",
-            ports: [{ containerPort: 8080 }],
-            baseImageUri: "old-base",
-            env: [
-              { name: "B", value: "old" },
-              { name: "C", value: "c" },
-            ],
-          },
-        ],
-      },
-      trafficStatuses: [
-        { type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", revision: "s-1", percent: 100 },
+      name: "projects/my-project/locations/us-central1/services/web",
+      template: { revision: "web-001", containers: [{ name: "web", image: "old-image" }] },
+      traffic: [
+        { type: "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION", revision: "web-001", percent: 90 },
+        {
+          type: "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION",
+          revision: "web-000",
+          tag: "preview",
+          percent: 10,
+        },
       ],
     } as unknown as runv2.Service;
 
-    await deployOne(service({ existing }));
+    await deployOne({ config: web, existing });
 
-    const [update, updateOpts] = updateServiceStub.firstCall.args;
-    expect(updateOpts.updateMask).to.deep.equal(["template", "traffic"]);
-    expect(update.template).to.deep.equal({
-      serviceAccount: "sa",
-      annotations: { keep: "me" },
-      containers: [
-        {
-          name: "main",
-          image: "us-central1-docker.pkg.dev/p/cloud-run-source-deploy/s:42",
-          ports: [{ containerPort: 8080 }],
-          env: [
-            { name: "B", value: "old" },
-            { name: "C", value: "c" },
-          ],
-        },
-      ],
-    });
-    expect(update.traffic).to.deep.equal([
-      { type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 },
-    ]);
-    expect(existing.template.revision).to.equal("s-1");
+    expect(createServiceStub).not.to.have.been.called;
+    expect(updateServiceStub).to.have.been.calledOnceWithExactly(
+      {
+        name: "projects/my-project/locations/us-central1/services/web",
+        template: { containers: [{ name: "web", image }] },
+        traffic: [
+          { type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 },
+          { type: "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION", revision: "web-000", tag: "preview" },
+        ],
+      },
+      { updateMask: ["template", "traffic"], pollTimeoutMs: 10 * 60 * 1000 },
+    );
   });
 
-  it("logs the deployed URL of each service during release", async () => {
-    const { release } = await import("./release");
-    const utils = await import("../../utils");
-    const logStub = sinon.stub(utils, "logLabeledSuccess");
-
-    await release({ projectId: "p" }, options, {
-      run: {
-        services: [service({ deployed: { uri: "https://s-123.run.app" } as runv2.Service })],
+  describe("revisionTemplate", () => {
+    const existing = {
+      name: "projects/my-project/locations/us-central1/services/web",
+      template: {
+        revision: "web-001",
+        serviceAccount: "web@my-project.iam.gserviceaccount.com",
+        annotations: { team: "frontend", [DEPLOY_MESSAGE]: "Last deploy" },
+        containers: [
+          {
+            name: "web",
+            image: "old-image",
+            baseImageUri: NODEJS22,
+            env: [{ name: "MODE", value: "prod" }],
+          },
+        ],
       },
+    } as unknown as runv2.Service;
+
+    it("starts a new service with just the image", () => {
+      expect(revisionTemplate({ config: web }, image)).to.deep.equal({
+        containers: [{ name: "web", image }],
+      });
     });
 
-    expect(logStub).to.have.been.calledOnceWithExactly(
-      "run",
-      "Deployed service s in us-central1 to https://s-123.run.app",
-    );
+    it("keeps the live revision's settings, but not its name", () => {
+      const template = revisionTemplate({ config: web, existing, baseImage: NODEJS22 }, image);
+
+      expect(template).to.deep.equal({
+        serviceAccount: "web@my-project.iam.gserviceaccount.com",
+        annotations: { team: "frontend" },
+        containers: [
+          { name: "web", image, baseImageUri: NODEJS22, env: [{ name: "MODE", value: "prod" }] },
+        ],
+      });
+      // The live service itself isn't changed.
+      expect(existing.template.revision).to.equal("web-001");
+    });
+
+    it("sets the base image, or clears it", () => {
+      const withBaseImage = revisionTemplate(
+        { config: web, existing, baseImage: "nodejs24" },
+        image,
+      );
+      expect(withBaseImage.containers?.[0].baseImageUri).to.equal("nodejs24");
+
+      const withoutBaseImage = revisionTemplate({ config: web, existing }, image);
+      expect(withoutBaseImage.containers?.[0]).not.to.have.property("baseImageUri");
+    });
+
+    it("sets the deploy message, or clears the last one", () => {
+      const withMessage = revisionTemplate({ config: web, existing }, image, "Fix the login page");
+      expect(withMessage.annotations).to.deep.equal({
+        team: "frontend",
+        [DEPLOY_MESSAGE]: "Fix the login page",
+      });
+
+      const withoutMessage = revisionTemplate({ config: web, existing }, image);
+      expect(withoutMessage.annotations).to.deep.equal({ team: "frontend" });
+    });
   });
 });

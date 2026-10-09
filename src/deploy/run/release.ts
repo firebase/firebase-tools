@@ -2,7 +2,8 @@ import { logLabeledSuccess } from "../../utils";
 import { Payload } from "./args";
 
 /**
- * Logs where each deployed service is available.
+ * Logs where each deployed service is available. The deploy step already rolled them out, so that
+ * they're live before other products release (e.g. Hosting, whose rewrites can point at them).
  */
 export async function release(
   _context: unknown,

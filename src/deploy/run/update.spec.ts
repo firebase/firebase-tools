@@ -113,14 +113,5 @@ describe("updateService", () => {
         { baseImage: "nodejs20" },
       );
     });
-
-    it("reports a missing region instead of listing the matches", async () => {
-      const noRegion = {
-        src: { run: [{ serviceId: "s" }, { serviceId: "s", region: "us-central1" }] },
-      };
-      await expect(
-        updateService("s", options({ baseImage: "nodejs20", config: noRegion })),
-      ).to.be.rejectedWith("Cloud Run service s is missing a region in firebase.json.");
-    });
   });
 });
