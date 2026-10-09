@@ -63,11 +63,6 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: true,
   },
-  runfunctions: {
-    shortDescription:
-      "Functions created using the V2 API target Cloud Run Functions (not production ready)",
-    public: false,
-  },
   functionsiac: {
     shortDescription: "Exports functions IaC code",
     public: false,
@@ -101,10 +96,6 @@ export const ALL_EXPERIMENTS = experiments({
   emulatoruisnapshot: {
     shortDescription: "Load pre-release versions of the emulator UI",
   },
-  emulatorapphosting: {
-    shortDescription: "App Hosting emulator",
-    public: false,
-  },
 
   // Hosting experiments
   webframeworks: {
@@ -130,10 +121,8 @@ export const ALL_EXPERIMENTS = experiments({
     public: true,
     default: true,
   },
+
   // Access experiments
-  crossservicerules: {
-    shortDescription: "Allow Firebase Rules to reference resources in other services",
-  },
   internaltesting: {
     shortDescription: "Exposes Firebase CLI commands intended for internal testing purposes.",
     fullDescription:
@@ -177,6 +166,15 @@ export const ALL_EXPERIMENTS = experiments({
       "Enable Automatic Base Image Updates (ABIU) and runtime selection for App Hosting",
     default: true,
     public: true,
+  },
+
+  directcloudrun: {
+    shortDescription: "Build and deploy web apps directly to Cloud Run services",
+    fullDescription:
+      "Enables `firebase init run`, `firebase deploy --only run`, and the " +
+      "`firebase run:services:update` command. " +
+      "These are in preview and may change.",
+    public: false,
   },
 
   // TODO(joehanley): Delete this once weve scrubbed all references to experiment from docs.
@@ -237,6 +235,16 @@ export const ALL_EXPERIMENTS = experiments({
     shortDescription: "Enable the ability to upload source maps for web apps to Crashlytics.",
     default: false,
     public: true,
+  },
+  crashlyticsWebAlerts: {
+    shortDescription: "Enable configuring Crashlytics email alerts during web app onboarding.",
+    default: false,
+    public: false,
+  },
+  crashlyticsWebTrace: {
+    shortDescription: "Enable provisioning Cloud Trace storage during web app onboarding.",
+    default: false,
+    public: false,
   },
   secretEnvParams: {
     shortDescription:
