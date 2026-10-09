@@ -32,6 +32,8 @@ export const isServiceUnavailable: RetryPredicate = (err: any): boolean =>
 export const isTransientError: RetryPredicate = (err: any): boolean =>
   isQuotaExhaustion(err) || isConflict(err) || isServiceUnavailable(err);
 
+const MANAGED_SERVICE_ACCOUNT_REGEX = /\bfirebase-fn-[0-9]+@/i;
+
 export const isServiceAccountPropagationError: RetryPredicate = (err: any): boolean => {
   const code = parseErrorCode(err);
   // Newly created service accounts take time to propagate across IAM systems.
@@ -72,14 +74,20 @@ export const isServiceAccountPropagationError: RetryPredicate = (err: any): bool
     return true;
   }
 
-  if (!/\bfirebase-fn-[0-9]+@/i.test(message)) {
+  // Only retry 400/403 for Firebase-managed service accounts (firebase-fn-<digits>@)
+  // created dynamically during this deploy. Fail fast for user-provided custom service accounts.
+  if (!MANAGED_SERVICE_ACCOUNT_REGEX.test(message)) {
     return false;
   }
 
+  // Eventarc trigger validation reports an unpropagated service account as HTTP 400
+  // ("The request was invalid: invalid service account ... provided").
   if (code === 400) {
     return message.includes("invalid service account");
   }
 
+  // Cloud Run service validation reports an unpropagated service account as HTTP 403
+  // when checking iam.serviceaccounts.actAs or Service Agent token permissions.
   return (
     message.includes("iam.serviceaccounts.actas") || message.includes("does not have permission")
   );
