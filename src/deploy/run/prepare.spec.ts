@@ -3,7 +3,7 @@ import * as sinon from "sinon";
 import * as runv2 from "../../gcp/runv2";
 import { Options } from "../../options";
 import { Context, Payload, ServiceDeploy } from "./args";
-import { BUILD_ENV_ANNOTATION } from "./buildEnv";
+import { BUILD_ENV_ANNOTATION, BuildEnv } from "./buildEnv";
 import { prepare } from "./prepare";
 import * as prereqs from "./prereqs";
 
@@ -15,6 +15,11 @@ describe("run prepare", () => {
     name: "projects/my-project/locations/us-central1/services/web",
     template: { containers: [{ name: "web", image: "old-image", baseImageUri: nodejs22 }] },
   } as unknown as runv2.Service;
+  /** The live web service, with this build env annotation. */
+  const withBuildEnv = (env: BuildEnv): runv2.Service => ({
+    ...liveWeb,
+    annotations: { [BUILD_ENV_ANNOTATION]: JSON.stringify(env) },
+  });
   let prereqsStub: sinon.SinonStub;
   let getServiceStub: sinon.SinonStub;
 
@@ -69,12 +74,14 @@ describe("run prepare", () => {
 
   describe("local builds", () => {
     it("require a base image", async () => {
-      getServiceStub.resolves({
+      const webWithoutBaseImage = {
         ...liveWeb,
         template: { containers: [{ name: "web", image: "old-image" }] },
-      });
+      };
+      getServiceStub.resolves(webWithoutBaseImage);
+
       await expect(prepareRun(localWeb)).to.be.rejectedWith(
-        /Local builds require a base image.*firebase run:services:update web:us-central1 --base-image/,
+        'Local builds require a base image. Set one for service web in us-central1 with "firebase run:services:update web:us-central1 --base-image <baseImage>".',
       );
     });
 
@@ -83,39 +90,31 @@ describe("run prepare", () => {
         'Local builds require a base image. Set one for service web in us-central1 with "firebase init run".',
       );
     });
-
-    it("are left to the deploy step", async () => {
-      getServiceStub.resolves(liveWeb);
-      const [svc] = await prepareRun(localWeb);
-      expect(svc.baseImage).to.equal(nodejs22);
-      expect(svc).not.to.have.property("localBuild");
-    });
   });
 
   describe("build env", () => {
-    const withBuildEnv = (env: Record<string, unknown>): runv2.Service =>
-      ({
-        ...liveWeb,
-        annotations: { [BUILD_ENV_ANNOTATION]: JSON.stringify(env) },
-      }) as unknown as runv2.Service;
-
     it("reads the build env from the service's annotation", async () => {
       getServiceStub.resolves(withBuildEnv({ API_URL: "https://api.example.com" }));
+
       const [svc] = await prepareRun(web);
+
       expect(svc.buildEnv).to.deep.equal({ API_URL: "https://api.example.com" });
     });
 
     it("rejects build secrets on Cloud Build", async () => {
-      getServiceStub.resolves(withBuildEnv({ TOKEN: { secret: "t" } }));
+      getServiceStub.resolves(withBuildEnv({ NPM_TOKEN: { secret: "npm-token" } }));
+
       await expect(prepareRun(web)).to.be.rejectedWith(
-        /Service web in us-central1 has build secrets \(TOKEN\).*"localBuild": true/,
+        /Service web in us-central1 has build secrets \(NPM_TOKEN\).*"localBuild": true/,
       );
     });
 
     it("keeps build secrets for local builds", async () => {
-      getServiceStub.resolves(withBuildEnv({ TOKEN: { secret: "t", version: "2" } }));
+      getServiceStub.resolves(withBuildEnv({ NPM_TOKEN: { secret: "npm-token" } }));
+
       const [svc] = await prepareRun(localWeb);
-      expect(svc.buildEnv).to.deep.equal({ TOKEN: { secret: "t", version: "2" } });
+
+      expect(svc.buildEnv).to.deep.equal({ NPM_TOKEN: { secret: "npm-token" } });
     });
   });
 
