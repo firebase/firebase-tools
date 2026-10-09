@@ -187,14 +187,16 @@ export async function getSdkOutputPath(
   config: AppsInitOptions,
 ): Promise<string> {
   switch (platform) {
-    case AppPlatform.ANDROID:
+    case AppPlatform.ANDROID: {
       const androidPath = await findIntelligentPathForAndroid(appDir, config);
       return path.join(androidPath, "google-services.json");
+    }
     case AppPlatform.WEB:
       return path.join(appDir, "firebase-js-config.json");
-    case AppPlatform.IOS:
+    case AppPlatform.IOS: {
       const iosPath = await findIntelligentPathForIOS(appDir, config);
       return path.join(iosPath, "GoogleService-Info.plist");
+    }
   }
   throw new FirebaseError("Platform " + platform.toString() + " is not supported yet.");
 }

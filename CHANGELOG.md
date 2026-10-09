@@ -1,3 +1,2 @@
-- [fixed] Improve error message when billing is not enabled
-- Fixed a crash in `setEnqueuer` when deploying Cloud Tasks functions whose IAM policy has no bindings (#11184).
-- Updated dependencies to address security vulnerabilities, including `protobufjs`, `tar`, `@grpc/grpc-js`, `express`, `undici`, `hono`, `tmp`, and `form-data`.
+- Added `crashlytics:heapdumps:{enable,disable,status}` commands to manage Crashlytics Android heap dump collection. (#11225)
+- Removed unused dependencies `proxy-agent`, `universal-analytics`, and `@apphosting/common`.

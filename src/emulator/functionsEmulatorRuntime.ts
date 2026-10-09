@@ -493,7 +493,7 @@ async function initializeFirebaseAdminStubs(): Promise<void> {
           // See: https://github.com/firebase/firebase-admin-node/pull/1148
           const auth =
             typeof (defaultApp as any).auth === "function" ? (defaultApp as any).auth() : undefined;
-          if (typeof auth.setJwtVerificationEnabled === "function") {
+          if (typeof auth?.setJwtVerificationEnabled === "function") {
             logDebug("auth.setJwtVerificationEnabled(false)", {});
             auth.setJwtVerificationEnabled(false);
           } else {
@@ -882,7 +882,7 @@ async function main(): Promise<void> {
 
       switch (FUNCTION_SIGNATURE) {
         case "event":
-        case "cloudevent":
+        case "cloudevent": {
           let reqBody;
           const rawBody = (req as RequestWithRawBody).rawBody;
           if (EventUtils.isBinaryCloudEvent(req)) {
@@ -894,6 +894,7 @@ async function main(): Promise<void> {
           await processBackground(trigger, reqBody, FUNCTION_SIGNATURE);
           res.send({ status: "acknowledged" });
           break;
+        }
         case "http":
           await runHTTPS(trigger, [req, res]);
       }

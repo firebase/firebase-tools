@@ -1,5 +1,6 @@
 import { ensure } from "../ensureApiEnabled";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
+import * as experiments from "../experiments";
 import { checkBillingEnabled, enableBilling } from "../gcp/cloudbilling";
 import {
   createOrUpdateLogBucket,
@@ -7,10 +8,17 @@ import {
   LogBucket,
   LogSink,
 } from "../gcp/cloudlogging";
+import { AlertPolicy } from "../gcp/cloudmonitoring";
+import { enableAlerts } from "./alerts";
 import { createOrUpdateTelemetryConfig, TelemetryConfig } from "./firebasetelemetry";
+import { AlertType } from "./types";
 import { logLabeledBullet, logLabeledSuccess, logLabeledWarning } from "../utils";
 import { updateAppApiKeyRestriction } from "../gcp/apikeys";
+import { provisionTraceStorage } from "../gcp/cloudtrace";
 import { AppPlatform, getAppConfig } from "../management/apps";
+import { logger } from "../logger";
+import { checkbox } from "../prompt";
+import { requireAuth } from "../requireAuth";
 
 export const CRASHLYTICS_TELEMETRY_BUCKET_ID = "firebase-telemetry";
 export const CRASHLYTICS_TELEMETRY_SINK_ID = "firebase-telemetry-routing";
@@ -21,16 +29,36 @@ export interface OnboardWebResult {
   bucket: LogBucket;
   sink: LogSink;
   config: TelemetryConfig;
+  alertPolicies?: AlertPolicy[];
+}
+
+export interface OnboardWebOptions {
+  nonInteractive?: boolean;
+  user?: { email?: string };
+}
+
+async function resolveAuthenticatedUserEmail(
+  options: OnboardWebOptions,
+): Promise<string | undefined> {
+  if (options.user?.email) {
+    return options.user.email;
+  }
+  try {
+    return (await requireAuth(options)) ?? undefined;
+  } catch (err: unknown) {
+    logger.debug(`[crashlytics] Failed to resolve authenticated user email: ${getErrMsg(err)}`);
+    return undefined;
+  }
 }
 
 /**
  * Onboards a Firebase Web App to Crashlytics by enabling required APIs,
- * setting up Cloud Logging bucket and sink routing, and creating a Telemetry Config.
+ * setting up Cloud Logging bucket and sink routing, provisioning Cloud Trace storage, creating a Telemetry Config, and optionally configuring Crashlytics email alerts.
  */
 export async function onboardCrashlyticsWeb(
   projectId: string,
   appId: string,
-  options: { nonInteractive?: boolean } = {},
+  options: OnboardWebOptions = {},
 ): Promise<OnboardWebResult> {
   const billingEnabled = await checkBillingEnabled(projectId);
   if (!billingEnabled && options.nonInteractive) {
@@ -43,10 +71,14 @@ export async function onboardCrashlyticsWeb(
   }
 
   logLabeledBullet("crashlytics", "Enabling required telemetry APIs...");
-  await Promise.all([
+  const requiredApis = [
     ensure(projectId, CRASHLYTICS_TELEMETRY_SERVICE, "crashlytics", false),
     ensure(projectId, "firebasetelemetryadmin.googleapis.com", "crashlytics", false),
-  ]);
+  ];
+  if (experiments.isEnabled("crashlyticsWebTrace")) {
+    requiredApis.push(ensure(projectId, "cloudtrace.googleapis.com", "crashlytics", false));
+  }
+  await Promise.all(requiredApis);
   logLabeledSuccess("crashlytics", "Telemetry APIs enabled.");
 
   const appConfig = await getAppConfig(appId, AppPlatform.WEB);
@@ -98,6 +130,16 @@ export async function onboardCrashlyticsWeb(
   );
   logLabeledSuccess("crashlytics", "Cloud Logging routing sink configured.");
 
+  if (experiments.isEnabled("crashlyticsWebTrace")) {
+    logLabeledBullet("crashlytics", "Provisioning Cloud Trace storage...");
+    try {
+      await provisionTraceStorage(projectId);
+      logLabeledSuccess("crashlytics", "Cloud Trace storage provisioned.");
+    } catch (err: unknown) {
+      logLabeledWarning("crashlytics", getErrMsg(err));
+    }
+  }
+
   logLabeledBullet("crashlytics", "Configuring Crashlytics telemetry for web app...");
   const config = await createOrUpdateTelemetryConfig(
     projectId,
@@ -107,5 +149,46 @@ export async function onboardCrashlyticsWeb(
   );
   logLabeledSuccess("crashlytics", "Crashlytics telemetry configured successfully.");
 
-  return { bucket, sink, config };
+  if (!experiments.isEnabled("crashlyticsWebAlerts") || options.nonInteractive) {
+    return { bucket, sink, config };
+  }
+
+  const userEmail = await resolveAuthenticatedUserEmail(options);
+  if (!userEmail) {
+    logLabeledWarning(
+      "crashlytics",
+      "Unable to determine authenticated user email for alert setup. You can configure alerts later in the Firebase Console.",
+    );
+    return { bucket, sink, config };
+  }
+
+  const selectedAlerts = await checkbox<AlertType>({
+    message: "Which email alerts would you like to enable? (Optional)",
+    choices: [
+      {
+        name: "New issues (Notify when a new issue is detected)",
+        value: AlertType.ALERT_TYPE_NEW_ISSUE,
+        checked: true,
+      },
+      {
+        name: "Regressed issues (Notify when a closed issue reoccurs)",
+        value: AlertType.ALERT_TYPE_REGRESSED_ISSUE,
+        checked: true,
+      },
+    ],
+  });
+
+  if (selectedAlerts.length === 0) {
+    return { bucket, sink, config };
+  }
+
+  logLabeledBullet("crashlytics", `Setting up Crashlytics email alerts for ${userEmail}...`);
+  try {
+    const alertPolicies = await enableAlerts(projectId, appId, selectedAlerts, userEmail);
+    logLabeledSuccess("crashlytics", "Crashlytics email alerts configured successfully.");
+    return { bucket, sink, config, alertPolicies };
+  } catch (err: unknown) {
+    logLabeledWarning("crashlytics", getErrMsg(err));
+    return { bucket, sink, config };
+  }
 }
