@@ -72,7 +72,6 @@ async function enable(projectId: string, apiName: string): Promise<void> {
         skipLog: { resBody: true },
       },
     );
-    cacheEnabledAPI(projectId, apiName);
   } catch (err: any) {
     if (isBillingError(err)) {
       throw new FirebaseError(`Your project ${bold(
