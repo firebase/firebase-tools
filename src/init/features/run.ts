@@ -135,9 +135,9 @@ async function promptRootDir(projectDir: string, defaultDir: string): Promise<st
 }
 
 /**
- * Adds the service to firebase.json and deploys it, since Cloud Run services only change on
- * deploy. Init writes the file once every feature is set up, so a failed deploy leaves it
- * untouched.
+ * Adds the service to `config` (the in-memory firebase.json) and deploys it, since Cloud Run
+ * services only change on deploy. Init saves firebase.json once every feature is set up, so if the
+ * deploy fails, the file isn't changed.
  */
 export async function actuate(setup: Setup, config: Config, options: Options): Promise<void> {
   const info = setup.featureInfo?.run;
@@ -152,6 +152,7 @@ export async function actuate(setup: Setup, config: Config, options: Options): P
     },
     config,
   );
+  // Name the region too, so that only this service deploys, not ones with the same ID elsewhere.
   await deploy(
     ["run"],
     { ...options, projectId: setup.projectId, config, only: `run:${fullServiceName(info)}` },
@@ -160,9 +161,12 @@ export async function actuate(setup: Setup, config: Config, options: Options): P
 }
 
 /**
- * Adds a new service to firebase.json with the default ignore list. If the service is already
- * there (same service ID and region), only its rootDir changes; nothing else in the entry is added
- * or removed.
+ * Adds or updates the service in `config`, the in-memory copy of firebase.json. It doesn't save
+ * the file; init does that at the end.
+ * - New service: adds an entry with the default ignore list.
+ * - Service already listed (same service ID and region): updates rootDir, the only init answer
+ *   saved in firebase.json that can change. The rest of the entry, like a custom ignore list,
+ *   stays as the user left it.
  * Exported for unit testing.
  */
 export function upsertRunConfig(

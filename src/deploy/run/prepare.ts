@@ -1,4 +1,3 @@
-import { FirebaseError } from "../../error";
 import { RunSingle } from "../../firebaseConfig";
 import { Options } from "../../options";
 import { Context, Payload, ServiceDeploy } from "./args";
@@ -21,11 +20,7 @@ export async function prepare(context: Context, options: Options, payload: Paylo
 }
 
 async function prepareService(context: Context, config: RunSingle): Promise<ServiceDeploy> {
-  const { serviceId, region } = config;
-  if (!region) {
-    throw new FirebaseError(`Cloud Run service ${serviceId} is missing a region in firebase.json.`);
-  }
-  const existing = await getExistingService(context.projectId, region, serviceId);
+  const existing = await getExistingService(context.projectId, config.region, config.serviceId);
   // Base images are sticky: deploys reuse the service's current base image unless told otherwise.
   const baseImage =
     context.baseImage === undefined
