@@ -64,11 +64,9 @@ export const isServiceAccountPropagationError: RetryPredicate = (err: any): bool
   } catch {
     message = String(err).toLowerCase();
   }
-  const hasSa =
-    (message.includes("serviceaccount") || message.includes("service account")) &&
-    MANAGED_SERVICE_ACCOUNT_REGEX.test(message);
+  const hasSa = message.includes("serviceaccount") || message.includes("service account");
 
-  if (!hasSa) {
+  if (!hasSa || !MANAGED_SERVICE_ACCOUNT_REGEX.test(message)) {
     return false;
   }
 
