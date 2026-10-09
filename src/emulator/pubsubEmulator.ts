@@ -78,7 +78,7 @@ export class PubsubEmulator implements EmulatorInstance {
           this.logger.logLabeled(
             "DEBUG",
             "pubsub",
-            `Failed to close subscription ${sub.name}: ${JSON.stringify(err)}`,
+            "Failed to close subscription " + sub.name + ": " + (err instanceof Error ? err.message : String(err)),
           );
         }
       });
@@ -93,7 +93,7 @@ export class PubsubEmulator implements EmulatorInstance {
           this.logger.logLabeled(
             "DEBUG",
             "pubsub",
-            `Failed to close pubsub client: ${JSON.stringify(err)}`,
+            "Failed to close pubsub client: " + (err instanceof Error ? err.message : String(err)),
           );
         }
         this._pubsub = undefined;
@@ -102,13 +102,13 @@ export class PubsubEmulator implements EmulatorInstance {
       this.logger.logLabeled(
         "DEBUG",
         "pubsub",
-        `Error during pubsub client cleanup: ${JSON.stringify(err)}`,
+        "Error during pubsub client cleanup: " + (err instanceof Error ? err.message : String(err)),
       );
     } finally {
       try {
         await downloadableEmulators.stop(Emulators.PUBSUB);
       } catch (e: unknown) {
-        this.logger.logLabeled("DEBUG", "pubsub", JSON.stringify(e));
+        this.logger.logLabeled("DEBUG", "pubsub", e instanceof Error ? e.message : String(e));
         if (process.platform !== "win32") {
           const buffer = execSync(PUBSUB_KILL_COMMAND);
           this.logger.logLabeled(
