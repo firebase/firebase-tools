@@ -1,0 +1,10 @@
+[
+  {
+    "name": "Next.js 15.3",
+    "path": "../firebase-apphosting-canary/apps/nextjs-reference/next-15.3",
+    "matrix": {
+      "localBuild": [true, false],
+      "runtime": ["nodejs24"]
+    }
+  }
+]
