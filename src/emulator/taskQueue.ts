@@ -305,7 +305,7 @@ export class TaskQueue {
 
       const abortId = setTimeout(() => {
         // TODO: Set X-CloudTasks-TaskRetryReason
-        controller.abort();
+        controller.abort(new FirebaseError("Aborted")); 
       }, dispatchDeadlineSeconds * 1000);
 
       const response = await request;
