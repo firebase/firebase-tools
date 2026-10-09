@@ -684,7 +684,7 @@ describe("Fabricator", () => {
       });
 
       const saError = new FirebaseError(
-        "Service account sa@proj.iam.gserviceaccount.com was not found",
+        "Service account firebase-fn-123@proj.iam.gserviceaccount.com was not found",
         { status: 404 },
       );
 
@@ -714,6 +714,34 @@ describe("Fabricator", () => {
       const saError = new FirebaseError(
         "Validation failed for trigger: The request was invalid: invalid service account firebase-fn-123@proj.iam.gserviceaccount.com provided",
         { status: 400 },
+      );
+
+      gcfv2.createFunction.onFirstCall().rejects(saError);
+      gcfv2.createFunction.onSecondCall().resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      run.setInvokerCreate.resolves();
+
+      const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
+      const sc = new scraper.SourceTokenScraper();
+      await fabWithQueue.createV2Function(ep, sc);
+
+      expect(gcfv2.createFunction).to.have.been.calledTwice;
+    });
+
+    it("retries createV2Function and succeeds when service account 403 propagation error occurs", async () => {
+      const queueExec = new executor.QueueExecutor({
+        retries: 5,
+        backoff: 1,
+        maxBackoff: 1,
+      });
+      const fabWithQueue = new fabricator.Fabricator({
+        ...ctorArgs,
+        functionExecutor: queueExec,
+      });
+
+      const saError = new FirebaseError(
+        "Could not create Cloud Run service projects/p/locations/l/services/s. Permission 'iam.serviceaccounts.actAs' denied on service account firebase-fn-456@proj.iam.gserviceaccount.com (or it may not exist).",
+        { status: 403 },
       );
 
       gcfv2.createFunction.onFirstCall().rejects(saError);

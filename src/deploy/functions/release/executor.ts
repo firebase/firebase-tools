@@ -44,8 +44,8 @@ export const isServiceAccountPropagationError: RetryPredicate = (err: any): bool
   // rather than HTTP 404 (which is reserved for missing API URL resources).
   //
   // To avoid false positives on user typos or real permission errors with custom service accounts,
-  // HTTP 400 and 403 retries are restricted to declarative security service accounts
-  // (firebase-fn-[0-9]+@), which are provisioned dynamically on the fly during deployment.
+  // retries are restricted to declarative security service accounts (firebase-fn-[0-9]+@),
+  // which are provisioned dynamically on the fly during deployment.
   if (code !== 404 && code !== 400 && code !== 403) {
     return false;
   }
@@ -64,7 +64,9 @@ export const isServiceAccountPropagationError: RetryPredicate = (err: any): bool
   } catch {
     message = String(err).toLowerCase();
   }
-  const hasSa = message.includes("serviceaccount") || message.includes("service account");
+  const hasSa =
+    (message.includes("serviceaccount") || message.includes("service account")) &&
+    MANAGED_SERVICE_ACCOUNT_REGEX.test(message);
 
   if (!hasSa) {
     return false;
@@ -74,12 +76,6 @@ export const isServiceAccountPropagationError: RetryPredicate = (err: any): bool
     return true;
   }
 
-  // Only retry 400/403 for Firebase-managed service accounts (firebase-fn-<digits>@)
-  // created dynamically during this deploy. Fail fast for user-provided custom service accounts.
-  if (!MANAGED_SERVICE_ACCOUNT_REGEX.test(message)) {
-    return false;
-  }
-
   // Eventarc trigger validation reports an unpropagated service account as HTTP 400
   // ("The request was invalid: invalid service account ... provided").
   if (code === 400) {
@@ -87,11 +83,8 @@ export const isServiceAccountPropagationError: RetryPredicate = (err: any): bool
   }
 
   // Cloud Run service validation reports an unpropagated service account as HTTP 403
-  // when checking iam.serviceaccounts.actAs or Service Agent token permissions.
-  return (
-    message.includes("iam.serviceaccounts.actas") ||
-    message.includes("does not have permission to get access tokens")
-  );
+  // ("Permission 'iam.serviceaccounts.actAs' denied on service account ... (or it may not exist)").
+  return message.includes("or it may not exist");
 };
 
 export const isCloudRunResourceExhausted: RetryPredicate = (err: any): boolean =>

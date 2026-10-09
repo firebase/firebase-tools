@@ -66,7 +66,7 @@ describe("Executor", () => {
         attempts++;
         if (attempts === 1) {
           const err: any = new Error(
-            "Service account my-sa@project.iam.gserviceaccount.com does not exist",
+            "Service account firebase-fn-111@project.iam.gserviceaccount.com does not exist",
           );
           err.status = 404;
           return Promise.reject(err);
@@ -93,7 +93,9 @@ describe("Executor", () => {
       const handler = (): Promise<string> => {
         attempts++;
         if (attempts === 1) {
-          const err: any = new Error("Service account not found");
+          const err: any = new Error(
+            "Service account firebase-fn-222@project.iam.gserviceaccount.com not found",
+          );
           err.status = 404;
           return Promise.reject(err);
         }
@@ -107,24 +109,43 @@ describe("Executor", () => {
   });
 
   describe("isServiceAccountPropagationError", () => {
-    it("matches 404 errors containing service account references", () => {
-      const err1: any = new Error("Service account proj@iam.gserviceaccount.com does not exist");
+    it("matches 404 errors containing managed service account references", () => {
+      const err1: any = new Error(
+        "Service account firebase-fn-123@proj.iam.gserviceaccount.com does not exist",
+      );
       err1.status = 404;
       expect(executor.isServiceAccountPropagationError(err1)).to.be.true;
 
-      const err2: any = new Error("Resource 'serviceaccount' not found");
+      const err2: any = new Error(
+        "Resource 'serviceaccount' firebase-fn-456@proj.iam.gserviceaccount.com not found",
+      );
       err2.code = 404;
       expect(executor.isServiceAccountPropagationError(err2)).to.be.true;
 
       const err3: any = {
         status: 404,
-        context: { body: { error: { message: "service account missing" } } },
+        context: {
+          body: {
+            error: {
+              message: "service account firebase-fn-789@proj.iam.gserviceaccount.com missing",
+            },
+          },
+        },
       };
       expect(executor.isServiceAccountPropagationError(err3)).to.be.true;
+
+      const err4 = new FirebaseError(
+        "Service account custom-sa@proj.iam.gserviceaccount.com does not exist",
+        { status: 404 },
+      );
+      expect(executor.isServiceAccountPropagationError(err4)).to.be.false;
     });
 
     it("does not match non-404/400/403 errors or non-service-account errors", () => {
-      const err1 = new FirebaseError("Service account missing", { status: 500 });
+      const err1 = new FirebaseError(
+        "Service account firebase-fn-123@proj.iam.gserviceaccount.com missing",
+        { status: 500 },
+      );
       expect(executor.isServiceAccountPropagationError(err1)).to.be.false;
 
       const err2 = new FirebaseError("Function region us-central1 not found", { status: 404 });
@@ -171,33 +192,27 @@ describe("Executor", () => {
       expect(executor.isServiceAccountPropagationError(err1)).to.be.true;
 
       const err2 = new FirebaseError(
-        "Google Cloud Run Service Agent does not have permission to get access tokens for the service account firebase-fn-2812973609@p2.iam.gserviceaccount.com.",
-        { status: 403 },
+        "Failed to create function projects/p2/locations/l2/functions/f2",
+        {
+          status: 403,
+          original: new Error(
+            "Request to https://cloudfunctions.googleapis.com/v2/projects/p2/locations/l2/functions?functionId=f2 had HTTP Error: 403, Could not create Cloud Run service projects/p2/locations/l2/services/s2. Permission 'iam.serviceaccounts.actAs' denied on service account firebase-fn-3923084710@p2.iam.gserviceaccount.com (or it may not exist).",
+          ),
+        },
       );
       expect(executor.isServiceAccountPropagationError(err2)).to.be.true;
 
       const err3 = new FirebaseError(
-        "Failed to create function projects/p3/locations/l3/functions/f3",
-        {
-          status: 403,
-          original: new Error(
-            "Request to https://cloudfunctions.googleapis.com/v2/projects/p3/locations/l3/functions?functionId=f3 had HTTP Error: 403, Could not create Cloud Run service projects/p3/locations/l3/services/s3. Permission 'iam.serviceaccounts.actAs' denied on service account firebase-fn-3923084710@p3.iam.gserviceaccount.com (or it may not exist).",
-          ),
-        },
+        "Permission 'iam.serviceaccounts.actAs' denied on service account custom-sa@p3.iam.gserviceaccount.com (or it may not exist).",
+        { status: 403 },
       );
-      expect(executor.isServiceAccountPropagationError(err3)).to.be.true;
+      expect(executor.isServiceAccountPropagationError(err3)).to.be.false;
 
       const err4 = new FirebaseError(
-        "Permission 'iam.serviceaccounts.actAs' denied on service account custom-sa@p4.iam.gserviceaccount.com (or it may not exist).",
+        "Service account firebase-fn-5034195821@p4.iam.gserviceaccount.com is disabled.",
         { status: 403 },
       );
       expect(executor.isServiceAccountPropagationError(err4)).to.be.false;
-
-      const err5 = new FirebaseError(
-        "Service account firebase-fn-5034195821@p5.iam.gserviceaccount.com is disabled.",
-        { status: 403 },
-      );
-      expect(executor.isServiceAccountPropagationError(err5)).to.be.false;
     });
 
     it("inspects all error message sources when err.message is generic", () => {
@@ -206,7 +221,7 @@ describe("Executor", () => {
       genericErr.context = {
         body: {
           error: {
-            message: "Service account my-sa@project.iam.gserviceaccount.com missing",
+            message: "Service account firebase-fn-888@project.iam.gserviceaccount.com missing",
           },
         },
       };
@@ -215,7 +230,7 @@ describe("Executor", () => {
 
     it("safely handles circular error objects without throwing", () => {
       const circularErr: any = new Error(
-        "Service account proj@iam.gserviceaccount.com does not exist",
+        "Service account firebase-fn-999@proj.iam.gserviceaccount.com does not exist",
       );
       circularErr.status = 404;
       circularErr.self = circularErr; // Circular reference
