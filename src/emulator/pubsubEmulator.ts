@@ -78,7 +78,10 @@ export class PubsubEmulator implements EmulatorInstance {
           this.logger.logLabeled(
             "DEBUG",
             "pubsub",
-            "Failed to close subscription " + sub.name + ": " + (err instanceof Error ? err.message : String(err)),
+            "Failed to close subscription " +
+              sub.name +
+              ": " +
+              (err instanceof Error ? err.message : String(err)),
           );
         }
       });
