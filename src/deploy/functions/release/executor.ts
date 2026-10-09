@@ -89,7 +89,8 @@ export const isServiceAccountPropagationError: RetryPredicate = (err: any): bool
   // Cloud Run service validation reports an unpropagated service account as HTTP 403
   // when checking iam.serviceaccounts.actAs or Service Agent token permissions.
   return (
-    message.includes("iam.serviceaccounts.actas") || message.includes("does not have permission")
+    message.includes("iam.serviceaccounts.actas") ||
+    message.includes("does not have permission to get access tokens")
   );
 };
 
