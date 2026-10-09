@@ -116,6 +116,8 @@ function parseBundleYaml(
     outputFiles?: { serverApp?: { include?: string[] } };
   };
 
+  // TODO: Also merge bundleData.runConfig.environmentVariables (and resource limits) from
+  // bundle.yaml to match the App Hosting publisher step on remote builds.
   const runCommand = bundleData?.runConfig?.runCommand ?? defaultRunCommand;
   const outputFiles = bundleData?.outputFiles?.serverApp?.include ?? [];
   return { runCommand, outputFiles };

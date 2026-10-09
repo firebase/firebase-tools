@@ -74,6 +74,11 @@ describe("updateService", () => {
     );
   });
 
+  it("can't clear the base image of a locally built service", async () => {
+    const opts = options({ clearBaseImage: true }, { localBuild: true });
+    await expect(updateService("s", opts)).to.be.rejectedWith("local builds need one");
+  });
+
   it("still rebuilds and deploys when clearing a base image that isn't set", async () => {
     getServiceStub.resolves({ ...service, template: { containers: [{ name: "s", image: "i" }] } });
     await updateService("s", options({ clearBaseImage: true }));

@@ -22,6 +22,7 @@ export interface RunInfo {
   region: string;
   baseImage: string;
   rootDir: string;
+  localBuild?: boolean;
 }
 
 /**
@@ -64,17 +65,37 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
   // If firebase.json already has this service, its saved settings are the defaults.
   const savedEntry = findRunEntry(getRunEntries(config), serviceId, region);
 
+  const localBuild = await select({
+    message: "Would you like to build your app locally or remotely?",
+    choices: [
+      { name: "Build remotely on Cloud Build", value: false },
+      { name: "Build locally", value: true },
+    ],
+    default: savedEntry?.localBuild === true,
+  });
+
   // A base image turns on automatic base image updates, which are off by default. So there's no
-  // default base image, except that an existing service keeps its own.
+  // default base image, except that an existing service keeps its own. Local builds need one.
   const rawBaseImage = await input({
-    message: "Which base image should your app use, if any? (e.g. nodejs20, nodejs22)",
+    message: localBuild
+      ? "Which base image should your app use? (e.g. nodejs20, nodejs22)"
+      : "Which base image should your app use, if any? (e.g. nodejs20, nodejs22)",
     default: existing?.template.containers?.[0]?.baseImageUri,
+    validate: (img: string) => {
+      if (localBuild && !img.trim()) {
+        return "Local builds require a base image.";
+      }
+      return true;
+    },
   });
   const baseImage = (rawBaseImage || "").trim();
 
   const rootDir = await promptRootDir(config.projectDir, savedEntry?.rootDir ?? "/");
 
-  setup.featureInfo = { ...setup.featureInfo, run: { serviceId, region, baseImage, rootDir } };
+  setup.featureInfo = {
+    ...setup.featureInfo,
+    run: { serviceId, region, baseImage, rootDir, ...(localBuild && { localBuild }) },
+  };
 }
 
 async function promptExistingService(projectId: string): Promise<runv2.Service | undefined> {
@@ -149,6 +170,7 @@ export async function actuate(setup: Setup, config: Config, options: Options): P
       serviceId: info.serviceId,
       rootDir: info.rootDir,
       region: info.region,
+      ...(info.localBuild && { localBuild: true }),
     },
     config,
   );
@@ -164,13 +186,13 @@ export async function actuate(setup: Setup, config: Config, options: Options): P
  * Adds or updates the service in `config`, the in-memory copy of firebase.json. It doesn't save
  * the file; init does that at the end.
  * - New service: adds an entry with the default ignore list.
- * - Service already listed (same service ID and region): updates rootDir, the only init answer
- *   saved in firebase.json that can change. The rest of the entry, like a custom ignore list,
- *   stays as the user left it.
+ * - Service already listed (same service ID and region): updates rootDir and localBuild, the only
+ *   init answers saved in firebase.json that can change. The rest of the entry, like a custom
+ *   ignore list, stays as the user left it.
  * Exported for unit testing.
  */
 export function upsertRunConfig(
-  service: { serviceId: string; rootDir: string; region: string },
+  service: { serviceId: string; rootDir: string; region: string; localBuild?: boolean },
   config: Config,
 ): void {
   const entries = getRunEntries(config);
@@ -178,6 +200,11 @@ export function upsertRunConfig(
   const existing = findRunEntry(entries, service.serviceId, service.region);
   if (existing) {
     existing.rootDir = service.rootDir;
+    if (service.localBuild) {
+      existing.localBuild = true;
+    } else {
+      delete existing.localBuild;
+    }
   } else {
     entries.push({ ...service, ignore: DEFAULT_IGNORE });
   }

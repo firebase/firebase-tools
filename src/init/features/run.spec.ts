@@ -9,7 +9,7 @@ import * as runv2 from "../../gcp/runv2";
 import { Options } from "../../options";
 import * as prompt from "../../prompt";
 import * as requirePermissions from "../../requirePermissions";
-import { actuate, askQuestions, upsertRunConfig } from "./run";
+import { actuate, askQuestions, RunInfo, upsertRunConfig } from "./run";
 
 const DEFAULT_IGNORE = ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"];
 
@@ -143,11 +143,62 @@ describe("init run", () => {
 
       expect(s.featureInfo?.run?.serviceId).to.equal("my-service");
     });
+
+    it("enables localBuild and requires a base image when building locally", async () => {
+      selectStub
+        .onFirstCall()
+        .resolves("create")
+        .onSecondCall()
+        .resolves("us-central1")
+        .onThirdCall()
+        .resolves(true);
+      inputStub.onFirstCall().resolves("my-service").onSecondCall().resolves("nodejs22");
+      inputStub.onThirdCall().resolves("/");
+      const s = setup();
+
+      await askQuestions(s, config, options);
+
+      expect(selectStub.thirdCall.args[0].default).to.be.false;
+      const baseImagePrompt = inputStub.secondCall.args[0];
+      expect(baseImagePrompt.default).to.be.undefined;
+      expect(baseImagePrompt.validate("nodejs22")).to.be.true;
+      expect(baseImagePrompt.validate(" ")).to.include("Local builds require a base image");
+      expect(s.featureInfo?.run).to.deep.equal({
+        serviceId: "my-service",
+        region: "us-central1",
+        baseImage: "nodejs22",
+        rootDir: "/",
+        localBuild: true,
+      });
+    });
+
+    it("defaults to building locally if the saved entry for the service does", async () => {
+      const existing = {
+        name: "projects/p/locations/europe-west1/services/web",
+        template: { containers: [{ name: "web", image: "i", baseImageUri: "nodejs22" }] },
+      };
+      sinon.stub(runv2, "listServices").resolves([existing] as unknown as runv2.Service[]);
+      selectStub.onFirstCall().resolves("update").onSecondCall().resolves(existing);
+      selectStub.onThirdCall().callsFake((o) => Promise.resolve(o.default));
+      inputStub.callsFake((o) => Promise.resolve(o.default));
+      config.set("run", {
+        serviceId: "web",
+        region: "europe-west1",
+        rootDir: "/",
+        localBuild: true,
+      });
+      const s = setup();
+
+      await askQuestions(s, config, options);
+
+      expect(selectStub.thirdCall.args[0].default).to.be.true;
+      expect(s.featureInfo?.run?.localBuild).to.be.true;
+    });
   });
 
   describe("actuate", () => {
     /** Init's answers for a new service. */
-    const webSetup = (): Setup => ({
+    const webSetup = (answers: Partial<RunInfo> = {}): Setup => ({
       ...setup(),
       featureInfo: {
         run: {
@@ -155,6 +206,7 @@ describe("init run", () => {
           region: "us-central1",
           baseImage: "nodejs22",
           rootDir: "apps/web",
+          ...answers,
         },
       },
     });
@@ -183,6 +235,12 @@ describe("init run", () => {
       });
       // Init saves firebase.json itself, once every feature is set up.
       expect(writeStub).to.not.have.been.called;
+    });
+
+    it("saves the choice to build locally", async () => {
+      await actuate(webSetup({ localBuild: true }), config, options);
+
+      expect(config.src.run).to.include({ localBuild: true });
     });
 
     it("deploys only that service and region, with its base image", async () => {
@@ -226,13 +284,29 @@ describe("init run", () => {
       ]);
     });
 
-    it("updates an existing service in place while preserving existing ignore and localBuild settings", () => {
+    it("updates an existing service in place while preserving custom ignore and updating localBuild", () => {
       config.set("run", {
         serviceId: "web",
         region: "us-central1",
         rootDir: "/",
         ignore: ["custom-ignore"],
+      });
+
+      upsertRunConfig(
+        {
+          serviceId: "web",
+          region: "us-central1",
+          rootDir: "apps/web",
+          localBuild: true,
+        },
+        config,
+      );
+      expect(config.src.run).to.deep.equal({
+        serviceId: "web",
+        region: "us-central1",
+        rootDir: "apps/web",
         localBuild: true,
+        ignore: ["custom-ignore"],
       });
 
       upsertRunConfig(
@@ -243,13 +317,11 @@ describe("init run", () => {
         },
         config,
       );
-
       expect(config.src.run).to.deep.equal({
         serviceId: "web",
         region: "us-central1",
         rootDir: "apps/web",
         ignore: ["custom-ignore"],
-        localBuild: true,
       });
     });
 

@@ -33,6 +33,11 @@ export async function updateService(name: string, options: Options): Promise<voi
 
   const projectId = needProjectId(options);
   const config = findServiceToUpdate(name, options);
+  if (clearBaseImage && config.localBuild) {
+    throw new FirebaseError(
+      `Cannot clear the base image of ${config.serviceId}: local builds need one.`,
+    );
+  }
   if (!(await getExistingService(projectId, config.region, config.serviceId))) {
     throw new FirebaseError(`${missingServiceMessage(config)} Then you can update it.`);
   }

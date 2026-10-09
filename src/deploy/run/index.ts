@@ -9,7 +9,7 @@ export const help =
   "  --only run:serviceId (in every region firebase.json lists it in)\n" +
   "  --only run:serviceId:region (in one region)";
 export const detailedHelp =
-  "Deploys Cloud Run services from local source.\n\n" +
+  "Deploys Cloud Run services from local source, or from a local build if localBuild is set.\n\n" +
   "Configuration in firebase.json:\n" +
   "{\n" +
   '  "run": {\n' +
