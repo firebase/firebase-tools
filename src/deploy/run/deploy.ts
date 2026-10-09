@@ -17,6 +17,7 @@ import { prepareLocalBuildScratchDirectory } from "../apphosting/prepare";
 import { createLocalBuildTarArchive, createSourceDeployArchive } from "../apphosting/util";
 import { Context, Payload, ServiceDeploy } from "./args";
 import { secretNames, toLocalBuildEnv } from "./buildEnv";
+import { FIREBASE_APP_ANNOTATION } from "./util";
 
 const DEPLOY_MESSAGE_ANNOTATION = "firebase.google.com/deploy-message";
 /** Rolling out a revision can take longer than the operation poller's default timeout. */
@@ -39,9 +40,10 @@ export async function deploy(context: Context, options: Options, payload: Payloa
         ? { builtApp: uploaded }
         : { image: await buildImage(projectId, svc, uploaded) };
       const template = revisionTemplate(svc, code, options.message as string | undefined);
+      const annotations = serviceAnnotations(svc);
       svc.deployed = svc.existing
-        ? await deployRevision(svc.existing, template)
-        : await createService(projectId, svc.config, template);
+        ? await deployRevision(svc.existing, template, annotations)
+        : await createService(projectId, svc.config, template, annotations);
     } finally {
       if (svc.localBuild) {
         removeTempPath(svc.localBuild.scratchDir);
@@ -217,6 +219,21 @@ export function revisionTemplate(
   } else {
     delete container.baseImageUri;
   }
+  // FIREBASE_CONFIG is how the Admin SDK auto-initializes at runtime. While an app is linked, it's
+  // always rewritten from the app's current config, so changes like enabling Storage reach the
+  // service. The client SDK's FIREBASE_WEBAPP_CONFIG is only needed at build time, so it isn't set
+  // on the container.
+  if (svc.firebaseConfig) {
+    const env = (container.env || []).filter((e) => e.name !== "FIREBASE_CONFIG");
+    container.env = [...env, { name: "FIREBASE_CONFIG", value: svc.firebaseConfig }];
+  } else if (svc.existing?.annotations?.[FIREBASE_APP_ANNOTATION] && container.env) {
+    // The service is being unlinked. Remove the FIREBASE_CONFIG that was set for its app, but
+    // leave one alone on a service that was never linked: the user set that one.
+    container.env = container.env.filter((e) => e.name !== "FIREBASE_CONFIG");
+    if (!container.env.length) {
+      delete container.env;
+    }
+  }
   // The message describes this deploy only, so don't carry over the last one.
   if (message) {
     template.annotations = { ...template.annotations, [DEPLOY_MESSAGE_ANNOTATION]: message };
@@ -226,11 +243,29 @@ export function revisionTemplate(
   return template;
 }
 
+/**
+ * Returns the service's annotations with the linked Firebase Web App ID, or undefined if the
+ * linked app didn't change. Later deploys read the ID back to reuse the app.
+ */
+function serviceAnnotations(svc: ServiceDeploy): Record<string, string> | undefined {
+  if (svc.appId === svc.existing?.annotations?.[FIREBASE_APP_ANNOTATION]) {
+    return undefined;
+  }
+  const annotations = { ...svc.existing?.annotations };
+  if (svc.appId) {
+    annotations[FIREBASE_APP_ANNOTATION] = svc.appId;
+  } else {
+    delete annotations[FIREBASE_APP_ANNOTATION];
+  }
+  return annotations;
+}
+
 /** Creates the service with its first revision. */
 function createService(
   projectId: string,
   config: RunSingle,
   template: runv2.RevisionTemplate,
+  annotations?: Record<string, string>,
 ): Promise<runv2.Service> {
   const { serviceId, region } = config;
   return runv2.createService(
@@ -239,6 +274,7 @@ function createService(
     serviceId,
     {
       name: `projects/${projectId}/locations/${region}/services/${serviceId}`,
+      ...(annotations && { annotations }),
       template,
       client: "cli-firebase",
       // Like an App Hosting backend, the service is public.
@@ -253,6 +289,7 @@ function createService(
 function deployRevision(
   service: runv2.Service,
   template: runv2.RevisionTemplate,
+  annotations?: Record<string, string>,
 ): Promise<runv2.Service> {
   // Tagged revisions keep their tags (Hosting's pinned rewrites use them), but no traffic.
   const tags = (service.traffic || [])
@@ -261,10 +298,14 @@ function deployRevision(
   return runv2.updateService(
     {
       name: service.name,
+      ...(annotations && { annotations }),
       template,
       traffic: [{ type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 }, ...tags],
     },
-    { updateMask: ["template", "traffic"], pollTimeoutMs: ROLLOUT_TIMEOUT_MS },
+    {
+      updateMask: [...(annotations ? ["annotations"] : []), "template", "traffic"],
+      pollTimeoutMs: ROLLOUT_TIMEOUT_MS,
+    },
   );
 }
 

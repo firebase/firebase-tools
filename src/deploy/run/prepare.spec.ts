@@ -1,11 +1,17 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+import * as computeEngine from "../../gcp/computeEngine";
+import * as resourceManager from "../../gcp/resourceManager";
 import * as runv2 from "../../gcp/runv2";
+import * as getProjectNumber from "../../getProjectNumber";
+import * as managementApps from "../../management/apps";
 import { Options } from "../../options";
+import * as utils from "../../utils";
 import { Context, Payload, ServiceDeploy } from "./args";
 import { BUILD_ENV_ANNOTATION } from "./buildEnv";
 import { prepare } from "./prepare";
 import * as prereqs from "./prereqs";
+import { FIREBASE_APP_ANNOTATION } from "./util";
 
 describe("run prepare", () => {
   const nodejs22 = "us-central1-docker.pkg.dev/serverless-runtimes/google-22/runtimes/nodejs22";
@@ -46,7 +52,13 @@ describe("run prepare", () => {
 
   it("checks the APIs and finds that a new service doesn't exist yet", async () => {
     expect(await prepareRun(web)).to.deep.equal([
-      { config: web, existing: undefined, baseImage: undefined },
+      {
+        config: web,
+        existing: undefined,
+        baseImage: undefined,
+        appId: undefined,
+        firebaseConfig: undefined,
+      },
     ]);
     expect(prereqsStub).to.have.been.calledWith("my-project");
     expect(getServiceStub).to.have.been.calledWith("my-project", "us-central1", "web");
@@ -55,7 +67,13 @@ describe("run prepare", () => {
   it("reuses an existing service's base image", async () => {
     getServiceStub.resolves(liveWeb);
     expect(await prepareRun(web)).to.deep.equal([
-      { config: web, existing: liveWeb, baseImage: nodejs22 },
+      {
+        config: web,
+        existing: liveWeb,
+        baseImage: nodejs22,
+        appId: undefined,
+        firebaseConfig: undefined,
+      },
     ]);
   });
 
@@ -122,6 +140,165 @@ describe("run prepare", () => {
       getServiceStub.resolves(withBuildEnv({ TOKEN: { secret: "t", version: "2" } }));
       const [svc] = await prepareRun(localWeb);
       expect(svc.buildEnv).to.deep.equal({ TOKEN: { secret: "t", version: "2" } });
+    });
+  });
+
+  describe("sdk autoinit", () => {
+    const appId = "1:1:web:a";
+    const defaultSa = "123-compute@developer.gserviceaccount.com";
+    const adminSdkRole = "roles/firebase.sdkAdminServiceAgent";
+    const webConfig = {
+      projectId: "my-project",
+      appId,
+      apiKey: "k",
+      storageBucket: "my-project.appspot.com",
+    };
+    // What the Admin SDK and the client SDK read to auto-initialize.
+    const firebaseConfig = JSON.stringify({
+      storageBucket: "my-project.appspot.com",
+      projectId: "my-project",
+    });
+    const webappConfig = JSON.stringify(webConfig);
+    /** The web service, linked to the Firebase Web App. */
+    const linkedWeb = (overrides: Record<string, unknown> = {}): runv2.Service =>
+      ({
+        ...liveWeb,
+        annotations: { [FIREBASE_APP_ANNOTATION]: appId },
+        ...overrides,
+      }) as unknown as runv2.Service;
+    let getAppConfigStub: sinon.SinonStub;
+    let hasRolesStub: sinon.SinonStub;
+    let addRolesStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      getAppConfigStub = sinon.stub(managementApps, "getAppConfig").resolves(webConfig);
+      sinon.stub(getProjectNumber, "getProjectNumber").resolves("123");
+      sinon.stub(computeEngine, "getDefaultServiceAccount").resolves(defaultSa);
+      hasRolesStub = sinon.stub(resourceManager, "serviceAccountHasRoles").resolves(true);
+      addRolesStub = sinon
+        .stub(resourceManager, "addServiceAccountToRoles")
+        .resolves({ bindings: [], etag: "", version: 3 });
+    });
+
+    it("reuses the service's linked app and resolves its build and runtime config", async () => {
+      getServiceStub.resolves(linkedWeb());
+
+      const [svc] = await prepareRun(web);
+
+      expect(getAppConfigStub).to.have.been.calledWith(appId, managementApps.AppPlatform.WEB);
+      expect(svc.appId).to.equal(appId);
+      expect(svc.firebaseConfig).to.equal(firebaseConfig);
+      expect(svc.buildEnv).to.deep.equal({
+        FIREBASE_WEBAPP_CONFIG: webappConfig,
+        FIREBASE_CONFIG: firebaseConfig,
+      });
+      expect(hasRolesStub).to.have.been.calledWith("my-project", defaultSa, [adminSdkRole], true);
+      expect(addRolesStub).not.to.have.been.called;
+    });
+
+    it("grants the Admin SDK role to the default service account if it's missing", async () => {
+      hasRolesStub.resolves(false);
+
+      await prepareRun(web, { context: { appId } });
+
+      expect(addRolesStub).to.have.been.calledOnceWithExactly(
+        "my-project",
+        defaultSa,
+        [adminSdkRole],
+        true,
+      );
+    });
+
+    it("checks and grants the Admin SDK role on a custom service account", async () => {
+      const customSa = "custom@my-project.iam.gserviceaccount.com";
+      hasRolesStub.resolves(false);
+      getServiceStub.resolves(
+        linkedWeb({ template: { ...liveWeb.template, serviceAccount: customSa } }),
+      );
+
+      await prepareRun(web);
+
+      expect(hasRolesStub).to.have.been.calledWith("my-project", customSa, [adminSdkRole], true);
+      expect(addRolesStub).to.have.been.calledOnceWithExactly(
+        "my-project",
+        customSa,
+        [adminSdkRole],
+        true,
+      );
+    });
+
+    it("warns and continues if it isn't allowed to grant the Admin SDK role", async () => {
+      const warnStub = sinon.stub(utils, "logLabeledWarning");
+      hasRolesStub.resolves(false);
+      addRolesStub.rejects({ status: 403 });
+
+      const [svc] = await prepareRun(web, { context: { appId } });
+
+      expect(svc.appId).to.equal(appId);
+      expect(warnStub).to.have.been.calledWithMatch("run", /or ask an admin to grant this role/);
+    });
+
+    it("lets the context set or clear the linked app", async () => {
+      getServiceStub.resolves(linkedWeb({ annotations: { [FIREBASE_APP_ANNOTATION]: "old-app" } }));
+
+      const [linked] = await prepareRun(web, { context: { appId } });
+      expect(linked.appId).to.equal(appId);
+
+      const [cleared] = await prepareRun(web, { context: { appId: null } });
+      expect(cleared.appId).to.be.undefined;
+      expect(cleared.firebaseConfig).to.be.undefined;
+      expect(cleared.buildEnv).to.be.undefined;
+    });
+
+    it("always uses the linked app's current config, not the one on the container", async () => {
+      const stale = [{ name: "FIREBASE_CONFIG", value: '{"projectId":"my-project"}' }];
+      getServiceStub.resolves(
+        linkedWeb({ template: { containers: [{ name: "web", image: "old-image", env: stale }] } }),
+      );
+
+      const [svc] = await prepareRun(web);
+
+      expect(svc.firebaseConfig).to.equal(firebaseConfig);
+      expect(svc.buildEnv).to.deep.equal({
+        FIREBASE_WEBAPP_CONFIG: webappConfig,
+        FIREBASE_CONFIG: firebaseConfig,
+      });
+    });
+
+    it("lets the build env annotation override the app's config at build time only", async () => {
+      const userBuildEnv = { FIREBASE_WEBAPP_CONFIG: "custom-webapp", FIREBASE_CONFIG: "custom" };
+      getServiceStub.resolves(
+        linkedWeb({
+          annotations: {
+            [FIREBASE_APP_ANNOTATION]: appId,
+            [BUILD_ENV_ANNOTATION]: JSON.stringify(userBuildEnv),
+          },
+        }),
+      );
+
+      const [svc] = await prepareRun(web);
+
+      expect(svc.buildEnv).to.deep.equal(userBuildEnv);
+      expect(svc.firebaseConfig).to.equal(firebaseConfig);
+    });
+
+    it("fails if the linked app can't be looked up", async () => {
+      getServiceStub.resolves(linkedWeb());
+      getAppConfigStub.rejects(new Error("boom"));
+
+      await expect(prepareRun(web)).to.be.rejectedWith(
+        /Unable to look up Firebase Web App 1:1:web:a for service web in us-central1: boom\n.*firebase run:services:update web:us-central1 --app <appId>.*firebase run:services:update web:us-central1 --clear-app/,
+      );
+      expect(hasRolesStub).not.to.have.been.called;
+    });
+
+    it("fails if a newly linked app can't be looked up", async () => {
+      getAppConfigStub.rejects(new Error("boom"));
+
+      await expect(prepareRun(web, { context: { appId: "bad-app" } })).to.be.rejectedWith(
+        "Unable to look up Firebase Web App bad-app for service web in us-central1: boom",
+      );
+      expect(hasRolesStub).not.to.have.been.called;
     });
   });
 

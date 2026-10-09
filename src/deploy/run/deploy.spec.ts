@@ -122,6 +122,45 @@ describe("run deploy", () => {
     );
   });
 
+  describe("linked Firebase Web App", () => {
+    const APP_ID = "firebase.google.com/app-id";
+    const linkedWeb = {
+      name: "projects/my-project/locations/us-central1/services/web",
+      annotations: { team: "frontend", [APP_ID]: "old-app" },
+      template: { containers: [{ name: "web", image: "old-image" }] },
+    } as unknown as runv2.Service;
+
+    it("is saved on a new service", async () => {
+      await deployOne({ config: web, appId: "new-app" });
+
+      expect(createServiceStub.firstCall.args[3].annotations).to.deep.equal({
+        [APP_ID]: "new-app",
+      });
+    });
+
+    it("replaces the app saved on an existing service", async () => {
+      await deployOne({ config: web, existing: linkedWeb, appId: "new-app" });
+
+      const [service, { updateMask }] = updateServiceStub.firstCall.args;
+      expect(service.annotations).to.deep.equal({ team: "frontend", [APP_ID]: "new-app" });
+      expect(updateMask).to.deep.equal(["annotations", "template", "traffic"]);
+    });
+
+    it("is removed when the service is unlinked", async () => {
+      await deployOne({ config: web, existing: linkedWeb });
+
+      expect(updateServiceStub.firstCall.args[0].annotations).to.deep.equal({ team: "frontend" });
+    });
+
+    it("leaves the service's annotations alone if the app didn't change", async () => {
+      await deployOne({ config: web, existing: linkedWeb, appId: "old-app" });
+
+      const [service, { updateMask }] = updateServiceStub.firstCall.args;
+      expect(service).not.to.have.property("annotations");
+      expect(updateMask).to.deep.equal(["template", "traffic"]);
+    });
+  });
+
   describe("local builds", () => {
     const localWeb = { ...web, localBuild: true };
     let validateNodeStub: sinon.SinonStub;
@@ -324,6 +363,47 @@ describe("run deploy", () => {
         .containers?.[0];
 
       expect(container).to.deep.equal({ name: "web", image });
+    });
+
+    describe("FIREBASE_CONFIG", () => {
+      const linked = { ...existing, annotations: { "firebase.google.com/app-id": "web-app" } };
+      const withConfig = (svc: runv2.Service, value: string): runv2.Service =>
+        ({
+          ...svc,
+          template: {
+            containers: [{ name: "web", image, env: [{ name: "FIREBASE_CONFIG", value }] }],
+          },
+        }) as unknown as runv2.Service;
+
+      it("is set from the linked app's current config", () => {
+        const svc = { config: web, existing: withConfig(linked, "old"), firebaseConfig: "current" };
+
+        const container = revisionTemplate(svc, { image }).containers?.[0];
+
+        expect(container?.env).to.deep.equal([{ name: "FIREBASE_CONFIG", value: "current" }]);
+      });
+
+      it("is removed when the app is unlinked", () => {
+        const container = revisionTemplate(
+          { config: web, existing: withConfig(linked, "old") },
+          {
+            image,
+          },
+        ).containers?.[0];
+
+        expect(container).not.to.have.property("env");
+      });
+
+      it("is left alone if the user set it on a service that was never linked", () => {
+        const container = revisionTemplate(
+          { config: web, existing: withConfig(existing, "mine") },
+          {
+            image,
+          },
+        ).containers?.[0];
+
+        expect(container?.env).to.deep.equal([{ name: "FIREBASE_CONFIG", value: "mine" }]);
+      });
     });
   });
 });

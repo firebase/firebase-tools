@@ -5,6 +5,9 @@ import * as runv2 from "../../gcp/runv2";
 import { Options } from "../../options";
 import { logLabeledBullet } from "../../utils";
 
+/** Annotation on the Cloud Run Service storing the linked Firebase Web App ID (go/crff-autoinit). */
+export const FIREBASE_APP_ANNOTATION = "firebase.google.com/app-id";
+
 /**
  * Returns every Cloud Run service in firebase.json. Throws if one has no region or is listed twice.
  */

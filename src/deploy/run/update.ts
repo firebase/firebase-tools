@@ -22,12 +22,19 @@ import {
 export async function updateService(name: string, options: Options): Promise<void> {
   const newBaseImage = options.baseImage as string | undefined;
   const clearBaseImage = !!options.clearBaseImage;
+  const newAppId = options.app as string | undefined;
+  const clearApp = !!options.clearApp;
   if (newBaseImage && clearBaseImage) {
     throw new FirebaseError("Use either --base-image or --clear-base-image, not both.");
   }
-  if (!newBaseImage && !clearBaseImage) {
+  if (newAppId && clearApp) {
+    throw new FirebaseError("Use either --app or --clear-app, not both.");
+  }
+  const updateBaseImage = Boolean(newBaseImage || clearBaseImage);
+  const updateApp = Boolean(newAppId || clearApp);
+  if (!updateBaseImage && !updateApp) {
     throw new FirebaseError(
-      "Specify a setting to update: --base-image <baseImage> or --clear-base-image.",
+      "Specify a setting to update: --base-image <baseImage>, --clear-base-image, --app <appId>, or --clear-app.",
     );
   }
 
@@ -45,7 +52,10 @@ export async function updateService(name: string, options: Options): Promise<voi
   await deploy(
     ["run"],
     { ...options, only: `run:${fullServiceName(config)}` },
-    { baseImage: newBaseImage ?? null },
+    {
+      ...(updateBaseImage && { baseImage: newBaseImage ?? null }),
+      ...(updateApp && { appId: newAppId ?? null }),
+    },
   );
 }
 

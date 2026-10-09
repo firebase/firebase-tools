@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import { Setup } from "..";
+import { webApps } from "../../apphosting/app";
 import { Config } from "../../config";
 import * as deploy from "../../deploy";
 import * as prereqs from "../../deploy/run/prereqs";
@@ -18,6 +19,7 @@ describe("init run", () => {
   let config: Config;
   let selectStub: sinon.SinonStub;
   let inputStub: sinon.SinonStub;
+  let getOrCreateWebAppStub: sinon.SinonStub;
 
   function setup(): Setup {
     return {
@@ -34,6 +36,9 @@ describe("init run", () => {
     sinon.stub(prereqs, "prereqs").resolves();
     sinon.stub(run, "listLocations").resolves(["us-central1", "us-east1"]);
     sinon.stub(runv2, "getService").rejects({ status: 404 });
+    getOrCreateWebAppStub = sinon
+      .stub(webApps, "getOrCreateWebApp")
+      .resolves({ name: "my-service", id: "1:1:web:a" });
     selectStub = sinon.stub(prompt, "select");
     inputStub = sinon.stub(prompt, "input");
   });
@@ -59,6 +64,7 @@ describe("init run", () => {
         choices: ["us-central1", "us-east1"],
         default: "us-central1",
       });
+      expect(getOrCreateWebAppStub).to.have.been.calledWith("p", null, "my-service");
       expect(inputStub.secondCall.args[0].default).to.be.undefined;
       expect(inputStub.thirdCall.args[0].default).to.equal("/");
       const validateDir = inputStub.thirdCall.args[0].validate;
@@ -70,6 +76,7 @@ describe("init run", () => {
         region: "us-east1",
         baseImage: "",
         rootDir: "/",
+        appId: "1:1:web:a",
       });
     });
 
@@ -87,9 +94,10 @@ describe("init run", () => {
       );
     });
 
-    it("updates an existing service", async () => {
+    it("updates an existing service and reuses its linked Web App", async () => {
       const existing = {
         name: "projects/p/locations/europe-west1/services/web",
+        annotations: { "firebase.google.com/app-id": "existing-app" },
         template: { containers: [{ name: "web", image: "i", baseImageUri: "nodejs20" }] },
       };
       const managed = {
@@ -104,6 +112,7 @@ describe("init run", () => {
       await askQuestions(s, config, options);
 
       expect(runv2.listServices).to.have.been.calledWith("p", false);
+      expect(getOrCreateWebAppStub).not.to.have.been.called;
       expect(selectStub.secondCall.args[0].choices).to.deep.equal([
         { name: "web (europe-west1)", value: existing },
       ]);
@@ -112,6 +121,7 @@ describe("init run", () => {
         region: "europe-west1",
         baseImage: "nodejs20",
         rootDir: "/",
+        appId: "existing-app",
       });
     });
 
@@ -169,6 +179,7 @@ describe("init run", () => {
         baseImage: "nodejs22",
         rootDir: "/",
         localBuild: true,
+        appId: "1:1:web:a",
       });
     });
 
@@ -251,6 +262,15 @@ describe("init run", () => {
         { projectId: "p", config, only: "run:web:us-central1" },
         { baseImage: "nodejs22" },
       );
+    });
+
+    it("deploys with the Firebase Web App that init linked", async () => {
+      await actuate(webSetup({ appId: "1:1:web:a" }), config, options);
+
+      expect(deployStub.firstCall.args[2]).to.deep.equal({
+        baseImage: "nodejs22",
+        appId: "1:1:web:a",
+      });
     });
 
     it("doesn't write firebase.json if the deploy fails", async () => {
