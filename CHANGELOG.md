@@ -1,1 +1,2 @@
 - Added `crashlytics:heapdumps:{enable,disable,status}` commands to manage Crashlytics Android heap dump collection. (#11225)
+- Removed unused dependencies `proxy-agent`, `universal-analytics`, and `@apphosting/common`.
