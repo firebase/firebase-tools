@@ -1,3 +1,4 @@
+- Fixed an issue where unhandled exceptions during Cloud Functions deployment could be silently ignored and exit with code 0 (#6989).
 - Added `crashlytics:heapdumps:{enable,disable,status}` commands to manage Crashlytics Android heap dump collection. (#11225)
 - Removed unused dependencies `proxy-agent`, `universal-analytics`, and `@apphosting/common`.
 - Fixed an issue where throttled task queues stopped processing remaining tasks when a task exhausted its retries or timed out (#6989, #11040).
