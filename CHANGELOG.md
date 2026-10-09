@@ -1,1 +1,2 @@
+- Added `crashlytics:heapdumps:{enable,disable,status}` commands to manage Crashlytics Android heap dump collection. (#11225)
 - Removed unused experiments `crossservicerules`, `emulatorapphosting`, and `runfunctions`.
