@@ -1,0 +1,1 @@
+- Fixed issue where `firebase init firestore` incorrectly gets rules from different database. (#7981)
