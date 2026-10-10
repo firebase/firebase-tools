@@ -2,3 +2,4 @@
 - Removed unused dependencies `proxy-agent`, `universal-analytics`, and `@apphosting/common`.
 - Fixed an issue where throttled task queues stopped processing remaining tasks when a task exhausted its retries or timed out (#6989, #11040).
 - Fixed a race condition in `SourceTokenScraper` that could cause concurrent function deployments to hang when refreshing an expired source token (#6989).
+- Fixed the Firestore emulator exiting when it could not watch the rules file for changes. It now logs a warning instead. (#4298)
