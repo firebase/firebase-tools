@@ -1,6 +1,7 @@
 import { expect } from "chai";
 
 import { FirebaseError } from "../../../error";
+import RetriesExhaustedError from "../../../throttler/errors/retries-exhausted-error";
 import * as executor from "./executor";
 
 describe("Executor", () => {
@@ -103,6 +104,40 @@ describe("Executor", () => {
       const result = await customExec.run(handler);
       expect(result).to.equal("done");
       expect(attempts).to.equal(2);
+    });
+
+    it("drains remaining queued tasks when active tasks exhaust retries under bounded concurrency", async () => {
+      const boundedExec = new executor.QueueExecutor({
+        concurrency: 2,
+        retries: 1,
+        backoff: 0,
+        maxBackoff: 1,
+      });
+      const attempts: Record<string, number> = {};
+      const failingTask = (label: string) => (): Promise<string> => {
+        attempts[label] = (attempts[label] || 0) + 1;
+        const err = new FirebaseError(`Quota exceeded for ${label}`, { status: 429 });
+        return Promise.reject(err);
+      };
+
+      const results = await Promise.allSettled([
+        boundedExec.run(failingTask("fn-1")),
+        boundedExec.run(failingTask("fn-2")),
+        boundedExec.run(() => Promise.resolve("fn-3-ok")),
+        boundedExec.run(() => Promise.resolve("fn-4-ok")),
+      ]);
+
+      expect(attempts).to.deep.equal({ "fn-1": 2, "fn-2": 2 });
+      expect(results[0].status).to.equal("rejected");
+      if (results[0].status === "rejected") {
+        expect(results[0].reason).to.be.instanceOf(RetriesExhaustedError);
+      }
+      expect(results[1].status).to.equal("rejected");
+      if (results[1].status === "rejected") {
+        expect(results[1].reason).to.be.instanceOf(RetriesExhaustedError);
+      }
+      expect(results[2]).to.deep.equal({ status: "fulfilled", value: "fn-3-ok" });
+      expect(results[3]).to.deep.equal({ status: "fulfilled", value: "fn-4-ok" });
     });
   });
 

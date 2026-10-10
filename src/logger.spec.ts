@@ -9,6 +9,7 @@ import * as Transport from "winston-transport";
 import { logger, findAvailableLogFile, resolveLogTarget, useFileLogger } from "./logger";
 
 interface FileTransport extends Transport {
+  dirname?: string;
   filename?: string;
   close?: () => void;
 }
@@ -41,7 +42,7 @@ describe("logger", () => {
     }
     sinon.restore();
     if (fs.existsSync(testTmpDir)) {
-      fs.rmSync(testTmpDir, { recursive: true, force: true });
+      fs.rmSync(testTmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
     }
   });
 
@@ -278,7 +279,10 @@ describe("logger", () => {
 
       // Clean up winston transport added by useFileLogger
       const transports = getLoggerTransports(logger);
-      const fileTransport = transports.find((t) => t.filename === targetFile);
+      const fileTransport = transports.find(
+        (t) =>
+          path.join(t.dirname || "", t.filename || "") === targetFile || t.filename === targetFile,
+      );
       if (fileTransport) {
         logger.remove(fileTransport);
         if (fileTransport.close) {
@@ -294,7 +298,11 @@ describe("logger", () => {
 
       // Clean up winston transport
       const transports = getLoggerTransports(logger);
-      const fileTransport = transports.find((t) => t.filename === explicitFile);
+      const fileTransport = transports.find(
+        (t) =>
+          path.join(t.dirname || "", t.filename || "") === explicitFile ||
+          t.filename === explicitFile,
+      );
       if (fileTransport) {
         logger.remove(fileTransport);
         if (fileTransport.close) {

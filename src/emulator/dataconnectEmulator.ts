@@ -175,7 +175,11 @@ export class DataConnectEmulator implements EmulatorInstance {
         "dataconnect",
         "Could not connect to SQL Connect emulator. Check dataconnect-debug.log for more details.",
       );
-      return Promise.reject();
+      return Promise.reject(
+        new FirebaseError(
+          "Could not connect to SQL Connect emulator. Check dataconnect-debug.log for more details.",
+        ),
+      );
     }
     return Promise.resolve();
   }

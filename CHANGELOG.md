@@ -1,6 +1,5 @@
-- Added check for a default Hosting site and offer to create one during `firebase apps:create web`.
-- Added a check for a default Hosting site and offer to create one during `auth` initialization.
-- - [Fixed] Report the GCFv2-to-GCFv1 downgrade error during validation instead of a misleading CPU error (#5461).
-- Fixed `functions:delete` recreating an already-deleted Cloud Tasks queue for task queue functions. (#9305)
-- Batched function deletions across instances when uninstalling a Function Kit (#11189).
+- Added `crashlytics:heapdumps:{enable,disable,status}` commands to manage Crashlytics Android heap dump collection. (#11225)
+- Removed unused dependencies `proxy-agent`, `universal-analytics`, and `@apphosting/common`.
+- Fixed an issue where throttled task queues stopped processing remaining tasks when a task exhausted its retries or timed out (#6989, #11040).
+- Fixed a race condition in `SourceTokenScraper` that could cause concurrent function deployments to hang when refreshing an expired source token (#6989).
 - Fixed Hosting shutdown leaving earlier sites running when serving multiple sites.
