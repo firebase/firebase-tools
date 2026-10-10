@@ -180,4 +180,40 @@ describe("SourceTokenScraper", () => {
     });
     expect(nextResult).to.equal("recovered");
   });
+
+  it("handles concurrent callers when an existing token has expired without hanging waiters", async () => {
+    const scraper = new SourceTokenScraper(10);
+
+    await expect(scraper.withToken(async (t) => t)).to.eventually.be.undefined;
+    scraper.poller({
+      metadata: {
+        sourceToken: "initial-token",
+        target: "projects/p/locations/us-central1/functions/f1",
+      },
+    });
+    await expect(scraper.withToken(async (t) => t)).to.eventually.equal("initial-token");
+
+    await new Promise<void>((resolve) => setTimeout(resolve, 30));
+
+    // Launch 3 concurrent calls after token expiry; only the first should fetch (receiving undefined),
+    // while the other 2 wait for the refreshed token without overwriting this.promise.
+    const expiredCalls = [
+      scraper.withToken(async (t) => {
+        if (t === undefined) {
+          scraper.poller({
+            metadata: {
+              sourceToken: "refreshed-token",
+              target: "projects/p/locations/us-central1/functions/f2",
+            },
+          });
+        }
+        return t;
+      }),
+      scraper.withToken(async (t) => t),
+      scraper.withToken(async (t) => t),
+    ];
+
+    const results = await Promise.all(expiredCalls);
+    expect(results).to.deep.equal([undefined, "refreshed-token", "refreshed-token"]);
+  });
 });
