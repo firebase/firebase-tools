@@ -1,9 +1,8 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import { PubsubEmulator } from "./pubsubEmulator";
+import { PubsubEmulator, PubsubSubscription, PubsubClient } from "./pubsubEmulator";
 import * as downloadableEmulators from "./downloadableEmulators";
 import { Emulators } from "./types";
-import { Subscription } from "@google-cloud/pubsub";
 
 describe("PubsubEmulator", () => {
   let sandbox: sinon.SinonSandbox;
@@ -32,14 +31,17 @@ describe("PubsubEmulator", () => {
       const stopStub = sandbox.stub(downloadableEmulators, "stop").resolves();
       const emulator = new PubsubEmulator({ projectId: "test-project" });
 
-      const fakeSub1 = {
+      const closeStub1 = sandbox.stub().resolves();
+      const closeStub2 = sandbox.stub().resolves();
+
+      const fakeSub1: PubsubSubscription = {
         name: "emulator-sub-topic-1",
-        close: sandbox.stub().resolves(),
-      } as unknown as Subscription;
-      const fakeSub2 = {
+        close: closeStub1,
+      };
+      const fakeSub2: PubsubSubscription = {
         name: "emulator-sub-topic-2",
-        close: sandbox.stub().resolves(),
-      } as unknown as Subscription;
+        close: closeStub2,
+      };
 
       emulator.subscriptionForTopic.set("topic-1", fakeSub1);
       emulator.subscriptionForTopic.set("topic-2", fakeSub2);
@@ -49,8 +51,8 @@ describe("PubsubEmulator", () => {
 
       await emulator.stop();
 
-      expect((fakeSub1.close as sinon.SinonStub).calledOnce).to.be.true;
-      expect((fakeSub2.close as sinon.SinonStub).calledOnce).to.be.true;
+      expect(closeStub1.calledOnce).to.be.true;
+      expect(closeStub2.calledOnce).to.be.true;
       expect(emulator.subscriptionForTopic.size).to.equal(0);
       expect(emulator.triggersForTopic.size).to.equal(0);
       expect(stopStub.calledOnceWith(Emulators.PUBSUB)).to.be.true;
@@ -61,17 +63,15 @@ describe("PubsubEmulator", () => {
       const emulator = new PubsubEmulator({ projectId: "test-project" });
 
       const closeStub = sandbox.stub().resolves();
-      const emulatorWithClient = emulator as unknown as {
-        _pubsub: { close: () => Promise<void> } | undefined;
-      };
-      emulatorWithClient._pubsub = {
+      const fakePubSub: PubsubClient = {
         close: closeStub,
       };
+      emulator._pubsub = fakePubSub;
 
       await emulator.stop();
 
       expect(closeStub.calledOnce).to.be.true;
-      expect(emulatorWithClient._pubsub).to.be.undefined;
+      expect(emulator._pubsub).to.be.undefined;
       expect(stopStub.calledOnceWith(Emulators.PUBSUB)).to.be.true;
     });
 
@@ -79,24 +79,100 @@ describe("PubsubEmulator", () => {
       const stopStub = sandbox.stub(downloadableEmulators, "stop").resolves();
       const emulator = new PubsubEmulator({ projectId: "test-project" });
 
-      const failingSub = {
+      const failingCloseStub = sandbox.stub().rejects(new Error("Connection lost"));
+      const succeedingCloseStub = sandbox.stub().resolves();
+
+      const failingSub: PubsubSubscription = {
         name: "emulator-sub-failing",
-        close: sandbox.stub().rejects(new Error("Connection lost")),
-      } as unknown as Subscription;
-      const succeedingSub = {
+        close: failingCloseStub,
+      };
+      const succeedingSub: PubsubSubscription = {
         name: "emulator-sub-succeeding",
-        close: sandbox.stub().resolves(),
-      } as unknown as Subscription;
+        close: succeedingCloseStub,
+      };
 
       emulator.subscriptionForTopic.set("failing", failingSub);
       emulator.subscriptionForTopic.set("succeeding", succeedingSub);
 
       await emulator.stop();
 
-      expect((failingSub.close as sinon.SinonStub).calledOnce).to.be.true;
-      expect((succeedingSub.close as sinon.SinonStub).calledOnce).to.be.true;
+      expect(failingCloseStub.calledOnce).to.be.true;
+      expect(succeedingCloseStub.calledOnce).to.be.true;
       expect(emulator.subscriptionForTopic.size).to.equal(0);
       expect(stopStub.calledOnceWith(Emulators.PUBSUB)).to.be.true;
+    });
+
+    it("should not hang when subscription close hangs indefinitely", async () => {
+      const clock = sandbox.useFakeTimers();
+      const stopStub = sandbox.stub(downloadableEmulators, "stop").resolves();
+      const emulator = new PubsubEmulator({ projectId: "test-project" });
+
+      const hangingSub: PubsubSubscription = {
+        name: "emulator-sub-hanging",
+        close: () => new Promise<void>(() => undefined),
+      };
+
+      emulator.subscriptionForTopic.set("hanging", hangingSub);
+
+      const stopPromise = emulator.stop();
+      await clock.tickAsync(2500);
+      await stopPromise;
+
+      expect(stopStub.calledOnceWith(Emulators.PUBSUB)).to.be.true;
+      expect(emulator.subscriptionForTopic.size).to.equal(0);
+    });
+
+    it("should not hang when pubsub client close hangs indefinitely", async () => {
+      const clock = sandbox.useFakeTimers();
+      const stopStub = sandbox.stub(downloadableEmulators, "stop").resolves();
+      const emulator = new PubsubEmulator({ projectId: "test-project" });
+
+      const fakePubSub: PubsubClient = {
+        close: () => new Promise<void>(() => undefined),
+      };
+      emulator._pubsub = fakePubSub;
+
+      const stopPromise = emulator.stop();
+      await clock.tickAsync(2500);
+      await stopPromise;
+
+      expect(stopStub.calledOnceWith(Emulators.PUBSUB)).to.be.true;
+      expect(emulator._pubsub).to.be.undefined;
+    });
+  });
+
+  describe("addTrigger", () => {
+    it("should reuse existing subscription when addTrigger is called multiple times for the same topic", async () => {
+      const emulator = new PubsubEmulator({ projectId: "test-project" });
+
+      const fakeSub: PubsubSubscription = {
+        name: "emulator-sub-topic-1",
+        close: sandbox.stub().resolves(),
+      };
+      const createSubStub = sandbox.stub(emulator, "maybeCreateTopicAndSub").resolves(fakeSub);
+
+      await emulator.addTrigger("topic-1", "trigger-1", "event");
+      await emulator.addTrigger("topic-1", "trigger-2", "cloudevent");
+
+      expect(createSubStub.calledOnce).to.be.true;
+      expect(emulator.triggersForTopic.get("topic-1")?.length).to.equal(2);
+      expect(emulator.subscriptionForTopic.get("topic-1")).to.equal(fakeSub);
+    });
+
+    it("should not add duplicate trigger when called with the same triggerKey", async () => {
+      const emulator = new PubsubEmulator({ projectId: "test-project" });
+
+      const fakeSub: PubsubSubscription = {
+        name: "emulator-sub-topic-1",
+        close: sandbox.stub().resolves(),
+      };
+      const createSubStub = sandbox.stub(emulator, "maybeCreateTopicAndSub").resolves(fakeSub);
+
+      await emulator.addTrigger("topic-1", "trigger-1", "event");
+      await emulator.addTrigger("topic-1", "trigger-1", "event");
+
+      expect(createSubStub.calledOnce).to.be.true;
+      expect(emulator.triggersForTopic.get("topic-1")?.length).to.equal(1);
     });
   });
 });
