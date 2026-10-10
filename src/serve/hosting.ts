@@ -19,7 +19,7 @@ import { getProjectId } from "../projectUtils";
 import { checkListenable } from "../emulator/portUtils";
 import { IncomingMessage, ServerResponse } from "http";
 
-let destroyServer: undefined | (() => Promise<void>) = undefined;
+const serverDestroyers = new Set<() => Promise<void>>();
 
 const logger = EmulatorLogger.forEmulator(Emulators.HOSTING);
 
@@ -83,7 +83,7 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
     );
   });
 
-  destroyServer = createDestroyer(server);
+  serverDestroyers.add(createDestroyer(server));
 
   server.on("error", (err: Error) => {
     logger.log("DEBUG", `Error from superstatic server: ${err.stack || ""}`);
@@ -94,10 +94,24 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
 }
 
 /**
- * Stop the Hosting server.
+ * Stop the Hosting servers.
  */
-export function stop(): Promise<void> {
-  return destroyServer ? destroyServer() : Promise.resolve();
+export async function stop(): Promise<void> {
+  const errors: unknown[] = [];
+  await Promise.all(
+    Array.from(serverDestroyers, async (destroyServer) => {
+      try {
+        await destroyServer();
+      } catch (err) {
+        errors.push(err);
+      } finally {
+        serverDestroyers.delete(destroyServer);
+      }
+    }),
+  );
+  if (errors.length > 0) {
+    throw errors[0];
+  }
 }
 
 /**
