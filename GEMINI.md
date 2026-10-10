@@ -25,13 +25,14 @@ npm run format                   # Auto-fix formatting issues
 
 ### Code Quality & Utilities
 
-- **Survey prior art & harmonize utilities:** Before writing or adding any method that could be a common, reusable helper (e.g. retries, backoff, string parsing, path containment, domain transformations):
-  - **Check existing patterns first:** Search the codebase (`src/utils.ts` and relevant subsystems) to see if other code is doing a similar thing and how.
-  - **Reuse or unify immediately:** Either reuse how existing code does it, or if introducing a new common utility, unify it with existing custom implementations across the codebase immediately rather than creating diverging parallel implementations.
+- **Survey prior art & harmonize utilities:** When implementing logic that is or could be shared across callers (e.g. retries, backoff, string parsing, path containment, domain transformations):
+  - **Reuse or extend existing utilities:** Check imported modules, the immediate subsystem, and `src/utils.ts` first; reuse or extend existing helpers rather than writing bespoke inline logic.
+  - **Extract and unify shared helpers:** When logic is duplicated across modules or warrants a new common utility, place it in the appropriate shared module and unify existing custom implementations immediately rather than leaving parallel implementations.
 - **Use the central `logger`** (`src/logger.ts`); never use `console.log()` for user-facing output.
 - **Throw `FirebaseError`** (`src/error.ts`) for expected, user-facing errors. If the error is due to a violation of a precondition (e.g. something
-  that is null but should never be), specify a non-zero exit code (`{ exit: 1 }`). Error messages should clearly explain what failed and why; when actionable, provide concrete remediation guidance (e.g. the expected format, a `--force` flag, or a discovery command like `firebase <entity>:list`).
+  that is null but should never be), specify a non-zero exit code (`{ exit: 1 }`). Error messages should clearly explain what failed and why; when actionable, provide concrete remediation guidance using documented CLI flags, commands, or configuration options (e.g. the expected format, a `--force` flag, or a discovery command like `firebase <entity>:list`—never undocumented or legacy internal fields).
 - **Extract magic numbers and static constants:** Define static IDs, default timeouts, millisecond offsets, and repeated strings as top-level constants (`UPPER_SNAKE_CASE`) instead of inlining magic values inside functions. Mark static configuration arrays and lookup tables as `readonly` or `as const`.
+- **Write high-signal comments that explain *why*, not *what*:** Reserve comments and JSDoc for non-obvious rationale (protocol quirks, OS/platform edge cases, intentional trade-offs). Do not narrate self-evident code, attach multi-paragraph docblocks to small helpers, or repeat the same architectural explanation across multiple functions and tests—redundant commentary drifts out of sync and obscures control flow.
 - **API calls must use `apiv2.ts`** for authenticated requests.
 - **Reduce nesting as much as possible:** Code should avoid unnecessarily deep nesting or long periods of nesting. Use early returns, `continue`, and `break` statements in functions and loops to handle edge cases early and keep main logic flat. Consider helper functions to encapsulate complex branching.
 
@@ -62,7 +63,7 @@ npm run format                   # Auto-fix formatting issues
 - **Clean up mocks in `afterEach`:** Always restore stubs and clean intercepts in `afterEach` (`sinon.restore()`, `nock.cleanAll()`), never in suite-level `after()`. Mock verifications and assertions (e.g. `expect(nock.isDone()).to.be.true`) belong in individual tests or suite-level `afterEach()`, never in suite-level `after()` where global cleanup hooks have already cleared active mocks.
 - **Test public interfaces:** Exercise public entry points and exported module functions rather than testing or stubbing private internal helpers.
 - **Unit tests (`*.spec.ts`) should be co-located with their source files.**
-- Test error cases and edge conditions, not just the "happy path."
+- **Test error cases and recovery mechanisms:** Exercise failure paths and edge conditions, asserting both the specific error type/message and the underlying mechanism (e.g. retry attempt counts or state cleanup) rather than bare rejection.
 
 ## Git Workflow & Pull Requests
 
@@ -74,4 +75,5 @@ npm run format                   # Auto-fix formatting issues
       - `### Scenarios Tested`
       - `### Sample Commands`
       - Reference issues with "Fixes #123" in the description.
+    - **Keep public repository metadata clean:** Because `firebase-tools` is a public open-source repository, do not include internal issue tracker IDs (`b/...`), internal usernames, or automated agent task prefixes in commit messages, PR titles, or PR descriptions.
 3.  **Update Changelog:** For any user-facing change (new features, bug fixes, deprecations), add a corresponding entry to `CHANGELOG.md`.
