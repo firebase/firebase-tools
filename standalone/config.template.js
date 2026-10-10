@@ -8,7 +8,7 @@ module.exports = {
     which allows the binary to spawn a terminal on Windows and Mac. The is the
     behavior for desktop users.
   */
-  headless: false,
+  headless: true,
 
   /*
     This is generally set to "firebase-tools@latest" however a custom value

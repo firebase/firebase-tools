@@ -2,7 +2,7 @@ FROM node:20
 
 # Install dependencies
 RUN apt-get update && \
-    apt-get install -y wget tar
+    apt-get install -y wget tar curl
 
 # Install hub
 RUN curl -fsSL --output hub.tgz https://github.com/github/hub/releases/download/v2.11.2/hub-linux-amd64-2.11.2.tgz
