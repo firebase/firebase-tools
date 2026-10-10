@@ -275,11 +275,13 @@ export class Fabricator {
     const createAndUpdateResultsArray = await Promise.allSettled(createAndUpdatePromises);
 
     // Process results of Phase 1
+    const upsertErrors: Error[] = [];
     summary.results = createAndUpdateResultsArray.reduce<reporter.DeployResult[]>((acc, r) => {
       if (r.status === "fulfilled") {
         return [...acc, ...r.value];
       }
       // Handle rejection
+      upsertErrors.push(r.reason as Error);
       logger.debug(
         "Fabricator.applyUpserts returned an unhandled exception.",
         JSON.stringify(r.reason, null, 2),
@@ -288,6 +290,17 @@ export class Fabricator {
     }, []);
 
     await this.cleanupUnusedServiceAccounts(plan, summary.results);
+
+    // If applyUpserts rejected outside wrapOperation, fail immediately instead of
+    // proceeding to function deletions with an incomplete result set and exiting 0.
+    if (upsertErrors.length) {
+      const opts =
+        upsertErrors.length === 1 ? { original: upsertErrors[0] } : { children: upsertErrors };
+      throw new FirebaseError("Fabricator.applyUpserts encountered an unhandled exception", {
+        ...opts,
+        exit: 2,
+      });
+    }
 
     const hasFailures = summary.results.some((r) => r.error);
 
@@ -312,10 +325,12 @@ export class Fabricator {
       allChangesets.map((changes) => this.applyDeletes(changes)),
     );
 
+    const deleteErrors: Error[] = [];
     const deleteResults = deleteResultsArray.reduce<reporter.DeployResult[]>((acc, r) => {
       if (r.status === "fulfilled") {
         return [...acc, ...r.value];
       }
+      deleteErrors.push(r.reason as Error);
       logger.debug(
         "Fabricator.applyDeletes returned an unhandled exception. This should never happen",
         JSON.stringify(r.reason, null, 2),
@@ -324,6 +339,17 @@ export class Fabricator {
     }, []);
 
     summary.results.push(...deleteResults);
+
+    // If applyDeletes rejected outside wrapOperation, fail instead of returning
+    // an incomplete summary that allows the deploy to succeed with exit code 0.
+    if (deleteErrors.length) {
+      const opts =
+        deleteErrors.length === 1 ? { original: deleteErrors[0] } : { children: deleteErrors };
+      throw new FirebaseError("Fabricator.applyDeletes encountered an unhandled exception", {
+        ...opts,
+        exit: 2,
+      });
+    }
 
     // Similarly to grantNewRoles, we execute role removals sequentially to avoid concurrent
     // IAM policy update conflicts (409 Conflict / etag mismatch) on GCP.
@@ -370,11 +396,11 @@ export class Fabricator {
     const ops: Array<Promise<reporter.DeployResult>> = [];
 
     for (const endpoint of changes.endpointsToCreate) {
-      this.logOpStart("creating", endpoint);
       ops.push(
-        this.wrapOperation("create", endpoint, () =>
-          this.createEndpoint(endpoint, scraperV1, scraperV2),
-        ),
+        this.wrapOperation("create", endpoint, () => {
+          this.logOpStart("creating", endpoint);
+          return this.createEndpoint(endpoint, scraperV1, scraperV2);
+        }),
       );
     }
 
@@ -383,11 +409,11 @@ export class Fabricator {
     }
 
     for (const update of changes.endpointsToUpdate) {
-      this.logOpStart("updating", update.endpoint);
       ops.push(
-        this.wrapOperation("update", update.endpoint, () =>
-          this.updateEndpoint(update, scraperV1, scraperV2),
-        ),
+        this.wrapOperation("update", update.endpoint, () => {
+          this.logOpStart("updating", update.endpoint);
+          return this.updateEndpoint(update, scraperV1, scraperV2);
+        }),
       );
     }
 
@@ -398,8 +424,12 @@ export class Fabricator {
     const ops: Array<Promise<reporter.DeployResult>> = [];
 
     for (const endpoint of changes.endpointsToDelete) {
-      this.logOpStart("deleting", endpoint);
-      ops.push(this.wrapOperation("delete", endpoint, () => this.deleteEndpoint(endpoint)));
+      ops.push(
+        this.wrapOperation("delete", endpoint, () => {
+          this.logOpStart("deleting", endpoint);
+          return this.deleteEndpoint(endpoint);
+        }),
+      );
     }
 
     return Promise.all(ops);
@@ -1177,7 +1207,9 @@ export class Fabricator {
   }
 
   logOpStart(op: string, endpoint: backend.Endpoint): void {
-    const runtime = endpoint.runtime ? RUNTIMES[endpoint.runtime].friendly : "unknown";
+    const runtime = endpoint.runtime
+      ? RUNTIMES[endpoint.runtime]?.friendly ?? endpoint.runtime
+      : "unknown";
     const platform = getHumanFriendlyPlatformName(endpoint.platform);
     const label = helper.getFunctionLabel(endpoint);
     utils.logLabeledBullet(

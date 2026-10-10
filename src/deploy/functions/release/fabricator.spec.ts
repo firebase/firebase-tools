@@ -1948,6 +1948,109 @@ describe("Fabricator", () => {
       expect(scrapers).to.have.lengthOf(2);
       expect(scrapers[0]).to.not.equal(scrapers[1]);
     });
+
+    it("throws FirebaseError and skips deletes when applyUpserts rejects unexpectedly", async () => {
+      const ep1 = endpoint({ httpsTrigger: {} }, { id: "createFn", region: "us-central1" });
+      const ep2 = endpoint({ httpsTrigger: {} }, { id: "deleteFn", region: "us-west1" });
+      const plan: planner.DeploymentPlan = {
+        default: {
+          plannedBackend: backend.of(ep1),
+          regionalChangesets: {
+            "us-central1": {
+              endpointsToCreate: [ep1],
+              endpointsToUpdate: [],
+              endpointsToDelete: [],
+              endpointsToSkip: [],
+            },
+            "us-west1": {
+              endpointsToCreate: [],
+              endpointsToUpdate: [],
+              endpointsToDelete: [ep2],
+              endpointsToSkip: [],
+            },
+          },
+        },
+      };
+
+      const applyUpsertsStub = sinon.stub(fab, "applyUpserts");
+      applyUpsertsStub.onFirstCall().rejects(new Error("Unexpected upsert crash"));
+      applyUpsertsStub.onSecondCall().resolves([]);
+      const applyDeletesSpy = sinon.spy(fab, "applyDeletes");
+
+      await expect(fab.applyPlan(plan)).to.be.rejectedWith(
+        FirebaseError,
+        "Fabricator.applyUpserts encountered an unhandled exception",
+      );
+      expect(applyDeletesSpy).to.not.have.been.called;
+    });
+
+    it("throws FirebaseError and skips role removals when applyDeletes rejects unexpectedly", async () => {
+      const ep1 = endpoint({ httpsTrigger: {} }, { id: "deleteFn", region: "us-central1" });
+      const plan: planner.DeploymentPlan = {
+        default: {
+          plannedBackend: backend.empty(),
+          regionalChangesets: {
+            "us-central1": {
+              endpointsToCreate: [],
+              endpointsToUpdate: [],
+              endpointsToDelete: [ep1],
+              endpointsToSkip: [],
+            },
+          },
+        },
+      };
+
+      sinon.stub(fab, "applyDeletes").rejects(new Error("Unexpected delete crash"));
+      const removeOldRolesSpy = sinon.spy(fab, "removeOldRoles");
+
+      await expect(fab.applyPlan(plan)).to.be.rejectedWith(
+        FirebaseError,
+        "Fabricator.applyDeletes encountered an unhandled exception",
+      );
+      expect(removeOldRolesSpy).to.not.have.been.called;
+    });
+
+    it("isolates logOpStart errors to the failing endpoint and handles unknown runtimes", async () => {
+      const epUnknownRuntime = endpoint(
+        { httpsTrigger: {} },
+        {
+          id: "unknownRuntimeFn",
+          region: "us-central1",
+          runtime: "custom-future-runtime" as backend.Endpoint["runtime"],
+        },
+      );
+      const epFailingLog = endpoint(
+        { httpsTrigger: {} },
+        { id: "failingLogFn", region: "us-central1" },
+      );
+      const changes: planner.Changeset = {
+        endpointsToCreate: [epUnknownRuntime, epFailingLog],
+        endpointsToUpdate: [],
+        endpointsToDelete: [],
+        endpointsToSkip: [],
+      };
+
+      sinon.stub(fab, "createEndpoint").resolves();
+      const origLogOpStart = fab.logOpStart.bind(fab);
+      sinon.stub(fab, "logOpStart").callsFake((op: string, ep: backend.Endpoint) => {
+        if (ep.id === "failingLogFn") {
+          throw new Error("logOpStart failure");
+        }
+        origLogOpStart(op, ep);
+      });
+
+      const results = await fab.applyUpserts(
+        changes,
+        new scraper.SourceTokenScraper(),
+        new scraper.SourceTokenScraper(),
+      );
+
+      expect(results).to.have.lengthOf(2);
+      expect(results[0].endpoint.id).to.equal("unknownRuntimeFn");
+      expect(results[0].error).to.be.undefined;
+      expect(results[1].endpoint.id).to.equal("failingLogFn");
+      expect(results[1].error?.message).to.equal("logOpStart failure");
+    });
   });
 
   describe("createRunFunction", () => {
