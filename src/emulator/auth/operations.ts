@@ -43,6 +43,8 @@ import {
   TOTP_FACTOR_ID,
   TOTP_HASHING_ALGORITHM,
   TOTP_PERIOD_SEC,
+  TOTP_SESSION_LIFETIME_MS,
+  isValidTotpSecret,
   redactTotpSecrets,
   verifyTotpCode,
 } from "./totp";
@@ -502,6 +504,10 @@ function batchCreate(
           if (enrollment.totpInfo) {
             // Only TOTP enrollments exported from the emulator have the secret.
             assert(enrollment.emulatorTotpSecret, "Second factor not supported.");
+            assert(
+              isValidTotpSecret(enrollment.emulatorTotpSecret),
+              "TOTP shared secret is invalid",
+            );
           } else {
             assert(enrollment.phoneInfo, "Second factor not supported.");
             assert(isValidPhoneNumber(enrollment.phoneInfo), "Phone number format is invalid");
@@ -2080,7 +2086,7 @@ function mfaEnrollmentStart(
         sessionInfo,
         // Clients expect a deadline, but the emulator does not enforce it since
         // enrollment sessions never expire.
-        finalizeEnrollmentTime: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+        finalizeEnrollmentTime: new Date(Date.now() + TOTP_SESSION_LIFETIME_MS).toISOString(),
       },
     };
   }

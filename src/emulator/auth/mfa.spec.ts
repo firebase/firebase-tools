@@ -1083,6 +1083,32 @@ describeAuthEmulator("mfa with TOTP", ({ authApi, getClock }) => {
       });
   });
 
+  it("should not import a TOTP enrollment with an invalid shared secret", async () => {
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchCreate`)
+      .set("Authorization", "Bearer owner")
+      .send({
+        users: [
+          {
+            localId: "totp-user",
+            email: "alice@example.com",
+            emailVerified: true,
+            mfaInfo: [
+              {
+                mfaEnrollmentId: "enrollment-id",
+                totpInfo: {},
+                emulatorTotpSecret: "not a secret!",
+              },
+            ],
+          },
+        ],
+      })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.error).to.eql([{ index: 0, message: "TOTP shared secret is invalid" }]);
+      });
+  });
+
   it("should ask for the TOTP factor when TOTP is the only MFA provider", async () => {
     // Production enables TOTP through providerConfigs alone, so the top level
     // state stays DISABLED.

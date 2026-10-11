@@ -4,6 +4,7 @@ import {
   base32Decode,
   generateTotpCode,
   generateTotpSecret,
+  isValidTotpSecret,
   redactTotpSecrets,
   verifyTotpCode,
 } from "./totp";
@@ -24,6 +25,18 @@ describe("totp", () => {
 
     it("should reject characters outside the base32 alphabet", () => {
       expect(() => base32Decode("ABC1")).to.throw("Invalid base32 character");
+    });
+  });
+
+  describe("isValidTotpSecret", () => {
+    it("should accept a base32 secret", () => {
+      expect(isValidTotpSecret(RFC_SECRET)).to.be.true;
+      expect(isValidTotpSecret(generateTotpSecret())).to.be.true;
+    });
+
+    it("should reject a secret that is empty or not base32", () => {
+      expect(isValidTotpSecret("")).to.be.false;
+      expect(isValidTotpSecret("not a secret!")).to.be.false;
     });
   });
 

@@ -10,6 +10,10 @@ export const TOTP_CODE_LENGTH = 6;
 export const TOTP_PERIOD_SEC = 30;
 export const TOTP_HASHING_ALGORITHM = "SHA1";
 
+// How long clients are told a TOTP enrollment session lasts. The emulator does
+// not enforce it.
+export const TOTP_SESSION_LIFETIME_MS = 5 * 60 * 1000;
+
 // RFC 4648 base32 alphabet, which is what authenticator apps expect.
 const BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
@@ -44,6 +48,19 @@ export function base32Decode(encoded: string): Buffer {
     }
   }
   return Buffer.from(bytes);
+}
+
+/**
+ * Whether a shared secret is base32 that codes can be generated from.
+ * @param secret the shared secret, for example from an imported account
+ * @return true if the secret decodes to at least one byte
+ */
+export function isValidTotpSecret(secret: string): boolean {
+  try {
+    return base32Decode(secret).length > 0;
+  } catch {
+    return false;
+  }
 }
 
 /**
