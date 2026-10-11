@@ -6,6 +6,7 @@ import { Emulators } from "../types";
 import { EmulatorLogger } from "../emulatorLogger";
 import { EmulatorRegistry } from "../registry";
 import { UserInfo, ProviderUserInfo } from "./state";
+import { redactTotpSecrets } from "./totp";
 import { CloudEvent } from "../events/types";
 
 type AuthCloudFunctionAction = "create" | "delete";
@@ -144,7 +145,7 @@ export class AuthCloudFunction {
       customClaims: JSON.parse(user.customAttributes || "{}"),
       providerData: user.providerUserInfo?.map((info) => this.createProviderUserInfoPayload(info)),
       tenantId: user.tenantId,
-      mfaInfo: user.mfaInfo,
+      mfaInfo: redactTotpSecrets(user.mfaInfo),
     };
   }
 
