@@ -185,6 +185,7 @@ export interface ScheduleTrigger {
   schedule: string | Expression<string>;
   timeZone?: Field<string>;
   retryConfig?: ScheduleRetryConfig | null;
+  attemptDeadlineSeconds?: Field<number>;
 }
 
 export type HttpsTriggered = { httpsTrigger: HttpsTrigger };
