@@ -1,6 +1,5 @@
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import { requirePermissions } from "../requirePermissions";
-import { checkServiceAccountIam } from "../deploy/functions/checkIam";
 import { checkValidTargetFilters } from "../checkValidTargetFilters";
 import { Command } from "../command";
 import { deploy, TARGETS, VALID_DEPLOY_TARGETS, TARGET_PERMISSIONS } from "../deploy";
@@ -92,11 +91,6 @@ command
       return perms.concat(TARGET_PERMISSIONS[target as (typeof VALID_DEPLOY_TARGETS)[number]]);
     }, []);
     return requirePermissions(options, permissions);
-  })
-  .before((options: Options) => {
-    if (options.filteredTargets.includes("functions")) {
-      return checkServiceAccountIam(options.project!);
-    }
   })
   .before(async (options: Options) => {
     // only fetch the default instance for hosting or database deploys

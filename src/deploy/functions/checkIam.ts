@@ -9,6 +9,8 @@ import * as iam from "../../gcp/iam";
 import * as gce from "../../gcp/computeEngine";
 import * as args from "./args";
 import * as backend from "./backend";
+import * as ensure from "./ensure";
+import * as proto from "../../gcp/proto";
 import { trackGA4 } from "../../track";
 import * as utils from "../../utils";
 
@@ -26,36 +28,60 @@ export const GENKIT_MONITORING_ROLES = [
 ];
 
 /**
- * Checks to see if the authenticated account has `iam.serviceAccounts.actAs` permissions
- * on a specified project (required for functions deployments).
- * @param projectId The project ID to check.
+ * Checks that the authenticated account has `iam.serviceAccounts.actAs` on every
+ * service account the given endpoints will run as (required for functions deployments).
+ * @param projectId The project ID being deployed to.
+ * @param want The endpoints being created or updated.
  */
-export async function checkServiceAccountIam(projectId: string): Promise<void> {
-  const saEmail = `${projectId}@appspot.gserviceaccount.com`;
-  let passed = false;
-  try {
-    const iamResult = await iam.testResourceIamPermissions(
-      "https://iam.googleapis.com",
-      "v1",
-      `projects/${projectId}/serviceAccounts/${saEmail}`,
-      ["iam.serviceAccounts.actAs"],
-    );
-    passed = iamResult.passed;
-  } catch (err: any) {
-    logger.debug("[functions] service account IAM check errored, deploy may fail:", err);
-    // we want to fail this check open and not rethrow since it's informational only
+export async function checkServiceAccountIam(
+  projectId: string,
+  want: backend.Backend,
+): Promise<void> {
+  const endpointsBySa = new Map<string, Set<string>>();
+  for (const endpoint of backend.allEndpoints(want)) {
+    const sa = endpoint.serviceAccount
+      ? proto.formatServiceAccount(endpoint.serviceAccount, endpoint.project, true)
+      : await ensure.defaultServiceAccount(endpoint);
+    const ids = endpointsBySa.get(sa) ?? new Set<string>();
+    ids.add(endpoint.id);
+    endpointsBySa.set(sa, ids);
+  }
+
+  const results = await Promise.all(
+    [...endpointsBySa].map(async ([sa, ids]) => {
+      try {
+        const iamResult = await iam.testResourceIamPermissions(
+          "https://iam.googleapis.com",
+          "v1",
+          `projects/-/serviceAccounts/${sa}`,
+          ["iam.serviceAccounts.actAs"],
+        );
+        return { sa, ids, denied: !iamResult.passed };
+      } catch (err: unknown) {
+        logger.debug(
+          `[functions] service account IAM check for ${sa} errored, deploy may fail:`,
+          err,
+        );
+        // we want to fail this check open and not rethrow since it's informational only
+        return { sa, ids, denied: false };
+      }
+    }),
+  );
+  const denied = results.filter((r) => r.denied);
+  if (denied.length === 0) {
     return;
   }
 
-  if (!passed) {
-    throw new FirebaseError(
-      `Missing permissions required for functions deploy. You must have permission ${bold(
-        "iam.serviceAccounts.ActAs",
-      )} on service account ${bold(saEmail)}.\n\n` +
-        `To address this error, ask a project Owner to assign your account the "Service Account User" role from this URL:\n\n` +
-        `https://console.cloud.google.com/iam-admin/iam?project=${projectId}`,
-    );
-  }
+  const list = denied
+    .map(({ sa, ids }) => `  - ${bold(sa)} (used by: ${[...ids].join(", ")})`)
+    .join("\n");
+  throw new FirebaseError(
+    `Missing permissions required for functions deploy. You must have permission ${bold(
+      "iam.serviceAccounts.ActAs",
+    )} on the following service accounts:\n\n${list}\n\n` +
+      `To address this error, ask a project Owner to assign your account the "Service Account User" role on these service accounts from this URL:\n\n` +
+      `https://console.cloud.google.com/iam-admin/serviceaccounts?project=${projectId}`,
+  );
 }
 
 /**

@@ -4,6 +4,8 @@ import * as checkIam from "./checkIam";
 import * as storage from "../../gcp/storage";
 import * as rm from "../../gcp/resourceManager";
 import * as backend from "./backend";
+import * as ensure from "./ensure";
+import * as iam from "../../gcp/iam";
 
 const projectId = "my-project";
 const projectNumber = "123456789";
@@ -72,6 +74,158 @@ describe("checkIam", () => {
           members: [`serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`],
         },
       ]);
+    });
+  });
+
+  describe("checkServiceAccountIam", () => {
+    const APPSPOT_SA = `${projectId}@appspot.gserviceaccount.com`;
+    const COMPUTE_SA = `${projectNumber}-compute@developer.gserviceaccount.com`;
+    const CUSTOM_SA = `custom@${projectId}.iam.gserviceaccount.com`;
+
+    let testIamStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      testIamStub = sinon.stub(iam, "testResourceIamPermissions");
+      sinon
+        .stub(ensure, "defaultServiceAccount")
+        .callsFake((e: backend.Endpoint) =>
+          Promise.resolve(e.platform === "gcfv1" ? APPSPOT_SA : COMPUTE_SA),
+        );
+    });
+
+    function endpoint(
+      id: string,
+      platform: backend.Endpoint["platform"],
+      serviceAccount?: string,
+    ): backend.Endpoint {
+      return {
+        id,
+        entryPoint: id,
+        platform,
+        httpsTrigger: {},
+        region: "us-central1",
+        project: projectId,
+        runtime: "nodejs22",
+        ...(serviceAccount ? { serviceAccount } : {}),
+      };
+    }
+
+    function allow(...allowed: string[]): void {
+      testIamStub.callsFake((_origin: string, _version: string, resource: string) => {
+        const passed = allowed.some((sa) => resource === `projects/-/serviceAccounts/${sa}`);
+        return Promise.resolve({
+          allowed: passed ? ["iam.serviceAccounts.actAs"] : [],
+          missing: passed ? [] : ["iam.serviceAccounts.actAs"],
+          passed,
+        });
+      });
+    }
+
+    function checkedResources(): string[] {
+      return testIamStub.getCalls().map((c) => c.args[2] as string);
+    }
+
+    it("checks the compute default SA and not the App Engine SA for gcfv2 functions", async () => {
+      allow(COMPUTE_SA);
+
+      await checkIam.checkServiceAccountIam(projectId, backend.of(endpoint("fn", "gcfv2")));
+
+      expect(testIamStub).to.have.been.calledOnceWithExactly(
+        "https://iam.googleapis.com",
+        "v1",
+        `projects/-/serviceAccounts/${COMPUTE_SA}`,
+        ["iam.serviceAccounts.actAs"],
+      );
+    });
+
+    it("checks the App Engine SA for gcfv1 functions", async () => {
+      allow(APPSPOT_SA);
+
+      await checkIam.checkServiceAccountIam(projectId, backend.of(endpoint("fn", "gcfv1")));
+
+      expect(checkedResources()).to.deep.equal([`projects/-/serviceAccounts/${APPSPOT_SA}`]);
+    });
+
+    it("checks only the explicit service account when one is set", async () => {
+      allow(CUSTOM_SA);
+
+      await checkIam.checkServiceAccountIam(
+        projectId,
+        backend.of(endpoint("fn", "gcfv2", CUSTOM_SA)),
+      );
+
+      expect(checkedResources()).to.deep.equal([`projects/-/serviceAccounts/${CUSTOM_SA}`]);
+    });
+
+    it("expands a project-relative service account before checking it", async () => {
+      allow(CUSTOM_SA);
+
+      await checkIam.checkServiceAccountIam(
+        projectId,
+        backend.of(endpoint("fn", "gcfv2", "custom@")),
+      );
+
+      expect(checkedResources()).to.deep.equal([`projects/-/serviceAccounts/${CUSTOM_SA}`]);
+    });
+
+    it("checks each service account once", async () => {
+      allow(COMPUTE_SA, CUSTOM_SA);
+
+      await checkIam.checkServiceAccountIam(
+        projectId,
+        backend.of(
+          endpoint("a", "gcfv2"),
+          endpoint("b", "gcfv2"),
+          endpoint("c", "gcfv2", CUSTOM_SA),
+          endpoint("d", "gcfv2", CUSTOM_SA),
+        ),
+      );
+
+      expect(checkedResources()).to.have.members([
+        `projects/-/serviceAccounts/${COMPUTE_SA}`,
+        `projects/-/serviceAccounts/${CUSTOM_SA}`,
+      ]);
+      expect(testIamStub).to.have.been.calledTwice;
+    });
+
+    it("throws listing only the denied service accounts and the functions using them", async () => {
+      allow(CUSTOM_SA);
+
+      const err = await checkIam
+        .checkServiceAccountIam(
+          projectId,
+          backend.of(
+            endpoint("a", "gcfv2"),
+            endpoint("b", "gcfv2"),
+            endpoint("c", "gcfv2", CUSTOM_SA),
+          ),
+        )
+        .then(
+          () => undefined,
+          (e: Error) => e,
+        );
+
+      expect(err).to.be.instanceOf(Error);
+      expect(err?.message).to.include(`${COMPUTE_SA}`);
+      expect(err?.message).to.include("(used by: a, b)");
+      expect(err?.message).to.not.include(CUSTOM_SA);
+      expect(err?.message).to.include(
+        `https://console.cloud.google.com/iam-admin/serviceaccounts?project=${projectId}`,
+      );
+    });
+
+    it("does not throw when the permission check itself errors", async () => {
+      testIamStub.rejects(new Error("404 Unknown service account"));
+
+      await checkIam.checkServiceAccountIam(projectId, backend.of(endpoint("fn", "gcfv2")));
+
+      expect(testIamStub).to.have.been.calledOnce;
+    });
+
+    it("checks nothing when no functions are being deployed", async () => {
+      await checkIam.checkServiceAccountIam(projectId, backend.empty());
+
+      expect(testIamStub).to.not.have.been.called;
     });
   });
 
