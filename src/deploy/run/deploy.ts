@@ -284,11 +284,14 @@ export function localBuildTemplate(
     // The build didn't name a start command, so don't keep one from an earlier revision.
     delete container.command;
   }
-  // Add the env vars the build says the app needs, unless the service already sets them.
-  const existingNames = new Set((container.env || []).map((e) => e.name));
-  const newEnv = build.env.filter((e) => !existingNames.has(e.name));
-  if (newEnv.length) {
-    container.env = [...(container.env || []), ...newEnv];
+  // Set the runtime env vars that the build reports. Like the start command, they describe this
+  // build's output, so the build wins: each one replaces any env var of the same name on the
+  // service, even one set in the console or with gcloud. The service's other env vars are kept.
+  // A var that an earlier build set stays on the service if this build stops reporting it.
+  if (build.env.length) {
+    const buildNames = new Set(build.env.map((e) => e.name));
+    const otherEnv = (container.env || []).filter((e) => !buildNames.has(e.name));
+    container.env = [...otherEnv, ...build.env];
   }
   return template;
 }
