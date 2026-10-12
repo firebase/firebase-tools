@@ -40,7 +40,9 @@ export class LoggingEmulator implements EmulatorInstance {
   constructor(private args: LoggingEmulatorArgs) {}
 
   start(): Promise<void> {
-    this.transport = new WebSocketTransport();
+    this.transport = new WebSocketTransport({
+      level: process.env.DEBUG ? "debug" : "info",
+    });
     this.transport.start(this.getInfo());
     logger.add(this.transport);
     return Promise.resolve();
@@ -78,7 +80,7 @@ class WebSocketTransport extends TransportStream {
   connections = new Set<WebSocket>();
   history: LogEntry[] = [];
 
-  constructor(options = {}) {
+  constructor(options: TransportStream.TransportStreamOptions = {}) {
     super(options);
     this.setMaxListeners(30);
   }

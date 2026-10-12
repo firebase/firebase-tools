@@ -6,7 +6,13 @@ import * as path from "path";
 
 import * as Transport from "winston-transport";
 
-import { logger, findAvailableLogFile, resolveLogTarget, useFileLogger } from "./logger";
+import {
+  logger,
+  findAvailableLogFile,
+  resolveLogTarget,
+  useFileLogger,
+  useConsoleLoggers,
+} from "./logger";
 
 interface FileTransport extends Transport {
   dirname?: string;
@@ -27,10 +33,13 @@ function getLoggerTransports(logObj: unknown): FileTransport[] {
 
 describe("logger", () => {
   const originalEnv = process.env.FIREBASE_DEBUG_PATH;
+  const originalDebug = process.env.DEBUG;
+  let originalLevel: string;
   let testTmpDir: string;
 
   beforeEach(() => {
     delete process.env.FIREBASE_DEBUG_PATH;
+    originalLevel = logger.level;
     testTmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "firebase-debug-test-"));
   });
 
@@ -40,6 +49,12 @@ describe("logger", () => {
     } else {
       delete process.env.FIREBASE_DEBUG_PATH;
     }
+    if (originalDebug !== undefined) {
+      process.env.DEBUG = originalDebug;
+    } else {
+      delete process.env.DEBUG;
+    }
+    logger.level = originalLevel;
     sinon.restore();
     if (fs.existsSync(testTmpDir)) {
       fs.rmSync(testTmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
@@ -308,6 +323,26 @@ describe("logger", () => {
         if (fileTransport.close) {
           fileTransport.close();
         }
+      }
+    });
+  });
+
+  describe("useConsoleLoggers", () => {
+    it("should set root logger level to debug when DEBUG env var is set", () => {
+      process.env.DEBUG = "true";
+      const beforeTransports = [...getLoggerTransports(logger)];
+
+      useConsoleLoggers();
+
+      expect(logger.level).to.equal("debug");
+
+      const afterTransports = getLoggerTransports(logger);
+      const addedTransports = afterTransports.filter((t) => !beforeTransports.includes(t));
+      expect(addedTransports).to.have.lengthOf(1);
+      expect(addedTransports[0].level).to.equal("debug");
+
+      for (const t of addedTransports) {
+        logger.remove(t);
       }
     });
   });

@@ -102,3 +102,32 @@ describe("downloadDetails", () => {
     expect(downloadableEmulators.emulatorVersionOverride(Emulators.PUBSUB)).to.equal(fakeVersion);
   });
 });
+
+describe("parseLogLevel", () => {
+  it("should parse SEVERE and ERROR logs as ERROR", () => {
+    expect(downloadableEmulators.parseLogLevel("SEVERE: Unhandled exception")).to.equal("ERROR");
+    expect(downloadableEmulators.parseLogLevel("ERROR: Rules evaluation failed")).to.equal("ERROR");
+    expect(downloadableEmulators.parseLogLevel("[error] something failed")).to.equal("ERROR");
+  });
+
+  it("should parse WARNING and WARN logs as WARN", () => {
+    expect(downloadableEmulators.parseLogLevel("WARNING: Permission denied")).to.equal("WARN");
+    expect(downloadableEmulators.parseLogLevel("WARN: Deprecated syntax")).to.equal("WARN");
+    expect(downloadableEmulators.parseLogLevel("[warning] check rules")).to.equal("WARN");
+  });
+
+  it("should parse INFO logs as INFO", () => {
+    expect(downloadableEmulators.parseLogLevel("INFO: Cloud Firestore Emulator running")).to.equal(
+      "INFO",
+    );
+    expect(downloadableEmulators.parseLogLevel("[info] Listening on port 8080")).to.equal("INFO");
+  });
+
+  it("should default to DEBUG when no higher severity keyword matches", () => {
+    expect(downloadableEmulators.parseLogLevel("FINE: Detailed trace message")).to.equal("DEBUG");
+    expect(downloadableEmulators.parseLogLevel("API endpoint: http://localhost:8080")).to.equal(
+      "DEBUG",
+    );
+    expect(downloadableEmulators.parseLogLevel("Some informational text")).to.equal("DEBUG");
+  });
+});
