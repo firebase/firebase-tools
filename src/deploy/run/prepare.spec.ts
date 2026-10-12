@@ -81,7 +81,7 @@ describe("run prepare", () => {
       getServiceStub.resolves(webWithoutBaseImage);
 
       await expect(prepareRun(localWeb)).to.be.rejectedWith(
-        'Local builds require a base image. Set one for service web in us-central1 with "firebase run:services:update web:us-central1 --base-image <baseImage>".',
+        'Local builds require a base image. Set one for service web in us-central1 with "firebase run:services:update web --region us-central1 --base-image <baseImage>".',
       );
     });
 

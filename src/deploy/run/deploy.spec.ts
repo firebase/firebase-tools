@@ -10,7 +10,7 @@ import { Options } from "../../options";
 import * as apphostingPrepare from "../apphosting/prepare";
 import * as apphostingUtil from "../apphosting/util";
 import { ServiceDeploy } from "./args";
-import { deploy, revisionTemplate } from "./deploy";
+import { deploy, localBuildTemplate, revisionTemplate } from "./deploy";
 
 const NODEJS22 = "us-central1-docker.pkg.dev/serverless-runtimes/google-22/runtimes/nodejs22";
 const DEPLOY_MESSAGE = "firebase.google.com/deploy-message";
@@ -252,13 +252,13 @@ describe("run deploy", () => {
     }
 
     it("starts a new service with just the image", () => {
-      expect(revisionTemplate({ config: web }, { image })).to.deep.equal({
+      expect(revisionTemplate({ config: web }, image)).to.deep.equal({
         containers: [{ name: "web", image }],
       });
     });
 
     it("keeps the live revision's settings, but not its name", () => {
-      const template = revisionTemplate({ config: web, existing, baseImage: NODEJS22 }, { image });
+      const template = revisionTemplate({ config: web, existing, baseImage: NODEJS22 }, image);
 
       expect(template).to.deep.equal({
         serviceAccount: "web@my-project.iam.gserviceaccount.com",
@@ -274,55 +274,23 @@ describe("run deploy", () => {
     it("sets the base image, or clears it", () => {
       const withBaseImage = revisionTemplate(
         { config: web, existing, baseImage: "nodejs24" },
-        { image },
+        image,
       );
       expect(withBaseImage.containers?.[0].baseImageUri).to.equal("nodejs24");
 
-      const withoutBaseImage = revisionTemplate({ config: web, existing }, { image });
+      const withoutBaseImage = revisionTemplate({ config: web, existing }, image);
       expect(withoutBaseImage.containers?.[0]).not.to.have.property("baseImageUri");
     });
 
     it("sets the deploy message, or clears the last one", () => {
-      const withMessage = revisionTemplate(
-        { config: web, existing },
-        { image },
-        "Fix the login page",
-      );
+      const withMessage = revisionTemplate({ config: web, existing }, image, "Fix the login page");
       expect(withMessage.annotations).to.deep.equal({
         team: "frontend",
         [DEPLOY_MESSAGE]: "Fix the login page",
       });
 
-      const withoutMessage = revisionTemplate({ config: web, existing }, { image });
+      const withoutMessage = revisionTemplate({ config: web, existing }, image);
       expect(withoutMessage.annotations).to.deep.equal({ team: "frontend" });
-    });
-
-    it("runs a local build's output with the build's start command", () => {
-      // The command is split on whitespace, so stray spaces don't become empty arguments.
-      const localBuild = { scratchDir, outputFiles: [".next"], runCommand: " npm  run start " };
-
-      const template = revisionTemplate({ config: web, existing, localBuild }, { builtApp });
-
-      expect(template.containers?.[0]).to.deep.include({
-        image: "scratch",
-        sourceCode: { cloudStorageSource: builtApp },
-        command: ["npm", "run", "start"],
-      });
-    });
-
-    it("adds the env vars a local build needs, unless the service already sets them", () => {
-      const env = [
-        { name: "MODE", value: "development" },
-        { name: "NODE_ENV", value: "production" },
-      ];
-      const localBuild = { scratchDir, outputFiles: [".next"], env };
-
-      const template = revisionTemplate({ config: web, existing, localBuild }, { builtApp });
-
-      expect(template.containers?.[0].env).to.deep.equal([
-        { name: "MODE", value: "prod" },
-        { name: "NODE_ENV", value: "production" },
-      ]);
     });
 
     it("switches a service from a local build back to an image", () => {
@@ -332,9 +300,39 @@ describe("run deploy", () => {
         sourceCode: { cloudStorageSource: builtApp },
       });
 
-      const template = revisionTemplate({ config: web, existing: fromLocalBuild }, { image });
+      const template = revisionTemplate({ config: web, existing: fromLocalBuild }, image);
 
       expect(template).to.deep.equal({ containers: [{ name: "web", image }] });
+    });
+
+    describe("localBuildTemplate", () => {
+      it("runs a local build's output with the build's start command", () => {
+        // The command is split on whitespace, so stray spaces don't become empty arguments.
+        const build = { outputFiles: [".next"], runCommand: " npm  run start ", env: [] };
+
+        const template = localBuildTemplate({ config: web, existing }, build, builtApp);
+
+        expect(template.containers?.[0]).to.deep.include({
+          image: "scratch",
+          sourceCode: { cloudStorageSource: builtApp },
+          command: ["npm", "run", "start"],
+        });
+      });
+
+      it("adds the env vars a local build needs, unless the service already sets them", () => {
+        const env = [
+          { name: "MODE", value: "development" },
+          { name: "NODE_ENV", value: "production" },
+        ];
+        const build = { outputFiles: [".next"], env };
+
+        const template = localBuildTemplate({ config: web, existing }, build, builtApp);
+
+        expect(template.containers?.[0].env).to.deep.equal([
+          { name: "MODE", value: "prod" },
+          { name: "NODE_ENV", value: "production" },
+        ]);
+      });
     });
   });
 });
