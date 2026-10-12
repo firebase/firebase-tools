@@ -473,6 +473,29 @@ env:
     });
   });
 
+  describe("splitEnvVars", () => {
+    it("should stringify numeric values", () => {
+      const env: AppHostingYamlConfig["env"] = {
+        STR: { value: "string" },
+        NUM: { value: 12345 as unknown as string },
+        BUILD_AND_RUNTIME_NUM: {
+          value: 67890 as unknown as string,
+          availability: ["BUILD", "RUNTIME"],
+        },
+      };
+
+      const { build, runtime } = config.splitEnvVars(env);
+
+      expect(build["STR"].value).to.equal("string");
+      expect(build["NUM"].value).to.equal("12345");
+      expect(build["BUILD_AND_RUNTIME_NUM"].value).to.equal("67890");
+      expect(runtime["STR"].value).to.equal("string");
+      expect(runtime["NUM"].value).to.equal("12345");
+      expect(runtime["BUILD_AND_RUNTIME_NUM"].value).to.equal("67890");
+      expect(runtime["BUILD_AND_RUNTIME_NUM"].availability).to.deep.equal(["BUILD", "RUNTIME"]);
+    });
+  });
+
   describe("getAppHostingConfiguration", () => {
     let loadAppHostingYamlStub: sinon.SinonStub;
     let listAppHostingFilesInPathStub: sinon.SinonStub;
@@ -576,6 +599,24 @@ env:
         .returns(configSecretsToPlaintext);
 
       await expect(config.getAppHostingConfiguration("./")).to.be.rejectedWith(FirebaseError);
+    });
+
+    it("should ignore emulator and local yaml files when includeLocalConfigs is false", async () => {
+      listAppHostingFilesInPathStub.returns([
+        "/parent/cwd/apphosting.yaml",
+        "/parent/cwd/apphosting.emulator.yaml",
+        "/parent/apphosting.local.yaml",
+      ]);
+
+      loadAppHostingYamlStub.withArgs("/parent/cwd/apphosting.yaml").returns(configOne);
+      loadAppHostingYamlStub.withArgs("/parent/cwd/apphosting.emulator.yaml").returns(configTwo);
+      loadAppHostingYamlStub
+        .withArgs("/parent/apphosting.local.yaml")
+        .returns(configSecretsToPlaintext);
+
+      const apphostingConfig = await config.getAppHostingConfiguration("./", false);
+
+      expect(apphostingConfig.env).to.deep.equal(apphostingYamlEnvOne);
     });
   });
 });

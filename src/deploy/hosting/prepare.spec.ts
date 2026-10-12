@@ -29,6 +29,12 @@ describe("hosting prepare", () => {
     trackingStub = sinon.stub(tracking);
     backendStub = sinon.stub(backend);
     loggerStub = sinon.stub(utils, "logLabeledBullet");
+    hostingStub.getSite.resolves({
+      name: "projects/project/sites/site",
+      defaultUrl: "https://site.web.app",
+      appId: "app-id",
+      labels: {},
+    });
 
     // We're intentionally using pointer references so that editing site
     // edits the results of hostingConfig() and changes firebase.json
@@ -82,7 +88,8 @@ describe("hosting prepare", () => {
     siteConfig.webFramework = "fake-framework";
 
     // Edit the in-memory config to add a web framework
-    hostingStub.createVersion.callsFake((siteId, version) => {
+    hostingStub.createVersion.callsFake((projectId, siteId, version) => {
+      expect(projectId).to.equal("project");
       expect(siteId).to.equal(siteConfig.site);
       expect(version.status).to.equal("CREATED");
       expect(version.labels).to.deep.equal({
@@ -120,7 +127,8 @@ describe("hosting prepare", () => {
     // Do not set a web framework on siteConfig
 
     // Edit the in-memory config to add a web framework
-    hostingStub.createVersion.callsFake((siteId, version) => {
+    hostingStub.createVersion.callsFake((projectId, siteId, version) => {
+      expect(projectId).to.equal("project");
       expect(siteId).to.equal(siteConfig.site);
       expect(version.status).to.equal("CREATED");
       // Note: we're missing the web framework label
@@ -145,6 +153,34 @@ describe("hosting prepare", () => {
         },
       ],
     });
+  });
+
+  it("throws error if site does not exist in project", async () => {
+    hostingStub.getSite.rejects(new Error(`could not find site "site" for project "project"`));
+
+    const context: Context = {
+      projectId: "project",
+    };
+
+    await expect(prepare(context, options)).to.eventually.be.rejectedWith(
+      `could not find site "site" for project "project"`,
+    );
+  });
+
+  it("passes if site belongs to project", async () => {
+    hostingStub.getSite.resolves({
+      name: "projects/project/sites/site",
+      defaultUrl: "https://site.web.app",
+      appId: "app-id",
+      labels: {},
+    });
+    hostingStub.createVersion.resolves("version");
+
+    const context: Context = {
+      projectId: "project",
+    };
+
+    await expect(prepare(context, options)).to.eventually.be.fulfilled;
   });
 
   describe("unsafePins", () => {

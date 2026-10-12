@@ -49,6 +49,8 @@ export const run_tests = tool(
   {
     name: "run_test",
     description: `Run a remote test.`,
+    humanReadableDescription:
+      "Run an automated test case on a remote Android or iOS device via Firebase App Distribution.",
     inputSchema: z.object({
       appId: ApplicationIdSchema,
       releaseBinaryFile: z.string().describe("Path to the binary release (APK)."),
@@ -69,7 +71,11 @@ export const run_tests = tool(
     const devices = testDevices || defaultDevices;
     const client = new AppDistributionClient();
     const release = await upload(client, toAppName(appId), new Distribution(releaseBinaryFile));
-    return toContent(await client.createReleaseTest(release.name, devices, testCase));
+    return toContent(
+      await client.createReleaseTest(release.name, devices, {
+        aiInstructions: testCase,
+      }),
+    );
   },
 );
 
@@ -79,6 +85,8 @@ export const check_status = tool(
     name: "check_status",
     description:
       "Check the status of an apptesting release test and/or get available devices that can be used for automated tests ",
+    humanReadableDescription:
+      "Check the status of an automated release test or list available test devices.",
     inputSchema: z.object({
       release_test_name: z
         .string()

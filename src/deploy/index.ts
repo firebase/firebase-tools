@@ -4,7 +4,7 @@ import { hostingOrigin } from "../api";
 import { bold, underline, white } from "colorette";
 import { includes, each } from "lodash";
 import { needProjectId } from "../projectUtils";
-import { logBullet, logSuccess, consoleUrl, addSubdomain } from "../utils";
+import { logBullet, logSuccess, consoleUrl, addSubdomain, isRunningInGithubAction } from "../utils";
 import { FirebaseError } from "../error";
 import { AnalyticsParams, trackGA4 } from "../track";
 import { lifecycleHooks } from "./lifecycleHooks";
@@ -19,11 +19,10 @@ import * as ExtensionsTarget from "./extensions";
 import * as DataConnectTarget from "./dataconnect";
 import * as AppHostingTarget from "./apphosting";
 import * as AuthTarget from "./auth";
+import * as AiLogicTarget from "./ailogic";
 import { prepareFrameworks } from "../frameworks";
 import { Context as HostingContext } from "./hosting/context";
 import { addPinnedFunctionsToOnlyString, hasPinnedFunctions } from "./hosting/prepare";
-import { isRunningInGithubAction } from "../utils";
-import { TARGET_PERMISSIONS } from "../commands/deploy";
 import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
 import { HostingConfig } from "../firebaseConfig";
@@ -33,7 +32,82 @@ import {
   deployStatsParams,
 } from "./dataconnect/context";
 
-const TARGETS = {
+export const VALID_DEPLOY_TARGETS = [
+  "database",
+  "storage",
+  "firestore",
+  "functions",
+  "hosting",
+  "remoteconfig",
+  "extensions",
+  "dataconnect",
+  "apphosting",
+  "auth",
+  "ailogic",
+] as const;
+
+export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], string[]> = {
+  database: ["firebasedatabase.instances.update"],
+  hosting: ["firebasehosting.sites.update"],
+  functions: [
+    "cloudfunctions.functions.list",
+    "cloudfunctions.functions.create",
+    "cloudfunctions.functions.get",
+    "cloudfunctions.functions.update",
+    "cloudfunctions.functions.delete",
+    "cloudfunctions.operations.get",
+  ],
+  firestore: [
+    "datastore.indexes.list",
+    "datastore.indexes.create",
+    "datastore.indexes.update",
+    "datastore.indexes.delete",
+  ],
+  storage: [
+    "firebaserules.releases.create",
+    "firebaserules.rulesets.create",
+    "firebaserules.releases.update",
+  ],
+  remoteconfig: ["cloudconfig.configs.get", "cloudconfig.configs.update"],
+  dataconnect: [
+    "cloudsql.databases.create",
+    "cloudsql.databases.update",
+    "cloudsql.instances.connect",
+    "cloudsql.instances.create", // TODO: Support users who don't have cSQL writer permissions and want to use existing instances
+    "cloudsql.instances.get",
+    "cloudsql.instances.list",
+    "cloudsql.instances.update",
+    "cloudsql.users.create",
+    "firebasedataconnect.connectors.create",
+    "firebasedataconnect.connectors.delete",
+    "firebasedataconnect.connectors.list",
+    "firebasedataconnect.connectors.update",
+    "firebasedataconnect.operations.get",
+    "firebasedataconnect.services.create",
+    "firebasedataconnect.services.delete",
+    "firebasedataconnect.services.update",
+    "firebasedataconnect.services.list",
+    "firebasedataconnect.schemas.create",
+    "firebasedataconnect.schemas.delete",
+    "firebasedataconnect.schemas.list",
+    "firebasedataconnect.schemas.update",
+  ],
+  apphosting: [],
+  extensions: [],
+  auth: ["firebase.projects.update", "firebaseauth.configs.update"],
+  ailogic: [
+    // Deploy reads the remote state (get), creates/updates (update), and deletes
+    // templates whose files were removed; preflight all three so a partial
+    // deploy cannot start with permissions that only cover part of the plan.
+    "firebasevertexai.templates.update",
+    "firebasevertexai.templates.get",
+    "firebasevertexai.templates.delete",
+    // ensureAILogicApiEnabled reads API enablement state via Service Usage.
+    "serviceusage.services.get",
+  ],
+};
+
+export const TARGETS = {
   hosting: HostingTarget,
   database: DatabaseTarget,
   firestore: FirestoreTarget,
@@ -44,6 +118,7 @@ const TARGETS = {
   dataconnect: DataConnectTarget,
   apphosting: AppHostingTarget,
   auth: AuthTarget,
+  ailogic: AiLogicTarget,
 };
 
 export type DeployOptions = Options & { dryRun?: boolean };

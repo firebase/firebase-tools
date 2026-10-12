@@ -11,7 +11,6 @@ const apiClient = new Client({
   urlPrefix: googleOrigin(),
 });
 
-// TODO: support for MFA at runtime was added in PR #3173, but this exporter currently ignores `mfaInfo` and loses the data on export.
 const EXPORTED_JSON_KEYS = [
   "localId",
   "email",
@@ -25,6 +24,7 @@ const EXPORTED_JSON_KEYS = [
   "phoneNumber",
   "disabled",
   "customAttributes",
+  "mfaInfo",
 ];
 const EXPORTED_JSON_KEYS_RENAMING: Record<string, string> = {
   lastLoginAt: "lastSignedInAt",
@@ -41,12 +41,19 @@ const PROVIDER_ID_INDEX_MAP = new Map<string, number>([
   ["facebook.com", 11],
   ["twitter.com", 15],
   ["github.com", 19],
+  ["apple.com", 28],
+  ["microsoft.com", 32],
+  ["gc.apple.com", 36],
+  ["playgames.google.com", 40],
+  ["linkedin.com", 44],
+  ["yahoo.com", 48],
 ]);
 
-function escapeComma(str: string): string {
-  if (str.includes(",")) {
-    // Encapsulate the string with quotes if it contains a comma.
-    return `"${str}"`;
+function escapeCsv(str: string): string {
+  if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
+    // Encapsulate the string with quotes if it contains a comma, quote, or newline.
+    // Also escape any existing quotes by doubling them.
+    return `"${str.replace(/"/g, '""')}"`;
   }
   return str;
 }
@@ -58,18 +65,19 @@ function convertToNormalBase64(data: string): string {
 function addProviderUserInfo(providerInfo: any, arr: any[], startPos: number): void {
   arr[startPos] = providerInfo.rawId;
   arr[startPos + 1] = providerInfo.email || "";
-  arr[startPos + 2] = escapeComma(providerInfo.displayName || "");
+  arr[startPos + 2] = escapeCsv(providerInfo.displayName || "");
   arr[startPos + 3] = providerInfo.photoUrl || "";
 }
 
 function transUserToArray(user: any): any[] {
-  const arr = Array(27).fill("");
+  const arrLength = Math.max(...PROVIDER_ID_INDEX_MAP.values()) + 4;
+  const arr = Array(arrLength).fill("");
   arr[0] = user.localId;
   arr[1] = user.email || "";
   arr[2] = user.emailVerified || false;
   arr[3] = convertToNormalBase64(user.passwordHash || "");
   arr[4] = convertToNormalBase64(user.salt || "");
-  arr[5] = escapeComma(user.displayName || "");
+  arr[5] = escapeCsv(user.displayName || "");
   arr[6] = user.photoUrl || "";
   for (let i = 0; i < (!user.providerUserInfo ? 0 : user.providerUserInfo.length); i++) {
     const providerInfo = user.providerUserInfo[i];

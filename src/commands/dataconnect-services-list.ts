@@ -10,7 +10,7 @@ import * as Table from "cli-table3";
 
 // TODO: Update this command to also list secondary schema information.
 export const command = new Command("dataconnect:services:list")
-  .description("list all deployed Data Connect services")
+  .description("list all deployed SQL Connect services")
   .before(requirePermissions, [
     "dataconnect.services.list",
     "dataconnect.schemas.list",

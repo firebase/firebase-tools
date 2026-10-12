@@ -1,4 +1,4 @@
-FROM node:lts-alpine AS app-env
+FROM node:24.16-alpine AS app-env
 
 # Make sure to get the latest version of npm before doing anything else, to avoid vulnerabilities in npm's bundled dependencies.
 RUN npm install -g npm@latest
@@ -20,6 +20,7 @@ COPY package-lock.json /usr/local/node_packages/
 
 WORKDIR /usr/local/node_packages/
 RUN npm install && npm update
+RUN chmod -R 755 /usr/local/node_packages /usr/local/lib/node_modules
 ENV PATH="/usr/local/node_packages/node_modules/.bin:${PATH}"
 
 WORKDIR /

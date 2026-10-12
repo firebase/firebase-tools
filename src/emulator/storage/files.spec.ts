@@ -82,7 +82,7 @@ describe("files", () => {
 
     type UploadFileOptions = {
       data?: string;
-      metadata?: Object;
+      metadata?: Record<string, unknown>;
     };
 
     async function uploadFile(

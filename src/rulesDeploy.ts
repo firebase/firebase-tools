@@ -48,8 +48,8 @@ const RulesetType = {
  */
 export class RulesDeploy {
   private project: string;
-  private rulesFiles: { [path: string]: RulesetFile[] };
-  private rulesetNames: { [x: string]: string };
+  private rulesFiles: Array<{ path: string; files: RulesetFile[]; databaseId?: string }>;
+  private rulesetNames: { [key: string]: string };
 
   /**
    * Creates a RulesDeploy instance.
@@ -61,7 +61,7 @@ export class RulesDeploy {
     private type: RulesetServiceType,
   ) {
     this.project = options.project;
-    this.rulesFiles = {};
+    this.rulesFiles = [];
     this.rulesetNames = {};
   }
 
@@ -70,7 +70,7 @@ export class RulesDeploy {
    * deployment for this RulesDeploy.
    * @param path path of file to be included.
    */
-  addFile(path: string): void {
+  addFile(path: string, databaseId?: string): void {
     const fullPath = this.options.config.path(path);
     let src;
     try {
@@ -80,7 +80,7 @@ export class RulesDeploy {
       throw new FirebaseError(`Error reading rules file ${bold(path)}`);
     }
 
-    this.rulesFiles[path] = [{ name: path, content: src }];
+    this.rulesFiles.push({ path, files: [{ name: path, content: src }], databaseId });
   }
 
   /**
@@ -89,8 +89,8 @@ export class RulesDeploy {
    */
   async compile(): Promise<void> {
     await Promise.all(
-      Object.keys(this.rulesFiles).map((filename) => {
-        return this.compileRuleset(filename, this.rulesFiles[filename]);
+      this.rulesFiles.map((entry) => {
+        return this.compileRuleset(entry.path, entry.files);
       }),
     );
   }
@@ -102,8 +102,15 @@ export class RulesDeploy {
    */
   private async getCurrentRules(
     service: RulesetServiceType,
+    releases: Release[],
+    databaseId?: string,
   ): Promise<{ latestName: string | null; latestContent: RulesetFile[] | null }> {
-    const latestName = await gcp.rules.getLatestRulesetName(this.options.project, service);
+    const latestName = await gcp.rules.getLatestRulesetName(
+      this.options.project,
+      service,
+      releases,
+      databaseId,
+    );
     let latestContent: RulesetFile[] | null = null;
     if (latestName) {
       latestContent = await gcp.rules.getRulesetContent(latestName);
@@ -165,20 +172,31 @@ export class RulesDeploy {
    */
   async createRulesets(service: RulesetServiceType): Promise<string[]> {
     const createdRulesetNames: string[] = [];
-
-    const { latestName: latestRulesetName, latestContent: latestRulesetContent } =
-      await this.getCurrentRules(service);
+    const releases = await gcp.rules.listAllReleases(this.options.project);
 
     // TODO: Make this into a more useful helper method.
     // Gather the files to be uploaded.
-    const newRulesetsByFilename = new Map<string, Promise<string>>();
-    for (const [filename, files] of Object.entries(this.rulesFiles)) {
+    const newRulesetsByKey = new Map<string, Promise<string>>();
+    for (const entry of this.rulesFiles) {
+      const { path: filename, files, databaseId } = entry;
+
+      // Normalize databaseId for default database
+      const normalizedDatabaseId = databaseId === "(default)" ? undefined : databaseId;
+
+      const { latestName: latestRulesetName, latestContent: latestRulesetContent } =
+        await this.getCurrentRules(service, releases, normalizedDatabaseId);
+
+      const key =
+        this.type === RulesetServiceType.FIREBASE_STORAGE
+          ? filename
+          : `${filename}:${databaseId || ""}`;
+
       if (latestRulesetName && _.isEqual(files, latestRulesetContent)) {
         utils.logLabeledBullet(
           RulesetType[this.type],
           `latest version of ${bold(filename)} already up to date, skipping upload...`,
         );
-        this.rulesetNames[filename] = latestRulesetName;
+        this.rulesetNames[key] = latestRulesetName;
         continue;
       }
       if (service === RulesetServiceType.FIREBASE_STORAGE) {
@@ -186,14 +204,28 @@ export class RulesDeploy {
       }
 
       utils.logLabeledBullet(RulesetType[this.type], `uploading rules ${bold(filename)}...`);
-      newRulesetsByFilename.set(filename, gcp.rules.createRuleset(this.options.project, files));
+
+      let attachmentPoint: string | undefined;
+      if (
+        this.type === RulesetServiceType.CLOUD_FIRESTORE &&
+        databaseId &&
+        databaseId !== "(default)"
+      ) {
+        const projectNumber = await getProjectNumber(this.options);
+        attachmentPoint = `firestore.googleapis.com/projects/${projectNumber}/databases/${databaseId}`;
+      }
+
+      newRulesetsByKey.set(
+        key,
+        gcp.rules.createRuleset(this.options.project, files, attachmentPoint),
+      );
     }
 
     try {
-      await Promise.all(newRulesetsByFilename.values());
+      await Promise.all(newRulesetsByKey.values());
       // All the values are now resolves, so `await` here reads the strings.
-      for (const [filename, rulesetName] of newRulesetsByFilename) {
-        this.rulesetNames[filename] = await rulesetName;
+      for (const [key, rulesetName] of newRulesetsByKey) {
+        this.rulesetNames[key] = await rulesetName;
         createdRulesetNames.push(await rulesetName);
       }
     } catch (err: unknown) {
@@ -245,10 +277,20 @@ export class RulesDeploy {
     if (resourceName === RulesetServiceType.FIREBASE_STORAGE && !subResourceName) {
       throw new FirebaseError(`Cannot release resource type "${resourceName}"`);
     }
+
+    const key =
+      this.type === RulesetServiceType.FIREBASE_STORAGE
+        ? filename
+        : `${filename}:${subResourceName || ""}`;
+    const releaseName =
+      subResourceName && subResourceName !== "(default)"
+        ? `${resourceName}/${subResourceName}`
+        : resourceName;
+
     await gcp.rules.updateOrCreateRelease(
       this.options.project,
-      this.rulesetNames[filename],
-      subResourceName ? `${resourceName}/${subResourceName}` : resourceName,
+      this.rulesetNames[key],
+      releaseName,
     );
     utils.logLabeledSuccess(
       RulesetType[this.type],

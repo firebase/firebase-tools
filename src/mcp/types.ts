@@ -32,4 +32,5 @@ export interface McpContext {
   rc: RC;
   firebaseCliCommand: string;
   isBillingEnabled: boolean;
+  progressToken?: string | number;
 }

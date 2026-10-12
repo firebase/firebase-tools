@@ -1,5 +1,6 @@
 import { expect } from "chai";
 
+import { Index, Order, QueryScope, TextIndexType, TextMatchType } from "./api-types";
 import { Backup, BackupSchedule, DayOfWeek } from "../gcp/firestore";
 import { durationFromSeconds } from "../gcp/proto";
 import * as sort from "./api-sort";
@@ -58,7 +59,7 @@ describe("compareApiBackupSchedule", () => {
       retention: durationFromSeconds(60 * 60 * 24 * 7),
     };
     expect(sort.compareApiBackupSchedule(weeklySchedule, dailySchedule)).to.greaterThanOrEqual(1);
-    expect(sort.compareApiBackup(dailySchedule, weeklySchedule)).to.lessThanOrEqual(-1);
+    expect(sort.compareApiBackupSchedule(dailySchedule, weeklySchedule)).to.lessThanOrEqual(-1);
   });
 
   it("should compare schedules with the same recurrence by name", () => {
@@ -73,6 +74,100 @@ describe("compareApiBackupSchedule", () => {
       retention: durationFromSeconds(60 * 60 * 24),
     };
     expect(sort.compareApiBackupSchedule(dailySchedule1, dailySchedule2)).to.lessThanOrEqual(-1);
-    expect(sort.compareApiBackup(dailySchedule2, dailySchedule1)).to.greaterThanOrEqual(1);
+    expect(sort.compareApiBackupSchedule(dailySchedule2, dailySchedule1)).to.greaterThanOrEqual(1);
+  });
+});
+
+describe("compareApiIndex", () => {
+  it("should compare indexes by searchConfig", () => {
+    const indexNoSearch: Index = {
+      queryScope: QueryScope.COLLECTION,
+      fields: [{ fieldPath: "foo", order: Order.ASCENDING }],
+    };
+    const indexWithSearch1: Index = {
+      queryScope: QueryScope.COLLECTION,
+      fields: [
+        {
+          fieldPath: "foo",
+          searchConfig: {
+            textSpec: {
+              indexSpecs: [
+                { indexType: TextIndexType.TOKENIZED, matchType: TextMatchType.MATCH_GLOBALLY },
+              ],
+            },
+          },
+        },
+      ],
+    };
+    const indexWithSearch2: Index = {
+      queryScope: QueryScope.COLLECTION,
+      fields: [{ fieldPath: "foo", searchConfig: { geoSpec: { geoJsonIndexingDisabled: true } } }],
+    };
+
+    // Index without searchConfig should come before one with searchConfig
+    expect(sort.compareApiIndex(indexNoSearch, indexWithSearch1)).to.be.lessThan(0);
+    expect(sort.compareApiIndex(indexWithSearch1, indexNoSearch)).to.be.greaterThan(0);
+
+    // Indexes with a text search spec should compare based on the number of index specs within
+    // indexWithSearch1 has 1 text spec
+    // indexWithSearch2 has 0 text specs
+    expect(sort.compareApiIndex(indexWithSearch2, indexWithSearch1)).to.be.lessThan(0);
+    expect(sort.compareApiIndex(indexWithSearch1, indexWithSearch2)).to.be.greaterThan(0);
+
+    const indexWithSearch3: Index = {
+      queryScope: QueryScope.COLLECTION,
+      fields: [
+        {
+          fieldPath: "foo",
+          searchConfig: {
+            textSpec: {
+              indexSpecs: [
+                { indexType: TextIndexType.TOKENIZED, matchType: TextMatchType.MATCH_GLOBALLY },
+                { indexType: TextIndexType.TOKENIZED, matchType: TextMatchType.MATCH_GLOBALLY },
+              ],
+            },
+          },
+        },
+      ],
+    };
+
+    // indexWithSearch3 has 2 text specs, indexWithSearch1 has 1
+    expect(sort.compareApiIndex(indexWithSearch1, indexWithSearch3)).to.be.lessThan(0);
+    expect(sort.compareApiIndex(indexWithSearch3, indexWithSearch1)).to.be.greaterThan(0);
+
+    // Otherwise, just consider them equal
+    const indexWithSearch4: Index = {
+      queryScope: QueryScope.COLLECTION,
+      fields: [
+        {
+          fieldPath: "foo",
+          searchConfig: {
+            textSpec: {
+              indexSpecs: [
+                {
+                  indexType: TextIndexType.TOKENIZED,
+                  matchType: TextMatchType.TEXT_MATCH_TYPE_UNSPECIFIED,
+                },
+              ],
+            },
+          },
+        },
+      ],
+    };
+
+    // indexWithSearch1 and indexWithSearch4 both have 1 text spec, different content
+    // They should be considered equal
+    expect(sort.compareApiIndex(indexWithSearch1, indexWithSearch4)).to.equal(0);
+    expect(sort.compareApiIndex(indexWithSearch4, indexWithSearch1)).to.equal(0);
+
+    const indexWithSearch5: Index = {
+      queryScope: QueryScope.COLLECTION,
+      fields: [{ fieldPath: "foo", searchConfig: { geoSpec: { geoJsonIndexingDisabled: false } } }],
+    };
+
+    // indexWithSearch2 and indexWithSearch5 both have 0 text specs, different geoSpec
+    // They should be considered equal
+    expect(sort.compareApiIndex(indexWithSearch2, indexWithSearch5)).to.equal(0);
+    expect(sort.compareApiIndex(indexWithSearch5, indexWithSearch2)).to.equal(0);
   });
 });

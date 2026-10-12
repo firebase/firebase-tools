@@ -11,6 +11,7 @@ export const list_functions = tool(
   {
     name: "list_functions",
     description: "List all deployed functions in your Firebase project.",
+    humanReadableDescription: "List all deployed Cloud Functions in your Firebase project.",
     inputSchema: z.object({}),
     annotations: {
       title: "List Deployed Functions",
@@ -44,12 +45,15 @@ export const list_functions = tool(
       }));
 
       if (!formattedList.length) {
-        return toContent([], {
-          contentPrefix: "No functions found in this project.\n\n",
-        });
+        return toContent(
+          { functions: [] },
+          {
+            contentPrefix: "No functions found in this project.\n\n",
+          },
+        );
       }
 
-      return toContent(formattedList);
+      return toContent({ functions: formattedList });
     } catch (err) {
       const errMsg = getErrMsg((err as any)?.original || err, "Failed to list functions.");
       return mcpError(errMsg);

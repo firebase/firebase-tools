@@ -50,7 +50,7 @@ const EMULATOR_UPDATE_DETAILS: {
  * generate download details for a single emulator, based on the host environment.
  * pulls data from `downloadableEmulatorInfo.json`.
  * @param emulator The name of the downloadable emulator to get details for.
- * @returns The download details for the specified emulator.
+ * @return The download details for the specified emulator.
  */
 function generateDownloadDetails(emulator: DownloadableEmulators): EmulatorDownloadDetails {
   const emulatorUiDetails = experiments.isEnabled("emulatoruisnapshot")
@@ -244,6 +244,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
       "host",
       "rules",
       "websocket_port",
+      "database-edition",
       "functions_emulator",
       "seed_from_export",
       "project_id",
@@ -259,6 +260,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     // separately in ./storage/runtime.ts (not via the start function below).
     binary: "java",
     args: [
+      "-Djava.security.manager=disallow",
       // Required for rules error/warning messages, which are in English only.
       // Attempts to fetch the messages in another language leads to crashes.
       "-Duser.language=en",
@@ -651,14 +653,18 @@ export async function start(
   return _runBinary(emulator, command, extraEnv);
 }
 
+/**
+ *
+ */
 export function isIncomaptibleArchError(err: unknown): boolean {
   return (
-    hasMessage(err) &&
-    /Unknown system error/.test(err.message ?? "") &&
-    process.platform === "darwin"
+    hasMessage(err) && err.message.includes("Unknown system error") && process.platform === "darwin"
   );
 }
 
+/**
+ *
+ */
 export function emulatorVersionOverride(emulator: DownloadableEmulators) {
   return process.env[`${emulator.toUpperCase()}_EMULATOR_VERSION`];
 }

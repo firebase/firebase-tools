@@ -33,7 +33,7 @@ export function registerFdcSdkGeneration(
     (args: { appFolder: string }) => {
       analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.INIT_SDK_CLI);
       // Lets do it from the right directory
-      const e: Record<string, string> = {}
+      const e: Record<string, string> = {};
       e[FDC_APP_FOLDER] = args.appFolder;
       setTerminalEnvVars(e);
       runCommand(`${settings.firebasePath} init dataconnect:sdk`);
@@ -94,7 +94,7 @@ export function registerFdcSdkGeneration(
     const folderUris: Uri[] | undefined = await vscode.window.showOpenDialog({
       canSelectFiles: false,
       canSelectFolders: true,
-      title: "Select your app folder to link Data Connect to:",
+      title: "Select your app folder to link SQL Connect to:",
       openLabel: "Select app folder",
     });
     if (!folderUris?.length) {

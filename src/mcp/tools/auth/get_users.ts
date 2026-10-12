@@ -9,6 +9,8 @@ export const get_users = tool(
     name: "get_users",
     description:
       "Use this to retrieve one or more Firebase Auth users based on a list of UIDs or a list of emails.",
+    humanReadableDescription:
+      "Retrieve Firebase Auth users by UID, email, phone number, or list all users.",
     inputSchema: z.object({
       uids: z.array(z.string()).optional().describe("A list of user UIDs to retrieve."),
       emails: z.array(z.string()).optional().describe("A list of user emails to retrieve."),
@@ -59,6 +61,6 @@ export const get_users = tool(
     if (!uids?.length && !emails?.length && !phone_numbers?.length) {
       users = await listUsers(projectId, limit || 100);
     }
-    return toContent(users.map(prune));
+    return toContent({ users: users.map(prune) });
   },
 );

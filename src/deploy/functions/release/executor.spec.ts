@@ -1,5 +1,7 @@
 import { expect } from "chai";
 
+import { FirebaseError } from "../../../error";
+import RetriesExhaustedError from "../../../throttler/errors/retries-exhausted-error";
 import * as executor from "./executor";
 
 describe("Executor", () => {
@@ -46,15 +48,240 @@ describe("Executor", () => {
       await expect(exec.run(handler)).to.eventually.be.rejectedWith("Retryable");
     });
 
-    it("retries on custom specified retry codes", async () => {
+    it("retries on custom specified retry predicates", async () => {
       const handler = (): Promise<void> => {
         const err = new Error("Retryable");
         (err as any).code = 8;
         throw err;
       };
       await expect(
-        exec.run(handler, { retryCodes: [...executor.DEFAULT_RETRY_CODES, 8] }),
+        exec.run(handler, {
+          retryPredicates: [executor.isTransientError, executor.hasErrorCode(8)],
+        }),
       ).to.eventually.be.rejectedWith("Retryable");
+    });
+
+    it("retries on task-level retryPredicates", async () => {
+      let attempts = 0;
+      const handler = (): Promise<string> => {
+        attempts++;
+        if (attempts === 1) {
+          const err: any = new Error(
+            "Service account firebase-fn-111@project.iam.gserviceaccount.com does not exist",
+          );
+          err.status = 404;
+          return Promise.reject(err);
+        }
+        return Promise.resolve("success");
+      };
+
+      const result = await exec.run(handler, {
+        retryPredicates: [executor.isTransientError, executor.isServiceAccountPropagationError],
+      });
+      expect(result).to.equal("success");
+      expect(attempts).to.equal(2);
+    });
+
+    it("respects queue-level defaultRetryPredicates", async () => {
+      let attempts = 0;
+      const customExec = new executor.QueueExecutor({
+        retries: 5,
+        maxBackoff: 1,
+        backoff: 1,
+        defaultRetryPredicates: [executor.isServiceAccountPropagationError],
+      });
+
+      const handler = (): Promise<string> => {
+        attempts++;
+        if (attempts === 1) {
+          const err: any = new Error(
+            "Service account firebase-fn-222@project.iam.gserviceaccount.com not found",
+          );
+          err.status = 404;
+          return Promise.reject(err);
+        }
+        return Promise.resolve("done");
+      };
+
+      const result = await customExec.run(handler);
+      expect(result).to.equal("done");
+      expect(attempts).to.equal(2);
+    });
+
+    it("drains remaining queued tasks when active tasks exhaust retries under bounded concurrency", async () => {
+      const boundedExec = new executor.QueueExecutor({
+        concurrency: 2,
+        retries: 1,
+        backoff: 0,
+        maxBackoff: 1,
+      });
+      const attempts: Record<string, number> = {};
+      const failingTask = (label: string) => (): Promise<string> => {
+        attempts[label] = (attempts[label] || 0) + 1;
+        const err = new FirebaseError(`Quota exceeded for ${label}`, { status: 429 });
+        return Promise.reject(err);
+      };
+
+      const results = await Promise.allSettled([
+        boundedExec.run(failingTask("fn-1")),
+        boundedExec.run(failingTask("fn-2")),
+        boundedExec.run(() => Promise.resolve("fn-3-ok")),
+        boundedExec.run(() => Promise.resolve("fn-4-ok")),
+      ]);
+
+      expect(attempts).to.deep.equal({ "fn-1": 2, "fn-2": 2 });
+      expect(results[0].status).to.equal("rejected");
+      if (results[0].status === "rejected") {
+        expect(results[0].reason).to.be.instanceOf(RetriesExhaustedError);
+      }
+      expect(results[1].status).to.equal("rejected");
+      if (results[1].status === "rejected") {
+        expect(results[1].reason).to.be.instanceOf(RetriesExhaustedError);
+      }
+      expect(results[2]).to.deep.equal({ status: "fulfilled", value: "fn-3-ok" });
+      expect(results[3]).to.deep.equal({ status: "fulfilled", value: "fn-4-ok" });
+    });
+  });
+
+  describe("isServiceAccountPropagationError", () => {
+    it("matches 404 errors containing managed service account references", () => {
+      const err1: any = new Error(
+        "Service account firebase-fn-123@proj.iam.gserviceaccount.com does not exist",
+      );
+      err1.status = 404;
+      expect(executor.isServiceAccountPropagationError(err1)).to.be.true;
+
+      const err2: any = new Error(
+        "Resource 'serviceaccount' firebase-fn-456@proj.iam.gserviceaccount.com not found",
+      );
+      err2.code = 404;
+      expect(executor.isServiceAccountPropagationError(err2)).to.be.true;
+
+      const err3: any = {
+        status: 404,
+        context: {
+          body: {
+            error: {
+              message: "service account firebase-fn-789@proj.iam.gserviceaccount.com missing",
+            },
+          },
+        },
+      };
+      expect(executor.isServiceAccountPropagationError(err3)).to.be.true;
+
+      const err4 = new FirebaseError(
+        "Service account custom-sa@proj.iam.gserviceaccount.com does not exist",
+        { status: 404 },
+      );
+      expect(executor.isServiceAccountPropagationError(err4)).to.be.false;
+    });
+
+    it("does not match non-404/400/403 errors or non-service-account errors", () => {
+      const err1 = new FirebaseError(
+        "Service account firebase-fn-123@proj.iam.gserviceaccount.com missing",
+        { status: 500 },
+      );
+      expect(executor.isServiceAccountPropagationError(err1)).to.be.false;
+
+      const err2 = new FirebaseError("Function region us-central1 not found", { status: 404 });
+      expect(executor.isServiceAccountPropagationError(err2)).to.be.false;
+
+      const err3 = new FirebaseError("Invalid function name: my-func", { status: 400 });
+      expect(executor.isServiceAccountPropagationError(err3)).to.be.false;
+
+      const err4 = new FirebaseError("Caller is missing permission on project", { status: 403 });
+      expect(executor.isServiceAccountPropagationError(err4)).to.be.false;
+    });
+
+    it("matches 400 errors caused by service account propagation delays", () => {
+      const err1 = new FirebaseError(
+        "Validation failed for trigger projects/p/locations/l/triggers/t: The request was invalid: invalid service account firebase-fn-5768298711@p.iam.gserviceaccount.com provided",
+        { status: 400 },
+      );
+      expect(executor.isServiceAccountPropagationError(err1)).to.be.true;
+
+      const err2 = new FirebaseError(
+        "The request was invalid: invalid service account firebase-fn-123@p.iam.gserviceaccount.com in project 12345 provided",
+        { status: 400 },
+      );
+      expect(executor.isServiceAccountPropagationError(err2)).to.be.true;
+
+      const err3 = new FirebaseError(
+        "The request was invalid: invalid service account custom-sa@p.iam.gserviceaccount.com provided",
+        { status: 400 },
+      );
+      expect(executor.isServiceAccountPropagationError(err3)).to.be.false;
+
+      const err4 = new FirebaseError(
+        "Service account firebase-fn-123@p.iam.gserviceaccount.com has permission denied",
+        { status: 400 },
+      );
+      expect(executor.isServiceAccountPropagationError(err4)).to.be.false;
+    });
+
+    it("matches 403 errors caused by service account propagation delays", () => {
+      const err1 = new FirebaseError(
+        "Could not create Cloud Run service projects/p1/locations/l1/services/s1. Permission 'iam.serviceaccounts.actAs' denied on service account firebase-fn-1701862598@p1.iam.gserviceaccount.com (or it may not exist).",
+        { status: 403 },
+      );
+      expect(executor.isServiceAccountPropagationError(err1)).to.be.true;
+
+      const err2 = new FirebaseError(
+        "Failed to create function projects/p2/locations/l2/functions/f2",
+        {
+          status: 403,
+          original: new Error(
+            "Request to https://cloudfunctions.googleapis.com/v2/projects/p2/locations/l2/functions?functionId=f2 had HTTP Error: 403, Could not create Cloud Run service projects/p2/locations/l2/services/s2. Permission 'iam.serviceaccounts.actAs' denied on service account firebase-fn-3923084710@p2.iam.gserviceaccount.com (or it may not exist).",
+          ),
+        },
+      );
+      expect(executor.isServiceAccountPropagationError(err2)).to.be.true;
+
+      const err3 = new FirebaseError(
+        "Permission 'iam.serviceaccounts.actAs' denied on service account custom-sa@p3.iam.gserviceaccount.com (or it may not exist).",
+        { status: 403 },
+      );
+      expect(executor.isServiceAccountPropagationError(err3)).to.be.false;
+
+      const err4 = new FirebaseError(
+        "Service account firebase-fn-5034195821@p4.iam.gserviceaccount.com is disabled.",
+        { status: 403 },
+      );
+      expect(executor.isServiceAccountPropagationError(err4)).to.be.false;
+    });
+
+    it("inspects all error message sources when err.message is generic", () => {
+      const genericErr: any = new Error("Generic Request Failed 404");
+      genericErr.status = 404;
+      genericErr.context = {
+        body: {
+          error: {
+            message: "Service account firebase-fn-888@project.iam.gserviceaccount.com missing",
+          },
+        },
+      };
+      expect(executor.isServiceAccountPropagationError(genericErr)).to.be.true;
+    });
+
+    it("safely handles circular error objects without throwing", () => {
+      const circularErr: any = new Error(
+        "Service account firebase-fn-999@proj.iam.gserviceaccount.com does not exist",
+      );
+      circularErr.status = 404;
+      circularErr.self = circularErr; // Circular reference
+      expect(executor.isServiceAccountPropagationError(circularErr)).to.be.true;
+    });
+  });
+
+  describe("predicates", () => {
+    it("identifies transient errors correctly", () => {
+      expect(executor.isQuotaExhaustion({ status: 429 })).to.be.true;
+      expect(executor.isConflict({ status: 409 })).to.be.true;
+      expect(executor.isServiceUnavailable({ status: 503 })).to.be.true;
+      expect(executor.isTransientError({ status: 429 })).to.be.true;
+      expect(executor.isTransientError({ status: 409 })).to.be.true;
+      expect(executor.isTransientError({ status: 503 })).to.be.true;
+      expect(executor.isTransientError({ status: 500 })).to.be.false;
     });
   });
 });

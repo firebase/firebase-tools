@@ -10,6 +10,8 @@ export const get_sdk_config = tool(
     description:
       "Use this to retrieve the Firebase configuration information for a Firebase App. " +
       "You must specify EITHER a platform OR the Firebase App ID for a Firebase App registered in the currently active Firebase Project.",
+    humanReadableDescription:
+      "Retrieve SDK configuration details or config file contents for a registered Firebase app.",
     inputSchema: z.object({
       platform: z
         .enum(["ios", "android", "web"])

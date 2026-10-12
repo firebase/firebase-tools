@@ -1,7 +1,7 @@
 export const MAIN_INSTRUCTIONS = `
 Closely follow the following instructions:
 
-You are Firebase Data Connect expert that is responsible for creating data connect schemas code in GraphQL for users.You will be given a description of the desired schema using Firebase Data Connect and your task is to write the schema code in GraphQL that fulfills the requirements and correct any mistakes in your generation.
+You are Firebase SQL Connect expert that is responsible for creating data connect schemas code in GraphQL for users.You will be given a description of the desired schema using Firebase SQL Connect and your task is to write the schema code in GraphQL that fulfills the requirements and correct any mistakes in your generation.
 
 For example, if I were to ask for a schema for a GraphQL database that contains a table called "users" with a field called "name" and another table called "posts" with a field called "body", I would get the following schema:
 \`\`\`
@@ -15,7 +15,7 @@ type Post @table {
 }
 \`\`\`
 
-Simple Firebase Data Connect schema often takes the following form:
+Simple Firebase SQL Connect schema often takes the following form:
 \`\`\`graphql
 type TableName @table {
   uuidField: UUID
@@ -40,7 +40,7 @@ type TableName @table {
 
 Leave out objects named after \`Query\` and \`Mutation\`
 
-Firebase Data Connect implicitly adds \`id: UUID!\` to every table and implicitly makes it primary key. Therefore, leave out the \`id\` field.
+Firebase SQL Connect implicitly adds \`id: UUID!\` to every table and implicitly makes it primary key. Therefore, leave out the \`id\` field.
 
 Use \`UUID\` type instead of \`ID\` type or \`String\` type for id-like fields.
 
@@ -84,7 +84,7 @@ Leave out \`directive\`, \`enum\` and \`scalar\`.
 
 Leave out \`@view\`.
 
-Be sure that your response contains a valid Firebase Data Connect schema in a single GraphQL code block inside of triple backticks and closely follows my instructions and description.
+Be sure that your response contains a valid Firebase SQL Connect schema in a single GraphQL code block inside of triple backticks and closely follows my instructions and description.
 `.trim();
 
 export const BUILTIN_SDL = `
@@ -92,12 +92,12 @@ export const BUILTIN_SDL = `
 
 Directives define specific behaviors that can be applied to fields or types within a GraphQL schema.
 
-## Data Connect Defined
+## SQL Connect Defined
 
 ### @col on \`FIELD_DEFINITION\` {:#col}
 Customizes a field that represents a SQL database table column.
 
-Data Connect maps scalar Fields on [\`@table\`](directive.md#table) type to a SQL column of
+SQL Connect maps scalar Fields on [\`@table\`](directive.md#table) type to a SQL column of
 corresponding data type.
 
 - scalar [\`UUID\`](scalar.md#UUID) maps to [\`uuid\`](https://www.postgresql.org/docs/current/datatype-uuid.html).
@@ -123,7 +123,7 @@ type Post @table {
 }
 \`\`\`
 
-Data Connect converts it to the following SQL table schema.
+SQL Connect converts it to the following SQL table schema.
 
 \`\`\`sql
 CREATE TABLE "public"."post" (
@@ -197,7 +197,7 @@ filter and order requirement.
 
 | Argument | Type | Description |
 |---|---|---|
-| \`name\` | [\`String\`](scalar.md#String) | Configure the SQL database index id.  If not overridden, Data Connect generates the index name: - \`{table_name}_{first_field}_{second_field}_aa_idx\` - \`{table_name}_{field_name}_idx\` |
+| \`name\` | [\`String\`](scalar.md#String) | Configure the SQL database index id.  If not overridden, SQL Connect generates the index name: - \`{table_name}_{first_field}_{second_field}_aa_idx\` - \`{table_name}_{field_name}_idx\` |
 | \`fields\` | [\`[String!]\`](scalar.md#String) | Only allowed and required when used on a [\`@table\`](directive.md#table) type. Specifies the fields to create the index on. |
 | \`order\` | [\`[IndexFieldOrder!]\`](enum.md#IndexFieldOrder) | Only allowed for \`BTREE\` [\`@index\`](directive.md#index) on [\`@table\`](directive.md#table) type. Specifies the order for each indexed column. Defaults to all \`ASC\`. |
 | \`type\` | [\`IndexType\`](enum.md#IndexType) | Customize the index type.  For most index, it defaults to \`BTREE\`. For array fields, only allowed [\`IndexType\`](enum.md#IndexType) is \`GIN\`. For [\`Vector\`](scalar.md#Vector) fields, defaults to \`HNSW\`, may configure to \`IVFFLAT\`. |
@@ -216,7 +216,7 @@ type OneTable @table {
   someField: String!
 }
 \`\`\`
-Data Connect adds implicit foreign key column and relation query field. So the
+SQL Connect adds implicit foreign key column and relation query field. So the
 above schema is equivalent to the following schema.
 
 \`\`\`graphql
@@ -232,7 +232,7 @@ type OneTable @table {
   # manyTables_on_refField: [ManyTable!]!
 }
 \`\`\`
-Data Connect generates the necessary foreign key constraint.
+SQL Connect generates the necessary foreign key constraint.
 
 \`\`\`sql
 CREATE TABLE "public"."many_table" (
@@ -312,7 +312,7 @@ type Group @table { name: String! }
 type User @table { name: String! }
 \`\`\`
 
-When Data Connect sees a table with two reference field as its primary key, it
+When SQL Connect sees a table with two reference field as its primary key, it
 knows this is a join table, so expands the many-to-many query field.
 
 \`\`\`graphql
@@ -416,7 +416,7 @@ type TableName @table {
   myField: String
 }
 \`\`\`
-Data Connect adds an implicit \`id\` primary key column. So the above schema is equivalent to:
+SQL Connect adds an implicit \`id\` primary key column. So the above schema is equivalent to:
 
 \`\`\`graphql
 type TableName @table(key: "id") {
@@ -425,7 +425,7 @@ type TableName @table(key: "id") {
 }
 \`\`\`
 
-Data Connect generates the following SQL table and CRUD operations to use it.
+SQL Connect generates the following SQL table and CRUD operations to use it.
 
 \`\`\`sql
 CREATE TABLE "public"."table_name" (
@@ -473,7 +473,7 @@ type User @table(key: "uid") {
 | \`name\` | [\`String\`](scalar.md#String) | Configures the SQL database table name. Defaults to snake_case like \`table_name\`. |
 | \`singular\` | [\`String\`](scalar.md#String) | Configures the singular name. Defaults to the camelCase like \`tableName\`. |
 | \`plural\` | [\`String\`](scalar.md#String) | Configures the plural name. Defaults to infer based on English plural pattern like \`tableNames\`. |
-| \`key\` | [\`[String!]\`](scalar.md#String) | Defines the primary key of the table. Defaults to a single field named \`id\`. If not present already, Data Connect adds an implicit field \`id: UUID! @default(expr: "uuidV4()")\`. |
+| \`key\` | [\`[String!]\`](scalar.md#String) | Defines the primary key of the table. Defaults to a single field named \`id\`. If not present already, SQL Connect adds an implicit field \`id: UUID! @default(expr: "uuidV4()")\`. |
 
 ### @unique on \`FIELD_DEFINITION\` | \`OBJECT\` {:#unique}
 Defines unique constraints on [\`@table\`](directive.md#table).
@@ -500,16 +500,16 @@ type may define \`@ref(references)\` to refer to fields that has a unique constr
 
 | Argument | Type | Description |
 |---|---|---|
-| \`indexName\` | [\`String\`](scalar.md#String) | Configures the SQL database unique constraint name.  If not overridden, Data Connect generates the unique constraint name: - \`table_name_first_field_second_field_uidx\` - \`table_name_only_field_name_uidx\` |
+| \`indexName\` | [\`String\`](scalar.md#String) | Configures the SQL database unique constraint name.  If not overridden, SQL Connect generates the unique constraint name: - \`table_name_first_field_second_field_uidx\` - \`table_name_only_field_name_uidx\` |
 | \`fields\` | [\`[String!]\`](scalar.md#String) | Only allowed and required when used on OBJECT, this specifies the fields to create a unique constraint on. |
 
 ### @view on \`OBJECT\` {:#view}
 Defines a relational database Raw SQLview.
 
-Data Connect generates GraphQL queries with WHERE and ORDER BY clauses.
+SQL Connect generates GraphQL queries with WHERE and ORDER BY clauses.
 However, not all SQL features has native GraphQL equivalent.
 
-You can write **an arbitrary SQL SELECT statement**. Data Connect
+You can write **an arbitrary SQL SELECT statement**. SQL Connect
 would map Graphql fields on [\`@view\`](directive.md#view) type to columns in your SELECT statement.
 
 * Scalar GQL fields (camelCase) should match a SQL column (snake_case)
@@ -631,10 +631,10 @@ Raw SQL view doesn't have a primary key, so it doesn't support lookup. Other
 View cannot be mutated. You can perform CRUD operations on the underlying
 table to alter its content.
 
-**Important: Data Connect doesn't parse and validate SQL**
+**Important: SQL Connect doesn't parse and validate SQL**
 
 - If the SQL view is invalid or undefined, related requests may fail.
-- If the SQL view return incompatible types. Firebase Data Connect may surface
+- If the SQL view return incompatible types. Firebase SQL Connect may surface
   errors.
 - If a field doesn't have a corresponding column in the SQL SELECT statement,
   it will always be \`null\`.

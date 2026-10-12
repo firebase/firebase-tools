@@ -7,6 +7,7 @@ export interface ServerResource {
     name: string;
     description?: string;
     title?: string;
+    mimeType?: string;
     _meta?: {
       /** Set this on a resource if it *always* requires a signed-in user to work. */
       requiresAuth?: boolean;

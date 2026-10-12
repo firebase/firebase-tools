@@ -6,6 +6,7 @@ import { hostingApiOrigin } from "../api";
 import { confirm } from "../prompt";
 import { requireHostingSite } from "../requireHostingSite";
 import { requirePermissions } from "../requirePermissions";
+import { needProjectId } from "../projectUtils";
 import * as utils from "../utils";
 
 export const command = new Command("hosting:disable")
@@ -15,6 +16,7 @@ export const command = new Command("hosting:disable")
   .before(requirePermissions, ["firebasehosting.sites.update"])
   .before(requireHostingSite)
   .action(async (options) => {
+    const projectId = needProjectId(options);
     const siteToDisable: string = options.site;
 
     const confirmed = await confirm({
@@ -30,7 +32,9 @@ export const command = new Command("hosting:disable")
     }
 
     const c = new Client({ urlPrefix: hostingApiOrigin(), apiVersion: "v1beta1", auth: true });
-    await c.post(`/sites/${siteToDisable}/releases`, { type: "SITE_DISABLE" });
+    await c.post(`/projects/${projectId}/sites/${siteToDisable}/releases`, {
+      type: "SITE_DISABLE",
+    });
 
     utils.logSuccess(
       `Hosting has been disabled for ${clc.bold(siteToDisable)}. Deploy a new version to re-enable.`,

@@ -44,6 +44,8 @@ export interface SetupInfo {
   ailogic?: features.AiLogicInfo;
   hosting?: features.HostingInfo;
   auth?: features.AuthInfo;
+  run?: features.RunInfo;
+  agentSkills?: features.AgentSkillsInfo;
 }
 
 interface Feature {
@@ -126,6 +128,18 @@ const featuresList: Feature[] = [
     displayName: "Authentication",
     askQuestions: features.authAskQuestions,
     actuate: features.authActuate,
+  },
+  {
+    name: "agentSkills",
+    displayName: "Agent Skills",
+    askQuestions: features.agentSkillsAskQuestions,
+    actuate: features.agentSkillsActuate,
+  },
+  {
+    name: "run",
+    displayName: "Cloud Run",
+    askQuestions: features.runAskQuestions,
+    actuate: features.runActuate,
   },
 ];
 

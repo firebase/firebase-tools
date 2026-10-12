@@ -12,12 +12,12 @@ type DiffOptions = Options & { service?: string; location?: string };
 
 export const command = new Command("dataconnect:sql:diff")
   .description(
-    "display the differences between the local Data Connect schema and your CloudSQL database's schema",
+    "display the differences between the local SQL Connect schema and your CloudSQL database's schema",
   )
-  .option("--service <serviceId>", "the serviceId of the Data Connect service")
+  .option("--service <serviceId>", "the serviceId of the SQL Connect service")
   .option(
     "--location <location>",
-    "the location of the Data Connect service. Only needed if service ID is used in multiple locations.",
+    "the location of the SQL Connect service. Only needed if service ID is used in multiple locations.",
   )
   .before(requirePermissions, [
     "firebasedataconnect.services.list",

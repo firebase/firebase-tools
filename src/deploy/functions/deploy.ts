@@ -12,6 +12,7 @@ import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfv2 from "../../gcp/cloudfunctionsv2";
 import * as backend from "./backend";
 import * as experiments from "../../experiments";
+import * as supported from "./runtimes/supported";
 import { findEndpoint } from "./backend";
 import { deploy as extDeploy } from "../extensions";
 import { getProjectNumber } from "../../getProjectNumber";
@@ -80,10 +81,12 @@ export async function uploadSourceV2(
     ),
   };
 
-  if (
-    !experiments.isEnabled("functionsrunapionly") &&
-    !v2Endpoints.some((e) => e.platform === "run")
-  ) {
+  const isDart = v2Endpoints.some((e) => supported.runtimeIsLanguage(e.runtime, "dart"));
+  const useApiOnly =
+    experiments.isEnabled("functionsrunapionly") ||
+    (isDart && experiments.isEnabled("dartfunctions"));
+
+  if (!useApiOnly && !v2Endpoints.some((e) => e.platform === "run")) {
     if (process.env.GOOGLE_CLOUD_QUOTA_PROJECT) {
       logLabeledWarning(
         "functions",

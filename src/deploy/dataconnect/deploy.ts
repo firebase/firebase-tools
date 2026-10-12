@@ -8,7 +8,6 @@ import { parseServiceName } from "../../dataconnect/names";
 import { ResourceFilter } from "../../dataconnect/filters";
 import { vertexAIOrigin } from "../../api";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
-import { confirm } from "../../prompt";
 import { Context } from "./context";
 
 /**
@@ -45,10 +44,6 @@ export default async function (context: Context, options: Options): Promise<void
     });
   dataconnect.deployStats.numServiceCreated = servicesToCreate.length;
 
-  const servicesToDelete = filters
-    ? []
-    : services.filter((s) => !serviceInfos.some((si) => matches(si, s)));
-  dataconnect.deployStats.numServiceDeleted = servicesToDelete.length;
   await Promise.all(
     servicesToCreate.map(async (s) => {
       const { projectId, locationId, serviceId } = splitName(s.serviceName);
@@ -56,25 +51,6 @@ export default async function (context: Context, options: Options): Promise<void
       utils.logLabeledSuccess("dataconnect", `Created service ${s.serviceName}`);
     }),
   );
-
-  if (servicesToDelete.length) {
-    const serviceToDeleteList = servicesToDelete.map((s) => " - " + s.name).join("\n");
-    if (
-      await confirm({
-        force: false, // Don't delete anything in --force.
-        nonInteractive: options.nonInteractive,
-        message: `The following services exist on ${projectId} but are not listed in your 'firebase.json'\n${serviceToDeleteList}\nWould you like to delete these services?`,
-        default: false,
-      })
-    ) {
-      await Promise.all(
-        servicesToDelete.map(async (s) => {
-          await client.deleteService(s.name);
-          utils.logLabeledSuccess("dataconnect", `Deleted service ${s.name}`);
-        }),
-      );
-    }
-  }
 
   // Provision CloudSQL resources
   utils.logLabeledBullet("dataconnect", "Checking for CloudSQL resources...");

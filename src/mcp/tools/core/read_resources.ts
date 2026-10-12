@@ -10,6 +10,8 @@ export const read_resources = tool(
     name: "read_resources",
     description:
       "Use this to read the contents of `firebase://` resources or list available resources",
+    humanReadableDescription:
+      "Read the contents of internal firebase:// documentation resources or list all available resources.",
     annotations: {
       title: "Read Firebase Resources",
       destructiveHint: false,
@@ -26,7 +28,7 @@ export const read_resources = tool(
   },
   async ({ uris }, ctx) => {
     if (!uris?.length) {
-      void trackGA4("mcp_read_resource", { resource_name: "__list__" });
+      void trackGA4("mcp_list_resources", { resource_name: "__list__" });
       return toContent(
         resources
           .map(

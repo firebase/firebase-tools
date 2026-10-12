@@ -15,9 +15,11 @@ import {
   BatchUpdateTestCasesResponse,
   Group,
   ListGroupsResponse,
+  ListReleasesResponse,
   ListTestCasesResponse,
   ListTestersResponse,
   LoginCredential,
+  Release,
   ReleaseTest,
   TestCase,
   TestDevice,
@@ -276,10 +278,13 @@ export class AppDistributionClient {
   async createReleaseTest(
     releaseName: string,
     devices: TestDevice[],
-    aiInstructions?: AiInstructions,
-    loginCredential?: LoginCredential,
-    testCaseName?: string,
-    displayName?: string,
+    options: {
+      aiInstructions?: AiInstructions;
+      loginCredential?: LoginCredential;
+      testCaseName?: string;
+      displayName?: string;
+      resultsBucket?: string;
+    } = {},
   ): Promise<ReleaseTest> {
     try {
       const response = await this.appDistroV1AlphaClient.request<ReleaseTest, ReleaseTest>({
@@ -287,10 +292,11 @@ export class AppDistributionClient {
         path: `${releaseName}/tests`,
         body: {
           deviceExecutions: devices.map((device) => ({ device })),
-          loginCredential,
-          testCase: testCaseName,
-          aiInstructions: aiInstructions,
-          displayName: displayName,
+          loginCredential: options.loginCredential,
+          testCase: options.testCaseName,
+          aiInstructions: options.aiInstructions,
+          displayName: options.displayName,
+          resultsBucket: options.resultsBucket,
         },
       });
       return response.body;
@@ -355,6 +361,28 @@ export class AppDistributionClient {
       return response.body.testCases;
     } catch (err: unknown) {
       throw new FirebaseError(`Failed to upsert test cases ${getErrMsg(err)}`);
+    }
+  }
+
+  async getLatestRelease(appName: string): Promise<Release | undefined> {
+    try {
+      const response = await this.appDistroV1Client.get<ListReleasesResponse>(
+        `/${appName}/releases`,
+        {
+          queryParams: {
+            pageSize: "1",
+            orderBy: "createTime desc",
+          },
+        },
+      );
+
+      if (!response.body.releases?.length) {
+        return undefined;
+      }
+
+      return response.body.releases[0];
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to get latest release for app ${appName}: ${getErrMsg(err)}`);
     }
   }
 }

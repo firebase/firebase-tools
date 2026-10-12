@@ -70,7 +70,7 @@ export function displayAndHandleIssue(
   issue: EmulatorIssue,
   isPostgresEnabled: Signal<boolean>,
 ) {
-  const issueMessage = `Data Connect Emulator: ${issue.kind.toString()} - ${issue.message}`;
+  const issueMessage = `SQL Connect Emulator: ${issue.kind.toString()} - ${issue.message}`;
   if (issue.severity === Severity.ALERT) {
     vscode.window.showErrorMessage(issueMessage);
   }

@@ -11,10 +11,6 @@ import { pathToFileURL, parse } from "url";
 import { gte, coerce } from "semver";
 import { IncomingMessage, ServerResponse } from "http";
 import * as clc from "colorette";
-import { chain } from "stream-chain";
-import { parser } from "stream-json";
-import { pick } from "stream-json/filters/Pick";
-import { streamObject } from "stream-json/streamers/StreamObject";
 import { fileExistsSync } from "../../fsutils";
 
 import { select } from "../../prompt";
@@ -45,7 +41,7 @@ import {
   isRewriteSupportedByHosting,
   isUsingImageOptimization,
   isUsingMiddleware,
-  allDependencyNames,
+  getProductionDependencyNames,
   getMiddlewareMatcherRegexes,
   getNonStaticRoutes,
   getNonStaticServerComponents,
@@ -62,16 +58,16 @@ import {
   getNextVersionRaw,
   isNextJsVersionVulnerable,
 } from "./utils";
-import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES, SHARP_VERSION, I18N_ROOT } from "../constants";
+import { NODE_VERSION, SHARP_VERSION, I18N_ROOT } from "../constants";
 import type {
   AppPathRoutesManifest,
   AppPathsManifest,
   HostingHeadersWithSource,
   RoutesManifest,
-  NpmLsDepdendency,
   MiddlewareManifest,
   ActionManifest,
   CustomBuildOptions,
+  FunctionsConfigManifest,
 } from "./interfaces";
 import {
   MIDDLEWARE_MANIFEST,
@@ -82,6 +78,7 @@ import {
   APP_PATHS_MANIFEST,
   SERVER_REFERENCE_MANIFEST,
   ESBUILD_VERSION,
+  FUNCTIONS_CONFIG_MANIFEST,
 } from "./constants";
 import { getAllSiteDomains, getDeploymentDomain } from "../../hosting/api";
 import { logger } from "../../logger";
@@ -90,7 +87,7 @@ import { parseStrict } from "../../functions/env";
 const DEFAULT_BUILD_SCRIPT = ["next build"];
 const PUBLIC_DIR = "public";
 
-export const supportedRange = "12 - 15.0";
+export const supportedRange = "12 - 16.0";
 
 export const name = "Next.js";
 export const support = SupportLevel.Preview;
@@ -454,6 +451,7 @@ export async function ɵcodegenPublicDirectory(
     pagesManifest,
     appPathRoutesManifest,
     serverReferenceManifest,
+    functionsConfigManifest,
   ] = await Promise.all([
     readJSON<MiddlewareManifest>(join(sourceDir, distDir, "server", MIDDLEWARE_MANIFEST)),
     readJSON<PrerenderManifest>(join(sourceDir, distDir, PRERENDER_MANIFEST)),
@@ -465,11 +463,17 @@ export async function ɵcodegenPublicDirectory(
     readJSON<ActionManifest>(join(sourceDir, distDir, "server", SERVER_REFERENCE_MANIFEST)).catch(
       () => ({ node: {}, edge: {}, encryptionKey: "" }),
     ),
+    readJSON<FunctionsConfigManifest>(
+      join(sourceDir, distDir, "server", FUNCTIONS_CONFIG_MANIFEST),
+    ).catch(() => ({ version: 0, functions: {} })),
   ]);
 
   const appPathRoutesEntries = Object.entries(appPathRoutesManifest);
 
-  const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(middlewareManifest);
+  const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(
+    middlewareManifest,
+    functionsConfigManifest,
+  );
 
   const { redirects = [], rewrites = [], headers = [] } = routesManifest;
 
@@ -509,9 +513,12 @@ export async function ɵcodegenPublicDirectory(
           {
             srcRoute: null,
             initialRevalidateSeconds: false,
+            initialExpireSeconds: undefined,
             dataRoute: "",
             experimentalPPR: false,
+            renderingMode: undefined,
             prefetchDataRoute: "",
+            allowHeader: [],
           },
         ];
       }),
@@ -651,27 +658,7 @@ export async function ɵcodegenFunctionsDirectory(
         throw new FirebaseError(`Failed to load esbuild from path: ${esbuildPath}`);
       }
 
-      const productionDeps = await new Promise<string[]>((resolve) => {
-        const dependencies: string[] = [];
-        const npmLs = spawn("npm", ["ls", "--omit=dev", "--all", "--json=true"], {
-          cwd: sourceDir,
-          timeout: NPM_COMMAND_TIMEOUT_MILLIES,
-        });
-        const pipeline = chain([
-          npmLs.stdout,
-          parser({ packValues: false, packKeys: true, streamValues: false }),
-          pick({ filter: "dependencies" }),
-          streamObject(),
-          ({ key, value }: { key: string; value: NpmLsDepdendency }) => [
-            key,
-            ...allDependencyNames(value),
-          ],
-        ]);
-        pipeline.on("data", (it: string) => dependencies.push(it));
-        pipeline.on("end", () => {
-          resolve([...new Set(dependencies)]);
-        });
-      });
+      const productionDeps = await getProductionDependencyNames(sourceDir);
 
       // Mark all production deps as externals, so they aren't bundled
       // DevDeps won't be included in the Cloud Function, so they should be bundled

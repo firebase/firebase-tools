@@ -38,8 +38,8 @@ firebaseSuite("Execution", async function () {
 
     // Insert a post
     await editor.openFile(mutationsPath);
-    await editor.runLocalButton.waitForDisplayed();
-    await editor.runLocalButton.click();
+    await editor.runEmulatorButton.waitForDisplayed();
+    await editor.runEmulatorButton.click();
 
     expect(JSON.parse((await execution.getVariables()))).toEqual({"id":"42","content":""});
 

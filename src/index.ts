@@ -1,8 +1,8 @@
 import * as program from "commander";
 import * as clc from "colorette";
-import * as leven from "leven";
+import { stringDistance } from "./utils";
 
-import { logger, useConsoleLoggers } from "./logger";
+import { logger } from "./logger";
 import { isCommandModule, CLIClient } from "./command";
 
 const pkg = require("../package.json");
@@ -69,7 +69,7 @@ require("./commands").load(client);
  */
 function suggestCommands(cmd: string, cmdList: string[]): string | undefined {
   const suggestion = cmdList.find((c) => {
-    return leven(c, cmd) < c.length * 0.4;
+    return stringDistance(c, cmd) < c.length * 0.4;
   });
   if (suggestion) {
     logger.error();
@@ -120,8 +120,6 @@ program.action((_, args) => {
     client.cli.parse(process.argv);
     return;
   }
-
-  useConsoleLoggers();
 
   logger.error(clc.bold(clc.red("Error:")), clc.bold(cmd), "is not a Firebase command");
 

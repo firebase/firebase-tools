@@ -15,7 +15,7 @@ describe("ensureApis", () => {
     sinon.verifyAndRestore();
   });
 
-  it("should ensure Data Connect and Cloud SQL Admin APIs are enabled", async () => {
+  it("should ensure SQL Connect and Cloud SQL Admin APIs are enabled", async () => {
     ensureStub.resolves();
     await apis.ensureApis("my-project");
     expect(ensureStub).to.be.calledWith("my-project", api.dataconnectOrigin(), "dataconnect");

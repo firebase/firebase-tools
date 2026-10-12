@@ -180,4 +180,8 @@ export class AuthBlockingService implements Service {
     this.triggerQueue = this.triggerQueue.then(() => this.unregisterTriggerLocked(ep));
     return this.triggerQueue;
   }
+
+  async getDefaultRegion(): Promise<string> {
+    return "us-east1";
+  }
 }

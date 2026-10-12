@@ -1,4 +1,4 @@
-import { join, dirname } from "path";
+import { join, dirname, basename } from "path";
 import { writeFileSync } from "fs";
 import * as yaml from "yaml";
 import * as clc from "colorette";
@@ -11,7 +11,6 @@ import { AppHostingYamlConfig, EnvMap, toEnvList } from "./yaml";
 import { logger } from "../logger";
 import * as csm from "../gcp/secretManager";
 import { FirebaseError, getError } from "../error";
-import { basename } from "path";
 
 // Common config across all environments
 export const APPHOSTING_BASE_YAML_FILE = "apphosting.yaml";
@@ -133,6 +132,7 @@ const dynamicDispatch = exports as {
  */
 export async function getAppHostingConfiguration(
   backendDir: string,
+  includeLocalConfigs = true,
 ): Promise<AppHostingYamlConfig> {
   const appHostingConfigPaths = dynamicDispatch.listAppHostingFilesInPath(backendDir);
   // generate a map to make it easier to interface between file name and it's path
@@ -152,14 +152,16 @@ export async function getAppHostingConfiguration(
     output.merge(baseFile, /* allowSecretsToBecomePlaintext= */ false);
   }
 
-  if (emulatorsFilePath) {
-    const emulatorsConfig = await AppHostingYamlConfig.loadFromFile(emulatorsFilePath);
-    output.merge(emulatorsConfig, /* allowSecretsToBecomePlaintext= */ false);
-  }
+  if (includeLocalConfigs) {
+    if (emulatorsFilePath) {
+      const emulatorsConfig = await AppHostingYamlConfig.loadFromFile(emulatorsFilePath);
+      output.merge(emulatorsConfig, /* allowSecretsToBecomePlaintext= */ false);
+    }
 
-  if (localFilePath) {
-    const localYamlConfig = await AppHostingYamlConfig.loadFromFile(localFilePath);
-    output.merge(localYamlConfig, /* allowSecretsToBecomePlaintext= */ true);
+    if (localFilePath) {
+      const localYamlConfig = await AppHostingYamlConfig.loadFromFile(localFilePath);
+      output.merge(localYamlConfig, /* allowSecretsToBecomePlaintext= */ true);
+    }
   }
 
   return output;
@@ -392,4 +394,28 @@ export async function overrideChosenEnv(
 
 export function suggestedTestKeyName(variable: string): string {
   return "test-" + variable.replace(/_/g, "-").toLowerCase();
+}
+
+/**
+ * Split a set of environment variables into build and runtime variables.
+ */
+export function splitEnvVars(env: EnvMap): { build: EnvMap; runtime: EnvMap } {
+  const build: EnvMap = {};
+  const runtime: EnvMap = {};
+
+  for (const [key, val] of Object.entries(env)) {
+    const envVal = { ...val };
+    if (envVal.value !== undefined) {
+      envVal.value = String(envVal.value);
+    }
+
+    if (val.availability?.includes("BUILD") || !val.availability) {
+      build[key] = envVal;
+    }
+    if (val.availability?.includes("RUNTIME") || !val.availability) {
+      runtime[key] = envVal;
+    }
+  }
+
+  return { build, runtime };
 }

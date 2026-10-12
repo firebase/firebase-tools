@@ -22,22 +22,6 @@ review the following requirements and options:
 	initialize a new project for you.
 
 
-## Initialize Firebase
-
-To get started, initialize Firebase for your framework project.
-Use the Firebase CLI for a new project, or modify `firebase.json` for an
-existing project.
-
-### Initialize a new project
-
-1. In the Firebase CLI, enable the web frameworks preview:
-   <pre class="devsite-terminal">firebase experiments:enable webframeworks</pre>
-1. Run the initialization command from the CLI and then follow the prompts:
-   <pre class="devsite-terminal">firebase init hosting</pre>
-1.  Answer yes to "Do you want to use a web framework? (experimental)"
-1.  Choose your hosting source directory.  If there is an existing Vite codebase, 
-   the CLI detects it and the process completes.
-
 ## Serve static content
 
 After initializing Firebase, you can serve static content with the standard

@@ -20,6 +20,8 @@ export enum CrashlyticsReport {
   TOP_OPERATING_SYSTEMS = "topOperatingSystems",
   TOP_APPLE_DEVICES = "topAppleDevices",
   TOP_ANDROID_DEVICES = "topAndroidDevices",
+  TOP_BROWSERS = "topBrowsers",
+  WEB_METRICS = "webMetrics",
 }
 
 export const CrashlyticsReportSchema = z.nativeEnum(CrashlyticsReport);

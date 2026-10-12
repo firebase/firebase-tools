@@ -42,7 +42,7 @@ describe("ensureDatabaseTriggerRegion", () => {
     ep.eventTrigger.region = "us-west1";
 
     expect(() => dataconnect.ensureDataConnectTriggerRegion(ep)).to.throw(
-      "The Firebase Data Connect trigger location must match the function region.",
+      "The Firebase SQL Connect trigger location must match the function region.",
     );
   });
 });

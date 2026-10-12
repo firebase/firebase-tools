@@ -5,7 +5,7 @@ import { env as monospaceEnv } from "../src/core/env";
 import { getSettings } from "./utils/settings";
 
 export const IDX_METRIC_NOTICE = `
-When you use the Firebase Data Connect Extension, Google collects telemetry data such as usage statistics, error metrics, and crash reports. Telemetry helps us better understand how the Firebase Extension is performing, where improvements need to be made, and how features are being used. Firebase uses this data, consistent with our [Google Privacy Policy](https://policies.google.com/privacy?hl=en-US), to provide, improve, and develop Firebase products and services.
+When you use the Firebase SQL Connect Extension, Google collects telemetry data such as usage statistics, error metrics, and crash reports. Telemetry helps us better understand how the Firebase Extension is performing, where improvements need to be made, and how features are being used. Firebase uses this data, consistent with our [Google Privacy Policy](https://policies.google.com/privacy?hl=en-US), to provide, improve, and develop Firebase products and services.
 We take steps to protect your privacy as part of this process. This includes disconnecting your telemetry data from your Google Account, fully anonymizing it, and storing that data for up to 14 months.
 Read more in our [Privacy Policy](https://policies.google.com/privacy?hl=en-US).
 `;

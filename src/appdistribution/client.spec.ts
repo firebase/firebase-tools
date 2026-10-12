@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { join } from "path";
 import * as fs from "fs-extra";
-import * as nock from "nock";
+import nock from "../test/helpers/nock";
 import { rmSync } from "node:fs";
 import * as sinon from "sinon";
 import * as tmp from "tmp";
@@ -420,6 +420,36 @@ describe("distribution", () => {
     });
   });
 
+  describe("getLatestRelease", () => {
+    it("should throw error if request fails", async () => {
+      nock(appDistributionOrigin())
+        .get(`/v1/${appName}/releases?pageSize=1&orderBy=createTime%20desc`)
+        .reply(400, { error: { status: "FAILED_PRECONDITION" } });
+      await expect(appDistributionClient.getLatestRelease(appName)).to.be.rejectedWith(
+        FirebaseError,
+        `Failed to get latest release for app ${appName}`,
+      );
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should return undefined if no releases are found", async () => {
+      nock(appDistributionOrigin())
+        .get(`/v1/${appName}/releases?pageSize=1&orderBy=createTime%20desc`)
+        .reply(200, { releases: [] });
+      await expect(appDistributionClient.getLatestRelease(appName)).to.eventually.be.undefined;
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should resolve with the latest release when request succeeds", async () => {
+      const release = { name: "release1", displayVersion: "1.0" };
+      nock(appDistributionOrigin())
+        .get(`/v1/${appName}/releases?pageSize=1&orderBy=createTime%20desc`)
+        .reply(200, { releases: [release] });
+      await expect(appDistributionClient.getLatestRelease(appName)).to.eventually.deep.eq(release);
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
   describe("createReleaseTest", () => {
     const releaseName = `${appName}/releases/fake-release-id`;
     const mockDevices: TestDevice[] = [
@@ -453,12 +483,39 @@ describe("distribution", () => {
     });
 
     it("should resolve with ReleaseTest when request succeeds", async () => {
+      let capturedRequestBody: nock.Body | undefined;
       nock(appDistributionOrigin())
         .post(`/v1alpha/${releaseName}/tests`)
-        .reply(200, mockReleaseTest);
+        .reply(200, (uri, requestBody) => {
+          capturedRequestBody = requestBody;
+          return mockReleaseTest;
+        });
       await expect(
         appDistributionClient.createReleaseTest(releaseName, mockDevices),
       ).to.be.eventually.deep.eq(mockReleaseTest);
+      expect(capturedRequestBody).to.deep.equal({
+        deviceExecutions: mockDevices.map((device) => ({ device })),
+      });
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should include resultsBucket in request body if specified", async () => {
+      let capturedRequestBody: nock.Body | undefined;
+      nock(appDistributionOrigin())
+        .post(`/v1alpha/${releaseName}/tests`)
+        .reply(200, (uri, requestBody) => {
+          capturedRequestBody = requestBody;
+          return mockReleaseTest;
+        });
+      await expect(
+        appDistributionClient.createReleaseTest(releaseName, mockDevices, {
+          resultsBucket: "projects/123/buckets/my-bucket",
+        }),
+      ).to.be.eventually.deep.eq(mockReleaseTest);
+      expect(capturedRequestBody).to.deep.equal({
+        deviceExecutions: mockDevices.map((device) => ({ device })),
+        resultsBucket: "projects/123/buckets/my-bucket",
+      });
       expect(nock.isDone()).to.be.true;
     });
   });

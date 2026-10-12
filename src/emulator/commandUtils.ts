@@ -11,6 +11,7 @@ import { requireAuth } from "../requireAuth";
 import { requireConfig } from "../requireConfig";
 import { Emulators, ALL_SERVICE_EMULATORS } from "./types";
 import { FirebaseError } from "../error";
+import { getError } from "../error";
 import { EmulatorRegistry } from "./registry";
 import { getProjectId } from "../projectUtils";
 import { confirm } from "../prompt";
@@ -172,8 +173,8 @@ export async function beforeEmulatorCommand(options: any): Promise<any> {
   ) {
     try {
       await requireAuth(options);
-    } catch (e: any) {
-      logger.debug(e);
+    } catch (e: unknown) {
+      logger.debug(e as any);
       utils.logLabeledWarning(
         "emulators",
         `You are not currently authenticated so some features may not work correctly. Please run ${clc.bold(
@@ -333,9 +334,9 @@ function processKillSignal(
         }
       }
       res();
-    } catch (e: any) {
-      logger.debug(e);
-      rej();
+    } catch (e: unknown) {
+      logger.debug(e as any);
+      rej(getError(e));
     }
   };
 }
@@ -393,7 +394,11 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
   return new Promise((resolve, reject) => {
     proc.on("error", (err: any) => {
       utils.logWarning(`There was an error running the script: ${JSON.stringify(err)}`);
-      reject();
+      reject(
+        new FirebaseError("There was an error running the script.", {
+          original: err instanceof Error ? err : undefined,
+        }),
+      );
     });
 
     // Due to the async nature of the node child_process library, sometimes
@@ -405,7 +410,9 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
     proc.once("exit", (code, signal) => {
       if (signal) {
         utils.logWarning(`Script exited with signal: ${signal}`);
-        setTimeout(reject, exitDelayMs);
+        setTimeout(() => {
+          reject(new FirebaseError(`Script exited with signal: ${signal}`));
+        }, exitDelayMs);
         return;
       }
 
@@ -512,9 +519,11 @@ export async function checkJavaMajorVersion(): Promise<number> {
           stdio: ["inherit", "pipe", "pipe"],
         },
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       return reject(
-        new FirebaseError(`Could not spawn \`java -version\`. ${JAVA_HINT}`, { original: err }),
+        new FirebaseError(`Could not spawn \`java -version\`. ${JAVA_HINT}`, {
+          original: getError(err),
+        }),
       );
     }
 

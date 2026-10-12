@@ -116,6 +116,8 @@ export async function prepare(
 
   const versions = await Promise.all(
     configs.map(async (config) => {
+      // Get the site to confirm that it exists on this project
+      await api.getSite(context.projectId, config.site);
       const labels: Record<string, string> = {
         ...deploymentTool.labels(),
       };
@@ -150,7 +152,7 @@ export async function prepare(
         trackGA4("hosting_version", {
           framework: config.webFramework || "classic",
         }),
-        api.createVersion(config.site, version),
+        api.createVersion(context.projectId, config.site, version),
       ]);
       return versionName;
     }),

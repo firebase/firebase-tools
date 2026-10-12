@@ -1,6 +1,8 @@
 import { ChildProcess } from "child_process";
 import { EventEmitter } from "events";
 
+import { getErrStack } from "../error";
+
 export enum Emulators {
   AUTH = "auth",
   HUB = "hub",
@@ -284,7 +286,7 @@ export class EmulatorLog {
     let isNotJSON = false;
     try {
       parsedLog = JSON.parse(json);
-    } catch (err: any) {
+    } catch (err: unknown) {
       isNotJSON = true;
     }
 
@@ -357,12 +359,15 @@ export class EmulatorLog {
 
     EmulatorLog.WAITING_FOR_FLUSH = true;
     if (process.send) {
-      // For some reason our node.d.ts file does not include the version of subprocess.send() with a callback
-      // but the node docs assert that it has an optional callback.
       // https://nodejs.org/api/child_process.html#child_process_subprocess_send_message_sendhandle_options_callback
-      (process.send as any)(nextMsg, undefined, {}, (err: any) => {
+      process.send(nextMsg, undefined, {}, (err: Error | null) => {
         if (err) {
-          process.stderr.write(err);
+          // process.send() hands the callback an Error object, which stream.write()
+          // rejects -- writing it directly throws and destroys the original error.
+          process.stderr.write(`${getErrStack(err)}\n`);
+          // Clear the buffer to prevent flooding stderr with duplicate stack traces
+          // for subsequent messages when the IPC channel is permanently broken.
+          EmulatorLog.LOG_BUFFER = [];
         }
 
         EmulatorLog.WAITING_FOR_FLUSH = EmulatorLog.LOG_BUFFER.length > 0;

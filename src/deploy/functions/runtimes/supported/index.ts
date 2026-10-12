@@ -11,10 +11,10 @@ export function isRuntime(maybe: string): maybe is Runtime {
 
 /** Type deduction helper to narrow a runtime to a language. */
 export function runtimeIsLanguage<L extends Language>(
-  runtime: Runtime,
+  runtime: Runtime | undefined,
   language: L,
 ): runtime is Runtime & RuntimeOf<L> {
-  return runtime.startsWith(language);
+  return !!runtime && runtime.startsWith(language);
 }
 
 /**

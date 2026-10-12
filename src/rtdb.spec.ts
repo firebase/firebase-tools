@@ -8,7 +8,6 @@ import * as rtdb from "./rtdb";
 import * as management from "./management/database";
 import * as utils from "./utils";
 import { FirebaseError } from "./error";
-import { Response } from "node-fetch";
 
 const expect = chai.expect;
 chai.use(sinonChai);

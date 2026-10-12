@@ -15,6 +15,13 @@ import { FirebaseError } from "../../error";
 
 /**
  * Orchestrates rollouts for the backends targeted for deployment.
+ *
+ * This step executes the actual "release" phase of the deployment. It takes the
+ * potentially uploaded source code (or linked repository commits) and triggers
+ * the App Hosting rollout API. It tracks the progress of the rollouts and reports
+ * success or failure to the user.
+ * @param context - The deployment context containing backend configs, locations, and storage URIs.
+ * @param options - CLI options.
  */
 export default async function (context: Context, options: Options): Promise<void> {
   let backendIds = Object.keys(context.backendConfigs);
@@ -30,38 +37,45 @@ export default async function (context: Context, options: Options): Promise<void
     backendIds = backendIds.filter((id) => !missingBackends.includes(id));
   }
 
-  const localBuildBackends = backendIds.filter((id) => context.backendLocalBuilds[id]);
-  if (localBuildBackends.length > 0) {
-    logLabeledWarning(
-      "apphosting",
-      `Skipping backend(s) ${localBuildBackends.join(", ")}. Local Builds are not supported yet.`,
-    );
-    backendIds = backendIds.filter((id) => !localBuildBackends.includes(id));
-  }
-
   if (backendIds.length === 0) {
     return;
   }
 
   const projectId = needProjectId(options);
-  const rollouts = backendIds.map((backendId) =>
-    // TODO(9114): Add run_command
-    // TODO(914): Set the buildConfig.
-    // TODO(914): Set locallyBuiltSource.
-    orchestrateRollout({
+  const rollouts = backendIds.map((backendId) => {
+    const localBuild = context.backendLocalBuilds[backendId];
+    const userStorageUri = context.backendStorageUris[backendId];
+    const rootDirectory = context.backendConfigs[backendId].rootDir;
+
+    const source = localBuild
+      ? {
+          locallyBuilt: {
+            userStorageUri,
+            rootDirectory,
+            runCommand: localBuild.buildConfig?.runCommand,
+            env: localBuild.buildConfig?.env,
+            ...(localBuild.buildConfig?.runConfig
+              ? { runConfig: localBuild.buildConfig.runConfig }
+              : {}),
+          },
+        }
+      : {
+          archive: {
+            userStorageUri,
+            rootDirectory,
+          },
+        };
+
+    return orchestrateRollout({
       projectId,
       backendId,
       location: context.backendLocations[backendId],
       buildInput: {
-        source: {
-          archive: {
-            userStorageUri: context.backendStorageUris[backendId],
-            rootDirectory: context.backendConfigs[backendId].rootDir,
-          },
-        },
+        config: localBuild?.buildConfig,
+        source,
       },
-    }),
-  );
+    });
+  });
 
   logLabeledBullet(
     "apphosting",
@@ -71,6 +85,7 @@ export default async function (context: Context, options: Options): Promise<void
     `Starting rollout(s) for backend(s) ${backendIds.join(", ")}; this may take a few minutes. It's safe to exit now.\n`,
   ).start();
   const results = await Promise.allSettled(rollouts);
+  rolloutsSpinner.stop();
   let failed = false;
   for (let i = 0; i < results.length; i++) {
     const res = results[i];
@@ -84,7 +99,6 @@ export default async function (context: Context, options: Options): Promise<void
       logLabeledError("apphosting", `${res.reason}`);
     }
   }
-  rolloutsSpinner.stop();
   if (failed) {
     throw new FirebaseError(
       "One or more rollouts failed. Please review the errors above and try again.",

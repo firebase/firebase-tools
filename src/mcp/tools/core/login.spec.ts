@@ -9,6 +9,7 @@ describe("login tool", () => {
   let sandbox: sinon.SinonSandbox;
   let loginPrototyperStub: sinon.SinonStub;
   let server: FirebaseMcpServer;
+  let getProjectDefaultAccountStub: sinon.SinonStub;
   const fakeAuthorize = sinon.stub();
 
   beforeEach(() => {
@@ -18,6 +19,9 @@ describe("login tool", () => {
       sessionId: "FAKE_SESSION_ID",
       authorize: fakeAuthorize,
     });
+    getProjectDefaultAccountStub = sandbox
+      .stub(auth, "getProjectDefaultAccount")
+      .returns(undefined);
     server = new FirebaseMcpServer({ projectRoot: "" });
   });
 
@@ -30,7 +34,7 @@ describe("login tool", () => {
     const result = await login.fn({ authCode: undefined }, { host: server } as any);
 
     const expectedResult = toContent(
-      `Please visit this URL to login: https://fake.login.uri/auth\nYour session ID is: FAKE_SESSION_ID\nInstruct the use to copy the authorization code from that link, and paste it into chat.\nThen, run this tool again with that as the authCode argument to complete the login.`,
+      `Please visit this URL to login: https://fake.login.uri/auth\nYour session ID is: FAKE_SESSION_ID\n\nCRITICAL SECURITY REQUIREMENT:\nAs the agent, you MUST explicitly display BOTH the login URL and the Session ID to the user in your response.\nInstruct the user to verify that the Session ID displayed on the browser matches the Session ID above to prevent phishing attacks before they grant access.\n\nOnce the user has completed the login, instruct them to copy the authorization code and paste it back into the chat.\nThen, call this tool again with the authorization code passed as the 'authCode' parameter to complete the login.`,
     );
     expect(loginPrototyperStub.calledOnce).to.be.true;
     expect(result).to.deep.equal(expectedResult);
@@ -53,5 +57,25 @@ describe("login tool", () => {
 
     expect(result.isError).to.be.true;
     expect((result.content[0] as { text: string }).text).to.include("Login flow not started");
+  });
+
+  it("should return already logged in message if account exists and reauth is not true", async () => {
+    getProjectDefaultAccountStub.returns({ user: { email: "test@example.com" } });
+
+    const result = await login.fn({ authCode: undefined }, { host: server } as any);
+
+    expect(result).to.deep.equal(toContent("Already logged in as test@example.com"));
+    expect(loginPrototyperStub.called).to.be.false;
+  });
+
+  it("should start login flow if account exists but reauth is true", async () => {
+    getProjectDefaultAccountStub.returns({ user: { email: "test@example.com" } });
+
+    const result = await login.fn({ authCode: undefined, reauth: true }, { host: server } as any);
+
+    expect(loginPrototyperStub.calledOnce).to.be.true;
+    expect((result.content[0] as { text: string }).text).to.include(
+      "Please visit this URL to login",
+    );
   });
 });

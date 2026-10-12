@@ -23,6 +23,8 @@ import type {
   AppPathRoutesManifest,
   ActionManifest,
   NextConfigFileName,
+  FunctionsConfigManifest,
+  MiddlewareManifestV3,
 } from "./interfaces";
 import {
   APP_PATH_ROUTES_MANIFEST,
@@ -32,9 +34,13 @@ import {
   WEBPACK_LAYERS,
   CONFIG_FILES,
   ESBUILD_VERSION,
+  FUNCTIONS_CONFIG_MANIFEST,
 } from "./constants";
 import { dirExistsSync, fileExistsSync } from "../../fsutils";
 import { IS_WINDOWS } from "../../utils";
+import { spawn } from "cross-spawn";
+import { loadStreamJson } from "../../streamJson";
+import { NPM_COMMAND_TIMEOUT_MILLIES } from "../constants";
 import { execSync } from "child_process";
 import { FirebaseError } from "../../error";
 
@@ -195,23 +201,40 @@ export async function hasUnoptimizedImage(sourceDir: string, distDir: string): P
 }
 
 /**
- * Whether Next.js middleware is being used
+ * Whether Next.js proxy/middleware is being used
  *
  * @param dir in development must be the project root path, otherwise `distDir`
  * @param isDevMode whether the project is running on dev or production
  */
 export async function isUsingMiddleware(dir: string, isDevMode: boolean): Promise<boolean> {
   if (isDevMode) {
-    const [middlewareJs, middlewareTs] = await Promise.all([
+    // manifest files might not be available yet in dev mode, check all possible middleware files
+    const middlewareFiles = await Promise.all([
       pathExists(join(dir, "middleware.js")),
       pathExists(join(dir, "middleware.ts")),
+      pathExists(join(dir, "proxy.js")),
+      pathExists(join(dir, "proxy.ts")),
+      pathExists(join(dir, "src", "middleware.js")),
+      pathExists(join(dir, "src", "middleware.ts")),
+      pathExists(join(dir, "src", "proxy.js")),
+      pathExists(join(dir, "src", "proxy.ts")),
     ]);
 
-    return middlewareJs || middlewareTs;
+    return middlewareFiles.some((file) => file);
   } else {
     const middlewareManifest: MiddlewareManifest = await readJSON<MiddlewareManifest>(
       join(dir, "server", MIDDLEWARE_MANIFEST),
     );
+
+    if (middlewareManifest.version === 3) {
+      const functionsConfigManifest = await readJSON<FunctionsConfigManifest>(
+        join(dir, "server", FUNCTIONS_CONFIG_MANIFEST),
+      ).catch(() => undefined);
+
+      if ((functionsConfigManifest?.functions?.["/_middleware"]?.matchers || [])?.length > 0) {
+        return true;
+      }
+    }
 
     return Object.keys(middlewareManifest.middleware).length > 0;
   }
@@ -229,11 +252,9 @@ export async function isUsingImageOptimization(
 ): Promise<boolean> {
   let isNextImageImported = await usesNextImage(projectDir, distDir);
 
-  // App directory doesn't use the export marker, look it up manually
+  // App directory doesn't use the export marker, look it up manually.
   if (!isNextImageImported && isUsingAppDirectory(join(projectDir, distDir))) {
-    if (await isUsingNextImageInAppDirectory(projectDir, distDir)) {
-      isNextImageImported = true;
-    }
+    isNextImageImported = await isUsingNextImageInAppDirectory(projectDir, distDir);
   }
 
   if (isNextImageImported) {
@@ -247,9 +268,22 @@ export async function isUsingImageOptimization(
 }
 
 /**
- * Whether next/image is being used in the app directory
+ * Whether next/image is being used in the app directory — checks the
+ * client-reference-manifest (server component imports) first, then falls back
+ * to scanning prerendered HTML for the `data-nimg` attribute that next/image
+ * renders (covers "use client"-only imports since Next.js 11.1).
  */
 export async function isUsingNextImageInAppDirectory(
+  projectDir: string,
+  distDir: string,
+): Promise<boolean> {
+  return (
+    (await isUsingNextImageInServerComponent(projectDir, distDir)) ||
+    isUsingNextImageInClientComponent(projectDir, distDir)
+  );
+}
+
+export async function isUsingNextImageInServerComponent(
   projectDir: string,
   nextDir: string,
 ): Promise<boolean> {
@@ -268,6 +302,22 @@ export async function isUsingNextImageInAppDirectory(
 
     // Return true when the first file containing the next/image component is found
     if (fileContents.includes(nextImageString)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export async function isUsingNextImageInClientComponent(
+  projectDir: string,
+  distDir: string,
+): Promise<boolean> {
+  const htmlFiles = await glob(join(projectDir, distDir, "server", "app", "**", "*.html"));
+
+  for (const filepath of htmlFiles) {
+    const contents = await readFile(filepath, "utf-8");
+    if (contents.includes('data-nimg="')) {
       return true;
     }
   }
@@ -301,21 +351,71 @@ export function allDependencyNames(mod: NpmLsDepdendency): string[] {
 }
 
 /**
+ * Run `npm ls` in `sourceDir` and resolve the unique names of all (transitive) production
+ * dependencies.
+ */
+export async function getProductionDependencyNames(sourceDir: string): Promise<string[]> {
+  const { chain, many, parser, pick, streamObject } = await loadStreamJson();
+  return new Promise((resolve, reject) => {
+    const dependencies: string[] = [];
+    const npmLs = spawn("npm", ["ls", "--omit=dev", "--all", "--json=true"], {
+      cwd: sourceDir,
+      timeout: NPM_COMMAND_TIMEOUT_MILLIES,
+    });
+    npmLs.on("error", reject);
+    if (!npmLs.stdout) {
+      return reject(new FirebaseError("Failed to capture npm ls output"));
+    }
+    const pipeline = chain([
+      npmLs.stdout,
+      parser({ packValues: false, packKeys: true, streamValues: false }),
+      pick({ filter: "dependencies" }),
+      streamObject(),
+      ({ key, value }: { key: string; value: NpmLsDepdendency }) =>
+        many([key, ...allDependencyNames(value)]),
+    ]);
+    pipeline.on("data", (it: string) => dependencies.push(it));
+    pipeline.on("error", reject);
+    pipeline.on("end", () => resolve([...new Set(dependencies)]));
+  });
+}
+
+/**
  * Get regexes from middleware matcher manifest
  */
-export function getMiddlewareMatcherRegexes(middlewareManifest: MiddlewareManifest): RegExp[] {
+export function getMiddlewareMatcherRegexes(
+  middlewareManifest: MiddlewareManifest,
+  functionsConfigManifest: FunctionsConfigManifest,
+): RegExp[] {
   const middlewareObjectValues = Object.values(middlewareManifest.middleware);
-
-  let middlewareMatchers: Record<"regexp", string>[];
+  const middlewareMatchers: Record<"regexp", string>[] = [];
 
   if (middlewareManifest.version === 1) {
-    middlewareMatchers = middlewareObjectValues.map(
-      (page: MiddlewareManifestV1["middleware"]["page"]) => ({ regexp: page.regexp }),
+    middlewareMatchers.push(
+      ...middlewareObjectValues.map((page: MiddlewareManifestV1["middleware"][string]) => ({
+        regexp: page.regexp,
+      })),
     );
-  } else {
-    middlewareMatchers = middlewareObjectValues
-      .map((page: MiddlewareManifestV2["middleware"]["page"]) => page.matchers)
-      .flat();
+  } else if (middlewareManifest.version === 2) {
+    middlewareMatchers.push(
+      ...middlewareObjectValues
+        .map((page: MiddlewareManifestV2["middleware"][string]) => page.matchers)
+        .flat(),
+    );
+  } else if (middlewareManifest.version === 3) {
+    if (functionsConfigManifest?.functions?.["/_middleware"]) {
+      // matchers from proxy.js
+      middlewareMatchers.push(
+        ...(functionsConfigManifest.functions["/_middleware"].matchers || []),
+      );
+    } else {
+      // matchers from middleware.js
+      middlewareMatchers.push(
+        ...middlewareObjectValues
+          .map((page: MiddlewareManifestV3["middleware"][string]) => page.matchers)
+          .flat(),
+      );
+    }
   }
 
   return middlewareMatchers.map((matcher) => new RegExp(matcher.regexp));

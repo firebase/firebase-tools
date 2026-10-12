@@ -12,7 +12,6 @@ import {
   mainSchemaYaml,
 } from "../../../dataconnect/types";
 import { dump } from "js-yaml";
-import { logger } from "../../../logger";
 
 interface CombinedServiceInfo {
   local?: ServiceInfo;
@@ -29,10 +28,12 @@ export const list_services = tool(
   "dataconnect",
   {
     name: "list_services",
-    description: "Use this to list existing local and backend Firebase Data Connect services",
+    description: "Use this to list existing local and backend Firebase SQL Connect services",
+    humanReadableDescription:
+      "List local and deployed Firebase SQL Connect services, schemas, and connectors.",
     inputSchema: z.object({}),
     annotations: {
-      title: "List existing Firebase Data Connect services",
+      title: "List existing Firebase SQL Connect services",
       readOnlyHint: true,
     },
     _meta: {
@@ -40,7 +41,7 @@ export const list_services = tool(
       requiresAuth: false,
     },
   },
-  async (_, { projectId, config }) => {
+  async (_, { projectId, config, host }) => {
     const localServiceInfos = await loadAll(projectId, config);
     const serviceInfos = new Map<string, CombinedServiceInfo>();
 
@@ -58,7 +59,8 @@ export const list_services = tool(
           client.listSchemas(`projects/${projectId}/locations/-/services/-`),
           client.listConnectors(`projects/${projectId}/locations/-/services/-`),
         ]);
-        console.log(services, schemas, connectors);
+        host.logger.debug(JSON.stringify({ services, schemas, connectors }));
+
         for (const s of services) {
           const k = s.name.split("/").slice(2, 6).join("/");
           const st = serviceInfos.get(k) || {};
@@ -83,7 +85,7 @@ export const list_services = tool(
           serviceInfos.set(k, st);
         }
       } catch (e: any) {
-        logger.debug("cannot fetch dataconnect resources in the backend", e);
+        host.logger.debug(`cannot fetch dataconnect resources in the backend.\n${e}`);
       }
     }
 
@@ -110,7 +112,7 @@ export const list_services = tool(
     }
 
     if (localServices.length) {
-      output.push(`# Local Data Connect Sources`);
+      output.push(`# Local SQL Connect Sources`);
       for (const s of localServices) {
         const local = s.local!;
         output.push(dump(local.dataConnectYaml));
@@ -128,7 +130,7 @@ export const list_services = tool(
     }
 
     if (remoteOnlyServices.length) {
-      output.push(`# Data Connect Services in project ${projectId}`);
+      output.push(`# SQL Connect Services in project ${projectId}`);
       for (const s of remoteOnlyServices) {
         if (s.deployed) {
           includeDeployedServiceInfo(s.deployed);
@@ -139,14 +141,14 @@ export const list_services = tool(
     output.push(`\n# What's next?`);
     if (!localServices.length) {
       output.push(
-        `- There is no local Data Connect service in the local workspace. Consider use the \`firebase_init\` MCP tool to setup one.`,
+        `- There is no local SQL Connect service in the local workspace. Consider use the \`firebase_init\` MCP tool to setup one.`,
       );
     }
     output.push(
-      `- You can use the \`dataconnect_compile\` tool to compile all local Data Connect schemas and query sources.`,
+      `- You can use the \`dataconnect_compile\` tool to compile all local SQL Connect schemas and query sources.`,
     );
     output.push(
-      `- You run \`firebase deploy\` in command line to deploy the Data Connect schemas, connector and perform SQL migrations.`,
+      `- You run \`firebase deploy\` in command line to deploy the SQL Connect schemas, connector and perform SQL migrations.`,
     );
     return toContent(output.join("\n"));
   },

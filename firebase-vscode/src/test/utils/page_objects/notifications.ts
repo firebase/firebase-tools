@@ -16,7 +16,7 @@ export class Notifications {
     return notifications.find(async (notif) => {
       return (
         (await notif.getMessage()) ===
-        "Automatically starting emulator... Please retry `Run local` execution after it's started."
+        "Automatically starting emulator... Please retry `Run Emulator` execution after it's started."
       );
     });
   }
