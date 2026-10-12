@@ -6,9 +6,10 @@ import { requireConfig } from "../requireConfig";
 import { requirePermissions } from "../requirePermissions";
 
 export const command = new Command("run:services:update <serviceId>")
-  .description(
-    "update the settings of a Cloud Run service, then build and deploy it. " +
-      "If firebase.json lists the service ID in more than one region, use <serviceId>:<region>",
+  .description("update the settings of a Cloud Run service, then build and deploy it")
+  .option(
+    "--region <region>",
+    "the service's region, if firebase.json lists the service ID in more than one region",
   )
   .option(
     "--base-image <baseImage>",
@@ -19,4 +20,6 @@ export const command = new Command("run:services:update <serviceId>")
   .option("--clear-app", "disassociate the Firebase Web App and disable SDK auto-initialization")
   .before(requireConfig)
   .before(requirePermissions, TARGET_PERMISSIONS.run)
-  .action((name: string, options: Options) => updateService(name, options));
+  .action((serviceId: string, options: Options) =>
+    updateService(serviceId, options.region as string | undefined, options),
+  );
