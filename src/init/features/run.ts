@@ -3,7 +3,7 @@ import { Setup } from "..";
 import { Config } from "../../config";
 import { deploy } from "../../deploy";
 import { prereqs, RUN_PERMISSIONS } from "../../deploy/run/prereqs";
-import { fullServiceName, getExistingService } from "../../deploy/run/util";
+import { fullServiceName, getExistingService, mainContainer } from "../../deploy/run/util";
 import { FirebaseError } from "../../error";
 import { RunSingle } from "../../firebaseConfig";
 import { dirExistsSync } from "../../fsutils";
@@ -68,7 +68,7 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
   // default base image, except that an existing service keeps its own.
   const rawBaseImage = await input({
     message: "Which base image should your app use, if any? (e.g. nodejs20, nodejs22)",
-    default: existing?.template.containers?.[0]?.baseImageUri,
+    default: mainContainer(existing?.template)?.baseImageUri,
   });
   const baseImage = (rawBaseImage || "").trim();
 
