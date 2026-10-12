@@ -140,7 +140,7 @@ describe("run deploy", () => {
 
       expect(updateServiceStub).to.have.been.calledWithMatch(
         { annotations: { team: "frontend", [APP_ID]: "1:123:web:def" } },
-        { updateMask: ["annotations", "template", "traffic"] },
+        { updateMask: ["template", "traffic", "annotations"] },
       );
     });
 

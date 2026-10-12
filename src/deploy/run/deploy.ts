@@ -17,7 +17,7 @@ import { prepareLocalBuildScratchDirectory } from "../apphosting/prepare";
 import { createLocalBuildTarArchive, createSourceDeployArchive } from "../apphosting/util";
 import { Context, Payload, ServiceDeploy } from "./args";
 import { secretNames, toLocalBuildEnv } from "./buildEnv";
-import { FIREBASE_APP_ANNOTATION } from "./util";
+import { FIREBASE_APP_ANNOTATION, mainContainer } from "./util";
 
 const DEPLOY_MESSAGE_ANNOTATION = "firebase.google.com/deploy-message";
 /** Rolling out a revision can take longer than the operation poller's default timeout. */
@@ -47,7 +47,7 @@ export async function deploy(context: Context, options: Options, payload: Payloa
       const annotations = serviceAnnotations(svc);
       svc.deployed = svc.existing
         ? await deployRevision(svc.existing, template, annotations)
-        : await createService(projectId, svc.config, template, annotations);
+        : await createNewService(projectId, svc.config, template, annotations);
     } finally {
       if (scratchDir) {
         removeTempPath(scratchDir);
@@ -149,21 +149,21 @@ async function buildImage(
   await artifactregistry.ensureDockerRepository(projectId, region, "cloud-run-source-deploy");
   const imageUri = `${region}-docker.pkg.dev/${projectId}/cloud-run-source-deploy/${serviceId}:${Date.now()}`;
   logLabeledBullet("run", `Building service ${serviceId} in ${region}...`);
-  await runv2.submitBuild(projectId, region, {
-    storageSource: source,
-    imageUri,
-    buildpackBuild: {
-      // Only images built for a base image can have their base image updated automatically.
-      ...(svc.baseImage && { baseImage: svc.baseImage, enableAutomaticUpdates: true }),
-      environmentVariables: {
-        // Prepare rejects build secrets for builds on Cloud Build, so these are all plain values.
-        ...(svc.buildEnv as Record<string, string> | undefined),
-        // Use App Hosting's buildpacks, which need to know where to write the output bundle.
-        X_GOOGLE_TARGET_PLATFORM: "fah",
-        FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
-      },
+  const buildpackBuild: runv2.BuildpacksBuild = {
+    environmentVariables: {
+      // Prepare rejects build secrets for builds on Cloud Build, so these are all plain values.
+      ...(svc.buildEnv as Record<string, string> | undefined),
+      // Use App Hosting's buildpacks, which need to know where to write the output bundle.
+      X_GOOGLE_TARGET_PLATFORM: "fah",
+      FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
     },
-  });
+  };
+  // Only images built for a base image can have their base image updated automatically.
+  if (svc.baseImage) {
+    buildpackBuild.baseImage = svc.baseImage;
+    buildpackBuild.enableAutomaticUpdates = true;
+  }
+  await runv2.submitBuild(projectId, region, { storageSource: source, imageUri, buildpackBuild });
   return imageUri;
 }
 
@@ -185,7 +185,7 @@ export function revisionTemplate(
     : { containers: [{ name: serviceId, image }] };
   // The live template names the live revision. Drop the name so Cloud Run creates a new revision.
   delete template.revision;
-  const container = template.containers?.[0];
+  const container = mainContainer(template);
   if (!container) {
     throw new FirebaseError(`Service ${serviceId} in ${region} has no containers.`);
   }
@@ -209,6 +209,9 @@ export function revisionTemplate(
     delete container.sourceCode;
     delete container.command;
   }
+  // Prepare already resolved svc.baseImage: the service's current base image, unless this deploy
+  // sets or clears it. A new service has none unless init sets one, so automatic base image
+  // updates are off by default.
   if (svc.baseImage) {
     container.baseImageUri = svc.baseImage;
   } else {
@@ -255,29 +258,28 @@ function serviceAnnotations(svc: ServiceDeploy): Record<string, string> | undefi
   return annotations;
 }
 
-/** Creates the service with its first revision. */
-function createService(
+/** Creates a new service with its first revision. */
+function createNewService(
   projectId: string,
   config: RunSingle,
   template: runv2.RevisionTemplate,
   annotations?: Record<string, string>,
 ): Promise<runv2.Service> {
   const { serviceId, region } = config;
-  return runv2.createService(
-    projectId,
-    region,
-    serviceId,
-    {
-      name: `projects/${projectId}/locations/${region}/services/${serviceId}`,
-      ...(annotations && { annotations }),
-      template,
-      client: "cli-firebase",
-      // Like an App Hosting backend, the service is public.
-      invokerIamDisabled: true,
-      ingress: "INGRESS_TRAFFIC_ALL",
-    },
-    { pollTimeoutMs: ROLLOUT_TIMEOUT_MS },
-  );
+  const service: Omit<runv2.Service, runv2.ServiceOutputFields> = {
+    name: `projects/${projectId}/locations/${region}/services/${serviceId}`,
+    template,
+    client: "cli-firebase",
+    // Like an App Hosting backend, the service is public.
+    invokerIamDisabled: true,
+    ingress: "INGRESS_TRAFFIC_ALL",
+  };
+  if (annotations) {
+    service.annotations = annotations;
+  }
+  return runv2.createService(projectId, region, serviceId, service, {
+    pollTimeoutMs: ROLLOUT_TIMEOUT_MS,
+  });
 }
 
 /** Rolls out a new revision of an existing service and sends it all traffic. */
@@ -290,18 +292,17 @@ function deployRevision(
   const tags = (service.traffic || [])
     .filter((t) => t.tag)
     .map((t) => ({ type: t.type, revision: t.revision, tag: t.tag }));
-  return runv2.updateService(
-    {
-      name: service.name,
-      ...(annotations && { annotations }),
-      template,
-      traffic: [{ type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 }, ...tags],
-    },
-    {
-      updateMask: [...(annotations ? ["annotations"] : []), "template", "traffic"],
-      pollTimeoutMs: ROLLOUT_TIMEOUT_MS,
-    },
-  );
+  const update: Omit<runv2.Service, runv2.ServiceOutputFields> = {
+    name: service.name,
+    template,
+    traffic: [{ type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 }, ...tags],
+  };
+  const updateMask = ["template", "traffic"];
+  if (annotations) {
+    update.annotations = annotations;
+    updateMask.push("annotations");
+  }
+  return runv2.updateService(update, { updateMask, pollTimeoutMs: ROLLOUT_TIMEOUT_MS });
 }
 
 /** Adapts a Cloud Run config so that it can reuse App Hosting's local build and archive helpers. */

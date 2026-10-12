@@ -17,6 +17,7 @@ import {
   fullServiceName,
   getExistingService,
   getServiceConfigs,
+  mainContainer,
 } from "./util";
 
 const ADMIN_SDK_ROLE = "roles/firebase.sdkAdminServiceAgent";
@@ -40,16 +41,17 @@ export async function prepare(context: Context, options: Options, payload: Paylo
 async function prepareService(context: Context, config: RunSingle): Promise<ServiceDeploy> {
   const { serviceId, region } = config;
   const existing = await getExistingService(context.projectId, region, serviceId);
-  // Base images are sticky: deploys reuse the service's current base image unless told otherwise.
-  const baseImage =
-    context.baseImage === undefined
-      ? existing?.template.containers?.[0]?.baseImageUri
-      : context.baseImage || undefined;
-  // So are linked Firebase Web Apps.
-  const appId =
-    context.appId === undefined
-      ? existing?.annotations?.[FIREBASE_APP_ANNOTATION]
-      : context.appId || undefined;
+  // Base images are sticky: keep the service's current one unless the context sets a new one or
+  // clears it (null).
+  let baseImage = mainContainer(existing?.template)?.baseImageUri;
+  if (context.baseImage !== undefined) {
+    baseImage = context.baseImage ?? undefined;
+  }
+  // Linked Firebase Web Apps are sticky the same way.
+  let appId = existing?.annotations?.[FIREBASE_APP_ANNOTATION];
+  if (context.appId !== undefined) {
+    appId = context.appId ?? undefined;
+  }
   // Local builds run on top of the base image, so they need one.
   if (config.localBuild && !baseImage) {
     const fix = existing

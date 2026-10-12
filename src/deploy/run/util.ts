@@ -103,3 +103,13 @@ export async function getExistingService(
     throw err;
   }
 }
+
+/**
+ * Returns the service's main container, the one that receives its traffic. Services that Firebase
+ * deploys have a single container, so for now this is the first one.
+ */
+export function mainContainer(
+  template: runv2.RevisionTemplate | undefined,
+): runv2.Container | undefined {
+  return template?.containers?.[0];
+}
