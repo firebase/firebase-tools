@@ -1,3 +1,4 @@
+- Updated Pub/Sub emulator to version 0.8.37.
 - Added `crashlytics:heapdumps:{enable,disable,status}` commands to manage Crashlytics Android heap dump collection. (#11225)
 - Removed unused dependencies `proxy-agent`, `universal-analytics`, and `@apphosting/common`.
 - Fixed an issue where throttled task queues stopped processing remaining tasks when a task exhausted its retries or timed out (#6989, #11040).
