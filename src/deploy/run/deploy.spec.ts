@@ -319,17 +319,27 @@ describe("run deploy", () => {
         });
       });
 
-      it("adds the env vars a local build needs, unless the service already sets them", () => {
-        const env = [
-          { name: "MODE", value: "development" },
-          { name: "NODE_ENV", value: "production" },
-        ];
-        const build = { outputFiles: [".next"], env };
+      it("sets the env vars the build reports, replacing the service's values for the same names", () => {
+        const service = webRunning({
+          env: [
+            { name: "MODE", value: "prod" },
+            { name: "API_URL", value: "https://api.example.com" },
+          ],
+        });
+        const build = {
+          outputFiles: [".next"],
+          env: [
+            { name: "MODE", value: "development" },
+            { name: "NODE_ENV", value: "production" },
+          ],
+        };
 
-        const template = localBuildTemplate({ config: web, existing }, build, builtApp);
+        const template = localBuildTemplate({ config: web, existing: service }, build, builtApp);
 
+        // API_URL isn't from the build, so it's kept.
         expect(template.containers?.[0].env).to.deep.equal([
-          { name: "MODE", value: "prod" },
+          { name: "API_URL", value: "https://api.example.com" },
+          { name: "MODE", value: "development" },
           { name: "NODE_ENV", value: "production" },
         ]);
       });
