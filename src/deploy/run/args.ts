@@ -15,13 +15,6 @@ export interface ServiceDeploy {
    * this deploy sets or clears it. Undefined means none, so automatic base image updates are off.
    */
   baseImage?: string;
-  /** Set by deploy, for local builds only: the local build's output. */
-  localBuild?: {
-    scratchDir: string;
-    outputFiles: string[];
-    runCommand?: string;
-    env?: NonNullable<runv2.Container["env"]>;
-  };
   /** Set by deploy: the service after the rollout. */
   deployed?: runv2.Service;
 }
