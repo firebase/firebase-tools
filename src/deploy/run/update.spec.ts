@@ -20,10 +20,18 @@ describe("updateService", () => {
 
   afterEach(() => sinon.restore());
 
-  /** Runs `firebase run:services:update <name>` with these flags and firebase.json "run" config. */
-  function update(name: string, flags: Record<string, unknown>, run: unknown = web): Promise<void> {
+  /** Runs `firebase run:services:update <serviceId>` with these flags and firebase.json "run" config. */
+  function update(
+    serviceId: string,
+    flags: Record<string, unknown>,
+    run: unknown = web,
+  ): Promise<void> {
     const options = { project: "my-project", config: { src: { run } }, ...flags };
-    return updateService(name, options as unknown as Options);
+    return updateService(
+      serviceId,
+      flags.region as string | undefined,
+      options as unknown as Options,
+    );
   }
 
   /** Asserts that update deployed only `only`, with these settings. */
@@ -48,9 +56,9 @@ describe("updateService", () => {
     await expect(update("api", { baseImage: "nodejs22" })).to.be.rejectedWith(
       "Cloud Run service api not detected in firebase.json.",
     );
-    await expect(update("web:europe-west1", { baseImage: "nodejs22" })).to.be.rejectedWith(
-      "Cloud Run service web:europe-west1 not detected in firebase.json.",
-    );
+    await expect(
+      update("web", { region: "europe-west1", baseImage: "nodejs22" }),
+    ).to.be.rejectedWith("Cloud Run service web in europe-west1 not detected in firebase.json.");
   });
 
   it("requires the service to exist", async () => {
@@ -95,14 +103,14 @@ describe("updateService", () => {
   describe("when firebase.json lists the service in two regions", () => {
     it("asks which one to update", async () => {
       await expect(update("web", { baseImage: "nodejs22" }, [web, webEurope])).to.be.rejectedWith(
-        "web matches 2 services in firebase.json: web:us-central1, web:europe-west1. " +
-          "Run the command again with one of them, e.g. firebase run:services:update web:us-central1",
+        "firebase.json lists web in 2 regions: us-central1, europe-west1. " +
+          "Pick one with --region, e.g. firebase run:services:update web --region us-central1",
       );
       expect(deployStub).not.to.have.been.called;
     });
 
     it("updates only the region it's given", async () => {
-      await update("web:europe-west1", { baseImage: "nodejs22" }, [web, webEurope]);
+      await update("web", { region: "europe-west1", baseImage: "nodejs22" }, [web, webEurope]);
 
       expect(getServiceStub).to.have.been.calledOnceWith("my-project", "europe-west1", "web");
       expectDeployed("run:web:europe-west1", { baseImage: "nodejs22" });
