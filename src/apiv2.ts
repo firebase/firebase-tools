@@ -114,6 +114,7 @@ export type ClientResponse<T> = {
 
 let accessToken = "";
 let refreshToken = "";
+let quotaProject: string | undefined;
 
 /**
  * Sets the refresh token.
@@ -129,6 +130,14 @@ export function setRefreshToken(token = ""): void {
  */
 export function setAccessToken(token = ""): void {
   accessToken = token;
+}
+
+/**
+ * Sets the quota project resolved from Application Default Credentials.
+ * @param projectId quota project, or undefined to clear the ADC fallback.
+ */
+export function setQuotaProject(projectId: string | undefined): void {
+  quotaProject = projectId;
 }
 
 /**
@@ -382,6 +391,16 @@ export class Client {
       token = "owner";
     } else {
       token = await getAccessToken();
+      // ADC's quota project is separate from its access token. Preserve explicit
+      // headers (including GOOGLE_CLOUD_QUOTA_PROJECT) and upload exemptions.
+      if (
+        !reqOptions.ignoreQuotaProject &&
+        !reqOptions.headers.has(GOOG_USER_PROJECT_HEADER) &&
+        !auth.loggedIn() &&
+        quotaProject
+      ) {
+        reqOptions.headers.set(GOOG_USER_PROJECT_HEADER, quotaProject);
+      }
     }
     reqOptions.headers.set("Authorization", `Bearer ${token}`);
     return reqOptions;

@@ -52,6 +52,7 @@ function getAuthClient(config: GoogleAuthOptions): GoogleAuth {
 async function autoAuth(options: Options, authScopes: string[]): Promise<null | string> {
   const client = getAuthClient({ scopes: authScopes, projectId: options.project });
   const token = await client.getAccessToken();
+  apiv2.setQuotaProject((await client.getClient()).quotaProjectId);
   token !== null ? apiv2.setAccessToken(token) : false;
   logger.debug(`Running auto auth`);
 
@@ -107,6 +108,8 @@ export async function requireAuth(
   skipAutoAuth: boolean = false,
 ): Promise<string | null> {
   lastOptions = options;
+  // Do not retain an ADC quota project when switching authentication methods.
+  apiv2.setQuotaProject(undefined);
   const requiredScopes = [scopes.CLOUD_PLATFORM];
   if (isFirebaseStudio()) {
     requiredScopes.push(scopes.USERINFO_EMAIL);
