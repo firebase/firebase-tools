@@ -483,6 +483,36 @@ describe("projectConfig", () => {
           /functions codebase name and kit instance ID must be mutually exclusive, but 'bq-instance-1' was used as both a codebase name and a kit instance ID/,
         );
       });
+
+      it("passes validation when a local codebase and a kit config share the same source directory", () => {
+        const config: projectConfig.NormalizedConfig = [
+          { source: "functions", codebase: "default" },
+          {
+            ...VALID_KIT_CONFIG,
+            source: "functions",
+            instances: {
+              "instance-1": "config/instance-1",
+              "instance-2": "config/instance-2",
+            },
+          },
+        ];
+        expect(projectConfig.validate(config)).to.deep.equal(config);
+      });
+
+      it("fails validation when a local codebase prefix collides with a kit instance prefix on the same source directory", () => {
+        const config: projectConfig.NormalizedConfig = [
+          {
+            source: VALID_KIT_CONFIG.source,
+            codebase: "prefixed-codebase",
+            prefix: "kit-firestore-bigquery-export",
+          },
+          VALID_KIT_CONFIG,
+        ];
+        expect(() => projectConfig.validate(config)).to.throw(
+          FirebaseError,
+          /More than one functions config specifies the same source directory \('functions\/kits\/bigquery-export'\) and prefix \('kit-firestore-bigquery-export'\)/,
+        );
+      });
     });
   });
 
