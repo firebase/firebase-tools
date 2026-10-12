@@ -14,7 +14,6 @@ import { BUILD_ENV_ANNOTATION, getBuildEnv, secretNames } from "./buildEnv";
 import { prereqs } from "./prereqs";
 import {
   FIREBASE_APP_ANNOTATION,
-  fullServiceName,
   getExistingService,
   getServiceConfigs,
   mainContainer,
@@ -55,7 +54,7 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
   // Local builds run on top of the base image, so they need one.
   if (config.localBuild && !baseImage) {
     const fix = existing
-      ? `firebase run:services:update ${fullServiceName(config)} --base-image <baseImage>`
+      ? `firebase run:services:update ${serviceId} --region ${region} --base-image <baseImage>`
       : "firebase init run";
     throw new FirebaseError(
       `Local builds require a base image. Set one for service ${serviceId} in ${region} with "${fix}".`,
@@ -102,13 +101,12 @@ async function getWebAppConfig(config: RunSingle, appId: string): Promise<WebCon
   try {
     return (await managementApps.getAppConfig(appId, managementApps.AppPlatform.WEB)) as WebConfig;
   } catch (err: unknown) {
-    const name = fullServiceName(config);
+    const update = `firebase run:services:update ${config.serviceId} --region ${config.region}`;
     throw new FirebaseError(
       `Unable to look up Firebase Web App ${appId} for service ${config.serviceId} in ` +
         `${config.region}: ${getErrMsg(err)}\n` +
-        `To use a different app, run "firebase run:services:update ${name} --app <appId>". ` +
-        `To deploy without Firebase SDK auto-initialization, run ` +
-        `"firebase run:services:update ${name} --clear-app".`,
+        `To use a different app, run "${update} --app <appId>". ` +
+        `To deploy without Firebase SDK auto-initialization, run "${update} --clear-app".`,
       { original: getError(err) },
     );
   }

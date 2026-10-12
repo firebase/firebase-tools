@@ -2,33 +2,36 @@ import { RunSingle } from "../../firebaseConfig";
 import * as runv2 from "../../gcp/runv2";
 import { BuildEnv } from "./buildEnv";
 
-/** A service being deployed. prepare fills in the first fields, and deploy sets the rest. */
+/** A service being deployed. Each field says which step sets it: prepare or deploy. */
 export interface ServiceDeploy {
+  /** Set by prepare: the service's entry in firebase.json. */
   config: RunSingle;
-  /** The service as it is in Cloud Run before this deploy, or undefined if it doesn't exist yet. */
+  /**
+   * Set by prepare: the service as it is in Cloud Run before this deploy, or undefined if it
+   * doesn't exist yet.
+   */
   existing?: runv2.Service;
   /**
-   * The base image to build and run on: the service's current one, unless this deploy sets or
-   * clears it. Undefined means none, so automatic base image updates are off.
+   * Set by prepare: the base image to build and run on. It's the service's current one, unless
+   * this deploy sets or clears it. Undefined means none, so automatic base image updates are off.
    */
   baseImage?: string;
-  /** The linked Firebase Web App. Deploy saves it on the service so later deploys reuse it. */
+  /**
+   * Set by prepare: the linked Firebase Web App. Deploy saves it on the service so later deploys
+   * reuse it.
+   */
   appId?: string;
   /**
-   * The linked app's config for the FIREBASE_CONFIG env var, which the Admin SDK reads at runtime.
-   * Prepare looks it up so that deploy doesn't have to.
+   * Set by prepare: the linked app's config for the FIREBASE_CONFIG env var, which the Admin SDK
+   * reads at runtime.
    */
   firebaseConfig?: string;
-  /** Build-time environment. Prepare only allows secrets in it for local builds. */
+  /**
+   * Set by prepare: the build-time environment. Prepare only allows secrets in it for local
+   * builds.
+   */
   buildEnv?: BuildEnv;
-  /** The local build's output. */
-  localBuild?: {
-    scratchDir: string;
-    outputFiles: string[];
-    runCommand?: string;
-    env?: NonNullable<runv2.Container["env"]>;
-  };
-  /** The service after the rollout. */
+  /** Set by deploy: the service after the rollout. */
   deployed?: runv2.Service;
 }
 
