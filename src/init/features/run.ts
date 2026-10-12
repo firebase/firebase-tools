@@ -3,7 +3,7 @@ import { Setup } from "..";
 import { Config } from "../../config";
 import { deploy } from "../../deploy";
 import { prereqs, RUN_PERMISSIONS } from "../../deploy/run/prereqs";
-import { fullServiceName, getExistingService } from "../../deploy/run/util";
+import { fullServiceName, getExistingService, mainContainer } from "../../deploy/run/util";
 import { FirebaseError } from "../../error";
 import { RunSingle } from "../../firebaseConfig";
 import { dirExistsSync } from "../../fsutils";
@@ -80,7 +80,7 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
     message: localBuild
       ? "Which base image should your app use? (e.g. nodejs20, nodejs22)"
       : "Which base image should your app use, if any? (e.g. nodejs20, nodejs22)",
-    default: existing?.template.containers?.[0]?.baseImageUri,
+    default: mainContainer(existing?.template)?.baseImageUri,
     validate: (img: string) =>
       localBuild && !img.trim() ? "Local builds require a base image." : true,
   });
@@ -88,10 +88,11 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
 
   const rootDir = await promptRootDir(config.projectDir, savedEntry?.rootDir ?? "/");
 
-  setup.featureInfo = {
-    ...setup.featureInfo,
-    run: { serviceId, region, baseImage, rootDir, ...(localBuild && { localBuild }) },
-  };
+  const runInfo: RunInfo = { serviceId, region, baseImage, rootDir };
+  if (localBuild) {
+    runInfo.localBuild = true;
+  }
+  setup.featureInfo = { ...setup.featureInfo, run: runInfo };
 }
 
 async function promptExistingService(projectId: string): Promise<runv2.Service | undefined> {
@@ -161,15 +162,12 @@ export async function actuate(setup: Setup, config: Config, options: Options): P
   if (!info) {
     return;
   }
-  upsertRunConfig(
-    {
-      serviceId: info.serviceId,
-      rootDir: info.rootDir,
-      region: info.region,
-      ...(info.localBuild && { localBuild: true }),
-    },
-    config,
-  );
+  const service = { serviceId: info.serviceId, rootDir: info.rootDir, region: info.region };
+  if (info.localBuild) {
+    upsertRunConfig({ ...service, localBuild: true }, config);
+  } else {
+    upsertRunConfig(service, config);
+  }
   // Name the region too, so that only this service deploys, not ones with the same ID elsewhere.
   await deploy(
     ["run"],

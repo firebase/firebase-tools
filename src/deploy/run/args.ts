@@ -6,6 +6,10 @@ export interface ServiceDeploy {
   config: RunSingle;
   /** The service as it is in Cloud Run before this deploy, or undefined if it doesn't exist yet. */
   existing?: runv2.Service;
+  /**
+   * The base image to build and run on: the service's current one, unless this deploy sets or
+   * clears it. Undefined means none, so automatic base image updates are off.
+   */
   baseImage?: string;
   /** The local build's output. */
   localBuild?: {

@@ -3,7 +3,7 @@ import { RunSingle } from "../../firebaseConfig";
 import { Options } from "../../options";
 import { Context, Payload, ServiceDeploy } from "./args";
 import { prereqs } from "./prereqs";
-import { fullServiceName, getExistingService, getServiceConfigs } from "./util";
+import { fullServiceName, getExistingService, getServiceConfigs, mainContainer } from "./util";
 
 /**
  * Reads each service's current state from Cloud Run and resolves its base image.
@@ -23,11 +23,12 @@ export async function prepare(context: Context, options: Options, payload: Paylo
 async function prepareService(context: Context, config: RunSingle): Promise<ServiceDeploy> {
   const { serviceId, region } = config;
   const existing = await getExistingService(context.projectId, region, serviceId);
-  // Base images are sticky: deploys reuse the service's current base image unless told otherwise.
-  const baseImage =
-    context.baseImage === undefined
-      ? existing?.template.containers?.[0]?.baseImageUri
-      : context.baseImage || undefined;
+  // Base images are sticky: keep the service's current one unless the context sets a new one or
+  // clears it (null).
+  let baseImage = mainContainer(existing?.template)?.baseImageUri;
+  if (context.baseImage !== undefined) {
+    baseImage = context.baseImage ?? undefined;
+  }
   // Local builds run on top of the base image, so they need one.
   if (config.localBuild && !baseImage) {
     const fix = existing

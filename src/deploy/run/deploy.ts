@@ -16,6 +16,7 @@ import { cloneDeep, logLabeledBullet } from "../../utils";
 import { prepareLocalBuildScratchDirectory } from "../apphosting/prepare";
 import { createLocalBuildTarArchive, createSourceDeployArchive } from "../apphosting/util";
 import { Context, Payload, ServiceDeploy } from "./args";
+import { mainContainer } from "./util";
 
 const DEPLOY_MESSAGE_ANNOTATION = "firebase.google.com/deploy-message";
 /** Rolling out a revision can take longer than the operation poller's default timeout. */
@@ -44,7 +45,7 @@ export async function deploy(context: Context, options: Options, payload: Payloa
       const template = revisionTemplate(svc, code, options.message as string | undefined);
       svc.deployed = svc.existing
         ? await deployRevision(svc.existing, template)
-        : await createService(projectId, svc.config, template);
+        : await createNewService(projectId, svc.config, template);
     } finally {
       if (scratchDir) {
         removeTempPath(scratchDir);
@@ -137,19 +138,19 @@ async function buildImage(
   await artifactregistry.ensureDockerRepository(projectId, region, "cloud-run-source-deploy");
   const imageUri = `${region}-docker.pkg.dev/${projectId}/cloud-run-source-deploy/${serviceId}:${Date.now()}`;
   logLabeledBullet("run", `Building service ${serviceId} in ${region}...`);
-  await runv2.submitBuild(projectId, region, {
-    storageSource: source,
-    imageUri,
-    buildpackBuild: {
-      // Only images built for a base image can have their base image updated automatically.
-      ...(svc.baseImage && { baseImage: svc.baseImage, enableAutomaticUpdates: true }),
-      environmentVariables: {
-        // Use App Hosting's buildpacks, which need to know where to write the output bundle.
-        X_GOOGLE_TARGET_PLATFORM: "fah",
-        FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
-      },
+  const buildpackBuild: runv2.BuildpacksBuild = {
+    environmentVariables: {
+      // Use App Hosting's buildpacks, which need to know where to write the output bundle.
+      X_GOOGLE_TARGET_PLATFORM: "fah",
+      FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
     },
-  });
+  };
+  // Only images built for a base image can have their base image updated automatically.
+  if (svc.baseImage) {
+    buildpackBuild.baseImage = svc.baseImage;
+    buildpackBuild.enableAutomaticUpdates = true;
+  }
+  await runv2.submitBuild(projectId, region, { storageSource: source, imageUri, buildpackBuild });
   return imageUri;
 }
 
@@ -171,7 +172,7 @@ export function revisionTemplate(
     : { containers: [{ name: serviceId, image }] };
   // The live template names the live revision. Drop the name so Cloud Run creates a new revision.
   delete template.revision;
-  const container = template.containers?.[0];
+  const container = mainContainer(template);
   if (!container) {
     throw new FirebaseError(`Service ${serviceId} in ${region} has no containers.`);
   }
@@ -195,6 +196,9 @@ export function revisionTemplate(
     delete container.sourceCode;
     delete container.command;
   }
+  // Prepare already resolved svc.baseImage: the service's current base image, unless this deploy
+  // sets or clears it. A new service has none unless init sets one, so automatic base image
+  // updates are off by default.
   if (svc.baseImage) {
     container.baseImageUri = svc.baseImage;
   } else {
@@ -209,8 +213,8 @@ export function revisionTemplate(
   return template;
 }
 
-/** Creates the service with its first revision. */
-function createService(
+/** Creates a new service with its first revision. */
+function createNewService(
   projectId: string,
   config: RunSingle,
   template: runv2.RevisionTemplate,
