@@ -3,7 +3,7 @@ import * as runv2 from "../../gcp/runv2";
 import {
   BUILD_ENV_ANNOTATION,
   getBuildEnv,
-  plainValues,
+  nonSecretValues,
   secretNames,
   toLocalBuildEnv,
 } from "./buildEnv";
@@ -71,7 +71,7 @@ describe("run buildEnv", () => {
       SENTRY_AUTH_TOKEN: { secret: "sentry-auth-token@2" },
     };
     expect(secretNames(env)).to.deep.equal(["NPM_TOKEN", "SENTRY_AUTH_TOKEN"]);
-    expect(plainValues(env)).to.deep.equal({ API_URL: "https://api.example.com" });
+    expect(nonSecretValues(env)).to.deep.equal({ API_URL: "https://api.example.com" });
   });
 
   it("converts to local build env, available only to the build, with secrets unchanged", () => {

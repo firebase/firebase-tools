@@ -16,7 +16,7 @@ import { cloneDeep, logLabeledBullet } from "../../utils";
 import { prepareLocalBuildScratchDirectory } from "../apphosting/prepare";
 import { createLocalBuildTarArchive, createSourceDeployArchive } from "../apphosting/util";
 import { Context, Payload, ServiceDeploy } from "./args";
-import { plainValues, secretNames, toLocalBuildEnv } from "./buildEnv";
+import { nonSecretValues, secretNames, toLocalBuildEnv } from "./buildEnv";
 import { FIREBASE_APP_ANNOTATION, mainContainer } from "./util";
 
 const DEPLOY_MESSAGE_ANNOTATION = "firebase.google.com/deploy-message";
@@ -213,9 +213,9 @@ async function buildImage(
   logLabeledBullet("run", `Building service ${serviceId} in ${region}...`);
   const buildpackBuild: runv2.BuildpacksBuild = {
     environmentVariables: {
-      // Cloud Build only takes plain values, so leave out any secrets. Prepare already rejects
-      // secrets for builds on Cloud Build.
-      ...plainValues(svc.buildEnv || {}),
+      // Cloud Build only takes plain values, so pass only the non-secret env vars. Prepare already
+      // rejects secrets for builds on Cloud Build.
+      ...nonSecretValues(svc.buildEnv || {}),
       // Use App Hosting's buildpacks, which need to know where to write the output bundle.
       X_GOOGLE_TARGET_PLATFORM: "fah",
       FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",

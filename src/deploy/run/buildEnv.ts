@@ -71,8 +71,11 @@ export function secretNames(env: BuildEnv): string[] {
     .map(([name]) => name);
 }
 
-/** The plain values, without the secrets. */
-export function plainValues(env: BuildEnv): Record<string, string> {
+/**
+ * The env vars that aren't secrets, with their values. Secrets are left out entirely, so the result
+ * never names a secret or holds a secret's value.
+ */
+export function nonSecretValues(env: BuildEnv): Record<string, string> {
   const values: Record<string, string> = {};
   for (const [name, value] of Object.entries(env)) {
     if (typeof value === "string") {
