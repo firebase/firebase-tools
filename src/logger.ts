@@ -67,6 +67,7 @@ export interface Logger {
   remove(transport: Transport): Logger;
 
   silent: boolean;
+  level: string;
 }
 
 function expandErrors(logger: winston.Logger): winston.Logger {
@@ -297,6 +298,7 @@ export function useFileLogger(logFile?: string): string {
  */
 export function useConsoleLoggers(): void {
   if (process.env.DEBUG) {
+    logger.level = "debug";
     logger.add(
       new winston.transports.Console({
         level: "debug",

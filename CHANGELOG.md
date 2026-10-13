@@ -7,3 +7,4 @@
 - Fixed a race condition in `SourceTokenScraper` that could cause concurrent function deployments to hang when refreshing an expired source token (#6989).
 - Fixed an issue where a Function Kit and a functions codebase sharing the same source directory failed `firebase.json` validation. (#11253)
 - Fixed an issue where Cloud Functions creation did not retry on HTTP 403 service account propagation errors. (#11251)
+- Fixed an issue where logs from downloadable emulators (such as Cloud Firestore and Realtime Database) were not streamed to the Emulator Suite UI.

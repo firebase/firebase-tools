@@ -433,6 +433,16 @@ export function requiresJava(emulator: Emulators): boolean {
   return false;
 }
 
+/**
+ * Parses the severity level from a downloadable emulator output line.
+ */
+export function parseLogLevel(text: string): "INFO" | "WARN" | "ERROR" | "DEBUG" {
+  if (/\b(SEVERE|ERROR)\b/i.test(text)) return "ERROR";
+  if (/\b(WARNING|WARN)\b/i.test(text)) return "WARN";
+  if (/\bINFO\b/i.test(text)) return "INFO";
+  return "DEBUG";
+}
+
 async function _runBinary(
   emulator: DownloadableEmulatorDetails,
   command: DownloadableEmulatorCommand,
@@ -492,15 +502,17 @@ async function _runBinary(
       `${description} logging to ${clc.bold(getLogFileName(emulator.name))}`,
     );
 
-    emulator.instance.stdout?.on("data", (data) => {
-      logger.log("DEBUG", data.toString());
+    emulator.instance.stdout?.on("data", (data: Buffer) => {
+      const text = data.toString();
+      logger.log(parseLogLevel(text), text);
       emulator.stdout.write(data);
     });
-    emulator.instance.stderr?.on("data", (data) => {
-      logger.log("DEBUG", data.toString());
+    emulator.instance.stderr?.on("data", (data: Buffer) => {
+      const text = data.toString();
+      logger.log(parseLogLevel(text), text);
       emulator.stdout.write(data);
 
-      if (data.toString().includes("java.lang.UnsupportedClassVersionError")) {
+      if (text.includes("java.lang.UnsupportedClassVersionError")) {
         logger.logLabeled(
           "WARN",
           emulator.name,
@@ -508,7 +520,7 @@ async function _runBinary(
         );
       }
 
-      if (data.toString().includes("address already in use")) {
+      if (text.includes("address already in use")) {
         const message = `${description} has exited because its configured port ${command.port} is already in use. Are you running another copy of the emulator suite?`;
         logger.logLabeled("ERROR", emulator.name, message);
       }
