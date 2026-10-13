@@ -20,8 +20,6 @@ import * as DataConnectTarget from "./dataconnect";
 import * as AppHostingTarget from "./apphosting";
 import * as AuthTarget from "./auth";
 import * as AiLogicTarget from "./ailogic";
-import * as RunTarget from "./run";
-import { RUN_PERMISSIONS } from "./run/prereqs";
 import { prepareFrameworks } from "../frameworks";
 import { Context as HostingContext } from "./hosting/context";
 import { addPinnedFunctionsToOnlyString, hasPinnedFunctions } from "./hosting/prepare";
@@ -46,7 +44,6 @@ export const VALID_DEPLOY_TARGETS = [
   "apphosting",
   "auth",
   "ailogic",
-  "run",
 ] as const;
 
 export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], string[]> = {
@@ -108,7 +105,6 @@ export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], s
     // ensureAILogicApiEnabled reads API enablement state via Service Usage.
     "serviceusage.services.get",
   ],
-  run: RUN_PERMISSIONS,
 };
 
 export const TARGETS = {
@@ -123,7 +119,6 @@ export const TARGETS = {
   apphosting: AppHostingTarget,
   auth: AuthTarget,
   ailogic: AiLogicTarget,
-  run: RunTarget,
 };
 
 export type DeployOptions = Options & { dryRun?: boolean };

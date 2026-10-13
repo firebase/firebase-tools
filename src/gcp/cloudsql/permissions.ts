@@ -14,6 +14,21 @@ export function firebasewriter(databaseId: string, schema: string = DEFAULT_SCHE
   return `firebasewriter_${databaseId}_${schema}`;
 }
 
+function createRoleBypassRLS(role: string, superuser: string): string {
+  return `do
+      $$
+      begin
+        if not exists (select FROM pg_catalog.pg_roles
+          WHERE  rolname = '${role}') then
+          CREATE ROLE "${role}" WITH ADMIN "${superuser}" BYPASSRLS;
+        else
+          ALTER ROLE "${role}" BYPASSRLS;
+        end if;
+      end
+      $$
+    ;`;
+}
+
 // Creates the owner role, modifies schema owner to firebaseowner.
 export function ownerRolePermissions(
   databaseId: string,
@@ -22,21 +37,16 @@ export function ownerRolePermissions(
 ): string[] {
   const firebaseOwnerRole = firebaseowner(databaseId, schema);
   return [
-    `do
-      $$
-      begin
-        if not exists (select FROM pg_catalog.pg_roles
-          WHERE  rolname = '${firebaseOwnerRole}') then
-          CREATE ROLE "${firebaseOwnerRole}" WITH ADMIN "${superuser}";
-        end if;
-      end
-      $$
-    ;`,
+    createRoleBypassRLS(firebaseOwnerRole, superuser),
 
-    // We grant owner to cloudsqlsuperuser because only the owner can alter the schema owner.
-    // It's also needed for the reader and write roles setup as only owner can alter schema defaults.
-    `GRANT "${firebaseOwnerRole}" TO "cloudsqlsuperuser"`,
+    // Revoke reverse membership first to avoid SQLSTATE 0LP01 circular role membership errors
+    // on existing databases, then grant cloudsqlsuperuser to firebaseowner so developer
+    // migrations have full DDL privileges without owning firebasesuperuser system objects.
+    // firebasesuperuser retains direct membership via WITH ADMIN from CREATE ROLE.
+    `REVOKE "${firebaseOwnerRole}" FROM "cloudsqlsuperuser"`,
+    `GRANT "cloudsqlsuperuser" TO "${firebaseOwnerRole}"`,
 
+    `CREATE SCHEMA IF NOT EXISTS "${schema}" AUTHORIZATION "${firebaseOwnerRole}"`,
     `ALTER SCHEMA "${schema}" OWNER TO "${firebaseOwnerRole}"`,
     `GRANT USAGE ON SCHEMA "${schema}" TO "${firebaseOwnerRole}"`,
     `GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA "${schema}" TO "${firebaseOwnerRole}"`,
@@ -53,16 +63,7 @@ export function writerRolePermissions(
 ): string[] {
   const firebaseWriterRole = firebasewriter(databaseId, schema);
   return [
-    `do
-      $$
-      begin
-        if not exists (select FROM pg_catalog.pg_roles
-          WHERE  rolname = '${firebaseWriterRole}') then
-          CREATE ROLE "${firebaseWriterRole}" WITH ADMIN "${superuser}";
-        end if;
-      end
-      $$
-    ;`,
+    createRoleBypassRLS(firebaseWriterRole, superuser),
 
     `GRANT "${firebaseWriterRole}" TO "cloudsqlsuperuser"`,
 
@@ -89,16 +90,7 @@ export function readerRolePermissions(
 ): string[] {
   const firebaseReaderRole = firebasereader(databaseId, schema);
   return [
-    `do
-      $$
-      begin
-        if not exists (select FROM pg_catalog.pg_roles
-          WHERE  rolname = '${firebaseReaderRole}') then
-          CREATE ROLE "${firebaseReaderRole}" WITH ADMIN "${superuser}";
-        end if;
-      end
-      $$
-    ;`,
+    createRoleBypassRLS(firebaseReaderRole, superuser),
 
     `GRANT "${firebaseReaderRole}" TO "cloudsqlsuperuser"`,
 

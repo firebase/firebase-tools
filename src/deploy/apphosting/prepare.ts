@@ -432,7 +432,7 @@ async function ensureAppHostingServiceAgentRoles(
  * isolated scratch workspace in the `.local_build_<backendId>` folder that contains exactly the same
  * source files that would be uploaded to Cloud Build.
  */
-export async function prepareLocalBuildScratchDirectory(
+async function prepareLocalBuildScratchDirectory(
   rootDir: string,
   localBuildScratchDir: string,
   cfg: AppHostingSingle,

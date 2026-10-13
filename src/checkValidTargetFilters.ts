@@ -32,7 +32,6 @@ const FILTERABLE_TARGETS = new Set([
   "dataconnect",
   "apphosting",
   "ailogic",
-  "run",
 ]);
 
 /**

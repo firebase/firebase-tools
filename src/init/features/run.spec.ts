@@ -2,16 +2,13 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import { Setup } from "..";
 import { Config } from "../../config";
-import * as deploy from "../../deploy";
 import * as prereqs from "../../deploy/run/prereqs";
 import * as run from "../../gcp/run";
 import * as runv2 from "../../gcp/runv2";
 import { Options } from "../../options";
 import * as prompt from "../../prompt";
 import * as requirePermissions from "../../requirePermissions";
-import { actuate, askQuestions, RunInfo, upsertRunConfig } from "./run";
-
-const DEFAULT_IGNORE = ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"];
+import { actuate, askQuestions, upsertRunConfig } from "./run";
 
 describe("init run", () => {
   const options = {} as Options;
@@ -41,13 +38,6 @@ describe("init run", () => {
   afterEach(() => sinon.restore());
 
   describe("askQuestions", () => {
-    /** Answers init's prompts, select or input, in the order it asks them. */
-    function answerPrompts(...answers: unknown[]): void {
-      const nextAnswer = (): Promise<unknown> => Promise.resolve(answers.shift());
-      selectStub.callsFake(nextAnswer);
-      inputStub.callsFake(nextAnswer);
-    }
-
     it("throws if no project is selected", async () => {
       await expect(
         askQuestions({ ...setup(), projectId: undefined }, config, options),
@@ -150,109 +140,36 @@ describe("init run", () => {
 
       expect(s.featureInfo?.run?.serviceId).to.equal("my-service");
     });
-
-    it("builds a new service remotely by default", async () => {
-      answerPrompts("create", "us-central1", "web", /* localBuild= */ false, "", "/");
-
-      await askQuestions(setup(), config, options);
-
-      const localBuildPrompt = selectStub.thirdCall.args[0];
-      expect(localBuildPrompt.default).to.be.false;
-    });
-
-    it("defaults to building locally if firebase.json builds the service locally", async () => {
-      const existing = { name: "projects/p/locations/europe-west1/services/web", template: {} };
-      sinon.stub(runv2, "listServices").resolves([existing] as unknown as runv2.Service[]);
-      config.set("run", { serviceId: "web", region: "europe-west1", localBuild: true });
-      answerPrompts("update", existing, /* localBuild= */ true, "nodejs22", "/");
-
-      await askQuestions(setup(), config, options);
-
-      const localBuildPrompt = selectStub.thirdCall.args[0];
-      expect(localBuildPrompt.default).to.be.true;
-    });
-
-    it("saves the choice to build locally, which requires a base image", async () => {
-      answerPrompts("create", "us-central1", "web", /* localBuild= */ true, "nodejs22", "/");
-      const initSetup = setup();
-
-      await askQuestions(initSetup, config, options);
-
-      const baseImagePrompt = inputStub.secondCall.args[0];
-      expect(baseImagePrompt.default).to.be.undefined;
-      expect(baseImagePrompt.validate(" ")).to.equal("Local builds require a base image.");
-      expect(baseImagePrompt.validate("nodejs22")).to.be.true;
-      expect(initSetup.featureInfo?.run).to.include({ localBuild: true });
-    });
   });
 
   describe("actuate", () => {
-    /** Init's answers for a new service. */
-    const webSetup = (answers: Partial<RunInfo> = {}): Setup => ({
-      ...setup(),
-      featureInfo: {
-        run: {
-          serviceId: "web",
-          region: "us-central1",
-          baseImage: "nodejs22",
-          rootDir: "apps/web",
-          ...answers,
-        },
-      },
-    });
-    let writeStub: sinon.SinonStub;
-    let deployStub: sinon.SinonStub;
-
-    beforeEach(() => {
-      writeStub = sinon.stub(config, "writeProjectFile");
-      deployStub = sinon.stub(deploy, "deploy").resolves();
-    });
-
     it("does nothing when featureInfo.run is not set", async () => {
-      await actuate(setup(), config, options);
+      await actuate(setup(), config);
       expect(config.src.run).to.be.undefined;
-      expect(deployStub).to.not.have.been.called;
     });
 
-    it("adds the service to firebase.json, but not its base image", async () => {
-      await actuate(webSetup(), config, options);
+    it("adds the service to the config that init writes to firebase.json", async () => {
+      const writeStub = sinon.stub(config, "writeProjectFile");
+      const s = setup();
+      s.featureInfo = { run: { serviceId: "s", region: "r", baseImage: "", rootDir: "/" } };
 
-      expect(config.src.run).to.deep.equal({
-        serviceId: "web",
-        region: "us-central1",
-        rootDir: "apps/web",
-        ignore: DEFAULT_IGNORE,
-      });
-      // Init saves firebase.json itself, once every feature is set up.
-      expect(writeStub).to.not.have.been.called;
-    });
+      await actuate(s, config);
 
-    it("saves the choice to build locally", async () => {
-      await actuate(webSetup({ localBuild: true }), config, options);
-
-      expect(config.src.run).to.include({ localBuild: true });
-    });
-
-    it("deploys only that service and region, with its base image", async () => {
-      await actuate(webSetup(), config, options);
-
-      expect(deployStub).to.have.been.calledOnceWith(
-        ["run"],
-        { projectId: "p", config, only: "run:web:us-central1" },
-        { baseImage: "nodejs22" },
-      );
-    });
-
-    it("doesn't write firebase.json if the deploy fails", async () => {
-      deployStub.rejects(new Error("build failed"));
-
-      await expect(actuate(webSetup(), config, options)).to.be.rejectedWith("build failed");
-
+      const runConfig = {
+        serviceId: "s",
+        rootDir: "/",
+        region: "r",
+        ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"],
+      };
+      expect(config.src.run).to.deep.equal(runConfig);
+      // Init writes the file once all features are set up, so a failed init leaves it untouched.
       expect(writeStub).to.not.have.been.called;
     });
   });
 
   describe("upsertRunConfig", () => {
+    const DEFAULT_IGNORE = ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"];
+
     it("sets a single service object when firebase.json has no run config", () => {
       upsertRunConfig({ serviceId: "web", region: "us-central1", rootDir: "/" }, config);
       expect(config.src.run).to.deep.equal({
@@ -274,22 +191,31 @@ describe("init run", () => {
       ]);
     });
 
-    it("turns localBuild on for an existing service, keeping its custom ignore list", () => {
-      const web = { serviceId: "web", region: "us-central1", rootDir: "/" };
-      config.set("run", { ...web, ignore: ["custom-ignore"] });
+    it("updates an existing service in place while preserving existing ignore and localBuild settings", () => {
+      config.set("run", {
+        serviceId: "web",
+        region: "us-central1",
+        rootDir: "/",
+        ignore: ["custom-ignore"],
+        localBuild: true,
+      });
 
-      upsertRunConfig({ ...web, localBuild: true }, config);
+      upsertRunConfig(
+        {
+          serviceId: "web",
+          region: "us-central1",
+          rootDir: "apps/web",
+        },
+        config,
+      );
 
-      expect(config.src.run).to.deep.equal({ ...web, ignore: ["custom-ignore"], localBuild: true });
-    });
-
-    it("turns localBuild off for an existing service, keeping its custom ignore list", () => {
-      const web = { serviceId: "web", region: "us-central1", rootDir: "/" };
-      config.set("run", { ...web, ignore: ["custom-ignore"], localBuild: true });
-
-      upsertRunConfig(web, config);
-
-      expect(config.src.run).to.deep.equal({ ...web, ignore: ["custom-ignore"] });
+      expect(config.src.run).to.deep.equal({
+        serviceId: "web",
+        region: "us-central1",
+        rootDir: "apps/web",
+        ignore: ["custom-ignore"],
+        localBuild: true,
+      });
     });
 
     it("doesn't add an ignore list to an existing service", () => {
