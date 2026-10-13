@@ -1,4 +1,3 @@
-- No longer grant TRUNCATE privilege to writer roles in SQL permission setup.
 - Updated Pub/Sub emulator to version 0.8.37.
 - Fixed an issue where analytics timeouts could mask command errors or cause successful commands to exit with an error. (#6989)
 - Fixed an issue where unhandled exceptions during Cloud Functions deployment could be silently ignored and exit with code 0 (#6989).
@@ -8,3 +7,4 @@
 - Fixed a race condition in `SourceTokenScraper` that could cause concurrent function deployments to hang when refreshing an expired source token (#6989).
 - Fixed an issue where a Function Kit and a functions codebase sharing the same source directory failed `firebase.json` validation. (#11253)
 - Fixed an issue where Cloud Functions creation did not retry on HTTP 403 service account propagation errors. (#11251)
+- No longer grant unecessary TRUNCATE privilege to writer roles in `dataconnect:sql:migrate`. (#11276)
