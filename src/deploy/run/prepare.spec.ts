@@ -9,6 +9,7 @@ import * as prereqs from "./prereqs";
 describe("run prepare", () => {
   const nodejs22 = "us-central1-docker.pkg.dev/serverless-runtimes/google-22/runtimes/nodejs22";
   const web = { serviceId: "web", region: "us-central1" };
+  const localWeb = { ...web, localBuild: true };
   const liveWeb = {
     name: "projects/my-project/locations/us-central1/services/web",
     template: { containers: [{ name: "web", image: "old-image", baseImageUri: nodejs22 }] },
@@ -63,6 +64,26 @@ describe("run prepare", () => {
     expect(withNewImage.baseImage).to.equal("nodejs24");
     const [cleared] = await prepareRun(web, { context: { baseImage: null } });
     expect(cleared.baseImage).to.be.undefined;
+  });
+
+  describe("local builds", () => {
+    it("require a base image", async () => {
+      const webWithoutBaseImage = {
+        ...liveWeb,
+        template: { containers: [{ name: "web", image: "old-image" }] },
+      };
+      getServiceStub.resolves(webWithoutBaseImage);
+
+      await expect(prepareRun(localWeb)).to.be.rejectedWith(
+        'Local builds require a base image. Set one for service web in us-central1 with "firebase run:services:update web --region us-central1 --base-image <baseImage>".',
+      );
+    });
+
+    it("point new services to init, which sets a base image", async () => {
+      await expect(prepareRun(localWeb)).to.be.rejectedWith(
+        'Local builds require a base image. Set one for service web in us-central1 with "firebase init run".',
+      );
+    });
   });
 
   it("only prepares the services that --only selects", async () => {

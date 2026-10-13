@@ -82,6 +82,24 @@ describe("updateService", () => {
     expectDeployed("run:web:us-central1", { baseImage: null });
   });
 
+  describe("for a locally built service", () => {
+    const localWeb = { ...web, localBuild: true };
+
+    it("refuses to clear its base image, which local builds need", async () => {
+      await expect(update("web", { clearBaseImage: true }, localWeb)).to.be.rejectedWith(
+        "Cannot clear the base image of web: local builds need one.",
+      );
+    });
+
+    it("says to create it with init, which sets a base image", async () => {
+      getServiceStub.rejects({ status: 404 });
+
+      await expect(update("web", { baseImage: "nodejs22" }, localWeb)).to.be.rejectedWith(
+        /doesn't exist in us-central1 yet\. Create it with \S*firebase init run\S*, then update it\./,
+      );
+    });
+  });
+
   describe("when firebase.json lists the service in two regions", () => {
     it("asks which one to update", async () => {
       await expect(update("web", { baseImage: "nodejs22" }, [web, webEurope])).to.be.rejectedWith(

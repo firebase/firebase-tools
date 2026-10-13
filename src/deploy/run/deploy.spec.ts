@@ -1,14 +1,16 @@
 import { expect } from "chai";
 import * as fs from "fs";
 import * as sinon from "sinon";
+import * as localbuilds from "../../apphosting/localbuilds";
 import * as artifactregistry from "../../gcp/artifactregistry";
 import * as runv2 from "../../gcp/runv2";
 import * as gcs from "../../gcp/storage";
 import * as getProjectNumber from "../../getProjectNumber";
 import { Options } from "../../options";
+import * as apphostingPrepare from "../apphosting/prepare";
 import * as apphostingUtil from "../apphosting/util";
 import { ServiceDeploy } from "./args";
-import { deploy, revisionTemplate } from "./deploy";
+import { deploy, localBuildTemplate, revisionTemplate } from "./deploy";
 
 const NODEJS22 = "us-central1-docker.pkg.dev/serverless-runtimes/google-22/runtimes/nodejs22";
 const DEPLOY_MESSAGE = "firebase.google.com/deploy-message";
@@ -18,6 +20,8 @@ describe("run deploy", () => {
   const web = { serviceId: "web", region: "us-central1", rootDir: "apps/web" };
   // Date.now() is stubbed to return 42, which tags the image.
   const image = "us-central1-docker.pkg.dev/my-project/cloud-run-source-deploy/web:42";
+  const scratchDir = "/tmp/run-local-build-web-abc123";
+  const builtApp = { bucket: "source-bucket", object: "web.tar.gz" };
   let createArchiveStub: sinon.SinonStub;
   let submitBuildStub: sinon.SinonStub;
   let createServiceStub: sinon.SinonStub;
@@ -108,6 +112,97 @@ describe("run deploy", () => {
     );
   });
 
+  describe("local builds", () => {
+    const localWeb = { ...web, localBuild: true };
+    let rmSyncStub: sinon.SinonStub;
+    let validateNodeStub: sinon.SinonStub;
+    let localBuildStub: sinon.SinonStub;
+    let tarArchiveStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sinon.stub(fs, "mkdtempSync").returns(scratchDir);
+      rmSyncStub = sinon.stub(fs, "rmSync");
+      validateNodeStub = sinon.stub(localbuilds, "validateLocalBuildNodeVersion");
+      sinon.stub(apphostingPrepare, "prepareLocalBuildScratchDirectory").resolves();
+      localBuildStub = sinon.stub(localbuilds, "localBuild").resolves({
+        outputFiles: [".next"],
+        buildConfig: { runCommand: "npm run start" },
+      });
+      tarArchiveStub = sinon
+        .stub(apphostingUtil, "createLocalBuildTarArchive")
+        .resolves("/tmp/web.tar.gz");
+      (gcs.uploadObject as sinon.SinonStub)
+        .withArgs(sinon.match({ file: "/tmp/web.tar.gz" }))
+        .resolves(builtApp);
+    });
+
+    /** Deploys web with "localBuild": true and returns the container that it rolled out. */
+    async function deployLocalBuild(): Promise<runv2.Container> {
+      await deployOne({ config: localWeb, baseImage: NODEJS22 });
+      return createServiceStub.firstCall.args[3].template.containers[0];
+    }
+
+    it("builds on this machine, in a scratch folder that it deletes afterwards", async () => {
+      await deployLocalBuild();
+
+      expect(validateNodeStub).to.have.been.calledWith(
+        { runtime: { value: "nodejs22" } },
+        "/project/apps/web",
+      );
+      expect(localBuildStub).to.have.been.calledWithMatch(
+        "my-project",
+        scratchDir,
+        {},
+        { rootDir: "apps/web" },
+      );
+      expect(rmSyncStub).to.have.been.calledWith(scratchDir);
+    });
+
+    it("uploads the build's output and runs it as is, without Cloud Build", async () => {
+      const container = await deployLocalBuild();
+
+      expect(tarArchiveStub).to.have.been.calledWithMatch(sinon.match.any, scratchDir, [".next"]);
+      expect(submitBuildStub).not.to.have.been.called;
+      expect(container).to.deep.include({
+        image: "scratch",
+        sourceCode: { cloudStorageSource: builtApp },
+        command: ["npm", "run", "start"],
+      });
+    });
+
+    it("keeps the env vars the app needs at runtime", async () => {
+      localBuildStub.resolves({
+        outputFiles: [".next"],
+        buildConfig: {
+          env: [
+            { variable: "NODE_ENV", value: "production", availability: ["RUNTIME"] },
+            { variable: "NEXT_TELEMETRY_DISABLED", value: "1", availability: ["BUILD"] },
+          ],
+        },
+      });
+
+      const container = await deployLocalBuild();
+
+      expect(container.env).to.deep.equal([{ name: "NODE_ENV", value: "production" }]);
+    });
+
+    it("cleans up and deploys nothing if the local build fails", async () => {
+      localBuildStub.rejects(new Error("next build failed"));
+
+      await expect(deployLocalBuild()).to.be.rejectedWith("next build failed");
+
+      expect(rmSyncStub).to.have.been.calledWith(scratchDir);
+      expect(createServiceStub).not.to.have.been.called;
+    });
+
+    it("reports the local build error, not the cleanup error, when both fail", async () => {
+      localBuildStub.rejects(new Error("next build failed"));
+      rmSyncStub.throws(new Error("EBUSY: resource busy or locked"));
+
+      await expect(deployLocalBuild()).to.be.rejectedWith("next build failed");
+    });
+  });
+
   describe("revisionTemplate", () => {
     const existing = {
       name: "projects/my-project/locations/us-central1/services/web",
@@ -125,6 +220,13 @@ describe("run deploy", () => {
         ],
       },
     } as unknown as runv2.Service;
+
+    /** The live web service, running a container with these fields. */
+    function webRunning(container: Partial<runv2.Container>): runv2.Service {
+      return {
+        template: { containers: [{ name: "web", image: "old-image", ...container }] },
+      } as runv2.Service;
+    }
 
     it("starts a new service with just the image", () => {
       expect(revisionTemplate({ config: web }, image)).to.deep.equal({
@@ -166,6 +268,58 @@ describe("run deploy", () => {
 
       const withoutMessage = revisionTemplate({ config: web, existing }, image);
       expect(withoutMessage.annotations).to.deep.equal({ team: "frontend" });
+    });
+
+    it("switches a service from a local build back to an image", () => {
+      const fromLocalBuild = webRunning({
+        image: "scratch",
+        command: ["npm", "run", "start"],
+        sourceCode: { cloudStorageSource: builtApp },
+      });
+
+      const template = revisionTemplate({ config: web, existing: fromLocalBuild }, image);
+
+      expect(template).to.deep.equal({ containers: [{ name: "web", image }] });
+    });
+
+    describe("localBuildTemplate", () => {
+      it("runs a local build's output with the build's start command", () => {
+        // The command is split on whitespace, so stray spaces don't become empty arguments.
+        const build = { outputFiles: [".next"], runCommand: " npm  run start ", env: [] };
+
+        const template = localBuildTemplate({ config: web, existing }, build, builtApp);
+
+        expect(template.containers?.[0]).to.deep.include({
+          image: "scratch",
+          sourceCode: { cloudStorageSource: builtApp },
+          command: ["npm", "run", "start"],
+        });
+      });
+
+      it("sets the env vars the build reports, replacing the service's values for the same names", () => {
+        const service = webRunning({
+          env: [
+            { name: "MODE", value: "prod" },
+            { name: "API_URL", value: "https://api.example.com" },
+          ],
+        });
+        const build = {
+          outputFiles: [".next"],
+          env: [
+            { name: "MODE", value: "development" },
+            { name: "NODE_ENV", value: "production" },
+          ],
+        };
+
+        const template = localBuildTemplate({ config: web, existing: service }, build, builtApp);
+
+        // API_URL isn't from the build, so it's kept.
+        expect(template.containers?.[0].env).to.deep.equal([
+          { name: "API_URL", value: "https://api.example.com" },
+          { name: "MODE", value: "development" },
+          { name: "NODE_ENV", value: "production" },
+        ]);
+      });
     });
   });
 });

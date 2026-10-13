@@ -30,10 +30,17 @@ export async function updateService(
 
   const projectId = needProjectId(options);
   const config = findServiceToUpdate(serviceId, region, options);
+  if (settings.baseImage === null && config.localBuild) {
+    throw new FirebaseError(
+      `Cannot clear the base image of ${config.serviceId}: local builds need one.`,
+    );
+  }
   if (!(await getExistingService(projectId, config.region, config.serviceId))) {
-    const howToCreate =
-      `${clc.bold("firebase init run")} or ` +
-      clc.bold(`firebase deploy --only run:${fullServiceName(config)}`);
+    // A first deploy can't create a locally built service: it needs the base image that init sets.
+    const howToCreate = config.localBuild
+      ? clc.bold("firebase init run")
+      : `${clc.bold("firebase init run")} or ` +
+        clc.bold(`firebase deploy --only run:${fullServiceName(config)}`);
     throw new FirebaseError(
       `Cloud Run service ${config.serviceId} doesn't exist in ${config.region} yet. ` +
         `Create it with ${howToCreate}, then update it.`,
