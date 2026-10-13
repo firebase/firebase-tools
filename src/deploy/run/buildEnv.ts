@@ -79,7 +79,7 @@ function isSecretRef(value: unknown): value is SecretRef {
 /** Names of the variables that are secrets. */
 export function secretNames(env: BuildEnv): string[] {
   return Object.entries(env)
-    .filter(([, value]) => typeof value !== "string")
+    .filter(([, value]) => isSecretRef(value))
     .map(([name]) => name);
 }
 
@@ -90,7 +90,7 @@ export function secretNames(env: BuildEnv): string[] {
 export function nonSecretValues(env: BuildEnv): Record<string, string> {
   const values: Record<string, string> = {};
   for (const [name, value] of Object.entries(env)) {
-    if (typeof value === "string") {
+    if (!isSecretRef(value)) {
       values[name] = value;
     }
   }
@@ -104,10 +104,10 @@ export function nonSecretValues(env: BuildEnv): Record<string, string> {
 export function toLocalBuildEnv(env: BuildEnv): EnvMap {
   const result: EnvMap = {};
   for (const [name, value] of Object.entries(env)) {
-    if (typeof value === "string") {
-      result[name] = { value, availability: ["BUILD"] };
-    } else {
+    if (isSecretRef(value)) {
       result[name] = { secret: value.secret, availability: ["BUILD"] };
+    } else {
+      result[name] = { value, availability: ["BUILD"] };
     }
   }
   return result;
