@@ -1,6 +1,12 @@
 import { expect } from "chai";
 import * as runv2 from "../../gcp/runv2";
-import { BUILD_ENV_ANNOTATION, getBuildEnv, secretNames, toLocalBuildEnv } from "./buildEnv";
+import {
+  BUILD_ENV_ANNOTATION,
+  getBuildEnv,
+  plainValues,
+  secretNames,
+  toLocalBuildEnv,
+} from "./buildEnv";
 
 describe("run buildEnv", () => {
   const web = { name: "projects/my-project/locations/us-central1/services/web" } as runv2.Service;
@@ -21,12 +27,12 @@ describe("run buildEnv", () => {
       expect(getBuildEnv(withAnnotation(JSON.stringify(env)))).to.deep.equal(env);
     });
 
-    it("parses secret references", () => {
+    it("parses secrets written the way apphosting.yaml writes them", () => {
       const env = {
         API_URL: "https://api.example.com",
         NPM_TOKEN: { secret: "npm-token" },
-        SENTRY_AUTH_TOKEN: { secret: "sentry-auth-token", version: "2" },
-        GITHUB_TOKEN: { secret: "projects/shared-secrets/secrets/github-token", version: "latest" },
+        SENTRY_AUTH_TOKEN: { secret: "sentry-auth-token@2" },
+        GITHUB_TOKEN: { secret: "projects/shared-secrets/secrets/github-token/versions/3" },
       };
       expect(getBuildEnv(withAnnotation(JSON.stringify(env)))).to.deep.equal(env);
     });
@@ -47,49 +53,39 @@ describe("run buildEnv", () => {
         ["npm-token"],
         {},
         { secret: 1 },
-        { secret: "secrets/npm-token" },
-        { secret: "npm-token@3" },
-        { secret: "projects/shared-secrets/secrets/npm-token/versions/3" },
-        { secret: "npm-token", version: 3 },
-        { secret: "npm-token", version: "v3" },
-        { secret: "npm-token", project: "shared-secrets" },
+        // The version goes in the secret string, e.g. "npm-token@3".
+        { secret: "npm-token", version: "3" },
       ];
       for (const value of invalid) {
         expect(() => getBuildEnv(withAnnotation(JSON.stringify({ NPM_TOKEN: value })))).to.throw(
-          'NPM_TOKEN must be a string or {"secret": "<name>", "version": "<number or latest>"}.',
+          'NPM_TOKEN must be a string or {"secret": "<secret name>"}.',
         );
       }
     });
   });
 
-  it("lists secret names", () => {
+  it("splits secrets from plain values", () => {
     const env = {
       API_URL: "https://api.example.com",
       NPM_TOKEN: { secret: "npm-token" },
-      SENTRY_AUTH_TOKEN: { secret: "sentry-auth-token", version: "2" },
+      SENTRY_AUTH_TOKEN: { secret: "sentry-auth-token@2" },
     };
     expect(secretNames(env)).to.deep.equal(["NPM_TOKEN", "SENTRY_AUTH_TOKEN"]);
+    expect(plainValues(env)).to.deep.equal({ API_URL: "https://api.example.com" });
   });
 
-  it("converts to local build env, available only to the build", () => {
+  it("converts to local build env, available only to the build, with secrets unchanged", () => {
     expect(
       toLocalBuildEnv({
         API_URL: "https://api.example.com",
         NPM_TOKEN: { secret: "npm-token" },
-        SENTRY_AUTH_TOKEN: { secret: "sentry-auth-token", version: "2" },
-        GITHUB_TOKEN: { secret: "projects/shared-secrets/secrets/github-token" },
-        CMS_TOKEN: { secret: "projects/shared-secrets/secrets/cms-token", version: "4" },
+        GITHUB_TOKEN: { secret: "projects/shared-secrets/secrets/github-token/versions/3" },
       }),
     ).to.deep.equal({
       API_URL: { value: "https://api.example.com", availability: ["BUILD"] },
-      NPM_TOKEN: { secret: "npm-token@latest", availability: ["BUILD"] },
-      SENTRY_AUTH_TOKEN: { secret: "sentry-auth-token@2", availability: ["BUILD"] },
+      NPM_TOKEN: { secret: "npm-token", availability: ["BUILD"] },
       GITHUB_TOKEN: {
-        secret: "projects/shared-secrets/secrets/github-token/versions/latest",
-        availability: ["BUILD"],
-      },
-      CMS_TOKEN: {
-        secret: "projects/shared-secrets/secrets/cms-token/versions/4",
+        secret: "projects/shared-secrets/secrets/github-token/versions/3",
         availability: ["BUILD"],
       },
     });
