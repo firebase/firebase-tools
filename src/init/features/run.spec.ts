@@ -2,6 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import { Setup } from "..";
 import { Config } from "../../config";
+import * as deploy from "../../deploy";
 import * as prereqs from "../../deploy/run/prereqs";
 import * as run from "../../gcp/run";
 import * as runv2 from "../../gcp/runv2";
@@ -9,6 +10,8 @@ import { Options } from "../../options";
 import * as prompt from "../../prompt";
 import * as requirePermissions from "../../requirePermissions";
 import { actuate, askQuestions, upsertRunConfig } from "./run";
+
+const DEFAULT_IGNORE = ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"];
 
 describe("init run", () => {
   const options = {} as Options;
@@ -143,33 +146,65 @@ describe("init run", () => {
   });
 
   describe("actuate", () => {
-    it("does nothing when featureInfo.run is not set", async () => {
-      await actuate(setup(), config);
-      expect(config.src.run).to.be.undefined;
+    /** Init's answers for a new service. */
+    const webSetup = (): Setup => ({
+      ...setup(),
+      featureInfo: {
+        run: {
+          serviceId: "web",
+          region: "us-central1",
+          baseImage: "nodejs22",
+          rootDir: "apps/web",
+        },
+      },
+    });
+    let writeStub: sinon.SinonStub;
+    let deployStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      writeStub = sinon.stub(config, "writeProjectFile");
+      deployStub = sinon.stub(deploy, "deploy").resolves();
     });
 
-    it("adds the service to the config that init writes to firebase.json", async () => {
-      const writeStub = sinon.stub(config, "writeProjectFile");
-      const s = setup();
-      s.featureInfo = { run: { serviceId: "s", region: "r", baseImage: "", rootDir: "/" } };
+    it("does nothing when featureInfo.run is not set", async () => {
+      await actuate(setup(), config, options);
+      expect(config.src.run).to.be.undefined;
+      expect(deployStub).to.not.have.been.called;
+    });
 
-      await actuate(s, config);
+    it("adds the service to firebase.json, but not its base image", async () => {
+      await actuate(webSetup(), config, options);
 
-      const runConfig = {
-        serviceId: "s",
-        rootDir: "/",
-        region: "r",
-        ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"],
-      };
-      expect(config.src.run).to.deep.equal(runConfig);
-      // Init writes the file once all features are set up, so a failed init leaves it untouched.
+      expect(config.src.run).to.deep.equal({
+        serviceId: "web",
+        region: "us-central1",
+        rootDir: "apps/web",
+        ignore: DEFAULT_IGNORE,
+      });
+      // Init saves firebase.json itself, once every feature is set up.
+      expect(writeStub).to.not.have.been.called;
+    });
+
+    it("deploys only that service and region, with its base image", async () => {
+      await actuate(webSetup(), config, options);
+
+      expect(deployStub).to.have.been.calledOnceWith(
+        ["run"],
+        { projectId: "p", config, only: "run:web:us-central1" },
+        { baseImage: "nodejs22" },
+      );
+    });
+
+    it("doesn't write firebase.json if the deploy fails", async () => {
+      deployStub.rejects(new Error("build failed"));
+
+      await expect(actuate(webSetup(), config, options)).to.be.rejectedWith("build failed");
+
       expect(writeStub).to.not.have.been.called;
     });
   });
 
   describe("upsertRunConfig", () => {
-    const DEFAULT_IGNORE = ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"];
-
     it("sets a single service object when firebase.json has no run config", () => {
       upsertRunConfig({ serviceId: "web", region: "us-central1", rootDir: "/" }, config);
       expect(config.src.run).to.deep.equal({
