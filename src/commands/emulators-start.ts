@@ -53,8 +53,10 @@ export const command = new Command("emulators:start")
     ]);
   });
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function printEmulatorOverview(options: any): void {
+/**
+ * Prints the overview table and connection details for running emulators.
+ */
+export function printEmulatorOverview(options: Options): void {
   const reservedPorts = [] as number[];
   for (const internalEmulator of [Emulators.LOGGING]) {
     const info = EmulatorRegistry.getInfo(internalEmulator);
@@ -79,9 +81,12 @@ function printEmulatorOverview(options: any): void {
     "All emulators ready! It is now safe to connect your app.",
   )}`;
   if (uiRunning) {
+    const uiUrl = EmulatorRegistry.url(Emulators.UI);
+    const uiListen = commandUtils.getListenOverview(Emulators.UI);
+    const listenHint = uiListen && uiListen !== uiUrl.host ? ` (listening on ${uiListen})` : "";
     successMsg += `\n${clc.cyan("i")}  View Emulator UI at ${stylizeLink(
-      EmulatorRegistry.url(Emulators.UI).toString(),
-    )}`;
+      uiUrl.toString(),
+    )}${listenHint}`;
   }
   successMessageTable.push([successMsg]);
 
@@ -125,7 +130,7 @@ function printEmulatorOverview(options: any): void {
     ) as ExtensionsEmulator;
     extensionsTable = extensionsEmulatorInstance.extensionsInfoTable();
   }
-  const hubInfo = EmulatorRegistry.getInfo(Emulators.HUB);
+  const hubInfo = EmulatorRegistry.get(Emulators.HUB)?.getInfo();
   logger.info(`\n${successMessageTable}
 
 ${emulatorsTable}
