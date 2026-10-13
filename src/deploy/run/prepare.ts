@@ -43,12 +43,14 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
 
   const buildEnv = getBuildEnv(existing);
   const secrets = secretNames(buildEnv);
-  // Local builds read secrets with your credentials. Cloud Build can't read them yet.
+  // Only local builds can use secrets: they read them on your machine, with your credentials.
+  // Builds on Cloud Build only take plain values, and passing a secret's value there would store
+  // it in plain text in the build.
   if (secrets.length && !config.localBuild) {
     throw new FirebaseError(
-      `Service ${serviceId} in ${region} has build secrets (${secrets.join(", ")}), which ` +
-        `builds on Cloud Build don't support yet. To use them, build locally by setting ` +
-        `"localBuild": true for this service in firebase.json.`,
+      `Service ${serviceId} in ${region} has build secrets (${secrets.join(", ")}), but only ` +
+        `local builds can use secrets: builds on Cloud Build only take plain values. To use ` +
+        `them, set "localBuild": true for this service in firebase.json.`,
     );
   }
 

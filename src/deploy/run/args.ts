@@ -17,8 +17,8 @@ export interface ServiceDeploy {
    */
   baseImage?: string;
   /**
-   * Set by prepare: the build-time environment. Prepare only allows secrets in it for local
-   * builds.
+   * Set by prepare: the build-time env vars from the service's annotation, each a plain value or
+   * a secret. Only local builds can use secrets: builds on Cloud Build only take plain values.
    */
   buildEnv?: BuildEnv;
   /** Set by deploy: the service after the rollout. */
