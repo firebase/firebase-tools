@@ -71,7 +71,7 @@ export function writerRolePermissions(
 
     // Grant writer role SELECT, INSERT, UPDATE, DELETE on all tables
     // (You might want to exclude certain sensitive tables)
-    `GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA "${schema}" TO "${firebaseWriterRole}"`,
+    `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA "${schema}" TO "${firebaseWriterRole}"`,
 
     // Grant writer usage on sequences for nextval() in inserts
     `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA "${schema}" TO "${firebaseWriterRole}"`,
@@ -114,7 +114,7 @@ export function defaultPermissions(databaseId: string, schema: string, ownerRole
     `ALTER DEFAULT PRIVILEGES
       FOR ROLE "${ownerRole}"
       IN SCHEMA "${schema}"
-      GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE ON TABLES TO "${firebaseWriterRole}";`,
+      GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "${firebaseWriterRole}";`,
 
     `ALTER DEFAULT PRIVILEGES
       FOR ROLE "${ownerRole}"
