@@ -320,14 +320,18 @@ describe("hosting:clone", () => {
 
   it("should throw an error if the site cannot be found", async () => {
     const { FirebaseError } = await import("../error");
-    getSiteStub
-      .withArgs("-", "unknown-site")
-      .rejects(new FirebaseError("not found", { status: 404 }));
+    const originalError = new FirebaseError("not found", { status: 404 });
+    getSiteStub.withArgs("-", "unknown-site").rejects(originalError);
 
     await expect(
       command.runner()(`unknown-site:${CHANNEL_ID}`, `${TARGET_SITE}:${TARGET_CHANNEL_ID}`, {
         project: PROJECT_ID,
       }),
-    ).to.be.rejectedWith(/Could not find the site unknown-site/);
+    )
+      .to.be.rejectedWith(FirebaseError, /Could not find the site unknown-site/)
+      .and.eventually.deep.include({
+        status: 404,
+        original: originalError,
+      });
   });
 });

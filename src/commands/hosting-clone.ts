@@ -85,8 +85,10 @@ To clone across different Firebase projects:
       );
     }
 
-    sourceProjectId = await resolveProjectId(sourceSiteId, sourceProjectId, options);
-    targetProjectId = await resolveProjectId(targetSiteId, targetProjectId, options);
+    [sourceProjectId, targetProjectId] = await Promise.all([
+      resolveProjectId(sourceSiteId, sourceProjectId, options),
+      resolveProjectId(targetSiteId, targetProjectId, options),
+    ]);
 
     targetChannelId = normalizeName(targetChannelId);
     if (sourceChannelId) {
@@ -235,7 +237,10 @@ async function resolveProjectId(
     }
   } catch (e: unknown) {
     if (e instanceof FirebaseError && e.status === 404) {
-      throw new FirebaseError(`Could not find the site ${bold(siteId)}.`);
+      throw new FirebaseError(`Could not find the site ${bold(siteId)}.`, {
+        original: e,
+        status: 404,
+      });
     }
     logger.debug(`[hosting] unable to resolve project for site ${siteId} via site lookup:`, e);
   }
