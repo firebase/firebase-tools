@@ -444,7 +444,7 @@ export async function grantRoleTo(
   const projectId = needProjectId(options);
   const projectNumber = await needProjectNumber(options);
   const { user, mode } = toDatabaseUser(email);
-  const { user: fdcP4SAUser } = toDatabaseUser(getDataConnectP4SA(projectNumber));
+  const { user: fdcP4SAUser } = toDatabaseUser(getDataConnectP4SA(String(projectNumber)));
   if (role === "owner" && user === fdcP4SAUser) {
     throw new FirebaseError(
       `Cannot grant the "owner" role to the Data Connect service agent (${email}). The service agent must only hold data-plane roles (writer/reader).`,
