@@ -10,7 +10,7 @@ import { Options } from "../../options";
 import * as apphostingPrepare from "../apphosting/prepare";
 import * as apphostingUtil from "../apphosting/util";
 import { ServiceDeploy } from "./args";
-import { deploy, localBuildTemplate, revisionTemplate } from "./deploy";
+import { buildDirectory, deploy, localBuildTemplate, revisionTemplate } from "./deploy";
 
 const NODEJS22 = "us-central1-docker.pkg.dev/serverless-runtimes/google-22/runtimes/nodejs22";
 const DEPLOY_MESSAGE = "firebase.google.com/deploy-message";
@@ -73,6 +73,17 @@ describe("run deploy", () => {
     expect(svc.deployed).to.deep.equal({ uri: "https://web.run.app" });
   });
 
+  it("builds an app in an Nx or Turborepo monorepo from the monorepo's root", async () => {
+    sinon.stub(fs, "existsSync").callsFake((file) => file === "/project/turbo.json");
+
+    await deployOne({ config: web });
+
+    // The upload has the monorepo's root files, like its lockfile and shared packages.
+    expect(createArchiveStub).to.have.been.calledWithMatch({ backendId: "web" }, "/project");
+    const { environmentVariables } = submitBuildStub.firstCall.args[2].buildpackBuild;
+    expect(environmentVariables).to.include({ GOOGLE_BUILDABLE: "apps/web" });
+  });
+
   it("builds without a base image if the service doesn't have one", async () => {
     await deployOne({ config: web });
 
@@ -80,6 +91,7 @@ describe("run deploy", () => {
     const { buildpackBuild } = submitBuildStub.firstCall.args[2];
     expect(buildpackBuild).not.to.have.property("baseImage");
     expect(buildpackBuild).not.to.have.property("enableAutomaticUpdates");
+    expect(buildpackBuild.environmentVariables).not.to.have.property("GOOGLE_BUILDABLE");
   });
 
   it("passes the service's plain build env vars to Cloud Build, but never secrets", async () => {
@@ -276,6 +288,55 @@ describe("run deploy", () => {
       rmSyncStub.throws(new Error("EBUSY: resource busy or locked"));
 
       await expect(deployLocalBuild()).to.be.rejectedWith("next build failed");
+    });
+  });
+
+  describe("buildDirectory", () => {
+    /** Pretends that only these files exist. */
+    function withFiles(...files: string[]): void {
+      sinon.stub(fs, "existsSync").callsFake((file) => files.includes(file as string));
+    }
+
+    it("builds an app from its own folder if it isn't in a monorepo", () => {
+      withFiles("/project/apps/web/package.json");
+      expect(buildDirectory("/project", "apps/web")).to.deep.equal({
+        dir: "/project/apps/web",
+        app: "",
+      });
+      expect(buildDirectory("/project")).to.deep.equal({ dir: "/project", app: "" });
+    });
+
+    it("builds an app in a monorepo from the monorepo's root", () => {
+      withFiles("/project/turbo.json");
+      expect(buildDirectory("/project", "apps/web")).to.deep.equal({
+        dir: "/project",
+        app: "apps/web",
+      });
+    });
+
+    it("uses the closest folder above the app with nx.json or turbo.json", () => {
+      withFiles("/project/turbo.json", "/project/frontend/nx.json");
+      expect(buildDirectory("/project", "frontend/apps/web")).to.deep.equal({
+        dir: "/project/frontend",
+        app: "apps/web",
+      });
+    });
+
+    it("builds from the app's folder if the app is the monorepo's root", () => {
+      withFiles("/project/apps/web/nx.json");
+      expect(buildDirectory("/project", "apps/web")).to.deep.equal({
+        dir: "/project/apps/web",
+        app: "",
+      });
+    });
+
+    it("doesn't look for a monorepo outside the project", () => {
+      withFiles("/turbo.json");
+      expect(buildDirectory("/project", "apps/web")).to.deep.equal({
+        dir: "/project/apps/web",
+        app: "",
+      });
+      expect(buildDirectory("/project", "../other")).to.deep.equal({ dir: "/other", app: "" });
     });
   });
 
