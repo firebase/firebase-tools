@@ -1,3 +1,4 @@
+- No longer grant TRUNCATE privilege to writer roles in SQL permission setup.
 - Updated Pub/Sub emulator to version 0.8.37.
 - Fixed an issue where analytics timeouts could mask command errors or cause successful commands to exit with an error. (#6989)
 - Fixed an issue where unhandled exceptions during Cloud Functions deployment could be silently ignored and exit with code 0 (#6989).
