@@ -1,12 +1,14 @@
 import { FirebaseError } from "../../error";
 import { RunSingle } from "../../firebaseConfig";
 import { Options } from "../../options";
+import { logLabeledBullet } from "../../utils";
 import { Context, Payload, ServiceDeploy } from "./args";
+import { BUILD_ENV_ANNOTATION, getBuildEnv, secretNames } from "./buildEnv";
 import { prereqs } from "./prereqs";
 import { getExistingService, getServiceConfigs, mainContainer } from "./util";
 
 /**
- * Reads each service's current state from Cloud Run and resolves its base image.
+ * Reads each service's current state from Cloud Run and resolves its base image and build env.
  */
 export async function prepare(context: Context, options: Options, payload: Payload): Promise<void> {
   const configs = getServiceConfigs(options);
@@ -38,5 +40,28 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
       `Local builds require a base image. Set one for service ${serviceId} in ${region} with "${fix}".`,
     );
   }
-  return { config, existing, baseImage };
+
+  const buildEnv = getBuildEnv(existing);
+  const secrets = secretNames(buildEnv);
+  // Only local builds can use secrets: they read them on your machine, with your credentials.
+  // Builds on Cloud Build only take plain values, and passing a secret's value there would store
+  // it in plain text in the build.
+  if (secrets.length && !config.localBuild) {
+    throw new FirebaseError(
+      `Service ${serviceId} in ${region} has build secrets (${secrets.join(", ")}), but only ` +
+        `local builds can use secrets: builds on Cloud Build only take plain values. To use ` +
+        `them, set "localBuild": true for this service in firebase.json.`,
+    );
+  }
+
+  const svc: ServiceDeploy = { config, existing, baseImage };
+  if (Object.keys(buildEnv).length) {
+    logLabeledBullet(
+      "run",
+      `Using build environment variables for service ${serviceId} in ${region} from ` +
+        `${BUILD_ENV_ANNOTATION}: ${Object.keys(buildEnv).join(", ")}`,
+    );
+    svc.buildEnv = buildEnv;
+  }
+  return svc;
 }

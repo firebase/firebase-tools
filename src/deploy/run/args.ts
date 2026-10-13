@@ -1,5 +1,6 @@
 import { RunSingle } from "../../firebaseConfig";
 import * as runv2 from "../../gcp/runv2";
+import { BuildEnv } from "./buildEnv";
 
 /** A service being deployed. Each field says which step sets it: prepare or deploy. */
 export interface ServiceDeploy {
@@ -15,6 +16,11 @@ export interface ServiceDeploy {
    * this deploy sets or clears it. Undefined means none, so automatic base image updates are off.
    */
   baseImage?: string;
+  /**
+   * Set by prepare: the build-time env vars from the service's annotation, each a plain value or
+   * a secret. Only local builds can use secrets: builds on Cloud Build only take plain values.
+   */
+  buildEnv?: BuildEnv;
   /** Set by deploy: the service after the rollout. */
   deployed?: runv2.Service;
 }

@@ -16,6 +16,7 @@ import { cloneDeep, logLabeledBullet } from "../../utils";
 import { prepareLocalBuildScratchDirectory } from "../apphosting/prepare";
 import { createLocalBuildTarArchive, createSourceDeployArchive } from "../apphosting/util";
 import { Context, Payload, ServiceDeploy } from "./args";
+import { nonSecretValues, secretNames, toLocalBuildEnv } from "./buildEnv";
 import { mainContainer } from "./util";
 
 const DEPLOY_MESSAGE_ANNOTATION = "firebase.google.com/deploy-message";
@@ -103,12 +104,21 @@ async function buildLocally(
     path.join(options.config.projectDir, cfg.rootDir),
   );
   logLabeledBullet("run", `Starting local build for service ${serviceId} in ${region}`);
+  const secrets = secretNames(svc.buildEnv || {});
+  if (secrets.length) {
+    logLabeledBullet(
+      "run",
+      `Reading build secrets ${secrets.join(", ")} with your credentials. Their values may be ` +
+        `included in the build output.`,
+    );
+  }
   await prepareLocalBuildScratchDirectory(options.config.projectDir, scratchDir, cfg);
   const { outputFiles, buildConfig } = await localBuild(
     context.projectId,
     scratchDir,
-    {},
-    { rootDir: config.rootDir },
+    toLocalBuildEnv(svc.buildEnv || {}),
+    // Unlike App Hosting, Cloud Run doesn't ask users to confirm build secrets in local builds.
+    { rootDir: config.rootDir, allowLocalBuildSecrets: true },
   );
   // Keep the env vars that the app needs at runtime, not just during the build.
   const env = (buildConfig.env || [])
@@ -203,6 +213,9 @@ async function buildImage(
   logLabeledBullet("run", `Building service ${serviceId} in ${region}...`);
   const buildpackBuild: runv2.BuildpacksBuild = {
     environmentVariables: {
+      // Cloud Build only takes plain values, so pass only the non-secret env vars. Prepare already
+      // rejects secrets for builds on Cloud Build.
+      ...nonSecretValues(svc.buildEnv || {}),
       // Use App Hosting's buildpacks, which need to know where to write the output bundle.
       X_GOOGLE_TARGET_PLATFORM: "fah",
       FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
