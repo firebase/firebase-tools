@@ -4,11 +4,13 @@ import { EnvMap } from "../../apphosting/yaml";
 
 /**
  * Prototype: build-time env vars and secrets, stored on the Cloud Run service as a JSON object.
- * Each value is a plain string, or a Secret Manager secret written the way apphosting.yaml writes
- * one: {"secret": "<name>"}, {"secret": "<name>@<version>"}, or {"secret": "<full resource name>"}.
+ * Each value is a string, a number or boolean (which becomes a string, as in apphosting.yaml), or a
+ * Secret Manager secret written the way apphosting.yaml writes one: {"secret": "<name>"},
+ * {"secret": "<name>@<version>"}, or {"secret": "<full resource name>"}.
  * For example:
  *   {
  *     "API_URL": "https://api.example.com",
+ *     "NEXT_TELEMETRY_DISABLED": 1,
  *     "NPM_TOKEN": {"secret": "npm-token"},
  *     "SENTRY_AUTH_TOKEN": {"secret": "sentry-auth-token@2"},
  *     "GITHUB_TOKEN": {"secret": "projects/shared-secrets/secrets/github-token/versions/3"}
@@ -28,7 +30,10 @@ export interface SecretRef {
 
 export type BuildEnv = Record<string, string | SecretRef>;
 
-/** Reads and validates the service's build environment. Returns {} if it has none. */
+/**
+ * Reads and validates the service's build environment. Returns {} if it has none. Numbers and
+ * booleans come back as strings, since env vars are strings.
+ */
 export function getBuildEnv(service: runv2.Service | undefined): BuildEnv {
   const raw = service?.annotations?.[BUILD_ENV_ANNOTATION];
   if (!service || !raw) {
@@ -45,12 +50,19 @@ export function getBuildEnv(service: runv2.Service | undefined): BuildEnv {
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
     throw invalid("it must be a JSON object.");
   }
+  const env: BuildEnv = {};
   for (const [name, value] of Object.entries(parsed)) {
-    if (typeof value !== "string" && !isSecretRef(value)) {
-      throw invalid(`${name} must be a string or {"secret": "<secret name>"}.`);
+    if (typeof value === "string" || isSecretRef(value)) {
+      env[name] = value;
+    } else if (typeof value === "number" || typeof value === "boolean") {
+      // apphosting.yaml takes unquoted numbers and booleans too. JSON doesn't keep how a number was
+      // written, so 1.50 becomes "1.5". Quote a value to keep it exactly as written.
+      env[name] = String(value);
+    } else {
+      throw invalid(`${name} must be a string, number, boolean, or {"secret": "<secret name>"}.`);
     }
   }
-  return parsed as BuildEnv;
+  return env;
 }
 
 /** Whether a value is {"secret": "<secret name>"}, with no other fields. */

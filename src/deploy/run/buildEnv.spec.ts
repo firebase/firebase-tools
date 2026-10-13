@@ -46,9 +46,20 @@ describe("run buildEnv", () => {
       }
     });
 
+    it("converts numbers and booleans to strings, as apphosting.yaml does", () => {
+      const annotation =
+        '{"NEXT_TELEMETRY_DISABLED": 1, "CI": true, "DEBUG": false, "RATIO": 1.50}';
+      expect(getBuildEnv(withAnnotation(annotation))).to.deep.equal({
+        NEXT_TELEMETRY_DISABLED: "1",
+        CI: "true",
+        DEBUG: "false",
+        // JSON doesn't keep how a number was written.
+        RATIO: "1.5",
+      });
+    });
+
     it("rejects invalid values", () => {
       const invalid = [
-        1,
         null,
         ["npm-token"],
         {},
@@ -58,7 +69,7 @@ describe("run buildEnv", () => {
       ];
       for (const value of invalid) {
         expect(() => getBuildEnv(withAnnotation(JSON.stringify({ NPM_TOKEN: value })))).to.throw(
-          'NPM_TOKEN must be a string or {"secret": "<secret name>"}.',
+          'NPM_TOKEN must be a string, number, boolean, or {"secret": "<secret name>"}.',
         );
       }
     });
