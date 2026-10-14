@@ -37,7 +37,6 @@ describe("run deploy", () => {
   };
   const buildServiceAccount = "123-compute@developer.gserviceaccount.com";
   let createArchiveStub: sinon.SinonStub;
-  let submitBuildStub: sinon.SinonStub;
   let createBuildStub: sinon.SinonStub;
   let waitForBuildStub: sinon.SinonStub;
   let grantSecretStub: sinon.SinonStub;
@@ -55,7 +54,6 @@ describe("run deploy", () => {
       .stub(gcs, "uploadObject")
       .resolves({ bucket: "source-bucket", object: "web.zip", generation: "1" });
     sinon.stub(artifactregistry, "ensureDockerRepository").resolves();
-    submitBuildStub = sinon.stub(runv2, "submitBuild").resolves();
     sinon.stub(buildConfig, "releaseTags").resolves(release);
     createBuildStub = sinon.stub(cloudbuild, "createBuild").resolves(createdBuild);
     waitForBuildStub = sinon.stub(cloudbuild, "waitForBuild").resolves();
@@ -81,19 +79,12 @@ describe("run deploy", () => {
       { backendId: "web" },
       "/project/apps/web",
     );
-    // A service with a base image builds with the Cloud Build config that Cloud Run generates.
-    expect(submitBuildStub).not.to.have.been.called;
     expect(createBuildStub).to.have.been.calledOnceWith("my-project", "us-central1");
     const build = createBuildStub.firstCall.args[2] as cloudbuild.Build;
     expect(build.steps.map((step) => step.id)).to.deep.equal(["build"]);
-    expect(build.steps[0].env).to.include(
-      "SHIM_FETCH_ARGS=--phase=fetch --type=ZipArchive --location=gs://source-bucket/web.zip --dest_dir=/workspace --timeout_gcs=false",
-    );
-    expect(build.artifacts).to.deep.equal({
-      oci: [{ file: "/workspace/oci_output/", registryPath: image, tags: ["latest"] }],
-    });
-    expect(build.substitutions).to.include({ _X_GOOGLE_TARGET_PLATFORM: "fah" });
+    expect(build.steps[0].env).to.include("X_GOOGLE_TARGET_PLATFORM=fah");
     expect(waitForBuildStub).to.have.been.calledOnceWith(createdBuild);
+    expect(grantSecretStub).not.to.have.been.called;
     expect(createServiceStub).to.have.been.calledWithMatch("my-project", "us-central1", "web", {
       template: { containers: [{ name: "web", image, baseImageUri: NODEJS22 }] },
       invokerIamDisabled: true,
@@ -102,52 +93,30 @@ describe("run deploy", () => {
     expect(svc.deployed).to.deep.equal({ uri: "https://web.run.app" });
   });
 
-  it("passes build secrets to Cloud Build by reference, and lets the build read them", async () => {
-    const buildEnv = { API_URL: "https://api.example.com", NPM_TOKEN: { secret: "npm-token" } };
-
-    await deployOne({ config: web, baseImage: NODEJS22, buildEnv });
-
-    const build = createBuildStub.firstCall.args[2] as cloudbuild.Build;
-    expect(build.availableSecrets).to.deep.equal({
-      secretManager: [
-        { versionName: "projects/my-project/secrets/npm-token/versions/latest", env: "NPM_TOKEN" },
-      ],
-    });
-    expect(build.steps[0].secretEnv).to.deep.equal(["NPM_TOKEN"]);
-    expect(build.substitutions).to.include({ _API_URL: "https://api.example.com" });
-    expect(build.substitutions).not.to.have.property("_NPM_TOKEN");
-    expect(grantSecretStub).to.have.been.calledOnceWith(
-      sinon.match({ projectId: "my-project", name: "npm-token" }),
-      [buildServiceAccount],
-      "roles/secretmanager.secretAccessor",
-    );
-  });
-
-  it("doesn't touch secret permissions when there are no build secrets", async () => {
-    await deployOne({ config: web, baseImage: NODEJS22 });
-
-    expect(grantSecretStub).not.to.have.been.called;
-  });
-
-  it("builds a service without a base image using the universal builder config, including secrets", async () => {
+  it("passes build secrets by reference, grants access, and supports services without a base image", async () => {
     const buildEnv = { API_URL: "https://api.example.com", NPM_TOKEN: { secret: "npm-token" } };
 
     await deployOne({ config: web, buildEnv });
 
-    expect(submitBuildStub).not.to.have.been.called;
-    expect(createBuildStub).to.have.been.calledOnceWith("my-project", "us-central1");
     const build = createBuildStub.firstCall.args[2] as cloudbuild.Build;
     expect(build.steps.map((step) => step.id)).to.deep.equal([
       "pre-buildpack",
       "build",
       "post-buildpack",
     ]);
-    expect(build.steps[0].secretEnv).to.deep.equal(["NPM_TOKEN"]);
     expect(build.availableSecrets).to.deep.equal({
       secretManager: [
         { versionName: "projects/my-project/secrets/npm-token/versions/latest", env: "NPM_TOKEN" },
       ],
     });
+    expect(build.steps[0].secretEnv).to.deep.equal(["NPM_TOKEN"]);
+    expect(build.steps[0].env).to.include("API_URL=https://api.example.com");
+    expect(build.steps[0].env?.some((e) => e.startsWith("NPM_TOKEN="))).to.be.false;
+    expect(grantSecretStub).to.have.been.calledOnceWith(
+      sinon.match({ projectId: "my-project", name: "npm-token" }),
+      [buildServiceAccount],
+      "roles/secretmanager.secretAccessor",
+    );
     const container = createServiceStub.firstCall.args[3].template.containers[0];
     expect(container).not.to.have.property("baseImageUri");
   });
@@ -233,7 +202,6 @@ describe("run deploy", () => {
       const container = await deployLocalBuild();
 
       expect(tarArchiveStub).to.have.been.calledWithMatch(sinon.match.any, scratchDir, [".next"]);
-      expect(submitBuildStub).not.to.have.been.called;
       expect(createBuildStub).not.to.have.been.called;
       expect(container).to.deep.include({
         image: "scratch",

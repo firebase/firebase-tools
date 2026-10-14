@@ -12,13 +12,8 @@ const client = new Client({
 });
 
 // Builds are in Cloud Build's v1 API.
-const buildsClient = new Client({
-  urlPrefix: cloudbuildOrigin(),
-  auth: true,
-  apiVersion: "v1",
-});
+const buildsClient = new Client({ urlPrefix: cloudbuildOrigin(), auth: true, apiVersion: "v1" });
 
-/** A Cloud Build build step. Only the fields the CLI uses. */
 export interface BuildStep {
   id?: string;
   name: string;
@@ -28,7 +23,6 @@ export interface BuildStep {
   secretEnv?: string[];
 }
 
-/** A Cloud Build build. Only the fields the CLI uses. */
 export interface Build {
   name?: string;
   logUrl?: string;
@@ -48,7 +42,6 @@ export interface Build {
     logging?: string;
     requestedVerifyOption?: string;
   };
-  substitutions?: Record<string, string>;
   tags?: string[];
   timeout?: string;
   queueTtl?: string;
@@ -56,7 +49,7 @@ export interface Build {
 
 const PENDING_BUILD_STATUSES = ["STATUS_UNKNOWN", "PENDING", "QUEUED", "WORKING"];
 
-/** Starts a build and returns it. Call waitForBuild to wait for it to finish. */
+/** Starts a Cloud Build v1 build and returns its metadata. */
 export async function createBuild(
   projectId: string,
   location: string,
@@ -73,9 +66,8 @@ export async function createBuild(
   return { ...created, name: created.name };
 }
 
-/** Waits for a build to finish. Throws if it didn't succeed. */
+/** Polls a Cloud Build v1 build until completion and throws if it did not succeed. */
 export async function waitForBuild(build: { name: string; logUrl?: string }): Promise<void> {
-  // The operation for a regional build can't be polled, so poll the build itself.
   let status: string | undefined;
   await pollOperation({
     apiOrigin: cloudbuildOrigin(),
@@ -95,10 +87,7 @@ export async function waitForBuild(build: { name: string; logUrl?: string }): Pr
   }
 }
 
-/**
- * Returns the email of the service account that builds run as by default: the Compute Engine
- * default service account on newer projects, or the legacy Cloud Build service account.
- */
+/** Returns the email of the default Cloud Build service account in `location`. */
 export async function getDefaultBuildServiceAccount(
   projectId: string,
   location: string,
@@ -106,7 +95,6 @@ export async function getDefaultBuildServiceAccount(
   const res = await buildsClient.get<{ serviceAccountEmail?: string }>(
     `/projects/${projectId}/locations/${location}/defaultServiceAccount`,
   );
-  // Formatted as projects/{project}/serviceAccounts/{email}.
   const email = res.body.serviceAccountEmail?.split("/").pop();
   if (!email) {
     throw new FirebaseError(`Cloud Build has no default service account in ${location}.`);
