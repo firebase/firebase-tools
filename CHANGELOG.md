@@ -10,3 +10,6 @@
 - Fixed an issue where Cloud Functions creation did not retry on HTTP 403 service account propagation errors. (#11251)
 - Updated Auth deployment to use existing apps from any platform before creating a default web app. (#11250)
 - No longer grant unecessary TRUNCATE privilege to writer roles in `dataconnect:sql:migrate`. (#11276)
+- Updated the Firebase SQL Connect local toolkit to v3.4.23, which includes the following changes:
+  - Updated the Golang dependency version to 1.26.9.
+  - Improved Native SQL query validation, wrapper aliasing, and line-comment handling to support the SQL editor in Firebase SQL.
