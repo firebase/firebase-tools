@@ -327,7 +327,7 @@ export function localBuildTemplate(
  * Returns the service's annotations after this deploy: its current ones, with the linked Firebase
  * Web App's ID set, or removed if no app is linked. Later deploys read the ID back to reuse the app.
  */
-function serviceAnnotations(svc: ServiceDeploy): Record<string, string> {
+function serviceAnnotationsToDeploy(svc: ServiceDeploy): Record<string, string> {
   const annotations = { ...svc.existing?.annotations };
   if (svc.appId !== undefined) {
     annotations[FIREBASE_APP_ANNOTATION] = svc.appId;
@@ -343,7 +343,7 @@ function rollOut(
   svc: ServiceDeploy,
   template: runv2.RevisionTemplate,
 ): Promise<runv2.Service> {
-  const annotations = serviceAnnotations(svc);
+  const annotations = serviceAnnotationsToDeploy(svc);
   if (svc.existing) {
     return deployRevision(svc.existing, template, annotations);
   }
