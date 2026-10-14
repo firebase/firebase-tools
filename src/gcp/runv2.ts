@@ -3,7 +3,8 @@ import { FirebaseError } from "../error";
 
 // TODO: Consider making this use REP in the future so we can be used by more
 // customers.
-import { cloudbuildOrigin, runOrigin } from "../api";
+import { runOrigin } from "../api";
+import { waitForBuild } from "./cloudbuild";
 import * as proto from "./proto";
 import { assertImplements, RecursiveKeyOf } from "../metaprogramming";
 import { LongRunningOperation, pollOperation } from "../operation-poller";
@@ -180,8 +181,6 @@ export interface SubmitBuildResponse {
   baseImageWarning?: string;
 }
 
-const PENDING_BUILD_STATUSES = ["STATUS_UNKNOWN", "PENDING", "QUEUED", "WORKING"];
-
 /**
  * Submits a build to Cloud Build using the v2 API and waits for the build to finish.
  * Used for building source code into container images.
@@ -202,24 +201,7 @@ export async function submitBuild(
   if (!cloudBuild) {
     throw new FirebaseError("Failed to submit build: no build was returned.");
   }
-  // The returned operation can't be polled for regional builds, so poll the build itself.
-  let status: string | undefined;
-  await pollOperation({
-    apiOrigin: cloudbuildOrigin(),
-    apiVersion: "v1",
-    operationResourceName: cloudBuild.name,
-    masterTimeout: 30 * 60 * 1000,
-    maxBackoff: 10_000,
-    doneFn: (b?: { status?: string }) => {
-      status = b?.status;
-      return !b?.status || !PENDING_BUILD_STATUSES.includes(b.status);
-    },
-  });
-  if (status !== "SUCCESS") {
-    throw new FirebaseError(
-      `Cloud Build failed with status ${status ?? "UNKNOWN"}. View the build logs at ${cloudBuild.logUrl ?? ""}`,
-    );
-  }
+  await waitForBuild(cloudBuild);
 }
 
 /**

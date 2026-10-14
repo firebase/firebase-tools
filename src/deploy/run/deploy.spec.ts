@@ -3,13 +3,16 @@ import * as fs from "fs";
 import * as sinon from "sinon";
 import * as localbuilds from "../../apphosting/localbuilds";
 import * as artifactregistry from "../../gcp/artifactregistry";
+import * as cloudbuild from "../../gcp/cloudbuild";
 import * as runv2 from "../../gcp/runv2";
+import * as secretManager from "../../gcp/secretManager";
 import * as gcs from "../../gcp/storage";
 import * as getProjectNumber from "../../getProjectNumber";
 import { Options } from "../../options";
 import * as apphostingPrepare from "../apphosting/prepare";
 import * as apphostingUtil from "../apphosting/util";
 import { ServiceDeploy } from "./args";
+import * as buildConfig from "./buildConfig";
 import { deploy, localBuildTemplate, revisionTemplate } from "./deploy";
 
 const NODEJS22 = "us-central1-docker.pkg.dev/serverless-runtimes/google-22/runtimes/nodejs22";
@@ -22,8 +25,22 @@ describe("run deploy", () => {
   const image = "us-central1-docker.pkg.dev/my-project/cloud-run-source-deploy/web:42";
   const scratchDir = "/tmp/run-local-build-web-abc123";
   const builtApp = { bucket: "source-bucket", object: "web.tar.gz" };
+  const release = {
+    builder: "nodejs_20261008_RC00",
+    run: "nodejs22_20261005_22_23_3_RC00",
+    version: "22.23.3",
+  };
+  const createdBuild = {
+    name: "projects/123/locations/us-central1/builds/b1",
+    logUrl: "logs",
+    steps: [],
+  };
+  const buildServiceAccount = "123-compute@developer.gserviceaccount.com";
   let createArchiveStub: sinon.SinonStub;
   let submitBuildStub: sinon.SinonStub;
+  let createBuildStub: sinon.SinonStub;
+  let waitForBuildStub: sinon.SinonStub;
+  let grantSecretStub: sinon.SinonStub;
   let createServiceStub: sinon.SinonStub;
   let updateServiceStub: sinon.SinonStub;
 
@@ -39,6 +56,11 @@ describe("run deploy", () => {
       .resolves({ bucket: "source-bucket", object: "web.zip", generation: "1" });
     sinon.stub(artifactregistry, "ensureDockerRepository").resolves();
     submitBuildStub = sinon.stub(runv2, "submitBuild").resolves();
+    sinon.stub(buildConfig, "releaseTags").resolves(release);
+    createBuildStub = sinon.stub(cloudbuild, "createBuild").resolves(createdBuild);
+    waitForBuildStub = sinon.stub(cloudbuild, "waitForBuild").resolves();
+    sinon.stub(cloudbuild, "getDefaultBuildServiceAccount").resolves(buildServiceAccount);
+    grantSecretStub = sinon.stub(secretManager, "ensureServiceAgentRole").resolves();
     const deployed = { uri: "https://web.run.app" } as runv2.Service;
     createServiceStub = sinon.stub(runv2, "createService").resolves(deployed);
     updateServiceStub = sinon.stub(runv2, "updateService").resolves(deployed);
@@ -59,11 +81,17 @@ describe("run deploy", () => {
       { backendId: "web" },
       "/project/apps/web",
     );
-    expect(submitBuildStub).to.have.been.calledWithMatch("my-project", "us-central1", {
-      storageSource: { bucket: "source-bucket", object: "web.zip" },
-      imageUri: image,
-      buildpackBuild: { baseImage: NODEJS22, enableAutomaticUpdates: true },
+    // A service with a base image builds with the Cloud Build config that Cloud Run generates.
+    expect(submitBuildStub).not.to.have.been.called;
+    expect(createBuildStub).to.have.been.calledOnceWith("my-project", "us-central1");
+    const build = createBuildStub.firstCall.args[2] as cloudbuild.Build;
+    expect(build.steps.map((step) => step.id)).to.deep.equal(["fetch", "pre-buildpack", "build"]);
+    expect(build.steps[0].args).to.include("--location=gs://source-bucket/web.zip");
+    expect(build.artifacts).to.deep.equal({
+      oci: [{ file: "/workspace/oci_output/", registryPath: image, tags: ["latest"] }],
     });
+    expect(build.substitutions).to.include({ _X_GOOGLE_TARGET_PLATFORM: "fah" });
+    expect(waitForBuildStub).to.have.been.calledOnceWith(createdBuild);
     expect(createServiceStub).to.have.been.calledWithMatch("my-project", "us-central1", "web", {
       template: { containers: [{ name: "web", image, baseImageUri: NODEJS22 }] },
       invokerIamDisabled: true,
@@ -72,8 +100,37 @@ describe("run deploy", () => {
     expect(svc.deployed).to.deep.equal({ uri: "https://web.run.app" });
   });
 
-  it("builds without a base image if the service doesn't have one", async () => {
+  it("passes build secrets to Cloud Build by reference, and lets the build read them", async () => {
+    const buildEnv = { API_URL: "https://api.example.com", NPM_TOKEN: { secret: "npm-token" } };
+
+    await deployOne({ config: web, baseImage: NODEJS22, buildEnv });
+
+    const build = createBuildStub.firstCall.args[2] as cloudbuild.Build;
+    expect(build.availableSecrets).to.deep.equal({
+      secretManager: [
+        { versionName: "projects/my-project/secrets/npm-token/versions/latest", env: "NPM_TOKEN" },
+      ],
+    });
+    expect(build.steps[1].secretEnv).to.deep.equal(["NPM_TOKEN"]);
+    expect(build.substitutions).to.include({ _API_URL: "https://api.example.com" });
+    expect(build.substitutions).not.to.have.property("_NPM_TOKEN");
+    expect(grantSecretStub).to.have.been.calledOnceWith(
+      sinon.match({ projectId: "my-project", name: "npm-token" }),
+      [buildServiceAccount],
+      "roles/secretmanager.secretAccessor",
+    );
+  });
+
+  it("doesn't touch secret permissions when there are no build secrets", async () => {
+    await deployOne({ config: web, baseImage: NODEJS22 });
+
+    expect(grantSecretStub).not.to.have.been.called;
+  });
+
+  it("lets Cloud Run build a service without a base image", async () => {
     await deployOne({ config: web });
+
+    expect(createBuildStub).not.to.have.been.called;
 
     // Without a base image, Cloud Build can't turn on automatic base image updates.
     const { buildpackBuild } = submitBuildStub.firstCall.args[2];
@@ -173,6 +230,7 @@ describe("run deploy", () => {
 
       expect(tarArchiveStub).to.have.been.calledWithMatch(sinon.match.any, scratchDir, [".next"]);
       expect(submitBuildStub).not.to.have.been.called;
+      expect(createBuildStub).not.to.have.been.called;
       expect(container).to.deep.include({
         image: "scratch",
         sourceCode: { cloudStorageSource: builtApp },

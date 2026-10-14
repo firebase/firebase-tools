@@ -7,7 +7,9 @@ import { FirebaseError, getErrMsg } from "../../error";
 import { AppHostingSingle, RunSingle } from "../../firebaseConfig";
 import { Backend } from "../../gcp/apphosting";
 import * as artifactregistry from "../../gcp/artifactregistry";
+import * as cloudbuild from "../../gcp/cloudbuild";
 import * as runv2 from "../../gcp/runv2";
+import * as secretManager from "../../gcp/secretManager";
 import * as gcs from "../../gcp/storage";
 import { getProjectNumber } from "../../getProjectNumber";
 import { logger } from "../../logger";
@@ -16,7 +18,8 @@ import { cloneDeep, logLabeledBullet } from "../../utils";
 import { prepareLocalBuildScratchDirectory } from "../apphosting/prepare";
 import { createLocalBuildTarArchive, createSourceDeployArchive } from "../apphosting/util";
 import { Context, Payload, ServiceDeploy } from "./args";
-import { nonSecretValues, secretNames, toLocalBuildEnv } from "./buildEnv";
+import { rcsBuildConfig, releaseTags, secretVersionName } from "./buildConfig";
+import { nonSecretValues, SecretRef, secretNames, toLocalBuildEnv } from "./buildEnv";
 import { mainContainer } from "./util";
 
 const DEPLOY_MESSAGE_ANNOTATION = "firebase.google.com/deploy-message";
@@ -211,23 +214,64 @@ async function buildImage(
   await artifactregistry.ensureDockerRepository(projectId, region, "cloud-run-source-deploy");
   const imageUri = `${region}-docker.pkg.dev/${projectId}/cloud-run-source-deploy/${serviceId}:${Date.now()}`;
   logLabeledBullet("run", `Building service ${serviceId} in ${region}...`);
-  const buildpackBuild: runv2.BuildpacksBuild = {
-    environmentVariables: {
-      // Cloud Build only takes plain values, so pass only the non-secret env vars. Prepare already
-      // rejects secrets for builds on Cloud Build.
-      ...nonSecretValues(svc.buildEnv || {}),
-      // Use App Hosting's buildpacks, which need to know where to write the output bundle.
-      X_GOOGLE_TARGET_PLATFORM: "fah",
-      FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
-    },
+  const buildEnv = svc.buildEnv || {};
+  const env = {
+    // Secrets aren't plain values. They're passed to Cloud Build by reference below.
+    ...nonSecretValues(buildEnv),
+    // Use App Hosting's buildpacks, which need to know where to write the output bundle.
+    X_GOOGLE_TARGET_PLATFORM: "fah",
+    FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
   };
-  // Only images built for a base image can have their base image updated automatically.
-  if (svc.baseImage) {
-    buildpackBuild.baseImage = svc.baseImage;
-    buildpackBuild.enableAutomaticUpdates = true;
+  if (!svc.baseImage) {
+    // Without a base image, Cloud Run builds with a different builder (pack), so let it build.
+    // Prepare already rejects build secrets for these services.
+    await runv2.submitBuild(projectId, region, {
+      storageSource: source,
+      imageUri,
+      buildpackBuild: { environmentVariables: env },
+    });
+    return imageUri;
   }
-  await runv2.submitBuild(projectId, region, { storageSource: source, imageUri, buildpackBuild });
+  // Prototype: build with the Cloud Build config that Cloud Run generates for a service with a
+  // base image (see buildConfig.ts), plus build secrets, which Cloud Run's build API can't take.
+  const secrets: Record<string, string> = {};
+  for (const name of secretNames(buildEnv)) {
+    secrets[name] = secretVersionName(projectId, (buildEnv[name] as SecretRef).secret);
+  }
+  const build = rcsBuildConfig({
+    region,
+    imageUri,
+    source,
+    baseImage: svc.baseImage,
+    env,
+    secrets,
+    release: await releaseTags(region, svc.baseImage),
+  });
+  logger.debug(`Cloud Build config for service ${serviceId}: ${JSON.stringify(build)}`);
+  await grantBuildSecretAccess(projectId, region, Object.values(secrets));
+  const created = await cloudbuild.createBuild(projectId, region, build);
+  await cloudbuild.waitForBuild(created);
   return imageUri;
+}
+
+/** Lets builds read the secrets: Cloud Build reads them as its default service account. */
+async function grantBuildSecretAccess(
+  projectId: string,
+  region: string,
+  versionNames: string[],
+): Promise<void> {
+  if (!versionNames.length) {
+    return;
+  }
+  const buildServiceAccount = await cloudbuild.getDefaultBuildServiceAccount(projectId, region);
+  for (const versionName of versionNames) {
+    const { secret } = secretManager.parseSecretVersionResourceName(versionName);
+    await secretManager.ensureServiceAgentRole(
+      secret,
+      [buildServiceAccount],
+      "roles/secretmanager.secretAccessor",
+    );
+  }
 }
 
 /**

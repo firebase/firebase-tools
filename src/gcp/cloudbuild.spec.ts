@@ -169,4 +169,40 @@ describe("cloudbuild", () => {
       expect(result).to.equal("service-123456789@gcp-sa-cloudbuild.iam.gserviceaccount.com");
     });
   });
+
+  describe("createBuild", () => {
+    const build = { steps: [{ name: "ubuntu", args: ["echo", "hi"] }] };
+
+    it("starts the build and returns it", async () => {
+      const created = { name: "projects/123/locations/us-central1/builds/b1", logUrl: "logs" };
+      nock(cloudbuildOrigin())
+        .post(`/v1/projects/${PROJECT_ID}/locations/${LOCATION}/builds`, build)
+        .reply(200, { name: "operations/op1", metadata: { build: created } });
+
+      expect(await cloudbuild.createBuild(PROJECT_ID, LOCATION, build)).to.deep.equal(created);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("throws if no build is returned", async () => {
+      nock(cloudbuildOrigin())
+        .post(`/v1/projects/${PROJECT_ID}/locations/${LOCATION}/builds`)
+        .reply(200, { name: "operations/op1" });
+
+      await expect(cloudbuild.createBuild(PROJECT_ID, LOCATION, build)).to.be.rejectedWith(
+        "no build was returned",
+      );
+    });
+  });
+
+  describe("getDefaultBuildServiceAccount", () => {
+    it("returns the email of the default build service account", async () => {
+      const email = "123-compute@developer.gserviceaccount.com";
+      nock(cloudbuildOrigin())
+        .get(`/v1/projects/${PROJECT_ID}/locations/${LOCATION}/defaultServiceAccount`)
+        .reply(200, { serviceAccountEmail: `projects/${PROJECT_ID}/serviceAccounts/${email}` });
+
+      expect(await cloudbuild.getDefaultBuildServiceAccount(PROJECT_ID, LOCATION)).to.equal(email);
+      expect(nock.isDone()).to.be.true;
+    });
+  });
 });

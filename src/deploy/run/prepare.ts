@@ -31,26 +31,26 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
   if (context.baseImage !== undefined) {
     baseImage = context.baseImage ?? undefined;
   }
+  const setBaseImage = existing
+    ? `firebase run:services:update ${serviceId} --region ${region} --base-image <baseImage>`
+    : "firebase init run";
   // Local builds run on top of the base image, so they need one.
   if (config.localBuild && !baseImage) {
-    const fix = existing
-      ? `firebase run:services:update ${serviceId} --region ${region} --base-image <baseImage>`
-      : "firebase init run";
     throw new FirebaseError(
-      `Local builds require a base image. Set one for service ${serviceId} in ${region} with "${fix}".`,
+      `Local builds require a base image. Set one for service ${serviceId} in ${region} with "${setBaseImage}".`,
     );
   }
 
   const buildEnv = getBuildEnv(existing);
   const secrets = secretNames(buildEnv);
-  // Only local builds can use secrets: they read them on your machine, with your credentials.
-  // Builds on Cloud Build only take plain values, and passing a secret's value there would store
-  // it in plain text in the build.
-  if (secrets.length && !config.localBuild) {
+  // Local builds read secrets on your machine, with your credentials. Builds on Cloud Build get
+  // them by reference, which needs a base image (see deploy.ts): without one, Cloud Run builds the
+  // service itself, and it only takes plain values.
+  if (secrets.length && !config.localBuild && !baseImage) {
     throw new FirebaseError(
-      `Service ${serviceId} in ${region} has build secrets (${secrets.join(", ")}), but only ` +
-        `local builds can use secrets: builds on Cloud Build only take plain values. To use ` +
-        `them, set "localBuild": true for this service in firebase.json.`,
+      `Service ${serviceId} in ${region} has build secrets (${secrets.join(", ")}), but builds ` +
+        `on Cloud Build can only use secrets if the service has a base image. Set one with ` +
+        `"${setBaseImage}", or set "localBuild": true for this service in firebase.json.`,
     );
   }
 

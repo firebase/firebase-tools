@@ -101,11 +101,22 @@ describe("run prepare", () => {
       expect(svc.buildEnv).to.deep.equal({ API_URL: "https://api.example.com" });
     });
 
-    it("rejects build secrets on Cloud Build", async () => {
+    it("keeps build secrets on Cloud Build for a service with a base image", async () => {
       getServiceStub.resolves(withBuildEnv({ NPM_TOKEN: { secret: "npm-token" } }));
 
+      const [svc] = await prepareRun(web);
+
+      expect(svc.buildEnv).to.deep.equal({ NPM_TOKEN: { secret: "npm-token" } });
+    });
+
+    it("rejects build secrets on Cloud Build for a service without a base image", async () => {
+      getServiceStub.resolves({
+        ...withBuildEnv({ NPM_TOKEN: { secret: "npm-token" } }),
+        template: { containers: [{ name: "web", image: "old-image" }] },
+      });
+
       await expect(prepareRun(web)).to.be.rejectedWith(
-        /Service web in us-central1 has build secrets \(NPM_TOKEN\).*"localBuild": true/,
+        /Service web in us-central1 has build secrets \(NPM_TOKEN\).*base image.*"localBuild": true/,
       );
     });
 
