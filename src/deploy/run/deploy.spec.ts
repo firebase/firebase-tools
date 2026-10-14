@@ -113,13 +113,14 @@ describe("run deploy", () => {
     expect(updateServiceStub).to.have.been.calledOnceWithExactly(
       {
         name: "projects/my-project/locations/us-central1/services/web",
+        annotations: {},
         template: { containers: [{ name: "web", image }] },
         traffic: [
           { type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 },
           { type: "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION", revision: "web-000", tag: "preview" },
         ],
       },
-      { updateMask: ["template", "traffic"], pollTimeoutMs: 10 * 60 * 1000 },
+      { updateMask: ["template", "traffic", "annotations"], pollTimeoutMs: 10 * 60 * 1000 },
     );
   });
 
@@ -153,12 +154,13 @@ describe("run deploy", () => {
       expect(updateServiceStub.firstCall.args[0].annotations).to.deep.equal({ team: "frontend" });
     });
 
-    it("leaves the service's annotations alone if the app didn't change", async () => {
+    it("keeps the service's annotations as they are if the app didn't change", async () => {
       await deployOne({ config: web, existing: linkedWeb, appId: "1:123:web:abc" });
 
-      const [service, { updateMask }] = updateServiceStub.firstCall.args;
-      expect(service).not.to.have.property("annotations");
-      expect(updateMask).to.deep.equal(["template", "traffic"]);
+      expect(updateServiceStub.firstCall.args[0].annotations).to.deep.equal({
+        team: "frontend",
+        [APP_ID]: "1:123:web:abc",
+      });
     });
   });
 
@@ -365,12 +367,20 @@ describe("run deploy", () => {
         ]);
       });
 
-      it("is removed when the app is unlinked", () => {
-        const svc = { config: web, existing: linked };
+      it("is removed when the app is unlinked, and the other env vars stay", () => {
+        const existing = {
+          ...webRunning({
+            env: [
+              { name: "MODE", value: "prod" },
+              { name: "FIREBASE_CONFIG", value: "old" },
+            ],
+          }),
+          annotations: { [APP_ID]: "1:123:web:abc" },
+        };
 
-        const template = revisionTemplate(svc, image);
+        const template = revisionTemplate({ config: web, existing }, image);
 
-        expect(template.containers?.[0]).not.to.have.property("env");
+        expect(template.containers?.[0].env).to.deep.equal([{ name: "MODE", value: "prod" }]);
       });
 
       it("is left alone if the user set it on a service that was never linked", () => {
