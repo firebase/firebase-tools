@@ -3,7 +3,7 @@ import { RunSingle } from "../../firebaseConfig";
 import { Options } from "../../options";
 import { logLabeledBullet } from "../../utils";
 import { Context, Payload, ServiceDeploy } from "./args";
-import { BUILD_ENV_ANNOTATION, getBuildEnv, secretNames } from "./buildEnv";
+import { BUILD_ENV_ANNOTATION, getBuildEnv } from "./buildEnv";
 import { prereqs } from "./prereqs";
 import { getExistingService, getServiceConfigs, mainContainer } from "./util";
 
@@ -31,29 +31,17 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
   if (context.baseImage !== undefined) {
     baseImage = context.baseImage ?? undefined;
   }
-  const setBaseImage = existing
-    ? `firebase run:services:update ${serviceId} --region ${region} --base-image <baseImage>`
-    : "firebase init run";
   // Local builds run on top of the base image, so they need one.
   if (config.localBuild && !baseImage) {
+    const fix = existing
+      ? `firebase run:services:update ${serviceId} --region ${region} --base-image <baseImage>`
+      : "firebase init run";
     throw new FirebaseError(
-      `Local builds require a base image. Set one for service ${serviceId} in ${region} with "${setBaseImage}".`,
+      `Local builds require a base image. Set one for service ${serviceId} in ${region} with "${fix}".`,
     );
   }
 
   const buildEnv = getBuildEnv(existing);
-  const secrets = secretNames(buildEnv);
-  // Local builds read secrets on your machine, with your credentials. Builds on Cloud Build get
-  // them by reference, which needs a base image (see deploy.ts): without one, Cloud Run builds the
-  // service itself, and it only takes plain values.
-  if (secrets.length && !config.localBuild && !baseImage) {
-    throw new FirebaseError(
-      `Service ${serviceId} in ${region} has build secrets (${secrets.join(", ")}), but builds ` +
-        `on Cloud Build can only use secrets if the service has a base image. Set one with ` +
-        `"${setBaseImage}", or set "localBuild": true for this service in firebase.json.`,
-    );
-  }
-
   const svc: ServiceDeploy = { config, existing, baseImage };
   if (Object.keys(buildEnv).length) {
     logLabeledBullet(

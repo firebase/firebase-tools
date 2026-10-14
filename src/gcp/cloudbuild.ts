@@ -33,14 +33,20 @@ export interface Build {
   name?: string;
   logUrl?: string;
   status?: string;
+  source?: { storageSource: { bucket: string; object: string } };
   steps: BuildStep[];
+  images?: string[];
   availableSecrets?: { secretManager: { versionName: string; env: string }[] };
-  artifacts?: { oci?: { file: string; registryPath: string; tags?: string[] }[] };
+  artifacts?: {
+    images?: string[];
+    oci?: { file: string; registryPath: string; tags?: string[] }[];
+  };
   options?: {
     env?: string[];
     volumes?: { name: string; path: string }[];
     logStreamingOption?: string;
     logging?: string;
+    requestedVerifyOption?: string;
   };
   substitutions?: Record<string, string>;
   tags?: string[];

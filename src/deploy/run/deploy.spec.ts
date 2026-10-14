@@ -85,8 +85,10 @@ describe("run deploy", () => {
     expect(submitBuildStub).not.to.have.been.called;
     expect(createBuildStub).to.have.been.calledOnceWith("my-project", "us-central1");
     const build = createBuildStub.firstCall.args[2] as cloudbuild.Build;
-    expect(build.steps.map((step) => step.id)).to.deep.equal(["fetch", "pre-buildpack", "build"]);
-    expect(build.steps[0].args).to.include("--location=gs://source-bucket/web.zip");
+    expect(build.steps.map((step) => step.id)).to.deep.equal(["build"]);
+    expect(build.steps[0].env).to.include(
+      "SHIM_FETCH_ARGS=--phase=fetch --type=ZipArchive --location=gs://source-bucket/web.zip --dest_dir=/workspace --timeout_gcs=false",
+    );
     expect(build.artifacts).to.deep.equal({
       oci: [{ file: "/workspace/oci_output/", registryPath: image, tags: ["latest"] }],
     });
@@ -111,7 +113,7 @@ describe("run deploy", () => {
         { versionName: "projects/my-project/secrets/npm-token/versions/latest", env: "NPM_TOKEN" },
       ],
     });
-    expect(build.steps[1].secretEnv).to.deep.equal(["NPM_TOKEN"]);
+    expect(build.steps[0].secretEnv).to.deep.equal(["NPM_TOKEN"]);
     expect(build.substitutions).to.include({ _API_URL: "https://api.example.com" });
     expect(build.substitutions).not.to.have.property("_NPM_TOKEN");
     expect(grantSecretStub).to.have.been.calledOnceWith(
@@ -127,25 +129,27 @@ describe("run deploy", () => {
     expect(grantSecretStub).not.to.have.been.called;
   });
 
-  it("lets Cloud Run build a service without a base image", async () => {
-    await deployOne({ config: web });
-
-    expect(createBuildStub).not.to.have.been.called;
-
-    // Without a base image, Cloud Build can't turn on automatic base image updates.
-    const { buildpackBuild } = submitBuildStub.firstCall.args[2];
-    expect(buildpackBuild).not.to.have.property("baseImage");
-    expect(buildpackBuild).not.to.have.property("enableAutomaticUpdates");
-  });
-
-  it("passes the service's plain build env vars to Cloud Build, but never secrets", async () => {
+  it("builds a service without a base image using the universal builder config, including secrets", async () => {
     const buildEnv = { API_URL: "https://api.example.com", NPM_TOKEN: { secret: "npm-token" } };
 
     await deployOne({ config: web, buildEnv });
 
-    const { environmentVariables } = submitBuildStub.firstCall.args[2].buildpackBuild;
-    expect(environmentVariables).to.include({ API_URL: "https://api.example.com" });
-    expect(environmentVariables).not.to.have.property("NPM_TOKEN");
+    expect(submitBuildStub).not.to.have.been.called;
+    expect(createBuildStub).to.have.been.calledOnceWith("my-project", "us-central1");
+    const build = createBuildStub.firstCall.args[2] as cloudbuild.Build;
+    expect(build.steps.map((step) => step.id)).to.deep.equal([
+      "pre-buildpack",
+      "build",
+      "post-buildpack",
+    ]);
+    expect(build.steps[0].secretEnv).to.deep.equal(["NPM_TOKEN"]);
+    expect(build.availableSecrets).to.deep.equal({
+      secretManager: [
+        { versionName: "projects/my-project/secrets/npm-token/versions/latest", env: "NPM_TOKEN" },
+      ],
+    });
+    const container = createServiceStub.firstCall.args[3].template.containers[0];
+    expect(container).not.to.have.property("baseImageUri");
   });
 
   it("rolls out a new revision of an existing service with all traffic, keeping its tags", async () => {

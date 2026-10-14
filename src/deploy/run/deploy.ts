@@ -222,18 +222,6 @@ async function buildImage(
     X_GOOGLE_TARGET_PLATFORM: "fah",
     FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
   };
-  if (!svc.baseImage) {
-    // Without a base image, Cloud Run builds with a different builder (pack), so let it build.
-    // Prepare already rejects build secrets for these services.
-    await runv2.submitBuild(projectId, region, {
-      storageSource: source,
-      imageUri,
-      buildpackBuild: { environmentVariables: env },
-    });
-    return imageUri;
-  }
-  // Prototype: build with the Cloud Build config that Cloud Run generates for a service with a
-  // base image (see buildConfig.ts), plus build secrets, which Cloud Run's build API can't take.
   const secrets: Record<string, string> = {};
   for (const name of secretNames(buildEnv)) {
     secrets[name] = secretVersionName(projectId, (buildEnv[name] as SecretRef).secret);
