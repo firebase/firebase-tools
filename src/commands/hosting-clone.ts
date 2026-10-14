@@ -5,6 +5,7 @@ import { Command } from "../command";
 import { FirebaseError } from "../error";
 import {
   getChannel,
+  getSite,
   createChannel,
   cloneVersion,
   createRelease,
@@ -20,14 +21,26 @@ import { Options } from "../options";
 export const command = new Command("hosting:clone <source> <targetChannel>")
   .description("clone a version from one site to another")
   .help(
-    `<source> and <targetChannel> accept the following format: <siteId>:<channelId>
+    `<source> and <targetChannel> accept the following formats:
+  - [<projectId>:]<siteId>:<channelId>
+  - [<projectId>:]<siteId>@<versionId> (source only)
 
-For example, to copy the content for a site \`my-site\` from a preview channel \`staging\` to a \`live\` channel, the command would look be:
+Site projects are automatically discovered if omitted.
 
-  firebase hosting:clone my-site:foo my-site:live`,
+For example, to copy the content for a site \`my-site\` from a preview channel \`staging\` to a \`live\` channel:
+
+  firebase hosting:clone my-site:staging my-site:live
+
+To clone across different Firebase projects:
+
+  firebase hosting:clone site-a:live site-b:live --project=project-b
+  # or explicitly:
+  firebase hosting:clone project-a:site-a:live project-b:site-b:live`,
   )
   .before(requireAuth)
-  .action(async (source = "", targetChannel = "", options: Options) => {
+  .action(async (source: string, targetChannel: string, options: Options) => {
+    source = source || "";
+    targetChannel = targetChannel || "";
     let sourceProjectId: string | undefined;
     let sourceSiteId: string | undefined;
     let sourceChannelId: string | undefined;
@@ -63,17 +76,19 @@ For example, to copy the content for a site \`my-site\` from a preview channel \
 
     if (!sourceSiteId || (!sourceChannelId && !sourceVersion)) {
       throw new FirebaseError(
-        `"${source}" is not a valid source. Must be in the form "<site>:<channel>" or "<site>@<version>"`,
+        `"${source}" is not a valid source. Must be in the form "[<project>:]<site>:<channel>" or "[<project>:]<site>@<version>"`,
       );
     }
     if (!targetSiteId || !targetChannelId) {
       throw new FirebaseError(
-        `"${targetChannel}" is not a valid target channel. Must be in the form "<site>:<channel>" (to clone to the active website, use "live" as the channel).`,
+        `"${targetChannel}" is not a valid target channel. Must be in the form "[<project>:]<site>:<channel>" (to clone to the active website, use "live" as the channel).`,
       );
     }
 
-    sourceProjectId = sourceProjectId || needProjectId(options);
-    targetProjectId = targetProjectId || needProjectId(options);
+    [sourceProjectId, targetProjectId] = await Promise.all([
+      resolveProjectId(sourceSiteId, sourceProjectId, options),
+      resolveProjectId(targetSiteId, targetProjectId, options),
+    ]);
 
     targetChannelId = normalizeName(targetChannelId);
     if (sourceChannelId) {
@@ -97,7 +112,9 @@ For example, to copy the content for a site \`my-site\` from a preview channel \
       const sChannel = await getChannel(sourceProjectId, sourceSiteId, sourceChannelId);
       if (!sChannel) {
         throw new FirebaseError(
-          `Could not find the channel ${bold(sourceChannelId)} for site ${bold(sourceSiteId)}.`,
+          `Could not find the channel ${bold(sourceChannelId)} for site ${bold(
+            sourceSiteId,
+          )} in project ${bold(sourceProjectId)}.`,
         );
       }
       sourceVersionName = sChannel.release?.version?.name;
@@ -185,3 +202,47 @@ For example, to copy the content for a site \`my-site\` from a preview channel \
     );
     utils.logSuccess(`Channel URL (${targetChannelId}): ${tChannel.url}`);
   });
+
+/**
+ * Returns the projectId from a resource name string.
+ * projects/${project}/sites/${site}...
+ * @param name the project scoped resource name.
+ * @return the project id.
+ */
+function parseProjectId(name: string): string {
+  const matches = /^projects\/([^/]+)/.exec(name);
+  return matches ? matches[1] || "" : "";
+}
+
+/**
+ * Resolves the project ID for a site, looking up the site with "-" wildcard if unspecified.
+ * @param siteId the site ID.
+ * @param explicitProjectId the explicitly provided project ID, if any.
+ * @param options the command options.
+ * @return the resolved project ID.
+ */
+async function resolveProjectId(
+  siteId: string,
+  explicitProjectId: string | undefined,
+  options: Options,
+): Promise<string> {
+  if (explicitProjectId) {
+    return explicitProjectId;
+  }
+  try {
+    const site = await getSite("-", siteId);
+    const projectId = parseProjectId(site.name);
+    if (projectId) {
+      return projectId;
+    }
+  } catch (e: unknown) {
+    if (e instanceof FirebaseError && e.status === 404) {
+      throw new FirebaseError(`Could not find the site ${bold(siteId)}.`, {
+        original: e,
+        status: 404,
+      });
+    }
+    logger.debug(`[hosting] unable to resolve project for site ${siteId} via site lookup:`, e);
+  }
+  return needProjectId(options);
+}
