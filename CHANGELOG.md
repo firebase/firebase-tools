@@ -8,4 +8,5 @@
 - Fixed a race condition in `SourceTokenScraper` that could cause concurrent function deployments to hang when refreshing an expired source token (#6989).
 - Fixed an issue where a Function Kit and a functions codebase sharing the same source directory failed `firebase.json` validation. (#11253)
 - Fixed an issue where Cloud Functions creation did not retry on HTTP 403 service account propagation errors. (#11251)
+- Updated Auth deployment to use existing apps from any platform before creating a default web app. (#11250)
 - No longer grant unecessary TRUNCATE privilege to writer roles in `dataconnect:sql:migrate`. (#11276)

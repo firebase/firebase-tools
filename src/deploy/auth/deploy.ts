@@ -62,7 +62,7 @@ export async function deploy(context: any, options: Options): Promise<void> {
       },
     },
     app: {
-      platform: AppPlatform.WEB,
+      platform: context.auth?.platform || AppPlatform.WEB,
       appId: appId,
     },
     features: {
