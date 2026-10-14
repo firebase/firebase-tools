@@ -11,6 +11,7 @@ export const list_functions = tool(
   {
     name: "list_functions",
     description: "List all deployed functions in your Firebase project.",
+    humanReadableDescription: "List all deployed Cloud Functions in your Firebase project.",
     inputSchema: z.object({}),
     annotations: {
       title: "List Deployed Functions",

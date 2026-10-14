@@ -285,7 +285,8 @@ export interface SecretEnvVar {
   secret: string; // The id of the SecretVersion - ie for projects/myproject/secrets/mysecret, this is 'mysecret'
   projectId: string; // The project containing the Secret
 
-  // Internal use only. Users cannot pin secret to a specific version.
+  // Internal use only. Version pinning is currently only supported for .env-bound secrets.
+  allowVersionPinning?: boolean;
   version?: string;
 }
 
@@ -425,6 +426,8 @@ export interface RequiredAPI {
   api: string;
 }
 
+export type LifecycleEvent = "afterFirstDeploy" | "afterRedeploy";
+
 export type LifecycleHook =
   | {
       task: {
@@ -457,10 +460,12 @@ export interface Backend {
   environmentVariables: EnvironmentVariables;
   // region -> id -> Endpoint
   endpoints: Record<string, Record<string, Endpoint>>;
-  lifecycleHooks?: Record<string, LifecycleHook>;
+  requiredRoles?: string[];
+  lifecycleHooks?: Partial<Record<LifecycleEvent, LifecycleHook>>;
 }
 
 /**
+
  * A helper utility to create an empty backend.
  * Tests that verify the behavior of one possible resource in a Backend can use
  * this method to avoid compiler errors when new fields are added to Backend.
@@ -498,6 +503,7 @@ export function merge(...backends: Backend[]): Backend {
 
   // Merge all APIs
   const apiToReasons: Record<string, Set<string>> = {};
+  const requiredRoles = new Set<string>();
   for (const b of backends) {
     for (const { api, reason } of b.requiredAPIs) {
       const reasons = apiToReasons[api] || new Set();
@@ -508,12 +514,22 @@ export function merge(...backends: Backend[]): Backend {
     }
     // Merge all environment variables.
     merged.environmentVariables = { ...merged.environmentVariables, ...b.environmentVariables };
+
+    // Merge requiredRoles
+    if (b.requiredRoles) {
+      for (const role of b.requiredRoles) {
+        requiredRoles.add(role);
+      }
+    }
     if (b.lifecycleHooks) {
       merged.lifecycleHooks = { ...(merged.lifecycleHooks || {}), ...b.lifecycleHooks };
     }
   }
   for (const [api, reasons] of Object.entries(apiToReasons)) {
     merged.requiredAPIs.push({ api, reason: Array.from(reasons).join(" ") });
+  }
+  if (requiredRoles.size > 0) {
+    merged.requiredRoles = Array.from(requiredRoles);
   }
   return merged;
 }
@@ -629,6 +645,7 @@ async function loadExistingBackend(ctx: Context): Promise<Backend> {
  * @param ctx Context from the Command library, used for caching.
  * @param existingBackend The existing backend to load Cloud Run services into.
  * @param unreachableRegions Object to track unreachable regions.
+ * @param unreachableRegions.run Array of unreachable regions.
  * @param onlyMissing If true, only loads missing Cloud Run services.
  */
 async function loadCloudRunServices(
@@ -638,10 +655,29 @@ async function loadCloudRunServices(
   onlyMissing: boolean,
 ): Promise<void> {
   try {
+    const runServiceIdsByRegion: Record<string, Set<string>> = {};
+    for (const [region, endpoints] of Object.entries(existingBackend.endpoints)) {
+      const ids = Object.values(endpoints)
+        .map((e) => e.runServiceId)
+        .filter((id): id is string => !!id);
+      runServiceIdsByRegion[region] = new Set(ids);
+    }
+
     const runServices = await run.listServices(ctx.projectId);
     for (const service of runServices) {
       const endpoint = run.endpointFromService(service);
-      if (!onlyMissing || !existingBackend.endpoints[endpoint.region]?.[endpoint.id]) {
+
+      // We check both ID and runServiceId because:
+      // 1. GCF v1 functions don't have runServiceId, so we must match by ID (prevents overwrites).
+      // 2. GCF v2 functions (like kits) might have different IDs depending on the API source
+      //    (prefixed vs unprefixed), so we must match by their underlying Cloud Run service ID (prevents duplicates).
+      const hasMatchingId = !!existingBackend.endpoints[endpoint.region]?.[endpoint.id];
+      const hasMatchingServiceId = !!(
+        endpoint.runServiceId && runServiceIdsByRegion[endpoint.region]?.has(endpoint.runServiceId)
+      );
+      const alreadyLoaded = hasMatchingId || hasMatchingServiceId;
+
+      if (!onlyMissing || !alreadyLoaded) {
         existingBackend.endpoints[endpoint.region] =
           existingBackend.endpoints[endpoint.region] || {};
         existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;

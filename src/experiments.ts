@@ -63,11 +63,6 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: true,
   },
-  runfunctions: {
-    shortDescription:
-      "Functions created using the V2 API target Cloud Run Functions (not production ready)",
-    public: false,
-  },
   functionsiac: {
     shortDescription: "Exports functions IaC code",
     public: false,
@@ -90,14 +85,16 @@ export const ALL_EXPERIMENTS = experiments({
     public: true,
     default: false,
   },
+  kits: {
+    shortDescription: "Enable Functions Kits.",
+    fullDescription: "Adds support for Function Kits.",
+    public: true,
+    default: true,
+  },
 
   // Emulator experiments
   emulatoruisnapshot: {
     shortDescription: "Load pre-release versions of the emulator UI",
-  },
-  emulatorapphosting: {
-    shortDescription: "App Hosting emulator",
-    public: false,
   },
 
   // Hosting experiments
@@ -124,16 +121,32 @@ export const ALL_EXPERIMENTS = experiments({
     public: true,
     default: true,
   },
+
   // Access experiments
-  crossservicerules: {
-    shortDescription: "Allow Firebase Rules to reference resources in other services",
-  },
   internaltesting: {
     shortDescription: "Exposes Firebase CLI commands intended for internal testing purposes.",
     fullDescription:
       "Exposes Firebase CLI commands intended for internal testing purposes. " +
       "These commands are not meant for public consumption and may break or disappear " +
       "without a notice.",
+  },
+
+  appcheckadmin: {
+    shortDescription: "Manage App Check enforcement and attestation providers from the CLI.",
+    fullDescription:
+      "Enables the `firebase appcheck:services`, `firebase appcheck:providers` and " +
+      "`firebase appcheck:apps` commands for reading and changing App Check enforcement per " +
+      "service and the attestation providers of each app. These commands are in preview and " +
+      "may change until the surface is API council approved. The `firebase appcheck:debugtokens` " +
+      "commands are generally available and are not affected by this experiment.",
+  },
+
+  ailogic: {
+    shortDescription: "Manage Firebase AI Logic from the CLI.",
+    fullDescription:
+      "Enables the `firebase ailogic` command surface for managing Firebase AI Logic, " +
+      "starting with the Gemini API providers. These commands are in preview and may " +
+      "change until the underlying API is finalized.",
   },
 
   apphosting: {
@@ -153,6 +166,15 @@ export const ALL_EXPERIMENTS = experiments({
       "Enable Automatic Base Image Updates (ABIU) and runtime selection for App Hosting",
     default: true,
     public: true,
+  },
+
+  directcloudrun: {
+    shortDescription: "Build and deploy web apps directly to Cloud Run services",
+    fullDescription:
+      "Enables `firebase init run`, `firebase deploy --only run`, and the " +
+      "`firebase run:services:update` command. " +
+      "These are in preview and may change.",
+    public: false,
   },
 
   // TODO(joehanley): Delete this once weve scrubbed all references to experiment from docs.
@@ -213,6 +235,44 @@ export const ALL_EXPERIMENTS = experiments({
     shortDescription: "Enable the ability to upload source maps for web apps to Crashlytics.",
     default: false,
     public: true,
+  },
+  crashlyticsWebAlerts: {
+    shortDescription: "Enable configuring Crashlytics email alerts during web app onboarding.",
+    default: false,
+    public: false,
+  },
+  crashlyticsWebTrace: {
+    shortDescription: "Enable provisioning Cloud Trace storage during web app onboarding.",
+    default: false,
+    public: false,
+  },
+  secretEnvParams: {
+    shortDescription:
+      "Enable reading the backing resource binding for a Functions secret param from .env",
+    default: true,
+    public: true,
+  },
+  extdeprecationwarnings: {
+    shortDescription: "Show deprecation warnings for Firebase Extensions CLI commands.",
+    default: true,
+    public: true,
+  },
+  extMigrationFeatures: {
+    shortDescription:
+      "Enable features intended to assist with the migration of Extension instances to Kits.",
+    default: true,
+    public: true,
+  },
+  fdcapimigration: {
+    shortDescription: "Enable the FDC API schema migration path.",
+    fullDescription: "API based Schema Migration behind experimental flag.",
+    default: false,
+    public: false,
+  },
+  writeDefaultSecretBindings: {
+    shortDescription: "Write Cloud Secret Manager bindings to the default resource ID to .env.",
+    default: false,
+    public: false,
   },
 });
 

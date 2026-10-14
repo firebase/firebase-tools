@@ -2,4 +2,4 @@
 set -euxo pipefail # bash strict mode
 IFS=$'\n\t'
 
-cd functions && npm i
+cd functions && npm i --prefer-offline --no-audit

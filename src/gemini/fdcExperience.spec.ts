@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { extractCodeBlock, generateSchema, generateOperation } from "./fdcExperience";
-import * as nock from "nock";
+import nock from "../test/helpers/nock";
 import { dataconnectOrigin } from "../api";
 import { Schema } from "./types";
 

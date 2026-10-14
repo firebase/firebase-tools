@@ -10,11 +10,14 @@ import {
   getAppVersion,
   normalizeFileName,
   getLinkedSourceMapPath,
+  extractSourceMapFileField,
+  findHiddenSourceMapTarget,
   findSourceMapMappings,
   CommandOptions,
   uploadMap,
   uploadSourceMaps,
   UploadRequest,
+  SourceMap,
 } from "./sourcemap";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
@@ -145,6 +148,170 @@ describe("crashlytics:sourcemap helpers", () => {
     });
   });
 
+  describe("extractSourceMapFileField", () => {
+    it("should return undefined for empty files", async () => {
+      const tmpFile = tmp.fileSync({ postfix: ".js.map" });
+      try {
+        const result = await extractSourceMapFileField(tmpFile.name);
+        expect(result).to.be.undefined;
+      } finally {
+        tmpFile.removeCallback();
+      }
+    });
+
+    it("should return undefined when no file property is present in the source map", async () => {
+      const tmpFile = tmp.fileSync({ postfix: ".js.map" });
+      fs.writeFileSync(
+        tmpFile.name,
+        JSON.stringify({ version: 3, sources: ["app.ts"], mappings: "" }),
+      );
+      try {
+        const result = await extractSourceMapFileField(tmpFile.name);
+        expect(result).to.be.undefined;
+      } finally {
+        tmpFile.removeCallback();
+      }
+    });
+
+    it("should extract file property from standard json", async () => {
+      const tmpFile = tmp.fileSync({ postfix: ".js.map" });
+      fs.writeFileSync(
+        tmpFile.name,
+        JSON.stringify({ version: 3, file: "main.bundle.js", sources: ["main.ts"], mappings: "" }),
+      );
+      try {
+        const result = await extractSourceMapFileField(tmpFile.name);
+        expect(result).to.equal("main.bundle.js");
+      } finally {
+        tmpFile.removeCallback();
+      }
+    });
+
+    it("should extract file property with whitespace around colon", async () => {
+      const tmpFile = tmp.fileSync({ postfix: ".js.map" });
+      fs.writeFileSync(
+        tmpFile.name,
+        '{\n  "version": 3,\n  "file"  :   "output.js"  ,\n  "sources": []\n}',
+      );
+      try {
+        const result = await extractSourceMapFileField(tmpFile.name);
+        expect(result).to.equal("output.js");
+      } finally {
+        tmpFile.removeCallback();
+      }
+    });
+
+    it("should handle escaped characters in file property", async () => {
+      const tmpFile = tmp.fileSync({ postfix: ".js.map" });
+      fs.writeFileSync(tmpFile.name, '{"version":3,"file":"dist\\/assets\\/main.js","sources":[]}');
+      try {
+        const result = await extractSourceMapFileField(tmpFile.name);
+        expect(result).to.equal("dist/assets/main.js");
+      } finally {
+        tmpFile.removeCallback();
+      }
+    });
+
+    it("should return undefined if file property is empty string", async () => {
+      const tmpFile = tmp.fileSync({ postfix: ".js.map" });
+      fs.writeFileSync(tmpFile.name, '{"version":3,"file":"   ","sources":[]}');
+      try {
+        const result = await extractSourceMapFileField(tmpFile.name);
+        expect(result).to.be.undefined;
+      } finally {
+        tmpFile.removeCallback();
+      }
+    });
+
+    it("should return undefined for non-existent files", async () => {
+      const result = await extractSourceMapFileField("/non/existent/path/file.js.map");
+      expect(result).to.be.undefined;
+    });
+  });
+
+  describe("findHiddenSourceMapTarget", () => {
+    it("should find target JS file by conventional naming when candidate is in jsFilesSet", async () => {
+      const mapPath = "/dist/assets/index-B_3419df.js.map";
+      const jsPath = "/dist/assets/index-B_3419df.js";
+      const jsFilesSet = new Set([path.resolve(jsPath)]);
+
+      const result = await findHiddenSourceMapTarget(mapPath, jsFilesSet);
+      expect(result).to.equal(path.resolve(jsPath));
+    });
+
+    it("should find target JS file by conventional naming on filesystem when jsFilesSet is omitted", async () => {
+      const tmpJs = tmp.fileSync({ postfix: ".js" });
+      const mapPath = `${tmpJs.name}.map`;
+      fs.writeFileSync(tmpJs.name, "console.log('hello');");
+
+      try {
+        const result = await findHiddenSourceMapTarget(mapPath);
+        expect(result).to.equal(path.resolve(tmpJs.name));
+      } finally {
+        tmpJs.removeCallback();
+      }
+    });
+
+    it("should find target JS file from source map file property relative to map directory", async () => {
+      const tmpDir = tmp.dirSync();
+      const jsFile = path.join(tmpDir.name, "main.js");
+      const mapFile = path.join(tmpDir.name, "custom_name.js.map");
+
+      fs.writeFileSync(jsFile, "console.log('main');");
+      fs.writeFileSync(mapFile, JSON.stringify({ version: 3, file: "main.js" }));
+
+      try {
+        const jsFilesSet = new Set([path.resolve(jsFile)]);
+        const result = await findHiddenSourceMapTarget(mapFile, jsFilesSet);
+        expect(result).to.equal(path.resolve(jsFile));
+      } finally {
+        try {
+          fs.unlinkSync(jsFile);
+          fs.unlinkSync(mapFile);
+          tmpDir.removeCallback();
+        } catch {
+          // ignore
+        }
+      }
+    });
+
+    it("should find target JS file from source map file property by matching basename", async () => {
+      const tmpDir = tmp.dirSync();
+      const jsFile = path.join(tmpDir.name, "app.js");
+      const mapFile = path.join(tmpDir.name, "app-hash123.js.map");
+
+      fs.writeFileSync(jsFile, "console.log('app');");
+      fs.writeFileSync(mapFile, JSON.stringify({ version: 3, file: "dist/app.js" }));
+
+      try {
+        const jsFilesSet = new Set([path.resolve(jsFile)]);
+        const result = await findHiddenSourceMapTarget(mapFile, jsFilesSet);
+        expect(result).to.equal(path.resolve(jsFile));
+      } finally {
+        try {
+          fs.unlinkSync(jsFile);
+          fs.unlinkSync(mapFile);
+          tmpDir.removeCallback();
+        } catch {
+          // ignore
+        }
+      }
+    });
+
+    it("should return undefined when conventional JS file does not exist and no file property exists", async () => {
+      const tmpMap = tmp.fileSync({ postfix: ".js.map" });
+      fs.writeFileSync(tmpMap.name, "{}");
+
+      try {
+        const jsFilesSet = new Set<string>();
+        const result = await findHiddenSourceMapTarget(tmpMap.name, jsFilesSet);
+        expect(result).to.be.undefined;
+      } finally {
+        tmpMap.removeCallback();
+      }
+    });
+  });
+
   describe("findSourceMapMappings", () => {
     it("should construct mappings correctly for linked files", async () => {
       const tmpJs = tmp.fileSync({ postfix: ".js" });
@@ -192,6 +359,265 @@ describe("crashlytics:sourcemap helpers", () => {
         });
       } finally {
         tmpMap.removeCallback();
+      }
+    });
+
+    it("should construct mappings correctly for hidden sourcemaps without sourceMappingURL comments", async () => {
+      const tmpDir = tmp.dirSync();
+      const jsFile = path.join(tmpDir.name, "bundle.js");
+      const mapFile = path.join(tmpDir.name, "bundle.js.map");
+
+      // JS file has NO sourceMappingURL comment
+      fs.writeFileSync(jsFile, "console.log('hidden sourcemap');");
+      fs.writeFileSync(
+        mapFile,
+        JSON.stringify({ version: 3, sources: ["src/bundle.ts"], mappings: "" }),
+      );
+
+      try {
+        const files = [{ name: jsFile }, { name: mapFile }];
+        const results = await findSourceMapMappings(files, tmpDir.name);
+
+        expect(results).to.have.lengthOf(1);
+        expect(results[0]).to.deep.equal({
+          mapFilePath: mapFile,
+          obfuscatedFilePath: "bundle.js",
+        });
+      } finally {
+        try {
+          fs.unlinkSync(jsFile);
+          fs.unlinkSync(mapFile);
+          tmpDir.removeCallback();
+        } catch {
+          // ignore
+        }
+      }
+    });
+
+    it("should construct mappings for Vite-style bundled JS and hidden map files", async () => {
+      const tmpDir = tmp.dirSync();
+      const assetsDir = path.join(tmpDir.name, "assets");
+      fs.mkdirSync(assetsDir, { recursive: true });
+
+      const indexJs = path.join(assetsDir, "index-D7h28k.js");
+      const indexMap = path.join(assetsDir, "index-D7h28k.js.map");
+      const vendorJs = path.join(assetsDir, "vendor-CzP23r.js");
+      const vendorMap = path.join(assetsDir, "vendor-CzP23r.js.map");
+
+      fs.writeFileSync(indexJs, "console.log('index');");
+      fs.writeFileSync(
+        indexMap,
+        JSON.stringify({ version: 3, file: "index-D7h28k.js", sources: [] }),
+      );
+      fs.writeFileSync(vendorJs, "console.log('vendor');");
+      fs.writeFileSync(
+        vendorMap,
+        JSON.stringify({ version: 3, file: "vendor-CzP23r.js", sources: [] }),
+      );
+
+      try {
+        const files = [
+          { name: indexJs },
+          { name: indexMap },
+          { name: vendorJs },
+          { name: vendorMap },
+        ];
+        const results = await findSourceMapMappings(files, tmpDir.name);
+
+        expect(results).to.have.lengthOf(2);
+        const sorted = results.sort((a, b) =>
+          a.obfuscatedFilePath.localeCompare(b.obfuscatedFilePath),
+        );
+        expect(sorted[0]).to.deep.equal({
+          mapFilePath: indexMap,
+          obfuscatedFilePath: path.join("assets", "index-D7h28k.js"),
+        });
+        expect(sorted[1]).to.deep.equal({
+          mapFilePath: vendorMap,
+          obfuscatedFilePath: path.join("assets", "vendor-CzP23r.js"),
+        });
+      } finally {
+        try {
+          fs.rmSync(tmpDir.name, { recursive: true, force: true });
+        } catch {
+          // ignore
+        }
+      }
+    });
+
+    it("should construct mappings for Angular-style bundled JS and hidden map files", async () => {
+      const tmpDir = tmp.dirSync();
+      const browserDir = path.join(tmpDir.name, "browser");
+      fs.mkdirSync(browserDir, { recursive: true });
+
+      const mainJs = path.join(browserDir, "main-5J77SZZZ.js");
+      const mainMap = path.join(browserDir, "main-5J77SZZZ.js.map");
+      const polyfillsJs = path.join(browserDir, "polyfills-FF234AAA.js");
+      const polyfillsMap = path.join(browserDir, "polyfills-FF234AAA.js.map");
+
+      fs.writeFileSync(mainJs, "console.log('angular main');");
+      fs.writeFileSync(
+        mainMap,
+        JSON.stringify({ version: 3, file: "main-5J77SZZZ.js", sources: [] }),
+      );
+      fs.writeFileSync(polyfillsJs, "console.log('angular polyfills');");
+      fs.writeFileSync(
+        polyfillsMap,
+        JSON.stringify({ version: 3, file: "polyfills-FF234AAA.js", sources: [] }),
+      );
+
+      try {
+        const files = [
+          { name: mainJs },
+          { name: mainMap },
+          { name: polyfillsJs },
+          { name: polyfillsMap },
+        ];
+        const results = await findSourceMapMappings(files, tmpDir.name);
+
+        expect(results).to.have.lengthOf(2);
+        const sorted = results.sort((a, b) =>
+          a.obfuscatedFilePath.localeCompare(b.obfuscatedFilePath),
+        );
+        expect(sorted[0]).to.deep.equal({
+          mapFilePath: mainMap,
+          obfuscatedFilePath: path.join("browser", "main-5J77SZZZ.js"),
+        });
+        expect(sorted[1]).to.deep.equal({
+          mapFilePath: polyfillsMap,
+          obfuscatedFilePath: path.join("browser", "polyfills-FF234AAA.js"),
+        });
+      } finally {
+        try {
+          fs.rmSync(tmpDir.name, { recursive: true, force: true });
+        } catch {
+          // ignore
+        }
+      }
+    });
+
+    it("should construct mappings for hidden sourcemaps where map file name differs but file property matches", async () => {
+      const tmpDir = tmp.dirSync();
+      const jsFile = path.join(tmpDir.name, "app.js");
+      const mapFile = path.join(tmpDir.name, "custom-sourcemap-name.js.map");
+
+      fs.writeFileSync(jsFile, "console.log('app');");
+      fs.writeFileSync(mapFile, JSON.stringify({ version: 3, file: "app.js", sources: [] }));
+
+      try {
+        const files = [{ name: jsFile }, { name: mapFile }];
+        const results = await findSourceMapMappings(files, tmpDir.name);
+
+        expect(results).to.have.lengthOf(1);
+        expect(results[0]).to.deep.equal({
+          mapFilePath: mapFile,
+          obfuscatedFilePath: "app.js",
+        });
+      } finally {
+        try {
+          fs.unlinkSync(jsFile);
+          fs.unlinkSync(mapFile);
+          tmpDir.removeCallback();
+        } catch {
+          // ignore
+        }
+      }
+    });
+
+    it("should handle mixed directories with traditional, hidden, and unlinked sourcemap files", async () => {
+      const tmpDir = tmp.dirSync();
+
+      // 1. Traditional sourcemap (has sourceMappingURL comment)
+      const tradJs = path.join(tmpDir.name, "traditional.js");
+      const tradMap = path.join(tmpDir.name, "traditional-hash.js.map");
+      fs.writeFileSync(
+        tradJs,
+        "console.log('trad');\n//# sourceMappingURL=traditional-hash.js.map",
+      );
+      fs.writeFileSync(tradMap, JSON.stringify({ version: 3, sources: [] }));
+
+      // 2. Hidden sourcemap (no comment)
+      const hiddenJs = path.join(tmpDir.name, "hidden.js");
+      const hiddenMap = path.join(tmpDir.name, "hidden.js.map");
+      fs.writeFileSync(hiddenJs, "console.log('hidden');");
+      fs.writeFileSync(hiddenMap, JSON.stringify({ version: 3, file: "hidden.js", sources: [] }));
+
+      // 3. Unlinked standalone sourcemap (no JS file)
+      const unlinkedMap = path.join(tmpDir.name, "standalone.js.map");
+      fs.writeFileSync(unlinkedMap, JSON.stringify({ version: 3, sources: [] }));
+
+      try {
+        const files = [
+          { name: tradJs },
+          { name: tradMap },
+          { name: hiddenJs },
+          { name: hiddenMap },
+          { name: unlinkedMap },
+        ];
+        const results = await findSourceMapMappings(files, tmpDir.name);
+
+        expect(results).to.have.lengthOf(3);
+        const sorted = results.sort((a, b) =>
+          a.obfuscatedFilePath.localeCompare(b.obfuscatedFilePath),
+        );
+        expect(sorted[0]).to.deep.equal({
+          mapFilePath: hiddenMap,
+          obfuscatedFilePath: "hidden.js",
+        });
+        expect(sorted[1]).to.deep.equal({
+          mapFilePath: unlinkedMap,
+          obfuscatedFilePath: "standalone.js.map",
+        });
+        expect(sorted[2]).to.deep.equal({
+          mapFilePath: tradMap,
+          obfuscatedFilePath: "traditional.js",
+        });
+      } finally {
+        try {
+          fs.rmSync(tmpDir.name, { recursive: true, force: true });
+        } catch {
+          // ignore
+        }
+      }
+    });
+
+    it("should not re-assign an already-linked JS file from Pass 1 to a hidden map file in Pass 2", async () => {
+      const tmpDir = tmp.dirSync();
+
+      // main.js explicitly links to main-hash.js.map
+      const mainJs = path.join(tmpDir.name, "main.js");
+      const mainHashMap = path.join(tmpDir.name, "main-hash.js.map");
+      // Another map file that also has conventional name main.js.map
+      const mainMap = path.join(tmpDir.name, "main.js.map");
+
+      fs.writeFileSync(mainJs, "console.log('main');\n//# sourceMappingURL=main-hash.js.map");
+      fs.writeFileSync(mainHashMap, JSON.stringify({ version: 3, sources: [] }));
+      fs.writeFileSync(mainMap, JSON.stringify({ version: 3, sources: [] }));
+
+      try {
+        const files = [{ name: mainJs }, { name: mainHashMap }, { name: mainMap }];
+        const results = await findSourceMapMappings(files, tmpDir.name);
+
+        expect(results).to.have.lengthOf(2);
+        const sorted = results.sort((a, b) =>
+          a.obfuscatedFilePath.localeCompare(b.obfuscatedFilePath),
+        );
+        // main-hash.js.map was linked to main.js in Pass 1
+        expect(sorted[0]).to.deep.equal({
+          mapFilePath: mainHashMap,
+          obfuscatedFilePath: "main.js",
+        });
+        // main.js.map falls back to itself because main.js is already taken
+        expect(sorted[1]).to.deep.equal({
+          mapFilePath: mainMap,
+          obfuscatedFilePath: "main.js.map",
+        });
+      } finally {
+        try {
+          fs.rmSync(tmpDir.name, { recursive: true, force: true });
+        } catch {
+          // ignore
+        }
       }
     });
   });
@@ -264,7 +690,7 @@ describe("crashlytics:sourcemap helpers", () => {
 
       const result = await uploadMap(request);
 
-      const expectedUid = utils.murmurHashV3("1:12345:web:abc-1.0.0-path/to/file.js");
+      const expectedUid = utils.murmurHashV3("path/to/file.js");
       const expectedName = `projects/test-project/locations/global/mappingFiles/${expectedUid}`;
 
       expect(result).to.be.true;
@@ -295,6 +721,43 @@ describe("crashlytics:sourcemap helpers", () => {
       });
     });
 
+    it("should generate the same mappingFile UID across different appVersions for the same obfuscatedPath", async () => {
+      const requestV1 = mockUploadRequest({
+        mappingFile: "/mock-root/path/to/file.js.map",
+        obfuscatedFilePath: "path/to/file.js",
+        appVersion: "1.0.0",
+        options: mockCommandOptions({
+          app: "1:12345:web:abc",
+          projectRoot: "/mock-root",
+        }),
+      });
+      const requestV2 = mockUploadRequest({
+        mappingFile: "/mock-root/path/to/file.js.map",
+        obfuscatedFilePath: "path/to/file.js",
+        appVersion: "2.0.0",
+        options: mockCommandOptions({
+          app: "1:12345:web:abc",
+          projectRoot: "/mock-root",
+        }),
+      });
+
+      await uploadMap(requestV1);
+      await uploadMap(requestV2);
+
+      const expectedUid = utils.murmurHashV3("path/to/file.js");
+      const expectedName = `projects/test-project/locations/global/mappingFiles/${expectedUid}`;
+
+      expect(clientPatchStub.callCount).to.equal(2);
+      expect(clientPatchStub.firstCall.args[0]).to.equal(expectedName);
+      expect(clientPatchStub.secondCall.args[0]).to.equal(expectedName);
+      expect((clientPatchStub.firstCall.args[1] as { fileUri: string }).fileUri).to.equal(
+        "gs://test-bucket/1:12345:web:abc-1.0.0-path-to-file.js.zip",
+      );
+      expect((clientPatchStub.secondCall.args[1] as { fileUri: string }).fileUri).to.equal(
+        "gs://test-bucket/1:12345:web:abc-2.0.0-path-to-file.js.zip",
+      );
+    });
+
     it("should normalize Next.js paths and ignore dev segments in obfuscated path", async () => {
       const request = mockUploadRequest({
         mappingFile: "/mock-root/path/to/file.js.map",
@@ -317,6 +780,29 @@ describe("crashlytics:sourcemap helpers", () => {
       expect(patchArg.obfuscatedFilePath).to.equal("/path/to/_next/file.js");
       expect(patchArg.fileUri).to.equal(
         "gs://test-bucket/1:12345:web:abc-1.0.0-path-to-_next-file.js.zip",
+      );
+    });
+
+    it("should strip Angular browser build directory prefix from obfuscatedFilePath", async () => {
+      const request = mockUploadRequest({
+        mappingFile: "/mock-root/dist/apps/ecp/browser/chunk-GNZJHBSG.js.map",
+        obfuscatedFilePath: path.join("apps", "ecp", "browser", "chunk-GNZJHBSG.js"),
+        options: mockCommandOptions({
+          app: "1:12345:web:abc",
+          projectRoot: "/mock-root",
+        }),
+      });
+
+      const result = await uploadMap(request);
+
+      expect(result).to.be.true;
+      const patchArg = clientPatchStub.firstCall.args[1] as {
+        obfuscatedFilePath: string;
+        fileUri: string;
+      };
+      expect(patchArg.obfuscatedFilePath).to.equal("/chunk-GNZJHBSG.js");
+      expect(patchArg.fileUri).to.equal(
+        "gs://test-bucket/1:12345:web:abc-1.0.0-chunk-GNZJHBSG.js.zip",
       );
     });
 
@@ -360,6 +846,173 @@ describe("crashlytics:sourcemap helpers", () => {
 
       expect(result).to.be.true;
       expect(logLabeledWarningStub.callCount).to.equal(0);
+    });
+
+    it("should look up existing mapping by obfuscatedFilePath, delete its old UID, and re-register on 400 already exists error", async () => {
+      const legacyName = "projects/test-project/locations/global/mappingFiles/legacy-uid-999";
+      const clientGetStub = sandbox.stub(Client.prototype, "get");
+      clientGetStub.onFirstCall().resolves({
+        status: 200,
+        response: {} as unknown as ClientResponse<unknown>["response"],
+        body: {
+          mappingFiles: [
+            {
+              name: "projects/test-project/locations/global/mappingFiles/other-uid",
+              obfuscatedFilePath: "/other.js",
+            },
+          ],
+          nextPageToken: "page-2",
+        },
+      } as unknown as ClientResponse<unknown>);
+      clientGetStub.onSecondCall().resolves({
+        status: 200,
+        response: {} as unknown as ClientResponse<unknown>["response"],
+        body: {
+          mappingFiles: [
+            {
+              name: legacyName,
+              obfuscatedFilePath: "/path/to/file.js",
+            },
+          ],
+        },
+      } as unknown as ClientResponse<unknown>);
+
+      const clientDeleteStub = sandbox.stub(Client.prototype, "delete").resolves({
+        status: 200,
+        response: {} as unknown as ClientResponse<unknown>["response"],
+        body: {},
+      } as unknown as ClientResponse<unknown>);
+
+      clientPatchStub
+        .onFirstCall()
+        .rejects(
+          new FirebaseError(
+            "Request to https://firebasetelemetryadmin.googleapis.com/v1alpha/projects/test-project/locations/global/mappingFiles/123 had HTTP Error: 400, com.google.apps.framework.request.BadRequestException: A mapping file with this file name already exists.",
+            { status: 400 },
+          ),
+        );
+      clientPatchStub.onSecondCall().resolves({
+        status: 200,
+        response: {} as unknown as ClientResponse<unknown>["response"],
+        body: {},
+      } as unknown as ClientResponse<unknown>);
+
+      const request = mockUploadRequest();
+      const result = await uploadMap(request);
+
+      const expectedUid = utils.murmurHashV3("path/to/file.js");
+      const expectedName = `projects/test-project/locations/global/mappingFiles/${expectedUid}`;
+
+      expect(result).to.be.true;
+      expect(clientGetStub.callCount).to.equal(2);
+      expect(clientGetStub.firstCall.args).to.deep.equal([
+        "projects/test-project/locations/global/mappingFiles",
+        { queryParams: {} },
+      ]);
+      expect(clientGetStub.secondCall.args).to.deep.equal([
+        "projects/test-project/locations/global/mappingFiles",
+        { queryParams: { pageToken: "page-2" } },
+      ]);
+      expect(clientDeleteStub.callCount).to.equal(1);
+      expect(clientDeleteStub.firstCall.args[0]).to.equal(legacyName);
+      expect(clientPatchStub.callCount).to.equal(2);
+      expect(clientPatchStub.secondCall.args[0]).to.equal(expectedName);
+      expect(clientPatchStub.secondCall.args[2]).to.deep.equal({
+        queryParams: { allowMissing: "true" },
+      });
+      expect(logLabeledWarningStub.callCount).to.equal(0);
+    });
+
+    it("should fall back to deleting sourceMap.name when ListMappingFiles returns no match on 400 already exists error", async () => {
+      const clientGetStub = sandbox.stub(Client.prototype, "get").resolves({
+        status: 200,
+        response: {} as unknown as ClientResponse<unknown>["response"],
+        body: { mappingFiles: [] },
+      } as unknown as ClientResponse<unknown>);
+      const clientDeleteStub = sandbox.stub(Client.prototype, "delete").resolves({
+        status: 200,
+        response: {} as unknown as ClientResponse<unknown>["response"],
+        body: {},
+      } as unknown as ClientResponse<unknown>);
+
+      clientPatchStub.onFirstCall().rejects(
+        new FirebaseError("HTTP Error: 400, Bad Request", {
+          status: 400,
+          context: {
+            body: {
+              error: {
+                message: "A mapping file with this file name already exists.",
+              },
+            },
+          },
+        }),
+      );
+      clientPatchStub.onSecondCall().resolves({
+        status: 200,
+        response: {} as unknown as ClientResponse<unknown>["response"],
+        body: {},
+      } as unknown as ClientResponse<unknown>);
+
+      const request = mockUploadRequest();
+      const result = await uploadMap(request);
+
+      const expectedUid = utils.murmurHashV3("path/to/file.js");
+      const expectedName = `projects/test-project/locations/global/mappingFiles/${expectedUid}`;
+
+      expect(result).to.be.true;
+      expect(clientGetStub.callCount).to.equal(1);
+      expect(clientPatchStub.callCount).to.equal(2);
+      expect(clientDeleteStub.callCount).to.equal(1);
+      expect(clientDeleteStub.firstCall.args[0]).to.equal(expectedName);
+      expect(clientPatchStub.secondCall.args[0]).to.equal(expectedName);
+      expect(clientPatchStub.secondCall.args[2]).to.deep.equal({
+        queryParams: { allowMissing: "true" },
+      });
+      expect(logLabeledWarningStub.callCount).to.equal(0);
+    });
+
+    it("should not delete and should fail when registerSourceMap fails with unrelated 400 error", async () => {
+      const clientDeleteStub = sandbox.stub(Client.prototype, "delete");
+      clientPatchStub.rejects(
+        new FirebaseError("HTTP Error: 400, Invalid argument", { status: 400 }),
+      );
+
+      const request = mockUploadRequest();
+      const result = await uploadMap(request, 0);
+
+      expect(result).to.be.false;
+      expect(clientPatchStub.callCount).to.equal(1);
+      expect(clientDeleteStub.callCount).to.equal(0);
+      expect(logLabeledWarningStub.callCount).to.equal(1);
+    });
+
+    it("should fail and log warning when delete or re-registration fails after 400 already exists error", async () => {
+      sandbox.stub(Client.prototype, "get").resolves({
+        status: 200,
+        response: {} as unknown as ClientResponse<unknown>["response"],
+        body: { mappingFiles: [] },
+      } as unknown as ClientResponse<unknown>);
+      const clientDeleteStub = sandbox
+        .stub(Client.prototype, "delete")
+        .rejects(new FirebaseError("HTTP Error: 500, Internal error", { status: 500 }));
+
+      clientPatchStub
+        .onFirstCall()
+        .rejects(
+          new FirebaseError(
+            "com.google.apps.framework.request.BadRequestException: A mapping file with this file name already exists.",
+            { status: 400 },
+          ),
+        );
+
+      const request = mockUploadRequest();
+      const result = await uploadMap(request, 0);
+
+      expect(result).to.be.false;
+      expect(clientPatchStub.callCount).to.equal(1);
+      expect(clientDeleteStub.callCount).to.equal(1);
+      expect(logLabeledWarningStub.callCount).to.equal(1);
+      expect(logLabeledWarningStub.firstCall.args[1]).to.contain("Failed to register source map");
     });
   });
 
@@ -501,6 +1154,147 @@ describe("crashlytics:sourcemap helpers", () => {
       expect(archiveFileStub.callCount).to.equal(3);
       expect(clientPatchStub.callCount).to.equal(1);
       expect(logLabeledWarningStub.callCount).to.equal(1);
+    });
+
+    it("should share a single ListMappingFiles request across concurrent 400 errors", async () => {
+      const mappings = [
+        { mapFilePath: "/mock-root/file1.js.map", obfuscatedFilePath: "file1.js" },
+        { mapFilePath: "/mock-root/file2.js.map", obfuscatedFilePath: "file2.js" },
+      ];
+      const request = {
+        projectId: "test-project",
+        bucketName: "test-bucket",
+        appVersion: "1.0.0",
+        options: mockCommandOptions({
+          app: "1:12345:web:abc",
+          projectRoot: "/mock-root",
+        }),
+      };
+
+      const clientGetStub = sandbox.stub(Client.prototype, "get").resolves({
+        status: 200,
+        response: {} as unknown as ClientResponse<unknown>["response"],
+        body: {
+          mappingFiles: [
+            {
+              name: "projects/test-project/locations/global/mappingFiles/legacy-uid-1",
+              obfuscatedFilePath: "/file1.js",
+            },
+            {
+              name: "projects/test-project/locations/global/mappingFiles/legacy-uid-2",
+              obfuscatedFilePath: "/file2.js",
+            },
+          ],
+        },
+      } as unknown as ClientResponse<unknown>);
+
+      const clientDeleteStub = sandbox.stub(Client.prototype, "delete").resolves({
+        status: 200,
+        response: {} as unknown as ClientResponse<unknown>["response"],
+        body: {},
+      } as unknown as ClientResponse<unknown>);
+
+      const seenPaths = new Set<string>();
+      clientPatchStub.callsFake((_name: string, body: SourceMap) => {
+        if (!seenPaths.has(body.obfuscatedFilePath)) {
+          seenPaths.add(body.obfuscatedFilePath);
+          return Promise.reject(
+            new FirebaseError("A mapping file with this file name already exists.", {
+              status: 400,
+            }),
+          );
+        }
+        return Promise.resolve({
+          status: 200,
+          response: {} as unknown as ClientResponse<unknown>["response"],
+          body: {},
+        } as unknown as ClientResponse<unknown>);
+      });
+
+      const result = await uploadSourceMaps(mappings, request);
+
+      expect(result).to.deep.equal({
+        successCount: 2,
+        failedFiles: [],
+      });
+      expect(clientGetStub.callCount).to.equal(1);
+      expect(clientDeleteStub.callCount).to.equal(2);
+      expect(
+        clientDeleteStub
+          .getCalls()
+          .map((call) => call.args[0] as string)
+          .sort(),
+      ).to.deep.equal([
+        "projects/test-project/locations/global/mappingFiles/legacy-uid-1",
+        "projects/test-project/locations/global/mappingFiles/legacy-uid-2",
+      ]);
+      expect(clientPatchStub.callCount).to.equal(4);
+    });
+
+    it("should evict cached ListMappingFiles promise on error so retry can succeed", async () => {
+      const mappings = [{ mapFilePath: "/mock-root/file1.js.map", obfuscatedFilePath: "file1.js" }];
+      const request = {
+        projectId: "test-project",
+        bucketName: "test-bucket",
+        appVersion: "1.0.0",
+        options: mockCommandOptions({
+          app: "1:12345:web:abc",
+          projectRoot: "/mock-root",
+          retryDelay: 1,
+        }),
+      };
+
+      const clientGetStub = sandbox.stub(Client.prototype, "get");
+      clientGetStub
+        .onFirstCall()
+        .rejects(new FirebaseError("HTTP Error: 503, Unavailable", { status: 503 }));
+      clientGetStub.onSecondCall().resolves({
+        status: 200,
+        response: {} as unknown as ClientResponse<unknown>["response"],
+        body: {
+          mappingFiles: [
+            {
+              name: "projects/test-project/locations/global/mappingFiles/legacy-uid-1",
+              obfuscatedFilePath: "/file1.js",
+            },
+          ],
+        },
+      } as unknown as ClientResponse<unknown>);
+
+      const clientDeleteStub = sandbox.stub(Client.prototype, "delete").resolves({
+        status: 200,
+        response: {} as unknown as ClientResponse<unknown>["response"],
+        body: {},
+      } as unknown as ClientResponse<unknown>);
+
+      clientPatchStub.onFirstCall().rejects(
+        new FirebaseError("A mapping file with this file name already exists.", {
+          status: 400,
+        }),
+      );
+      clientPatchStub.onSecondCall().rejects(
+        new FirebaseError("A mapping file with this file name already exists.", {
+          status: 400,
+        }),
+      );
+      clientPatchStub.onThirdCall().resolves({
+        status: 200,
+        response: {} as unknown as ClientResponse<unknown>["response"],
+        body: {},
+      } as unknown as ClientResponse<unknown>);
+
+      const result = await uploadSourceMaps(mappings, request);
+
+      expect(result).to.deep.equal({
+        successCount: 1,
+        failedFiles: [],
+      });
+      expect(clientGetStub.callCount).to.equal(2);
+      expect(clientDeleteStub.callCount).to.equal(1);
+      expect(clientDeleteStub.firstCall.args[0]).to.equal(
+        "projects/test-project/locations/global/mappingFiles/legacy-uid-1",
+      );
+      expect(clientPatchStub.callCount).to.equal(3);
     });
   });
 });

@@ -6,9 +6,11 @@ import * as gif from "../../../../src/gemini/fdcExperience";
 import { dataConnectConfigs } from "../../data-connect/config";
 import { ResultValue } from "../../result";
 import { registerExecution } from "../../data-connect/execution/execution";
+import { requireAuthWrapper } from "../../cli";
 import * as auth from "../../../../src/auth";
-import * as nock from "nock";
+import nock from "../../../../src/test/helpers/nock";
 import { setAccessToken } from "../../../../src/apiv2";
+import { googleOrigin } from "../../../../src/api";
 import { configstore } from "../../../../src/configstore";
 
 firebaseSuite(
@@ -18,16 +20,24 @@ firebaseSuite(
     let showInformationMessageStub: any;
     let authStub: any;
     let executionDisposable: vscode.Disposable;
+    let originalFirebaseToken: string | undefined;
 
-    setup(() => {
+    setup(async () => {
+      nock.cleanAll();
       showErrorMessageStub = stub(vscode.window, "showErrorMessage");
       showInformationMessageStub = stub(
         vscode.window,
         "showInformationMessage",
       );
-      authStub = stub(auth, "getAccessToken").resolves({
-        access_token: "an_access_token",
-      });
+      originalFirebaseToken = process.env.FIREBASE_TOKEN;
+      process.env.FIREBASE_TOKEN = "mock_refresh_token";
+      nock(googleOrigin())
+        .post("/oauth2/v3/token")
+        .reply(200, {
+          access_token: "an_access_token",
+          expires_in: 3600,
+        });
+      await requireAuthWrapper(false);
       setAccessToken("an_access_token");
 
       stub(vscode.window, "withProgress").callsFake(async (options, task) => {
@@ -72,11 +82,14 @@ firebaseSuite(
         analyticsLogger,
         emulatorsController,
       );
-
-      nock.cleanAll();
     });
 
     teardown(() => {
+      if (originalFirebaseToken === undefined) {
+        delete process.env.FIREBASE_TOKEN;
+      } else {
+        process.env.FIREBASE_TOKEN = originalFirebaseToken;
+      }
       executionDisposable.dispose();
       restore();
       nock.cleanAll();

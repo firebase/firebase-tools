@@ -152,7 +152,7 @@ export async function prepare(
         trackGA4("hosting_version", {
           framework: config.webFramework || "classic",
         }),
-        api.createVersion(config.site, version),
+        api.createVersion(context.projectId, config.site, version),
       ]);
       return versionName;
     }),

@@ -3,13 +3,14 @@ import * as fs from "fs";
 
 import * as child_process from "child_process";
 import { Notifications } from "./utils/page_objects/editor";
+import { VSCODE_VERSION } from "./constants";
 
 process.env.VSCODE_TEST_MODE = "true";
 // used to preload extension dependencies
 const prebuiltExtensionsDir = path.resolve(__dirname, "../../prebuilt-extensions");
 export const vscodeConfigs = {
   browserName: "vscode",
-  browserVersion: "1.96.4", // also possible: "insiders" or a specific version e.g. "1.80.0"
+  browserVersion: VSCODE_VERSION, // also possible: "insiders" or a specific version e.g. "1.80.0"
   "wdio:vscodeOptions": {
     vscodeArgs: {
       disableExtensions: false,

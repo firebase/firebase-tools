@@ -1,5 +1,10 @@
 import { expect } from "chai";
-import { parseObjectUploadMultipartRequest } from "./multipart";
+import {
+  parseObjectUploadMultipartRequest,
+  parseFormDataMultipartRequest,
+  MultipartFile,
+  MultipartField,
+} from "./multipart";
 import { randomBytes } from "crypto";
 
 describe("Storage Multipart Request Parser", () => {
@@ -139,6 +144,92 @@ hello there!
 `);
       expect(() => parseObjectUploadMultipartRequest(CONTENT_TYPE_HEADER, invalidBody)).to.throw(
         "Failed to parse multipart request body part",
+      );
+    });
+  });
+
+  describe("#parseFormDataMultipartRequest()", () => {
+    const boundary = "b1d5b2e3-1845-4338-9400-6ac07ce53c1e";
+    const CONTENT_TYPE_HEADER = `multipart/form-data; boundary=${boundary}`;
+
+    const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    const imageContent = Buffer.concat([pngSignature, randomBytes(100)]);
+    const startBuffer = Buffer.from(`--${boundary}\r
+Content-Disposition: form-data; name="key"\r
+\r
+path/image.png\r
+--${boundary}\r
+Content-Disposition: form-data; name="content-type"\r
+\r
+image/png\r
+--${boundary}\r
+Content-Disposition: form-data; name="x-goog-meta-color"\r
+\r
+blue\r
+--${boundary}\r
+Content-Disposition: form-data; name="file"; filename="image.png"\r
+Content-Type: image/png\r
+\r
+`);
+    const endBuffer = Buffer.from(`\r
+--${boundary}--\r
+`);
+    const BODY = Buffer.concat([startBuffer, imageContent, endBuffer]);
+
+    it("parses a form data multipart request with file and fields successfully", () => {
+      const parts = parseFormDataMultipartRequest(CONTENT_TYPE_HEADER, BODY);
+
+      expect(parts.length).to.equal(4);
+
+      const keyPart = parts.find((p) => p.name === "key") as MultipartField;
+      expect(keyPart.value).to.equal("path/image.png");
+
+      const contentTypePart = parts.find((p) => p.name === "content-type") as MultipartField;
+      expect(contentTypePart.value).to.equal("image/png");
+
+      const metadataPart = parts.find((p) => p.name === "x-goog-meta-color") as MultipartField;
+      expect(metadataPart.value).to.equal("blue");
+
+      const filePart = parts.find((p) => p.name === "file") as MultipartFile;
+      expect(filePart.filename).to.equal("image.png");
+      expect(filePart.contentType).to.equal("image/png");
+      expect(filePart.data.byteLength).to.equal(imageContent.byteLength);
+    });
+
+    it("fails to parse a form data multipart request when file part is missing name", () => {
+      const invalidBody = Buffer.from(`--${boundary}\r
+Content-Disposition: form-data; name="key"\r
+\r
+path/image.png\r
+--${boundary}\r
+Content-Disposition: form-data; filename="image.png"\r
+Content-Type: image/png\r
+\r
+hello there!\r
+--${boundary}--\r
+`);
+
+      expect(() => parseFormDataMultipartRequest(CONTENT_TYPE_HEADER, invalidBody)).to.throw(
+        "Missing 'name' in Content-Disposition header.",
+      );
+    });
+
+    it("fails to parse a form data multipart request when part body is missing trailing line separator", () => {
+      const invalidStartBuffer = Buffer.from(`--${boundary}\r
+Content-Disposition: form-data; name="key"\r
+\r
+path/image.png\r
+--${boundary}\r
+Content-Disposition: form-data; name="file"; filename="image.png"\r
+Content-Type: image/png\r
+\r
+`);
+      const invalidEndBuffer = Buffer.from(`--${boundary}--\r
+`);
+      const invalidBody = Buffer.concat([invalidStartBuffer, imageContent, invalidEndBuffer]);
+
+      expect(() => parseFormDataMultipartRequest(CONTENT_TYPE_HEADER, invalidBody)).to.throw(
+        "Missing trailing line separator.",
       );
     });
   });

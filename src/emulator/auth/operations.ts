@@ -1,8 +1,6 @@
 import { URLSearchParams } from "url";
 import { decode as decodeJwt, sign as signJwt, JwtHeader } from "jsonwebtoken";
 import * as express from "express";
-import fetch from "node-fetch";
-import AbortController from "abort-controller";
 import { ExegesisContext } from "exegesis-express";
 import {
   toUnixTimestamp,
@@ -905,7 +903,7 @@ function sendOobCode(
       assert(reqBody.email, "MISSING_EMAIL");
       email = canonicalizeEmailAddress(reqBody.email);
       break;
-    case "PASSWORD_RESET":
+    case "PASSWORD_RESET": {
       mode = "resetPassword";
       assert(reqBody.email, "MISSING_EMAIL");
       email = canonicalizeEmailAddress(reqBody.email);
@@ -918,6 +916,7 @@ function sendOobCode(
       }
       assert(maybeUser, "EMAIL_NOT_FOUND");
       break;
+    }
     case "VERIFY_EMAIL":
       mode = "verifyEmail";
 
@@ -1100,7 +1099,7 @@ export function setAccountInfoImpl(
         }
         break;
       }
-      case "VERIFY_AND_CHANGE_EMAIL":
+      case "VERIFY_AND_CHANGE_EMAIL": {
         state.deleteOobCode(reqBody.oobCode);
         const maybeUser = state.getUserByEmail(oob.email);
         assert(maybeUser, "INVALID_OOB_CODE");
@@ -1113,6 +1112,7 @@ export function setAccountInfoImpl(
           newEmail = oob.newEmail;
         }
         break;
+      }
       case "RECOVER_EMAIL": {
         state.deleteOobCode(reqBody.oobCode);
         const maybeUser = state.getUserByInitialEmail(oob.email);
@@ -1987,7 +1987,7 @@ function grantToken(
   };
 }
 
-function deleteAllAccountsInProject(state: ProjectState): {} {
+function deleteAllAccountsInProject(state: ProjectState): Record<string, never> {
   state.deleteAllAccounts();
   return {};
 }
@@ -2864,12 +2864,13 @@ function fakeFetchUserInfoFromIdp(
       });
       break;
     }
-    case /^saml\./.exec(providerId)?.input:
+    case /^saml\./.exec(providerId)?.input: {
       const nameId = samlResponse?.assertion?.subject?.nameId;
       response.email = nameId && isValidEmailAddress(nameId) ? nameId : response.email;
       response.emailVerified = true;
       response.rawUserInfo = JSON.stringify(samlResponse?.assertion?.attributeStatements);
       break;
+    }
     case /^oidc\./.exec(providerId)?.input:
     default:
       response.rawUserInfo = JSON.stringify(claims);
@@ -3262,10 +3263,22 @@ async function fetchBlockingFunction(
   let text: string;
   try {
     const signal = controller.signal as any;
-    signal.reason = "";
-    signal.throwIfAborted = () => {
-      throw new FirebaseError("Aborted");
-    };
+    try {
+      if (!("reason" in signal)) {
+        signal.reason = "";
+      }
+    } catch (e) {
+      // Ignore if read-only
+    }
+    try {
+      if (!("throwIfAborted" in signal)) {
+        signal.throwIfAborted = () => {
+          throw new FirebaseError("Aborted");
+        };
+      }
+    } catch (e) {
+      // Ignore if read-only
+    }
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -3340,11 +3353,12 @@ function processBlockingFunctionResponse(
         case "emailVerified":
           updates[field] = !!userRecord[field];
           break;
-        case "customClaims":
+        case "customClaims": {
           const customClaims = JSON.stringify(userRecord.customClaims!);
           validateSerializedCustomClaims(customClaims);
           updates.customAttributes = customClaims;
           break;
+        }
         // Session claims are only returned in beforeSignIn and will be ignored
         // otherwise. For more info, see
         // https://cloud.google.com/identity-platform/docs/blocking-functions#modifying_a_user

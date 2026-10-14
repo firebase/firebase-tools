@@ -1,4 +1,4 @@
-import * as v1 from "firebase-functions";
+import * as v1 from "firebase-functions/v1";
 import * as v2 from "firebase-functions/v2";
 import { v1Opts, v2Opts, v1ScheduleOpts, v2ScheduleOpts, v1TqOpts, v2TqOpts } from "./options.js";
 

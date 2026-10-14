@@ -1,5 +1,15 @@
 ## NEXT
 
+- [Fixed] Fix false warning about missing Firebase CLI by checking configured `firebasePath` and using robust version parsing.
+
+## 2.4.3
+
+- Update internal `firebase-tools` dependency to 15.24.0
+
+## 2.4.2
+
+- Update internal `firebase-tools` dependency to 15.22.4
+
 ## 2.4.1
 
 - Update internal `firebase-tools` dependency to 15.21.0

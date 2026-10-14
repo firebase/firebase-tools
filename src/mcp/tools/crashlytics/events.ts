@@ -125,6 +125,8 @@ export const list_events = tool(
     description: `Use this to list the most recent events matching the given filters.
       Can be used to fetch sample crashes and exceptions for an issue,
       which will include stack traces and other data useful for debugging.`,
+    humanReadableDescription:
+      "List recent crash and exception events matching specified filters for an issue.",
     inputSchema: z.object({
       appId: ApplicationIdSchema,
       filter: EventFilterSchema,
@@ -172,6 +174,8 @@ export const batch_get_events = tool(
     description: `Gets specific events by resource name.
       Can be used to fetch sample crashes and exceptions for an issue,
       which will include stack traces and other data useful for debugging.`,
+    humanReadableDescription:
+      "Retrieve sample crash and exception events by resource name for debugging.",
     inputSchema: z.object({
       appId: ApplicationIdSchema,
       names: z

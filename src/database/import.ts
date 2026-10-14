@@ -1,13 +1,10 @@
-import * as Chain from "stream-chain";
 import * as clc from "colorette";
-import * as Filter from "stream-json/filters/Filter";
 import * as stream from "stream";
-import * as StreamObject from "stream-json/streamers/StreamObject";
 
 import { URL } from "url";
 import { Client, ClientResponse } from "../apiv2";
-import { FetchError } from "node-fetch";
 import { FirebaseError } from "../error";
+import { loadStreamJson } from "../streamJson";
 import { pLimit, Limit } from "../utils";
 
 type JsonType = { [key: string]: JsonType } | string | number | boolean;
@@ -170,7 +167,8 @@ export default class DatabaseImporter {
    * not too large. On the other hand, in the case where the data contains many small objects,
    * batching ensures that there are not too many requests.
    */
-  private readAndWriteChunks(): Promise<ClientResponse<JsonType>[]> {
+  private async readAndWriteChunks(): Promise<ClientResponse<JsonType>[]> {
+    const { chain, filter, streamObject } = await loadStreamJson();
     const { dbUrl, payloadSize } = this;
     const chunkData = this.chunkData.bind(this);
     const doWriteBatch = this.doWriteBatch.bind(this);
@@ -196,13 +194,13 @@ export default class DatabaseImporter {
 
     return new Promise((resolve, reject) => {
       const responses: ClientResponse<JsonType>[] = [];
-      const pipeline = new Chain([
+      const pipeline = chain([
         this.inStream,
-        Filter.withParser({
+        filter.withParser({
           filter: this.computeFilterString(this.dataPath) || (() => true),
           pathSeparator: "/",
         }),
-        StreamObject.streamObject(),
+        streamObject(),
       ]);
       pipeline
         .on("error", (err: Error) =>
@@ -240,8 +238,9 @@ export default class DatabaseImporter {
       } catch (err: any) {
         const isTimeoutErr =
           err instanceof FirebaseError &&
-          err.original instanceof FetchError &&
-          err.original.code === "ETIMEDOUT";
+          (err.original?.name === "AbortError" ||
+            (err.original as any)?.code === "ETIMEDOUT" ||
+            (err.original as any)?.cause?.code === "ETIMEDOUT");
         if (isTimeoutErr) {
           // RTDB connection timeouts are transient and can be retried
           await new Promise((res) => setTimeout(res, this.nonFatalRetryTimeout));
