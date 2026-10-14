@@ -9,6 +9,8 @@ import { logger } from "../logger";
 import { requireConfig } from "../requireConfig";
 import { datetimeString } from "../utils";
 import { requireHostingSite } from "../requireHostingSite";
+import { ensure } from "../ensureApiEnabled";
+import { hostingApiOrigin } from "../api";
 
 const TABLE_HEAD = ["Channel ID", "Last Release Time", "URL", "Expire Time"];
 
@@ -18,6 +20,7 @@ export const command = new Command("hosting:channel:list")
   .before(requireConfig)
   // TODO: `update` permission is maybe a bit aggressive. Bring down to view-ish?
   .before(requirePermissions, ["firebasehosting.sites.update"])
+  .before((options) => ensure(needProjectId(options), hostingApiOrigin(), "hosting", true))
   .before(requireHostingSite)
   .action(
     async (
