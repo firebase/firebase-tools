@@ -537,6 +537,41 @@ describe("Backend", () => {
         expect(listAllFunctionsV2).to.have.been.called;
         expect(logLabeledWarning).to.have.been.called;
       });
+
+      it("should include the Cloud Run list error in the unreachable warning", async () => {
+        isEnabled.withArgs("functionsrunapionly").returns(true);
+        listAllFunctions.onFirstCall().resolves({
+          functions: [],
+          unreachable: [],
+        });
+        listServices.rejects(new FirebaseError("Permission 'run.services.list' denied"));
+
+        await backend.checkAvailability(newContext(), backend.empty());
+
+        expect(logLabeledWarning.args).to.deep.equal([
+          [
+            "functions",
+            "The following Cloud Run regions are currently unreachable:\n" +
+              "unknown\n" +
+              "Error: Permission 'run.services.list' denied\n" +
+              "Cloud Run services in these regions won't be deleted.",
+          ],
+        ]);
+      });
+
+      it("should not warn when Cloud Run services list successfully", async () => {
+        isEnabled.withArgs("functionsrunapionly").returns(true);
+        listAllFunctions.onFirstCall().resolves({
+          functions: [],
+          unreachable: [],
+        });
+        listServices.onFirstCall().resolves([RUN_SERVICE]);
+
+        await backend.checkAvailability(newContext(), backend.empty());
+
+        expect(listServices).to.have.been.calledOnce;
+        expect(logLabeledWarning).to.not.have.been.called;
+      });
     });
   });
 

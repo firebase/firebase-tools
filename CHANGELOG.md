@@ -1,3 +1,4 @@
+- Cloud Run "regions are currently unreachable" warnings during functions deploy now include the underlying error.
 - Fixed an issue where hosting:clone failed to locate source sites in other projects. (#11247)
 - Updated Pub/Sub emulator to version 0.8.37.
 - Fixed an issue where analytics timeouts could mask command errors or cause successful commands to exit with an error. (#6989)

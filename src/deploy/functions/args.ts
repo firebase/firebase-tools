@@ -56,6 +56,7 @@ export interface Context {
     gcfV1: string[];
     gcfV2: string[];
     run: string[];
+    runError?: string;
   };
 
   // Tracks metrics about codebase deployments to send to GA4

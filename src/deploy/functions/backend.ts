@@ -3,7 +3,7 @@ import * as gcfV2 from "../../gcp/cloudfunctionsv2";
 import * as run from "../../gcp/runv2";
 import * as utils from "../../utils";
 import { Runtime } from "./runtimes/supported";
-import { FirebaseError } from "../../error";
+import { FirebaseError, getErrMsg } from "../../error";
 import { Context } from "./args";
 import { assertExhaustive, flattenArray } from "../../functional";
 import { logger } from "../../logger";
@@ -610,6 +610,7 @@ async function loadExistingBackend(ctx: Context): Promise<Backend> {
     gcfV1: [] as string[],
     gcfV2: [] as string[],
     run: [] as string[],
+    runError: undefined as string | undefined,
   };
   const gcfV1Results = await gcf.listAllFunctions(ctx.projectId);
   for (const apiFunction of gcfV1Results.functions) {
@@ -646,12 +647,13 @@ async function loadExistingBackend(ctx: Context): Promise<Backend> {
  * @param existingBackend The existing backend to load Cloud Run services into.
  * @param unreachableRegions Object to track unreachable regions.
  * @param unreachableRegions.run Array of unreachable regions.
+ * @param unreachableRegions.runError Message of the error that made Cloud Run unreachable.
  * @param onlyMissing If true, only loads missing Cloud Run services.
  */
 async function loadCloudRunServices(
   ctx: Context,
   existingBackend: Backend,
-  unreachableRegions: { run: string[] },
+  unreachableRegions: { run: string[]; runError?: string },
   onlyMissing: boolean,
 ): Promise<void> {
   try {
@@ -686,6 +688,7 @@ async function loadCloudRunServices(
   } catch (err: any) {
     logger.debug(`Error loading Cloud Run services: ${err.message}`);
     unreachableRegions.run = ["unknown"];
+    unreachableRegions.runError = getErrMsg(err);
   }
 }
 
@@ -754,6 +757,9 @@ export async function checkAvailability(context: Context, want: Backend): Promis
       "functions",
       "The following Cloud Run regions are currently unreachable:\n" +
         context.unreachableRegions.run.join("\n") +
+        (context.unreachableRegions.runError
+          ? `\nError: ${context.unreachableRegions.runError}`
+          : "") +
         "\nCloud Run services in these regions won't be deleted.",
     );
   }
