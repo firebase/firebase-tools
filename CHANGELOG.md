@@ -1,3 +1,4 @@
+- Fixed an issue where the Functions emulator with `--inspect-functions` could run an event as the previously invoked function. (#11263)
 - Fixed an issue where hosting:clone failed to locate source sites in other projects. (#11247)
 - Updated Pub/Sub emulator to version 0.8.37.
 - Fixed an issue where analytics timeouts could mask command errors or cause successful commands to exit with an error. (#6989)

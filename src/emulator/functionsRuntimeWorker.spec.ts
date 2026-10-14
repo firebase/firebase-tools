@@ -6,7 +6,11 @@ import { expect } from "chai";
 import { FunctionsRuntimeInstance, IPCConn } from "./functionsEmulator";
 import { EventEmitter } from "events";
 import { RuntimeWorker, RuntimeWorkerPool, RuntimeWorkerState } from "./functionsRuntimeWorker";
-import { EmulatedTriggerDefinition } from "./functionsEmulatorShared";
+import {
+  DEBUG_SIGNATURE_HEADER,
+  DEBUG_TARGET_HEADER,
+  EmulatedTriggerDefinition,
+} from "./functionsEmulatorShared";
 import { EmulatorLog, FunctionsExecutionMode } from "./types";
 import { ChildProcess } from "child_process";
 
@@ -109,6 +113,8 @@ describe("FunctionsRuntimeWorker", () => {
       (mockRes as any).headers = {};
 
       const mockReq = new PassThrough();
+      (mockReq as any).setSocketKeepAlive = sinon.stub();
+      (mockReq as any).setTimeout = sinon.stub();
       if (callback) {
         process.nextTick(() => {
           callback(mockRes);
@@ -187,6 +193,81 @@ describe("FunctionsRuntimeWorker", () => {
       expect(counter.counts.FINISHING).to.eql(1);
       expect(counter.counts.FINISHED).to.eql(1);
       expect(counter.total).to.eql(5);
+    });
+  });
+
+  describe("RuntimeWorker debug headers", () => {
+    it("adds the debug target and signature headers to the request", async () => {
+      mockSuccessfulRequest(200);
+      const worker = new RuntimeWorker("trigger", new MockRuntimeInstance(), {});
+      worker.readyForWork();
+
+      await worker.request(
+        { method: "POST", path: "/", headers: { "content-type": "application/json" } },
+        httpMocks.createResponse({ eventEmitter: EventEmitter }),
+        undefined,
+        { functionTarget: "group.fn", functionSignature: "event" },
+      );
+
+      expect(requestStub.firstCall.args[0].headers).to.deep.equal({
+        "content-type": "application/json",
+        [DEBUG_TARGET_HEADER]: "group.fn",
+        [DEBUG_SIGNATURE_HEADER]: "event",
+      });
+    });
+
+    it("overrides debug headers sent by the client", async () => {
+      mockSuccessfulRequest(200);
+      const worker = new RuntimeWorker("trigger", new MockRuntimeInstance(), {});
+      worker.readyForWork();
+
+      await worker.request(
+        {
+          method: "GET",
+          path: "/",
+          headers: { [DEBUG_TARGET_HEADER]: "other", [DEBUG_SIGNATURE_HEADER]: "event" },
+        },
+        httpMocks.createResponse({ eventEmitter: EventEmitter }),
+        undefined,
+        { functionTarget: "fn", functionSignature: "http" },
+      );
+
+      expect(requestStub.firstCall.args[0].headers).to.deep.equal({
+        [DEBUG_TARGET_HEADER]: "fn",
+        [DEBUG_SIGNATURE_HEADER]: "http",
+      });
+    });
+
+    it("leaves headers unchanged outside debug mode", async () => {
+      mockSuccessfulRequest(200);
+      const worker = new RuntimeWorker("trigger", new MockRuntimeInstance(), {});
+      worker.readyForWork();
+
+      await worker.request(
+        { method: "GET", path: "/", headers: { "x-custom": "1" } },
+        httpMocks.createResponse({ eventEmitter: EventEmitter }),
+      );
+
+      expect(requestStub.firstCall.args[0].headers).to.deep.equal({ "x-custom": "1" });
+    });
+
+    it("submitRequest sends the debug target with the request", async () => {
+      mockSuccessfulRequest(200);
+      const pool = new RuntimeWorkerPool(FunctionsExecutionMode.SEQUENTIAL);
+      pool.addWorker(mockTrigger("region-abc"), new MockRuntimeInstance(), {}).readyForWork();
+
+      await pool.submitRequest(
+        "region-def",
+        { method: "POST", path: "/", headers: {} },
+        httpMocks.createResponse({ eventEmitter: EventEmitter }),
+        undefined,
+        { functionTarget: "def", functionSignature: "event" },
+      );
+
+      expect(requestStub.firstCall.args[0].headers).to.deep.equal({
+        [DEBUG_TARGET_HEADER]: "def",
+        [DEBUG_SIGNATURE_HEADER]: "event",
+      });
     });
   });
 

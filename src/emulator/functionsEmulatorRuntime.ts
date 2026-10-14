@@ -9,7 +9,12 @@ import * as _ from "lodash";
 import { EmulatorLog } from "./types";
 import { getErrMsg, getErrStack } from "../error";
 import { Constants } from "./constants";
-import { findModuleRoot, FunctionsRuntimeBundle, SignatureType } from "./functionsEmulatorShared";
+import {
+  DEBUG_SIGNATURE_HEADER,
+  DEBUG_TARGET_HEADER,
+  findModuleRoot,
+  SignatureType,
+} from "./functionsEmulatorShared";
 import { compareVersionStrings, isLocalHost } from "./functionsEmulatorUtils";
 import { EventUtils } from "./events/types";
 
@@ -782,26 +787,6 @@ async function flushAndExit(code: number) {
   process.exit(code);
 }
 
-async function handleMessage(message: string) {
-  let debug: FunctionsRuntimeBundle["debug"];
-  try {
-    debug = JSON.parse(message) as FunctionsRuntimeBundle["debug"];
-  } catch (e: unknown) {
-    new EmulatorLog("FATAL", "runtime-error", `Got unexpected message body: ${message}`).log();
-    await flushAndExit(1);
-    return;
-  }
-
-  if (FUNCTION_DEBUG_MODE) {
-    if (debug) {
-      FUNCTION_TARGET_NAME = debug.functionTarget;
-      FUNCTION_SIGNATURE = debug.functionSignature;
-    } else {
-      new EmulatorLog("WARN", "runtime-warning", "Expected debug payload while in debug mode.");
-    }
-  }
-}
-
 async function main(): Promise<void> {
   // Since the functions run as attached processes they naturally inherit SIGINT
   // sent to the functions emulator. We want them to ignore the first signal
@@ -871,14 +856,25 @@ async function main(): Promise<void> {
   });
   app.all(`/*`, async (req: express.Request, res: express.Response) => {
     try {
-      const trigger = FUNCTION_TARGET_NAME.split(".").reduce((mod, functionTargetPart) => {
+      let targetName = FUNCTION_TARGET_NAME;
+      let signature = FUNCTION_SIGNATURE;
+      if (FUNCTION_DEBUG_MODE) {
+        targetName = req.header(DEBUG_TARGET_HEADER) || "";
+        signature = req.header(DEBUG_SIGNATURE_HEADER) || "";
+        delete req.headers[DEBUG_TARGET_HEADER];
+        delete req.headers[DEBUG_SIGNATURE_HEADER];
+        if (!targetName || !signature) {
+          throw new Error("Expected debug target headers in debug mode.");
+        }
+      }
+      const trigger = targetName.split(".").reduce((mod, functionTargetPart) => {
         return mod?.[functionTargetPart];
       }, functionModule) as CloudFunction<unknown>;
       if (!trigger) {
-        throw new Error(`Failed to find function ${FUNCTION_TARGET_NAME} in the loaded module`);
+        throw new Error(`Failed to find function ${targetName} in the loaded module`);
       }
 
-      switch (FUNCTION_SIGNATURE) {
+      switch (signature) {
         case "event":
         case "cloudevent": {
           let reqBody;
@@ -889,7 +885,7 @@ async function main(): Promise<void> {
           } else {
             reqBody = JSON.parse(rawBody.toString());
           }
-          await processBackground(trigger, reqBody, FUNCTION_SIGNATURE);
+          await processBackground(trigger, reqBody, signature);
           res.send({ status: "acknowledged" });
           break;
         }
@@ -903,24 +899,6 @@ async function main(): Promise<void> {
   });
   app.listen(process.env.PORT, () => {
     logDebug(`Listening to port: ${process.env.PORT}`);
-  });
-
-  // Event emitters do not work well with async functions, so we
-  // construct our own promise chain to make sure each message is
-  // handled only after the previous message handling is complete.
-  let messageHandlePromise = Promise.resolve();
-  process.on("message", (message: string) => {
-    messageHandlePromise = messageHandlePromise
-      .then(() => {
-        return handleMessage(message);
-      })
-      .catch((err) => {
-        // All errors *should* be handled within handleMessage. But just in case,
-        // we want to exit fatally on any error related to message handling.
-        logDebug(`Error in handleMessage: ${message} => ${err}: ${err.stack}`);
-        new EmulatorLog("FATAL", "runtime-error", err.message || err, err).log();
-        return flushAndExit(1);
-      });
   });
 }
 

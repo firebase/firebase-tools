@@ -12,7 +12,7 @@ import { DocumentSnapshot } from "firebase-functions/v1/firestore";
 
 import { FunctionRuntimeBundles, TIMEOUT_LONG, MODULE_ROOT } from "./fixtures";
 import {
-  FunctionsRuntimeBundle,
+  debugHeaders,
   getTemporarySocketPath,
   SignatureType,
 } from "../../src/emulator/functionsEmulatorShared";
@@ -176,12 +176,6 @@ async function sendReq(runtime: Runtime, opts: ReqOpts = {}): Promise<string> {
   });
   const result = await streamToString(res);
   return result;
-}
-
-async function sendDebugBundle(runtime: Runtime, debug: FunctionsRuntimeBundle["debug"]) {
-  return new Promise((resolve) => {
-    runtime.proc.send(JSON.stringify(debug), resolve);
-  });
 }
 
 describe("FunctionsEmulator-Runtime", function () {
@@ -706,30 +700,65 @@ describe("FunctionsEmulator-Runtime", function () {
   });
 
   describe("Debug", () => {
-    it("handles debug message to change function target", async () => {
+    const twoHttpFunctions = () => {
+      return {
+        function0: require("firebase-functions").https.onRequest((req: any, res: any) => {
+          res.send("function0");
+        }),
+        function1: require("firebase-functions").https.onRequest((req: any, res: any) => {
+          res.send("function1");
+        }),
+      };
+    };
+
+    it("runs the function named in each request's debug headers", async () => {
+      runtime = await startRuntime("function0", "http", twoHttpFunctions, {
+        FUNCTION_DEBUG_MODE: "true",
+      });
+      const results = [];
+      for (const target of ["function1", "function0", "function1"]) {
+        results.push(
+          await sendReq(runtime, {
+            headers: debugHeaders({ functionSignature: "http", functionTarget: target }),
+          }),
+        );
+      }
+      expect(results).to.deep.equal(["function1", "function0", "function1"]);
+    });
+
+    it("does not pass debug headers to the function", async () => {
       runtime = await startRuntime(
-        "function0",
+        "functionId",
         "http",
         () => {
           return {
-            function0: require("firebase-functions").https.onRequest((req: any, res: any) => {
-              res.send("function0");
-            }),
-            function1: require("firebase-functions").https.onRequest((req: any, res: any) => {
-              res.send("function1");
+            functionId: require("firebase-functions").https.onRequest((req: any, res: any) => {
+              res.json(Object.keys(req.headers));
             }),
           };
         },
-        {
-          FUNCTION_DEBUG_MODE: "true",
-        },
+        { FUNCTION_DEBUG_MODE: "true" },
       );
-      await sendDebugBundle(runtime, { functionSignature: "http", functionTarget: "function0" });
-      const fn0Res = await sendReq(runtime);
-      expect(fn0Res).to.equal("function0");
-      await sendDebugBundle(runtime, { functionSignature: "http", functionTarget: "function1" });
-      const fn1Res = await sendReq(runtime);
-      expect(fn1Res).to.equal("function1");
+      const headers = debugHeaders({ functionSignature: "http", functionTarget: "functionId" });
+      const data = await sendReq(runtime, { headers });
+      expect(JSON.parse(data)).to.not.include.members(Object.keys(headers));
+    });
+
+    it("rejects a request without debug headers in debug mode", async () => {
+      runtime = await startRuntime("function0", "http", twoHttpFunctions, {
+        FUNCTION_DEBUG_MODE: "true",
+      });
+      const data = await sendReq(runtime);
+      expect(data).to.equal("Expected debug target headers in debug mode.");
+      expect(runtime.sysMsg["runtime-error"]?.length).to.eq(1);
+    });
+
+    it("ignores debug headers outside debug mode", async () => {
+      runtime = await startRuntime("function0", "http", twoHttpFunctions);
+      const data = await sendReq(runtime, {
+        headers: debugHeaders({ functionSignature: "http", functionTarget: "function1" }),
+      });
+      expect(data).to.equal("function0");
     });
 
     it("disables configured timeout when in debug mode", async () => {
@@ -757,11 +786,9 @@ describe("FunctionsEmulator-Runtime", function () {
         timeoutEnvs,
       );
       try {
-        await sendDebugBundle(runtime, {
-          functionSignature: "http",
-          functionTarget: "functionId",
+        await sendReq(runtime, {
+          headers: debugHeaders({ functionSignature: "http", functionTarget: "functionId" }),
         });
-        await sendReq(runtime);
       } catch (e: any) {
         // Carry on
       }

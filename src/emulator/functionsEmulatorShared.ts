@@ -114,6 +114,23 @@ export interface FunctionsRuntimeBundle {
   };
 }
 
+// In debug mode one runtime process serves every trigger, so each request names the
+// function it is for. A separate IPC message would not be ordered with the request.
+export const DEBUG_TARGET_HEADER = "x-firebase-functions-debug-target";
+export const DEBUG_SIGNATURE_HEADER = "x-firebase-functions-debug-signature";
+
+/**
+ * Headers that tell a debug-mode runtime which function a request is for.
+ */
+export function debugHeaders(
+  debug: NonNullable<FunctionsRuntimeBundle["debug"]>,
+): Record<string, string> {
+  return {
+    [DEBUG_TARGET_HEADER]: debug.functionTarget,
+    [DEBUG_SIGNATURE_HEADER]: debug.functionSignature,
+  };
+}
+
 export interface FunctionsRuntimeFeatures {
   timeout?: boolean;
 }

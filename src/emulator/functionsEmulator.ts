@@ -26,6 +26,7 @@ import {
   formatHost,
   FunctionsRuntimeFeatures,
   getFunctionService,
+  debugHeaders,
   getSignatureType,
   ParsedTriggerDefinition,
   emulatedFunctionsFromEndpoints,
@@ -419,16 +420,16 @@ export class FunctionsEmulator implements EmulatorInstance {
       }
     }
     const worker = pool.getIdleWorker(trigger.id, record.backend.runtime)!;
-    if (this.debugMode) {
-      await worker.sendDebugMsg({
-        functionTarget: trigger.entryPoint,
-        functionSignature: getSignatureType(trigger),
-      });
-    }
     const reqBody = JSON.stringify(body);
     const headers = {
       "Content-Type": "application/json",
       "Content-Length": `${reqBody.length}`,
+      ...(this.debugMode
+        ? debugHeaders({
+            functionTarget: trigger.entryPoint,
+            functionSignature: getSignatureType(trigger),
+          })
+        : {}),
     };
 
     // For Dart, include the function name in the path so the server can route
