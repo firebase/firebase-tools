@@ -1,3 +1,4 @@
+import { webApps } from "../../apphosting/app";
 import { getAutoinitEnvVars } from "../../apphosting/utils";
 import { FirebaseError, getErrMsg, getError, getErrStatus } from "../../error";
 import { WebConfig } from "../../fetchWebSetup";
@@ -86,7 +87,7 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
   if (appId) {
     // Firebase SDKs auto-initialize from the app's config. The build gets both config env vars (the
     // build env annotation can override them), and the container gets FIREBASE_CONFIG.
-    const autoInitEnv = getAutoinitEnvVars(await getWebAppConfig(config, appId));
+    const autoInitEnv = getAutoinitEnvVars(await getWebAppConfig(context, config, appId));
     await ensureAutoInitIam(context, existing);
     svc.appId = appId;
     svc.firebaseConfig = autoInitEnv.FIREBASE_CONFIG;
@@ -97,10 +98,18 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
 
 /**
  * Fetches the Firebase Web App's config. Fails instead of deploying a service that can't
- * auto-initialize Firebase SDKs.
+ * auto-initialize Firebase SDKs, so a deploy never saves an app ID that doesn't work.
  */
-async function getWebAppConfig(config: RunSingle, appId: string): Promise<WebConfig> {
+async function getWebAppConfig(
+  context: Context,
+  config: RunSingle,
+  appId: string,
+): Promise<WebConfig> {
   try {
+    // Check that the project has this app, the same way App Hosting's --app does (given an app ID,
+    // getOrCreateWebApp only looks it up). The config lookup below doesn't catch a bad ID: for an
+    // ID with no app, it returns the project's config, without an appId.
+    await webApps.getOrCreateWebApp(context.projectId, appId, config.serviceId);
     return (await managementApps.getAppConfig(appId, managementApps.AppPlatform.WEB)) as WebConfig;
   } catch (err: unknown) {
     const update = `firebase run:services:update ${config.serviceId} --region ${config.region}`;

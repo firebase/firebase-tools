@@ -1,5 +1,7 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+import { webApps } from "../../apphosting/app";
+import { FirebaseError } from "../../error";
 import * as computeEngine from "../../gcp/computeEngine";
 import * as resourceManager from "../../gcp/resourceManager";
 import * as runv2 from "../../gcp/runv2";
@@ -141,11 +143,13 @@ describe("run prepare", () => {
       annotations: { ...service.annotations, [FIREBASE_APP_ANNOTATION]: appId },
     });
     let getAppConfigStub: sinon.SinonStub;
+    let getWebAppStub: sinon.SinonStub;
     let hasRolesStub: sinon.SinonStub;
     let addRolesStub: sinon.SinonStub;
 
     beforeEach(() => {
       getAppConfigStub = sinon.stub(managementApps, "getAppConfig").resolves(webConfig);
+      getWebAppStub = sinon.stub(webApps, "getOrCreateWebApp").resolves({ name: "web", id: appId });
       sinon.stub(getProjectNumber, "getProjectNumber").resolves("123");
       sinon.stub(computeEngine, "getDefaultServiceAccount").resolves(defaultSa);
       hasRolesStub = sinon.stub(resourceManager, "serviceAccountHasRoles").resolves(true);
@@ -157,6 +161,7 @@ describe("run prepare", () => {
 
       const [svc] = await prepareRun(web);
 
+      expect(getWebAppStub).to.have.been.calledWith("my-project", appId, "web");
       expect(getAppConfigStub).to.have.been.calledWith(appId, managementApps.AppPlatform.WEB);
       expect(svc).to.include({ appId, firebaseConfig });
       expect(svc.buildEnv).to.deep.equal({
@@ -229,6 +234,22 @@ describe("run prepare", () => {
           'To use a different app, run "firebase run:services:update web --region us-central1 --app <appId>". ' +
           'To deploy without Firebase SDK auto-initialization, run "firebase run:services:update web --region us-central1 --clear-app".',
       );
+      expect(hasRolesStub).not.to.have.been.called;
+    });
+
+    it("fails, before building or saving anything, if the project has no app with that ID", async () => {
+      getServiceStub.resolves(linked(liveWeb));
+      getWebAppStub.rejects(
+        new FirebaseError("The web app '1:123:web:typo' does not exist in project my-project"),
+      );
+
+      await expect(prepareRun(web, { context: { appId: "1:123:web:typo" } })).to.be.rejectedWith(
+        "Unable to look up Firebase Web App 1:123:web:typo for service web in us-central1: " +
+          "The web app '1:123:web:typo' does not exist in project my-project\n" +
+          'To use a different app, run "firebase run:services:update web --region us-central1 --app <appId>". ' +
+          'To deploy without Firebase SDK auto-initialization, run "firebase run:services:update web --region us-central1 --clear-app".',
+      );
+      expect(getAppConfigStub).not.to.have.been.called;
       expect(hasRolesStub).not.to.have.been.called;
     });
 
