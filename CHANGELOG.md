@@ -1,0 +1,1 @@
+- [fixed] Improve error message when billing is not enabled
