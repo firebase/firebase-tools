@@ -13,6 +13,7 @@ describe("hosting:clone", () => {
   const TARGET_CHANNEL_ID = "live";
   const SOURCE_VERSION = `projects/${PROJECT_ID}/sites/${SOURCE_SITE}/versions/v1`;
 
+  let getSiteStub: sinon.SinonStub;
   let getChannelStub: sinon.SinonStub;
   let createChannelStub: sinon.SinonStub;
   let cloneVersionStub: sinon.SinonStub;
@@ -21,6 +22,13 @@ describe("hosting:clone", () => {
 
   beforeEach(() => {
     sinon.stub(configstore, "get").returns({});
+    getSiteStub = sinon.stub(hostingApi, "getSite");
+    getSiteStub.withArgs("-", SOURCE_SITE).resolves({
+      name: `projects/${PROJECT_ID}/sites/${SOURCE_SITE}`,
+    } as any);
+    getSiteStub.withArgs("-", TARGET_SITE).resolves({
+      name: `projects/${PROJECT_ID}/sites/${TARGET_SITE}`,
+    } as any);
     getChannelStub = sinon.stub(hostingApi, "getChannel");
     createChannelStub = sinon.stub(hostingApi, "createChannel");
     cloneVersionStub = sinon.stub(hostingApi, "cloneVersion");
@@ -201,5 +209,129 @@ describe("hosting:clone", () => {
         project: PROJECT_ID,
       }),
     ).to.be.rejectedWith(/Source and destination cannot be equal/);
+  });
+
+  it("should implicitly determine projects for cross-project cloning when site is in another project (#11247)", async () => {
+    const SOURCE_PROJECT = "source-project";
+    const TARGET_PROJECT = "target-project";
+    const CROSS_SOURCE_VERSION = `projects/${SOURCE_PROJECT}/sites/${SOURCE_SITE}/versions/v1`;
+
+    getSiteStub.withArgs("-", SOURCE_SITE).resolves({
+      name: `projects/${SOURCE_PROJECT}/sites/${SOURCE_SITE}`,
+    } as any);
+    getSiteStub.withArgs("-", TARGET_SITE).resolves({
+      name: `projects/${TARGET_PROJECT}/sites/${TARGET_SITE}`,
+    } as any);
+
+    getChannelStub.withArgs(SOURCE_PROJECT, SOURCE_SITE, CHANNEL_ID).resolves({
+      name: `projects/${SOURCE_PROJECT}/sites/${SOURCE_SITE}/channels/${CHANNEL_ID}`,
+      url: "https://source.web.app",
+      release: {
+        version: {
+          name: CROSS_SOURCE_VERSION,
+        },
+      },
+    } as any);
+
+    getChannelStub.withArgs(TARGET_PROJECT, TARGET_SITE, TARGET_CHANNEL_ID).resolves({
+      name: `projects/${TARGET_PROJECT}/sites/${TARGET_SITE}/channels/${TARGET_CHANNEL_ID}`,
+      url: "https://target.web.app",
+      release: {
+        version: {
+          name: `projects/${TARGET_PROJECT}/sites/${TARGET_SITE}/versions/v0`,
+        },
+      },
+    } as any);
+
+    cloneVersionStub.withArgs(TARGET_PROJECT, TARGET_SITE, CROSS_SOURCE_VERSION, true).resolves({
+      name: `projects/${TARGET_PROJECT}/sites/${TARGET_SITE}/versions/v1-cloned`,
+    } as any);
+
+    createReleaseStub.resolves({} as any);
+
+    await command.runner()(`${SOURCE_SITE}:${CHANNEL_ID}`, `${TARGET_SITE}:${TARGET_CHANNEL_ID}`, {
+      project: TARGET_PROJECT,
+    });
+
+    expect(getSiteStub).to.have.been.calledWith("-", SOURCE_SITE);
+    expect(getChannelStub).to.have.been.calledWith(SOURCE_PROJECT, SOURCE_SITE, CHANNEL_ID);
+    expect(getChannelStub).to.have.been.calledWith(TARGET_PROJECT, TARGET_SITE, TARGET_CHANNEL_ID);
+    expect(cloneVersionStub).to.have.been.calledWith(
+      TARGET_PROJECT,
+      TARGET_SITE,
+      CROSS_SOURCE_VERSION,
+      true,
+    );
+    expect(createReleaseStub).to.have.been.calledWith(
+      TARGET_PROJECT,
+      TARGET_SITE,
+      TARGET_CHANNEL_ID,
+      `projects/${TARGET_PROJECT}/sites/${TARGET_SITE}/versions/v1-cloned`,
+    );
+  });
+
+  it("should implicitly determine projects when --project option is omitted", async () => {
+    const SOURCE_PROJECT = "source-project";
+    const TARGET_PROJECT = "target-project";
+    const CROSS_SOURCE_VERSION = `projects/${SOURCE_PROJECT}/sites/${SOURCE_SITE}/versions/v1`;
+
+    getSiteStub.withArgs("-", SOURCE_SITE).resolves({
+      name: `projects/${SOURCE_PROJECT}/sites/${SOURCE_SITE}`,
+    } as any);
+    getSiteStub.withArgs("-", TARGET_SITE).resolves({
+      name: `projects/${TARGET_PROJECT}/sites/${TARGET_SITE}`,
+    } as any);
+
+    getChannelStub.withArgs(SOURCE_PROJECT, SOURCE_SITE, CHANNEL_ID).resolves({
+      name: `projects/${SOURCE_PROJECT}/sites/${SOURCE_SITE}/channels/${CHANNEL_ID}`,
+      url: "https://source.web.app",
+      release: {
+        version: {
+          name: CROSS_SOURCE_VERSION,
+        },
+      },
+    } as any);
+
+    getChannelStub.withArgs(TARGET_PROJECT, TARGET_SITE, TARGET_CHANNEL_ID).resolves({
+      name: `projects/${TARGET_PROJECT}/sites/${TARGET_SITE}/channels/${TARGET_CHANNEL_ID}`,
+      url: "https://target.web.app",
+      release: {
+        version: {
+          name: `projects/${TARGET_PROJECT}/sites/${TARGET_SITE}/versions/v0`,
+        },
+      },
+    } as any);
+
+    cloneVersionStub.withArgs(TARGET_PROJECT, TARGET_SITE, CROSS_SOURCE_VERSION, true).resolves({
+      name: `projects/${TARGET_PROJECT}/sites/${TARGET_SITE}/versions/v1-cloned`,
+    } as any);
+
+    createReleaseStub.resolves({} as any);
+
+    await command.runner()(
+      `${SOURCE_SITE}:${CHANNEL_ID}`,
+      `${TARGET_SITE}:${TARGET_CHANNEL_ID}`,
+      {},
+    );
+
+    expect(getChannelStub).to.have.been.calledWith(SOURCE_PROJECT, SOURCE_SITE, CHANNEL_ID);
+    expect(getChannelStub).to.have.been.calledWith(TARGET_PROJECT, TARGET_SITE, TARGET_CHANNEL_ID);
+  });
+
+  it("should throw an error if the site cannot be found", async () => {
+    const { FirebaseError } = await import("../error");
+    const originalError = new FirebaseError("not found", { status: 404 });
+    getSiteStub.withArgs("-", "unknown-site").rejects(originalError);
+
+    await expect(
+      command.runner()(`unknown-site:${CHANNEL_ID}`, `${TARGET_SITE}:${TARGET_CHANNEL_ID}`, {
+        project: PROJECT_ID,
+      }),
+    )
+      .to.be.rejectedWith(FirebaseError, /Could not find the site unknown-site/)
+      .and.eventually.deep.include({
+        status: 404,
+        original: originalError,
+      });
   });
 });
