@@ -300,7 +300,8 @@ export async function injectEnvVarsFromApphostingConfig(
 }
 
 /**
- * Injects Firebase SDK auto-init environment variables into the build and runtime environment maps.
+ * Injects Firebase SDK auto-init environment variables into the build environment, and
+ * FIREBASE_CONFIG into the runtime environment, like remote builds.
  * This prefers existing values. It only auto-injects env vars if they don't already exist.
  */
 export async function injectAutoInitEnvVars(
@@ -317,11 +318,15 @@ export async function injectAutoInitEnvVars(
         managementApps.AppPlatform.WEB,
       )) as WebConfig;
 
-      // We inject autoinit env vars into the build and runtime env vars.
+      // We inject autoinit env vars into the build env vars, and FIREBASE_CONFIG, which the Admin
+      // SDK reads, into the runtime env vars. Like remote builds, the runtime doesn't get
+      // FIREBASE_WEBAPP_CONFIG: the client SDK's install script saves it into the build.
       const autoinitVars = getAutoinitEnvVars(webappConfig);
       for (const [envVarName, envVarValue] of Object.entries(autoinitVars)) {
         buildEnv[cfg.backendId][envVarName] ??= { value: envVarValue };
-        runtimeEnv[cfg.backendId][envVarName] ??= { value: envVarValue };
+        if (envVarName === "FIREBASE_CONFIG") {
+          runtimeEnv[cfg.backendId][envVarName] ??= { value: envVarValue };
+        }
       }
     } catch (e) {
       logLabeledWarning(
