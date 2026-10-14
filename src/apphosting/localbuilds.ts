@@ -188,6 +188,22 @@ export interface AppHostingBuildOutput {
 }
 
 /**
+ * Returns the value for the buildpacks' GOOGLE_BUILDABLE env var, which tells them which folder is
+ * the app: rootDir relative to projectRoot, with forward slashes. Returns undefined if rootDir is
+ * projectRoot itself.
+ */
+export function googleBuildable(projectRoot: string, rootDir?: string): string | undefined {
+  if (!rootDir) {
+    return undefined;
+  }
+  // Normalize Windows backslashes to forward slashes for cross-platform path resolution and buildpack compatibility.
+  const normalizedRootDir = rootDir.replace(/\\/g, "/");
+  const root = path.resolve(projectRoot);
+  const appDir = path.resolve(path.join(projectRoot, normalizedRootDir));
+  return appDir === root ? undefined : path.relative(root, appDir).replace(/\\/g, "/");
+}
+
+/**
  * Triggers a local build of your App Hosting codebase.
  *
  * This function orchestrates the build process using the App Hosting build adapter.
@@ -236,15 +252,9 @@ export async function localBuild(
 
   // For monorepos: if rootDir resolves to a subdirectory within projectRoot,
   // set GOOGLE_BUILDABLE to that relative path.
-  if (options?.rootDir) {
-    // Normalize Windows backslashes to forward slashes for cross-platform path resolution and buildpack compatibility.
-    const normalizedRootDir = options.rootDir.replace(/\\/g, "/");
-    const root = path.resolve(projectRoot);
-    const appDir = path.resolve(path.join(projectRoot, normalizedRootDir));
-
-    if (appDir !== root) {
-      addedEnv.GOOGLE_BUILDABLE = path.relative(root, appDir).replace(/\\/g, "/");
-    }
+  const buildable = googleBuildable(projectRoot, options?.rootDir);
+  if (buildable) {
+    addedEnv.GOOGLE_BUILDABLE = buildable;
   }
 
   const apphostingBuildOutput = await runUniversalMaker(projectRoot, addedEnv);

@@ -2,7 +2,11 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import { CLOUD_RUN_SIZE_LIMIT_BYTES } from "../../apphosting/constants";
-import { localBuild, validateLocalBuildNodeVersion } from "../../apphosting/localbuilds";
+import {
+  googleBuildable,
+  localBuild,
+  validateLocalBuildNodeVersion,
+} from "../../apphosting/localbuilds";
 import { FirebaseError, getErrMsg } from "../../error";
 import { AppHostingSingle, RunSingle } from "../../firebaseConfig";
 import { Backend } from "../../gcp/apphosting";
@@ -29,9 +33,6 @@ const ROLLOUT_TIMEOUT_MS = 10 * 60 * 1000;
  */
 const NO_IMAGE = "scratch";
 
-/** Files that mark the root of an Nx or Turborepo monorepo, the monorepos App Hosting supports. */
-const MONOREPO_CONFIG_FILES = ["nx.json", "turbo.json"];
-
 /** What a local build produced. */
 export interface LocalBuildOutput {
   /** The built files to upload, relative to the scratch directory the build ran in. */
@@ -40,14 +41,6 @@ export interface LocalBuildOutput {
   runCommand?: string;
   /** The env vars the app needs at runtime. */
   env: NonNullable<runv2.Container["env"]>;
-}
-
-/** Where a build on Cloud Build runs. */
-export interface BuildDirectory {
-  /** The directory to upload and build from. */
-  dir: string;
-  /** The app's folder in `dir`, with forward slashes. Empty if the app is `dir` itself. */
-  app: string;
 }
 
 /** Builds each service, locally or on Cloud Build, then rolls it out. */
@@ -68,35 +61,10 @@ async function deployRemoteBuild(
   svc: ServiceDeploy,
 ): Promise<void> {
   const { projectId } = context;
-  const { dir, app } = buildDirectory(options.config.projectDir, svc.config.rootDir);
-  const source = await uploadSource(projectId, options, svc.config, dir);
-  const image = await buildImage(projectId, svc, source, app);
+  const source = await uploadSource(projectId, options, svc.config);
+  const image = await buildImage(projectId, options, svc, source);
   const template = revisionTemplate(svc, image, options.message as string | undefined);
   svc.deployed = await rollOut(projectId, svc, template);
-}
-
-/**
- * Returns where to build the service on Cloud Build, the way App Hosting decides it. An app in an
- * Nx or Turborepo monorepo builds from the monorepo's root, so that it has the root's lockfile and
- * shared packages. Any other app builds from its own folder. Only folders in the project count.
- * Exported for testing.
- */
-export function buildDirectory(projectDir: string, rootDir = ""): BuildDirectory {
-  const appDir = path.join(projectDir, rootDir);
-  const appPath = path.relative(projectDir, appDir);
-  if (appPath === ".." || appPath.startsWith(`..${path.sep}`)) {
-    // The app is outside the project, so don't look for a monorepo above it.
-    return { dir: appDir, app: "" };
-  }
-  // Check the app's folder, then each folder above it, up to the project's root.
-  const folders = appPath ? appPath.split(path.sep) : [];
-  for (let depth = folders.length; depth >= 0; depth--) {
-    const dir = path.join(projectDir, ...folders.slice(0, depth));
-    if (MONOREPO_CONFIG_FILES.some((file) => fs.existsSync(path.join(dir, file)))) {
-      return { dir, app: folders.slice(depth).join("/") };
-    }
-  }
-  return { dir: appDir, app: "" };
 }
 
 /**
@@ -168,17 +136,22 @@ async function buildLocally(
   return { outputFiles, runCommand: buildConfig.runCommand, env };
 }
 
-/** Zips `dir`, the directory to build from, and uploads it to the region's source bucket. */
+/**
+ * Zips the whole project, like App Hosting does, and uploads it to the region's source bucket. An
+ * app in a monorepo needs the monorepo's root files, like its lockfile and shared packages.
+ */
 async function uploadSource(
   projectId: string,
   options: Options,
   config: RunSingle,
-  dir: string,
 ): Promise<runv2.StorageSource> {
   const { serviceId, region } = config;
   const bucketName = await sourceBucket(projectId, options, region);
   // The zip is a tmp file, so it's deleted when the CLI exits.
-  const archive = await createSourceDeployArchive(toAppHostingConfig(config), dir);
+  const archive = await createSourceDeployArchive(
+    toAppHostingConfig(config),
+    options.config.projectDir,
+  );
   logLabeledBullet("run", `Uploading source for service ${serviceId} in ${region}...`);
   const { bucket, object } = await gcs.uploadObject(
     { file: archive, stream: fs.createReadStream(archive) },
@@ -234,33 +207,31 @@ async function sourceBucket(projectId: string, options: Options, region: string)
   });
 }
 
-/**
- * Builds the uploaded source into an image on Cloud Build and returns the image's URI. `app` is the
- * app's folder in the upload, or empty if the upload is just the app (see buildDirectory).
- */
+/** Builds the uploaded source into an image on Cloud Build and returns the image's URI. */
 async function buildImage(
   projectId: string,
+  options: Options,
   svc: ServiceDeploy,
   source: runv2.StorageSource,
-  app: string,
 ): Promise<string> {
-  const { serviceId, region } = svc.config;
+  const { serviceId, region, rootDir } = svc.config;
   await artifactregistry.ensureDockerRepository(projectId, region, "cloud-run-source-deploy");
   const imageUri = `${region}-docker.pkg.dev/${projectId}/cloud-run-source-deploy/${serviceId}:${Date.now()}`;
   logLabeledBullet("run", `Building service ${serviceId} in ${region}...`);
-  const env: Record<string, string> = {
-    // Cloud Build only takes plain values, so pass only the non-secret env vars. Prepare already
-    // rejects secrets for builds on Cloud Build.
-    ...nonSecretValues(svc.buildEnv || {}),
-    // Use App Hosting's buildpacks, which need to know where to write the output bundle.
-    X_GOOGLE_TARGET_PLATFORM: "fah",
-    FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
+  // The upload is the whole project, so tell the buildpacks which folder is the app, the same way
+  // App Hosting's local builds do.
+  const buildable = googleBuildable(options.config.projectDir, rootDir);
+  const buildpackBuild: runv2.BuildpacksBuild = {
+    environmentVariables: {
+      // Cloud Build only takes plain values, so pass only the non-secret env vars. Prepare already
+      // rejects secrets for builds on Cloud Build.
+      ...nonSecretValues(svc.buildEnv || {}),
+      // Use App Hosting's buildpacks, which need to know where to write the output bundle.
+      X_GOOGLE_TARGET_PLATFORM: "fah",
+      FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
+      ...(buildable ? { GOOGLE_BUILDABLE: buildable } : {}),
+    },
   };
-  if (app) {
-    // The upload is a monorepo, so tell the buildpacks which folder is the app.
-    env.GOOGLE_BUILDABLE = app;
-  }
-  const buildpackBuild: runv2.BuildpacksBuild = { environmentVariables: env };
   // Only images built for a base image can have their base image updated automatically.
   if (svc.baseImage) {
     buildpackBuild.baseImage = svc.baseImage;
