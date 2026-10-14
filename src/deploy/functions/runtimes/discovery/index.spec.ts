@@ -172,6 +172,29 @@ describe("detectFromPort", () => {
       discovery.detectFromPort(8080, "project", "nodejs16", 0, 60_000, serverExited),
     ).to.eventually.be.rejectedWith(FirebaseError, /Out of memory/);
   });
+
+  it("reports the crash when the server dies mid-request instead of 'fetch failed'", async () => {
+    nock("http://127.0.0.1:8080").get("/__/functions.yaml").replyWithError({
+      message: "other side closed",
+      code: "UND_ERR_SOCKET",
+    });
+
+    // The exit lands after the hang-up, as it does when the process dies while
+    // serving the request.
+    const serverExited = new Promise<never>((_resolve, reject) => {
+      setTimeout(
+        () =>
+          reject(
+            new FirebaseError("The functions process exited with code 1.\n\nSOME_VAR missing"),
+          ),
+        50,
+      );
+    });
+
+    await expect(
+      discovery.detectFromPort(8080, "project", "nodejs16", 0, 60_000, serverExited),
+    ).to.eventually.be.rejectedWith(FirebaseError, /exited with code 1\.\n\nSOME_VAR missing/);
+  });
 });
 
 describe("watchDiscoveryProcess", () => {

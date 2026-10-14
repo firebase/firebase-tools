@@ -273,17 +273,14 @@ export async function detectFromPort(
       try {
         res = await Promise.race([fetch(url), ...abort]);
         break;
-      } catch (err: any) {
-        const realErr = err?.cause || err;
-        if (
-          err?.name === "FetchError" ||
-          realErr?.name === "FetchError" ||
-          ["ECONNREFUSED", "ECONNRESET", "ETIMEDOUT"].includes(realErr?.code)
-        ) {
-          await Promise.race([sleep(RETRY_DELAY_MS), ...abort]);
-          continue;
+      } catch (err: unknown) {
+        // A FirebaseError comes from the timeout or the server exiting. Any fetch
+        // failure is retried, because a server that dies mid-request hangs up
+        // (UND_ERR_SOCKET) and only serverExited can say why.
+        if (err instanceof FirebaseError) {
+          throw err;
         }
-        throw err;
+        await Promise.race([sleep(RETRY_DELAY_MS), ...abort]);
       }
     }
   } finally {
