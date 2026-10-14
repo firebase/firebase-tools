@@ -10,3 +10,4 @@
 - Fixed an issue where Cloud Functions creation did not retry on HTTP 403 service account propagation errors. (#11251)
 - Updated Auth deployment to use existing apps from any platform before creating a default web app. (#11250)
 - No longer grant unecessary TRUNCATE privilege to writer roles in `dataconnect:sql:migrate`. (#11276)
+- Fixed the Cloud Tasks emulator making one more attempt than `retryConfig.maxAttempts`, and treating `maxAttempts: -1` as a single attempt instead of unlimited.
