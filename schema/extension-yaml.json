@@ -1,0 +1,445 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "definitions": {
+    "author": {
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "authorName": {
+          "type": "string",
+          "description": "The author's name"
+        },
+        "email": {
+          "type": "string",
+          "description": "A contact email for the author"
+        },
+        "url": {
+          "type": "string",
+          "description": "URL of the author's website"
+        }
+      }
+    },
+    "role": {
+      "additionalProperties": false,
+      "type": "object",
+      "description": "An IAM role to grant to this extension.",
+      "properties": {
+        "role": {
+          "type": "string",
+          "description": "Name of the IAM role to grant. Must be on the list of allowed roles: https://firebase.google.com/docs/extensions/publishers/access#supported-roles",
+          "pattern": "[a-zA-Z]+\\.[a-zA-Z]+"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why this extension needs this IAM role"
+        },
+        "resource": {
+          "type": "string",
+          "description": "What resource to grant this role on. If omitted, defaults to projects/${project_id}"
+        }
+      },
+      "required": ["role", "reason"]
+    },
+    "api": {
+      "additionalProperties": false,
+      "type": "object",
+      "description": "A Google API used by this extension. Will be enabled on extension deployment.",
+      "properties": {
+        "apiName": {
+          "type": "string",
+          "description": "Name of the Google API to enable. Should match the service name listed in https://console.cloud.google.com/apis/library",
+          "pattern": "[^\\.]+\\.googleapis\\.com"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why this extension needs this API enabled"
+        }
+      },
+      "required": ["apiName", "reason"]
+    },
+    "externalService": {
+      "additionalProperties": false,
+      "type": "object",
+      "description": "A non-Google API used by this extension",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the external service"
+        },
+        "pricingUri": {
+          "type": "string",
+          "description": "URI to pricing information for the service"
+        }
+      }
+    },
+    "param": {
+      "additionalProperties": false,
+      "type": "object",
+      "description": "A parameter that users installing this extension can configure",
+      "properties": {
+        "param": {
+          "type": "string",
+          "description": "The name of the param. This is how you reference the param in your code"
+        },
+        "label": {
+          "type": "string",
+          "description": "Short description for the parameter. Displayed to users when they're prompted for the parameter's value."
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description for the parameter. Displayed to users when they're prompted for the parameter's value."
+        },
+        "example": {
+          "type": "string",
+          "description": "Example value for the parameter."
+        },
+        "validationRegex": {
+          "type": "string",
+          "description": "Regular expression for validation of the parameter's user-configured value. Uses Google RE2 syntax."
+        },
+        "validationErrorMessage": {
+          "type": "string",
+          "description": "Error message to display if regex validation fails."
+        },
+        "default": {
+          "type": "string",
+          "description": "Default value for the parameter if the user leaves the parameter's value blank."
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Defines whether the user can submit an empty string when they're prompted for the parameter's value. Defaults to true."
+        },
+        "immutable": {
+          "type": "boolean",
+          "description": "Defines whether the user can change the parameter's value after installation (such as if they reconfigure the extension). Defaults to false."
+        },
+        "advanced": {
+          "type": "boolean",
+          "description": "Whether this a param for advanced users. When true, only users who choose 'advanced configuration' will see this param."
+        },
+        "type": {
+          "type": "string",
+          "description": "The parameter type. Special parameter types might have additional requirements or different UI presentation. See https://firebase.google.com/docs/extensions/reference/extension-yaml#params for more details.",
+          "pattern": "string|select|multiSelect|secret|selectResource"
+        },
+        "resourceType":  {
+          "type": "string",
+          "description": "The type of resource to prompt the user to select. Provides a special UI treatment for the param.",
+          "pattern": "storage\\.googleapis\\.com\\/Bucket|firestore\\.googleapis\\.com\\/Database|firebasedatabase\\.googleapis\\.com\\/DatabaseInstance"
+        },
+        "options": {
+          "type": "array",
+          "description": "Options for a select or multiSelect type param.",
+          "items": {
+            "$ref": "#/definitions/paramOption"
+          }
+        }
+      },
+      "required": ["param"]
+    },
+    "paramOption": {
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string",
+          "description": "One of the values the user can choose. This is the value you get when you read the parameter value in code."
+        },
+        "label": {
+          "type": "string",
+          "description": "Short description of the selectable option. If omitted, defaults to value."
+        }
+      },
+      "required": ["value"]
+    },
+    "resource":{
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of this resource"
+        },
+        "type": {
+          "type": "string",
+          "description": "What type of resource this is. See https://firebase.google.com/docs/extensions/reference/extension-yaml#resources for a full list of options."
+        },
+        "description": {
+          "type": "string",
+          "description": "A brief description of what this resource does"
+        },
+        "properties": {
+          "type": "object",
+          "description": "The properties of this resource",
+          "additionalProperties": true,
+          "properties": {
+            "location": {
+              "type": "string",
+              "description": "The location for this resource"
+            },
+            "entryPoint": {
+              "type": "string",
+              "description": "The entry point for a function resource"
+            },
+            "sourceDirectory": {
+              "type": "string",
+              "description": "Directory that contains your package.json at its root. The file for your functions source code must be in this directory. Defaults to functions"
+            },
+            "timeout": {
+              "type": "string",
+              "description": "A function resources's maximum execution time.",
+              "pattern": "\\d+s"
+            },
+            "availableMemoryMb": {
+              "type": "string",
+              "description": "Amount of memory in MB available for the function.",
+              "pattern": "\\d+"
+            },
+            "runtime": {
+              "type": "string",
+              "description": "Runtime environment for the function. Defaults to the most recent LTS version of node."
+            },
+            "httpsTrigger": {
+              "type": "object",
+              "description": "A function triggered by HTTPS calls",
+              "properties": {}
+            },
+            "eventTrigger": {
+              "type": "object",
+              "description": "A function triggered by a background event",
+              "properties": {
+                "eventType": {
+                  "type": "string",
+                  "description": "The type of background event to trigger on. See https://firebase.google.com/docs/extensions/publishers/functions#supported for a full list."
+                },
+                "resource": {
+                  "type": "string",
+                  "description": "The name or pattern of the resource to trigger on"
+                },
+                "eventFilters": {
+                  "type": "array",
+                  "description": "Filters that further limit the events to listen to.",
+                  "items": {
+                    "$ref": "#/definitions/eventFilter"
+                  }
+                },
+                "channel": {
+                  "type": "string",
+                  "description": "The name of the channel associated with the trigger in projects/{project}/locations/{location}/channels/{channel} format. If you omit this property, the function will listen for events on the project's default channel."
+                },
+                "triggerRegion": {
+                  "type": "string",
+                  "description": "The trigger will only receive events originating in this region. It can be the same region as the function, a different region or multi-region, or the global region. If not provided, defaults to the same region as the function."
+                }
+              },
+              "required": ["eventType"]
+            },
+            "scheduleTrigger": {
+              "type": "object",
+              "description": "A function triggered at a regular interval by a Cloud Scheduler job",
+              "properties": {
+                "schedule": {
+                  "type": "string",
+                  "description": "The frequency at which you want the function to run. Accepts unix-cron (https://cloud.google.com/scheduler/docs/configuring/cron-job-schedules) or App Engine (https://cloud.google.com/appengine/docs/standard/nodejs/scheduling-jobs-with-cron-yaml#defining_the_cron_job_schedule) syntax."
+                },
+                "timeZone": {
+                  "type": "string",
+                  "description": "The time zone in which the schedule will run. Defaults to UTC."
+                }
+              },
+              "required": ["schedule"]
+            },
+            "taskQueueTrigger": {
+              "type": "object",
+              "description": "A function triggered by a Cloud Task",
+              "properties": {}
+            },
+            "buildConfig": {
+              "type": "object",
+              "description": "Build configuration for a  gen 2 Cloud Function",
+              "properties": {
+                "runtime": {
+                  "type": "string",
+                  "description": "Runtime environment for the function. Defaults to the most recent LTS version of node."
+                },
+                "entryPoint": {
+                  "type": "string",
+                  "description": "The entry point for a function resource"
+                }
+              }
+            },
+            "serviceConfig": {
+              "type": "object",
+              "description": "Service configuration for a  gen 2 Cloud Function",
+              "properties": {
+                "timeoutSeconds": {
+                  "type": "string",
+                  "description": "The function's maximum execution time. Default: 60, max value: 540."
+                },
+                "availableMemory": {
+                  "type": "string",
+                  "description": "The amount of memory available for a function. Defaults to 256M. Supported units are k, M, G, Mi, Gi. If no unit is supplied, the value is interpreted as bytes."
+                }
+              }
+            }
+          }
+        }
+      },
+      "required": ["name", "type", "description", "properties"]
+    },
+    "lifecycleEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "onInstall": {
+          "$ref": "#/definitions/lifecycleEventSpec"
+        },
+        "onUpdate": {
+          "$ref": "#/definitions/lifecycleEventSpec"
+        },
+        "onConfigure": {
+          "$ref": "#/definitions/lifecycleEventSpec"
+        }
+      }
+    },
+    "lifecycleEventSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "function": {
+          "type": "string",
+          "description": "Name of the task queue-triggered function that will handle the event. This function must be a taskQueueTriggered function declared in the resources section."
+        },
+        "processingMessage": {
+          "type": "string",
+          "description": "Message to display in the Firebase console while the task is in progress."
+        }
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "The type identifier of the event. Construct the identifier out of 3-4 dot-delimited fields: the publisher ID, extension name, and event name fields are required; the version field is recommended. Choose a unique and descriptive event name for each event type you publish."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the event"
+        }
+      }
+    },
+    "eventFilter": {
+      "type": "object",
+      "properties": {
+        "attribute": {
+          "type": "string",
+          "description": "The event attribute to filter on",
+          "value": "The value to filter for"
+        }
+      }
+    }
+  },
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "ID of this extension (ie your-extension-name)"
+    },
+    "version": {
+      "type": "string",
+      "description": "Version of this extension. Follows https://semver.org/."
+    },
+    "specVersion": {
+      "type":"string",
+      "description": "Version of the extension.yaml spec that this file follows. Currently always 'v1beta'"
+    },
+    "license": {
+      "type": "string",
+      "description": "The software license agreement for this extension. Currently, only 'Apache-2.0' is permitted on extensions.dev"
+    },
+    "displayName": {
+      "type": "string",
+      "description": "Human readable name for this extension (ie 'Your Extension Name')"
+    },
+    "description": {
+      "type": "string",
+      "description": "A one to two sentence description of what this extension does"
+    },
+    "icon": {
+      "type": "string",
+      "description": "The file name of this extension's icon"
+    },
+    "billingRequired": {
+      "type": "boolean",
+      "description": "Whether this extension requires a billing to be enabled on the project it is installed on"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "A list of tags to help users find your extension in search"
+    },
+    "sourceUrl": {
+      "type": "string",
+      "description": "The URL of the GitHub repo hosting this code"
+    },
+    "releaseNotesUrl": {
+      "type": "string",
+      "description": "A URL where users can view the full changelog or release notes for this extension"
+    },
+    "author": {
+      "$ref": "#/definitions/author"
+    },
+    "contributors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/author"
+      }
+    },
+    "apis": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/api"
+      }
+    },
+    "roles": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/role"
+      }
+    },
+    "externalServices": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/externalService"
+      }
+    },
+    "params": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/param"
+      }
+    },
+    "resources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/resource"
+      }
+    },
+    "lifecycleEvents": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/lifecycleEvent"
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/event"
+      }
+    }
+  }
+}

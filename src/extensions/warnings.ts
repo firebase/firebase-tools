@@ -1,73 +1,22 @@
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
 import * as clc from "colorette";
 
-import { ExtensionVersion, RegistryLaunchStage } from "./types";
-import { printSourceDownloadLink } from "./displayExtensionInfo";
-import { logPrefix } from "./extensionsHelper";
-import { getTrustedPublishers } from "./resolveSource";
+import { isLocalPath, logPrefix } from "./extensionsHelper";
 import { humanReadable } from "../deploy/extensions/deploymentSummary";
-import { InstanceSpec, getExtension } from "../deploy/extensions/planner";
-import { partition } from "../functional";
-import * as utils from "../utils";
+import { InstanceSpec, getExtensionVersion } from "../deploy/extensions/planner";
+import { FirebaseError } from "../error";
 import { logger } from "../logger";
+import { Options } from "../options";
+import * as utils from "../utils";
 
-interface displayEAPWarningParameters {
-  publisherId: string;
-  sourceDownloadUri: string;
-  githubLink?: string;
-}
-
-function displayEAPWarning({
-  publisherId,
-  sourceDownloadUri,
-  githubLink,
-}: displayEAPWarningParameters): void {
-  const publisherNameLink = githubLink ? `[${publisherId}](${githubLink})` : publisherId;
-  const warningMsg = `This extension is in preview and is built by a developer in the [Extensions Publisher Early Access Program](http://bit.ly/firex-provider). Its functionality might change in backward-incompatible ways. Since this extension isn't built by Firebase, reach out to ${publisherNameLink} with questions about this extension.`;
-  const legalMsg =
-    "\n\nIt is provided “AS IS”, without any warranty, express or implied, from Google. Google disclaims all liability for any damages, direct or indirect, resulting from the use of the extension, and its functionality might change in backward - incompatible ways.";
-  utils.logLabeledBullet(logPrefix, marked(warningMsg + legalMsg));
-  printSourceDownloadLink(sourceDownloadUri);
-}
-
-function displayExperimentalWarning() {
-  utils.logLabeledBullet(
-    logPrefix,
-    marked(
-      `${clc.yellow(clc.bold("Important"))}: This extension is ${clc.bold(
-        "experimental"
-      )} and may not be production-ready. Its functionality might change in backward-incompatible ways before its official release, or it may be discontinued.`
-    )
-  );
-}
-
-/**
- * Show warning if extension is experimental or developed by 3P.
- */
-export async function displayWarningPrompts(
-  publisherId: string,
-  launchStage: RegistryLaunchStage,
-  extensionVersion: ExtensionVersion
-): Promise<void> {
-  const trustedPublishers = await getTrustedPublishers();
-  if (!trustedPublishers.includes(publisherId)) {
-    displayEAPWarning({
-      publisherId,
-      sourceDownloadUri: extensionVersion.sourceDownloadUri,
-      githubLink: extensionVersion.spec.sourceUrl,
-    });
-  } else if (launchStage === RegistryLaunchStage.EXPERIMENTAL) {
-    displayExperimentalWarning();
-  } else {
-    // Otherwise, this is an official extension and requires no warning prompts.
-    return;
-  }
-}
+import { getReplacementsRegistry, getReplacementPackageName } from "./replacementRegistry";
+import * as manifest from "./manifest";
+import * as refs from "./refs";
 
 const toListEntry = (i: InstanceSpec) => {
   const idAndRef = humanReadable(i);
-  const sourceCodeLink = `\n\t[Source Code](${i.extensionVersion?.sourceDownloadUri})`;
+  const sourceCodeLink = `\n\t[Source Code](${
+    i.extensionVersion?.buildSourceUri ?? i.extensionVersion?.sourceDownloadUri
+  })`;
   const githubLink = i.extensionVersion?.spec?.sourceUrl
     ? `\n\t[Publisher Contact](${i.extensionVersion?.spec.sourceUrl})`
     : "";
@@ -80,64 +29,194 @@ const toListEntry = (i: InstanceSpec) => {
  * @param instancesToCreate A list of instances that will be created in this deploy
  */
 export async function displayWarningsForDeploy(instancesToCreate: InstanceSpec[]) {
-  const trustedPublishers = await getTrustedPublishers();
-  const publishedExtensionInstances = instancesToCreate.filter((i) => i.ref);
-  for (const i of publishedExtensionInstances) {
-    await getExtension(i);
+  const uploadedExtensionInstances = instancesToCreate.filter((i) => i.ref);
+  for (const i of uploadedExtensionInstances) {
+    await getExtensionVersion(i);
   }
-
-  const [eapExtensions, nonEapExtensions] = partition(
-    publishedExtensionInstances,
-    (i) => !trustedPublishers.includes(i.ref?.publisherId ?? "")
-  );
-  // Only mark non-eap extensions as experimental.
-  const experimental = nonEapExtensions.filter(
-    (i) => i.extension!.registryLaunchStage === RegistryLaunchStage.EXPERIMENTAL
+  const unpublishedExtensions = uploadedExtensionInstances.filter(
+    (i) => i.extensionVersion?.listing?.state !== "APPROVED",
   );
 
-  if (experimental.length) {
-    const humanReadableList = experimental.map((i) => `\t${humanReadable(i)}`).join("\n");
+  if (unpublishedExtensions.length) {
+    const humanReadableList = unpublishedExtensions.map(toListEntry).join("\n");
     utils.logLabeledBullet(
       logPrefix,
-      marked(
-        `The following are instances of ${clc.bold(
-          "experimental"
-        )} extensions.They may not be production-ready. Their functionality may change in backward-incompatible ways before their official release, or they may be discontinued.\n${humanReadableList}\n`,
-        { gfm: false }
-      )
+      `The following extension versions have not been published to the Firebase Extensions Hub:\n${humanReadableList}\n.` +
+        "Unpublished extensions have not been reviewed by " +
+        "Firebase. Please make sure you trust the extension publisher before installing this extension.",
     );
   }
-
-  if (eapExtensions.length) {
-    const humanReadableList = eapExtensions.map(toListEntry).join("\n");
-    utils.logLabeledBullet(
-      logPrefix,
-      marked(
-        `These extensions are in preview and are built by a developer in the Extensions Publisher Early Access Program (http://bit.ly/firex-provider). Their functionality might change in backwards-incompatible ways. Since these extensions aren't built by Firebase, reach out to their publisher with questions about them.` +
-          ` They are provided “AS IS”, without any warranty, express or implied, from Google.` +
-          ` Google disclaims all liability for any damages, direct or indirect, resulting from the use of these extensions\n${humanReadableList}`,
-        { gfm: false }
-      )
-    );
-  }
-  return experimental.length > 0 || eapExtensions.length > 0;
+  return unpublishedExtensions.length > 0;
 }
 
-/**
- * paramsFlagDeprecationWarning displays a warning about the future depreaction of the --params flag.
- */
-export function paramsFlagDeprecationWarning() {
-  logger.warn(
-    "The --params flag is deprecated and will be removed in firebase-tools@11. " +
-      "Instead, use an extensions manifest and `firebase deploy --only extensions` to deploy extensions noninteractively. " +
-      "See https://firebase.google.com/docs/extensions/manifest for more details"
-  );
-}
-
-export function outOfBandChangesWarning(instanceIds: string[]) {
+export function outOfBandChangesWarning(instanceIds: string[], isDynamic: boolean) {
+  const extra = isDynamic
+    ? ""
+    : " To avoid this, run `firebase ext:export` to sync these changes to your local extensions manifest.";
   logger.warn(
     "The following instances may have been changed in the Firebase console or by another machine since the last deploy from this machine.\n\t" +
       clc.bold(instanceIds.join("\n\t")) +
-      "\nIf you proceed with this deployment, those changes will be overwritten. To avoid this, run `firebase ext:export` to sync these changes to your local extensions manifest."
+      `\nIf you proceed with this deployment, those changes will be overwritten.${extra}`,
+  );
+}
+
+const FAQ_URL = "https://firebase.google.com/docs/extensions/faq-and-troubleshooting";
+const BANNER_BORDER = "=".repeat(80);
+
+/** Commands that trigger a standard deprecation warning before execution. */
+const WARN_BEFORE_COMMANDS = new Set([
+  "ext:install",
+  "ext:configure",
+  "ext:update",
+  "ext:sdk:install",
+]);
+
+/** Publisher commands that trigger a prominent warning banner before execution. */
+const WARN_STRONGLY_BEFORE_COMMANDS = new Set([
+  "ext:dev:init",
+  "ext:dev:upload",
+  "ext:dev:list",
+  "ext:dev:usage",
+  "ext:dev:undeprecate",
+]);
+
+/** Commands that display a post-execution footer warning notice after completion. */
+const WARN_AFTER_COMMANDS = new Set(["ext:list", "ext:info", "ext:export"]);
+
+/**
+ * Checks if deprecation warnings should be silenced (e.g. non-interactive, JSON, non-TTY, quiet mode, or CI).
+ * @param options Command execution options object.
+ */
+export function isSilenced(options: Options | Record<string, unknown>): boolean {
+  const opts = options as Record<string, unknown>;
+  if (
+    opts?.json ||
+    utils.getInheritedOption(options, "json") ||
+    opts?.nonInteractive ||
+    utils.getInheritedOption(options, "nonInteractive") ||
+    !process.stdout?.isTTY ||
+    opts?.quiet ||
+    utils.getInheritedOption(options, "quiet")
+  ) {
+    return true;
+  }
+  if (
+    utils.isRunningInGithubAction() ||
+    (!!process.env.CI && process.env.CI !== "false") ||
+    !!process.env.BUILD_ID ||
+    !!process.env.TF_BUILD ||
+    !!process.env.GITHUB_ACTIONS
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Resolves an extension reference from command arguments or manifest for warning lookup.
+ */
+function resolveExtensionRef(
+  commandName: string,
+  options: Options | Record<string, unknown>,
+  args: readonly unknown[] = [],
+): string | undefined {
+  const firstArg = typeof args[0] === "string" ? args[0] : undefined;
+  if (!firstArg || isLocalPath(firstArg)) {
+    return undefined;
+  }
+  try {
+    const ref =
+      commandName === "ext:configure" || commandName === "ext:update"
+        ? manifest.getInstanceRef(firstArg, manifest.loadConfig(options as Options))
+        : refs.parse(firstArg);
+    return refs.toExtensionRef(ref);
+  } catch (err) {
+    logger.debug(`Could not resolve extension ref for deprecation warning: ${String(err)}`);
+    return undefined;
+  }
+}
+
+/**
+ * Displays deprecation warnings or throws hard exit errors before an ext:* command executes.
+ * @param commandName Name of the command being run (e.g. "ext:install").
+ * @param options Command execution options object.
+ * @param args Optional command arguments array.
+ */
+export async function showDeprecationWarningBefore(
+  commandName: string,
+  options: Options | Record<string, unknown>,
+  args: readonly unknown[] = [],
+): Promise<void> {
+  if (commandName === "ext:dev:register") {
+    throw new FirebaseError(
+      `ext:dev:register is disabled. Registering new publisher profile IDs is no longer supported.\n` +
+        `The Firebase Extensions service will shut down on March 31, 2027.\n` +
+        `Learn more: ${FAQ_URL}`,
+      { exit: 1 },
+    );
+  }
+
+  if (isSilenced(options)) {
+    return;
+  }
+
+  if (WARN_BEFORE_COMMANDS.has(commandName)) {
+    let actionLine = "We recommend migrating active instances to function kits.";
+
+    const ref = resolveExtensionRef(commandName, options, args);
+    if (ref) {
+      try {
+        const registry = await getReplacementsRegistry();
+        const npmPackage = getReplacementPackageName(ref, registry);
+        if (npmPackage) {
+          actionLine = `Recommended replacement: ${npmPackage}`;
+        }
+      } catch (err) {
+        logger.debug(`Failed to resolve replacement info for warning: ${String(err)}`);
+      }
+    }
+
+    logger.warn(
+      clc.yellow(
+        `${BANNER_BORDER}\n` +
+          `⚠ Firebase Extensions will shut down on March 31, 2027.\n` +
+          `${actionLine}\n` +
+          `Learn more & view migration steps: ${FAQ_URL}\n` +
+          `${BANNER_BORDER}`,
+      ),
+    );
+  } else if (WARN_STRONGLY_BEFORE_COMMANDS.has(commandName)) {
+    logger.warn(
+      clc.yellow(
+        `${BANNER_BORDER}\n` +
+          `⚠ Notice for Publishers: Firebase Extensions will shut down on March 31, 2027.\n` +
+          `Learn more & view migration steps: ${FAQ_URL}\n` +
+          `${BANNER_BORDER}`,
+      ),
+    );
+  }
+}
+
+/**
+ * Displays post-execution deprecation warnings (e.g. single-line footer for ext:list, ext:info, and ext:export).
+ * @param commandName Name of the command being run.
+ * @param options Command execution options object.
+ */
+export function showDeprecationWarningAfter(
+  commandName: string,
+  options: Options | Record<string, unknown>,
+): void {
+  if (isSilenced(options) || !WARN_AFTER_COMMANDS.has(commandName)) {
+    return;
+  }
+
+  if (commandName === "ext:export" && (options as Record<string, unknown>).mode === "functions") {
+    return;
+  }
+
+  logger.warn(
+    clc.yellow(
+      `⚠ Notice: Firebase Extensions will shut down on March 31, 2027. Learn more & view migration steps: ${FAQ_URL}`,
+    ),
   );
 }

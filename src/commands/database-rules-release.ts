@@ -9,7 +9,7 @@ export const command = new Command("database:rules:release <rulesetId>")
   .description("mark a staged ruleset as the stable ruleset")
   .option(
     "--instance <instance>",
-    "use the database <instance>.firebaseio.com (if omitted, uses default database instance)"
+    "use the database <instance>.firebaseio.com (if omitted, uses default database instance)",
   )
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireDatabaseInstance)

@@ -86,5 +86,5 @@ export const HELP_TEXT: string =
     .map((setting: DatabaseSetting) => `  ${setting.path}:${setting.description}`)
     .join("");
 export const INVALID_PATH_ERROR = `Path must be one of ${Array.from(DATABASE_SETTINGS.keys()).join(
-  ", "
+  ", ",
 )}.`;

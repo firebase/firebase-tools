@@ -10,8 +10,7 @@ import { Constants } from "./constants";
 import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger } from "./emulatorLogger";
 import { FirebaseError } from "../error";
-import { parseBoltRules } from "../parseBoltRules";
-import { Client } from "../apiv2";
+import { connectableHostname } from "../utils";
 
 export interface DatabaseEmulatorArgs {
   port?: number;
@@ -21,11 +20,12 @@ export interface DatabaseEmulatorArgs {
   functions_emulator_port?: number;
   functions_emulator_host?: string;
   auto_download?: boolean;
+  single_project_mode?: string;
 }
 
 export class DatabaseEmulator implements EmulatorInstance {
   private importedNamespaces: string[] = [];
-  private rulesWatcher?: chokidar.FSWatcher;
+  private rulesWatchers: chokidar.FSWatcher[] = [];
   private logger = EmulatorLogger.forEmulator(Emulators.DATABASE);
 
   constructor(private args: DatabaseEmulatorArgs) {}
@@ -43,13 +43,14 @@ export class DatabaseEmulator implements EmulatorInstance {
           this.logger.logLabeled(
             "WARN_ONCE",
             "database",
-            "Could not determine your Realtime Database instance name, so rules hot reloading is disabled."
+            "Could not determine your Realtime Database instance name, so rules hot reloading is disabled.",
           );
           continue;
         }
 
-        this.rulesWatcher = chokidar.watch(c.rules, { persistent: true, ignoreInitial: true });
-        this.rulesWatcher.on("change", async () => {
+        const watcher = chokidar.watch(c.rules, { persistent: true, ignoreInitial: true });
+        this.rulesWatchers.push(watcher);
+        watcher.on("change", async () => {
           // There have been some race conditions reported (on Windows) where reading the
           // file too quickly after the watcher fires results in an empty file being read.
           // Adding a small delay prevents that at very little cost.
@@ -58,7 +59,7 @@ export class DatabaseEmulator implements EmulatorInstance {
           this.logger.logLabeled(
             "BULLET",
             "database",
-            `Change detected, updating rules for ${c.instance}...`
+            `Change detected, updating rules for ${c.instance}...`,
           );
 
           try {
@@ -90,14 +91,16 @@ export class DatabaseEmulator implements EmulatorInstance {
           this.logger.logLabeled("WARN", "database", rulesError);
           this.logger.logLabeled("WARN", "database", "Failed to update rules");
           throw new FirebaseError(
-            `Failed to load initial ${Constants.description(this.getName())} rules:\n${rulesError}`
+            `Failed to load initial ${Constants.description(this.getName())} rules:\n${rulesError}`,
           );
         }
       }
     }
   }
 
-  stop(): Promise<void> {
+  async stop(): Promise<void> {
+    await Promise.allSettled(this.rulesWatchers.map((w) => w.close()));
+    this.rulesWatchers = [];
     return downloadableEmulators.stop(Emulators.DATABASE);
   }
 
@@ -131,7 +134,7 @@ export class DatabaseEmulator implements EmulatorInstance {
       const req = http.request(
         {
           method: "PUT",
-          host,
+          host: connectableHostname(host),
           port,
           path: `/.json?ns=${ns}&disableTriggers=true&writeSizeLimit=unlimited`,
           headers: {
@@ -151,7 +154,7 @@ export class DatabaseEmulator implements EmulatorInstance {
               })
               .on("end", reject);
           }
-        }
+        },
       );
 
       req.on("error", reject);
@@ -162,19 +165,10 @@ export class DatabaseEmulator implements EmulatorInstance {
   }
 
   private async updateRules(instance: string, rulesPath: string): Promise<any> {
-    const rulesExt = path.extname(rulesPath);
-    const content =
-      rulesExt === ".bolt"
-        ? parseBoltRules(rulesPath).toString()
-        : fs.readFileSync(rulesPath, "utf8");
+    const content = fs.readFileSync(rulesPath, "utf8");
 
-    const info = this.getInfo();
     try {
-      const client = new Client({
-        urlPrefix: `http://${EmulatorRegistry.getInfoHostString(info)}`,
-        auth: false,
-      });
-      await client.put(`/.settings/rules.json`, content, {
+      await EmulatorRegistry.client(Emulators.DATABASE).put(`/.settings/rules.json`, content, {
         headers: { Authorization: "Bearer owner" },
         queryParams: { ns: instance },
       });

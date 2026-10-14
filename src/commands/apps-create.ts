@@ -1,5 +1,4 @@
 import * as clc from "colorette";
-import * as ora from "ora";
 
 import { Command } from "../command";
 import { needProjectId } from "../projectUtils";
@@ -8,46 +7,24 @@ import {
   AndroidAppMetadata,
   AppMetadata,
   AppPlatform,
-  createAndroidApp,
-  createIosApp,
-  createWebApp,
   getAppPlatform,
   IosAppMetadata,
+  sdkInit,
+  SdkInitOptions,
   WebAppMetadata,
 } from "../management/apps";
-import { prompt, promptOnce, Question } from "../prompt";
 import { requireAuth } from "../requireAuth";
 import { logger } from "../logger";
-
-const DISPLAY_NAME_QUESTION: Question = {
-  type: "input",
-  name: "displayName",
-  default: "",
-  message: "What would you like to call your app?",
-};
-
-interface CreateFirebaseAppOptions {
-  project: string;
-  nonInteractive: boolean;
-  displayName?: string;
-}
-
-interface CreateIosAppOptions extends CreateFirebaseAppOptions {
-  bundleId?: string;
-  appStoreId?: string;
-}
-
-interface CreateAndroidAppOptions extends CreateFirebaseAppOptions {
-  packageName: string;
-}
-
-interface CreateWebAppOptions extends CreateFirebaseAppOptions {
-  displayName: string;
-}
+import { Options } from "../options";
+import { confirm, select } from "../prompt";
+import { errNoDefaultSite, getDefaultHostingSite } from "../getDefaultHostingSite";
+import { pickHostingSiteName } from "../hosting/interactive";
+import { createSite } from "../hosting/api";
+import { logSuccess } from "../utils";
 
 function logPostAppCreationInformation(
   appMetadata: IosAppMetadata | AndroidAppMetadata | WebAppMetadata,
-  appPlatform: AppPlatform
+  appPlatform: AppPlatform,
 ): void {
   logger.info("");
   logger.info(`🎉🎉🎉 Your Firebase ${appPlatform} App is ready! 🎉🎉🎉`);
@@ -72,96 +49,15 @@ function logPostAppCreationInformation(
   logger.info(`  firebase apps:sdkconfig ${appPlatform} ${appMetadata.appId}`);
 }
 
-async function initiateIosAppCreation(options: CreateIosAppOptions): Promise<IosAppMetadata> {
-  if (!options.nonInteractive) {
-    await prompt(options, [
-      DISPLAY_NAME_QUESTION,
-      {
-        type: "input",
-        default: "",
-        name: "bundleId",
-        message: "Please specify your iOS app bundle ID:",
-      },
-      {
-        type: "input",
-        default: "",
-        name: "appStoreId",
-        message: "Please specify your iOS app App Store ID:",
-      },
-    ]);
-  }
-  if (!options.bundleId) {
-    throw new FirebaseError("Bundle ID for iOS app cannot be empty");
-  }
-
-  const spinner = ora("Creating your iOS app").start();
-  try {
-    const appData = await createIosApp(options.project, {
-      displayName: options.displayName,
-      bundleId: options.bundleId,
-      appStoreId: options.appStoreId,
-    });
-    spinner.succeed();
-    return appData;
-  } catch (err: any) {
-    spinner.fail();
-    throw err;
-  }
-}
-
-async function initiateAndroidAppCreation(
-  options: CreateAndroidAppOptions
-): Promise<AndroidAppMetadata> {
-  if (!options.nonInteractive) {
-    await prompt(options, [
-      DISPLAY_NAME_QUESTION,
-      {
-        type: "input",
-        default: "",
-        name: "packageName",
-        message: "Please specify your Android app package name:",
-      },
-    ]);
-  }
-  if (!options.packageName) {
-    throw new FirebaseError("Package name for Android app cannot be empty");
-  }
-
-  const spinner = ora("Creating your Android app").start();
-  try {
-    const appData = await createAndroidApp(options.project, {
-      displayName: options.displayName,
-      packageName: options.packageName,
-    });
-    spinner.succeed();
-    return appData;
-  } catch (err: any) {
-    spinner.fail();
-    throw err;
-  }
-}
-
-async function initiateWebAppCreation(options: CreateWebAppOptions): Promise<WebAppMetadata> {
-  if (!options.nonInteractive) {
-    await prompt(options, [DISPLAY_NAME_QUESTION]);
-  }
-  if (!options.displayName) {
-    throw new FirebaseError("Display name for Web app cannot be empty");
-  }
-  const spinner = ora("Creating your Web app").start();
-  try {
-    const appData = await createWebApp(options.project, { displayName: options.displayName });
-    spinner.succeed();
-    return appData;
-  } catch (err: any) {
-    spinner.fail();
-    throw err;
-  }
+interface AppsCreateOptions extends Options {
+  packageName: string;
+  bundleId: string;
+  appStoreId: string;
 }
 
 export const command = new Command("apps:create [platform] [displayName]")
   .description(
-    "create a new Firebase app. [platform] can be IOS, ANDROID or WEB (case insensitive)."
+    "create a new Firebase app. [platform] can be IOS, ANDROID or WEB (case insensitive)",
   )
   .option("-a, --package-name <packageName>", "required package name for the Android app")
   .option("-b, --bundle-id <bundleId>", "required bundle id for the iOS app")
@@ -169,15 +65,15 @@ export const command = new Command("apps:create [platform] [displayName]")
   .before(requireAuth)
   .action(
     async (
-      platform: string = "",
+      platform = "",
       displayName: string | undefined,
-      options: any
+      options: AppsCreateOptions,
     ): Promise<AppMetadata> => {
       const projectId = needProjectId(options);
 
-      if (!options.nonInteractive && !platform) {
-        platform = await promptOnce({
-          type: "list",
+      let chosenPlatform: string = typeof platform === "string" ? platform : "";
+      if (!options.nonInteractive && !chosenPlatform) {
+        chosenPlatform = await select<AppPlatform>({
           message: "Please choose the platform of the app:",
           choices: [
             { name: "iOS", value: AppPlatform.IOS },
@@ -187,29 +83,46 @@ export const command = new Command("apps:create [platform] [displayName]")
         });
       }
 
-      const appPlatform = getAppPlatform(platform);
+      const appPlatform = getAppPlatform(chosenPlatform);
       if (appPlatform === AppPlatform.ANY /* platform is not provided */) {
         throw new FirebaseError("App platform must be provided");
       }
 
       logger.info(`Create your ${appPlatform} app in project ${clc.bold(projectId)}:`);
-      options.displayName = displayName; // add displayName into options to pass into prompt function
-      let appData;
-      switch (appPlatform) {
-        case AppPlatform.IOS:
-          appData = await initiateIosAppCreation(options);
-          break;
-        case AppPlatform.ANDROID:
-          appData = await initiateAndroidAppCreation(options);
-          break;
-        case AppPlatform.WEB:
-          appData = await initiateWebAppCreation(options);
-          break;
-        default:
-          throw new FirebaseError("Unexpected error. This should not happen");
+
+      let newSiteId: string | undefined;
+      if (appPlatform === AppPlatform.WEB) {
+        const existingSite = await getDefaultHostingSite({ projectId }).catch((err: unknown) => {
+          if (err !== errNoDefaultSite) {
+            throw err;
+          }
+        });
+
+        if (existingSite) {
+          logger.info(`Firebase Hosting site is present: ${clc.bold(existingSite)}.`);
+        } else if (
+          await confirm({
+            message:
+              "A Firebase Hosting site is recommended for Web apps. Would you like to create a default site now?",
+            default: true,
+            nonInteractive: options.nonInteractive,
+          })
+        ) {
+          newSiteId = await pickHostingSiteName("", {
+            projectId,
+            nonInteractive: options.nonInteractive,
+          });
+        }
       }
 
+      options.displayName = displayName; // add displayName into options to pass into prompt function
+      const appData = await sdkInit(appPlatform, options as SdkInitOptions);
+      if (newSiteId) {
+        await createSite(projectId, newSiteId, appData.appId);
+        logger.info("");
+        logSuccess(`Firebase Hosting site ${newSiteId} created!`);
+      }
       logPostAppCreationInformation(appData, appPlatform);
       return appData;
-    }
+    },
   );

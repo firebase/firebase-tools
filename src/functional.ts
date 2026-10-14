@@ -18,6 +18,7 @@ export function* flattenObject<T extends object>(obj: T): Generator<[string, unk
       }
     }
   }
+
   yield* helper([], obj);
 }
 
@@ -51,11 +52,6 @@ export function flatten<T extends unknown[] | object>(objOrArr: T): unknown {
     return flattenObject(objOrArr);
   }
 }
-
-type RecursiveElems<T extends unknown[]> = {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  [Key in keyof T]: T[Key] extends unknown[] ? T[Key] | RecursiveElems<T[Key]> : T[Key];
-}[number];
 
 /**
  * Used with reduce to flatten in place.
@@ -91,23 +87,41 @@ export const zipIn =
   };
 
 /** Used with type guards to guarantee that all cases have been covered. */
-export function assertExhaustive(val: never): never {
+export function assertExhaustive(val: never, message?: string): never {
   // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-  throw new Error(`Never has a value (${val}). This should be impossible`);
+  throw new Error(message || `Never has a value (${val}).`);
 }
 
 /**
- * Utility to partition an array into two based on callbackFn's truthiness for each element.
+ * Utility to partition an array into two based on predicate's truthiness for each element.
  * Returns a Array containing two Array<T>. The first array contains all elements that returned true,
  * the second contains all elements that returned false.
  */
-export function partition<T>(arr: T[], callbackFn: (elem: T) => boolean): [T[], T[]] {
+export function partition<T>(arr: T[], predicate: (elem: T) => boolean): [T[], T[]] {
   return arr.reduce<[T[], T[]]>(
     (acc, elem) => {
-      acc[callbackFn(elem) ? 0 : 1].push(elem);
+      acc[predicate(elem) ? 0 : 1].push(elem);
       return acc;
     },
-    [[], []]
+    [[], []],
+  );
+}
+
+/**
+ * Utility to partition a Record into two based on predicate's truthiness for each element.
+ * Returns a Array containing two Record<string, T>. The first array contains all elements that returned true,
+ * the second contains all elements that returned false.
+ */
+export function partitionRecord<T>(
+  rec: Record<string, T>,
+  predicate: (key: string, val: T) => boolean,
+): [Record<string, T>, Record<string, T>] {
+  return Object.entries(rec).reduce<[Record<string, T>, Record<string, T>]>(
+    (acc, [key, val]) => {
+      acc[predicate(key, val) ? 0 : 1][key] = val;
+      return acc;
+    },
+    [{}, {}],
   );
 }
 
@@ -116,7 +130,7 @@ export function partition<T>(arr: T[], callbackFn: (elem: T) => boolean): [T[], 
  */
 export function mapObject<T, V>(
   input: Record<string, T>,
-  transform: (t: T) => V
+  transform: (t: T) => V,
 ): Record<string, V> {
   const result: Record<string, V> = {};
   for (const [k, v] of Object.entries(input)) {
@@ -133,3 +147,19 @@ export const nullsafeVisitor =
     }
     return func(first, ...rest);
   };
+
+/**
+ * Returns true if the given values match. If either one is undefined, the default value is used for comparison.
+ * @param lhs the first value.
+ * @param rhs the second value.
+ * @param defaultValue the value to use if either input is undefined.
+ */
+export function optionalValueMatches<T>(
+  lhs: T | undefined,
+  rhs: T | undefined,
+  defaultValue: T,
+): boolean {
+  lhs = lhs === undefined ? defaultValue : lhs;
+  rhs = rhs === undefined ? defaultValue : rhs;
+  return lhs === rhs;
+}

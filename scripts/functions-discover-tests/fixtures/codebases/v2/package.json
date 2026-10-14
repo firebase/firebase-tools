@@ -1,0 +1,7 @@
+{
+  "name": "codebase-v2",
+  "type": "module",
+  "dependencies": {
+    "firebase-functions": "^6.4.0"
+  }
+}

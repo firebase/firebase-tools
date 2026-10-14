@@ -1,0 +1,13 @@
+{
+  "name": "simple",
+  "version": "0.0.1",
+  "dependencies": {
+    "firebase-functions": "^7.2.5",
+    "firebase-admin": "^13.10.0",
+    "@firebase/a-test-pkg": "0.0.1"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "private": true
+}

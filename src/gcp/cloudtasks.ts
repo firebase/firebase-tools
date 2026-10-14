@@ -9,7 +9,7 @@ import { nullsafeVisitor } from "../functional";
 const API_VERSION = "v2";
 
 const client = new Client({
-  urlPrefix: cloudTasksOrigin,
+  urlPrefix: cloudTasksOrigin(),
   auth: true,
   apiVersion: API_VERSION,
 });
@@ -125,6 +125,32 @@ export async function upsertQueue(queue: Queue): Promise<boolean> {
   }
 }
 
+/**
+ * Best-effort update issued when a task queue triggered function is deleted.
+ * Skips the call when the queue no longer exists: updateQueue issues a PATCH,
+ * which creates the queue if it is absent, so patching an already-deleted queue
+ * would recreate it -- or fail with "existed too recently" when it was just
+ * deleted out of band (issue #9305).
+ *
+ * Note: queues.patch cannot change `state` (it is output only in the Cloud Tasks
+ * API; state changes go through pause/resume or queue.yaml), so this preserves
+ * the long-standing PATCH behavior while no longer resurrecting a queue the user
+ * already removed.
+ */
+export async function disableQueue(name: string): Promise<void> {
+  try {
+    // Here and throughout we use module.exports to ensure late binding & enable stubs in unit tests.
+    await (module.exports.getQueue as typeof getQueue)(name);
+  } catch (err) {
+    const responseError = err as { context?: { response?: { statusCode?: number } } };
+    if (responseError.context?.response?.statusCode === 404) {
+      return;
+    }
+    throw err;
+  }
+  await (module.exports.updateQueue as typeof updateQueue)({ name, state: "DISABLED" });
+}
+
 /** Purges all messages in a queue with a given name. */
 export async function purgeQueue(name: string): Promise<void> {
   await client.post(`${name}:purge`);
@@ -133,6 +159,24 @@ export async function purgeQueue(name: string): Promise<void> {
 /** Deletes a queue with a given name. */
 export async function deleteQueue(name: string): Promise<void> {
   await client.delete(name);
+}
+
+export interface Task {
+  httpRequest: {
+    url: string;
+    httpMethod?: string;
+    headers?: Record<string, string>;
+    body?: string;
+    oidcToken?: {
+      serviceAccountEmail: string;
+      audience?: string;
+    };
+  };
+}
+
+/** Enqueues a task in a Cloud Tasks queue. */
+export async function enqueueTask(queueName: string, task: Task): Promise<void> {
+  await client.post(`${queueName}/tasks`, { task });
 }
 
 /** Set the IAM policy of a given queue. */
@@ -155,7 +199,7 @@ const ENQUEUER_ROLE = "roles/cloudtasks.enqueuer";
 export async function setEnqueuer(
   name: string,
   invoker: string[],
-  assumeEmpty = false
+  assumeEmpty = false,
 ): Promise<void> {
   let existing: iam.Policy;
   if (assumeEmpty) {
@@ -172,7 +216,7 @@ export async function setEnqueuer(
   const invokerMembers = proto.getInvokerMembers(invoker, project);
   while (true) {
     const policy: iam.Policy = {
-      bindings: existing.bindings.filter((binding) => binding.role !== ENQUEUER_ROLE),
+      bindings: (existing.bindings || []).filter((binding) => binding.role !== ENQUEUER_ROLE),
       etag: existing.etag,
       version: existing.version,
     };
@@ -201,7 +245,7 @@ export async function setEnqueuer(
 
 /** The name of the Task Queue we will use for this endpoint. */
 export function queueNameForEndpoint(
-  endpoint: backend.Endpoint & backend.TaskQueueTriggered
+  endpoint: backend.Endpoint & backend.TaskQueueTriggered,
 ): string {
   return `projects/${endpoint.project}/locations/${endpoint.region}/queues/${endpoint.id}`;
 }
@@ -217,7 +261,7 @@ export function queueFromEndpoint(endpoint: backend.Endpoint & backend.TaskQueue
       queue.rateLimits,
       endpoint.taskQueueTrigger.rateLimits,
       "maxConcurrentDispatches",
-      "maxDispatchesPerSecond"
+      "maxDispatchesPerSecond",
     );
   }
   if (endpoint.taskQueueTrigger.retryConfig) {
@@ -225,28 +269,28 @@ export function queueFromEndpoint(endpoint: backend.Endpoint & backend.TaskQueue
       queue.retryConfig,
       endpoint.taskQueueTrigger.retryConfig,
       "maxAttempts",
-      "maxDoublings"
+      "maxDoublings",
     );
     proto.convertIfPresent(
       queue.retryConfig,
       endpoint.taskQueueTrigger.retryConfig,
       "maxRetryDuration",
       "maxRetrySeconds",
-      nullsafeVisitor(proto.durationFromSeconds)
+      nullsafeVisitor(proto.durationFromSeconds),
     );
     proto.convertIfPresent(
       queue.retryConfig,
       endpoint.taskQueueTrigger.retryConfig,
       "maxBackoff",
       "maxBackoffSeconds",
-      nullsafeVisitor(proto.durationFromSeconds)
+      nullsafeVisitor(proto.durationFromSeconds),
     );
     proto.convertIfPresent(
       queue.retryConfig,
       endpoint.taskQueueTrigger.retryConfig,
       "minBackoff",
       "minBackoffSeconds",
-      nullsafeVisitor(proto.durationFromSeconds)
+      nullsafeVisitor(proto.durationFromSeconds),
     );
   }
   return queue;
@@ -261,7 +305,7 @@ export function triggerFromQueue(queue: Queue): backend.TaskQueueTriggered["task
       taskQueueTrigger.rateLimits,
       queue.rateLimits,
       "maxConcurrentDispatches",
-      "maxDispatchesPerSecond"
+      "maxDispatchesPerSecond",
     );
   }
   if (queue.retryConfig) {
@@ -270,28 +314,28 @@ export function triggerFromQueue(queue: Queue): backend.TaskQueueTriggered["task
       taskQueueTrigger.retryConfig,
       queue.retryConfig,
       "maxAttempts",
-      "maxDoublings"
+      "maxDoublings",
     );
     proto.convertIfPresent(
       taskQueueTrigger.retryConfig,
       queue.retryConfig,
       "maxRetrySeconds",
       "maxRetryDuration",
-      nullsafeVisitor(proto.secondsFromDuration)
+      nullsafeVisitor(proto.secondsFromDuration),
     );
     proto.convertIfPresent(
       taskQueueTrigger.retryConfig,
       queue.retryConfig,
       "maxBackoffSeconds",
       "maxBackoff",
-      nullsafeVisitor(proto.secondsFromDuration)
+      nullsafeVisitor(proto.secondsFromDuration),
     );
     proto.convertIfPresent(
       taskQueueTrigger.retryConfig,
       queue.retryConfig,
       "minBackoffSeconds",
       "minBackoff",
-      nullsafeVisitor(proto.secondsFromDuration)
+      nullsafeVisitor(proto.secondsFromDuration),
     );
   }
   return taskQueueTrigger;

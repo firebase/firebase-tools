@@ -133,7 +133,7 @@ cd(outputDir);
 console.log(
   ls(".")
     .map((fn) => path.join(pwd().toString(), fn.toString()))
-    .join("\n")
+    .join("\n"),
 );
 
 // Cleanup

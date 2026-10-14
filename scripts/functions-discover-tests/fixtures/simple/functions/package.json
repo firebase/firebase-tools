@@ -1,0 +1,6 @@
+{
+  "name": "simple",
+  "dependencies": {
+    "firebase-functions": "^6.4.0"
+  }
+}

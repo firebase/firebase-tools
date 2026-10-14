@@ -2,19 +2,58 @@ import * as os from "os";
 import * as path from "path";
 import * as fs from "fs";
 import { randomBytes } from "crypto";
-import * as _ from "lodash";
-import * as express from "express";
-import { CloudFunction } from "firebase-functions";
-
 import * as backend from "../deploy/functions/backend";
+import * as build from "../deploy/functions/build";
 import { Constants } from "./constants";
-import { BackendInfo, EmulatableBackend, InvokeRuntimeOpts } from "./functionsEmulator";
+import { BackendInfo, EmulatableBackend } from "./functionsEmulator";
 import { ENV_DIRECTORY } from "../extensions/manifest";
 import { substituteParams } from "../extensions/extensionsHelper";
 import { ExtensionSpec, ExtensionVersion } from "../extensions/types";
 import { replaceConsoleLinks } from "./extensions/postinstall";
 import { serviceForEndpoint } from "../deploy/functions/services";
 import { inferBlockingDetails } from "../deploy/functions/prepare";
+import * as events from "../functions/events";
+import { connectableHostname } from "../utils";
+
+/** The current v2 events that are implemented in the emulator */
+const V2_EVENTS = [
+  events.v2.PUBSUB_PUBLISH_EVENT,
+  events.v2.FIREALERTS_EVENT,
+  ...events.v2.STORAGE_EVENTS,
+  ...events.v2.DATABASE_EVENTS,
+  ...events.v2.FIRESTORE_EVENTS,
+  ...events.v2.AUTH_EVENTS,
+];
+
+/**
+ * Extracts the tenant ID from an Auth event payload.
+ *
+ * For 2nd Gen Auth events, CloudEvents v1.0 extension attributes are stored at the top level
+ * using lowercase attribute names (`event.tenantid`), matching Eventarc's attribute-based filtering.
+ */
+export function getEventTenantId(
+  eventPayload: Record<string, unknown> | null | undefined,
+): string | undefined {
+  if (!eventPayload || typeof eventPayload !== "object") {
+    return undefined;
+  }
+
+  // 2nd Gen Eventarc CloudEvent top-level context attribute (`tenantid`).
+  // Per CloudEvents v1.0 specification, extension attribute names must be lowercase.
+  // In Firebase Auth 2nd Gen triggers, tenant filtering matches against this attribute.
+  if (typeof eventPayload.tenantid === "string") {
+    return eventPayload.tenantid;
+  }
+
+  return undefined;
+}
+
+/**
+ * Label for eventarc event sources.
+ * TODO: Consider DRYing from functions/prepare.ts
+ * A nice place would be to put it in functionsv2.ts once we get rid of functions.ts
+ */
+export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 
 export type SignatureType = "http" | "event" | "cloudevent";
 
@@ -27,6 +66,7 @@ export interface ParsedTriggerDefinition {
   availableMemoryMb?: backend.MemoryOptions;
   httpsTrigger?: any;
   eventTrigger?: EventTrigger;
+  taskQueueTrigger?: backend.TaskQueueTrigger;
   schedule?: EventSchedule;
   blockingTrigger?: BlockingTrigger;
   labels?: { [key: string]: any };
@@ -50,21 +90,13 @@ export interface EventSchedule {
 }
 
 export interface EventTrigger {
-  resource: string;
+  resource?: string;
   eventType: string;
   channel?: string;
   eventFilters?: Record<string, string>;
+  eventFilterPathPatterns?: Record<string, string>;
   // Deprecated
   service?: string;
-}
-
-export interface EmulatedTriggerMap {
-  [name: string]: EmulatedTrigger;
-}
-
-export interface FunctionsRuntimeArgs {
-  frb: FunctionsRuntimeBundle;
-  opts?: InvokeRuntimeOpts;
 }
 
 export interface FunctionsRuntimeBundle {
@@ -86,35 +118,11 @@ export interface FunctionsRuntimeFeatures {
   timeout?: boolean;
 }
 
-export class HttpConstants {
-  static readonly CALLABLE_AUTH_HEADER: string = "x-callable-context-auth";
-  static readonly ORIGINAL_AUTH_HEADER: string = "x-original-auth";
-}
-
-export class EmulatedTrigger {
-  /*
-  Here we create a trigger from a single definition (data about what resources does this trigger on, etc) and
-  the actual module which contains multiple functions / definitions. We locate the one we need below using
-  definition.entryPoint
-   */
-  constructor(public definition: EmulatedTriggerDefinition, private module: any) {}
-
-  get memoryLimitBytes(): number {
-    return (this.definition.availableMemoryMb || 128) * 1024 * 1024;
-  }
-
-  get timeoutMs(): number {
-    return (this.definition.timeoutSeconds || 60) * 1000;
-  }
-
-  getRawFunction(): CloudFunction<any> {
-    if (!this.module) {
-      throw new Error("EmulatedTrigger has not been provided a module.");
-    }
-
-    const func = _.get(this.module, this.definition.entryPoint);
-    return func.__emulator_func || func;
-  }
+/**
+ * Checks if the v2 event service has been implemented in the emulator
+ */
+export function eventServiceImplemented(eventType: string): boolean {
+  return V2_EVENTS.includes(eventType);
 }
 
 /**
@@ -134,11 +142,11 @@ export function prepareEndpoints(endpoints: backend.Endpoint[]) {
  * @return A list of all CloudFunctions in the deployment.
  */
 export function emulatedFunctionsFromEndpoints(
-  endpoints: backend.Endpoint[]
+  endpoints: backend.Endpoint[],
 ): EmulatedTriggerDefinition[] {
   const regionDefinitions: EmulatedTriggerDefinition[] = [];
   for (const endpoint of endpoints) {
-    if (!endpoint.region) {
+    if (!endpoint.region || endpoint.region === build.REGION_TBD) {
       endpoint.region = "us-central1";
     }
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -154,6 +162,19 @@ export function emulatedFunctionsFromEndpoints(
     };
     def.availableMemoryMb = endpoint.availableMemoryMb || 256;
     def.labels = endpoint.labels || {};
+    if (endpoint.platform === "gcfv1") {
+      def.labels[EVENTARC_SOURCE_ENV] =
+        "cloudfunctions-emulated.googleapis.com" +
+        `/projects/${endpoint.project || "project"}/locations/${endpoint.region}/functions/${
+          endpoint.id
+        }`;
+    } else if (endpoint.platform === "gcfv2") {
+      def.labels[EVENTARC_SOURCE_ENV] =
+        "run-emulated.googleapis.com" +
+        `/projects/${endpoint.project || "project"}/locations/${endpoint.region}/services/${
+          endpoint.id
+        }`;
+    }
     def.timeoutSeconds = endpoint.timeoutSeconds || 60;
     def.secretEnvironmentVariables = endpoint.secretEnvironmentVariables || [];
     def.platform = endpoint.platform;
@@ -161,6 +182,8 @@ export function emulatedFunctionsFromEndpoints(
     // process requires it in this form. Need to work in Firestore emulator for a proper fix...
     if (backend.isHttpsTriggered(endpoint)) {
       def.httpsTrigger = endpoint.httpsTrigger;
+    } else if (backend.isDataConnectGraphqlTriggered(endpoint)) {
+      def.httpsTrigger = endpoint.dataConnectGraphqlTrigger;
     } else if (backend.isCallableTriggered(endpoint)) {
       def.httpsTrigger = {};
       def.labels = { ...def.labels, "deployment-callable": "true" };
@@ -172,19 +195,21 @@ export function emulatedFunctionsFromEndpoints(
           resource: eventTrigger.eventFilters!.resource,
         };
       } else {
-        // Only pubsub and storage events are supported for gcfv2.
-        // Custom events require a channel.
-        const { resource, topic, bucket } = endpoint.eventTrigger.eventFilters as any;
-        const eventResource = resource || topic || bucket;
-        if (!eventResource && !eventTrigger.channel) {
-          // Unsupported event type for GCFv2
+        // v2 events implemented are pubsub, storage, rtdb, firestore, alerts, auth, and custom events
+        if (!eventServiceImplemented(eventTrigger.eventType) && !eventTrigger.channel) {
           continue;
         }
+
+        // We use resource for pubsub & storage
+        const { resource, topic, bucket } = endpoint.eventTrigger.eventFilters as any;
+        const eventResource = resource || topic || bucket;
+
         def.eventTrigger = {
           eventType: eventTrigger.eventType,
           resource: eventResource,
           channel: eventTrigger.channel,
           eventFilters: eventTrigger.eventFilters,
+          eventFilterPathPatterns: eventTrigger.eventFilterPathPatterns,
         };
       }
     } else if (backend.isScheduleTriggered(endpoint)) {
@@ -197,8 +222,20 @@ export function emulatedFunctionsFromEndpoints(
         options: endpoint.blockingTrigger.options || {},
       };
     } else if (backend.isTaskQueueTriggered(endpoint)) {
-      // Just expose TQ trigger as HTTPS. Useful for debugging.
       def.httpsTrigger = {};
+      def.taskQueueTrigger = {
+        retryConfig: {
+          maxAttempts: endpoint.taskQueueTrigger.retryConfig?.maxAttempts,
+          maxRetrySeconds: endpoint.taskQueueTrigger.retryConfig?.maxRetrySeconds,
+          maxBackoffSeconds: endpoint.taskQueueTrigger.retryConfig?.maxBackoffSeconds,
+          maxDoublings: endpoint.taskQueueTrigger.retryConfig?.maxDoublings,
+          minBackoffSeconds: endpoint.taskQueueTrigger.retryConfig?.minBackoffSeconds,
+        },
+        rateLimits: {
+          maxConcurrentDispatches: endpoint.taskQueueTrigger.rateLimits?.maxConcurrentDispatches,
+          maxDispatchesPerSecond: endpoint.taskQueueTrigger.rateLimits?.maxDispatchesPerSecond,
+        },
+      };
     } else {
       // All other trigger types are not supported by the emulator
       // We leave both eventTrigger and httpTrigger attributes empty
@@ -216,7 +253,7 @@ export function emulatedFunctionsFromEndpoints(
  */
 export function emulatedFunctionsByRegion(
   definitions: ParsedTriggerDefinition[],
-  secretEnvVariables: backend.SecretEnvVar[] = []
+  secretEnvVariables: backend.SecretEnvVar[] = [],
 ): EmulatedTriggerDefinition[] {
   const regionDefinitions: EmulatedTriggerDefinition[] = [];
   for (const def of definitions) {
@@ -238,25 +275,6 @@ export function emulatedFunctionsByRegion(
     }
   }
   return regionDefinitions;
-}
-
-/**
- * Converts an array of EmulatedTriggerDefinitions to a map of EmulatedTriggers, which contain information on execution,
- * @param {EmulatedTriggerDefinition[]} definitions An array of regionalized, parsed trigger definitions
- * @param {object} module Actual module which contains multiple functions / definitions
- * @return a map of trigger ids to EmulatedTriggers
- */
-export function getEmulatedTriggersFromDefinitions(
-  definitions: EmulatedTriggerDefinition[],
-  module: any // eslint-disable-line @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-explicit-any
-): EmulatedTriggerMap {
-  return definitions.reduce(
-    (obj: { [triggerName: string]: EmulatedTrigger }, definition: EmulatedTriggerDefinition) => {
-      obj[definition.id] = new EmulatedTrigger(definition, module);
-      return obj;
-    },
-    {}
-  );
 }
 
 /**
@@ -300,6 +318,12 @@ export function getFunctionService(def: ParsedTriggerDefinition): string {
   if (def.blockingTrigger) {
     return def.blockingTrigger.eventType;
   }
+  if (def.httpsTrigger) {
+    return "https";
+  }
+  if (def.taskQueueTrigger) {
+    return Constants.SERVICE_CLOUD_TASKS;
+  }
 
   return "unknown";
 }
@@ -321,12 +345,15 @@ export function getServiceFromEventType(eventType: string): string {
   if (eventType.includes("storage")) {
     return Constants.SERVICE_STORAGE;
   }
-  // Below this point are services that do not have a emulator.
-  if (eventType.includes("analytics")) {
-    return Constants.SERVICE_ANALYTICS;
+  if (eventType.includes("firebasealerts")) {
+    return Constants.SERVICE_FIREALERTS;
   }
   if (eventType.includes("auth")) {
     return Constants.SERVICE_AUTH;
+  }
+  // Below this point are services that do not have a emulator.
+  if (eventType.includes("analytics")) {
+    return Constants.SERVICE_ANALYTICS;
   }
   if (eventType.includes("crashlytics")) {
     return Constants.SERVICE_CRASHLYTICS;
@@ -339,22 +366,6 @@ export function getServiceFromEventType(eventType: string): string {
   }
 
   return "";
-}
-
-/**
- * Create a Promise which can be awaited to recieve request bodies as strings.
- */
-export function waitForBody(req: express.Request): Promise<string> {
-  let data = "";
-  return new Promise((resolve) => {
-    req.on("data", (chunk: any) => {
-      data += chunk;
-    });
-
-    req.on("end", () => {
-      resolve(data);
-    });
-  });
 }
 
 /**
@@ -377,7 +388,7 @@ export function findModuleRoot(moduleName: string, filepath: string): string {
         return chunks.join("/");
       }
       break;
-    } catch (err: any) {
+    } catch (err: unknown) {
       /**/
     }
   }
@@ -386,13 +397,20 @@ export function findModuleRoot(moduleName: string, filepath: string): string {
 }
 
 /**
- * Format a hostname for TCP dialing.
+ * Format a hostname for TCP dialing. Should only be used in Functions emulator.
+ *
+ * This is similar to EmulatorRegistry.url but with no explicit dependency on
+ * the registry and so on and thus can work in functions shell.
+ *
+ * For any other part of the CLI, please use EmulatorRegistry.url(...).host
+ * instead, which handles discovery, formatting, and fixing host in one go.
  */
 export function formatHost(info: { host: string; port: number }): string {
-  if (info.host.includes(":")) {
-    return `[${info.host}]:${info.port}`;
+  const host = connectableHostname(info.host);
+  if (host.includes(":")) {
+    return `[${host}]:${info.port}`;
   } else {
-    return `${info.host}:${info.port}`;
+    return `${host}:${info.port}`;
   }
 }
 
@@ -402,6 +420,9 @@ export function formatHost(info: { host: string; port: number }): string {
  */
 export function getSignatureType(def: EmulatedTriggerDefinition): SignatureType {
   if (def.httpsTrigger || def.blockingTrigger) {
+    return "http";
+  }
+  if (def.platform === "gcfv2" && def.schedule) {
     return "http";
   }
   // TODO: As implemented, emulated CF3v1 functions cannot receive events in CloudEvent format, and emulated CF3v2
@@ -426,13 +447,14 @@ export function getSecretLocalPath(backend: EmulatableBackend, projectDir: strin
 }
 
 /**
- * toBackendInfo transforms an EmulatableBackend into its correspondign API type, BackendInfo
+ * toBackendInfo transforms an EmulatableBackend into its corresponding API type, BackendInfo
  * @param e the emulatableBackend to transform
  * @param cf3Triggers a list of CF3 triggers. If e does not include predefinedTriggers, these will be used instead.
  */
 export function toBackendInfo(
   e: EmulatableBackend,
-  cf3Triggers: ParsedTriggerDefinition[]
+  cf3Triggers: ParsedTriggerDefinition[],
+  labels?: Record<string, string>,
 ): BackendInfo {
   const envWithSecrets = Object.assign({}, e.env);
   for (const s of e.secretEnv) {
@@ -443,7 +465,7 @@ export function toBackendInfo(
     extensionVersion = substituteParams<ExtensionVersion>(extensionVersion, e.env);
     if (extensionVersion.spec?.postinstallContent) {
       extensionVersion.spec.postinstallContent = replaceConsoleLinks(
-        extensionVersion.spec.postinstallContent
+        extensionVersion.spec.postinstallContent,
       );
     }
   }
@@ -464,9 +486,10 @@ export function toBackendInfo(
       extension: e.extension, // Only present on published extensions
       extensionVersion: extensionVersion, // Only present on published extensions
       extensionSpec: extensionSpec, // Only present on local extensions
+      labels,
       functionTriggers:
         // If we don't have predefinedTriggers, this is the CF3 backend.
         e.predefinedTriggers ?? cf3Triggers.filter((t) => t.codebase === e.codebase),
-    })
+    }),
   );
 }

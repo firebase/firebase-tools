@@ -2,7 +2,7 @@ import { bold } from "colorette";
 import { getProjectId } from "./projectUtils";
 import { requireAuth } from "./requireAuth";
 import { logger } from "./logger";
-import { FirebaseError } from "./error";
+import { FirebaseError, getErrMsg } from "./error";
 import { testIamPermissions } from "./gcp/iam";
 
 // Permissions required for all commands.
@@ -16,16 +16,16 @@ const BASE_PERMISSIONS = ["firebase.projects.get"];
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function requirePermissions(options: any, permissions: string[] = []): Promise<void> {
+  await requireAuth(options);
+
   const projectId = getProjectId(options);
   if (!projectId) {
     return;
   }
   const requiredPermissions = BASE_PERMISSIONS.concat(permissions).sort();
 
-  await requireAuth(options);
-
   logger.debug(
-    `[iam] checking project ${projectId} for permissions ${JSON.stringify(requiredPermissions)}`
+    `[iam] checking project ${projectId} for permissions ${JSON.stringify(requiredPermissions)}`,
   );
 
   try {
@@ -33,12 +33,12 @@ export async function requirePermissions(options: any, permissions: string[] = [
     if (!iamResult.passed) {
       throw new FirebaseError(
         `Authorization failed. This account is missing the following required permissions on project ${bold(
-          projectId
-        )}:\n\n  ${iamResult.missing.join("\n  ")}`
+          projectId,
+        )}:\n\n  ${iamResult.missing.join("\n  ")}`,
       );
     }
-  } catch (err: any) {
-    logger.debug(`[iam] error while checking permissions, command may fail: ${err}`);
+  } catch (err: unknown) {
+    logger.debug(`[iam] error while checking permissions, command may fail: ${getErrMsg(err)}`);
     return;
   }
 }

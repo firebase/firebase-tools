@@ -1,0 +1,6 @@
+{
+  "functions": {
+    "source": "dist",
+    "runtime": "nodejs22"
+  }
+}

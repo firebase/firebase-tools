@@ -1,8 +1,18 @@
 import { resourceManagerOrigin, iamOrigin } from "../api";
 import { logger } from "../logger";
 import { Client } from "../apiv2";
+import * as utils from "../utils";
+import { FirebaseError, getErrStatus } from "../error";
+// Note: build configuration does not support synthetic default imports for JSON files at runtime.
+import * as knownRoles from "./knownRoles.json";
+import * as crypto from "crypto";
 
-const apiClient = new Client({ urlPrefix: iamOrigin, apiVersion: "v1" });
+const apiClient = new Client({ urlPrefix: iamOrigin(), apiVersion: "v1" });
+
+/** Returns the default cloud build service agent */
+export function getDefaultCloudBuildServiceAgent(projectNumber: string): string {
+  return `${projectNumber}@cloudbuild.gserviceaccount.com`;
+}
 
 // IAM Policy
 // https://cloud.google.com/resource-manager/reference/rest/Shared.Types/Policy
@@ -56,7 +66,6 @@ export interface TestIamResult {
 
 /**
  * Creates a new the service account with the given parameters.
- *
  * @param projectId the id of the project where the service account will be created
  * @param accountId the id to use for the account
  * @param description a brief description of the account
@@ -66,7 +75,7 @@ export async function createServiceAccount(
   projectId: string,
   accountId: string,
   description: string,
-  displayName: string
+  displayName: string,
 ): Promise<ServiceAccount> {
   const response = await apiClient.post<
     { accountId: string; serviceAccount: { displayName: string; description: string } },
@@ -80,23 +89,25 @@ export async function createServiceAccount(
         description,
       },
     },
-    { skipLog: { resBody: true } }
+    { skipLog: { resBody: true } },
   );
   return response.body;
 }
 
 /**
  * Retrieves a service account with the given parameters.
- *
  * @param projectId the id of the project where the service account will be created
  * @param serviceAccountName the name of the service account
  */
 export async function getServiceAccount(
   projectId: string,
-  serviceAccountName: string
+  serviceAccountName: string,
 ): Promise<ServiceAccount> {
+  const email = serviceAccountName.includes("@")
+    ? serviceAccountName
+    : `${serviceAccountName}@${projectId}.iam.gserviceaccount.com`;
   const response = await apiClient.get<ServiceAccount>(
-    `/projects/${projectId}/serviceAccounts/${serviceAccountName}@${projectId}.iam.gserviceaccount.com`
+    `/projects/${projectId}/serviceAccounts/${email}`,
   );
   return response.body;
 }
@@ -106,18 +117,18 @@ export async function getServiceAccount(
  */
 export async function createServiceAccountKey(
   projectId: string,
-  serviceAccountName: string
+  serviceAccountName: string,
 ): Promise<ServiceAccountKey> {
+  const email = serviceAccountName.includes("@")
+    ? serviceAccountName
+    : `${serviceAccountName}@${projectId}.iam.gserviceaccount.com`;
   const response = await apiClient.post<
     { keyAlgorithm: string; privateKeyType: string },
     ServiceAccountKey
-  >(
-    `/projects/${projectId}/serviceAccounts/${serviceAccountName}@${projectId}.iam.gserviceaccount.com/keys`,
-    {
-      keyAlgorithm: "KEY_ALG_UNSPECIFIED",
-      privateKeyType: "TYPE_GOOGLE_CREDENTIALS_FILE",
-    }
-  );
+  >(`/projects/${projectId}/serviceAccounts/${email}/keys`, {
+    keyAlgorithm: "KEY_ALG_UNSPECIFIED",
+    privateKeyType: "TYPE_GOOGLE_CREDENTIALS_FILE",
+  });
   return response.body;
 }
 
@@ -129,6 +140,19 @@ export async function deleteServiceAccount(projectId: string, accountEmail: stri
   await apiClient.delete(`/projects/${projectId}/serviceAccounts/${accountEmail}`, {
     resolveOnHTTPError: true,
   });
+}
+
+/**
+ * Lists every key for a given service account.
+ */
+export async function listServiceAccountKeys(
+  projectId: string,
+  serviceAccountName: string,
+): Promise<ServiceAccountKey[]> {
+  const response = await apiClient.get<{ keys: ServiceAccountKey[] }>(
+    `/projects/${projectId}/serviceAccounts/${serviceAccountName}@${projectId}.iam.gserviceaccount.com/keys`,
+  );
+  return response.body.keys;
 }
 
 /**
@@ -147,7 +171,6 @@ export async function getRole(role: string): Promise<Role> {
 
 /**
  * List permissions not held by an arbitrary resource implementing the IAM APIs.
- *
  * @param origin Resource origin e.g. `https:// iam.googleapis.com`.
  * @param apiVersion API version e.g. `v1`.
  * @param resourceName Resource name e.g. `projects/my-projct/widgets/abc`
@@ -158,25 +181,25 @@ export async function testResourceIamPermissions(
   apiVersion: string,
   resourceName: string,
   permissions: string[],
-  quotaUser = ""
+  quotaUser = "",
 ): Promise<TestIamResult> {
   const localClient = new Client({ urlPrefix: origin, apiVersion });
   if (process.env.FIREBASE_SKIP_INFORMATIONAL_IAM) {
     logger.debug(
       `[iam] skipping informational check of permissions ${JSON.stringify(
-        permissions
-      )} on resource ${resourceName}`
+        permissions,
+      )} on resource ${resourceName}`,
     );
     return { allowed: Array.from(permissions).sort(), missing: [], passed: true };
   }
   const headers: Record<string, string> = {};
   if (quotaUser) {
-    headers["x-goog-quota-user"] = quotaUser;
+    headers["x-goog-user-project"] = quotaUser;
   }
   const response = await localClient.post<{ permissions: string[] }, { permissions: string[] }>(
     `/${resourceName}:testIamPermissions`,
     { permissions },
-    { headers }
+    { headers },
   );
 
   const allowed = new Set(response.body.permissions || []);
@@ -199,13 +222,122 @@ export async function testResourceIamPermissions(
  */
 export async function testIamPermissions(
   projectId: string,
-  permissions: string[]
+  permissions: string[],
 ): Promise<TestIamResult> {
   return testResourceIamPermissions(
-    resourceManagerOrigin,
+    resourceManagerOrigin(),
     "v1",
     `projects/${projectId}`,
     permissions,
-    `projects/${projectId}`
+    `${projectId}`,
   );
+}
+
+/** Helper to merge all required bindings into the IAM policy, returns boolean if the policy has been updated */
+export function mergeBindings(policy: Policy, requiredBindings: Binding[]): boolean {
+  let updated = false;
+  for (const requiredBinding of requiredBindings) {
+    const match = policy.bindings.find((b) => b.role === requiredBinding.role);
+    if (!match) {
+      updated = true;
+      policy.bindings.push(requiredBinding);
+      continue;
+    }
+    for (const requiredMember of requiredBinding.members) {
+      if (!match.members.find((m) => m === requiredMember)) {
+        updated = true;
+        match.members.push(requiredMember);
+      }
+    }
+  }
+  return updated;
+}
+
+/** Utility to print the required binding commands */
+export function printManualIamConfig(
+  requiredBindings: Binding[],
+  projectId: string,
+  prefix: string,
+) {
+  utils.logLabeledBullet(
+    prefix,
+    "Failed to verify the project has the correct IAM bindings for a successful deployment.",
+    "warn",
+  );
+  utils.logLabeledBullet(
+    prefix,
+    "You can either re-run this command as a project owner or manually run the following set of `gcloud` commands:",
+    "warn",
+  );
+  for (const binding of requiredBindings) {
+    for (const member of binding.members) {
+      utils.logLabeledBullet(
+        prefix,
+        `\`gcloud projects add-iam-policy-binding ${projectId} ` +
+          `--member=${member} ` +
+          `--role=${binding.role}\``,
+        "warn",
+      );
+    }
+  }
+}
+
+/**
+ * Returns the human-readable title of an IAM role.
+ * Short-circuits using a local map of known roles for speed, and falls back to the GCP API.
+ */
+export async function getRoleName(role: string): Promise<string> {
+  const map: Record<string, string | undefined> = knownRoles;
+  const title = map[role];
+  if (title) {
+    return title;
+  }
+  try {
+    const roleDetails = await getRole(role);
+    return roleDetails.title || role;
+  } catch (err) {
+    return role;
+  }
+}
+
+/**
+ * Generates a unique managed service account name by appending a random number
+ * and checking against GCP until an unused name is found.
+ */
+export async function generateManagedServiceAccountName(
+  projectId: string,
+  prefix: string,
+): Promise<string> {
+  const maxAttempts = 10;
+  for (let i = 0; i < maxAttempts; i++) {
+    const randomSuffix = Math.floor(Math.random() * 10000000000)
+      .toString()
+      .padStart(10, "0");
+
+    const accountId = `${prefix}-${randomSuffix}`;
+    try {
+      await getServiceAccount(projectId, accountId);
+      // If it succeeds, the account exists, so try another
+    } catch (err) {
+      if (getErrStatus(err) === 404) {
+        return accountId;
+      }
+      throw err;
+    }
+    await utils.sleep(200);
+  }
+  throw new FirebaseError("Failed to generate a unique service account name after 10 attempts.");
+}
+
+/** Computes a deterministic base38 label etag from required roles, starting with [a-z]. */
+export function computeRolesEtag(roles: string[]): string {
+  const ALPHA_CHARS = "abcdefghijklmnopqrstuvwxyz";
+  const BASE38_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789-_";
+  const sorted = Array.from(new Set(roles)).sort();
+  const hashBuffer = crypto.createHash("sha256").update(sorted.join(",")).digest();
+  let hashStr = ALPHA_CHARS[hashBuffer[0] % ALPHA_CHARS.length];
+  for (let i = 1; i < hashBuffer.length; i++) {
+    hashStr += BASE38_CHARS[hashBuffer[i] % BASE38_CHARS.length];
+  }
+  return hashStr;
 }

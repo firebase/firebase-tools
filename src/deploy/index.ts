@@ -1,13 +1,14 @@
+import * as clc from "colorette";
 import { logger } from "../logger";
 import { hostingOrigin } from "../api";
 import { bold, underline, white } from "colorette";
-import { has, includes, each } from "lodash";
+import { includes, each } from "lodash";
 import { needProjectId } from "../projectUtils";
-import { logBullet, logSuccess, consoleUrl, addSubdomain } from "../utils";
+import { logBullet, logSuccess, consoleUrl, addSubdomain, isRunningInGithubAction } from "../utils";
 import { FirebaseError } from "../error";
-import { track } from "../track";
+import { AnalyticsParams, trackGA4 } from "../track";
 import { lifecycleHooks } from "./lifecycleHooks";
-import { previews } from "../previews";
+import * as experiments from "../experiments";
 import * as HostingTarget from "./hosting";
 import * as DatabaseTarget from "./database";
 import * as FirestoreTarget from "./firestore";
@@ -15,9 +16,102 @@ import * as FunctionsTarget from "./functions";
 import * as StorageTarget from "./storage";
 import * as RemoteConfigTarget from "./remoteconfig";
 import * as ExtensionsTarget from "./extensions";
+import * as DataConnectTarget from "./dataconnect";
+import * as AppHostingTarget from "./apphosting";
+import * as AuthTarget from "./auth";
+import * as AiLogicTarget from "./ailogic";
+import * as RunTarget from "./run";
+import { RUN_PERMISSIONS } from "./run/prereqs";
 import { prepareFrameworks } from "../frameworks";
+import { Context as HostingContext } from "./hosting/context";
+import { addPinnedFunctionsToOnlyString, hasPinnedFunctions } from "./hosting/prepare";
+import { requirePermissions } from "../requirePermissions";
+import { Options } from "../options";
+import { HostingConfig } from "../firebaseConfig";
+import {
+  Context as DataConnectContext,
+  DeployStats,
+  deployStatsParams,
+} from "./dataconnect/context";
 
-const TARGETS = {
+export const VALID_DEPLOY_TARGETS = [
+  "database",
+  "storage",
+  "firestore",
+  "functions",
+  "hosting",
+  "remoteconfig",
+  "extensions",
+  "dataconnect",
+  "apphosting",
+  "auth",
+  "ailogic",
+  "run",
+] as const;
+
+export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], string[]> = {
+  database: ["firebasedatabase.instances.update"],
+  hosting: ["firebasehosting.sites.update"],
+  functions: [
+    "cloudfunctions.functions.list",
+    "cloudfunctions.functions.create",
+    "cloudfunctions.functions.get",
+    "cloudfunctions.functions.update",
+    "cloudfunctions.functions.delete",
+    "cloudfunctions.operations.get",
+  ],
+  firestore: [
+    "datastore.indexes.list",
+    "datastore.indexes.create",
+    "datastore.indexes.update",
+    "datastore.indexes.delete",
+  ],
+  storage: [
+    "firebaserules.releases.create",
+    "firebaserules.rulesets.create",
+    "firebaserules.releases.update",
+  ],
+  remoteconfig: ["cloudconfig.configs.get", "cloudconfig.configs.update"],
+  dataconnect: [
+    "cloudsql.databases.create",
+    "cloudsql.databases.update",
+    "cloudsql.instances.connect",
+    "cloudsql.instances.create", // TODO: Support users who don't have cSQL writer permissions and want to use existing instances
+    "cloudsql.instances.get",
+    "cloudsql.instances.list",
+    "cloudsql.instances.update",
+    "cloudsql.users.create",
+    "firebasedataconnect.connectors.create",
+    "firebasedataconnect.connectors.delete",
+    "firebasedataconnect.connectors.list",
+    "firebasedataconnect.connectors.update",
+    "firebasedataconnect.operations.get",
+    "firebasedataconnect.services.create",
+    "firebasedataconnect.services.delete",
+    "firebasedataconnect.services.update",
+    "firebasedataconnect.services.list",
+    "firebasedataconnect.schemas.create",
+    "firebasedataconnect.schemas.delete",
+    "firebasedataconnect.schemas.list",
+    "firebasedataconnect.schemas.update",
+  ],
+  apphosting: [],
+  extensions: [],
+  auth: ["firebase.projects.update", "firebaseauth.configs.update"],
+  ailogic: [
+    // Deploy reads the remote state (get), creates/updates (update), and deletes
+    // templates whose files were removed; preflight all three so a partial
+    // deploy cannot start with permissions that only cover part of the plan.
+    "firebasevertexai.templates.update",
+    "firebasevertexai.templates.get",
+    "firebasevertexai.templates.delete",
+    // ensureAILogicApiEnabled reads API enablement state via Service Usage.
+    "serviceusage.services.get",
+  ],
+  run: RUN_PERMISSIONS,
+};
+
+export const TARGETS = {
   hosting: HostingTarget,
   database: DatabaseTarget,
   firestore: FirestoreTarget,
@@ -25,7 +119,14 @@ const TARGETS = {
   storage: StorageTarget,
   remoteconfig: RemoteConfigTarget,
   extensions: ExtensionsTarget,
+  dataconnect: DataConnectTarget,
+  apphosting: AppHostingTarget,
+  auth: AuthTarget,
+  ailogic: AiLogicTarget,
+  run: RunTarget,
 };
+
+export type DeployOptions = Options & { dryRun?: boolean };
 
 type Chain = ((context: any, options: any, payload: any) => Promise<unknown>)[];
 
@@ -35,6 +136,34 @@ const chain = async function (fns: Chain, context: any, options: any, payload: a
   }
 };
 
+export const isDeployingWebFramework = (options: DeployOptions): boolean => {
+  const config = options.config.get("hosting") as HostingConfig;
+  if (!config) return false;
+
+  const normalizedConfig = Array.isArray(config) ? config : [config];
+  const webFrameworksInConfig = normalizedConfig.filter((c) => c?.source);
+
+  // If no webframeworks are in config, a web framework is not being deployed
+  if (webFrameworksInConfig.length === 0) return false;
+
+  // If a web framework is present in config and no --only flag is present, a web framework is being deployed
+  if (!options.only) return true;
+
+  // If we're deploying a specific site/target when a web framework is present in config, check if the target is a web framework
+  return options.only.split(",").some((it) => {
+    const [target, site] = it.split(":");
+
+    // If not deploying to Firebase Hosting, skip
+    if (target !== "hosting") return false;
+
+    // If no site specified but we're deploying to Firebase Hosting, a webframework is being deployed
+    if (!site) return true;
+
+    // If a site is specified, check if it's a web framework
+    return webFrameworksInConfig.some((c) => [c.site, c.target].includes(site));
+  });
+};
+
 /**
  * The `deploy()` function runs through a three step deploy process for a listed
  * number of deploy targets. This allows deploys to be done all together or
@@ -42,13 +171,13 @@ const chain = async function (fns: Chain, context: any, options: any, payload: a
  */
 export const deploy = async function (
   targetNames: (keyof typeof TARGETS)[],
-  options: any,
-  customContext = {}
+  options: DeployOptions,
+  customContext = {},
 ) {
   const projectId = needProjectId(options);
   const payload = {};
   // a shared context object for deploy targets to decorate as needed
-  const context: any = Object.assign({ projectId }, customContext);
+  const context: HostingContext & DataConnectContext = Object.assign({ projectId }, customContext);
   const predeploys: Chain = [];
   const prepares: Chain = [];
   const deploys: Chain = [];
@@ -56,11 +185,32 @@ export const deploy = async function (
   const postdeploys: Chain = [];
   const startTime = Date.now();
 
-  if (previews.frameworkawareness && targetNames.includes("hosting")) {
-    const config = options.config.get("hosting");
-    if (Array.isArray(config) ? config.some((it) => it.source) : config.source) {
-      await prepareFrameworks(targetNames, context, options);
+  if (targetNames.includes("hosting") && isDeployingWebFramework(options)) {
+    experiments.assertEnabled("webframeworks", "deploy a web framework from source");
+    await prepareFrameworks("deploy", targetNames, context, options);
+  }
+
+  if (targetNames.includes("hosting") && hasPinnedFunctions(options)) {
+    experiments.assertEnabled("pintags", "deploy a tagged function as a hosting rewrite");
+    if (!targetNames.includes("functions")) {
+      targetNames.unshift("functions");
+      try {
+        await requirePermissions(options, TARGET_PERMISSIONS["functions"]);
+      } catch (e) {
+        if (isRunningInGithubAction()) {
+          throw new FirebaseError(
+            "It looks like you are deploying a Hosting site along with Cloud Functions " +
+              "using a GitHub action version that did not include Cloud Functions " +
+              "permissions. Please reinstall the GitHub action with" +
+              clc.bold("firebase init hosting:github"),
+            { original: e as Error },
+          );
+        } else {
+          throw e;
+        }
+      }
     }
+    await addPinnedFunctionsToOnlyString(context, options);
   }
 
   for (const targetName of targetNames) {
@@ -72,9 +222,11 @@ export const deploy = async function (
 
     predeploys.push(lifecycleHooks(targetName, "predeploy"));
     prepares.push(target.prepare);
-    deploys.push(target.deploy);
-    releases.push(target.release);
-    postdeploys.push(lifecycleHooks(targetName, "postdeploy"));
+    if (!options.dryRun) {
+      deploys.push(target.deploy);
+      releases.push(target.release);
+      postdeploys.push(lifecycleHooks(targetName, "postdeploy"));
+    }
   }
 
   logger.info();
@@ -83,31 +235,55 @@ export const deploy = async function (
 
   logBullet("deploying " + bold(targetNames.join(", ")));
 
-  await chain(predeploys, context, options, payload);
-  await chain(prepares, context, options, payload);
-  await chain(deploys, context, options, payload);
-  await chain(releases, context, options, payload);
-  await chain(postdeploys, context, options, payload);
+  let result = "predeploys_error";
+  try {
+    await chain(predeploys, context, options, payload);
+    result = "prepares_error";
+    await chain(prepares, context, options, payload);
+    result = "deploys_error";
+    await chain(deploys, context, options, payload);
+    result = "releases_error";
+    await chain(releases, context, options, payload);
+    result = "postdeploys_error";
+    await chain(postdeploys, context, options, payload);
+    result = "success";
+  } finally {
+    const baseParams: AnalyticsParams = {
+      interactive: options.nonInteractive ? "false" : "true",
+      dry_run: options.dryRun ? "true" : "false",
+      result: result,
+    };
+    const duration = Date.now() - startTime;
+    const params = Object.assign({}, baseParams);
+    Object.keys(TARGETS).reduce((accum, t) => {
+      accum[t] = "false";
+      return accum;
+    }, params);
+    for (const t of targetNames) {
+      params[t] = "true";
+    }
+    void trackGA4("product_deploy", params, duration);
 
-  if (has(options, "config.notes.databaseRules")) {
-    await track("Rules Deploy", options.config.notes.databaseRules);
+    const stats: DeployStats | undefined = context?.dataconnect?.deployStats;
+    if (stats) {
+      const fdcParams = deployStatsParams(stats);
+      void trackGA4("dataconnect_deploy", { ...fdcParams, ...baseParams }, duration);
+    }
   }
 
-  const duration = Date.now() - startTime;
-  await track("Product Deploy", [...targetNames].sort().join(","), duration);
-
+  const successMessage = options.dryRun ? "Dry run complete!" : "Deploy complete!";
   logger.info();
-  logSuccess(bold(underline("Deploy complete!")));
+  logSuccess(bold(underline(successMessage)));
   logger.info();
 
   const deployedHosting = includes(targetNames, "hosting");
-  logger.info(bold("Project Console:"), consoleUrl(options.project, "/overview"));
+  logger.info(bold("Project Console:"), consoleUrl(options.project ?? "_", "/overview"));
   if (deployedHosting) {
-    each(context.hosting.deploys, (deploy) => {
-      logger.info(bold("Hosting URL:"), addSubdomain(hostingOrigin, deploy.site));
+    each(context.hosting?.deploys, (deploy) => {
+      logger.info(bold("Hosting URL:"), addSubdomain(hostingOrigin(), deploy.config.site));
     });
-    const versionNames = context.hosting.deploys.map((deploy: any) => deploy.version);
-    return { hosting: versionNames.length === 1 ? versionNames[0] : versionNames };
+    const versionNames = context.hosting?.deploys.map((deploy: any) => deploy.version);
+    return { hosting: versionNames?.length === 1 ? versionNames[0] : versionNames };
   } else {
     return { hosting: undefined };
   }

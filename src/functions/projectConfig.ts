@@ -1,8 +1,46 @@
-import { FunctionsConfig, FunctionConfig } from "../firebaseConfig";
+import { FunctionsConfig, FunctionConfig, KitSourcePackage } from "../firebaseConfig";
 import { FirebaseError } from "../error";
+import type { ActiveRuntime } from "../deploy/functions/runtimes/supported/types";
+import * as experiments from "../experiments";
 
 export type NormalizedConfig = [FunctionConfig, ...FunctionConfig[]];
-export type ValidatedSingle = FunctionConfig & { source: string; codebase: string };
+// Stronger validated variants: local vs remote vs kit.
+type FunctionConfigCommon = Omit<
+  FunctionConfig,
+  "source" | "remoteSource" | "codebase" | "runtime" | "kit" | "sourcePackage" | "instances"
+>;
+
+export type ValidatedLocalSingle = FunctionConfigCommon & {
+  source: string;
+  codebase: string;
+  // runtime optional for local (auto-detected if not provided)
+  runtime?: ActiveRuntime;
+  remoteSource?: never;
+  disallowLegacyRuntimeConfig?: boolean;
+  kit?: never;
+};
+
+export type ValidatedRemoteSingle = FunctionConfigCommon & {
+  remoteSource: { repository: string; ref: string; dir?: string };
+  // runtime required for remote
+  runtime: ActiveRuntime;
+  codebase: string;
+  source?: never;
+  kit?: never;
+};
+
+export type ValidatedKitSingle = FunctionConfigCommon & {
+  kit: string;
+  sourcePackage?: KitSourcePackage;
+  source: string;
+  instances: Record<string, string>;
+  codebase?: never;
+  runtime?: ActiveRuntime;
+  remoteSource?: never;
+  prefix?: never;
+};
+
+export type ValidatedSingle = ValidatedLocalSingle | ValidatedRemoteSingle | ValidatedKitSingle;
 export type ValidatedConfig = [ValidatedSingle, ...ValidatedSingle[]];
 
 export const DEFAULT_CODEBASE = "default";
@@ -25,33 +63,246 @@ export function normalize(config?: FunctionsConfig): NormalizedConfig {
   return [config];
 }
 
-function validateSingle(config: FunctionConfig): ValidatedSingle {
-  if (!config.source) {
-    throw new FirebaseError("functions.source must be specified");
-  }
-  if (!config.codebase) {
-    config.codebase = DEFAULT_CODEBASE;
-  }
-  if (config.codebase.length > 63 || !/^[a-z0-9_-]+$/.test(config.codebase)) {
+/**
+ * Check that the codebase name is less than 64 characters and only contains allowed characters.
+ */
+export function validateCodebase(codebase: string): void {
+  if (codebase.length === 0 || codebase.length > 63 || !/^[a-z0-9_-]+$/.test(codebase)) {
     throw new FirebaseError(
-      "Invalid codebase name. Codebase must be less than 63 characters and " +
-        "can contain only lowercase letters, numeric characters, underscores, and dashes."
+      "Invalid codebase name. Codebase must be less than 64 characters and " +
+        "can contain only lowercase letters, numeric characters, underscores, and dashes.",
+    );
+  }
+}
+
+/**
+ * Check that the kit name is 40 characters or less and only contains allowed characters.
+ */
+export function validateKit(kit: string): void {
+  if (kit.length === 0 || kit.length > 40 || !/^[a-z0-9_-]+$/.test(kit)) {
+    throw new FirebaseError(
+      "Invalid kit name. Kit name must be 40 characters or less and " +
+        "can contain only lowercase letters, numeric characters, underscores, and dashes.",
+    );
+  }
+}
+
+/**
+ * Check that the prefix contains only allowed characters.
+ */
+export function validatePrefix(prefix: string): void {
+  if (prefix.length > 30) {
+    throw new FirebaseError("Invalid prefix. Prefix must be 30 characters or less.");
+  }
+  // Must start with a letter so that the resulting function id also starts with a letter.
+  if (!/^[a-z](?:[a-z0-9-]*[a-z0-9])?$/.test(prefix)) {
+    throw new FirebaseError(
+      "Invalid prefix. Prefix must start with a lowercase letter, can contain only lowercase letters, numeric characters, and dashes, and cannot start or end with a dash.",
+    );
+  }
+}
+
+function validateSingle(config: FunctionConfig): ValidatedSingle {
+  if ("kit" in config) {
+    experiments.assertEnabled("kits", "use functions kits");
+    if (!config.kit) {
+      throw new FirebaseError("Must specify 'kit' name in a functions kit config.");
+    }
+    validateKit(config.kit);
+    if (config.codebase) {
+      throw new FirebaseError(
+        "Cannot specify both 'kit' and 'codebase' in a single functions config.",
+      );
+    }
+    if (config.remoteSource) {
+      throw new FirebaseError(
+        "Cannot specify both 'kit' and 'remoteSource' in a single functions config.",
+      );
+    }
+    if (config.prefix) {
+      throw new FirebaseError("Cannot specify 'prefix' in a functions kit config.");
+    }
+    if (!config.source) {
+      throw new FirebaseError("Must specify 'source' in a functions kit config.");
+    }
+    if (
+      !config.instances ||
+      typeof config.instances !== "object" ||
+      Array.isArray(config.instances)
+    ) {
+      throw new FirebaseError(
+        "Must specify 'instances' as an object mapping instance IDs to configuration paths in a functions kit config.",
+      );
+    }
+    return config as ValidatedKitSingle;
+  }
+
+  const { source, remoteSource, runtime, codebase: providedCodebase, ...rest } = config;
+
+  // Exactly one of source or remoteSource must be specified
+  if (source && remoteSource) {
+    throw new FirebaseError(
+      "Cannot specify both 'source' and 'remoteSource' in a single functions config. Please choose one.",
+    );
+  }
+  if (!source && !remoteSource) {
+    throw new FirebaseError(
+      "codebase source must be specified. Must specify either 'source' or 'remoteSource' in a functions config.",
     );
   }
 
-  return { ...config, source: config.source, codebase: config.codebase };
-}
-
-function assertUnique(config: ValidatedConfig, property: keyof ValidatedSingle) {
-  const values = new Set();
-  for (const single of config) {
-    const value = single[property];
-    if (values.has(value)) {
+  const codebase = providedCodebase ?? DEFAULT_CODEBASE;
+  validateCodebase(codebase);
+  if (config.prefix) {
+    validatePrefix(config.prefix);
+  }
+  const commonConfig = { codebase, ...rest };
+  if (source) {
+    return {
+      ...commonConfig,
+      source,
+      ...(runtime ? { runtime } : {}),
+    } as ValidatedLocalSingle;
+  } else if (remoteSource) {
+    if (!remoteSource.repository || !remoteSource.ref) {
+      throw new FirebaseError("remoteSource requires 'repository' and 'ref' to be specified.");
+    }
+    if (!runtime) {
+      // TODO: Once functions.yaml can provide a runtime, relax this requirement.
       throw new FirebaseError(
-        `functions.${property} must be unique but '${value}' was used more than once.`
+        "functions.runtime is required when using remoteSource in firebase.json.",
       );
     }
-    values.add(value);
+    return {
+      ...commonConfig,
+      remoteSource,
+      runtime,
+    } as ValidatedRemoteSingle;
+  }
+
+  // Unreachable due to XOR guard
+  throw new FirebaseError("Invalid functions config.");
+}
+
+/**
+ * Check that the property is unique in the given config.
+ */
+export function assertUnique(
+  config: ValidatedConfig,
+  property: keyof ValidatedSingle,
+  propval?: string,
+): void {
+  const values = new Set();
+  if (propval) {
+    values.add(propval);
+  }
+  for (const single of config) {
+    const value = single[property];
+    if (value !== undefined) {
+      if (values.has(value)) {
+        throw new FirebaseError(
+          `functions.${String(property)} must be unique but '${String(value)}' was used more than once.`,
+        );
+      }
+      values.add(value);
+    }
+  }
+}
+
+function assertUniqueSourcePrefixPair(config: ValidatedConfig): void {
+  const sourcePrefixPairs = new Set<string>();
+  for (const c of config) {
+    let sourceIdentifier: string;
+    let sourceDescription: string;
+    if (c.source) {
+      sourceIdentifier = c.source;
+      sourceDescription = `source directory ('${c.source}')`;
+    } else if (c.remoteSource) {
+      sourceIdentifier = `remote:${c.remoteSource.repository}#${c.remoteSource.ref}@dir:${
+        c.remoteSource.dir || "."
+      }`;
+      sourceDescription = `remote source ('${c.remoteSource.repository}')`;
+    } else {
+      // This case should be prevented by `validateSingle`.
+      continue;
+    }
+
+    const prefixes = isKitConfig(c)
+      ? Object.keys(c.instances).map((instanceId) => addKitPrefix(instanceId))
+      : [c.prefix || ""];
+
+    for (const prefix of prefixes) {
+      const key = JSON.stringify({ source: sourceIdentifier, prefix });
+      if (sourcePrefixPairs.has(key)) {
+        throw new FirebaseError(
+          `More than one functions config specifies the same ${sourceDescription} and prefix ('${prefix}'). Please use kits with a unique instance ID to resolve this conflict.`,
+        );
+      }
+      sourcePrefixPairs.add(key);
+    }
+  }
+}
+
+/**
+ * Check that the kit instance ID is 40 characters or less and only contains allowed characters.
+ */
+export function validateKitInstanceId(instanceId: string): void {
+  if (
+    instanceId.length === 0 ||
+    instanceId.length > 40 ||
+    !/^[a-z0-9_](?:[a-z0-9_-]*[a-z0-9_])?$/.test(instanceId)
+  ) {
+    throw new FirebaseError(
+      `Invalid kit instance ID '${instanceId}'. Instance ID must be 40 characters or less, ` +
+        "can contain only lowercase letters, numeric characters, underscores, and dashes, and cannot start or end with a dash.",
+    );
+  }
+}
+
+/**
+ * Validate each instance ID format and ensure instance IDs are unique across all kit stanzas in the project.
+ * Adds each validated instance ID to `allProjectInstanceIds`.
+ * @param instanceIds An iterable collection of instance IDs to validate.
+ * @param allProjectInstanceIds The set of all instance IDs across the project to check against and update.
+ */
+export function validateAndAddKitInstances(
+  instanceIds: Iterable<string>,
+  allProjectInstanceIds: Set<string>,
+): void {
+  const seenInBatch = new Set<string>();
+  for (const instanceId of instanceIds) {
+    validateKitInstanceId(instanceId);
+    if (seenInBatch.has(instanceId) || allProjectInstanceIds.has(instanceId)) {
+      throw new FirebaseError(
+        `functions kit instance ID must be unique across all kits, but '${instanceId}' was used more than once.`,
+      );
+    }
+    seenInBatch.add(instanceId);
+  }
+  for (const instanceId of seenInBatch) {
+    allProjectInstanceIds.add(instanceId);
+  }
+}
+
+function assertUniqueKitInstancesAndCodebases(config: ValidatedConfig): void {
+  const codebases = new Set<string>();
+  const instanceIds = new Set<string>();
+
+  for (const c of config) {
+    if ("codebase" in c && c.codebase) {
+      codebases.add(c.codebase);
+    }
+    if ("instances" in c && c.instances) {
+      validateAndAddKitInstances(Object.keys(c.instances), instanceIds);
+    }
+  }
+
+  for (const instanceId of instanceIds) {
+    if (codebases.has(instanceId)) {
+      throw new FirebaseError(
+        `functions codebase name and kit instance ID must be mutually exclusive, but '${instanceId}' was used as both a codebase name and a kit instance ID.`,
+      );
+    }
   }
 }
 
@@ -60,8 +311,10 @@ function assertUnique(config: ValidatedConfig, property: keyof ValidatedSingle) 
  */
 export function validate(config: NormalizedConfig): ValidatedConfig {
   const validated = config.map((cfg) => validateSingle(cfg)) as ValidatedConfig;
-  assertUnique(validated, "source");
   assertUnique(validated, "codebase");
+  assertUnique(validated, "kit");
+  assertUniqueKitInstancesAndCodebases(validated);
+  assertUniqueSourcePrefixPair(validated);
   return validated;
 }
 
@@ -75,12 +328,98 @@ export function normalizeAndValidate(config?: FunctionsConfig): ValidatedConfig 
 }
 
 /**
- * Return functions config for given codebase.
+ * Return functions config for given codebase or kit instance.
  */
-export function configForCodebase(config: ValidatedConfig, codebase: string): ValidatedSingle {
-  const codebaseCfg = config.find((c) => c.codebase === codebase);
+export function configForCodebase(
+  config: ValidatedConfig,
+  codebaseOrInstance: string,
+): ValidatedSingle {
+  const codebaseCfg = config.find((c) => {
+    if (isKitConfig(c)) {
+      return c.instances && codebaseOrInstance in c.instances;
+    }
+    return c.codebase === codebaseOrInstance;
+  });
   if (!codebaseCfg) {
-    throw new FirebaseError(`No functions config found for codebase ${codebase}`);
+    throw new FirebaseError(
+      `No functions config found for codebase or kit instance ${codebaseOrInstance}`,
+    );
   }
   return codebaseCfg;
+}
+
+/** Returns true if the codebase uses a local source. */
+export function isLocalConfig(c: ValidatedSingle): c is ValidatedLocalSingle {
+  return "source" in c && !("kit" in c);
+}
+
+/** Returns true if the codebase uses a remote source. */
+export function isRemoteConfig(c: ValidatedSingle): c is ValidatedRemoteSingle {
+  return "remoteSource" in c;
+}
+
+/** Returns true if the config uses a functions kit. */
+export function isKitConfig(c: ValidatedSingle): c is ValidatedKitSingle {
+  return "kit" in c;
+}
+
+/** Prefix added to function names for Functions Kit instances. */
+export const KIT_PREFIX = "kit-";
+
+/** Format the function prefix for a kit instance. */
+export function addKitPrefix(instanceId: string): string {
+  return `${KIT_PREFIX}${instanceId}`;
+}
+
+/**
+ * Require a local functions config. Throws a FirebaseError if the config is remote.
+ * @param c The validated functions config entry.
+ * @param purpose Optional message to use in the error.
+ */
+export function requireLocal(c: ValidatedKitSingle, purpose?: string): ValidatedKitSingle;
+export function requireLocal(
+  c: ValidatedLocalSingle | ValidatedRemoteSingle,
+  purpose?: string,
+): ValidatedLocalSingle;
+export function requireLocal(
+  c: ValidatedSingle,
+  purpose?: string,
+): ValidatedLocalSingle | ValidatedKitSingle;
+export function requireLocal(
+  c: ValidatedSingle,
+  purpose?: string,
+): ValidatedLocalSingle | ValidatedKitSingle {
+  if (isRemoteConfig(c)) {
+    const msg =
+      purpose ??
+      "This operation requires a local functions source directory, but the codebase is configured with a remote source.";
+    throw new FirebaseError(msg);
+  }
+  return c;
+}
+
+/**
+ * Resolve the directory used for .env files.
+ * - Kit: returns `instances[instanceId]` if instanceId provided and present, otherwise `undefined`.
+ * - Local: returns `configDir` if set, otherwise `source`.
+ * - Remote: returns `configDir` if set, otherwise `undefined`.
+ */
+export function resolveConfigDir(c: ValidatedSingle, instanceId?: string): string | undefined {
+  if (isKitConfig(c)) {
+    return instanceId ? c.instances[instanceId] : undefined;
+  }
+  return c.configDir || (isLocalConfig(c) ? c.source : undefined);
+}
+
+/**
+ * Determines if a codebase should use runtime config.
+ *
+ * Only local sources that haven't opted out via disallowLegacyRuntimeConfig use runtime config.
+ * Remote sources never use runtime config.
+ *
+ * @param cfg The codebase configuration to check
+ * @returns true if this codebase should use runtime config, false otherwise
+ */
+export function shouldUseRuntimeConfig(cfg: ValidatedSingle): boolean {
+  return isLocalConfig(cfg) && cfg.disallowLegacyRuntimeConfig !== true;
 }

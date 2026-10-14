@@ -13,7 +13,7 @@ export interface RulesInstanceConfig {
  */
 export function normalizeRulesConfig(
   rulesConfig: RulesInstanceConfig[],
-  options: Options
+  options: Options,
 ): RulesInstanceConfig[] {
   const config = options.config;
   return rulesConfig.map((rc) => {
@@ -85,7 +85,7 @@ export function getRulesConfig(projectId: string, options: Options): RulesInstan
     throw new FirebaseError(
       `Could not find configurations in firebase.json for the following database targets: ${[
         ...onlyDatabases,
-      ].join(", ")}`
+      ].join(", ")}`,
     );
   }
 

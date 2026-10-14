@@ -1,6 +1,6 @@
 import * as os from "os";
 import * as path from "path";
-import * as uuid from "uuid";
+import { randomUUID } from "crypto";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
@@ -48,11 +48,11 @@ export const command = new Command("crashlytics:symbols:upload <symbolFiles...>"
       generator,
       cachePath: path.join(
         SYMBOL_CACHE_ROOT_DIR,
-        `crashlytics-${uuid.v4()}`,
+        `crashlytics-${randomUUID()}`,
         "nativeSymbols",
         // Windows does not allow ":" in their directory names
         app.replace(/:/g, "-"),
-        generator
+        generator,
       ),
       symbolFile: "",
       generate: true,
@@ -80,7 +80,7 @@ export const command = new Command("crashlytics:symbols:upload <symbolFiles...>"
 function getGoogleAppID(options: CommandOptions): string {
   if (!options.app) {
     throw new FirebaseError(
-      "set --app <appId> to a valid Firebase application id, e.g. 1:00000000:android:0000000"
+      "set --app <appId> to a valid Firebase application id, e.g. 1:00000000:android:0000000",
     );
   }
   return options.app;

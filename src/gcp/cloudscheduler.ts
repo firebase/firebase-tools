@@ -4,10 +4,14 @@ import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { cloudschedulerOrigin } from "../api";
 import { Client } from "../apiv2";
+import { assertExhaustive, nullsafeVisitor } from "../functional";
+import {
+  DEFAULT_V2_SCHEDULE_ATTEMPT_DEADLINE_SECONDS,
+  MAX_V2_SCHEDULE_ATTEMPT_DEADLINE_SECONDS,
+} from "../deploy/functions/validate";
 import * as backend from "../deploy/functions/backend";
 import * as proto from "./proto";
-import { getDefaultComputeServiceAgent } from "../deploy/functions/checkIam";
-import { assertExhaustive, nullsafeVisitor } from "../functional";
+import * as gce from "../gcp/computeEngine";
 
 const VERSION = "v1";
 const DEFAULT_TIME_ZONE_V1 = "America/Los_Angeles";
@@ -55,6 +59,7 @@ export interface Job {
   schedule: string;
   description?: string;
   timeZone?: string | null;
+  attemptDeadline?: string | null;
 
   // oneof target
   httpTarget?: HttpTarget;
@@ -70,7 +75,7 @@ export interface Job {
   };
 }
 
-const apiClient = new Client({ urlPrefix: cloudschedulerOrigin, apiVersion: VERSION });
+const apiClient = new Client({ urlPrefix: cloudschedulerOrigin(), apiVersion: VERSION });
 
 /**
  * Creates a cloudScheduler job.
@@ -156,7 +161,7 @@ export async function createOrReplaceJob(job: Job): Promise<any> {
       if (err?.context?.response?.statusCode === 404) {
         throw new FirebaseError(
           `Cloud resource location is not set for this project but scheduled functions require it. ` +
-            `Please see this documentation for more details: https://firebase.google.com/docs/projects/locations.`
+            `Please see this documentation for more details: https://firebase.google.com/docs/projects/locations.`,
         );
       }
       throw new FirebaseError(`Failed to create scheduler job ${job.name}: ${err.message}`);
@@ -195,6 +200,9 @@ function needUpdate(existingJob: Job, newJob: Job): boolean {
   if (existingJob.timeZone !== newJob.timeZone) {
     return true;
   }
+  if (existingJob.attemptDeadline !== newJob.attemptDeadline) {
+    return true;
+  }
   if (newJob.retryConfig) {
     if (!existingJob.retryConfig) {
       return true;
@@ -209,7 +217,7 @@ function needUpdate(existingJob: Job, newJob: Job): boolean {
 /** The name of the Cloud Scheduler job we will use for this endpoint. */
 export function jobNameForEndpoint(
   endpoint: backend.Endpoint & backend.ScheduleTriggered,
-  location: string
+  location: string,
 ): string {
   const id = backend.scheduleIdForFunction(endpoint);
   return `projects/${endpoint.project}/locations/${location}/jobs/${id}`;
@@ -217,18 +225,18 @@ export function jobNameForEndpoint(
 
 /** The name of the pubsub topic that the Cloud Scheduler job will use for this endpoint. */
 export function topicNameForEndpoint(
-  endpoint: backend.Endpoint & backend.ScheduleTriggered
+  endpoint: backend.Endpoint & backend.ScheduleTriggered,
 ): string {
   const id = backend.scheduleIdForFunction(endpoint);
   return `projects/${endpoint.project}/topics/${id}`;
 }
 
 /** Converts an Endpoint to a CloudScheduler v1 job */
-export function jobFromEndpoint(
+export async function jobFromEndpoint(
   endpoint: backend.Endpoint & backend.ScheduleTriggered,
   location: string,
-  projectNumber: string
-): Job {
+  projectNumber: string,
+): Promise<Job> {
   const job: Partial<Job> = {};
   job.name = jobNameForEndpoint(endpoint, location);
   if (endpoint.platform === "gcfv1") {
@@ -239,15 +247,14 @@ export function jobFromEndpoint(
         scheduled: "true",
       },
     };
-  } else if (endpoint.platform === "gcfv2") {
+  } else if (endpoint.platform === "gcfv2" || endpoint.platform === "run") {
     job.timeZone = endpoint.scheduleTrigger.timeZone || DEFAULT_TIME_ZONE_V2;
     job.httpTarget = {
       uri: endpoint.uri!,
       httpMethod: "POST",
       oidcToken: {
-        // TODO(colerogers): revisit adding 'invoker' to the container contract
-        // for schedule functions and use as the odic token service account.
-        serviceAccountEmail: getDefaultComputeServiceAgent(projectNumber),
+        serviceAccountEmail:
+          endpoint.serviceAccount ?? (await gce.getDefaultServiceAccount(projectNumber)),
       },
     };
   } else {
@@ -255,38 +262,55 @@ export function jobFromEndpoint(
   }
   if (!endpoint.scheduleTrigger.schedule) {
     throw new FirebaseError(
-      "Cannot create a scheduler job without a schedule:" + JSON.stringify(endpoint)
+      "Cannot create a scheduler job without a schedule:" + JSON.stringify(endpoint),
     );
   }
   job.schedule = endpoint.scheduleTrigger.schedule;
+  if (endpoint.platform === "gcfv2" || endpoint.platform === "run") {
+    proto.convertIfPresent(job, endpoint, "attemptDeadline", "timeoutSeconds", (timeout) => {
+      if (timeout === null) {
+        return null;
+      }
+      // Cloud Scheduler has an attempt deadline range of [15s, 1800s], and defaults to 180s.
+      // We floor at 180s to be safe, even if the function timeout is shorter.
+      // This is because GCF/Cloud Run will already terminate the function at its configured timeout,
+      // so Cloud Scheduler won't actually wait the full 180s unless GCF itself fails to respond.
+      // Setting it shorter than 180s might cause premature retries due to network latency.
+      const attemptDeadlineSeconds = Math.max(
+        Math.min(timeout, MAX_V2_SCHEDULE_ATTEMPT_DEADLINE_SECONDS),
+        DEFAULT_V2_SCHEDULE_ATTEMPT_DEADLINE_SECONDS,
+      );
+      return proto.durationFromSeconds(attemptDeadlineSeconds);
+    });
+  }
   if (endpoint.scheduleTrigger.retryConfig) {
     job.retryConfig = {};
     proto.copyIfPresent(
       job.retryConfig,
       endpoint.scheduleTrigger.retryConfig,
       "maxDoublings",
-      "retryCount"
+      "retryCount",
     );
     proto.convertIfPresent(
       job.retryConfig,
       endpoint.scheduleTrigger.retryConfig,
       "maxBackoffDuration",
       "maxBackoffSeconds",
-      nullsafeVisitor(proto.durationFromSeconds)
+      nullsafeVisitor(proto.durationFromSeconds),
     );
     proto.convertIfPresent(
       job.retryConfig,
       endpoint.scheduleTrigger.retryConfig,
       "minBackoffDuration",
       "minBackoffSeconds",
-      nullsafeVisitor(proto.durationFromSeconds)
+      nullsafeVisitor(proto.durationFromSeconds),
     );
     proto.convertIfPresent(
       job.retryConfig,
       endpoint.scheduleTrigger.retryConfig,
       "maxRetryDuration",
       "maxRetrySeconds",
-      nullsafeVisitor(proto.durationFromSeconds)
+      nullsafeVisitor(proto.durationFromSeconds),
     );
     // If no retry configuration exists, delete the key to preserve existing retry config.
     if (!Object.keys(job.retryConfig).length) {

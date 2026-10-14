@@ -20,10 +20,17 @@ module.exports = {
     "require-atomic-updates": "off", // This rule is so noisy and isn't useful: https://github.com/eslint/eslint/issues/11899
     "require-jsdoc": "off", // This rule is deprecated and superseded by jsdoc/require-jsdoc.
     "valid-jsdoc": "off", // This is deprecated but included in recommended configs.
-
-    "no-prototype-builtins": "warn", // TODO(bkendall): remove, allow to error.
+    "brikke/no-undeclared-imports": [
+      "error",
+      {
+        excludedFilePatterns: ["**/scripts/**/*", `update-notifier-cjs.d.ts`],
+        excludedModules: [
+          /node:/,
+          "express-serve-static-core", // We rely on just the types, and the package breaks our build.
+        ],
+      },
+    ],
     "no-useless-escape": "warn", // TODO(bkendall): remove, allow to error.
-    "prefer-promise-reject-errors": "warn", // TODO(bkendall): remove, allow to error.
   },
   overrides: [
     {
@@ -38,12 +45,12 @@ module.exports = {
 
         "@typescript-eslint/no-invalid-this": "error",
         "@typescript-eslint/no-unused-vars": "error", // Unused vars should not exist.
+        "@typescript-eslint/require-await": "off", // sometimes async functions don't do await stuff for valid reasons.
         "no-invalid-this": "off", // Turned off in favor of @typescript-eslint/no-invalid-this.
         "no-unused-vars": "off", // Off in favor of @typescript-eslint/no-unused-vars.
         eqeqeq: ["error", "always", { null: "ignore" }],
         camelcase: ["error", { properties: "never" }], // snake_case allowed in properties iif to satisfy an external contract / style
 
-        "@typescript-eslint/ban-types": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/explicit-function-return-type": ["warn", { allowExpressions: true }], // TODO(bkendall): SET to error.
         "@typescript-eslint/no-extra-non-null-assertion": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-floating-promises": "warn", // TODO(bkendall): remove, allow to error.
@@ -57,12 +64,9 @@ module.exports = {
         "@typescript-eslint/no-unsafe-return": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-use-before-define": ["warn", { functions: false, typedefs: false }], // TODO(bkendall): change to error.
         "@typescript-eslint/no-var-requires": "warn", // TODO(bkendall): remove, allow to error.
-        "@typescript-eslint/prefer-includes": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/prefer-regexp-exec": "warn", // TODO(bkendall): remove, allow to error.
-        "@typescript-eslint/prefer-string-starts-ends-with": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/restrict-plus-operands": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/restrict-template-expressions": "warn", // TODO(bkendall): remove, allow to error.
-        "no-case-declarations": "warn", // TODO(bkendall): remove, allow to error.
         "no-constant-condition": "warn", // TODO(bkendall): remove, allow to error.
         "no-fallthrough": "warn", // TODO(bkendall): remove, allow to error.
       },
@@ -99,6 +103,31 @@ module.exports = {
       },
       rules: {},
     },
+    {
+      files: ["src/mcp/tools/**/*.ts", "src/mcp/prompts/**/*.ts", "src/mcp/resources/**/*.ts"],
+      rules: { camelcase: "off" },
+    },
+    {
+      files: ["*.ts"],
+      excludedFiles: ["*.d.ts"],
+      rules: {
+        // ESM-only packages: a static import compiles to require(), which throws ERR_REQUIRE_ESM
+        // on Node.js without require(esm) support, including the standalone binary's runtime.
+        // See https://github.com/firebase/firebase-tools/issues/11168.
+        "no-restricted-imports": [
+          "error",
+          {
+            patterns: [
+              {
+                group: ["stream-chain", "stream-chain/*", "stream-json", "stream-json/*"],
+                message:
+                  "stream-chain and stream-json are ESM-only; use loadStreamJson() from src/streamJson.ts.",
+              },
+            ],
+          },
+        ],
+      },
+    },
   ],
   globals: {},
   parserOptions: {
@@ -107,7 +136,7 @@ module.exports = {
     sourceType: "module",
     warnOnUnsupportedTypeScriptVersion: false,
   },
-  plugins: ["prettier", "@typescript-eslint", "jsdoc"],
+  plugins: ["prettier", "@typescript-eslint", "jsdoc", "brikke"],
   settings: {
     jsdoc: {
       tagNamePreference: {
@@ -116,4 +145,21 @@ module.exports = {
     },
   },
   parser: "@typescript-eslint/parser",
+  // dynamicImport.js is skipped in the tsbuild, we inject it manually since we
+  // don't want Typescript to turn the imports into requires. Ignoring as eslint
+  // is complaining it doesn't belong to a project.
+  // TODO(jamesdaniels): add this to overrides instead
+  ignorePatterns: [
+    "src/dynamicImport.js",
+    "scripts/webframeworks-deploy-tests/nextjs/**",
+    "scripts/webframeworks-deploy-tests/angular/**",
+    "scripts/frameworks-tests/vite-project/**",
+    "/src/frameworks/docs/**",
+    // This file is taking a very long time to lint, 2-4m
+    "src/emulator/auth/schema.ts",
+    // TODO(hsubox76): Set up a job to run eslint separately on vscode dir
+    "firebase-vscode/",
+    // If this is leftover from "clean-install.sh", don't lint it
+    "clean/**",
+  ],
 };

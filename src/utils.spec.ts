@@ -1,0 +1,827 @@
+import { expect } from "chai";
+import * as sinon from "sinon";
+
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
+
+import * as utils from "./utils";
+import { FirebaseError, getErrMsg } from "./error";
+
+describe("utils", () => {
+  describe("consoleUrl", () => {
+    it("should create a console URL", () => {
+      expect(utils.consoleUrl("projectId", "/foo/bar")).to.equal(
+        "https://console.firebase.google.com/project/projectId/foo/bar",
+      );
+    });
+  });
+
+  describe("getInheritedOption", () => {
+    it("should chain up looking for a key", () => {
+      const o1 = {};
+      const o2 = { parent: o1, foo: "bar" };
+      const o3 = { parent: o2, bar: "foo" };
+      const o4 = { parent: o3, baz: "zip" };
+
+      expect(utils.getInheritedOption(o4, "foo")).to.equal("bar");
+    });
+
+    it("should return undefined if the key does not exist", () => {
+      const o1 = {};
+      const o2 = { parent: o1, foo: "bar" };
+      const o3 = { parent: o2, bar: "foo" };
+      const o4 = { parent: o3, baz: "zip" };
+
+      expect(utils.getInheritedOption(o4, "zip")).to.equal(undefined);
+    });
+  });
+
+  describe("envOverride", () => {
+    it("should return the value if no current value exists", () => {
+      expect(utils.envOverride("FOOBARBAZ", "notset")).to.equal("notset");
+    });
+
+    it("should set an override if it conflicts", () => {
+      process.env.FOO_BAR_BAZ = "set";
+
+      expect(utils.envOverride("FOO_BAR_BAZ", "notset")).to.equal("set");
+      expect(utils.envOverrides).to.contain("FOO_BAR_BAZ");
+
+      delete process.env.FOO_BAR_BAZ;
+    });
+
+    it("should coerce the value", () => {
+      process.env.FOO_BAR_BAZ = "set";
+
+      expect(utils.envOverride("FOO_BAR_BAZ", "notset", (s) => s.split(""))).to.deep.equal([
+        "s",
+        "e",
+        "t",
+      ]);
+
+      delete process.env.FOO_BAR_BAZ;
+    });
+
+    it("should return provided value if coerce fails", () => {
+      process.env.FOO_BAR_BAZ = "set";
+
+      const coerce = () => {
+        throw new Error();
+      };
+      expect(utils.envOverride("FOO_BAR_BAZ", "notset", coerce)).to.deep.equal("notset");
+
+      delete process.env.FOO_BAR_BAZ;
+    });
+  });
+
+  describe("isCloudEnvironment", () => {
+    let originalEnv: NodeJS.ProcessEnv;
+
+    beforeEach(() => {
+      originalEnv = { ...process.env };
+    });
+
+    afterEach(() => {
+      process.env = originalEnv;
+    });
+
+    it("should return false by default", () => {
+      expect(utils.isCloudEnvironment()).to.be.false;
+    });
+
+    it("should return true when in codespaces", () => {
+      process.env.CODESPACES = "true";
+      expect(utils.isCloudEnvironment()).to.be.true;
+    });
+
+    it("should return true when in Cloud Workstations", () => {
+      process.env.GOOGLE_CLOUD_WORKSTATIONS = "true";
+      expect(utils.isCloudEnvironment()).to.be.true;
+    });
+  });
+
+  describe("getDatabaseUrl", () => {
+    it("should create a url for prod", () => {
+      expect(utils.getDatabaseUrl("https://firebaseio.com", "fir-proj", "/")).to.equal(
+        "https://fir-proj.firebaseio.com/",
+      );
+      expect(utils.getDatabaseUrl("https://firebaseio.com", "fir-proj", "/foo/bar")).to.equal(
+        "https://fir-proj.firebaseio.com/foo/bar",
+      );
+      expect(utils.getDatabaseUrl("https://firebaseio.com", "fir-proj", "/foo/bar.json")).to.equal(
+        "https://fir-proj.firebaseio.com/foo/bar.json",
+      );
+      expect(
+        utils.getDatabaseUrl(
+          "https://some-namespace.europe-west1.firebasedatabase.app",
+          "some-namespace",
+          "/foo/bar.json",
+        ),
+      ).to.equal("https://some-namespace.europe-west1.firebasedatabase.app/foo/bar.json");
+      expect(
+        utils.getDatabaseUrl(
+          "https://europe-west1.firebasedatabase.app",
+          "some-namespace",
+          "/foo/bar.json",
+        ),
+      ).to.equal("https://some-namespace.europe-west1.firebasedatabase.app/foo/bar.json");
+    });
+
+    it("should create a url for the emulator", () => {
+      expect(utils.getDatabaseUrl("http://localhost:9000", "fir-proj", "/")).to.equal(
+        "http://localhost:9000/?ns=fir-proj",
+      );
+      expect(utils.getDatabaseUrl("http://localhost:9000", "fir-proj", "/foo/bar")).to.equal(
+        "http://localhost:9000/foo/bar?ns=fir-proj",
+      );
+      expect(utils.getDatabaseUrl("http://localhost:9000", "fir-proj", "/foo/bar.json")).to.equal(
+        "http://localhost:9000/foo/bar.json?ns=fir-proj",
+      );
+    });
+  });
+
+  describe("getDatabaseViewDataUrl", () => {
+    it("should get a view data url for legacy prod URL", () => {
+      expect(
+        utils.getDatabaseViewDataUrl("https://firebaseio.com", "fir-proj", "fir-ns", "/foo/bar"),
+      ).to.equal(
+        "https://console.firebase.google.com/project/fir-proj/database/fir-ns/data/foo/bar",
+      );
+    });
+
+    it("should get a view data url for new prod URL", () => {
+      expect(
+        utils.getDatabaseViewDataUrl(
+          "https://firebasedatabase.app",
+          "fir-proj",
+          "fir-ns",
+          "/foo/bar",
+        ),
+      ).to.equal(
+        "https://console.firebase.google.com/project/fir-proj/database/fir-ns/data/foo/bar",
+      );
+    });
+
+    it("should get a view data url for the emulator", () => {
+      expect(
+        utils.getDatabaseViewDataUrl("http://localhost:9000", "fir-proj", "fir-ns", "/foo/bar"),
+      ).to.equal("http://localhost:9000/foo/bar.json?ns=fir-ns");
+    });
+  });
+
+  describe("addDatabaseNamespace", () => {
+    it("should add the namespace for prod", () => {
+      expect(utils.addDatabaseNamespace("https://firebaseio.com/", "fir-proj")).to.equal(
+        "https://fir-proj.firebaseio.com/",
+      );
+      expect(utils.addDatabaseNamespace("https://firebaseio.com/foo/bar", "fir-proj")).to.equal(
+        "https://fir-proj.firebaseio.com/foo/bar",
+      );
+    });
+
+    it("should add the namespace for the emulator", () => {
+      expect(utils.addDatabaseNamespace("http://localhost:9000/", "fir-proj")).to.equal(
+        "http://localhost:9000/?ns=fir-proj",
+      );
+      expect(utils.addDatabaseNamespace("http://localhost:9000/foo/bar", "fir-proj")).to.equal(
+        "http://localhost:9000/foo/bar?ns=fir-proj",
+      );
+    });
+  });
+
+  describe("addSubdomain", () => {
+    it("should add a subdomain", () => {
+      expect(utils.addSubdomain("https://example.com", "sub")).to.equal("https://sub.example.com");
+    });
+  });
+
+  describe("endpoint", () => {
+    it("should join our strings", () => {
+      expect(utils.endpoint(["foo", "bar"])).to.equal("/foo/bar");
+    });
+  });
+
+  describe("promiseAllSettled", () => {
+    it("should settle all promises", async () => {
+      const result = await utils.promiseAllSettled([
+        Promise.resolve("foo"),
+        // eslint-disable-next-line prefer-promise-reject-errors
+        Promise.reject("bar"),
+        Promise.resolve("baz"),
+      ]);
+      expect(result).to.deep.equal([
+        { state: "fulfilled", value: "foo" },
+        { state: "rejected", reason: "bar" },
+        { state: "fulfilled", value: "baz" },
+      ]);
+    });
+  });
+
+  describe("promiseProps", () => {
+    it("should resolve all promises", async () => {
+      const o = {
+        foo: new Promise((resolve) => {
+          setTimeout(() => {
+            resolve("1");
+          });
+        }),
+        bar: Promise.resolve("2"),
+      };
+
+      const result = await utils.promiseProps(o);
+      expect(result).to.deep.equal({
+        foo: "1",
+        bar: "2",
+      });
+    });
+
+    it("should pass through objects", async () => {
+      const o = {
+        foo: new Promise((resolve) => {
+          setTimeout(() => {
+            resolve("1");
+          });
+        }),
+        bar: ["bar"],
+      };
+
+      const result = await utils.promiseProps(o);
+      expect(result).to.deep.equal({
+        foo: "1",
+        bar: ["bar"],
+      });
+    });
+
+    it("should reject if a promise rejects", async () => {
+      const o = {
+        foo: new Promise((_, reject) => {
+          setTimeout(() => {
+            reject(new Error("1"));
+          });
+        }),
+        bar: Promise.resolve("2"),
+      };
+
+      return expect(utils.promiseProps(o)).to.eventually.be.rejected;
+    });
+  });
+
+  describe("datetimeString", () => {
+    it("should output the date in the correct format", () => {
+      // Don't worry about the hour since timezones screw everything up.
+      expect(utils.datetimeString(new Date("February 22, 2020 11:35:45-07:00"))).to.match(
+        /^2020-02-22 \d\d:35:45$/,
+      );
+      expect(utils.datetimeString(new Date("February 7, 2020 11:35:45-07:00"))).to.match(
+        /^2020-02-07 \d\d:35:45$/,
+      );
+      expect(utils.datetimeString(new Date("February 7, 2020 8:01:01-07:00"))).to.match(
+        /^2020-02-07 \d\d:01:01$/,
+      );
+    });
+  });
+
+  describe("streamToString/stringToStream", () => {
+    it("should be able to create and read streams", async () => {
+      const stream = utils.stringToStream("hello world");
+      if (!stream) {
+        throw new Error("stream came back undefined");
+      }
+      await expect(utils.streamToString(stream)).to.eventually.equal("hello world");
+    });
+
+    it("should return empty string if stream is undefined or null", async () => {
+      await expect(utils.streamToString(undefined)).to.eventually.equal("");
+      await expect(utils.streamToString(null)).to.eventually.equal("");
+    });
+  });
+
+  describe("allSettled", () => {
+    it("handles arrays of length zero", async () => {
+      const res = await utils.allSettled([]);
+      expect(res).to.deep.equal([]);
+    });
+
+    it("handles a simple success", async () => {
+      const res = await utils.allSettled([Promise.resolve(42)]);
+      expect(res).to.deep.equal([
+        {
+          status: "fulfilled",
+          value: 42,
+        },
+      ]);
+    });
+
+    it("handles a simple failure", async () => {
+      const res = await utils.allSettled([Promise.reject(new Error("oh noes!"))]);
+      expect(res.length).to.equal(1);
+      expect(res[0].status).to.equal("rejected");
+      expect((res[0] as utils.PromiseRejectedResult).reason).to.be.instanceOf(Error);
+      expect((res[0] as any).reason?.message).to.equal("oh noes!");
+    });
+
+    it("waits for all settled", async () => {
+      // Intetionally failing with a non-error to make matching easier
+      // eslint-disable-next-line prefer-promise-reject-errors
+      const reject = Promise.reject("fail fast");
+      const resolve = new Promise((res) => {
+        setTimeout(() => res(42), 20);
+      });
+
+      const results = await utils.allSettled([reject, resolve]);
+      expect(results).to.deep.equal([
+        { status: "rejected", reason: "fail fast" },
+        { status: "fulfilled", value: 42 },
+      ]);
+    });
+  });
+
+  describe("groupBy", () => {
+    it("should transform simple array by fn", () => {
+      const arr = [3.4, 1.2, 7.7, 2, 3.9];
+      expect(utils.groupBy(arr, Math.floor)).to.deep.equal({
+        1: [1.2],
+        2: [2],
+        3: [3.4, 3.9],
+        7: [7.7],
+      });
+    });
+
+    it("should transform array of objects by fn", () => {
+      const arr = [
+        { id: 1, location: "us" },
+        { id: 2, location: "us" },
+        { id: 3, location: "asia" },
+        { id: 4, location: "europe" },
+        { id: 5, location: "asia" },
+      ];
+      expect(utils.groupBy(arr, (obj) => obj.location)).to.deep.equal({
+        us: [
+          { id: 1, location: "us" },
+          { id: 2, location: "us" },
+        ],
+        asia: [
+          { id: 3, location: "asia" },
+          { id: 5, location: "asia" },
+        ],
+        europe: [{ id: 4, location: "europe" }],
+      });
+    });
+  });
+
+  describe("withTimeout", () => {
+    let clock: sinon.SinonFakeTimers;
+
+    beforeEach(() => {
+      clock = sinon.useFakeTimers();
+      clock.reset();
+    });
+
+    afterEach(() => {
+      clock.restore();
+    });
+
+    it("should fulfill if the original promise fulfills within timeout", async () => {
+      const promise = new Promise((resolve) => {
+        setTimeout(() => resolve("foo"), 1000);
+      });
+      const wrapped = utils.withTimeout(5000, promise);
+
+      clock.tick(1001);
+      await expect(wrapped).to.eventually.equal("foo");
+    });
+
+    it("should reject if the original promise rejects within timeout", async () => {
+      const promise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("oh snap")), 1000);
+      });
+      const wrapped = utils.withTimeout(5000, promise);
+
+      clock.tick(1001);
+      await expect(wrapped).to.be.rejectedWith("oh snap");
+    });
+
+    it("should reject with timeout if the original promise takes too long to fulfill", async () => {
+      const promise = new Promise((resolve) => {
+        setTimeout(() => resolve(42), 1000);
+      });
+      const wrapped = utils.withTimeout(5000, promise);
+
+      clock.tick(5001);
+      await expect(wrapped).to.be.rejectedWith("Timed out.");
+    });
+
+    it("should reject with timeout if the original promise takes too long to reject", async () => {
+      const promise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("oh snap")), 10000);
+      });
+      const wrapped = utils.withTimeout(5000, promise);
+
+      clock.tick(5001);
+      await expect(wrapped).to.be.rejectedWith("Timed out.");
+    });
+  });
+
+  describe("debounce", () => {
+    let clock: sinon.SinonFakeTimers;
+
+    beforeEach(() => {
+      clock = sinon.useFakeTimers();
+    });
+
+    afterEach(() => {
+      clock.restore();
+    });
+
+    it("should be called only once in the given time interval", () => {
+      const fn = sinon.stub();
+      const debounced = utils.debounce(fn, 1000);
+
+      for (let i = 0; i < 100; i++) {
+        debounced(i);
+      }
+
+      clock.tick(1001);
+      expect(fn).to.be.calledOnce;
+      expect(fn).to.be.calledOnceWith(99);
+    });
+
+    it("should be called only once if it is called many times within the interval", () => {
+      const fn = sinon.stub();
+      const debounced = utils.debounce(fn, 1000);
+
+      for (let i = 0; i < 100; i++) {
+        debounced(i);
+        clock.tick(999);
+      }
+
+      clock.tick(1001);
+      expect(fn).to.be.calledOnce;
+      expect(fn).to.be.calledOnceWith(99);
+    });
+
+    it("should be called only once within the interval if leading is provided", () => {
+      const fn = sinon.stub();
+      const debounced = utils.debounce(fn, 1000, { leading: true });
+
+      for (let i = 0; i < 100; i++) {
+        debounced(i);
+      }
+
+      clock.tick(999);
+      expect(fn).to.be.calledOnce;
+      expect(fn).to.be.calledOnceWith(0);
+    });
+
+    it("should be called twice with leading", () => {
+      const fn = sinon.stub();
+      const debounced = utils.debounce(fn, 1000, { leading: true });
+
+      for (let i = 0; i < 100; i++) {
+        debounced(i);
+      }
+
+      clock.tick(1500);
+      expect(fn).to.be.calledTwice;
+      expect(fn).to.be.calledWith(0);
+      expect(fn).to.be.calledWith(99);
+    });
+  });
+
+  describe("connnectableHostname", () => {
+    it("should change wildcard IP addresses to corresponding loopbacks", () => {
+      expect(utils.connectableHostname("0.0.0.0")).to.equal("127.0.0.1");
+      expect(utils.connectableHostname("::")).to.equal("::1");
+      expect(utils.connectableHostname("[::]")).to.equal("[::1]");
+    });
+    it("should not change non-wildcard IP addresses or hostnames", () => {
+      expect(utils.connectableHostname("169.254.20.1")).to.equal("169.254.20.1");
+      expect(utils.connectableHostname("fe80::1")).to.equal("fe80::1");
+      expect(utils.connectableHostname("[fe80::2]")).to.equal("[fe80::2]");
+      expect(utils.connectableHostname("example.com")).to.equal("example.com");
+    });
+  });
+
+  describe("generatePassword", () => {
+    it("should generate a password with the correct properties", () => {
+      for (let i = 0; i < 100; i++) {
+        const pw = utils.generatePassword(20);
+        expect(pw.length).to.equal(20);
+        expect(pw).to.match(/[a-z]/);
+        expect(pw).to.match(/[A-Z]/);
+        expect(pw).to.match(/[0-9]/);
+        expect(pw).to.match(/[!@#$%^&*()_+~`|}{[\]:;?><,./-=]/);
+      }
+    });
+  });
+
+  describe("deepEqual", () => {
+    it("should return true for identical primitives", () => {
+      expect(utils.deepEqual(1, 1)).to.be.true;
+      expect(utils.deepEqual("hello", "hello")).to.be.true;
+      expect(utils.deepEqual(true, true)).to.be.true;
+      expect(utils.deepEqual(null, null)).to.be.true;
+      expect(utils.deepEqual(undefined, undefined)).to.be.true;
+    });
+
+    it("should return false for different primitives", () => {
+      expect(utils.deepEqual(1, 2)).to.be.false;
+      expect(utils.deepEqual("hello", "world")).to.be.false;
+      expect(utils.deepEqual(true, false)).to.be.false;
+      expect(utils.deepEqual(null, undefined)).to.be.false;
+      expect(utils.deepEqual(0, null)).to.be.false;
+    });
+
+    it("should return true for identical simple objects", () => {
+      const obj1 = { a: 1, b: "test" };
+      const obj2 = { a: 1, b: "test" };
+      expect(utils.deepEqual(obj1, obj2)).to.be.true;
+    });
+
+    it("should return false for objects with different values", () => {
+      const obj1 = { a: 1, b: "test" };
+      const obj2 = { a: 1, b: "testing" };
+      expect(utils.deepEqual(obj1, obj2)).to.be.false;
+    });
+
+    it("should return false for objects with different keys", () => {
+      const obj1 = { a: 1, b: "test" };
+      const obj2 = { a: 1, c: "test" };
+      expect(utils.deepEqual(obj1, obj2)).to.be.false;
+    });
+
+    it("should return false for objects with different number of keys", () => {
+      const obj1 = { a: 1, b: "test" };
+      const obj2 = { a: 1 };
+      expect(utils.deepEqual(obj1, obj2)).to.be.false;
+    });
+
+    it("should return true for identical nested objects", () => {
+      const obj1 = { a: 1, b: { c: 2, d: { e: "deep" } } };
+      const obj2 = { a: 1, b: { c: 2, d: { e: "deep" } } };
+      expect(utils.deepEqual(obj1, obj2)).to.be.true;
+    });
+
+    it("should return false for different nested objects", () => {
+      const obj1 = { a: 1, b: { c: 2, d: { e: "deep" } } };
+      const obj2 = { a: 1, b: { c: 2, d: { e: "deeper" } } };
+      expect(utils.deepEqual(obj1, obj2)).to.be.false;
+    });
+
+    it("should return true for identical arrays", () => {
+      const arr1 = [1, "a", { b: 2 }];
+      const arr2 = [1, "a", { b: 2 }];
+      expect(utils.deepEqual(arr1, arr2)).to.be.true;
+    });
+
+    it("should return false for different arrays", () => {
+      const arr1 = [1, "a", { b: 2 }];
+      const arr2 = [1, "a", { b: 3 }];
+      expect(utils.deepEqual(arr1, arr2)).to.be.false;
+    });
+
+    it("should handle objects with different key order", () => {
+      const obj1 = { a: 1, b: 2 };
+      const obj2 = { b: 2, a: 1 };
+      expect(utils.deepEqual(obj1, obj2)).to.be.true;
+    });
+  });
+
+  describe("resolveWithin", () => {
+    let baseDir: string;
+
+    beforeEach(() => {
+      baseDir = fs.mkdtempSync(path.join(os.tmpdir(), "fb-pathutils-"));
+    });
+
+    it("returns absolute path when subpath is inside base (relative)", () => {
+      const p = utils.resolveWithin(baseDir, "sub/dir");
+      expect(p).to.equal(path.join(baseDir, "sub/dir"));
+    });
+
+    it("returns base when subpath normalizes to base (e.g., nested/..)", () => {
+      const p = utils.resolveWithin(baseDir, "nested/..");
+      expect(p).to.equal(baseDir);
+    });
+
+    it("throws when subpath escapes base using ..", () => {
+      expect(() => utils.resolveWithin(baseDir, "../outside")).to.throw(FirebaseError);
+    });
+
+    it("throws with custom message when provided", () => {
+      expect(() => utils.resolveWithin(baseDir, "../outside", "Custom error"))
+        .to.throw(FirebaseError)
+        .with.property("message")
+        .that.matches(/Custom error/);
+    });
+
+    it("throws when absolute subpath is outside base", () => {
+      const outside = fs.mkdtempSync(path.join(os.tmpdir(), "fb-pathutils-out-"));
+      expect(() => utils.resolveWithin(baseDir, outside)).to.throw(FirebaseError);
+    });
+
+    it("allows absolute subpath when inside base", () => {
+      const inside = path.join(baseDir, "child");
+      const p = utils.resolveWithin(baseDir, inside);
+      expect(p).to.equal(inside);
+    });
+  });
+
+  describe("murmurHashV3", () => {
+    it("should return identical hashes to reference values for basic strings", () => {
+      expect(utils.murmurHashV3("Hello World")).to.equal(427197390);
+      expect(utils.murmurHashV3("abc")).to.equal(3017643002);
+      expect(utils.murmurHashV3("")).to.equal(0);
+    });
+
+    it("should handle custom seed values correctly", () => {
+      expect(utils.murmurHashV3("Hello World", 12345)).to.equal(389305035);
+    });
+
+    it("should handle string and Uint8Array keys identically", () => {
+      const keyStr = "Hello World";
+      const keyBytes = new TextEncoder().encode(keyStr);
+      expect(utils.murmurHashV3(keyBytes)).to.equal(utils.murmurHashV3(keyStr));
+    });
+  });
+
+  describe("formatFilesize", () => {
+    it("should correctly format byte values to human readable strings", () => {
+      expect(utils.formatFilesize(0)).to.equal("0 Bytes");
+      expect(utils.formatFilesize(-500)).to.equal("0 Bytes");
+      expect(utils.formatFilesize(500)).to.equal("500 Bytes");
+      expect(utils.formatFilesize(1024)).to.equal("1 KB");
+      expect(utils.formatFilesize(1234567)).to.equal("1.18 MB");
+      expect(utils.formatFilesize(1234567890)).to.equal("1.15 GB");
+      expect(utils.formatFilesize(Math.pow(1024, 5) * 2.5)).to.equal("2.5 PB");
+    });
+  });
+
+  describe("pLimit", () => {
+    it("should limit concurrent promise executions", async () => {
+      const limit = utils.pLimit(2);
+      let active = 0;
+      let maxActive = 0;
+
+      const tasks = Array.from({ length: 5 }, () =>
+        limit(async () => {
+          active++;
+          maxActive = Math.max(maxActive, active);
+          await new Promise((res) => setTimeout(res, 10));
+          active--;
+        }),
+      );
+
+      await Promise.all(tasks);
+      expect(maxActive).to.equal(2);
+    });
+
+    it("should throw when given invalid concurrency values", () => {
+      expect(() => utils.pLimit(0)).to.throw(FirebaseError);
+      expect(() => utils.pLimit(-5)).to.throw(FirebaseError);
+      expect(() => utils.pLimit(2.5)).to.throw(FirebaseError);
+    });
+
+    it("should recover correctly when a queued task throws synchronously", async () => {
+      const limit = utils.pLimit(1);
+
+      // Task 1 will hang for 20ms
+      const t1 = limit(() => new Promise((res) => setTimeout(res, 20)));
+      // Task 2 will throw synchronously
+      const t2 = limit(() => {
+        throw new Error("Sync error");
+      });
+      // Task 3 should run successfully after t1 and t2 finish
+      const t3 = limit(() => Promise.resolve("Recovered"));
+
+      await expect(t1).to.be.fulfilled;
+      await expect(t2).to.be.rejectedWith("Sync error");
+      await expect(t3).to.eventually.equal("Recovered");
+    });
+  });
+
+  describe("stringDistance", () => {
+    it("should correctly compute Levenshtein distance between two strings", () => {
+      expect(utils.stringDistance("", "")).to.equal(0);
+      expect(utils.stringDistance("a", "")).to.equal(1);
+      expect(utils.stringDistance("", "a")).to.equal(1);
+      expect(utils.stringDistance("abc", "abc")).to.equal(0);
+      expect(utils.stringDistance("kitten", "sitting")).to.equal(3);
+      expect(utils.stringDistance("flaw", "lawn")).to.equal(2);
+    });
+  });
+
+  describe("timeToWait", () => {
+    it("should wait the base delay on the first attempt", () => {
+      const retryCount = 0;
+      const delay = 100;
+      const maxDelay = 1000;
+      expect(utils.timeToWait(retryCount, delay, maxDelay)).to.equal(delay);
+    });
+
+    it("should back off exponentially", () => {
+      const delay = 100;
+      const maxDelay = 1000;
+      expect(utils.timeToWait(1, delay, maxDelay)).to.equal(delay * 2);
+      expect(utils.timeToWait(2, delay, maxDelay)).to.equal(delay * 4);
+      expect(utils.timeToWait(3, delay, maxDelay)).to.equal(delay * 8);
+    });
+
+    it("should not wait longer than maxDelay", () => {
+      const retryCount = 2;
+      const delay = 300;
+      const maxDelay = 400;
+      expect(utils.timeToWait(retryCount, delay, maxDelay)).to.equal(maxDelay);
+    });
+  });
+
+  describe("retryWithBackoff", () => {
+    it("should return result on first attempt if successful", async () => {
+      let attempts = 0;
+      const result = await utils.retryWithBackoff(
+        async () => {
+          attempts++;
+          return "success";
+        },
+        { retryPredicate: () => true },
+      );
+      expect(result).to.equal("success");
+      expect(attempts).to.equal(1);
+    });
+
+    it("should not retry if retries is omitted (default 0)", async () => {
+      let attempts = 0;
+      await expect(
+        utils.retryWithBackoff(
+          async () => {
+            attempts++;
+            throw new Error("transient error");
+          },
+          {
+            retryPredicate: () => true,
+          },
+        ),
+      ).to.be.rejectedWith("transient error");
+      expect(attempts).to.equal(1);
+    });
+
+    it("should retry and succeed when predicate matches", async () => {
+      let attempts = 0;
+      const result = await utils.retryWithBackoff(
+        async () => {
+          attempts++;
+          if (attempts < 3) {
+            throw new Error("transient error");
+          }
+          return "success";
+        },
+        {
+          retries: 3,
+          delay: 1,
+          maxDelay: 5,
+          retryPredicate: (err) => getErrMsg(err) === "transient error",
+        },
+      );
+      expect(result).to.equal("success");
+      expect(attempts).to.equal(3);
+    });
+
+    it("should fail fast if predicate returns false", async () => {
+      let attempts = 0;
+      await expect(
+        utils.retryWithBackoff(
+          async () => {
+            attempts++;
+            throw new Error("fatal error");
+          },
+          {
+            delay: 1,
+            maxDelay: 5,
+            retryPredicate: (err) => getErrMsg(err) === "other error",
+          },
+        ),
+      ).to.be.rejectedWith("fatal error");
+      expect(attempts).to.equal(1);
+    });
+
+    it("should throw after exhausting all retries", async () => {
+      let attempts = 0;
+      await expect(
+        utils.retryWithBackoff(
+          async () => {
+            attempts++;
+            throw new Error("persistent error");
+          },
+          {
+            retries: 3,
+            delay: 1,
+            maxDelay: 5,
+            retryPredicate: () => true,
+          },
+        ),
+      ).to.be.rejectedWith("persistent error");
+      expect(attempts).to.equal(4);
+    });
+  });
+});

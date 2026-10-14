@@ -1,30 +1,77 @@
-import { previews } from "../previews";
+import { CLIClient } from "../command";
+import * as experiments from "../experiments";
 
-export function load(client: any): any {
-  function loadCommand(name: string) {
-    const t0 = process.hrtime.bigint();
-    const { command: cmd } = require(`./${name}`);
-    cmd.register(client);
-    const t1 = process.hrtime.bigint();
-    const diffMS = (t1 - t0) / BigInt(1e6);
-    if (diffMS > 75) {
-      // NOTE: logger.debug doesn't work since it's not loaded yet. Comment out below to debug.
-      // console.error(`Loading ${name} took ${diffMS}ms`);
-    }
+type CommandRunner = ((...args: any[]) => Promise<any>) & { load: () => void };
 
-    return cmd.runner();
+/**
+ * Loads all commands for our parser.
+ */
+export function load(client: CLIClient): CLIClient {
+  function loadCommand(name: string): CommandRunner {
+    const load = () => {
+      const { command: cmd } = require(`./${name}`);
+      cmd.register(client);
+      return cmd.runner();
+    };
+
+    const runner = (async (...args: any[]) => {
+      const run = load();
+      return run(...args);
+    }) as CommandRunner;
+
+    // Store the load function on the runner so we can trigger it without running.
+    runner.load = () => {
+      require(`./${name}`).command.register(client);
+    };
+
+    return runner;
   }
 
   const t0 = process.hrtime.bigint();
 
+  client.appcheck = {};
+  client.appcheck.debugtokens = {};
+  client.appcheck.debugtokens.create = loadCommand("appcheck-debugtokens-create");
+  client.appcheck.debugtokens.list = loadCommand("appcheck-debugtokens-list");
+  client.appcheck.debugtokens.delete = loadCommand("appcheck-debugtokens-delete");
+  // Enforcement and attestation providers are gated until the surface is API
+  // council approved, since the shape could still change. The debug token
+  // commands above already shipped and stay generally available.
+  if (experiments.isEnabled("appcheckadmin")) {
+    client.appcheck.services = {};
+    client.appcheck.services.list = loadCommand("appcheck-services-list");
+    client.appcheck.services.get = loadCommand("appcheck-services-get");
+    client.appcheck.services.set = loadCommand("appcheck-services-set");
+    client.appcheck.providers = {};
+    client.appcheck.providers.list = loadCommand("appcheck-providers-list");
+    client.appcheck.providers.get = loadCommand("appcheck-providers-get");
+    client.appcheck.providers.set = loadCommand("appcheck-providers-set");
+    client.appcheck.apps = {};
+    client.appcheck.apps.list = loadCommand("appcheck-apps-list");
+  }
   client.appdistribution = {};
   client.appdistribution.distribute = loadCommand("appdistribution-distribute");
   client.appdistribution.testers = {};
+  client.appdistribution.testers.list = loadCommand("appdistribution-testers-list");
   client.appdistribution.testers.add = loadCommand("appdistribution-testers-add");
-  client.appdistribution.testers.delete = loadCommand("appdistribution-testers-remove");
+  client.appdistribution.testers.remove = loadCommand("appdistribution-testers-remove");
+  client.appdistribution.groups = {};
+  client.appdistribution.groups.list = loadCommand("appdistribution-groups-list");
+  client.appdistribution.groups.create = loadCommand("appdistribution-groups-create");
+  client.appdistribution.groups.delete = loadCommand("appdistribution-groups-delete");
+  client.appdistribution.group = client.appdistribution.groups;
+  client.appdistribution.testCases = {};
+  client.appdistribution.testCases.export = loadCommand("appdistribution-testcases-export");
+  client.appdistribution.testCases.import = loadCommand("appdistribution-testcases-import");
+  client.apptesting = {};
+  client.apptesting.execute = loadCommand("apptesting");
+  if (experiments.isEnabled("apptesting")) {
+    client.apptesting.wata = loadCommand("apptesting-wata");
+  }
   client.apps = {};
   client.apps.create = loadCommand("apps-create");
   client.apps.list = loadCommand("apps-list");
+  client.apps.init = loadCommand("apps-init");
   client.apps.sdkconfig = loadCommand("apps-sdkconfig");
   client.apps.android = {};
   client.apps.android.sha = {};
@@ -33,22 +80,33 @@ export function load(client: any): any {
   client.apps.android.sha.delete = loadCommand("apps-android-sha-delete");
   client.auth = {};
   client.auth.export = loadCommand("auth-export");
-  client.auth.upload = loadCommand("auth-import");
+  client.auth.import = loadCommand("auth-import");
   client.crashlytics = {};
+  client.crashlytics.onboard = {};
+  client.crashlytics.onboard.web = loadCommand("crashlytics-onboard-web");
   client.crashlytics.symbols = {};
   client.crashlytics.symbols.upload = loadCommand("crashlytics-symbols-upload");
   client.crashlytics.mappingfile = {};
   client.crashlytics.mappingfile.generateid = loadCommand("crashlytics-mappingfile-generateid");
   client.crashlytics.mappingfile.upload = loadCommand("crashlytics-mappingfile-upload");
+  if (experiments.isEnabled("crashlyticsWeb")) {
+    client.crashlytics.sourcemap = {};
+    client.crashlytics.sourcemap.upload = loadCommand("crashlytics-sourcemap-upload");
+  }
+  client.crashlytics.heapdumps = {};
+  client.crashlytics.heapdumps.enable = loadCommand("crashlytics-heapdumps-enable");
+  client.crashlytics.heapdumps.disable = loadCommand("crashlytics-heapdumps-disable");
+  client.crashlytics.heapdumps.status = loadCommand("crashlytics-heapdumps-status");
   client.database = {};
   client.database.get = loadCommand("database-get");
+  client.database.import = loadCommand("database-import");
   client.database.instances = {};
   client.database.instances.create = loadCommand("database-instances-create");
   client.database.instances.list = loadCommand("database-instances-list");
   client.database.profile = loadCommand("database-profile");
   client.database.push = loadCommand("database-push");
   client.database.remove = loadCommand("database-remove");
-  if (previews.rtdbrules) {
+  if (experiments.isEnabled("rtdbrules")) {
     client.database.rules = {};
     client.database.rules.get = loadCommand("database-rules-get");
     client.database.rules.list = loadCommand("database-rules-list");
@@ -66,9 +124,11 @@ export function load(client: any): any {
   client.emulators.exec = loadCommand("emulators-exec");
   client.emulators.export = loadCommand("emulators-export");
   client.emulators.start = loadCommand("emulators-start");
-  client.experimental = {};
-  client.experimental.functions = {};
-  client.experimental.functions.shell = loadCommand("experimental-functions-shell");
+  client.experiments = {};
+  client.experiments.list = loadCommand("experiments-list");
+  client.experiments.describe = loadCommand("experiments-describe");
+  client.experiments.enable = loadCommand("experiments-enable");
+  client.experiments.disable = loadCommand("experiments-disable");
   client.ext = loadCommand("ext");
   client.ext.configure = loadCommand("ext-configure");
   client.ext.info = loadCommand("ext-info");
@@ -77,28 +137,45 @@ export function load(client: any): any {
   client.ext.list = loadCommand("ext-list");
   client.ext.uninstall = loadCommand("ext-uninstall");
   client.ext.update = loadCommand("ext-update");
-  if (previews.ext) {
-    client.ext.sources = {};
-    client.ext.sources.create = loadCommand("ext-sources-create");
+  if (experiments.isEnabled("extMigrationFeatures")) {
+    client.ext.migrate = loadCommand("ext-migrate");
   }
-  if (previews.extdev) {
-    client.ext.dev = {};
-    client.ext.dev.init = loadCommand("ext-dev-init");
-    client.ext.dev.list = loadCommand("ext-dev-list");
-    client.ext.dev.register = loadCommand("ext-dev-register");
-    client.ext.dev.emulators = {};
-    client.ext.dev.emulators.start = loadCommand("ext-dev-emulators-start");
-    client.ext.dev.emulators.exec = loadCommand("ext-dev-emulators-exec");
-    client.ext.dev.deprecate = loadCommand("ext-dev-deprecate");
-    client.ext.dev.undeprecate = loadCommand("ext-dev-undeprecate");
-    client.ext.dev.unpublish = loadCommand("ext-dev-unpublish");
-    client.ext.dev.publish = loadCommand("ext-dev-publish");
-    client.ext.dev.delete = loadCommand("ext-dev-extension-delete");
-    client.ext.dev.usage = loadCommand("ext-dev-usage");
-  }
+  client.ext.sdk = {};
+  client.ext.sdk.install = loadCommand("ext-sdk-install");
+  client.ext.dev = {};
+  client.ext.dev.init = loadCommand("ext-dev-init");
+  client.ext.dev.list = loadCommand("ext-dev-list");
+  client.ext.dev.register = loadCommand("ext-dev-register");
+  client.ext.dev.deprecate = loadCommand("ext-dev-deprecate");
+  client.ext.dev.undeprecate = loadCommand("ext-dev-undeprecate");
+  client.ext.dev.upload = loadCommand("ext-dev-upload");
+  client.ext.dev.usage = loadCommand("ext-dev-usage");
   client.firestore = {};
   client.firestore.delete = loadCommand("firestore-delete");
+  client.firestore.bulkDelete = loadCommand("firestore-bulkdelete");
   client.firestore.indexes = loadCommand("firestore-indexes-list");
+  client.firestore.locations = loadCommand("firestore-locations");
+  client.firestore.operations = {};
+  client.firestore.operations.cancel = loadCommand("firestore-operations-cancel");
+  client.firestore.operations.describe = loadCommand("firestore-operations-describe");
+  client.firestore.operations.list = loadCommand("firestore-operations-list");
+  client.firestore.databases = {};
+  client.firestore.databases.list = loadCommand("firestore-databases-list");
+  client.firestore.databases.get = loadCommand("firestore-databases-get");
+  client.firestore.databases.create = loadCommand("firestore-databases-create");
+  client.firestore.databases.update = loadCommand("firestore-databases-update");
+  client.firestore.databases.delete = loadCommand("firestore-databases-delete");
+  client.firestore.databases.restore = loadCommand("firestore-databases-restore");
+  client.firestore.databases.clone = loadCommand("firestore-databases-clone");
+  client.firestore.backups = {};
+  client.firestore.backups.schedules = {};
+  client.firestore.backups.list = loadCommand("firestore-backups-list");
+  client.firestore.backups.get = loadCommand("firestore-backups-get");
+  client.firestore.backups.delete = loadCommand("firestore-backups-delete");
+  client.firestore.backups.schedules.list = loadCommand("firestore-backups-schedules-list");
+  client.firestore.backups.schedules.create = loadCommand("firestore-backups-schedules-create");
+  client.firestore.backups.schedules.update = loadCommand("firestore-backups-schedules-update");
+  client.firestore.backups.schedules.delete = loadCommand("firestore-backups-schedules-delete");
   client.functions = {};
   client.functions.config = {};
   client.functions.config.clone = loadCommand("functions-config-clone");
@@ -107,18 +184,33 @@ export function load(client: any): any {
   client.functions.config.set = loadCommand("functions-config-set");
   client.functions.config.unset = loadCommand("functions-config-unset");
   client.functions.delete = loadCommand("functions-delete");
+  if (experiments.isEnabled("functionsiac")) {
+    client.functions.export = loadCommand("functions-export");
+  }
   client.functions.log = loadCommand("functions-log");
   client.functions.shell = loadCommand("functions-shell");
   client.functions.list = loadCommand("functions-list");
-  if (previews.deletegcfartifacts) {
+  client.functions.lifecycle = {};
+  client.functions.lifecycle.list = loadCommand("functions-lifecycle-list");
+  client.functions.lifecycle.run = loadCommand("functions-lifecycle-run");
+  if (experiments.isEnabled("deletegcfartifacts")) {
     client.functions.deletegcfartifacts = loadCommand("functions-deletegcfartifacts");
   }
   client.functions.secrets = {};
   client.functions.secrets.access = loadCommand("functions-secrets-access");
   client.functions.secrets.destroy = loadCommand("functions-secrets-destroy");
   client.functions.secrets.get = loadCommand("functions-secrets-get");
+  client.functions.secrets.describe = loadCommand("functions-secrets-describe");
   client.functions.secrets.prune = loadCommand("functions-secrets-prune");
   client.functions.secrets.set = loadCommand("functions-secrets-set");
+  client.functions.artifacts = {};
+  client.functions.artifacts.setpolicy = loadCommand("functions-artifacts-setpolicy");
+  if (experiments.isEnabled("kits")) {
+    client.functions.kits = {};
+    client.functions.kits.install = loadCommand("functions-kits-install");
+    client.functions.kits.uninstall = loadCommand("functions-kits-uninstall");
+    client.functions.kits.list = loadCommand("functions-kits-list");
+  }
   client.help = loadCommand("help");
   client.hosting = {};
   client.hosting.channel = {};
@@ -135,12 +227,66 @@ export function load(client: any): any {
   client.hosting.sites.get = loadCommand("hosting-sites-get");
   client.hosting.sites.list = loadCommand("hosting-sites-list");
   client.init = loadCommand("init");
+  if (experiments.isEnabled("internaltesting")) {
+    client.internaltesting = {};
+    client.internaltesting.frameworks = {};
+    client.internaltesting.frameworks.compose = loadCommand("internaltesting-frameworks-compose");
+    client.internaltesting.functions = {};
+    client.internaltesting.functions.discover = loadCommand("internaltesting-functions-discover");
+  }
+  if (experiments.isEnabled("apphosting")) {
+    client.apphosting = {};
+    client.apphosting.backends = {};
+    client.apphosting.backends.list = loadCommand("apphosting-backends-list");
+    client.apphosting.backends.create = loadCommand("apphosting-backends-create");
+    client.apphosting.backends.get = loadCommand("apphosting-backends-get");
+    client.apphosting.backends.delete = loadCommand("apphosting-backends-delete");
+    client.apphosting.secrets = {};
+    client.apphosting.secrets.set = loadCommand("apphosting-secrets-set");
+    client.apphosting.secrets.revokeaccess = loadCommand("apphosting-secrets-revokeaccess");
+    client.apphosting.secrets.grantaccess = loadCommand("apphosting-secrets-grantaccess");
+    client.apphosting.secrets.describe = loadCommand("apphosting-secrets-describe");
+    client.apphosting.secrets.access = loadCommand("apphosting-secrets-access");
+    client.apphosting.rollouts = {};
+    client.apphosting.rollouts.create = loadCommand("apphosting-rollouts-create");
+    client.apphosting.config = {};
+    if (experiments.isEnabled("internaltesting")) {
+      client.apphosting.builds = {};
+      client.apphosting.builds.get = loadCommand("apphosting-builds-get");
+      client.apphosting.builds.create = loadCommand("apphosting-builds-create");
+      client.apphosting.repos = {};
+      client.apphosting.repos.create = loadCommand("apphosting-repos-create");
+      client.apphosting.rollouts.list = loadCommand("apphosting-rollouts-list");
+    }
+  }
+  // Gated behind the `ailogic` experiment until the underlying API is API-council
+  // approved, since the surface may still change.
+  if (experiments.isEnabled("ailogic")) {
+    client.ailogic = {};
+    client.ailogic.providers = {};
+    client.ailogic.providers.enable = loadCommand("ailogic-providers-enable");
+    client.ailogic.providers.disable = loadCommand("ailogic-providers-disable");
+    client.ailogic.providers.list = loadCommand("ailogic-providers-list");
+    client.ailogic.config = {};
+    client.ailogic.config.get = loadCommand("ailogic-config-get");
+    client.ailogic.config.set = loadCommand("ailogic-config-set");
+    client.ailogic.templates = {};
+    client.ailogic.templates.list = loadCommand("ailogic-templates-list");
+    client.ailogic.templates.get = loadCommand("ailogic-templates-get");
+    client.ailogic.templates.delete = loadCommand("ailogic-templates-delete");
+    client.ailogic.templates.lock = loadCommand("ailogic-templates-lock");
+    client.ailogic.templates.unlock = loadCommand("ailogic-templates-unlock");
+  }
+
   client.login = loadCommand("login");
   client.login.add = loadCommand("login-add");
   client.login.ci = loadCommand("login-ci");
   client.login.list = loadCommand("login-list");
   client.login.use = loadCommand("login-use");
   client.logout = loadCommand("logout");
+  if (experiments.isEnabled("mcp")) {
+    client.mcp = loadCommand("mcp");
+  }
   client.open = loadCommand("open");
   client.projects = {};
   client.projects.addfirebase = loadCommand("projects-addfirebase");
@@ -151,6 +297,19 @@ export function load(client: any): any {
   client.remoteconfig.rollback = loadCommand("remoteconfig-rollback");
   client.remoteconfig.versions = {};
   client.remoteconfig.versions.list = loadCommand("remoteconfig-versions-list");
+  client.remoteconfig.rollouts = {};
+  client.remoteconfig.rollouts.get = loadCommand("remoteconfig-rollouts-get");
+  client.remoteconfig.rollouts.list = loadCommand("remoteconfig-rollouts-list");
+  client.remoteconfig.rollouts.delete = loadCommand("remoteconfig-rollouts-delete");
+  client.remoteconfig.experiments = {};
+  client.remoteconfig.experiments.get = loadCommand("remoteconfig-experiments-get");
+  client.remoteconfig.experiments.list = loadCommand("remoteconfig-experiments-list");
+  client.remoteconfig.experiments.delete = loadCommand("remoteconfig-experiments-delete");
+  if (experiments.isEnabled("directcloudrun")) {
+    client.run = {};
+    client.run.services = {};
+    client.run.services.update = loadCommand("run-services-update");
+  }
   client.serve = loadCommand("serve");
   client.setup = {};
   client.setup.emulators = {};
@@ -159,6 +318,22 @@ export function load(client: any): any {
   client.setup.emulators.pubsub = loadCommand("setup-emulators-pubsub");
   client.setup.emulators.storage = loadCommand("setup-emulators-storage");
   client.setup.emulators.ui = loadCommand("setup-emulators-ui");
+  client.dataconnect = {};
+  client.setup.emulators.dataconnect = loadCommand("setup-emulators-dataconnect");
+  client.dataconnect.execute = loadCommand("dataconnect-execute");
+  client.dataconnect.services = {};
+  client.dataconnect.services.list = loadCommand("dataconnect-services-list");
+  client.dataconnect.sql = {};
+  client.dataconnect.sql.diff = loadCommand("dataconnect-sql-diff");
+  client.dataconnect.sql.setup = loadCommand("dataconnect-sql-setup");
+  client.dataconnect.sql.migrate = loadCommand("dataconnect-sql-migrate");
+  client.dataconnect.sql.grant = loadCommand("dataconnect-sql-grant");
+  client.dataconnect.sql.shell = loadCommand("dataconnect-sql-shell");
+  client.dataconnect.compile = loadCommand("dataconnect-compile");
+  client.dataconnect.sdk = {};
+  client.dataconnect.sdk.generate = loadCommand("dataconnect-sdk-generate");
+  client.studio = {};
+  client.studio.export = loadCommand("studio-export");
   client.target = loadCommand("target");
   client.target.apply = loadCommand("target-apply");
   client.target.clear = loadCommand("target-clear");

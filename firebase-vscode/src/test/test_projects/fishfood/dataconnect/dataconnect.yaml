@@ -1,0 +1,11 @@
+specVersion: "v1alpha"
+serviceId: "us-east"
+location: "europe-north1"
+schema:
+  source: "./schema"
+  datasource:
+    postgresql:
+      database: "emulator"
+      cloudSql:
+        instanceId: "dataconnect-test"
+connectorDirs: ["./connectors/a"]

@@ -15,7 +15,7 @@ export function checkMinRequiredVersion(options: any, key: string) {
   const minVersion = configstore.get(`motd.${key}`);
   if (minVersion && semver.gt(minVersion, pkg.version)) {
     throw new FirebaseError(
-      `This command requires at least version ${minVersion} of the CLI to use. To update to the latest version using npm, run \`npm install -g firebase-tools\`. For other CLI management options, see https://firebase.google.com/docs/cli#update-cli`
+      `This command requires at least version ${minVersion} of the CLI to use. To update to the latest version using npm, run \`npm install -g firebase-tools\`. For other CLI management options, see https://firebase.google.com/docs/cli#update-cli`,
     );
   }
 }

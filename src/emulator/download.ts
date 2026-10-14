@@ -1,12 +1,11 @@
-import * as crypto from "crypto";
 import * as fs from "fs-extra";
 import * as path from "path";
 import * as tmp from "tmp";
-import * as unzipper from "unzipper";
 
 import { EmulatorLogger } from "./emulatorLogger";
 import { EmulatorDownloadDetails, DownloadableEmulators } from "./types";
 import { FirebaseError } from "../error";
+import { unzip } from "../unzip";
 import * as downloadableEmulators from "./downloadableEmulators";
 import * as downloadUtils from "../downloadUtils";
 
@@ -14,18 +13,45 @@ tmp.setGracefulCleanup();
 
 export async function downloadEmulator(name: DownloadableEmulators): Promise<void> {
   const emulator = downloadableEmulators.getDownloadDetails(name);
+  if (emulator.localOnly) {
+    EmulatorLogger.forEmulator(name).logLabeled(
+      "WARN",
+      name,
+      `Env variable override detected, skipping download. Using ${emulator} emulator at ${emulator.binaryPath}`,
+    );
+    return;
+  }
+  const overrideVersion = downloadableEmulators.emulatorVersionOverride(name);
+  if (overrideVersion) {
+    EmulatorLogger.forEmulator(name).logLabeled(
+      "WARN",
+      name,
+      `Env variable override detected. Using custom ${name} emulator version ${overrideVersion}.`,
+    );
+  }
   EmulatorLogger.forEmulator(name).logLabeled(
     "BULLET",
     name,
-    `downloading ${path.basename(emulator.downloadPath)}...`
+    `downloading ${path.basename(emulator.downloadPath)}...`,
   );
   fs.ensureDirSync(emulator.opts.cacheDir);
 
-  const tmpfile = await downloadUtils.downloadToTmp(emulator.opts.remoteUrl);
+  let tmpfile: string;
+  try {
+    tmpfile = await downloadUtils.downloadToTmp(emulator.opts.remoteUrl, !!emulator.opts.auth);
+  } catch (err: unknown) {
+    if (overrideVersion && err instanceof FirebaseError && err.status === 404) {
+      throw new FirebaseError(
+        `env variable ${name.toUpperCase()}_EMULATOR_VERSION set to ${overrideVersion}, 
+        but no such version of ${name} was found. Please double check the version number, or unset this environment variable to use the latest default.`,
+      );
+    }
+    throw err;
+  }
 
   if (!emulator.opts.skipChecksumAndSize) {
-    await validateSize(tmpfile, emulator.opts.expectedSize);
-    await validateChecksum(tmpfile, emulator.opts.expectedChecksum);
+    await downloadUtils.validateSize(tmpfile, emulator.opts.expectedSize);
+    await downloadUtils.validateChecksum(tmpfile, emulator.opts.expectedChecksum, "md5");
   }
   if (emulator.opts.skipCache) {
     removeOldFiles(name, emulator, true);
@@ -46,13 +72,13 @@ export async function downloadEmulator(name: DownloadableEmulators): Promise<voi
 export async function downloadExtensionVersion(
   extensionVersionRef: string,
   sourceDownloadUri: string,
-  targetDir: string
+  targetDir: string,
 ): Promise<void> {
   const emulatorLogger = EmulatorLogger.forExtension({ ref: extensionVersionRef });
   emulatorLogger.logLabeled(
     "BULLET",
     "extensions",
-    `Starting download for ${extensionVersionRef} source code to ${targetDir}..`
+    `Starting download for ${extensionVersionRef} source code to ${targetDir}..`,
   );
   try {
     fs.mkdirSync(targetDir);
@@ -60,7 +86,7 @@ export async function downloadExtensionVersion(
     emulatorLogger.logLabeled(
       "BULLET",
       "extensions",
-      `cache directory for ${extensionVersionRef} already exists...`
+      `cache directory for ${extensionVersionRef} already exists...`,
     );
   }
   emulatorLogger.logLabeled("BULLET", "extensions", `downloading ${sourceDownloadUri}...`);
@@ -74,19 +100,10 @@ export async function downloadExtensionVersion(
   await new Promise((resolve) => setTimeout(resolve, 1000));
 }
 
-function unzip(zipPath: string, unzipDir: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    fs.createReadStream(zipPath)
-      .pipe(unzipper.Extract({ path: unzipDir })) // eslint-disable-line new-cap
-      .on("error", reject)
-      .on("finish", resolve);
-  });
-}
-
 function removeOldFiles(
   name: DownloadableEmulators,
   emulator: EmulatorDownloadDetails,
-  removeAllVersions = false
+  removeAllVersions = false,
 ): void {
   const currentLocalPath = emulator.downloadPath;
   const currentUnzipPath = emulator.unzipDir;
@@ -95,7 +112,7 @@ function removeOldFiles(
   for (const file of files) {
     const fullFilePath = path.join(emulator.opts.cacheDir, file);
 
-    if (file.indexOf(emulator.opts.namePrefix) < 0) {
+    if (!file.includes(emulator.opts.namePrefix)) {
       // This file is not related to this emulator, could be a JAR
       // from a different emulator or just a random file.
       continue;
@@ -108,48 +125,9 @@ function removeOldFiles(
       EmulatorLogger.forEmulator(name).logLabeled(
         "BULLET",
         name,
-        `Removing outdated emulator files: ${file}`
+        `Removing outdated emulator files: ${file}`,
       );
       fs.removeSync(fullFilePath);
     }
   }
-}
-
-/**
- * Checks whether the file at `filepath` has the expected size.
- */
-function validateSize(filepath: string, expectedSize: number): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const stat = fs.statSync(filepath);
-    return stat.size === expectedSize
-      ? resolve()
-      : reject(
-          new FirebaseError(
-            `download failed, expected ${expectedSize} bytes but got ${stat.size}`,
-            { exit: 1 }
-          )
-        );
-  });
-}
-
-/**
- * Checks whether the file at `filepath` has the expected checksum.
- */
-function validateChecksum(filepath: string, expectedChecksum: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const hash = crypto.createHash("md5");
-    const stream = fs.createReadStream(filepath);
-    stream.on("data", (data: any) => hash.update(data));
-    stream.on("end", () => {
-      const checksum = hash.digest("hex");
-      return checksum === expectedChecksum
-        ? resolve()
-        : reject(
-            new FirebaseError(
-              `download failed, expected checksum ${expectedChecksum} but got ${checksum}`,
-              { exit: 1 }
-            )
-          );
-    });
-  });
 }

@@ -1,13 +1,10 @@
 import * as clc from "colorette";
 import * as semver from "semver";
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import * as extensionsApi from "./extensionsApi";
 import { ExtensionSource, ExtensionSpec } from "./types";
-import * as refs from "./refs";
 import {
   createSourceFromLocation,
   logPrefix,
@@ -15,22 +12,21 @@ import {
   isLocalOrURLPath,
 } from "./extensionsHelper";
 import * as utils from "../utils";
-import { displayExtInfo } from "./displayExtensionInfo";
-import * as changelog from "./changelog";
+import { displayExtensionVersionInfo } from "./displayExtensionInfo";
 
 function invalidSourceErrMsgTemplate(instanceId: string, source: string): string {
   return `Unable to update from the source \`${clc.bold(
-    source
+    source,
   )}\`. To update this instance, you can either:\n
   - Run \`${clc.bold("firebase ext:update " + instanceId)}\` to update from the published source.\n
   - Check your directory path or URL, then run \`${clc.bold(
-    "firebase ext:update " + instanceId + " <otherSource>"
+    "firebase ext:update " + instanceId + " <otherSource>",
   )}\` to update from a local directory or URL source.`;
 }
 
 export async function getExistingSourceOrigin(
   projectId: string,
-  instanceId: string
+  instanceId: string,
 ): Promise<SourceOrigin> {
   const instance = await extensionsApi.getInstance(projectId, instanceId);
   return instance && instance.config.extensionRef
@@ -42,7 +38,7 @@ function showUpdateVersionInfo(
   instanceId: string,
   from: string,
   to: string,
-  source?: string
+  source?: string,
 ): void {
   if (source) {
     source = clc.bold(source);
@@ -51,12 +47,12 @@ function showUpdateVersionInfo(
   }
   utils.logLabeledBullet(
     logPrefix,
-    `Updating ${clc.bold(instanceId)} from version ${clc.bold(from)} to ${source} (${clc.bold(to)})`
+    `Updating ${clc.bold(instanceId)} from version ${clc.bold(from)} to ${source} (${clc.bold(to)})`,
   );
   if (semver.lt(to, from)) {
     utils.logLabeledWarning(
       logPrefix,
-      "The version you are updating to is less than the current version for this extension. This extension may not be backwards compatible."
+      "The version you are updating to is less than the current version for this extension. This extension may not be backwards compatible.",
     );
   }
   return;
@@ -70,7 +66,7 @@ export function warningUpdateToOtherSource(sourceOrigin: SourceOrigin) {
   let targetText;
   if (
     [SourceOrigin.PUBLISHED_EXTENSION, SourceOrigin.PUBLISHED_EXTENSION_VERSION].includes(
-      sourceOrigin
+      sourceOrigin,
     )
   ) {
     targetText = "published extension";
@@ -80,7 +76,7 @@ export function warningUpdateToOtherSource(sourceOrigin: SourceOrigin) {
     targetText = "URL";
   }
   const warning = `All the instance's resources and logic will be overwritten to use the source code and files from the ${targetText}.\n`;
-  logger.info(marked(warning));
+  logger.info(warning);
 }
 
 /**
@@ -97,6 +93,7 @@ export interface UpdateOptions {
   source?: ExtensionSource;
   extRef?: string;
   params?: { [key: string]: string };
+  systemParams?: { [key: string]: string };
   canEmitEvents: boolean;
   allowedEventTypes?: string[];
   eventarcChannel?: string;
@@ -117,6 +114,7 @@ export async function update(updateOptions: UpdateOptions): Promise<any> {
     source,
     extRef,
     params,
+    systemParams,
     canEmitEvents,
     allowedEventTypes,
     eventarcChannel,
@@ -127,6 +125,7 @@ export async function update(updateOptions: UpdateOptions): Promise<any> {
       instanceId,
       extRef,
       params,
+      systemParams,
       canEmitEvents,
       allowedEventTypes,
       eventarcChannel,
@@ -137,13 +136,14 @@ export async function update(updateOptions: UpdateOptions): Promise<any> {
       instanceId,
       extensionSource: source,
       params,
+      systemParams,
       canEmitEvents,
       allowedEventTypes,
       eventarcChannel,
     });
   }
   throw new FirebaseError(
-    `Neither a source nor a version of the extension was supplied for ${instanceId}. Please make sure this is a valid extension and try again.`
+    `Neither a source nor a version of the extension was supplied for ${instanceId}. Please make sure this is a valid extension and try again.`,
   );
 }
 
@@ -158,9 +158,9 @@ export async function updateFromLocalSource(
   projectId: string,
   instanceId: string,
   localSource: string,
-  existingSpec: ExtensionSpec
+  existingSpec: ExtensionSpec,
 ): Promise<string> {
-  displayExtInfo(instanceId, "", existingSpec, false);
+  await displayExtensionVersionInfo({ spec: existingSpec });
   let source;
   try {
     source = await createSourceFromLocation(projectId, localSource);
@@ -169,7 +169,7 @@ export async function updateFromLocalSource(
   }
   utils.logLabeledBullet(
     logPrefix,
-    `${clc.bold("You are updating this extension instance to a local source.")}`
+    `${clc.bold("You are updating this extension instance to a local source.")}`,
   );
   showUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, localSource);
   warningUpdateToOtherSource(SourceOrigin.LOCAL);
@@ -188,9 +188,9 @@ export async function updateFromUrlSource(
   projectId: string,
   instanceId: string,
   urlSource: string,
-  existingSpec: ExtensionSpec
+  existingSpec: ExtensionSpec,
 ): Promise<string> {
-  displayExtInfo(instanceId, "", existingSpec, false);
+  await displayExtensionVersionInfo({ spec: existingSpec });
   let source;
   try {
     source = await createSourceFromLocation(projectId, urlSource);
@@ -199,74 +199,11 @@ export async function updateFromUrlSource(
   }
   utils.logLabeledBullet(
     logPrefix,
-    `${clc.bold("You are updating this extension instance to a URL source.")}`
+    `${clc.bold("You are updating this extension instance to a URL source.")}`,
   );
   showUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, urlSource);
   warningUpdateToOtherSource(SourceOrigin.URL);
   return source.name;
-}
-
-/**
- * @param instanceId Id of the instance to update
- * @param extVersionRef extension reference of extension source to update to (publisherId/extensionId@versionId)
- * @param existingSpec ExtensionSpec of existing instance source
- * @param existingSource name of existing instance source
- */
-export async function updateToVersionFromPublisherSource(
-  projectId: string,
-  instanceId: string,
-  extVersionRef: string,
-  existingSpec: ExtensionSpec
-): Promise<string> {
-  let source;
-  const ref = refs.parse(extVersionRef);
-  const version = ref.version;
-  const extensionRef = refs.toExtensionRef(ref);
-  displayExtInfo(instanceId, ref.publisherId, existingSpec, true);
-  const extension = await extensionsApi.getExtension(extensionRef);
-  try {
-    source = await extensionsApi.getExtensionVersion(extVersionRef);
-  } catch (err: any) {
-    throw new FirebaseError(
-      `Could not find source '${clc.bold(extVersionRef)}' because (${clc.bold(
-        version || ""
-      )}) is not a published version. To update, use the latest version of this extension (${clc.bold(
-        extension.latestVersion || ""
-      )}).`
-    );
-  }
-
-  showUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, extVersionRef);
-  warningUpdateToOtherSource(SourceOrigin.PUBLISHED_EXTENSION);
-  const releaseNotes = await changelog.getReleaseNotesForUpdate({
-    extensionRef,
-    fromVersion: existingSpec.version,
-    toVersion: source.spec.version,
-  });
-  if (Object.keys(releaseNotes).length) {
-    changelog.displayReleaseNotes(releaseNotes, existingSpec.version);
-  }
-  return source.name;
-}
-
-/**
- * @param instanceId Id of the instance to update
- * @param extRef extension reference of extension source to update to (publisherId/extensionId)
- * @param existingSpec ExtensionSpec of existing instance source
- * @param existingSource name of existing instance source
- */
-export async function updateFromPublisherSource(
-  projectId: string,
-  instanceId: string,
-  extRef: string,
-  existingSpec: ExtensionSpec
-): Promise<string> {
-  return updateToVersionFromPublisherSource(
-    projectId,
-    instanceId,
-    `${extRef}@latest`,
-    existingSpec
-  );
 }
 
 export function inferUpdateSource(updateSource: string, existingRef: string): string {

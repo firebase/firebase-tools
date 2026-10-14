@@ -38,7 +38,7 @@ export interface StorageRulesManager {
  */
 export function createStorageRulesManager(
   rules: SourceFile | RulesConfig[],
-  runtime: StorageRulesRuntime
+  runtime: StorageRulesRuntime,
 ): StorageRulesManager {
   return Array.isArray(rules)
     ? new ResourceBasedStorageRulesManager(rules, runtime)
@@ -55,7 +55,10 @@ class DefaultStorageRulesManager implements StorageRulesManager {
   private _watcher = new chokidar.FSWatcher();
   private _logger = EmulatorLogger.forEmulator(Emulators.STORAGE);
 
-  constructor(_rules: SourceFile, private _runtime: StorageRulesRuntime) {
+  constructor(
+    _rules: SourceFile,
+    private _runtime: StorageRulesRuntime,
+  ) {
     this._rules = _rules;
   }
 
@@ -82,13 +85,28 @@ class DefaultStorageRulesManager implements StorageRulesManager {
         // Adding a small delay prevents that at very little cost.
         await new Promise((res) => setTimeout(res, 5));
 
-        this._logger.logLabeled(
-          "BULLET",
-          "storage",
-          "Change detected, updating rules for Cloud Storage..."
-        );
-        this._rules.content = readFile(rulesFile);
-        await this.loadRuleset();
+        // In some OSes and CI environments, chokidar can emit a 'change' event
+        // when a file is deleted or if it is a non-existent mock file (e.g. /dev/null/storage.rules).
+        // Because we are inside an async callback that is not awaited by the event emitter,
+        // any synchronous errors thrown by `readFile` will result in an UnhandledPromiseRejection,
+        // which crashes the process. We catch these errors to prevent the emulator and tests from crashing.
+        try {
+          const content = readFile(rulesFile);
+          this._rules.content = content;
+          this._logger.logLabeled(
+            "BULLET",
+            "storage",
+            "Change detected, updating rules for Cloud Storage...",
+          );
+          await this.loadRuleset();
+        } catch (e) {
+          const message = e instanceof Error ? e.message : String(e);
+          this._logger.logLabeled(
+            "DEBUG",
+            "storage",
+            `A rule file change was detected, but there was an error reading it: ${message}`,
+          );
+        }
       });
   }
 
@@ -107,10 +125,10 @@ class DefaultStorageRulesManager implements StorageRulesManager {
           "WARN",
           `${parsedIssue.description_.replace(/\.$/, "")} in ${
             parsedIssue.sourcePosition_.fileName_
-          }:${parsedIssue.sourcePosition_.line_}`
+          }:${parsedIssue.sourcePosition_.line_}`,
         );
       } catch {
-        this._logger.log("WARN", issue);
+        this._logger.logLabeled("WARN", "storage", issue);
       }
     });
     return issues;
@@ -124,7 +142,10 @@ class DefaultStorageRulesManager implements StorageRulesManager {
 class ResourceBasedStorageRulesManager implements StorageRulesManager {
   private _rulesManagers = new Map<string, DefaultStorageRulesManager>();
 
-  constructor(_rulesConfig: RulesConfig[], private _runtime: StorageRulesRuntime) {
+  constructor(
+    _rulesConfig: RulesConfig[],
+    private _runtime: StorageRulesRuntime,
+  ) {
     for (const { resource, rules } of _rulesConfig) {
       this.createRulesManager(resource, rules);
     }
@@ -144,7 +165,7 @@ class ResourceBasedStorageRulesManager implements StorageRulesManager {
 
   async stop(): Promise<void> {
     await Promise.all(
-      Array.from(this._rulesManagers.values(), async (rulesManager) => await rulesManager.stop())
+      Array.from(this._rulesManagers.values(), async (rulesManager) => await rulesManager.stop()),
     );
   }
 

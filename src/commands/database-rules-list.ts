@@ -10,7 +10,7 @@ export const command = new Command("database:rules:list")
   .description("list realtime database rulesets")
   .option(
     "--instance <instance>",
-    "use the database <instance>.firebaseio.com (if omitted, uses default database instance)"
+    "use the database <instance>.firebaseio.com (if omitted, uses default database instance)",
   )
   .before(requirePermissions, ["firebasedatabase.instances.get"])
   .before(requireDatabaseInstance)

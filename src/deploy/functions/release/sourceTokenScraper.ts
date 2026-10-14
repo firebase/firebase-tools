@@ -1,4 +1,12 @@
+import { FirebaseError } from "../../../error";
+import { assertExhaustive } from "../../../functional";
 import { logger } from "../../../logger";
+
+type TokenFetchState = "NONE" | "FETCHING" | "VALID";
+interface TokenFetchResult {
+  token?: string;
+  aborted: boolean;
+}
 
 /**
  * GCF v1 deploys support reusing a build between function deploys.
@@ -6,23 +14,74 @@ import { logger } from "../../../logger";
  * and then will always return a promise that is resolved by the poller function.
  */
 export class SourceTokenScraper {
-  private firstCall = true;
-  private resolve!: (token: string) => void;
-  private promise: Promise<string | undefined>;
+  private tokenValidDurationMs;
+  private resolve!: (token: TokenFetchResult) => void;
+  private promise: Promise<TokenFetchResult>;
+  private expiry: number | undefined;
+  private fetchState: TokenFetchState;
 
-  constructor() {
+  constructor(validDurationMs = 1500000) {
+    this.tokenValidDurationMs = validDurationMs;
     this.promise = new Promise((resolve) => (this.resolve = resolve));
+    this.fetchState = "NONE";
   }
 
-  // Token Promise will return undefined for the first caller
-  // (because we presume it's this function's source token we'll scrape)
-  // and then returns the promise generated from the first function's onCall
-  tokenPromise(): Promise<string | undefined> {
-    if (this.firstCall) {
-      this.firstCall = false;
-      return Promise.resolve(undefined);
+  /**
+   * Runs an operation with a source token.
+   * If the operation throws, automatically aborts the token fetch to prevent deadlocks.
+   */
+  async withToken<T>(fn: (token: string | undefined) => Promise<T>): Promise<T> {
+    const token = await this.getToken();
+    try {
+      return await fn(token);
+    } catch (err) {
+      this.abort();
+      throw err;
     }
-    return this.promise;
+  }
+
+  private abort(): void {
+    if (this.fetchState === "FETCHING") {
+      this.fetchState = "NONE";
+      const resolve = this.resolve;
+      this.promise = new Promise((r) => (this.resolve = r));
+      resolve({ aborted: true });
+    }
+  }
+
+  private async getToken(): Promise<string | undefined> {
+    if (this.fetchState === "NONE") {
+      this.fetchState = "FETCHING";
+      return undefined;
+    } else if (this.fetchState === "FETCHING") {
+      const tokenResult = await this.promise;
+      if (tokenResult.aborted) {
+        return undefined;
+      }
+      return tokenResult.token;
+    } else if (this.fetchState === "VALID") {
+      if (this.isTokenExpired()) {
+        this.fetchState = "FETCHING";
+        this.promise = new Promise((resolve) => (this.resolve = resolve));
+        return undefined;
+      }
+      const tokenResult = await this.promise;
+      return tokenResult.token;
+    } else {
+      assertExhaustive(this.fetchState);
+    }
+  }
+
+  private isTokenExpired(): boolean {
+    if (this.expiry === undefined) {
+      throw new FirebaseError(
+        "Your deployment is checking the expiration of a source token that has not yet been polled. " +
+          "Hitting this case should never happen and should be considered a bug. " +
+          "Please file an issue at https://github.com/firebase/firebase-tools/issues " +
+          "and try deploying your functions again.",
+      );
+    }
+    return Date.now() >= this.expiry;
   }
 
   get poller() {
@@ -31,7 +90,12 @@ export class SourceTokenScraper {
         const [, , , /* projects*/ /* project*/ /* regions*/ region] =
           op.metadata?.target?.split("/") || [];
         logger.debug(`Got source token ${op.metadata?.sourceToken} for region ${region as string}`);
-        this.resolve(op.metadata?.sourceToken);
+        this.resolve({
+          token: op.metadata?.sourceToken,
+          aborted: false,
+        });
+        this.fetchState = "VALID";
+        this.expiry = Date.now() + this.tokenValidDurationMs;
       }
     };
   }

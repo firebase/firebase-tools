@@ -1,6 +1,6 @@
 import { Persistence } from "./persistence";
 import { IncomingMetadata } from "./metadata";
-import { v4 as uuidV4 } from "uuid";
+import { randomUUID } from "crypto";
 import { NotFoundError } from "./errors";
 
 /** A file upload. */
@@ -27,9 +27,9 @@ export enum UploadType {
 
 /** The status of an upload. Multipart uploads can only ever be FINISHED. */
 export enum UploadStatus {
-  ACTIVE,
-  CANCELLED,
-  FINISHED,
+  ACTIVE = "active",
+  CANCELLED = "cancelled",
+  FINISHED = "final",
 }
 
 /** Request object for {@link UploadService#mediaUpload}. */
@@ -37,6 +37,7 @@ export type MediaUploadRequest = {
   bucketId: string;
   objectId: string;
   dataRaw: Buffer;
+  contentType?: string;
   authorization?: string;
 };
 
@@ -44,7 +45,7 @@ export type MediaUploadRequest = {
 export type MultipartUploadRequest = {
   bucketId: string;
   objectId: string;
-  metadataRaw: string;
+  metadata: object;
   dataRaw: Buffer;
   authorization?: string;
 };
@@ -53,7 +54,7 @@ export type MultipartUploadRequest = {
 export type StartResumableUploadRequest = {
   bucketId: string;
   objectId: string;
-  metadataRaw: string;
+  metadata: object;
   authorization?: string;
 };
 
@@ -100,6 +101,7 @@ export class UploadService {
       objectId: request.objectId,
       uploadType: UploadType.MEDIA,
       dataRaw: request.dataRaw,
+      metadata: request.contentType ? { contentType: request.contentType } : undefined,
       authorization: request.authorization,
     });
     this._persistence.deleteFile(upload.path, /* failSilently = */ true);
@@ -117,7 +119,7 @@ export class UploadService {
       objectId: request.objectId,
       uploadType: UploadType.MULTIPART,
       dataRaw: request.dataRaw,
-      metadata: JSON.parse(request.metadataRaw),
+      metadata: request.metadata,
       authorization: request.authorization,
     });
     this._persistence.deleteFile(upload.path, /* failSilently = */ true);
@@ -126,7 +128,7 @@ export class UploadService {
   }
 
   private startOneShotUpload(request: OneShotUploadRequest): Upload {
-    const id = uuidV4();
+    const id = randomUUID();
     const upload: Upload = {
       id,
       bucketId: request.bucketId,
@@ -147,7 +149,7 @@ export class UploadService {
    * Initializes a new ResumableUpload.
    */
   public startResumableUpload(request: StartResumableUploadRequest): Upload {
-    const id = uuidV4();
+    const id = randomUUID();
     const upload: Upload = {
       id: id,
       bucketId: request.bucketId,
@@ -155,7 +157,7 @@ export class UploadService {
       type: UploadType.RESUMABLE,
       path: this.getStagingFileName(id, request.bucketId, request.objectId),
       status: UploadStatus.ACTIVE,
-      metadata: JSON.parse(request.metadataRaw),
+      metadata: request.metadata,
       size: 0,
       authorization: request.authorization,
     };

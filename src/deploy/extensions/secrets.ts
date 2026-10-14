@@ -15,6 +15,7 @@ import { ExtensionSpec, Param, ParamType } from "../../extensions/types";
 import { FirebaseError } from "../../error";
 import { logger } from "../../logger";
 import { logLabeledBullet } from "../../utils";
+import { FIREBASE_MANAGED } from "../../gcp/secretManager";
 
 /**
  * handleSecretParams checks each spec for secret params, and validates that the secrets in the configuration exist.
@@ -27,7 +28,7 @@ import { logLabeledBullet } from "../../utils";
 export async function handleSecretParams(
   payload: Payload,
   have: DeploymentInstanceSpec[],
-  nonInteractive: boolean
+  nonInteractive: boolean,
 ) {
   for (const i of payload.instancesToCreate ?? []) {
     if (await checkSpecForSecrets(i)) {
@@ -45,6 +46,9 @@ export async function handleSecretParams(
   }
 }
 
+/**
+ * @return true if the InstanceSpec defines any Secret params
+ */
 export async function checkSpecForSecrets(i: InstanceSpec): Promise<boolean> {
   const extensionSpec = await getExtensionSpec(i);
   return secretUtils.usesSecrets(extensionSpec);
@@ -55,8 +59,8 @@ const secretsInSpec = (spec: ExtensionSpec): Param[] => {
 };
 
 async function handleSecretsCreateInstance(i: DeploymentInstanceSpec, nonInteractive: boolean) {
-  const extensionVersion = await getExtensionVersion(i);
-  const secretParams = secretsInSpec(extensionVersion.spec);
+  const spec = await getExtensionSpec(i);
+  const secretParams = secretsInSpec(spec);
   for (const s of secretParams) {
     await handleSecretParamForCreate(s, i, nonInteractive);
   }
@@ -65,7 +69,7 @@ async function handleSecretsCreateInstance(i: DeploymentInstanceSpec, nonInterac
 async function handleSecretsUpdateInstance(
   i: DeploymentInstanceSpec,
   prevSpec: DeploymentInstanceSpec,
-  nonInteractive: boolean
+  nonInteractive: boolean,
 ) {
   const extensionVersion = await getExtensionVersion(i);
   const prevExtensionVersion = await getExtensionVersion(prevSpec);
@@ -85,7 +89,7 @@ async function handleSecretsUpdateInstance(
 async function handleSecretParamForCreate(
   secretParam: Param,
   i: DeploymentInstanceSpec,
-  nonInteractive: boolean
+  nonInteractive: boolean,
 ): Promise<void> {
   const providedValue = i.params[secretParam.param];
   if (!providedValue) {
@@ -97,7 +101,7 @@ async function handleSecretParamForCreate(
     throw new FirebaseError(
       `${clc.bold(i.instanceId)}: Found '${providedValue}' for secret param ${
         secretParam.param
-      }, but expected a secret version.`
+      }, but expected a secret version.`,
     );
   }
   // Then, go get all the info about the current state of the secret.
@@ -119,8 +123,8 @@ async function handleSecretParamForCreate(
       }. ` +
         `projects/${projectId}/secrets/${secretName} exists, but version ${version} does not. ` +
         `See more information about this secret at ${secretManager.secretManagerConsoleUri(
-          projectId
-        )}`
+          projectId,
+        )}`,
     );
   }
   // If the secret is managed, but by a different extension, error out.
@@ -136,7 +140,7 @@ async function handleSecretParamForCreate(
         `projects/${projectId}/secrets/${secretName} is managed by a different extension instance (${
           secretInfo.secret.labels[secretUtils.SECRET_LABEL]
         }), so reusing it here can lead to unexpected behavior. ` +
-        "Please choose a different name for this secret, and rerun this command."
+        "Please choose a different name for this secret, and rerun this command.",
     );
   }
   // If we get to this point, we're OK to just use what was included in the params.
@@ -148,7 +152,7 @@ async function handleSecretParamForUpdate(
   secretParam: Param,
   i: DeploymentInstanceSpec,
   prevValue: string,
-  nonInteractive: boolean
+  nonInteractive: boolean,
 ): Promise<void> {
   const providedValue = i.params[secretParam.param];
   if (!providedValue) {
@@ -159,7 +163,7 @@ async function handleSecretParamForUpdate(
     throw new FirebaseError(
       `${clc.bold(i.instanceId)}: Found '${providedValue}' for secret param ${
         secretParam.param
-      }, but expected a secret version.`
+      }, but expected a secret version.`,
     );
   }
   // Don't allow changing secrets, only changing versions
@@ -172,7 +176,7 @@ async function handleSecretParamForUpdate(
         `but this instance was previously using a different secret projects/${prevProjectId}/secrets/${prevSecretName}.\n` +
         `Changing secrets is not supported. If you want to change the value of this secret, ` +
         `use a new version of projects/${prevProjectId}/secrets/${prevSecretName}.` +
-        `You can create a new version at ${secretManager.secretManagerConsoleUri(projectId)}`
+        `You can create a new version at ${secretManager.secretManagerConsoleUri(projectId)}`,
     );
   }
   const secretInfo = await getSecretInfo(projectId, secretName, version);
@@ -192,8 +196,8 @@ async function handleSecretParamForUpdate(
       }. ` +
         `projects/${projectId}/secrets/${secretName} exists, but version ${version} does not. ` +
         `See more information about this secret at ${secretManager.secretManagerConsoleUri(
-          projectId
-        )}`
+          projectId,
+        )}`,
     );
   }
   // Set the param value to the exact resource name we get from SecretManager,
@@ -207,7 +211,7 @@ async function handleSecretParamForUpdate(
 async function getSecretInfo(
   projectId: string,
   secretName: string,
-  version: string
+  version: string,
 ): Promise<{
   secret?: secretManager.Secret;
   secretVersion?: secretManager.SecretVersion;
@@ -225,6 +229,50 @@ async function getSecretInfo(
   return secretInfo;
 }
 
+/**
+ * Returns true if a Secret resource has the "firebase-extensions-managed" label
+ */
+export async function secretHasExtensionsLabel(
+  projectId: string,
+  secretName: string,
+): Promise<boolean> {
+  try {
+    const have = await secretManager.getSecret(projectId, secretName);
+    return secretUtils.SECRET_LABEL in have.labels;
+  } catch (err: unknown) {
+    throw new FirebaseError(
+      `Error when retrieving current state of migrating secret ${projectId}/${secretName}: ${err instanceof Error ? err.message : String(err)}`,
+      { original: err instanceof Error ? err : undefined },
+    );
+  }
+}
+
+/**
+ * PATCHes a Secret resource by removing any "firebase-extensions-managed" labels
+ * and replacing them with "firebase-managed": "functions"
+ */
+export async function transferSecretToKits(
+  projectId: string,
+  secretName: string,
+): Promise<secretManager.Secret> {
+  const newLabels: Record<string, string> = {};
+  try {
+    const have = await secretManager.getSecret(projectId, secretName);
+    for (const [labelKey, labelValue] of Object.entries(have.labels)) {
+      if (labelKey !== secretUtils.SECRET_LABEL) {
+        newLabels[labelKey] = labelValue;
+      }
+    }
+  } catch (err: unknown) {
+    throw new FirebaseError(
+      `Error when retrieving current state of migrating secret ${projectId}/${secretName}: ${err instanceof Error ? err.message : String(err)}`,
+      { original: err instanceof Error ? err : undefined },
+    );
+  }
+  newLabels[FIREBASE_MANAGED] = "functions";
+  return secretManager.patchSecret(projectId, secretName, newLabels);
+}
+
 async function promptForCreateSecret(args: {
   projectId: string;
   secretName: string;
@@ -233,13 +281,13 @@ async function promptForCreateSecret(args: {
   nonInteractive: boolean;
 }): Promise<string> {
   logger.info(
-    `${clc.bold(args.instanceId)}: Secret ${args.projectId}/${args.secretName} doesn't exist yet.`
+    `${clc.bold(args.instanceId)}: Secret ${args.projectId}/${args.secretName} doesn't exist yet.`,
   );
   if (args.nonInteractive) {
     throw new FirebaseError(
       `To create this secret, run this command in interactive mode, or go to ${secretManager.secretManagerConsoleUri(
-        args.projectId
-      )}`
+        args.projectId,
+      )}`,
     );
   }
   return promptCreateSecret(args.projectId, args.instanceId, args.secretParam, args.secretName);

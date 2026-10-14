@@ -1,6 +1,8 @@
 import { ChildProcess } from "child_process";
 import { EventEmitter } from "events";
 
+import { getErrStack } from "../error";
+
 export enum Emulators {
   AUTH = "auth",
   HUB = "hub",
@@ -8,12 +10,15 @@ export enum Emulators {
   FIRESTORE = "firestore",
   DATABASE = "database",
   HOSTING = "hosting",
+  APPHOSTING = "apphosting",
   PUBSUB = "pubsub",
   UI = "ui",
   LOGGING = "logging",
   STORAGE = "storage",
   EXTENSIONS = "extensions",
   EVENTARC = "eventarc",
+  DATACONNECT = "dataconnect",
+  TASKS = "tasks",
 }
 
 export type DownloadableEmulators =
@@ -21,24 +26,34 @@ export type DownloadableEmulators =
   | Emulators.DATABASE
   | Emulators.PUBSUB
   | Emulators.UI
-  | Emulators.STORAGE;
+  | Emulators.STORAGE
+  | Emulators.DATACONNECT;
+
 export const DOWNLOADABLE_EMULATORS = [
   Emulators.FIRESTORE,
   Emulators.DATABASE,
   Emulators.PUBSUB,
   Emulators.UI,
   Emulators.STORAGE,
+  Emulators.DATACONNECT,
 ];
 
-export type ImportExportEmulators = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.AUTH;
+export type ImportExportEmulators =
+  | Emulators.FIRESTORE
+  | Emulators.DATABASE
+  | Emulators.AUTH
+  | Emulators.STORAGE
+  | Emulators.DATACONNECT;
 export const IMPORT_EXPORT_EMULATORS = [
   Emulators.FIRESTORE,
   Emulators.DATABASE,
   Emulators.AUTH,
   Emulators.STORAGE,
+  Emulators.DATACONNECT,
 ];
 
 export const ALL_SERVICE_EMULATORS = [
+  Emulators.APPHOSTING,
   Emulators.AUTH,
   Emulators.FUNCTIONS,
   Emulators.FIRESTORE,
@@ -47,6 +62,8 @@ export const ALL_SERVICE_EMULATORS = [
   Emulators.PUBSUB,
   Emulators.STORAGE,
   Emulators.EVENTARC,
+  Emulators.DATACONNECT,
+  Emulators.TASKS,
 ].filter((v) => v);
 
 export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [
@@ -55,6 +72,7 @@ export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [
   Emulators.PUBSUB,
   Emulators.STORAGE,
   Emulators.EVENTARC,
+  Emulators.TASKS,
 ];
 
 export const EMULATORS_SUPPORTED_BY_UI = [
@@ -131,9 +149,18 @@ export interface EmulatorInstance {
 
 export interface EmulatorInfo {
   name: Emulators;
+  pid?: number;
+  reservedPorts?: number[];
+
+  /** All addresses that an emulator listens on. */
+  listen?: ListenSpec[];
+
+  /** The primary IP address that the emulator listens on. */
   host: string;
   port: number;
-  pid?: number;
+
+  /** How long to wait for the emulator to start before erroring out. */
+  timeout?: number;
 }
 
 export interface DownloadableEmulatorCommand {
@@ -141,6 +168,8 @@ export interface DownloadableEmulatorCommand {
   args: string[];
   optionalArgs: string[];
   joinArgs: boolean;
+  shell: boolean;
+  port?: number;
 }
 
 export interface EmulatorDownloadOptions {
@@ -151,24 +180,42 @@ export interface EmulatorDownloadOptions {
   namePrefix: string;
   skipChecksumAndSize?: boolean;
   skipCache?: boolean;
+  auth?: boolean;
+}
+
+export interface EmulatorUpdateDetails {
+  version: string;
+  expectedSize: number;
+  expectedChecksum: string;
+  expectedChecksumSHA256: string; // TODO: Use this for validation within the CLI as well.
+  remoteUrl: string;
+  downloadPathRelativeToCacheDir: string;
+  binaryPathRelativeToCacheDir?: string;
 }
 
 export interface EmulatorDownloadDetails {
   opts: EmulatorDownloadOptions;
 
-  // Semver version string
+  /** Semver version string */
   version: string;
 
-  // The path to download the binary or archive from the remote source
+  /** The path to download the binary or archive from the remote source */
   downloadPath: string;
 
-  // If specified, the artifact at 'downloadPath' is assumed to be a .zip and
-  // will be unzipped into 'unzipDir'
+  /**
+   * If specified, the artifact at 'downloadPath' is assumed to be a .zip and
+   * will be unzipped into 'unzipDir'
+   */
   unzipDir?: string;
 
-  // If specified, a path where the runnable binary can be found after downloading and
-  // unzipping. Otherwise downloadPath will be used.
+  /**
+   * If specified, a path where the runnable binary can be found after downloading and
+   * unzipping. Otherwise downloadPath will be used.
+   */
   binaryPath?: string;
+
+  /** If true, never try to download this emualtor. Set when developing with local versions of an emulator. */
+  localOnly?: boolean;
 }
 
 export interface DownloadableEmulatorDetails {
@@ -177,9 +224,10 @@ export interface DownloadableEmulatorDetails {
   stdout: any | null;
 }
 
-export interface Address {
-  host: string;
+export interface ListenSpec {
+  address: string;
   port: number;
+  family: "IPv4" | "IPv6";
 }
 
 export enum FunctionsExecutionMode {
@@ -214,7 +262,7 @@ export class EmulatorLog {
     emitter: EventEmitter,
     level: string,
     type: string,
-    filter?: (el: EmulatorLog) => boolean
+    filter?: (el: EmulatorLog) => boolean,
   ): Promise<EmulatorLog> {
     return new Promise((resolve) => {
       const listener = (el: EmulatorLog) => {
@@ -238,7 +286,7 @@ export class EmulatorLog {
     let isNotJSON = false;
     try {
       parsedLog = JSON.parse(json);
-    } catch (err: any) {
+    } catch (err: unknown) {
       isNotJSON = true;
     }
 
@@ -262,7 +310,7 @@ export class EmulatorLog {
       parsedLog.type,
       parsedLog.text,
       parsedLog.data,
-      parsedLog.timestamp
+      parsedLog.timestamp,
     );
   }
 
@@ -274,7 +322,7 @@ export class EmulatorLog {
     public type: string,
     public text: string,
     public data?: any,
-    public timestamp?: string
+    public timestamp?: string,
   ) {
     this.timestamp = this.timestamp || new Date().toISOString();
     this.data = this.data || {};
@@ -311,12 +359,15 @@ export class EmulatorLog {
 
     EmulatorLog.WAITING_FOR_FLUSH = true;
     if (process.send) {
-      // For some reason our node.d.ts file does not include the version of subprocess.send() with a callback
-      // but the node docs assert that it has an optional callback.
       // https://nodejs.org/api/child_process.html#child_process_subprocess_send_message_sendhandle_options_callback
-      (process.send as any)(nextMsg, undefined, {}, (err: any) => {
+      process.send(nextMsg, undefined, {}, (err: Error | null) => {
         if (err) {
-          process.stderr.write(err);
+          // process.send() hands the callback an Error object, which stream.write()
+          // rejects -- writing it directly throws and destroys the original error.
+          process.stderr.write(`${getErrStack(err)}\n`);
+          // Clear the buffer to prevent flooding stderr with duplicate stack traces
+          // for subsequent messages when the IPC channel is permanently broken.
+          EmulatorLog.LOG_BUFFER = [];
         }
 
         EmulatorLog.WAITING_FOR_FLUSH = EmulatorLog.LOG_BUFFER.length > 0;
@@ -324,7 +375,7 @@ export class EmulatorLog {
       });
     } else {
       process.stderr.write(
-        "subprocess.send() is undefined, cannot communicate with Functions Runtime."
+        "subprocess.send() is undefined, cannot communicate with Functions Runtime.",
       );
     }
   }
@@ -339,7 +390,7 @@ export class EmulatorLog {
         type: this.type,
       },
       undefined,
-      pretty ? 2 : 0
+      pretty ? 2 : 0,
     );
   }
 }

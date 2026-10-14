@@ -74,7 +74,7 @@ function readEmulatorConfig(): FrameworkOptions {
 class ConformanceTestEnvironment {
   private _prodAppConfig: any;
   private _emulatorConfig: any;
-  private _prodServiceAccountKeyJson?: any;
+  private _prodServiceAccountKeyJson?: any | null;
   private _adminAccessToken?: string;
 
   get useProductionServers() {
@@ -125,9 +125,10 @@ class ConformanceTestEnvironment {
   get prodServiceAccountKeyJson() {
     if (this._prodServiceAccountKeyJson === undefined) {
       const filePath = path.join(__dirname, TEST_CONFIG.prodServiceAccountKeyFilePath);
-      return TEST_CONFIG.prodServiceAccountKeyFilePath && fs.existsSync(filePath)
-        ? readAbsoluteJson(filePath)
-        : null;
+      this._prodServiceAccountKeyJson =
+        TEST_CONFIG.prodServiceAccountKeyFilePath && fs.existsSync(filePath)
+          ? readAbsoluteJson(filePath)
+          : null;
     }
     return this._prodServiceAccountKeyJson;
   }
@@ -157,7 +158,7 @@ class ConformanceTestEnvironment {
     if (this.useProductionServers) {
       process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(
         __dirname,
-        TEST_CONFIG.prodServiceAccountKeyFilePath
+        TEST_CONFIG.prodServiceAccountKeyFilePath,
       );
     } else {
       process.env.STORAGE_EMULATOR_HOST = this.storageEmulatorHost;

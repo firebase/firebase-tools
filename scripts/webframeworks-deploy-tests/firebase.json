@@ -1,0 +1,40 @@
+{
+  "hosting": [
+    {
+      "target": "nextjs",
+      "source": "nextjs",
+      "frameworksBackend": {
+        "maxInstances": 1,
+        "region": "asia-east1"
+      },
+      "rewrites": [{
+        "source": "helloWorld",
+        "function": "helloWorld"
+      }]
+    },
+    {
+      "target": "angular",
+      "source": "angular",
+      "frameworksBackend": {
+        "maxInstances": 1,
+        "region": "europe-west1"
+      },
+      "rewrites": [{
+        "source": "helloWorld",
+        "function": "helloWorld"
+      }]
+    }
+  ],
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log"
+      ]
+    }
+  ]
+}

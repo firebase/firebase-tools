@@ -122,7 +122,7 @@ export class StorageLayer {
     private _rulesValidator: FirebaseRulesValidator,
     private _adminCredsValidator: AdminCredentialValidator,
     private _persistence: Persistence,
-    private _cloudFunctions: StorageCloudFunctions
+    private _cloudFunctions: StorageCloudFunctions,
   ) {}
 
   createBucket(id: string): void {
@@ -153,7 +153,7 @@ export class StorageLayer {
 
     // If a valid download token is present, skip Firebase Rules auth. Mainly used by the js sdk.
     const hasValidDownloadToken = (metadata?.downloadTokens || []).includes(
-      request.downloadToken ?? ""
+      request.downloadToken ?? "",
     );
     let authorized = hasValidDownloadToken;
     if (!authorized) {
@@ -162,7 +162,8 @@ export class StorageLayer {
         request.bucketId,
         RulesetOperationMethod.GET,
         { before: metadata?.asRulesResource() },
-        request.authorization
+        this._projectId,
+        request.authorization,
       );
     }
     if (!authorized) {
@@ -191,7 +192,7 @@ export class StorageLayer {
     bucket: string,
     object: string,
     size?: number,
-    offset?: number
+    offset?: number,
   ): Buffer | undefined {
     const key = this.path(bucket, object);
     const val = this._files.get(key);
@@ -213,7 +214,8 @@ export class StorageLayer {
       request.bucketId,
       RulesetOperationMethod.DELETE,
       { before: storedMetadata?.asRulesResource() },
-      request.authorization
+      this._projectId,
+      request.authorization,
     );
     if (!authorized) {
       throw new ForbiddenError();
@@ -256,7 +258,7 @@ export class StorageLayer {
    * @throws {NotFoundError} if the object does not exist.
    */
   public async updateObjectMetadata(
-    request: UpdateObjectMetadataRequest
+    request: UpdateObjectMetadataRequest,
   ): Promise<StoredFileMetadata> {
     const storedMetadata = this.getMetadata(request.bucketId, request.decodedObjectId);
     const authorized = await this._rulesValidator.validate(
@@ -267,7 +269,8 @@ export class StorageLayer {
         before: storedMetadata?.asRulesResource(),
         after: storedMetadata?.asRulesResource(request.metadata),
       },
-      request.authorization
+      this._projectId,
+      request.authorization,
     );
     if (!authorized) {
       throw new ForbiddenError();
@@ -311,7 +314,7 @@ export class StorageLayer {
         customMetadata: getIncomingMetadata("metadata"),
       },
       this._cloudFunctions,
-      this._persistence.readBytes(upload.path, upload.size)
+      this._persistence.readBytes(upload.path, upload.size),
     );
 
     const authorized = await this._rulesValidator.validate(
@@ -322,7 +325,8 @@ export class StorageLayer {
         before: storedMetadata?.asRulesResource(),
         after: metadata.asRulesResource(),
       },
-      upload.authorization
+      this._projectId,
+      upload.authorization,
     );
     if (!authorized) {
       this._persistence.deleteFile(upload.path);
@@ -395,7 +399,7 @@ export class StorageLayer {
         customMetadata: getMetadata("metadata"),
       },
       this._cloudFunctions,
-      sourceBytes
+      sourceBytes,
     );
     const file = new StoredFile(copiedFileMetadata);
     this._files.set(destinationFilePath, file);
@@ -417,8 +421,9 @@ export class StorageLayer {
       bucketId,
       RulesetOperationMethod.LIST,
       {},
+      this._projectId,
       authorization,
-      delimiter
+      delimiter,
     );
     if (!authorized) {
       throw new ForbiddenError();
@@ -560,7 +565,7 @@ export class StorageLayer {
     for await (const [, file] of this._files.entries()) {
       // get diskFilename from file path, metadata and blob files are persisted with this name
       const diskFileName = this._persistence.getDiskFileName(
-        this.path(file.metadata.bucket, file.metadata.name)
+        this.path(file.metadata.bucket, file.metadata.name),
       );
 
       await fse.copy(path.join(this.dirPath, diskFileName), path.join(blobsDirPath, diskFileName));
@@ -595,7 +600,7 @@ export class StorageLayer {
     // Handle case where export contained empty metadata or blobs
     if (!existsSync(metadataDir) || !existsSync(blobsDir)) {
       logger.warn(
-        `Could not find metadata directory at "${metadataDir}" and/or blobs directory at "${blobsDir}".`
+        `Could not find metadata directory at "${metadataDir}" and/or blobs directory at "${blobsDir}".`,
       );
       return;
     }

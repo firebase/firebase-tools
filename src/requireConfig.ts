@@ -11,8 +11,8 @@ export async function requireConfig(options: Options): Promise<void> {
       : reject(
           options.configError ??
             new FirebaseError(
-              "Not in a Firebase project directory (could not locate firebase.json)"
-            )
-        )
+              "Not in a Firebase project directory (could not locate firebase.json)",
+            ),
+        ),
   );
 }

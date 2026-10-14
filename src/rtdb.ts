@@ -11,12 +11,8 @@ export async function updateRules(
   projectId: string,
   instance: string,
   src: any,
-  options: { dryRun?: boolean } = {}
+  options: { dryRun?: boolean } = {},
 ): Promise<void> {
-  const queryParams: { dryRun?: string } = {};
-  if (options.dryRun) {
-    queryParams.dryRun = "true";
-  }
   const downstreamOptions: {
     instance: string;
     project: string;
@@ -29,9 +25,23 @@ export async function updateRules(
   const origin = utils.getDatabaseUrl(
     realtimeOriginOrCustomUrl(downstreamOptions.instanceDetails.databaseUrl),
     instance,
-    ""
+    "",
   );
   const client = new Client({ urlPrefix: origin });
+
+  return updateRulesWithClient(client, src, options);
+}
+
+export async function updateRulesWithClient(
+  client: Client,
+  src: unknown,
+  options: { dryRun?: boolean } = {},
+) {
+  const queryParams: { dryRun?: string } = {};
+  if (options.dryRun) {
+    queryParams.dryRun = "true";
+  }
+
   const response = await client.request<any, any>({
     method: "PUT",
     path: ".settings/rules.json",

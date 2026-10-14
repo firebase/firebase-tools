@@ -1,0 +1,54 @@
+# Integrate Nuxt
+
+Using the Firebase CLI, you can deploy your Nuxt apps to Firebase and
+serve them with Firebase Hosting. The CLI respects your Nuxt settings and
+translates them to Firebase settings with zero or minimal extra configuration on
+your part. If your app includes dynamic server-side logic, the CLI deploys that
+logic to Cloud Functions for Firebase.
+
+Note: Framework-aware Hosting is an early public preview. This means
+that the functionality might change in backward-incompatible ways. A preview
+release is not subject to any SLA or deprecation policy and may receive limited
+or no support.
+
+Caution: For Nuxt developers, new participation in the {{hosting}}
+frameworks experiment has been closed permanently. If you're already using the
+frameworks experiment in the Firebase CLI, we recommend "graduating" to
+{{app_hosting}}. With {{app_hosting}}, you'll have a unified solution to manage
+everything from CDN to server-side rendering, along with improved GitHub
+integration.
+
+## Before you begin
+
+Before you get started deploying your app to Firebase,
+review the following requirements and options:
+
+- Firebase CLI version 12.1.0 or later. Make sure to
+  [install the CLI](https://firebase.google.com/docs/cli#install_the_firebase_cli)
+  using your preferred method.
+- Optional: Billing enabled on your Firebase project
+  (required if you plan to use SSR)
+- An existing Nuxt (version 3+) project. You can create one with `npx nuxi@latest init <project-name>`.
+
+
+## Deployment
+
+After initializing Firebase, you can deploy your Nuxt app with the standard
+deployment command:
+
+```shell
+firebase deploy
+```
+
+## Serve static content
+
+If your Nuxt app uses [`ssr: false`](https://nuxt.com/docs/api/configuration/nuxt-config#ssr), 
+the Firebase CLI will correctly detect and configure your build to serve fully
+static content on Firebase Hosting.
+
+## Server-side rendering
+
+The Firebase CLI will detect usage of [`ssr: true`](https://nuxt.com/docs/api/configuration/nuxt-config#ssr). 
+In such cases, the Firebase CLI will deploy functions to Cloud Functions for Firebase to run dynamic 
+server code. You can view information about these functions, such as their domain and runtime
+configuration, in the [Firebase console](https://console.firebase.google.com/project/_/functions).

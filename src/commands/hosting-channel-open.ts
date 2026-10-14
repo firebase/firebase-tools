@@ -9,8 +9,8 @@ import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
 import { requireConfig } from "../requireConfig";
 import { logLabeledBullet } from "../utils";
-import { promptOnce } from "../prompt";
 import { requireHostingSite } from "../requireHostingSite";
+import { select } from "../prompt";
 
 export const command = new Command("hosting:channel:open [channelId]")
   .description("opens the URL for a Firebase Hosting channel")
@@ -22,7 +22,7 @@ export const command = new Command("hosting:channel:open [channelId]")
   .action(
     async (
       channelId: string,
-      options: any // eslint-disable-line @typescript-eslint/no-explicit-any
+      options: any, // eslint-disable-line @typescript-eslint/no-explicit-any
     ): Promise<{ url: string }> => {
       const projectId = needProjectId(options);
       const siteId = options.site;
@@ -35,8 +35,7 @@ export const command = new Command("hosting:channel:open [channelId]")
         const channels = await listChannels(projectId, siteId);
         sortBy(channels, ["name"]);
 
-        channelId = await promptOnce({
-          type: "list",
+        channelId = await select({
           message: "Which channel would you like to open?",
           choices: channels.map((c) => last(c.name.split("/")) || c.name),
         });
@@ -47,7 +46,7 @@ export const command = new Command("hosting:channel:open [channelId]")
       const channel = await getChannel(projectId, siteId, channelId);
       if (!channel) {
         throw new FirebaseError(
-          `Could not find the channel ${bold(channelId)} for site ${bold(siteId)}.`
+          `Could not find the channel ${bold(channelId)} for site ${bold(siteId)}.`,
         );
       }
 
@@ -57,5 +56,5 @@ export const command = new Command("hosting:channel:open [channelId]")
       }
 
       return { url: channel.url };
-    }
+    },
   );

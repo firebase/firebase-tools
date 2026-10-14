@@ -17,7 +17,7 @@ export interface ModuleVersion {
 
 export function extractParamsFromPath(
   wildcardPath: string,
-  snapshotPath: string
+  snapshotPath: string,
 ): { [key: string]: string } {
   if (!isValidWildcardMatch(wildcardPath, snapshotPath)) {
     return {};
@@ -64,10 +64,6 @@ export function trimSlashes(str: string): string {
     .split("/")
     .filter((c) => c)
     .join("/");
-}
-
-export function removePathSegments(path: string, count: number): string {
-  return trimSlashes(path).split("/").slice(count).join("/");
 }
 
 /**

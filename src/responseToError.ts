@@ -2,13 +2,13 @@ import * as _ from "lodash";
 
 import { FirebaseError } from "./error";
 
-export function responseToError(response: any, body: any): FirebaseError | undefined {
-  if (response.statusCode < 400) {
+export function responseToError(response: any, body: any, url?: string): FirebaseError | undefined {
+  const statusCode: number = (response.statusCode || response.status) as number;
+  if (statusCode < 400) {
     return;
   }
-
   if (typeof body === "string") {
-    if (response.statusCode === 404) {
+    if (statusCode === 404) {
       body = {
         error: {
           message: "Not Found",
@@ -32,16 +32,19 @@ export function responseToError(response: any, body: any): FirebaseError | undef
   }
 
   if (!body.error) {
-    const errMessage = response.statusCode === 404 ? "Not Found" : "Unknown Error";
+    const errMessage = statusCode === 404 ? "Not Found" : "Unknown Error";
     body.error = {
       message: errMessage,
     };
   }
 
-  const message = "HTTP Error: " + response.statusCode + ", " + (body.error.message || body.error);
+  let message = "HTTP Error: " + statusCode + ", " + (body.error.message || body.error);
+  if (url) {
+    message = "Request to " + url + " had " + message;
+  }
 
   let exitCode;
-  if (response.statusCode >= 500) {
+  if (statusCode >= 500) {
     // 5xx errors are unexpected
     exitCode = 2;
   } else {
@@ -56,6 +59,6 @@ export function responseToError(response: any, body: any): FirebaseError | undef
       response: response,
     },
     exit: exitCode,
-    status: response.statusCode,
+    status: statusCode,
   });
 }

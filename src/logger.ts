@@ -1,5 +1,26 @@
 import * as winston from "winston";
 import * as Transport from "winston-transport";
+import { EventEmitter } from "events";
+import * as path from "path";
+import * as os from "os";
+import * as fs from "fs";
+import { SPLAT } from "triple-beam";
+import { stripVTControlCharacters } from "util";
+
+import { isVSCodeExtension } from "./vsCodeUtils";
+
+/**
+ * vsceLogEmitter passes CLI logs along to VSCode.
+ *
+ * Events are of the format winston.LogEntry
+ * @example
+ * vsceLogEmitter.on("log", (logEntry) => {
+ *   if (logEntry.level == "error") {
+ *     console.log(logEntry.message)
+ *   }
+ * })
+ */
+export const vsceLogEmitter = new EventEmitter();
 
 export type LogLevel =
   | "error"
@@ -44,6 +65,8 @@ export interface Logger {
 
   add(transport: Transport): Logger;
   remove(transport: Transport): Logger;
+
+  silent: boolean;
 }
 
 function expandErrors(logger: winston.Logger): winston.Logger {
@@ -80,9 +103,165 @@ function annotateDebugLines(logger: winston.Logger): winston.Logger {
   return logger;
 }
 
+function maybeUseVSCodeLogger(logger: winston.Logger): winston.Logger {
+  if (!isVSCodeExtension()) {
+    return logger;
+  }
+  const oldLogFunc = logger.log.bind(logger);
+  const vsceLogger: winston.LogMethod = function (
+    levelOrEntry: string | winston.LogEntry,
+    message?: string | Error,
+    ...meta: any[]
+  ): winston.Logger {
+    if (message) {
+      vsceLogEmitter.emit("log", { level: levelOrEntry, message });
+    } else {
+      vsceLogEmitter.emit("log", levelOrEntry);
+    }
+    return oldLogFunc(levelOrEntry as string, message as string, ...meta);
+  };
+  logger.log = vsceLogger;
+  return logger;
+}
+
+export interface LogTarget {
+  baseDir: string;
+  baseName: string;
+  ext: string;
+}
+
+/**
+ * Resolves the directory, base filename, and extension for the debug log file.
+ */
+export function resolveLogTarget(customPath?: string): LogTarget {
+  const debugPath = customPath ?? process.env.FIREBASE_DEBUG_PATH;
+  if (!debugPath || !debugPath.trim()) {
+    return {
+      baseDir: process.cwd(),
+      baseName: "firebase-debug",
+      ext: ".log",
+    };
+  }
+
+  let trimmed = debugPath.trim();
+  if (trimmed === "~" || trimmed.startsWith("~/") || trimmed.startsWith("~\\")) {
+    trimmed = path.join(os.homedir(), trimmed.slice(1));
+  }
+
+  const resolvedPath = path.resolve(process.cwd(), trimmed);
+
+  if (fs.existsSync(resolvedPath)) {
+    let isDir = false;
+    try {
+      isDir = fs.statSync(resolvedPath).isDirectory();
+    } catch {
+      // If stat fails, assume it's not a directory
+    }
+    if (isDir) {
+      return {
+        baseDir: resolvedPath,
+        baseName: "firebase-debug",
+        ext: ".log",
+      };
+    }
+    const ext = path.extname(resolvedPath);
+    return {
+      baseDir: path.dirname(resolvedPath),
+      baseName: path.basename(resolvedPath, ext),
+      ext,
+    };
+  }
+
+  if (trimmed.endsWith(path.sep) || trimmed.endsWith("/") || trimmed.endsWith("\\")) {
+    return {
+      baseDir: resolvedPath,
+      baseName: "firebase-debug",
+      ext: ".log",
+    };
+  }
+
+  const ext = path.extname(resolvedPath);
+  if (ext) {
+    return {
+      baseDir: path.dirname(resolvedPath),
+      baseName: path.basename(resolvedPath, ext),
+      ext,
+    };
+  }
+
+  return {
+    baseDir: resolvedPath,
+    baseName: "firebase-debug",
+    ext: ".log",
+  };
+}
+
+/**
+ * Finds an available debug log file path, checking permissions and creating directories as needed.
+ */
+export function findAvailableLogFile(customPath?: string): string {
+  const { baseDir, baseName, ext } = resolveLogTarget(customPath);
+
+  if (!fs.existsSync(baseDir)) {
+    try {
+      fs.mkdirSync(baseDir, { recursive: true });
+    } catch {
+      // Any error creating the directory means we won't be able to log here.
+    }
+  }
+
+  const candidates = [`${baseName}${ext}`];
+  for (let i = 1; i < 10; i++) {
+    candidates.push(`${baseName}.${i}${ext}`);
+  }
+
+  for (const c of candidates) {
+    const logFilename = path.join(baseDir, c);
+    try {
+      const fd = fs.openSync(logFilename, "r+");
+      fs.closeSync(fd);
+      return logFilename;
+    } catch (err: unknown) {
+      if (
+        typeof err === "object" &&
+        err !== null &&
+        "code" in err &&
+        (err as { code?: string }).code === "ENOENT"
+      ) {
+        try {
+          fs.accessSync(baseDir, fs.constants.W_OK);
+          return logFilename;
+        } catch {
+          // Parent directory is not writable, skip candidate.
+        }
+      }
+      // Any other error (EPERM, etc) means we won't be able to log to
+      // this file so we skip it.
+    }
+  }
+  throw new Error(`Unable to obtain permissions for ${baseName}${ext}`);
+}
+
+export function tryStringify(value: any) {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return value;
+  }
+}
+
 const rawLogger = winston.createLogger();
 // Set a default silent logger to suppress logs during tests
-rawLogger.add(new winston.transports.Console({ silent: true }));
+rawLogger.add(
+  new winston.transports.Console({
+    silent: true,
+    consoleWarnLevels: ["debug", "warn"],
+  }),
+);
 rawLogger.exitOnError = false;
 
 // The type system for TypeScript is a bit wonky. The type of winston.LeveledLogMessage
@@ -91,4 +270,52 @@ rawLogger.exitOnError = false;
 // allow error parameters.
 // Casting looks super dodgy, but it should be safe because we know the underlying code
 // handles all parameter types we care about.
-export const logger = annotateDebugLines(expandErrors(rawLogger)) as unknown as Logger;
+export const logger: Logger = maybeUseVSCodeLogger(
+  annotateDebugLines(expandErrors(rawLogger)),
+) as unknown as Logger;
+
+/**
+ * Sets up logging to the firebase-debug.log file.
+ */
+export function useFileLogger(logFile?: string): string {
+  const logFileName = findAvailableLogFile(logFile);
+  logger.add(
+    new winston.transports.File({
+      level: "debug",
+      filename: logFileName,
+      format: winston.format.printf((info) => {
+        const segments = [info.message, ...(info[SPLAT] || [])].map(tryStringify);
+        return `[${info.level}] ${stripVTControlCharacters(segments.join(" "))}`;
+      }),
+    }),
+  );
+  return logFileName;
+}
+
+/**
+ * Sets up logging to the command line.
+ */
+export function useConsoleLoggers(): void {
+  if (process.env.DEBUG) {
+    logger.add(
+      new winston.transports.Console({
+        level: "debug",
+        format: winston.format.printf((info) => {
+          const segments = [info.message, ...(info[SPLAT] || [])].map(tryStringify);
+          return `${stripVTControlCharacters(segments.join(" "))}`;
+        }),
+      }),
+    );
+  } else if (process.env.IS_FIREBASE_CLI) {
+    logger.add(
+      new winston.transports.Console({
+        level: "info",
+        format: winston.format.printf((info) =>
+          [info.message, ...(info[SPLAT] || [])]
+            .filter((chunk) => typeof chunk === "string")
+            .join(" "),
+        ),
+      }),
+    );
+  }
+}

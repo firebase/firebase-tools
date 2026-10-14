@@ -1,0 +1,94 @@
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.text {
+  margin: 0;
+  padding: 0;
+  font-weight: normal;
+  user-select: none;
+}
+
+p,
+ol,
+ul {
+  margin: 0;
+  padding: 0;
+  line-height: var(--vscode-line-height);
+}
+
+h1 {
+  font-size: 26px;
+  line-height: var(--vscode-line-height);
+  font-weight: 600; // semibold
+  margin: 0;
+}
+
+h2 {
+  font-size: 16px;
+  line-height: var(--vscode-line-height);
+  font-weight: 500; // medium
+}
+
+h3 {
+  font-size: 13px;
+  line-height: var(--vscode-line-height);
+  font-weight: 800; // heavy
+}
+
+h4 {
+  font-size: 11px;
+  line-height: var(--vscode-line-height);
+  font-weight: 700; // bold
+  text-transform: uppercase;
+}
+
+h5 {
+  font-size: 11px;
+  line-height: var(--vscode-line-height);
+  font-weight: 500; // medium
+  text-transform: uppercase;
+}
+
+h6 {
+  font-size: 11px;
+  line-height: var(--vscode-line-height);
+  font-weight: 800; // heavy
+}
+
+.b1 {
+  font-size: inherit;
+  line-height: var(--vscode-line-height);
+}
+
+.b2 {
+  font-size: 12px;
+  line-height: var(--vscode-line-height);
+}
+
+.l1 {
+  font-size: 14px;
+  line-height: var(--vscode-line-height);
+  font-weight: 500; // medium
+}
+
+.l2 {
+  font-size: 12px;
+  font-weight: 700; // bold
+}
+
+.l3 {
+  font-size: 11px;
+  font-weight: 500; // medium
+}
+
+.l4 {
+  font-size: 9px;
+  font-weight: 700; // bold
+}
+
+.color-secondary {
+  color: var(--vscode-descriptionForeground);
+}

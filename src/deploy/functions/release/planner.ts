@@ -1,18 +1,21 @@
 import {
   EndpointFilter,
   endpointMatchesAnyFilter,
+  generationDowngradeMessage,
   getFunctionLabel,
+  isCodebasePartiallyFiltered,
 } from "../functionsDeployHelper";
 import { isFirebaseManaged } from "../../../deploymentTool";
 import { FirebaseError } from "../../../error";
 import * as utils from "../../../utils";
 import * as backend from "../backend";
+import * as ensure from "../ensure";
 import * as v2events from "../../../functions/events/v2";
-import { previews } from "../../../previews";
 
 export interface EndpointUpdate {
   endpoint: backend.Endpoint;
   deleteAndRecreate?: backend.Endpoint;
+  unsafe?: boolean;
 }
 
 export interface Changeset {
@@ -22,14 +25,42 @@ export interface Changeset {
   endpointsToSkip: backend.Endpoint[];
 }
 
-export type DeploymentPlan = Record<string, Changeset>;
+export interface BaseCodebasePlan {
+  regionalChangesets: Record<string, Changeset>;
+  plannedBackend: backend.Backend;
+  secretAccessPlan?: Record<string, string[]>;
+}
+
+export interface ActiveSecurityPlan {
+  managedServiceAccount: string;
+  rolesToAdd?: string[];
+  rolesToRemove?: string[];
+  serviceAccountToCreate?: string;
+  serviceAccountToDelete?: undefined;
+}
+
+export interface InactiveSecurityPlan {
+  managedServiceAccount?: undefined;
+  rolesToAdd?: undefined;
+  rolesToRemove?: undefined;
+  serviceAccountToCreate?: undefined;
+  serviceAccountToDelete?: string;
+}
+
+export type CodebasePlan = BaseCodebasePlan & (ActiveSecurityPlan | InactiveSecurityPlan);
+
+export type DeploymentPlan = Record<string, CodebasePlan>; // codebase -> CodebasePlan
 
 export interface PlanArgs {
   wantBackend: backend.Backend; // the desired state
   haveBackend: backend.Backend; // the current state
   codebase: string; // target codebase of the deployment
+  projectId: string; // target project of the deployment
   filters?: EndpointFilter[]; // filters to apply to backend, passed from users by --only flag
   deleteAll?: boolean; // deletes all functions if set
+  haveRoles?: string[];
+  existingManagedSA?: string;
+  managedSA?: string;
 }
 
 /** Calculate the changesets of given endpoints by grouping endpoints with keyFn. */
@@ -37,13 +68,13 @@ export function calculateChangesets(
   want: Record<string, backend.Endpoint>,
   have: Record<string, backend.Endpoint>,
   keyFn: (e: backend.Endpoint) => string,
-  deleteAll?: boolean
+  deleteAll?: boolean,
 ): Record<string, Changeset> {
   const toCreate = utils.groupBy(
     Object.keys(want)
       .filter((id) => !have[id])
       .map((id) => want[id]),
-    keyFn
+    keyFn,
   );
 
   const toDelete = utils.groupBy(
@@ -51,15 +82,14 @@ export function calculateChangesets(
       .filter((id) => !want[id])
       .filter((id) => deleteAll || isFirebaseManaged(have[id].labels || {}))
       .map((id) => have[id]),
-    keyFn
+    keyFn,
   );
-
-  const { skipdeployingnoopfunctions } = previews;
 
   // If the hashes are matching, that means the local function is the same as the server copy.
   const toSkipPredicate = (id: string): boolean =>
     !!(
-      skipdeployingnoopfunctions &&
+      !want[id].targetedByOnly && // Don't skip the function if its --only targeted.
+      have[id].state === "ACTIVE" && // Only skip the function if its in a known good state
       have[id].hash &&
       want[id].hash &&
       want[id].hash === have[id].hash
@@ -74,13 +104,16 @@ export function calculateChangesets(
     }, {});
 
   const toSkip = utils.groupBy(Object.values(toSkipEndpointsMap), keyFn);
+  if (Object.keys(toSkip).length) {
+    utils.logLabeledBullet("functions", "Skipping the deploy of unchanged functions.");
+  }
 
   const toUpdate = utils.groupBy(
     Object.keys(want)
       .filter((id) => have[id])
       .filter((id) => !toSkipEndpointsMap[id])
       .map((id) => calculateUpdate(want[id], have[id])),
-    (eu: EndpointUpdate) => keyFn(eu.endpoint)
+    (eu: EndpointUpdate) => keyFn(eu.endpoint),
   );
 
   const result: Record<string, Changeset> = {};
@@ -112,6 +145,7 @@ export function calculateUpdate(want: backend.Endpoint, have: backend.Endpoint):
 
   const update: EndpointUpdate = {
     endpoint: want,
+    unsafe: checkForUnsafeUpdate(want, have),
   };
   const needsDelete =
     changedTriggerRegion(want, have) ||
@@ -124,11 +158,41 @@ export function calculateUpdate(want: backend.Endpoint, have: backend.Endpoint):
 }
 
 /**
- * Create a plan for deploying all functions in one region.
+ * Create a plan for deploying all functions for one codebase.
  */
-export function createDeploymentPlan(args: PlanArgs): DeploymentPlan {
-  let { wantBackend, haveBackend, codebase, filters, deleteAll } = args;
-  let deployment: DeploymentPlan = {};
+export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan> {
+  let {
+    wantBackend,
+    haveBackend,
+    codebase,
+    filters,
+    deleteAll,
+    haveRoles,
+    existingManagedSA,
+    managedSA,
+  } = args;
+
+  const requiredRoles = wantBackend.requiredRoles;
+  const roles = haveRoles || [];
+  let rolesToAdd: string[] | undefined;
+  let rolesToRemove: string[] | undefined;
+  let serviceAccountToCreate: string | undefined;
+  let serviceAccountToDelete: string | undefined;
+
+  const isPartiallyFiltered = isCodebasePartiallyFiltered(codebase, filters);
+
+  const hasWantEndpoints = backend.someEndpoint(wantBackend, () => true);
+
+  if (requiredRoles && hasWantEndpoints) {
+    rolesToAdd = requiredRoles.filter((r) => !roles.includes(r));
+    rolesToRemove = roles.filter((r) => !requiredRoles.includes(r));
+    if (!existingManagedSA && managedSA) {
+      serviceAccountToCreate = managedSA;
+    }
+  } else if (existingManagedSA && (!isPartiallyFiltered || deleteAll)) {
+    serviceAccountToDelete = existingManagedSA;
+  }
+
   wantBackend = backend.matchingBackend(wantBackend, (endpoint) => {
     return endpointMatchesAnyFilter(endpoint, filters);
   });
@@ -137,6 +201,7 @@ export function createDeploymentPlan(args: PlanArgs): DeploymentPlan {
     return wantedEndpoint(endpoint) || endpointMatchesAnyFilter(endpoint, filters);
   });
 
+  const regionalChangesets: Record<string, Changeset> = {};
   const regions = new Set([
     ...Object.keys(wantBackend.endpoints),
     ...Object.keys(haveBackend.endpoints),
@@ -146,9 +211,9 @@ export function createDeploymentPlan(args: PlanArgs): DeploymentPlan {
       wantBackend.endpoints[region] || {},
       haveBackend.endpoints[region] || {},
       (e) => `${codebase}-${e.region}-${e.availableMemoryMb || "default"}`,
-      deleteAll
+      deleteAll,
     );
-    deployment = { ...deployment, ...changesets };
+    Object.assign(regionalChangesets, changesets);
   }
 
   if (upgradedToGCFv2WithoutSettingConcurrency(wantBackend, haveBackend)) {
@@ -157,16 +222,44 @@ export function createDeploymentPlan(args: PlanArgs): DeploymentPlan {
       "You are updating one or more functions to Google Cloud Functions v2, " +
         "which introduces support for concurrent execution. New functions " +
         "default to 80 concurrent executions, but existing functions keep the " +
-        "old default of 1. You can change this with the 'concurrency' option."
+        "old default of 1. You can change this with the 'concurrency' option.",
     );
   }
-  return deployment;
+  const secretAccessPlan = await ensure.secretsAccessDelta({
+    projectId: args.projectId,
+    wantBackend,
+    haveBackend,
+  });
+
+  if (requiredRoles && hasWantEndpoints) {
+    if (!managedSA) {
+      throw new FirebaseError("managedServiceAccount is required when requiredRoles is defined.", {
+        exit: 1,
+      });
+    }
+    return {
+      regionalChangesets,
+      plannedBackend: wantBackend,
+      secretAccessPlan,
+      rolesToAdd,
+      rolesToRemove,
+      serviceAccountToCreate,
+      managedServiceAccount: managedSA,
+    };
+  } else {
+    return {
+      regionalChangesets,
+      plannedBackend: wantBackend,
+      secretAccessPlan,
+      serviceAccountToDelete,
+    };
+  }
 }
 
-/** Whether a user upgraded any endpionts to GCFv2 without setting concurrency. */
+/** Whether a user upgraded any endpoints to GCFv2 without setting concurrency. */
 export function upgradedToGCFv2WithoutSettingConcurrency(
   want: backend.Backend,
-  have: backend.Backend
+  have: backend.Backend,
 ): boolean {
   return backend.someEndpoint(want, (endpoint) => {
     // If there is not an existing v1 function
@@ -187,7 +280,7 @@ export function upgradedToGCFv2WithoutSettingConcurrency(
 }
 
 /**
- * Whether a trigger chagned regions. This can happen if, for example,
+ * Whether a trigger changed regions. This can happen if, for example,
  *  a user listens to a different bucket, which happens to have a different region.
  */
 export function changedTriggerRegion(want: backend.Endpoint, have: backend.Endpoint): boolean {
@@ -232,7 +325,7 @@ export function changedV2PubSubTopic(want: backend.Endpoint, have: backend.Endpo
 /** Whether a user upgraded a scheduled function (which goes from Pub/Sub to HTTPS). */
 export function upgradedScheduleFromV1ToV2(
   want: backend.Endpoint,
-  have: backend.Endpoint
+  have: backend.Endpoint,
 ): boolean {
   if (have.platform !== "gcfv1") {
     return false;
@@ -251,11 +344,23 @@ export function upgradedScheduleFromV1ToV2(
   return true;
 }
 
+/** Whether a function update is considered unsafe to perform automatically by the CLI */
+export function checkForUnsafeUpdate(want: backend.Endpoint, have: backend.Endpoint): boolean {
+  return (
+    backend.isEventTriggered(want) &&
+    backend.isEventTriggered(have) &&
+    want.eventTrigger.eventType ===
+      v2events.CONVERTABLE_EVENTS[have.eventTrigger.eventType as v2events.Event]
+  );
+}
+
 /** Throws if there is an illegal update to a function. */
 export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endpoint): void {
   const triggerType = (e: backend.Endpoint): string => {
     if (backend.isHttpsTriggered(e)) {
       return "an HTTPS";
+    } else if (backend.isDataConnectGraphqlTriggered(e)) {
+      return "a SQL Connect HTTPS";
     } else if (backend.isCallableTriggered(e)) {
       return "a callable";
     } else if (backend.isEventTriggered(e)) {
@@ -273,17 +378,21 @@ export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endp
   };
   const wantType = triggerType(want);
   const haveType = triggerType(have);
-  if (wantType !== haveType) {
+
+  // Originally, @genkit-ai/firebase/functions defined onFlow which created an HTTPS trigger that implemented the streaming callable protocol for the Flow.
+  // The new version is firebase-functions/https which defines onCallFlow
+  const upgradingHttpsFunction =
+    backend.isHttpsTriggered(have) && backend.isCallableTriggered(want);
+  if (wantType !== haveType && !upgradingHttpsFunction) {
     throw new FirebaseError(
       `[${getFunctionLabel(
-        want
-      )}] Changing from ${haveType} function to ${wantType} function is not allowed. Please delete your function and create a new one instead.`
+        want,
+      )}] Changing from ${haveType} function to ${wantType} function is not allowed. Please delete your function and create a new one instead.`,
     );
   }
-  if (want.platform === "gcfv1" && have.platform === "gcfv2") {
-    throw new FirebaseError(
-      `[${getFunctionLabel(want)}] Functions cannot be downgraded from GCFv2 to GCFv1`
-    );
+  const downgrade = generationDowngradeMessage(want, have);
+  if (downgrade) {
+    throw new FirebaseError(downgrade);
   }
 
   // We need to call from module exports so tests can stub this behavior, but that
@@ -300,9 +409,8 @@ export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endp
 export function checkForV2Upgrade(want: backend.Endpoint, have: backend.Endpoint): void {
   if (want.platform === "gcfv2" && have.platform === "gcfv1") {
     throw new FirebaseError(
-      `[${getFunctionLabel(
-        have
-      )}] Upgrading from GCFv1 to GCFv2 is not yet supported. Please delete your old function or wait for this feature to be ready.`
+      `[${getFunctionLabel(have)}] Upgrading from 1st Gen to 2nd Gen is not yet supported. ` +
+        "See https://firebase.google.com/docs/functions/2nd-gen-upgrade before migrating to 2nd Gen.",
     );
   }
 }

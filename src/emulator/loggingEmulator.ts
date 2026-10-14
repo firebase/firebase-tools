@@ -5,7 +5,7 @@ import * as WebSocket from "ws";
 import { LogEntry } from "winston";
 import * as TransportStream from "winston-transport";
 import { logger } from "../logger";
-const stripAnsi = require("strip-ansi");
+import { stripVTControlCharacters } from "node:util";
 
 export interface LoggingEmulatorArgs {
   port?: number;
@@ -123,7 +123,7 @@ class WebSocketTransport extends TransportStream {
           try {
             bundle.data = { ...bundle.data, ...JSON.parse(value) };
             return null;
-          } catch (err: any) {
+          } catch (err: unknown) {
             // If the value isn't JSONable, just treat it like a string
             return value;
           }
@@ -145,7 +145,7 @@ class WebSocketTransport extends TransportStream {
       bundle.message = bundle.data.metadata.message;
     }
 
-    bundle.message = stripAnsi(bundle.message);
+    bundle.message = stripVTControlCharacters(bundle.message);
 
     this.history.push(bundle);
     this.connections.forEach((ws) => {

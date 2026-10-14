@@ -3,50 +3,54 @@ import { requirePermissions } from "../requirePermissions";
 import { checkServiceAccountIam } from "../deploy/functions/checkIam";
 import { checkValidTargetFilters } from "../checkValidTargetFilters";
 import { Command } from "../command";
-import { deploy } from "../deploy";
+import { deploy, TARGETS, VALID_DEPLOY_TARGETS, TARGET_PERMISSIONS } from "../deploy";
 import { requireConfig } from "../requireConfig";
 import { filterTargets } from "../filterTargets";
 import { requireHostingSite } from "../requireHostingSite";
+import { errNoDefaultSite } from "../getDefaultHostingSite";
+import { FirebaseError } from "../error";
+import { bold } from "colorette";
+import { pickHostingSiteName } from "../hosting/interactive";
+import { logBullet } from "../utils";
+import { createSite } from "../hosting/api";
+import { Options } from "../options";
+import * as experiments from "../experiments";
+import * as clc from "colorette";
 
-// in order of least time-consuming to most time-consuming
-export const VALID_DEPLOY_TARGETS = [
-  "database",
-  "storage",
-  "firestore",
-  "functions",
-  "hosting",
-  "remoteconfig",
-  "extensions",
-];
-const TARGET_PERMISSIONS: Record<string, string[]> = {
-  database: ["firebasedatabase.instances.update"],
-  hosting: ["firebasehosting.sites.update"],
-  functions: [
-    "cloudfunctions.functions.list",
-    "cloudfunctions.functions.create",
-    "cloudfunctions.functions.get",
-    "cloudfunctions.functions.update",
-    "cloudfunctions.functions.delete",
-    "cloudfunctions.operations.get",
-  ],
-  firestore: [
-    "datastore.indexes.list",
-    "datastore.indexes.create",
-    "datastore.indexes.update",
-    "datastore.indexes.delete",
-  ],
-  storage: [
-    "firebaserules.releases.create",
-    "firebaserules.rulesets.create",
-    "firebaserules.releases.update",
-  ],
-  remoteconfig: ["cloudconfig.configs.get", "cloudconfig.configs.update"],
-};
+interface DeployTarget {
+  help?: string;
+  detailedHelp?: string;
+}
+
+function getDeployHelp(): string {
+  const boldFn = (str: string) => clc.bold(str);
+
+  let targetHelp = "Deploy targets include:\n\n";
+  for (const [targetName, target] of Object.entries(TARGETS)) {
+    const desc = (target as DeployTarget).help || `Deploy ${targetName} resources`;
+    const formattedDesc = desc
+      .split("\n")
+      .map((line: string, i: number) => {
+        if (i === 0) return line;
+        return "    " + line;
+      })
+      .join("\n");
+    targetHelp += `  ${boldFn(targetName.padEnd(14))} ${formattedDesc}\n`;
+  }
+
+  targetHelp +=
+    "\nTo deploy specific targets, use `--only` followed by a comma-separated list of targets.\n";
+  targetHelp += `For example, ${boldFn("firebase deploy --only hosting,firestore")}.\n`;
+  targetHelp += `\nTo see detailed setup and configuration information for a specific target, run:\n`;
+  targetHelp += `  ${boldFn("firebase deploy:<target> --help")}`;
+  return targetHelp;
+}
 
 export const command = new Command("deploy")
   .description("deploy code and assets to your Firebase project")
+  .help(getDeployHelp())
   .withForce(
-    "delete Cloud Functions missing from the current working directory without confirmation"
+    "delete Cloud Functions missing from the current working directory and bypass interactive prompts",
   )
   .option("-p, --public <path>", "override the Hosting public directory specified in firebase.json")
   .option("-m, --message <message>", "an optional message describing this deploy")
@@ -55,30 +59,82 @@ export const command = new Command("deploy")
     'only deploy to specified, comma-separated targets (e.g. "hosting,storage"). For functions, ' +
       'can specify filters with colons to scope function deploys to only those functions (e.g. "--only functions:func1,functions:func2"). ' +
       "When filtering based on export groups (the exported module object keys), use dots to specify group names " +
-      '(e.g. "--only functions:group1.subgroup1,functions:group2)"'
+      '(e.g. "--only functions:group1.subgroup1,functions:group2"). ' +
+      "When filtering based on codebases, use colons to specify codebase names " +
+      '(e.g. "--only functions:codebase1:func1,functions:codebase2:group1.subgroup1"). ' +
+      "For data connect, can specify filters with colons to deploy only a service, connector, or schema" +
+      '(e.g. "--only dataconnect:serviceId,dataconnect:serviceId:connectorId,dataconnect:serviceId:schema")',
   )
   .option("--except <targets>", 'deploy to all targets except specified (e.g. "database")')
+  .option(
+    "--dry-run",
+    "perform a dry run of your deployment. Validates your changes and builds your code without deploying any changes to your project. " +
+      "In order to provide better validation, this may still enable APIs on the target project",
+  );
+
+if (experiments.isEnabled("apphostinglocalbuilds")) {
+  command.option(
+    "--allow-local-build-secrets",
+    "allow the use of build-available secrets in local builds for App Hosting without interactive confirmation",
+  );
+}
+
+command
   .before(requireConfig)
-  .before((options) => {
-    options.filteredTargets = filterTargets(options, VALID_DEPLOY_TARGETS);
+  .before((options: Options) => {
+    options.filteredTargets = filterTargets(options, [...VALID_DEPLOY_TARGETS]);
+    // Gate AI Logic deploys up front, before any target does prepare work or
+    // permissions are checked, so the error is immediate and clearly worded.
+    if (options.filteredTargets.includes("ailogic")) {
+      experiments.assertEnabled("ailogic", "deploy AI Logic resources");
+    }
+    if (options.filteredTargets.includes("run")) {
+      experiments.assertEnabled("directcloudrun", "deploy Cloud Run services");
+    }
     const permissions = options.filteredTargets.reduce((perms: string[], target: string) => {
-      return perms.concat(TARGET_PERMISSIONS[target]);
+      return perms.concat(TARGET_PERMISSIONS[target as (typeof VALID_DEPLOY_TARGETS)[number]]);
     }, []);
     return requirePermissions(options, permissions);
   })
-  .before((options) => {
+  .before((options: Options) => {
     if (options.filteredTargets.includes("functions")) {
-      return checkServiceAccountIam(options.project);
+      return checkServiceAccountIam(options.project!);
     }
   })
-  .before(async (options) => {
+  .before(async (options: Options) => {
     // only fetch the default instance for hosting or database deploys
     if (options.filteredTargets.includes("database")) {
       await requireDatabaseInstance(options);
     }
 
     if (options.filteredTargets.includes("hosting")) {
-      await requireHostingSite(options);
+      let shouldCreateSite = false;
+      try {
+        await requireHostingSite(options);
+      } catch (err: unknown) {
+        const isPermissionError =
+          err instanceof FirebaseError &&
+          err.original instanceof FirebaseError &&
+          err.original.status === 403;
+        if (isPermissionError) {
+          throw err;
+        } else if (err === errNoDefaultSite) {
+          shouldCreateSite = true;
+        }
+      }
+      if (!shouldCreateSite) {
+        return;
+      }
+      if (options.nonInteractive) {
+        throw new FirebaseError(
+          `Unable to deploy to Hosting as there is no Hosting site. Use ${bold(
+            "firebase hosting:sites:create",
+          )} to create a site.`,
+        );
+      }
+      logBullet("No Hosting site detected.");
+      const siteId = await pickHostingSiteName("", options);
+      await createSite(options.project!, siteId);
     }
   })
   .before(checkValidTargetFilters)

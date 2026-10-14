@@ -3,8 +3,11 @@ import { ChildProcess } from "child_process";
 import { FirebaseError } from "../../../error";
 import * as AsyncLock from "async-lock";
 import {
+  DataLoadStatus,
   RulesetOperationMethod,
   RuntimeActionBundle,
+  RuntimeActionFirestoreDataRequest,
+  RuntimeActionFirestoreDataResponse,
   RuntimeActionLoadRulesetBundle,
   RuntimeActionLoadRulesetResponse,
   RuntimeActionRequest,
@@ -24,12 +27,13 @@ import { downloadEmulator } from "../../download";
 import * as fs from "fs-extra";
 import {
   _getCommand,
-  DownloadDetails,
+  getDownloadDetails,
   handleEmulatorProcessError,
 } from "../../downloadableEmulators";
+import { EmulatorRegistry } from "../../registry";
 
 const lock = new AsyncLock();
-const synchonizationKey: string = "key";
+const synchonizationKey = "key";
 
 export interface RulesetVerificationOpts {
   file: {
@@ -40,18 +44,19 @@ export interface RulesetVerificationOpts {
   method: RulesetOperationMethod;
   path: string;
   delimiter?: string;
+  projectId: string;
 }
 
 export class StorageRulesetInstance {
   constructor(
     private runtime: StorageRulesRuntime,
     private rulesVersion: number,
-    private rulesetName: string
+    private rulesetName: string,
   ) {}
 
   async verify(
     opts: RulesetVerificationOpts,
-    runtimeVariableOverrides: { [s: string]: ExpressionValue } = {}
+    runtimeVariableOverrides: { [s: string]: ExpressionValue } = {},
   ): Promise<{
     permitted?: boolean;
     issues: StorageRulesIssues;
@@ -59,7 +64,7 @@ export class StorageRulesetInstance {
     if (opts.method === RulesetOperationMethod.LIST && this.rulesVersion < 2) {
       const issues = new StorageRulesIssues();
       issues.warnings.push(
-        "Permission denied. List operations are only allowed for rules_version='2'."
+        "Permission denied. List operations are only allowed for rules_version='2'.",
       );
       return {
         permitted: false,
@@ -76,7 +81,10 @@ export class StorageRulesetInstance {
 }
 
 export class StorageRulesIssues {
-  constructor(public errors: string[] = [], public warnings: string[] = []) {}
+  constructor(
+    public errors: string[] = [],
+    public warnings: string[] = [],
+  ) {}
 
   static fromResponse(resp: RuntimeActionResponse) {
     return new StorageRulesIssues(resp.errors || [], resp.warnings || []);
@@ -107,13 +115,19 @@ export class StorageRulesRuntime {
   } = {};
   private _childprocess?: ChildProcess;
   private _alive = false;
+  // Holds the incomplete trailing line of the runtime's stdout between "data"
+  // events. See handleRuntimeStdout().
+  private _stdoutBuffer = "";
 
   get alive() {
     return this._alive;
   }
 
   async start(autoDownload = true) {
-    const downloadDetails = DownloadDetails[Emulators.STORAGE];
+    if (this.alive) {
+      return;
+    }
+    const downloadDetails = getDownloadDetails(Emulators.STORAGE);
     const hasEmulator = fs.existsSync(downloadDetails.downloadPath);
 
     if (!hasEmulator) {
@@ -121,8 +135,8 @@ export class StorageRulesRuntime {
         if (process.env.CI) {
           utils.logWarning(
             `It appears you are running in a CI environment. You can avoid downloading the ${Constants.description(
-              Emulators.STORAGE
-            )} repeatedly by caching the ${downloadDetails.opts.cacheDir} directory.`
+              Emulators.STORAGE,
+            )} repeatedly by caching the ${downloadDetails.opts.cacheDir} directory.`,
           );
         }
 
@@ -139,11 +153,10 @@ export class StorageRulesRuntime {
       stdio: ["pipe", "pipe", "pipe"],
     });
 
-    this._childprocess.on("exit", (code) => {
+    this._childprocess.on("exit", () => {
       this._alive = false;
-      if (code !== 130 /* SIGINT */) {
-        throw new FirebaseError("Storage Emulator Rules runtime exited unexpectedly.");
-      }
+      this._childprocess?.removeAllListeners();
+      this._childprocess = undefined;
     });
 
     const startPromise = new Promise((resolve) => {
@@ -157,8 +170,8 @@ export class StorageRulesRuntime {
     });
 
     // This catches error when spawning the java process
-    this._childprocess.on("error", (err) => {
-      handleEmulatorProcessError(Emulators.STORAGE, err);
+    this._childprocess.on("error", (err: any) => {
+      void handleEmulatorProcessError(Emulators.STORAGE, err);
     });
 
     // This catches errors from the java process (i.e. missing jar file)
@@ -167,85 +180,137 @@ export class StorageRulesRuntime {
       if (error.includes("jarfile")) {
         EmulatorLogger.forEmulator(Emulators.STORAGE).log("ERROR", error);
         throw new FirebaseError(
-          "There was an issue starting the rules emulator, please run 'firebase setup:emulators:storage` again"
+          "There was an issue starting the rules emulator, please run 'firebase setup:emulators:storage` again",
         );
       } else {
         EmulatorLogger.forEmulator(Emulators.STORAGE).log(
           "WARN",
-          `Unexpected rules runtime error: ${buf.toString()}`
+          `Unexpected rules runtime error: ${buf.toString()}`,
         );
       }
     });
 
     this._childprocess.stdout?.on("data", (buf: Buffer) => {
-      const serializedRuntimeActionResponse = buf.toString("utf-8").trim();
-      if (serializedRuntimeActionResponse !== "") {
-        let rap;
-        try {
-          rap = JSON.parse(serializedRuntimeActionResponse) as RuntimeActionResponse;
-        } catch (err: any) {
-          EmulatorLogger.forEmulator(Emulators.STORAGE).log(
-            "INFO",
-            serializedRuntimeActionResponse
-          );
-          return;
-        }
-        const request = this._requests[rap.id];
-
-        if (rap.status !== "ok") {
-          console.warn(`[RULES] ${rap.status}: ${rap.message}`);
-          rap.errors.forEach(console.warn.bind(console));
-          return;
-        }
-
-        if (request) {
-          request.handler(rap);
-        } else {
-          console.log(`No handler for event ${serializedRuntimeActionResponse}`);
-        }
-      }
+      this.handleRuntimeStdout(buf.toString("utf-8"));
     });
 
     return startPromise;
   }
 
-  stop() {
-    this._childprocess?.kill("SIGINT");
+  /**
+   * Dispatches a chunk of the rules runtime's stdout to the awaiting requests.
+   *
+   * The runtime writes one JSON response per line. Node stream "data" events do
+   * not respect message boundaries: under concurrent load several responses
+   * arrive in a single chunk, and a single response can be split across chunks.
+   * So we buffer the incomplete trailing line and only parse complete,
+   * newline-delimited lines. Parsing a raw chunk instead would throw on any
+   * batched responses and silently drop them, hanging every request in the
+   * batch — the root cause of #6194 and #6865.
+   */
+  private handleRuntimeStdout(chunk: string): void {
+    this._stdoutBuffer += chunk;
+    const lines = this._stdoutBuffer.split("\n");
+    // The last element is the incomplete trailing line ("" if the chunk ended
+    // on a newline); keep it buffered until its terminator arrives.
+    this._stdoutBuffer = lines.pop() ?? "";
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (line === "") {
+        continue;
+      }
+
+      let rap;
+      try {
+        rap = JSON.parse(line) as RuntimeActionResponse;
+      } catch (err: unknown) {
+        EmulatorLogger.forEmulator(Emulators.STORAGE).log("INFO", line);
+        continue;
+      }
+
+      const id = rap.id ?? rap.server_request_id;
+      if (id === undefined) {
+        console.log(`Received no ID from server response ${line}`);
+        continue;
+      }
+
+      const request = this._requests[id];
+
+      if (rap.status !== "ok" && !("action" in rap)) {
+        console.warn(`[RULES] ${rap.status}: ${rap.message}`);
+        rap.errors.forEach(console.warn.bind(console));
+        continue;
+      }
+
+      if (request) {
+        request.handler(rap);
+      } else {
+        console.log(`No handler for event ${line}`);
+      }
+    }
   }
 
-  private async _sendRequest(rab: RuntimeActionBundle) {
+  stop(): Promise<void> {
+    EmulatorLogger.forEmulator(Emulators.STORAGE).log("DEBUG", "Stopping rules runtime.");
+    return new Promise<void>((resolve) => {
+      if (this.alive) {
+        this._childprocess!.on("exit", () => {
+          resolve();
+        });
+        this._childprocess?.kill("SIGINT");
+      } else {
+        resolve();
+      }
+    });
+  }
+
+  private async _sendRequest(rab: RuntimeActionBundle, overrideId?: number) {
     if (!this._childprocess) {
       throw new FirebaseError(
-        "Attempted to send Cloud Storage rules request before child was ready"
+        "Failed to send Cloud Storage rules request due to rules runtime not available.",
       );
     }
 
     const runtimeActionRequest: RuntimeActionRequest = {
       ...rab,
-      id: this._requestCount++,
+      id: overrideId ?? this._requestCount++,
     };
 
-    if (this._requests[runtimeActionRequest.id]) {
+    // If `overrideId` is set, we are to use this ID to send to Rules.
+    // This happens when there is a back-and-forth interaction with Rules,
+    // meaning we also need to delete the old request and await the new
+    // response with the same ID.
+    if (overrideId !== undefined) {
+      delete this._requests[overrideId];
+    } else if (this._requests[runtimeActionRequest.id]) {
       throw new FirebaseError("Attempted to send Cloud Storage rules request with stale id");
     }
 
     return new Promise<RuntimeActionResponse>((resolve) => {
-      this._requests[runtimeActionRequest.id] = {
+      const requestId = runtimeActionRequest.id;
+      this._requests[requestId] = {
         request: runtimeActionRequest,
-        handler: resolve,
+        handler: (rap: RuntimeActionResponse) => {
+          // Free the pending-request entry on completion. Previously entries
+          // were only deleted on the firestore cross-service override path,
+          // leaking one entry per request otherwise.
+          delete this._requests[requestId];
+          resolve(rap);
+        },
       };
 
       const serializedRequest = JSON.stringify(runtimeActionRequest);
 
-      // Added due to https://github.com/firebase/firebase-tools/issues/3915
-      // Without waiting to acquire the lock and allowing the child process enough time
-      // (~15ms) to pipe the output back, the emulator will run into issues with
-      // capturing the output and resolving corresponding promises en masse.
+      // The ~15ms delay that used to sit here (added for #3915) was a workaround
+      // for the stdout framing bug: it slowed request writes so responses were
+      // less likely to batch into a single "data" event. Now that stdout is
+      // framed on newlines (see the handler in start()), the delay is
+      // unnecessary and only slows every request, so release the lock as soon
+      // as the write is queued.
       lock.acquire(synchonizationKey, (done) => {
         this._childprocess?.stdin?.write(serializedRequest + "\n");
-        setTimeout(() => {
-          done();
-        }, 15);
+        done();
       });
     });
   }
@@ -264,10 +329,10 @@ export class StorageRulesRuntime {
     };
 
     const response = (await this._sendRequest(
-      runtimeActionRequest
+      runtimeActionRequest,
     )) as RuntimeActionLoadRulesetResponse;
 
-    if (response.errors.length || response.warnings.length) {
+    if (response.errors.length) {
       return {
         issues: StorageRulesIssues.fromResponse(response),
       };
@@ -277,7 +342,7 @@ export class StorageRulesRuntime {
         ruleset: new StorageRulesetInstance(
           this,
           response.result.rulesVersion,
-          runtimeActionRequest.context.rulesetName
+          runtimeActionRequest.context.rulesetName,
         ),
       };
     }
@@ -286,7 +351,7 @@ export class StorageRulesRuntime {
   async verifyWithRuleset(
     rulesetName: string,
     opts: RulesetVerificationOpts,
-    runtimeVariableOverrides: { [s: string]: ExpressionValue } = {}
+    runtimeVariableOverrides: { [s: string]: ExpressionValue } = {},
   ): Promise<
     Promise<{
       permitted?: boolean;
@@ -318,7 +383,27 @@ export class StorageRulesRuntime {
         variables: runtimeVariables,
       },
     };
-    const response = (await this._sendRequest(runtimeActionRequest)) as RuntimeActionVerifyResponse;
+
+    return this._completeVerifyWithRuleset(opts.projectId, runtimeActionRequest);
+  }
+
+  private async _completeVerifyWithRuleset(
+    projectId: string,
+    runtimeActionRequest: RuntimeActionBundle,
+    overrideId?: number,
+  ): Promise<{
+    permitted?: boolean;
+    issues: StorageRulesIssues;
+  }> {
+    const response = (await this._sendRequest(
+      runtimeActionRequest,
+      overrideId,
+    )) as RuntimeActionVerifyResponse;
+
+    if ("context" in response) {
+      const dataResponse = await fetchFirestoreDocument(projectId, response);
+      return this._completeVerifyWithRuleset(projectId, dataResponse, response.server_request_id);
+    }
 
     if (!response.errors) response.errors = [];
     if (!response.warnings) response.warnings = [];
@@ -336,6 +421,10 @@ export class StorageRulesRuntime {
   }
 }
 
+/**
+ * Converts a JS object to an ExpressionValue for the rules runtime.
+ * @internal
+ */
 function toExpressionValue(obj: any): ExpressionValue {
   if (typeof obj === "string") {
     return { string_value: obj };
@@ -377,7 +466,7 @@ function toExpressionValue(obj: any): ExpressionValue {
 
   if (obj == null) {
     return {
-      null_value: 0,
+      null_value: null,
     };
   }
 
@@ -395,25 +484,54 @@ function toExpressionValue(obj: any): ExpressionValue {
   }
 
   throw new FirebaseError(
-    `Cannot convert "${obj}" of type ${typeof obj} for Firebase Storage rules runtime`
+    `Cannot convert "${obj}" of type ${typeof obj} for Firebase Storage rules runtime`,
   );
 }
 
-function createAuthExpressionValue(opts: RulesetVerificationOpts): ExpressionValue {
-  if (!opts.token) {
-    return toExpressionValue(null);
-  } else {
-    const tokenPayload = jwt.decode(opts.token) as any;
+async function fetchFirestoreDocument(
+  projectId: string,
+  request: RuntimeActionFirestoreDataRequest,
+): Promise<RuntimeActionFirestoreDataResponse> {
+  const pathname = `projects/${projectId}${request.context.path}`;
 
-    const jsonValue = {
-      uid: tokenPayload.user_id,
-      token: tokenPayload,
-    };
-
-    return toExpressionValue(jsonValue);
+  const client = EmulatorRegistry.client(Emulators.FIRESTORE, { apiVersion: "v1", auth: true });
+  try {
+    const doc = await client.get(pathname);
+    const { name, fields } = doc.body as { name: string; fields: string };
+    const result = { name, fields };
+    return { result, status: DataLoadStatus.OK, warnings: [], errors: [] };
+  } catch (e) {
+    // Don't care what the error is, just return not_found
+    return { status: DataLoadStatus.NOT_FOUND, warnings: [], errors: [] };
   }
 }
 
+/**
+ * Creates an ExpressionValue for the auth object in rules.
+ * @internal
+ */
+export function createAuthExpressionValue(opts: RulesetVerificationOpts): ExpressionValue {
+  if (!opts.token) {
+    return toExpressionValue(null);
+  }
+  const tokenPayload = jwt.decode(opts.token, { json: true });
+
+  if (typeof tokenPayload !== "object" || !tokenPayload) {
+    return toExpressionValue(null);
+  }
+
+  const jsonValue = {
+    uid: "user_id" in tokenPayload ? tokenPayload.user_id : undefined,
+    token: tokenPayload,
+  };
+
+  return toExpressionValue(jsonValue);
+}
+
+/**
+ * Creates an ExpressionValue for the request object in rules.
+ * @internal
+ */
 function createRequestExpressionValue(opts: RulesetVerificationOpts): ExpressionValue {
   const fields: { [s: string]: ExpressionValue } = {
     path: {
@@ -428,7 +546,7 @@ function createRequestExpressionValue(opts: RulesetVerificationOpts): Expression
     },
     time: toExpressionValue(new Date()),
     resource: toExpressionValue(opts.file.after ? opts.file.after : null),
-    auth: opts.token ? createAuthExpressionValue(opts) : { null_value: 0 },
+    auth: opts.token ? createAuthExpressionValue(opts) : { null_value: null },
   };
 
   return {

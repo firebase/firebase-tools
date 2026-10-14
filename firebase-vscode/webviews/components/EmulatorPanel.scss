@@ -1,0 +1,19 @@
+@import "../globals/index.scss";
+
+.list {
+  list-style: none;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.list-item {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+}
+
+.running-indicator {
+  color: var(--vscode-testing-runAction, green);
+}

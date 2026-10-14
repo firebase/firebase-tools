@@ -1,9 +1,9 @@
 import { openSync, closeSync, readSync, unlinkSync, mkdirSync } from "fs";
-import * as rimraf from "rimraf";
+import { rm } from "node:fs/promises";
 import * as fs from "fs";
 import * as fse from "fs-extra";
 import * as path from "path";
-import * as uuid from "uuid";
+import { randomUUID } from "crypto";
 
 /**
  * Helper for disk I/O operations.
@@ -57,7 +57,7 @@ export class Persistence {
   deleteFile(fileName: string, failSilently = false): void {
     try {
       unlinkSync(this.getDiskPath(fileName));
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (!failSilently) {
         throw err;
       }
@@ -65,17 +65,10 @@ export class Persistence {
     this._diskPathMap.delete(fileName);
   }
 
-  deleteAll(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      rimraf(this._dirPath, (err) => {
-        if (err) {
-          reject(err);
-        } else {
-          this._diskPathMap = new Map();
-          resolve();
-        }
-      });
-    });
+  async deleteAll(): Promise<void> {
+    await rm(this._dirPath, { recursive: true });
+    this._diskPathMap = new Map();
+    return;
   }
 
   renameFile(oldName: string, newName: string): void {
@@ -99,6 +92,6 @@ export class Persistence {
   }
 
   private generateNewDiskName(): string {
-    return uuid.v4();
+    return randomUUID();
   }
 }

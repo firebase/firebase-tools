@@ -1,0 +1,10 @@
+## The default
+**/.git
+**/.svn
+**/.hg
+**/node_modules
+
+## The good stuff
+dist
+resources
+package-lock.json

@@ -1,5 +1,5 @@
 const admin = require("firebase-admin");
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v1");
 
 /*
  * Log snippets that the driver program above checks for. Be sure to update
@@ -165,3 +165,7 @@ exports.storageBucketMetadataReaction = functions.storage
     console.log("Object", JSON.stringify(object));
     return true;
   });
+
+exports.onReq = functions.https.onRequest((req, res) => {
+  res.send("onReq");
+});

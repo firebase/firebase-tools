@@ -30,7 +30,7 @@ describe("firebase deploy --only extensions", () => {
         if (`${data}`.match(/Deploy complete/)) {
           return true;
         }
-      }
+      },
     );
     let output: any;
     await cli.start("ext:list", FIREBASE_PROJECT, ["--json"], (data: any) => {
@@ -44,16 +44,16 @@ describe("firebase deploy --only extensions", () => {
         (i: any) =>
           i.instanceId === "test-instance1" &&
           i.extension === "firebase/firestore-bigquery-export" &&
-          i.state === "ACTIVE"
-      )
+          i.state === "ACTIVE",
+      ),
     ).to.be.true;
     expect(
       output.result.some(
         (i: any) =>
           i.instanceId === "test-instance2" &&
           i.extension === "firebase/storage-resize-images" &&
-          i.state === "ACTIVE"
-      )
+          i.state === "ACTIVE",
+      ),
     ).to.be.true;
   });
 });

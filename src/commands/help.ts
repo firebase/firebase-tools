@@ -11,13 +11,13 @@ export const command = new Command("help [command]")
   .action(function (commandName) {
     // @ts-ignore
     const client = this.client; // eslint-disable-line @typescript-eslint/no-invalid-this
-    const cmd = client.getCommand(commandName);
+    const cmd = commandName ? client.getCommand(commandName) : undefined;
     if (cmd) {
       cmd.outputHelp();
     } else if (commandName) {
       logger.warn();
       utils.logWarning(
-        clc.bold(commandName) + " is not a valid command. See below for valid commands"
+        clc.bold(commandName) + " is not a valid command. See below for valid commands",
       );
       client.cli.outputHelp();
     } else {
@@ -25,8 +25,10 @@ export const command = new Command("help [command]")
       logger.info();
       logger.info(
         "  To get help with a specific command, type",
-        clc.bold("firebase help [command_name]")
+        clc.bold("firebase help [command_name]"),
       );
       logger.info();
     }
+    logger.info(" Privacy Policy: https://firebase.google.com/support/privacy");
+    logger.info();
   });

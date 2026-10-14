@@ -17,12 +17,13 @@ export default {
     termsOfService: "https://developers.google.com/terms/",
   },
   servers: [{ url: "https://identitytoolkit.googleapis.com" }],
-  externalDocs: { url: "https://firebase.google.com/docs/auth/" },
+  externalDocs: { url: "https://cloud.google.com/identity-platform" },
   tags: [
     { name: "accounts" },
     { name: "projects" },
     { name: "v1" },
     { name: "defaultSupportedIdps" },
+    { name: "v2" },
     { name: "secureToken" },
     { name: "emulator" },
   ],
@@ -30,10 +31,10 @@ export default {
     "/v1/accounts:createAuthUri": {
       post: {
         description:
-          "If an email identifier is specified, checks and returns if any user account is registered with the email. If there is a registered account, fetches all providers associated with the account's email. If the provider ID of an Identity Provider (IdP) is specified, creates an authorization URI for the IdP. The user can be directed to this URI to sign in with the IdP. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project.",
+          "If an email identifier is specified, checks and returns if any user account is registered with the email. If there is a registered account, fetches all providers associated with the account's email. If [email enumeration protection](https://cloud.google.com/identity-platform/docs/admin/email-enumeration-protection) is enabled, this method returns an empty list. If the provider ID of an Identity Provider (IdP) is specified, creates an authorization URI for the IdP. The user can be directed to this URI to sign in with the IdP. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project.",
         operationId: "identitytoolkit.accounts.createAuthUri",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -53,7 +54,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -73,7 +78,7 @@ export default {
         description: "Deletes a user's account.",
         operationId: "identitytoolkit.accounts.delete",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -87,7 +92,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1DeleteAccountRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -107,7 +116,7 @@ export default {
         description: "Experimental",
         operationId: "identitytoolkit.accounts.issueSamlResponse",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -127,7 +136,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -148,7 +161,7 @@ export default {
           "Gets account information for all matched accounts. For an end user request, retrieves the account of the end user. For an admin request with Google OAuth 2.0 credential, retrieves one or multiple account(s) with matching criteria.",
         operationId: "identitytoolkit.accounts.lookup",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -162,7 +175,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1GetAccountInfoRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -183,7 +200,7 @@ export default {
           "Resets the password of an account either using an out-of-band code generated by sendOobCode or by specifying the email and password of the account to be modified. Can also check the purpose of an out-of-band code without consuming it.",
         operationId: "identitytoolkit.accounts.resetPassword",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -203,7 +220,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -224,7 +245,7 @@ export default {
           "Sends an out-of-band confirmation code for an account. Requests from a authenticated request can optionally return a link including the OOB code instead of sending it.",
         operationId: "identitytoolkit.accounts.sendOobCode",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -238,7 +259,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1GetOobCodeRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -256,10 +281,10 @@ export default {
     "/v1/accounts:sendVerificationCode": {
       post: {
         description:
-          "Sends a SMS verification code for phone number sign-in. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project.",
+          "Sends a SMS verification code for phone number sign-in. To localize the text of the SMS sent to the user, set the HTTP header `X-Firebase-Locale` to the language code that corresponds with the user's locale. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project.",
         operationId: "identitytoolkit.accounts.sendVerificationCode",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -279,7 +304,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -300,7 +329,7 @@ export default {
           "Signs in or signs up a user by exchanging a custom Auth token. Upon a successful sign-in or sign-up, a new Identity Platform ID token and refresh token are issued for the user. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project.",
         operationId: "identitytoolkit.accounts.signInWithCustomToken",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -320,7 +349,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -341,7 +374,7 @@ export default {
           "Signs in or signs up a user with a out-of-band code from an email link. If a user does not exist with the given email address, a user record will be created. If the sign-in succeeds, an Identity Platform ID and refresh token are issued for the authenticated user. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project.",
         operationId: "identitytoolkit.accounts.signInWithEmailLink",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -361,7 +394,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -379,10 +416,10 @@ export default {
     "/v1/accounts:signInWithGameCenter": {
       post: {
         description:
-          "Signs in or signs up a user with iOS Game Center credentials. If the sign-in succeeds, a new Identity Platform ID token and refresh token are issued for the authenticated user. The bundle ID is required in the request header as `x-ios-bundle-identifier`. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project.",
+          "Signs in or signs up a user with iOS Game Center credentials. If the sign-in succeeds, a new Identity Platform ID token and refresh token are issued for the authenticated user. The bundle ID is required in the request header as `x-ios-bundle-identifier`. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project. Apple has [deprecated the `playerID` field](https://developer.apple.com/documentation/gamekit/gkplayer/1521127-playerid/). The Apple platform Firebase SDK will use `gamePlayerID` and `teamPlayerID` from version 10.5.0 and onwards. Upgrading to SDK version 10.5.0 or later updates existing integrations that use `playerID` to instead use `gamePlayerID` and `teamPlayerID`. When making calls to `signInWithGameCenter`, you must include `playerID` along with the new fields `gamePlayerID` and `teamPlayerID` to successfully identify all existing users. Upgrading existing Game Center sign in integrations to SDK version 10.5.0 or later is irreversible.",
         operationId: "identitytoolkit.accounts.signInWithGameCenter",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -402,7 +439,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -423,7 +464,7 @@ export default {
           'Signs in or signs up a user using credentials from an Identity Provider (IdP). This is done by manually providing an IdP credential, or by providing the authorization response obtained via the authorization request from CreateAuthUri. If the sign-in succeeds, a new Identity Platform ID token and refresh token are issued for the authenticated user. A new Identity Platform user account will be created if the user has not previously signed in to the IdP with the same account. In addition, when the "One account per email address" setting is enabled, there should not be an existing Identity Platform user account with the same email address for a new user account to be created. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project.',
         operationId: "identitytoolkit.accounts.signInWithIdp",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -443,7 +484,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -464,7 +509,7 @@ export default {
           "Signs in a user with email and password. If the sign-in succeeds, a new Identity Platform ID token and refresh token are issued for the authenticated user. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project.",
         operationId: "identitytoolkit.accounts.signInWithPassword",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -484,7 +529,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -502,10 +551,10 @@ export default {
     "/v1/accounts:signInWithPhoneNumber": {
       post: {
         description:
-          "Completes a phone number authentication attempt. If a user already exists with the given phone number, an ID token is minted for that user. Otherwise, a new user is created and associated with the phone number. This method may also be used to link a phone number to an existing user. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project.",
+          "Completes a phone number authentication attempt. If a user already exists with the given phone number, an ID token is minted for that user. Otherwise, a new user is created and associated with the phone number. This method may also be used to link a phone number to an existing user. To localize the text of the SMS sent to the user, set the HTTP header `X-Firebase-Locale` to the language code that corresponds with the user's locale. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project.",
         operationId: "identitytoolkit.accounts.signInWithPhoneNumber",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -525,7 +574,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -546,7 +599,7 @@ export default {
           "Signs up a new email and password user or anonymous user, or upgrades an anonymous user to email and password. For an admin request with a Google OAuth 2.0 credential with the proper [permissions](https://cloud.google.com/identity-platform/docs/access-control), creates a new anonymous, email and password, or phone number user. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project.",
         operationId: "identitytoolkit.accounts.signUp",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -558,7 +611,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1SignUpRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -579,7 +636,7 @@ export default {
           "Updates account-related information for the specified user by setting specific fields or applying action codes. Requests from administrators and end users are supported.",
         operationId: "identitytoolkit.accounts.update",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -593,7 +650,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1SetAccountInfoRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -611,10 +672,10 @@ export default {
     "/v1/accounts:verifyIosClient": {
       post: {
         description:
-          "Verifies an iOS client is a real iOS device. If the request is valid, a reciept will be sent in the response and a secret will be sent via Apple Push Notification Service. The client should send both of them back to certain Identity Platform APIs in a later call (for example, /accounts:sendVerificationCode), in order to verify the client. The bundle ID is required in the request header as `x-ios-bundle-identifier`. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project.",
+          "Verifies an iOS client is a real iOS device. If the request is valid, a receipt will be sent in the response and a secret will be sent via Apple Push Notification Service. The client should send both of them back to certain Identity Platform APIs in a later call (for example, /accounts:sendVerificationCode), in order to verify the client. The bundle ID is required in the request header as `x-ios-bundle-identifier`. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project.",
         operationId: "identitytoolkit.accounts.verifyIosClient",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -634,7 +695,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -655,7 +720,7 @@ export default {
           "Signs up a new email and password user or anonymous user, or upgrades an anonymous user to email and password. For an admin request with a Google OAuth 2.0 credential with the proper [permissions](https://cloud.google.com/identity-platform/docs/access-control), creates a new anonymous, email and password, or phone number user. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project.",
         operationId: "identitytoolkit.projects.accounts",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -677,7 +742,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1SignUpRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["projects"],
       },
       parameters: [
@@ -698,7 +767,7 @@ export default {
           "Creates a session cookie for the given Identity Platform ID token. The session cookie is used by the client to preserve the user's login state.",
         operationId: "identitytoolkit.projects.createSessionCookie",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -721,7 +790,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1CreateSessionCookieRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["projects"],
       },
       parameters: [
@@ -742,7 +815,7 @@ export default {
           "Looks up user accounts within a project or a tenant based on conditions in the request.",
         operationId: "identitytoolkit.projects.queryAccounts",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -768,7 +841,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -790,7 +864,7 @@ export default {
           "Uploads multiple accounts into the Google Cloud project. If there is a problem uploading one or more of the accounts, the rest will be uploaded, and a list of the errors will be returned. To use this method requires a Google OAuth 2.0 credential with proper [permissions](https://cloud.google.com/identity-platform/docs/access-control).",
         operationId: "identitytoolkit.projects.accounts.batchCreate",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -817,7 +891,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -836,10 +911,10 @@ export default {
     "/v1/projects/{targetProjectId}/accounts:batchDelete": {
       post: {
         description:
-          "Batch deletes multiple accounts. For accounts that fail to be deleted, error info is contained in the response. The method ignores accounts that do not exist or are duplicated in the request. This method requires a Google OAuth 2.0 credential with proper permissions. (https://cloud.google.com/identity-platform/docs/access-control)",
+          "Batch deletes multiple accounts. For accounts that fail to be deleted, error info is contained in the response. The method ignores accounts that do not exist or are duplicated in the request. This method requires a Google OAuth 2.0 credential with proper [permissions] (https://cloud.google.com/identity-platform/docs/access-control).",
         operationId: "identitytoolkit.projects.accounts.batchDelete",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -866,7 +941,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -888,7 +964,7 @@ export default {
           "Download account information for all accounts on the project in a paginated manner. To use this method requires a Google OAuth 2.0 credential with proper [permissions](https://cloud.google.com/identity-platform/docs/access-control).. Furthermore, additional permissions are needed to get password hash, password salt, and password version from accounts; otherwise these fields are redacted.",
         operationId: "identitytoolkit.projects.accounts.batchGet",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -933,7 +1009,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -954,7 +1031,7 @@ export default {
         description: "Deletes a user's account.",
         operationId: "identitytoolkit.projects.accounts.delete",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -978,7 +1055,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1DeleteAccountRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["projects"],
       },
       parameters: [
@@ -999,7 +1080,7 @@ export default {
           "Gets account information for all matched accounts. For an end user request, retrieves the account of the end user. For an admin request with Google OAuth 2.0 credential, retrieves one or multiple account(s) with matching criteria.",
         operationId: "identitytoolkit.projects.accounts.lookup",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -1023,7 +1104,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1GetAccountInfoRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["projects"],
       },
       parameters: [
@@ -1044,7 +1129,7 @@ export default {
           "Looks up user accounts within a project or a tenant based on conditions in the request.",
         operationId: "identitytoolkit.projects.accounts.query",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -1070,7 +1155,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -1092,7 +1178,7 @@ export default {
           "Sends an out-of-band confirmation code for an account. Requests from a authenticated request can optionally return a link including the OOB code instead of sending it.",
         operationId: "identitytoolkit.projects.accounts.sendOobCode",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -1116,7 +1202,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1GetOobCodeRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["projects"],
       },
       parameters: [
@@ -1137,7 +1227,7 @@ export default {
           "Updates account-related information for the specified user by setting specific fields or applying action codes. Requests from administrators and end users are supported.",
         operationId: "identitytoolkit.projects.accounts.update",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -1153,7 +1243,7 @@ export default {
             name: "targetProjectId",
             in: "path",
             description:
-              "The project ID for the project that the account belongs to. Specifying this field requires Google OAuth 2.0 credential with proper permissions (https://cloud.google.com/identity-platform/docs/access-control). Requests from end users should pass an Identity Platform ID token instead.",
+              "The project ID for the project that the account belongs to. Specifying this field requires Google OAuth 2.0 credential with proper [permissions] (https://cloud.google.com/identity-platform/docs/access-control). Requests from end users should pass an Identity Platform ID token instead.",
             required: true,
             schema: { type: "string" },
           },
@@ -1161,7 +1251,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1SetAccountInfoRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["projects"],
       },
       parameters: [
@@ -1182,7 +1276,7 @@ export default {
           "Signs up a new email and password user or anonymous user, or upgrades an anonymous user to email and password. For an admin request with a Google OAuth 2.0 credential with the proper [permissions](https://cloud.google.com/identity-platform/docs/access-control), creates a new anonymous, email and password, or phone number user. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project.",
         operationId: "identitytoolkit.projects.tenants.accounts",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -1212,7 +1306,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1SignUpRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["projects"],
       },
       parameters: [
@@ -1233,7 +1331,7 @@ export default {
           "Creates a session cookie for the given Identity Platform ID token. The session cookie is used by the client to preserve the user's login state.",
         operationId: "identitytoolkit.projects.tenants.createSessionCookie",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -1263,7 +1361,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1CreateSessionCookieRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["projects"],
       },
       parameters: [
@@ -1284,7 +1386,7 @@ export default {
           "Uploads multiple accounts into the Google Cloud project. If there is a problem uploading one or more of the accounts, the rest will be uploaded, and a list of the errors will be returned. To use this method requires a Google OAuth 2.0 credential with proper [permissions](https://cloud.google.com/identity-platform/docs/access-control).",
         operationId: "identitytoolkit.projects.tenants.accounts.batchCreate",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -1318,7 +1420,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -1337,10 +1440,10 @@ export default {
     "/v1/projects/{targetProjectId}/tenants/{tenantId}/accounts:batchDelete": {
       post: {
         description:
-          "Batch deletes multiple accounts. For accounts that fail to be deleted, error info is contained in the response. The method ignores accounts that do not exist or are duplicated in the request. This method requires a Google OAuth 2.0 credential with proper permissions. (https://cloud.google.com/identity-platform/docs/access-control)",
+          "Batch deletes multiple accounts. For accounts that fail to be deleted, error info is contained in the response. The method ignores accounts that do not exist or are duplicated in the request. This method requires a Google OAuth 2.0 credential with proper [permissions] (https://cloud.google.com/identity-platform/docs/access-control).",
         operationId: "identitytoolkit.projects.tenants.accounts.batchDelete",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -1364,7 +1467,7 @@ export default {
             name: "tenantId",
             in: "path",
             description:
-              "If the accounts belong to an Identity Platform tenant, the ID of the tenant. If the accounts belong to an default Identity Platform project, the field is not needed.",
+              "If the accounts belong to an Identity Platform tenant, the ID of the tenant. If the accounts belong to a default Identity Platform project, the field is not needed.",
             required: true,
             schema: { type: "string" },
           },
@@ -1375,7 +1478,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -1397,7 +1501,7 @@ export default {
           "Download account information for all accounts on the project in a paginated manner. To use this method requires a Google OAuth 2.0 credential with proper [permissions](https://cloud.google.com/identity-platform/docs/access-control).. Furthermore, additional permissions are needed to get password hash, password salt, and password version from accounts; otherwise these fields are redacted.",
         operationId: "identitytoolkit.projects.tenants.accounts.batchGet",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -1443,7 +1547,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -1464,7 +1569,7 @@ export default {
         description: "Deletes a user's account.",
         operationId: "identitytoolkit.projects.tenants.accounts.delete",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -1496,7 +1601,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1DeleteAccountRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["projects"],
       },
       parameters: [
@@ -1517,7 +1626,7 @@ export default {
           "Gets account information for all matched accounts. For an end user request, retrieves the account of the end user. For an admin request with Google OAuth 2.0 credential, retrieves one or multiple account(s) with matching criteria.",
         operationId: "identitytoolkit.projects.tenants.accounts.lookup",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -1549,7 +1658,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1GetAccountInfoRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["projects"],
       },
       parameters: [
@@ -1570,7 +1683,7 @@ export default {
           "Looks up user accounts within a project or a tenant based on conditions in the request.",
         operationId: "identitytoolkit.projects.tenants.accounts.query",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -1603,7 +1716,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -1625,7 +1739,7 @@ export default {
           "Sends an out-of-band confirmation code for an account. Requests from a authenticated request can optionally return a link including the OOB code instead of sending it.",
         operationId: "identitytoolkit.projects.tenants.accounts.sendOobCode",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -1656,7 +1770,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1GetOobCodeRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["projects"],
       },
       parameters: [
@@ -1677,7 +1795,7 @@ export default {
           "Updates account-related information for the specified user by setting specific fields or applying action codes. Requests from administrators and end users are supported.",
         operationId: "identitytoolkit.projects.tenants.accounts.update",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -1693,7 +1811,7 @@ export default {
             name: "targetProjectId",
             in: "path",
             description:
-              "The project ID for the project that the account belongs to. Specifying this field requires Google OAuth 2.0 credential with proper permissions (https://cloud.google.com/identity-platform/docs/access-control). Requests from end users should pass an Identity Platform ID token instead.",
+              "The project ID for the project that the account belongs to. Specifying this field requires Google OAuth 2.0 credential with proper [permissions] (https://cloud.google.com/identity-platform/docs/access-control). Requests from end users should pass an Identity Platform ID token instead.",
             required: true,
             schema: { type: "string" },
           },
@@ -1709,7 +1827,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1SetAccountInfoRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["projects"],
       },
       parameters: [
@@ -1730,7 +1852,7 @@ export default {
           "Gets a project's public Identity Toolkit configuration. (Legacy) This method also supports authenticated calls from a developer to retrieve non-public configuration.",
         operationId: "identitytoolkit.getProjects",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -1798,7 +1920,11 @@ export default {
             schema: { type: "string" },
           },
         ],
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["v1"],
       },
       parameters: [
@@ -1818,7 +1944,7 @@ export default {
         description: "Gets parameters needed for generating a reCAPTCHA challenge.",
         operationId: "identitytoolkit.getRecaptchaParams",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -1829,7 +1955,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["v1"],
       },
       parameters: [
@@ -1850,7 +1980,7 @@ export default {
           "Retrieves the set of public keys of the session cookie JSON Web Token (JWT) signer that can be used to validate the session cookie created through createSessionCookie.",
         operationId: "identitytoolkit.getSessionCookiePublicKeys",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -1862,7 +1992,52 @@ export default {
           },
         },
         tags: ["v1"],
-        security: [{ apiKey: [] }],
+        security: [{ apiKeyQuery: [] }, { apiKeyHeader: [] }],
+      },
+      parameters: [
+        { $ref: "#/components/parameters/access_token" },
+        { $ref: "#/components/parameters/alt" },
+        { $ref: "#/components/parameters/callback" },
+        { $ref: "#/components/parameters/fields" },
+        { $ref: "#/components/parameters/oauth_token" },
+        { $ref: "#/components/parameters/prettyPrint" },
+        { $ref: "#/components/parameters/quotaUser" },
+        { $ref: "#/components/parameters/uploadType" },
+        { $ref: "#/components/parameters/upload_protocol" },
+      ],
+    },
+    "/v2/accounts:revokeToken": {
+      post: {
+        description:
+          "Revokes a user's token from an Identity Provider (IdP). This is done by manually providing an IdP credential, and the token types for revocation. An [API key](https://cloud.google.com/docs/authentication/api-keys) is required in the request in order to identify the Google Cloud project.",
+        operationId: "identitytoolkit.accounts.revokeToken",
+        responses: {
+          "200": {
+            description: "Successful response",
+            content: {
+              "*/*": {
+                schema: {
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2RevokeTokenResponse",
+                },
+              },
+            },
+          },
+        },
+        requestBody: {
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2RevokeTokenRequest",
+              },
+            },
+          },
+        },
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
+        tags: ["accounts"],
       },
       parameters: [
         { $ref: "#/components/parameters/access_token" },
@@ -1881,7 +2056,7 @@ export default {
         description: "Finishes enrolling a second factor for the user.",
         operationId: "identitytoolkit.accounts.mfaEnrollment.finalize",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -1901,7 +2076,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -1922,7 +2101,7 @@ export default {
           "Step one of the MFA enrollment process. In SMS case, this sends an SMS verification code to the user.",
         operationId: "identitytoolkit.accounts.mfaEnrollment.start",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -1942,7 +2121,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -1962,7 +2145,7 @@ export default {
         description: "Revokes one second factor from the enrolled second factors for an account.",
         operationId: "identitytoolkit.accounts.mfaEnrollment.withdraw",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -1982,7 +2165,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -2002,7 +2189,7 @@ export default {
         description: "Verifies the MFA challenge and performs sign-in",
         operationId: "identitytoolkit.accounts.mfaSignIn.finalize",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -2022,7 +2209,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -2042,7 +2233,7 @@ export default {
         description: "Sends the MFA challenge",
         operationId: "identitytoolkit.accounts.mfaSignIn.start",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -2062,7 +2253,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -2082,7 +2277,7 @@ export default {
         description: "List all default supported Idps.",
         operationId: "identitytoolkit.defaultSupportedIdps.list",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -2110,7 +2305,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["defaultSupportedIdps"],
       },
@@ -2131,7 +2327,7 @@ export default {
         description: "Retrieve an Identity Toolkit project configuration.",
         operationId: "identitytoolkit.projects.getConfig",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -2143,14 +2339,18 @@ export default {
         parameters: [
           { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
         ],
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["projects"],
       },
       patch: {
         description: "Update an Identity Toolkit project configuration.",
         operationId: "identitytoolkit.projects.updateConfig",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -2179,7 +2379,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2201,7 +2402,7 @@ export default {
           "Create a default supported Idp configuration for an Identity Toolkit project.",
         operationId: "identitytoolkit.projects.defaultSupportedIdpConfigs.create",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -2228,7 +2429,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2237,7 +2439,7 @@ export default {
           "List all default supported Idp configurations for an Identity Toolkit project.",
         operationId: "identitytoolkit.projects.defaultSupportedIdpConfigs.list",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -2266,7 +2468,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2288,7 +2491,7 @@ export default {
           "Delete a default supported Idp configuration for an Identity Toolkit project.",
         operationId: "identitytoolkit.projects.defaultSupportedIdpConfigs.delete",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: { "*/*": { schema: { $ref: "#/components/schemas/GoogleProtobufEmpty" } } },
           },
@@ -2305,7 +2508,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2314,7 +2518,7 @@ export default {
           "Retrieve a default supported Idp configuration for an Identity Toolkit project.",
         operationId: "identitytoolkit.projects.defaultSupportedIdpConfigs.get",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -2337,7 +2541,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2346,7 +2551,7 @@ export default {
           "Update a default supported Idp configuration for an Identity Toolkit project.",
         operationId: "identitytoolkit.projects.defaultSupportedIdpConfigs.patch",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -2379,7 +2584,56 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
+        tags: ["projects"],
+      },
+      parameters: [
+        { $ref: "#/components/parameters/access_token" },
+        { $ref: "#/components/parameters/alt" },
+        { $ref: "#/components/parameters/callback" },
+        { $ref: "#/components/parameters/fields" },
+        { $ref: "#/components/parameters/oauth_token" },
+        { $ref: "#/components/parameters/prettyPrint" },
+        { $ref: "#/components/parameters/quotaUser" },
+        { $ref: "#/components/parameters/uploadType" },
+        { $ref: "#/components/parameters/upload_protocol" },
+      ],
+    },
+    "/v2/projects/{targetProjectId}/identityPlatform:initializeAuth": {
+      post: {
+        description:
+          "Initialize Identity Platform for a Cloud project. Identity Platform is an end-to-end authentication system for third-party users to access your apps and services. These could include mobile/web apps, games, APIs and beyond. This is the publicly available variant of EnableIdentityPlatform that is only available to billing-enabled projects.",
+        operationId: "identitytoolkit.projects.identityPlatform.initializeAuth",
+        responses: {
+          "200": {
+            description: "Successful response",
+            content: {
+              "*/*": {
+                schema: {
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2InitializeIdentityPlatformResponse",
+                },
+              },
+            },
+          },
+        },
+        parameters: [
+          { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+        ],
+        requestBody: {
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2InitializeIdentityPlatformRequest",
+              },
+            },
+          },
+        },
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2400,7 +2654,7 @@ export default {
         description: "Create an inbound SAML configuration for an Identity Toolkit project.",
         operationId: "identitytoolkit.projects.inboundSamlConfigs.create",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -2426,7 +2680,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2434,7 +2689,7 @@ export default {
         description: "List all inbound SAML configurations for an Identity Toolkit project.",
         operationId: "identitytoolkit.projects.inboundSamlConfigs.list",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -2463,7 +2718,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2484,7 +2740,7 @@ export default {
         description: "Delete an inbound SAML configuration for an Identity Toolkit project.",
         operationId: "identitytoolkit.projects.inboundSamlConfigs.delete",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: { "*/*": { schema: { $ref: "#/components/schemas/GoogleProtobufEmpty" } } },
           },
@@ -2496,7 +2752,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2504,7 +2761,7 @@ export default {
         description: "Retrieve an inbound SAML configuration for an Identity Toolkit project.",
         operationId: "identitytoolkit.projects.inboundSamlConfigs.get",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -2522,7 +2779,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2530,7 +2788,7 @@ export default {
         description: "Update an inbound SAML configuration for an Identity Toolkit project.",
         operationId: "identitytoolkit.projects.inboundSamlConfigs.patch",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -2558,7 +2816,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2579,7 +2838,7 @@ export default {
         description: "Create an Oidc Idp configuration for an Identity Toolkit project.",
         operationId: "identitytoolkit.projects.oauthIdpConfigs.create",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -2605,7 +2864,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2613,7 +2873,7 @@ export default {
         description: "List all Oidc Idp configurations for an Identity Toolkit project.",
         operationId: "identitytoolkit.projects.oauthIdpConfigs.list",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -2642,7 +2902,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2663,7 +2924,7 @@ export default {
         description: "Delete an Oidc Idp configuration for an Identity Toolkit project.",
         operationId: "identitytoolkit.projects.oauthIdpConfigs.delete",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: { "*/*": { schema: { $ref: "#/components/schemas/GoogleProtobufEmpty" } } },
           },
@@ -2675,7 +2936,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2683,7 +2945,7 @@ export default {
         description: "Retrieve an Oidc Idp configuration for an Identity Toolkit project.",
         operationId: "identitytoolkit.projects.oauthIdpConfigs.get",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -2701,7 +2963,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2709,7 +2972,7 @@ export default {
         description: "Update an Oidc Idp configuration for an Identity Toolkit project.",
         operationId: "identitytoolkit.projects.oauthIdpConfigs.patch",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -2737,7 +3000,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2758,7 +3022,7 @@ export default {
         description: "Create a tenant. Requires write permission on the Agent project.",
         operationId: "identitytoolkit.projects.tenants.create",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -2774,7 +3038,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2783,7 +3048,7 @@ export default {
           "List tenants under the given agent project. Requires read permission on the Agent project.",
         operationId: "identitytoolkit.projects.tenants.list",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -2813,7 +3078,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2834,7 +3100,7 @@ export default {
         description: "Delete a tenant. Requires write permission on the Agent project.",
         operationId: "identitytoolkit.projects.tenants.delete",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: { "*/*": { schema: { $ref: "#/components/schemas/GoogleProtobufEmpty" } } },
           },
@@ -2846,7 +3112,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2854,7 +3121,7 @@ export default {
         description: "Get a tenant. Requires read permission on the Tenant resource.",
         operationId: "identitytoolkit.projects.tenants.get",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -2870,7 +3137,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2878,7 +3146,7 @@ export default {
         description: "Update a tenant. Requires write permission on the Tenant resource.",
         operationId: "identitytoolkit.projects.tenants.patch",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -2902,7 +3170,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2924,7 +3193,7 @@ export default {
           "Gets the access control policy for a resource. An error is returned if the resource does not exist. An empty policy is returned if the resource exists but does not have a policy set on it. Caller must have the right Google IAM permission on the resource.",
         operationId: "identitytoolkit.projects.tenants.getIamPolicy",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: { "*/*": { schema: { $ref: "#/components/schemas/GoogleIamV1Policy" } } },
           },
@@ -2943,7 +3212,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2965,7 +3235,7 @@ export default {
           "Sets the access control policy for a resource. If the policy exists, it is replaced. Caller must have the right Google IAM permission on the resource.",
         operationId: "identitytoolkit.projects.tenants.setIamPolicy",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: { "*/*": { schema: { $ref: "#/components/schemas/GoogleIamV1Policy" } } },
           },
@@ -2984,7 +3254,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -3006,7 +3277,7 @@ export default {
           "Returns the caller's permissions on a resource. An error is returned if the resource does not exist. A caller is not required to have Google IAM permission to make this request.",
         operationId: "identitytoolkit.projects.tenants.testIamPermissions",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -3029,7 +3300,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -3051,7 +3323,7 @@ export default {
           "Create a default supported Idp configuration for an Identity Toolkit project.",
         operationId: "identitytoolkit.projects.tenants.defaultSupportedIdpConfigs.create",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -3079,7 +3351,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -3088,7 +3361,7 @@ export default {
           "List all default supported Idp configurations for an Identity Toolkit project.",
         operationId: "identitytoolkit.projects.tenants.defaultSupportedIdpConfigs.list",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -3118,7 +3391,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -3141,7 +3415,7 @@ export default {
             "Delete a default supported Idp configuration for an Identity Toolkit project.",
           operationId: "identitytoolkit.projects.tenants.defaultSupportedIdpConfigs.delete",
           responses: {
-            200: {
+            "200": {
               description: "Successful response",
               content: { "*/*": { schema: { $ref: "#/components/schemas/GoogleProtobufEmpty" } } },
             },
@@ -3159,7 +3433,8 @@ export default {
           security: [
             { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
             { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-            { apiKey: [] },
+            { apiKeyQuery: [] },
+            { apiKeyHeader: [] },
           ],
           tags: ["projects"],
         },
@@ -3168,7 +3443,7 @@ export default {
             "Retrieve a default supported Idp configuration for an Identity Toolkit project.",
           operationId: "identitytoolkit.projects.tenants.defaultSupportedIdpConfigs.get",
           responses: {
-            200: {
+            "200": {
               description: "Successful response",
               content: {
                 "*/*": {
@@ -3192,7 +3467,8 @@ export default {
           security: [
             { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
             { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-            { apiKey: [] },
+            { apiKeyQuery: [] },
+            { apiKeyHeader: [] },
           ],
           tags: ["projects"],
         },
@@ -3201,7 +3477,7 @@ export default {
             "Update a default supported Idp configuration for an Identity Toolkit project.",
           operationId: "identitytoolkit.projects.tenants.defaultSupportedIdpConfigs.patch",
           responses: {
-            200: {
+            "200": {
               description: "Successful response",
               content: {
                 "*/*": {
@@ -3235,7 +3511,8 @@ export default {
           security: [
             { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
             { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-            { apiKey: [] },
+            { apiKeyQuery: [] },
+            { apiKeyHeader: [] },
           ],
           tags: ["projects"],
         },
@@ -3256,7 +3533,7 @@ export default {
         description: "Create an inbound SAML configuration for an Identity Toolkit project.",
         operationId: "identitytoolkit.projects.tenants.inboundSamlConfigs.create",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -3283,7 +3560,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -3291,7 +3569,7 @@ export default {
         description: "List all inbound SAML configurations for an Identity Toolkit project.",
         operationId: "identitytoolkit.projects.tenants.inboundSamlConfigs.list",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -3321,7 +3599,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -3342,7 +3621,7 @@ export default {
         description: "Delete an inbound SAML configuration for an Identity Toolkit project.",
         operationId: "identitytoolkit.projects.tenants.inboundSamlConfigs.delete",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: { "*/*": { schema: { $ref: "#/components/schemas/GoogleProtobufEmpty" } } },
           },
@@ -3355,7 +3634,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -3363,7 +3643,7 @@ export default {
         description: "Retrieve an inbound SAML configuration for an Identity Toolkit project.",
         operationId: "identitytoolkit.projects.tenants.inboundSamlConfigs.get",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -3382,7 +3662,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -3390,7 +3671,7 @@ export default {
         description: "Update an inbound SAML configuration for an Identity Toolkit project.",
         operationId: "identitytoolkit.projects.tenants.inboundSamlConfigs.patch",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -3419,7 +3700,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -3440,7 +3722,7 @@ export default {
         description: "Create an Oidc Idp configuration for an Identity Toolkit project.",
         operationId: "identitytoolkit.projects.tenants.oauthIdpConfigs.create",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -3467,7 +3749,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -3475,7 +3758,7 @@ export default {
         description: "List all Oidc Idp configurations for an Identity Toolkit project.",
         operationId: "identitytoolkit.projects.tenants.oauthIdpConfigs.list",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -3505,7 +3788,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -3526,7 +3810,7 @@ export default {
         description: "Delete an Oidc Idp configuration for an Identity Toolkit project.",
         operationId: "identitytoolkit.projects.tenants.oauthIdpConfigs.delete",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: { "*/*": { schema: { $ref: "#/components/schemas/GoogleProtobufEmpty" } } },
           },
@@ -3539,7 +3823,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -3547,7 +3832,7 @@ export default {
         description: "Retrieve an Oidc Idp configuration for an Identity Toolkit project.",
         operationId: "identitytoolkit.projects.tenants.oauthIdpConfigs.get",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -3566,7 +3851,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -3574,7 +3860,7 @@ export default {
         description: "Update an Oidc Idp configuration for an Identity Toolkit project.",
         operationId: "identitytoolkit.projects.tenants.oauthIdpConfigs.patch",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "*/*": {
@@ -3603,9 +3889,118 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
+      },
+      parameters: [
+        { $ref: "#/components/parameters/access_token" },
+        { $ref: "#/components/parameters/alt" },
+        { $ref: "#/components/parameters/callback" },
+        { $ref: "#/components/parameters/fields" },
+        { $ref: "#/components/parameters/oauth_token" },
+        { $ref: "#/components/parameters/prettyPrint" },
+        { $ref: "#/components/parameters/quotaUser" },
+        { $ref: "#/components/parameters/uploadType" },
+        { $ref: "#/components/parameters/upload_protocol" },
+      ],
+    },
+    "/v2/passwordPolicy": {
+      get: {
+        description: "Gets password policy config set on the project or tenant.",
+        operationId: "identitytoolkit.getPasswordPolicy",
+        responses: {
+          "200": {
+            description: "Successful response",
+            content: {
+              "*/*": {
+                schema: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2PasswordPolicy" },
+              },
+            },
+          },
+        },
+        parameters: [
+          {
+            name: "tenantId",
+            in: "query",
+            description: "The id of a tenant.",
+            schema: { type: "string" },
+          },
+        ],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
+        tags: ["v2"],
+      },
+      parameters: [
+        { $ref: "#/components/parameters/access_token" },
+        { $ref: "#/components/parameters/alt" },
+        { $ref: "#/components/parameters/callback" },
+        { $ref: "#/components/parameters/fields" },
+        { $ref: "#/components/parameters/oauth_token" },
+        { $ref: "#/components/parameters/prettyPrint" },
+        { $ref: "#/components/parameters/quotaUser" },
+        { $ref: "#/components/parameters/uploadType" },
+        { $ref: "#/components/parameters/upload_protocol" },
+      ],
+    },
+    "/v2/recaptchaConfig": {
+      get: {
+        description: "Gets parameters needed for reCAPTCHA analysis.",
+        operationId: "identitytoolkit.getRecaptchaConfig",
+        responses: {
+          "200": {
+            description: "Successful response",
+            content: {
+              "*/*": {
+                schema: {
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2RecaptchaConfig",
+                },
+              },
+            },
+          },
+        },
+        parameters: [
+          {
+            name: "clientType",
+            in: "query",
+            description:
+              "reCAPTCHA Enterprise uses separate site keys for different client types. Specify the client type to get the corresponding key.",
+            schema: {
+              type: "string",
+              enum: [
+                "CLIENT_TYPE_UNSPECIFIED",
+                "CLIENT_TYPE_WEB",
+                "CLIENT_TYPE_ANDROID",
+                "CLIENT_TYPE_IOS",
+              ],
+            },
+          },
+          {
+            name: "tenantId",
+            in: "query",
+            description: "The id of a tenant.",
+            schema: { type: "string" },
+          },
+          {
+            name: "version",
+            in: "query",
+            description: "The reCAPTCHA version.",
+            schema: {
+              type: "string",
+              enum: ["RECAPTCHA_VERSION_UNSPECIFIED", "RECAPTCHA_ENTERPRISE"],
+            },
+          },
+        ],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
+        tags: ["v2"],
       },
       parameters: [
         { $ref: "#/components/parameters/access_token" },
@@ -3625,7 +4020,7 @@ export default {
           "The Token Service API lets you exchange either an ID token or a refresh token for an access token and a new refresh token. You can use the access token to securely call APIs that require user authorization.",
         operationId: "securetoken.token",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: { "*/*": { schema: { $ref: "#/components/schemas/GrantTokenResponse" } } },
           },
@@ -3639,7 +4034,7 @@ export default {
           },
         },
         tags: ["secureToken"],
-        security: [{ apiKey: [] }],
+        security: [{ apiKeyQuery: [] }, { apiKeyHeader: [] }],
       },
       parameters: [
         { $ref: "#/components/parameters/access_token" },
@@ -3669,7 +4064,7 @@ export default {
         description: "Remove all accounts in the project, regardless of state.",
         operationId: "emulator.projects.accounts.delete",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: { "application/json": { schema: { type: "object" } } },
           },
@@ -3701,7 +4096,7 @@ export default {
         description: "Remove all accounts in the project, regardless of state.",
         operationId: "emulator.projects.accounts.delete",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: { "application/json": { schema: { type: "object" } } },
           },
@@ -3725,7 +4120,7 @@ export default {
         description: "Get emulator-specific configuration for the project.",
         operationId: "emulator.projects.config.get",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "application/json": {
@@ -3748,7 +4143,7 @@ export default {
           },
         },
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "application/json": {
@@ -3776,7 +4171,7 @@ export default {
         description: "List all pending confirmation codes for the project.",
         operationId: "emulator.projects.oobCodes.list",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "application/json": {
@@ -3812,7 +4207,7 @@ export default {
         description: "List all pending confirmation codes for the project.",
         operationId: "emulator.projects.oobCodes.list",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "application/json": {
@@ -3840,7 +4235,7 @@ export default {
         description: "List all pending phone verification codes for the project.",
         operationId: "emulator.projects.verificationCodes.list",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "application/json": {
@@ -3876,7 +4271,7 @@ export default {
         description: "List all pending phone verification codes for the project.",
         operationId: "emulator.projects.verificationCodes.list",
         responses: {
-          200: {
+          "200": {
             description: "Successful response",
             content: {
               "application/json": {
@@ -3887,6 +4282,118 @@ export default {
         },
         security: [],
         tags: ["emulator"],
+      },
+    },
+    "/v2/accounts/passkeyEnrollment:start": {
+      post: {
+        description: "Start passkey enrollment.",
+        operationId: "identitytoolkit.accounts.passkeyEnrollment.start",
+        requestBody: {
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2StartPasskeyEnrollmentRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Successful response",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2StartPasskeyEnrollmentResponse",
+                },
+              },
+            },
+          },
+        },
+        security: [{ apiKeyQuery: [] }, { apiKeyHeader: [] }],
+      },
+    },
+    "/v2/accounts/passkeyEnrollment:finalize": {
+      post: {
+        description: "Finalize passkey enrollment.",
+        operationId: "identitytoolkit.accounts.passkeyEnrollment.finalize",
+        requestBody: {
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2FinalizePasskeyEnrollmentRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Successful response",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2FinalizePasskeyEnrollmentResponse",
+                },
+              },
+            },
+          },
+        },
+        security: [{ apiKeyQuery: [] }, { apiKeyHeader: [] }],
+      },
+    },
+    "/v2/accounts/passkeySignIn:start": {
+      post: {
+        description: "Start passkey sign-in.",
+        operationId: "identitytoolkit.accounts.passkeySignIn.start",
+        requestBody: {
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2StartPasskeySignInRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Successful response",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2StartPasskeySignInResponse",
+                },
+              },
+            },
+          },
+        },
+        security: [{ apiKeyQuery: [] }, { apiKeyHeader: [] }],
+      },
+    },
+    "/v2/accounts/passkeySignIn:finalize": {
+      post: {
+        description: "Finalize passkey sign-in.",
+        operationId: "identitytoolkit.accounts.passkeySignIn.finalize",
+        requestBody: {
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2FinalizePasskeySignInRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Successful response",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2FinalizePasskeySignInResponse",
+                },
+              },
+            },
+          },
+        },
+        security: [{ apiKeyQuery: [] }, { apiKeyHeader: [] }],
       },
     },
   },
@@ -3964,7 +4471,7 @@ export default {
           },
           tenantId: {
             description:
-              "If the accounts belong to an Identity Platform tenant, the ID of the tenant. If the accounts belong to an default Identity Platform project, the field is not needed.",
+              "If the accounts belong to an Identity Platform tenant, the ID of the tenant. If the accounts belong to a default Identity Platform project, the field is not needed.",
             type: "string",
           },
         },
@@ -3999,7 +4506,7 @@ export default {
       GoogleCloudIdentitytoolkitV1CreateAuthUriRequest: {
         description: "Request message for CreateAuthUri.",
         properties: {
-          appId: { type: "string" },
+          appId: { deprecated: true, type: "string" },
           authFlowType: {
             description:
               "Used for the Google provider. The type of the authentication flow to be used. If present, this should be `CODE_FLOW` to specify the authorization code flow. Otherwise, the default ID Token flow will be used.",
@@ -4031,14 +4538,14 @@ export default {
               "The email identifier of the user account to fetch associated providers for. At least one of the fields `identifier` and `provider_id` must be set. The length of the email address should be less than 256 characters and in the format of `name@domain.tld`. The email address should also match the [RFC 822](https://tools.ietf.org/html/rfc822) addr-spec production.",
             type: "string",
           },
-          oauthConsumerKey: { type: "string" },
+          oauthConsumerKey: { deprecated: true, type: "string" },
           oauthScope: {
             description:
               "Additional space-delimited OAuth 2.0 scopes specifying the scope of the authentication request with the IdP. Used for OAuth 2.0 IdPs. For the Google provider, the authorization code flow will be used if this field is set.",
             type: "string",
           },
-          openidRealm: { type: "string" },
-          otaApp: { type: "string" },
+          openidRealm: { deprecated: true, type: "string" },
+          otaApp: { deprecated: true, type: "string" },
           providerId: {
             description:
               "The provider ID of the IdP for the user to sign in with. This should be a provider ID enabled for sign-in, which is either from the list of [default supported IdPs](https://cloud.google.com/identity-platform/docs/reference/rest/v2/defaultSupportedIdps/list), or of the format `oidc.*` or `saml.*`. Some examples are `google.com`, `facebook.com`, `oidc.testapp`, and `saml.testapp`. At least one of the fields `identifier` and `provider_id` must be set.",
@@ -4060,7 +4567,7 @@ export default {
       GoogleCloudIdentitytoolkitV1CreateAuthUriResponse: {
         description: "Response message for CreateAuthUri.",
         properties: {
-          allProviders: { items: { type: "string" }, type: "array" },
+          allProviders: { deprecated: true, items: { type: "string" }, type: "array" },
           authUri: {
             description:
               "The authorization URI for the requested provider. Present only when a provider ID is set in the request.",
@@ -4076,7 +4583,7 @@ export default {
               "Whether the user has previously signed in with the provider ID in the request. Present only when a registered email identifier is set in the request.",
             type: "boolean",
           },
-          kind: { type: "string" },
+          kind: { deprecated: true, type: "string" },
           providerId: {
             description: "The provider ID from the request, if provided.",
             type: "string",
@@ -4093,7 +4600,7 @@ export default {
           },
           signinMethods: {
             description:
-              "The list of sign-in methods that the user has previously used. Each element is one of `password`, `emailLink`, or the provider ID of an IdP. Present only when a registered email identifier is set in the request.",
+              "The list of sign-in methods that the user has previously used. Each element is one of `password`, `emailLink`, or the provider ID of an IdP. Present only when a registered email identifier is set in the request. If [email enumeration protection](https://cloud.google.com/identity-platform/docs/admin/email-enumeration-protection) is enabled, this method returns an empty list.",
             items: { type: "string" },
             type: "array",
           },
@@ -4131,7 +4638,7 @@ export default {
       GoogleCloudIdentitytoolkitV1DeleteAccountRequest: {
         description: "Request message for DeleteAccount.",
         properties: {
-          delegatedProjectNumber: { format: "int64", type: "string" },
+          delegatedProjectNumber: { deprecated: true, format: "int64", type: "string" },
           idToken: {
             description:
               "The Identity Platform ID token of the account to delete. Require to be specified for requests from end users that lack Google OAuth 2.0 credential. Authenticated requests bearing a Google OAuth2 credential with proper permissions may pass local_id to specify the account to delete alternatively.",
@@ -4157,13 +4664,13 @@ export default {
       },
       GoogleCloudIdentitytoolkitV1DeleteAccountResponse: {
         description: "Response message for DeleteAccount.",
-        properties: { kind: { type: "string" } },
+        properties: { kind: { deprecated: true, type: "string" } },
         type: "object",
       },
       GoogleCloudIdentitytoolkitV1DownloadAccountResponse: {
         description: "Response message for DownloadAccount.",
         properties: {
-          kind: { type: "string" },
+          kind: { deprecated: true, type: "string" },
           nextPageToken: {
             description:
               "If there are more accounts to be downloaded, a token that can be passed back to DownloadAccount to get more accounts. Otherwise, this is blank.",
@@ -4174,6 +4681,16 @@ export default {
               "All accounts belonging to the project/tenant limited by max_results in the request.",
             items: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1UserInfo" },
             type: "array",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitV1EmailInfo: {
+        description: "Information about email MFA.",
+        properties: {
+          emailAddress: {
+            description: "Email address that a MFA verification should be sent to.",
+            type: "string",
           },
         },
         type: "object",
@@ -4241,7 +4758,7 @@ export default {
       GoogleCloudIdentitytoolkitV1GetAccountInfoRequest: {
         description: "Request message for GetAccountInfo.",
         properties: {
-          delegatedProjectNumber: { format: "int64", type: "string" },
+          delegatedProjectNumber: { deprecated: true, format: "int64", type: "string" },
           email: {
             description:
               "The email address of one or more accounts to fetch. The length of email should be less than 256 characters and in the format of `name@domain.tld`. The email should also match the [RFC 822](https://tools.ietf.org/html/rfc822) addr-spec production. Should only be specified by authenticated requests from a developer.",
@@ -4249,8 +4766,6 @@ export default {
             type: "array",
           },
           federatedUserId: {
-            description:
-              "The federated user identifier of one or more accounts to fetch. Should only be specified by authenticated requests bearing a Google OAuth 2.0 credential with proper [permissions](https://cloud.google.com/identity-platform/docs/access-control).",
             items: {
               $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1FederatedUserIdentifier",
             },
@@ -4295,7 +4810,7 @@ export default {
       GoogleCloudIdentitytoolkitV1GetAccountInfoResponse: {
         description: "Response message for GetAccountInfo.",
         properties: {
-          kind: { type: "string" },
+          kind: { deprecated: true, type: "string" },
           users: {
             description:
               "The information of specific user account(s) matching the parameters in the request.",
@@ -4333,7 +4848,18 @@ export default {
               "For a PASSWORD_RESET request, a reCaptcha response is required when the system detects possible abuse activity. In those cases, this is the response from the reCaptcha challenge used to verify the caller.",
             type: "string",
           },
-          challenge: { type: "string" },
+          challenge: { deprecated: true, type: "string" },
+          clientType: {
+            description:
+              "The client type: web, Android or iOS. Required when reCAPTCHA Enterprise protection is enabled.",
+            enum: [
+              "CLIENT_TYPE_UNSPECIFIED",
+              "CLIENT_TYPE_WEB",
+              "CLIENT_TYPE_ANDROID",
+              "CLIENT_TYPE_IOS",
+            ],
+            type: "string",
+          },
           continueUrl: {
             description:
               "The Url to continue after user clicks the link sent in email. This is the url that will allow the web widget to handle the OOB code.",
@@ -4364,9 +4890,19 @@ export default {
               "An ID token for the account. It is required for VERIFY_AND_CHANGE_EMAIL and VERIFY_EMAIL requests unless return_oob_link is set to true.",
             type: "string",
           },
+          linkDomain: {
+            description:
+              "Optional. In order to ensure that the url used can be easily opened in iOS or Android, we create a Hosting link '/__/auth/links'. This optional field contains the domain to use when constructing a Hosting link. If not set, '.firebaseapp.com' domain will be used.",
+            type: "string",
+          },
           newEmail: {
             description:
               "The email address the account is being updated to. Required only for VERIFY_AND_CHANGE_EMAIL requests.",
+            type: "string",
+          },
+          recaptchaVersion: {
+            description: "The reCAPTCHA version of the reCAPTCHA token in the captcha_response.",
+            enum: ["RECAPTCHA_VERSION_UNSPECIFIED", "RECAPTCHA_ENTERPRISE"],
             type: "string",
           },
           requestType: {
@@ -4383,6 +4919,7 @@ export default {
               "VERIFY_AND_CHANGE_EMAIL",
               "REVERT_SECOND_FACTOR_ADDITION",
             ],
+            enumDeprecated: [false, false, true, true, false, true, false, false, true],
             type: "string",
           },
           returnOobLink: {
@@ -4414,7 +4951,7 @@ export default {
               "If return_oob_link is false in the request, the email address the verification was sent to.",
             type: "string",
           },
-          kind: { type: "string" },
+          kind: { deprecated: true, type: "string" },
           oobCode: {
             description: "If return_oob_link is true in the request, the OOB code to send.",
             type: "string",
@@ -4491,13 +5028,17 @@ export default {
       GoogleCloudIdentitytoolkitV1GetRecaptchaParamResponse: {
         description: "Response message for GetRecaptchaParam.",
         properties: {
-          kind: { type: "string" },
+          kind: { deprecated: true, type: "string" },
+          producerProjectNumber: {
+            description: "The producer project number used to generate PIA tokens",
+            type: "string",
+          },
           recaptchaSiteKey: {
             description:
               "The reCAPTCHA v2 site key used to invoke the reCAPTCHA service. Always present.",
             type: "string",
           },
-          recaptchaStoken: { type: "string" },
+          recaptchaStoken: { deprecated: true, type: "string" },
         },
         type: "object",
       },
@@ -4528,7 +5069,6 @@ export default {
             type: "integer",
           },
           provider: {
-            description: "Name of the identity provider.",
             enum: [
               "PROVIDER_UNSPECIFIED",
               "MSLIVE",
@@ -4604,6 +5144,7 @@ export default {
             description: 'Display name for this mfa option e.g. "corp cell phone".',
             type: "string",
           },
+          emailInfo: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1EmailInfo" },
           enrolledAt: {
             description: "Timestamp when the account enrolled this second factor.",
             format: "google-datetime",
@@ -4615,6 +5156,7 @@ export default {
               "Normally this will show the phone number associated with this enrollment. In some situations, such as after a first factor sign in, it will only show the obfuscated version of the associated phone number.",
             type: "string",
           },
+          totpInfo: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1TotpInfo" },
           unobfuscatedPhoneInfo: {
             description: "Output only. Unobfuscated phone_info.",
             readOnly: true,
@@ -4704,8 +5246,6 @@ export default {
         description: "Request message for QueryUserInfo.",
         properties: {
           expression: {
-            description:
-              "Query conditions used to filter results. If more than one is passed, only the first SqlExpression is evaluated.",
             items: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1SqlExpression" },
             type: "array",
           },
@@ -4721,20 +5261,13 @@ export default {
             format: "int64",
             type: "string",
           },
-          order: {
-            description:
-              "The order for sorting query result. Defaults to __ascending__ order. Only valid when `return_user_info` is set to `true`.",
-            enum: ["ORDER_UNSPECIFIED", "ASC", "DESC"],
-            type: "string",
-          },
+          order: { enum: ["ORDER_UNSPECIFIED", "ASC", "DESC"], type: "string" },
           returnUserInfo: {
             description:
               "If `true`, this request will return the accounts matching the query. If `false`, only the __count__ of accounts matching the query will be returned. Defaults to `true`.",
             type: "boolean",
           },
           sortBy: {
-            description:
-              "The field to use for sorting user accounts. Defaults to `USER_ID`. Note: when `phone_number` is specified in `expression`, the result ignores the sorting. Only valid when `return_user_info` is set to `true`.",
             enum: [
               "SORT_BY_FIELD_UNSPECIFIED",
               "USER_ID",
@@ -4775,7 +5308,7 @@ export default {
         properties: {
           email: {
             description:
-              "The email of the account to be modified. Specify this and the old password in order to change an account's password without using an out-of-band code.",
+              "Optional. The email of the account to be modified. Specify this and the old password in order to change an account's password without using an out-of-band code.",
             type: "string",
           },
           newPassword: {
@@ -4794,7 +5327,8 @@ export default {
             type: "string",
           },
           tenantId: {
-            description: "The tenant ID of the Identity Platform tenant the account belongs to.",
+            description:
+              "Optional. The tenant ID of the Identity Platform tenant the account belongs to.",
             type: "string",
           },
         },
@@ -4807,7 +5341,7 @@ export default {
             description: "The email associated with the out-of-band code that was used.",
             type: "string",
           },
-          kind: { type: "string" },
+          kind: { deprecated: true, type: "string" },
           mfaInfo: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1MfaEnrollment" },
           newEmail: { type: "string" },
           requestType: {
@@ -4822,6 +5356,7 @@ export default {
               "VERIFY_AND_CHANGE_EMAIL",
               "REVERT_SECOND_FACTOR_ADDITION",
             ],
+            enumDeprecated: [false, false, true, true, false, true, false, false, true],
             type: "string",
           },
         },
@@ -4829,14 +5364,30 @@ export default {
       },
       GoogleCloudIdentitytoolkitV1SendVerificationCodeRequest: {
         description:
-          "Request message for SendVerificationCode. At least one of (`ios_receipt` and `ios_secret`), `recaptcha_token`, or `safety_net_token` must be specified to verify the verification code is being sent on behalf of a real app and not an emulator.",
+          "Request message for SendVerificationCode. 'captcha_response' is required when reCAPTCHA enterprise is enabled, or otherwise at least one of (`ios_receipt` and `ios_secret`), `recaptcha_token`, or `play_integrity_token` must be specified to verify the verification code is being sent on behalf of a real app and not an emulator.",
         properties: {
           autoRetrievalInfo: {
             $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1AutoRetrievalInfo",
           },
+          captchaResponse: {
+            description:
+              "Optional. The reCAPTCHA Enterprise token provided by the reCAPTCHA client-side integration. Required when reCAPTCHA enterprise is enabled.",
+            type: "string",
+          },
+          clientType: {
+            description:
+              "Optional. The client type, web, android or ios. Required when reCAPTCHA Enterprise is enabled.",
+            enum: [
+              "CLIENT_TYPE_UNSPECIFIED",
+              "CLIENT_TYPE_WEB",
+              "CLIENT_TYPE_ANDROID",
+              "CLIENT_TYPE_IOS",
+            ],
+            type: "string",
+          },
           iosReceipt: {
             description:
-              "Receipt of successful iOS app token validation. At least one of (`ios_receipt` and `ios_secret`), `recaptcha_token`, or `safety_net_token` must be specified to verify the verification code is being sent on behalf of a real app and not an emulator. This should come from the response of verifyIosClient. If present, the caller should also provide the `ios_secret`, as well as a bundle ID in the `x-ios-bundle-identifier` header, which must match the bundle ID from the verifyIosClient request.",
+              "Receipt of successful iOS app token validation. At least one of (`ios_receipt` and `ios_secret`), `recaptcha_token`, or `play_integrity_token` must be specified to verify the verification code is being sent on behalf of a real app and not an emulator, if 'captcha_response' is not used (reCAPTCHA enterprise is not enabled). This should come from the response of verifyIosClient. If present, the caller should also provide the `ios_secret`, as well as a bundle ID in the `x-ios-bundle-identifier` header, which must match the bundle ID from the verifyIosClient request.",
             type: "string",
           },
           iosSecret: {
@@ -4848,14 +5399,25 @@ export default {
             description: "The phone number to send the verification code to in E.164 format.",
             type: "string",
           },
+          playIntegrityToken: {
+            description:
+              "Android only. Used to assert application identity in place of a recaptcha token (and safety_net_token). At least one of (`ios_receipt` and `ios_secret`), `recaptcha_token`, , or `play_integrity_token` must be specified to verify the verification code is being sent on behalf of a real app and not an emulator, if 'captcha_response' is not used (reCAPTCHA enterprise is not enabled). A Play Integrity Token can be generated via the [PlayIntegrity API](https://developer.android.com/google/play/integrity) with applying SHA256 to the `phone_number` field as the nonce.",
+            type: "string",
+          },
           recaptchaToken: {
             description:
-              "Recaptcha token for app verification. At least one of (`ios_receipt` and `ios_secret`), `recaptcha_token`, or `safety_net_token` must be specified to verify the verification code is being sent on behalf of a real app and not an emulator. The recaptcha should be generated by calling getRecaptchaParams and the recaptcha token will be generated on user completion of the recaptcha challenge.",
+              "Recaptcha token for app verification. At least one of (`ios_receipt` and `ios_secret`), `recaptcha_token`, or `play_integrity_token` must be specified to verify the verification code is being sent on behalf of a real app and not an emulator, if 'captcha_response' is not used (reCAPTCHA enterprise is not enabled). The recaptcha should be generated by calling getRecaptchaParams and the recaptcha token will be generated on user completion of the recaptcha challenge.",
+            type: "string",
+          },
+          recaptchaVersion: {
+            description:
+              "Optional. The reCAPTCHA version of the reCAPTCHA token in the captcha_response. Required when reCAPTCHA Enterprise is enabled.",
+            enum: ["RECAPTCHA_VERSION_UNSPECIFIED", "RECAPTCHA_ENTERPRISE"],
             type: "string",
           },
           safetyNetToken: {
             description:
-              "Android only. Used to assert application identity in place of a recaptcha token. At least one of (`ios_receipt` and `ios_secret`), `recaptcha_token`, or `safety_net_token` must be specified to verify the verification code is being sent on behalf of a real app and not an emulator. A SafetyNet Token can be generated via the [SafetyNet Android Attestation API](https://developer.android.com/training/safetynet/attestation.html), with the Base64 encoding of the `phone_number` field as the nonce.",
+              "Android only. Safety Net has been deprecated. Use play_integrity_token instead.",
             type: "string",
           },
           tenantId: {
@@ -4879,7 +5441,7 @@ export default {
       GoogleCloudIdentitytoolkitV1SetAccountInfoRequest: {
         description: "Request message for SetAccountInfo.",
         properties: {
-          captchaChallenge: { type: "string" },
+          captchaChallenge: { deprecated: true, type: "string" },
           captchaResponse: {
             description:
               "The response from reCaptcha challenge. This is required when the system detects possible abuse activities.",
@@ -4892,12 +5454,11 @@ export default {
           },
           customAttributes: {
             description:
-              "JSON formatted custom attributes to be stored in the Identity Platform ID token. Specifying this field requires a Google OAuth 2.0 credential with proper permissions (https://cloud.google.com/identity-platform/docs/access-control).",
+              "JSON formatted custom attributes to be stored in the Identity Platform ID token. Specifying this field requires a Google OAuth 2.0 credential with proper [permissions] (https://cloud.google.com/identity-platform/docs/access-control).",
             type: "string",
           },
-          delegatedProjectNumber: { format: "int64", type: "string" },
+          delegatedProjectNumber: { deprecated: true, format: "int64", type: "string" },
           deleteAttribute: {
-            description: "The account's attributes to be deleted.",
             items: {
               enum: [
                 "USER_ATTRIBUTE_NAME_UNSPECIFIED",
@@ -4929,12 +5490,12 @@ export default {
           },
           email: {
             description:
-              "The user's new email to be updated in the account's attributes. The length of email should be less than 256 characters and in the format of `name@domain.tld`. The email should also match the [RFC 822](https://tools.ietf.org/html/rfc822) addr-spec production.",
+              "The user's new email to be updated in the account's attributes. The length of email should be less than 256 characters and in the format of `name@domain.tld`. The email should also match the [RFC 822](https://tools.ietf.org/html/rfc822) addr-spec production. If [email enumeration protection](https://cloud.google.com/identity-platform/docs/admin/email-enumeration-protection) is enabled, the email cannot be changed by the user without verifying the email first, but it can be changed by an administrator.",
             type: "string",
           },
           emailVerified: {
             description:
-              "Whether the user's email has been verified. Specifying this field requires a Google OAuth 2.0 credential with proper permissions (https://cloud.google.com/identity-platform/docs/access-control).",
+              "Whether the user's email has been verified. Specifying this field requires a Google OAuth 2.0 credential with proper [permissions] (https://cloud.google.com/identity-platform/docs/access-control).",
             type: "boolean",
           },
           idToken: {
@@ -4942,7 +5503,7 @@ export default {
               "A valid Identity Platform ID token. Required when attempting to change user-related information.",
             type: "string",
           },
-          instanceId: { type: "string" },
+          instanceId: { deprecated: true, type: "string" },
           lastLoginAt: {
             description: "The timestamp in milliseconds when the account last logged in.",
             format: "int64",
@@ -4953,7 +5514,7 @@ export default {
           },
           localId: {
             description:
-              "The ID of the user. Specifying this field requires a Google OAuth 2.0 credential with proper permissions (https://cloud.google.com/identity-platform/docs/access-control). For requests from end-users, an ID token should be passed instead.",
+              "The ID of the user. Specifying this field requires a Google OAuth 2.0 credential with proper [permissions] (https://cloud.google.com/identity-platform/docs/access-control). For requests from end-users, an ID token should be passed instead.",
             type: "string",
           },
           mfa: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1MfaInfo" },
@@ -4987,7 +5548,7 @@ export default {
           },
           targetProjectId: {
             description:
-              "The project ID for the project that the account belongs to. Specifying this field requires Google OAuth 2.0 credential with proper permissions (https://cloud.google.com/identity-platform/docs/access-control). Requests from end users should pass an Identity Platform ID token instead.",
+              "The project ID for the project that the account belongs to. Specifying this field requires Google OAuth 2.0 credential with proper [permissions] (https://cloud.google.com/identity-platform/docs/access-control). Requests from end users should pass an Identity Platform ID token instead.",
             type: "string",
           },
           tenantId: {
@@ -5005,14 +5566,23 @@ export default {
             format: "int64",
             type: "string",
           },
+          deletePasskey: {
+            type: "array",
+            items: { type: "string" },
+            description: "Credential IDs of passkeys to delete.",
+          },
         },
         type: "object",
       },
       GoogleCloudIdentitytoolkitV1SetAccountInfoResponse: {
         description: "Response message for SetAccountInfo",
         properties: {
-          displayName: { description: "The account's display name.", type: "string" },
-          email: { description: "The account's email address.", type: "string" },
+          displayName: {
+            deprecated: true,
+            description: "The account's display name.",
+            type: "string",
+          },
+          email: { deprecated: true, description: "The account's email address.", type: "string" },
           emailVerified: {
             description: "Whether the account's email has been verified.",
             type: "boolean",
@@ -5027,17 +5597,19 @@ export default {
               "An Identity Platform ID token for the account. This is used for legacy user sign up.",
             type: "string",
           },
-          kind: { type: "string" },
+          kind: { deprecated: true, type: "string" },
           localId: { description: "The ID of the authenticated user.", type: "string" },
           newEmail: {
             description: "The new email that has been set on the user's account attributes.",
             type: "string",
           },
           passwordHash: {
+            deprecated: true,
             description: "Deprecated. No actual password hash is currently returned.",
             type: "string",
           },
           photoUrl: {
+            deprecated: true,
             description: "The user's photo URL for the account's profile photo.",
             type: "string",
           },
@@ -5056,8 +5628,8 @@ export default {
       GoogleCloudIdentitytoolkitV1SignInWithCustomTokenRequest: {
         description: "Request message for SignInWithCustomToken.",
         properties: {
-          delegatedProjectNumber: { format: "int64", type: "string" },
-          instanceId: { type: "string" },
+          delegatedProjectNumber: { deprecated: true, format: "int64", type: "string" },
+          instanceId: { deprecated: true, type: "string" },
           returnSecureToken: { description: "Should always be true.", type: "boolean" },
           tenantId: {
             description:
@@ -5088,7 +5660,7 @@ export default {
             description: "Whether the authenticated user was created by this request.",
             type: "boolean",
           },
-          kind: { type: "string" },
+          kind: { deprecated: true, type: "string" },
           refreshToken: {
             description: "An Identity Platform refresh token for the authenticated user.",
             type: "string",
@@ -5141,7 +5713,7 @@ export default {
             description: "Whether the authenticated user was created by this request.",
             type: "boolean",
           },
-          kind: { type: "string" },
+          kind: { deprecated: true, type: "string" },
           localId: {
             description: "The ID of the authenticated user. Always present in the response.",
             type: "string",
@@ -5168,12 +5740,21 @@ export default {
         description: "Request message for SignInWithGameCenter",
         properties: {
           displayName: { description: "The user's Game Center display name.", type: "string" },
+          gamePlayerId: {
+            description:
+              "The user's Game Center game player ID. A unique identifier for a player of the game. https://developer.apple.com/documentation/gamekit/gkplayer/3113960-gameplayerid",
+            type: "string",
+          },
           idToken: {
             description:
               "A valid ID token for an Identity Platform account. If present, this request will link the Game Center player ID to the account represented by this ID token.",
             type: "string",
           },
-          playerId: { description: "Required. The user's Game Center player ID.", type: "string" },
+          playerId: {
+            description:
+              "Required. The user's Game Center player ID. Deprecated by Apple. Pass `playerID` along with `gamePlayerID` and `teamPlayerID` to initiate the migration of a user's Game Center player ID to `gamePlayerID`.",
+            type: "string",
+          },
           publicKeyUrl: {
             description:
               "Required. The URL to fetch the Apple public key in order to verify the given signature is signed by Apple.",
@@ -5185,6 +5766,11 @@ export default {
           },
           signature: {
             description: "Required. The verification signature data generated by Apple.",
+            type: "string",
+          },
+          teamPlayerId: {
+            description:
+              "The user's Game Center team player ID. A unique identifier for a player of all the games that you distribute using your developer account. https://developer.apple.com/documentation/gamekit/gkplayer/3174857-teamplayerid",
             type: "string",
           },
           tenantId: {
@@ -5209,6 +5795,11 @@ export default {
             format: "int64",
             type: "string",
           },
+          gamePlayerId: {
+            description:
+              "The user's Game Center game player ID. A unique identifier for a player of the game. https://developer.apple.com/documentation/gamekit/gkplayer/3113960-gameplayerid",
+            type: "string",
+          },
           idToken: {
             description: "An Identity Platform ID token for the authenticated user.",
             type: "string",
@@ -5221,9 +5812,18 @@ export default {
             description: "The ID of the authenticated user. Always present in the response.",
             type: "string",
           },
-          playerId: { description: "The user's Game Center player ID.", type: "string" },
+          playerId: {
+            description:
+              "The user's Game Center player ID. Pass `playerID` along with `gamePlayerID` and `teamPlayerID` to initiate the migration of a user's Game Center player ID to `gamePlayerID`.",
+            type: "string",
+          },
           refreshToken: {
             description: "An Identity Platform refresh token for the authenticated user.",
+            type: "string",
+          },
+          teamPlayerId: {
+            description:
+              "The user's Game Center team player ID. A unique identifier for a player of all the games that you distribute using your developer account. https://developer.apple.com/documentation/gamekit/gkplayer/3174857-teamplayerid",
             type: "string",
           },
         },
@@ -5232,22 +5832,22 @@ export default {
       GoogleCloudIdentitytoolkitV1SignInWithIdpRequest: {
         description: "Request message for SignInWithIdp.",
         properties: {
-          autoCreate: { type: "boolean" },
-          delegatedProjectNumber: { format: "int64", type: "string" },
+          autoCreate: { deprecated: true, type: "boolean" },
+          delegatedProjectNumber: { deprecated: true, format: "int64", type: "string" },
           idToken: {
             description:
               "A valid Identity Platform ID token. If passed, the user's account at the IdP will be linked to the account represented by this ID token.",
             type: "string",
           },
-          pendingIdToken: { type: "string" },
+          pendingIdToken: { deprecated: true, type: "string" },
           pendingToken: {
             description:
-              "An opaque string from a previous SignInWithIdp response. If set, it can be used to repeat the sign-in operation from the previous SignInWithIdp operation.",
+              "An opaque string from a previous SignInWithIdp response. If set, it can be used to repeat the sign-in operation from the previous SignInWithIdp operation. This may be present if the user needs to confirm their account information as part of a previous federated login attempt, or perform account linking.",
             type: "string",
           },
           postBody: {
             description:
-              "If the user is signing in with an authorization response obtained via a previous CreateAuthUri authorization request, this is the body of the HTTP POST callback from the IdP, if present. Otherwise, if the user is signing in with a manually provided IdP credential, this should be a URL-encoded form that contains the credential (e.g. an ID token or access token for OAuth 2.0 IdPs) and the provider ID of the IdP that issued the credential. For example, if the user is signing in to the Google provider using a Google ID token, this should be set to `id_token=[GOOGLE_ID_TOKEN]&providerId=google.com`, where `[GOOGLE_ID_TOKEN]` should be replaced with the Google ID token. If the user is signing in to the Facebook provider using a Facebook authentication token, this should be set to `id_token=[FACEBOOK_AUTHENTICATION_TOKEN]&providerId=facebook.com&nonce= [NONCE]`, where `[FACEBOOK_AUTHENTICATION_TOKEN]` should be replaced with the Facebook authentication token. Nonce is required for validating the token. The request will fail if no nonce is provided. If the user is signing in to the Facebook provider using a Facebook access token, this should be set to `access_token=[FACEBOOK_ACCESS_TOKEN]&providerId=facebook.com`, where `[FACEBOOK_ACCESS_TOKEN]` should be replaced with the Facebook access token. If the user is signing in to the Twitter provider using a Twitter OAuth 1.0 credential, this should be set to `access_token=[TWITTER_ACCESS_TOKEN]&oauth_token_secret=[TWITTER_TOKEN_SECRET]&providerId=twitter.com`, where `[TWITTER_ACCESS_TOKEN]` and `[TWITTER_TOKEN_SECRET]` should be replaced with the Twitter OAuth access token and Twitter OAuth token secret respectively.",
+              "If the user is signing in with an authorization response obtained via a previous CreateAuthUri authorization request, this is the body of the HTTP POST callback from the IdP, if present. Otherwise, if the user is signing in with a manually provided IdP credential, this should be a URL-encoded form that contains the credential (e.g. an ID token or access token for OAuth 2.0 IdPs) and the provider ID of the IdP that issued the credential. For example, if the user is signing in to the Google provider using a Google ID token, this should be set to id_token`=[GOOGLE_ID_TOKEN]&providerId=google.com`, where `[GOOGLE_ID_TOKEN]` should be replaced with the Google ID token. If the user is signing in to the Facebook provider using a Facebook authentication token, this should be set to id_token`=[FACEBOOK_AUTHENTICATION_TOKEN]&providerId=facebook. com&nonce= [NONCE]`, where `[FACEBOOK_AUTHENTICATION_TOKEN]` should be replaced with the Facebook authentication token. Nonce is required for validating the token. The request will fail if no nonce is provided. If the user is signing in to the Facebook provider using a Facebook access token, this should be set to access_token`=[FACEBOOK_ACCESS_TOKEN]&providerId=facebook. com`, where `[FACEBOOK_ACCESS_TOKEN]` should be replaced with the Facebook access token. If the user is signing in to the Twitter provider using a Twitter OAuth 1.0 credential, this should be set to access_token`=[TWITTER_ACCESS_TOKEN]&oauth_token_secret= [TWITTER_TOKEN_SECRET]&providerId=twitter.com`, where `[TWITTER_ACCESS_TOKEN]` and `[TWITTER_TOKEN_SECRET]` should be replaced with the Twitter OAuth access token and Twitter OAuth token secret respectively.",
             type: "string",
           },
           requestUri: {
@@ -5334,13 +5934,13 @@ export default {
             description: "An Identity Platform ID token for the authenticated user.",
             type: "string",
           },
-          inputEmail: { type: "string" },
+          inputEmail: { deprecated: true, type: "string" },
           isNewUser: {
             description:
               "Whether or not a new Identity Platform account was created for the authenticated user.",
             type: "boolean",
           },
-          kind: { type: "string" },
+          kind: { deprecated: true, type: "string" },
           language: {
             description: "The language preference for the user's account at the IdP.",
             type: "string",
@@ -5367,10 +5967,10 @@ export default {
           },
           needConfirmation: {
             description:
-              'Whether or not there is an existing Identity Platform user account with the same email address as the current account signed in at the IdP, and the account\'s email addresss is not verified at the IdP. The user will need to sign in to the existing Identity Platform account and then link the current credential from the IdP to it. Only present if the "One account per email address" setting is enabled.',
+              'Whether or not there is an existing Identity Platform user account with the same email address as the current account signed in at the IdP, and the account\'s email address is not verified at the IdP. The user will need to sign in to the existing Identity Platform account and then link the current credential from the IdP to it. Only present if the "One account per email address" setting is enabled.',
             type: "boolean",
           },
-          needEmail: { type: "boolean" },
+          needEmail: { deprecated: true, type: "boolean" },
           nickName: {
             description: "The nickname for the user's account at the IdP.",
             type: "string",
@@ -5456,25 +6056,41 @@ export default {
       GoogleCloudIdentitytoolkitV1SignInWithPasswordRequest: {
         description: "Request message for SignInWithPassword.",
         properties: {
-          captchaChallenge: { type: "string" },
+          captchaChallenge: { deprecated: true, type: "string" },
           captchaResponse: {
             description:
               "The reCAPTCHA token provided by the reCAPTCHA client-side integration. reCAPTCHA Enterprise uses it for risk assessment. Required when reCAPTCHA Enterprise is enabled.",
             type: "string",
           },
-          delegatedProjectNumber: { format: "int64", type: "string" },
+          clientType: {
+            description:
+              "The client type, web, android or ios. Required when reCAPTCHA Enterprise is enabled.",
+            enum: [
+              "CLIENT_TYPE_UNSPECIFIED",
+              "CLIENT_TYPE_WEB",
+              "CLIENT_TYPE_ANDROID",
+              "CLIENT_TYPE_IOS",
+            ],
+            type: "string",
+          },
+          delegatedProjectNumber: { deprecated: true, format: "int64", type: "string" },
           email: {
             description:
               "Required. The email the user is signing in with. The length of email should be less than 256 characters and in the format of `name@domain.tld`. The email should also match the [RFC 822](https://tools.ietf.org/html/rfc822) addr-spec production.",
             type: "string",
           },
-          idToken: { type: "string" },
-          instanceId: { type: "string" },
+          idToken: { deprecated: true, type: "string" },
+          instanceId: { deprecated: true, type: "string" },
           password: {
             description: "Required. The password the user provides to sign in to the account.",
             type: "string",
           },
-          pendingIdToken: { type: "string" },
+          pendingIdToken: { deprecated: true, type: "string" },
+          recaptchaVersion: {
+            description: "The reCAPTCHA version of the reCAPTCHA token in the captcha_response.",
+            enum: ["RECAPTCHA_VERSION_UNSPECIFIED", "RECAPTCHA_ENTERPRISE"],
+            type: "string",
+          },
           returnSecureToken: { description: "Should always be true.", type: "boolean" },
           tenantId: {
             description:
@@ -5504,7 +6120,7 @@ export default {
             description: "An Identity Platform ID token for the authenticated user.",
             type: "string",
           },
-          kind: { type: "string" },
+          kind: { deprecated: true, type: "string" },
           localId: {
             description: "The ID of the authenticated user. Always present in the response.",
             type: "string",
@@ -5520,9 +6136,14 @@ export default {
               "An opaque string that functions as proof that the user has successfully passed the first factor authentication.",
             type: "string",
           },
-          oauthAccessToken: { description: "The OAuth2 access token.", type: "string" },
-          oauthAuthorizationCode: { type: "string" },
+          oauthAccessToken: {
+            deprecated: true,
+            description: "The OAuth2 access token.",
+            type: "string",
+          },
+          oauthAuthorizationCode: { deprecated: true, type: "string" },
           oauthExpireIn: {
+            deprecated: true,
             description: "The access token expiration time in seconds.",
             format: "int32",
             type: "integer",
@@ -5536,8 +6157,14 @@ export default {
             type: "string",
           },
           registered: {
+            deprecated: true,
             description: "Whether the email is for an existing account. Always true.",
             type: "boolean",
+          },
+          userNotifications: {
+            description: "Warning notifications for the user.",
+            items: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1UserNotification" },
+            type: "array",
           },
         },
         type: "object",
@@ -5555,6 +6182,7 @@ export default {
             type: "string",
           },
           operation: {
+            deprecated: true,
             enum: ["VERIFY_OP_UNSPECIFIED", "SIGN_UP_OR_IN", "REAUTH", "UPDATE", "LINK"],
             type: "string",
           },
@@ -5633,10 +6261,21 @@ export default {
       GoogleCloudIdentitytoolkitV1SignUpRequest: {
         description: "Request message for SignUp.",
         properties: {
-          captchaChallenge: { type: "string" },
+          captchaChallenge: { deprecated: true, type: "string" },
           captchaResponse: {
             description:
               "The reCAPTCHA token provided by the reCAPTCHA client-side integration. reCAPTCHA Enterprise uses it for assessment. Required when reCAPTCHA enterprise is enabled.",
+            type: "string",
+          },
+          clientType: {
+            description:
+              "The client type: web, Android or iOS. Required when enabling reCAPTCHA enterprise protection.",
+            enum: [
+              "CLIENT_TYPE_UNSPECIFIED",
+              "CLIENT_TYPE_WEB",
+              "CLIENT_TYPE_ANDROID",
+              "CLIENT_TYPE_IOS",
+            ],
             type: "string",
           },
           disabled: {
@@ -5663,7 +6302,7 @@ export default {
               "A valid ID token for an Identity Platform user. If set, this request will link the authentication credential to the user represented by this ID token. For a non-admin request, both the `email` and `password` fields must be set. For an admin request, `local_id` must not be set.",
             type: "string",
           },
-          instanceId: { type: "string" },
+          instanceId: { deprecated: true, type: "string" },
           localId: {
             description:
               "The ID of the user to create. The ID must be unique within the project that the user is being created under. Specifying this field requires a Google OAuth 2.0 credential with the proper [permissions](https://cloud.google.com/identity-platform/docs/access-control).",
@@ -5685,6 +6324,11 @@ export default {
             type: "string",
           },
           photoUrl: { description: "The profile photo url of the user to create.", type: "string" },
+          recaptchaVersion: {
+            description: "The reCAPTCHA version of the reCAPTCHA token in the captcha_response.",
+            enum: ["RECAPTCHA_VERSION_UNSPECIFIED", "RECAPTCHA_ENTERPRISE"],
+            type: "string",
+          },
           targetProjectId: {
             description:
               "The project ID of the project which the user should belong to. Specifying this field requires a Google OAuth 2.0 credential with the proper [permissions](https://cloud.google.com/identity-platform/docs/access-control). If this is not set, the target project is inferred from the scope associated to the Bearer access token.",
@@ -5747,6 +6391,11 @@ export default {
         },
         type: "object",
       },
+      GoogleCloudIdentitytoolkitV1TotpInfo: {
+        description: "Information about TOTP MFA.",
+        properties: {},
+        type: "object",
+      },
       GoogleCloudIdentitytoolkitV1UploadAccountRequest: {
         description: "Request message for UploadAccount.",
         properties: {
@@ -5770,12 +6419,7 @@ export default {
             format: "int32",
             type: "integer",
           },
-          delegatedProjectNumber: {
-            description:
-              "If true, the service will do the following list of checks before an account is uploaded: * Duplicate emails * Duplicate federated IDs * Federated ID provider validation If the duplication exists within the list of accounts to be uploaded, it will prevent the entire list from being uploaded. If the email or federated ID is a duplicate of a user already within the project/tenant, the account will not be uploaded, but the rest of the accounts will be unaffected. If false, these checks will be skipped.",
-            format: "int64",
-            type: "string",
-          },
+          delegatedProjectNumber: { deprecated: true, format: "int64", type: "string" },
           dkLen: {
             description:
               "The desired key length for the STANDARD_SCRYPT hashing function. Must be at least 1.",
@@ -5800,7 +6444,6 @@ export default {
             type: "integer",
           },
           passwordHashOrder: {
-            description: "Password and salt order when verify password.",
             enum: ["UNSPECIFIED_ORDER", "SALT_AND_PASSWORD", "PASSWORD_AND_SALT"],
             type: "string",
           },
@@ -5816,7 +6459,11 @@ export default {
             format: "byte",
             type: "string",
           },
-          sanityCheck: { type: "boolean" },
+          sanityCheck: {
+            description:
+              "If true, the service will do the following list of checks before an account is uploaded: * Duplicate emails * Duplicate federated IDs * Federated ID provider validation If the duplication exists within the list of accounts to be uploaded, it will prevent the entire list from being uploaded. If the email or federated ID is a duplicate of a user already within the project/tenant, the account will not be uploaded, but the rest of the accounts will be unaffected. If false, these checks will be skipped.",
+            type: "boolean",
+          },
           signerKey: {
             description:
               "The signer key used to hash the password. Required for the following hashing functions: * SCRYPT, * HMAC_MD5, * HMAC_SHA1, * HMAC_SHA256, * HMAC_SHA512",
@@ -5828,7 +6475,8 @@ export default {
             type: "string",
           },
           users: {
-            description: "A list of accounts to upload.",
+            description:
+              "A list of accounts to upload. `local_id` is required for each user; everything else is optional.",
             items: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1UserInfo" },
             type: "array",
           },
@@ -5843,7 +6491,7 @@ export default {
             items: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1ErrorInfo" },
             type: "array",
           },
-          kind: { type: "string" },
+          kind: { deprecated: true, type: "string" },
         },
         type: "object",
       },
@@ -5987,6 +6635,34 @@ export default {
             format: "int32",
             type: "integer",
           },
+          passkeyInfo: {
+            type: "array",
+            items: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1PasskeyInfo" },
+            description: "Passkeys enrolled for this user.",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitV1UserNotification: {
+        description: "Warning notifications for the user.",
+        properties: {
+          notificationCode: {
+            description: "Warning notification enum. Can be used for localization.",
+            enum: [
+              "NOTIFICATION_CODE_UNSPECIFIED",
+              "MISSING_LOWERCASE_CHARACTER",
+              "MISSING_UPPERCASE_CHARACTER",
+              "MISSING_NUMERIC_CHARACTER",
+              "MISSING_NON_ALPHANUMERIC_CHARACTER",
+              "MINIMUM_PASSWORD_LENGTH",
+              "MAXIMUM_PASSWORD_LENGTH",
+            ],
+            type: "string",
+          },
+          notificationMessage: {
+            description: "Warning notification string. Can be used as fallback.",
+            type: "string",
+          },
         },
         type: "object",
       },
@@ -6015,6 +6691,32 @@ export default {
               "Suggested time that the client should wait in seconds for delivery of the push notification.",
             format: "int64",
             type: "string",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2AllowByDefault: {
+        description:
+          "Defines a policy of allowing every region by default and adding disallowed regions to a disallow list.",
+        properties: {
+          disallowedRegions: {
+            description:
+              "Two letter unicode region codes to disallow as defined by https://cldr.unicode.org/ The full list of these region codes is here: https://github.com/unicode-cldr/cldr-localenames-full/blob/master/main/en/territories.json",
+            items: { type: "string" },
+            type: "array",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2AllowlistOnly: {
+        description:
+          "Defines a policy of only allowing regions by explicitly adding them to an allowlist.",
+        properties: {
+          allowedRegions: {
+            description:
+              "Two letter unicode region codes to allow as defined by https://cldr.unicode.org/ The full list of these region codes is here: https://github.com/unicode-cldr/cldr-localenames-full/blob/master/main/en/territories.json",
+            items: { type: "string" },
+            type: "array",
           },
         },
         type: "object",
@@ -6081,6 +6783,33 @@ export default {
         },
         type: "object",
       },
+      GoogleCloudIdentitytoolkitAdminV2ClientPermissionConfig: {
+        description:
+          "Options related to how clients making requests on behalf of a tenant should be configured.",
+        properties: {
+          permissions: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2ClientPermissions",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2ClientPermissions: {
+        description:
+          "Configuration related to restricting a user's ability to affect their account.",
+        properties: {
+          disabledUserDeletion: {
+            description:
+              "When true, end users cannot delete their account on the associated project through any of our API methods",
+            type: "boolean",
+          },
+          disabledUserSignup: {
+            description:
+              "When true, end users cannot sign up for a new account on the associated project through any of our API methods",
+            type: "boolean",
+          },
+        },
+        type: "object",
+      },
       GoogleCloudIdentitytoolkitAdminV2CodeFlowConfig: {
         description: "Additional config for Apple for code flow.",
         properties: {
@@ -6101,12 +6830,27 @@ export default {
             items: { type: "string" },
             type: "array",
           },
+          autodeleteAnonymousUsers: {
+            description: "Whether anonymous users will be auto-deleted after a period of 30 days.",
+            type: "boolean",
+          },
           blockingFunctions: {
             $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2BlockingFunctionsConfig",
           },
           client: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2ClientConfig" },
+          defaultHostingSite: {
+            description: "Output only. Default Firebase hosting site name",
+            readOnly: true,
+            type: "string",
+          },
+          emailPrivacyConfig: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2EmailPrivacyConfig",
+          },
           mfa: {
             $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2MultiFactorAuthConfig",
+          },
+          mobileLinksConfig: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2MobileLinksConfig",
           },
           monitoring: {
             $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2MonitoringConfig",
@@ -6123,13 +6867,54 @@ export default {
           notification: {
             $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2NotificationConfig",
           },
+          passwordPolicyConfig: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2PasswordPolicyConfig",
+          },
           quota: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2QuotaConfig" },
+          recaptchaConfig: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2RecaptchaConfig",
+          },
           signIn: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2SignInConfig" },
+          smsRegionConfig: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2SmsRegionConfig",
+          },
           subtype: {
             description: "Output only. The subtype of this config.",
             enum: ["SUBTYPE_UNSPECIFIED", "IDENTITY_PLATFORM", "FIREBASE_AUTH"],
             readOnly: true,
             type: "string",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2CustomStrengthOptions: {
+        description: "Custom strength options to enforce on user passwords.",
+        properties: {
+          containsLowercaseCharacter: {
+            description: "The password must contain a lower case character.",
+            type: "boolean",
+          },
+          containsNonAlphanumericCharacter: {
+            description: "The password must contain a non alpha numeric character.",
+            type: "boolean",
+          },
+          containsNumericCharacter: {
+            description: "The password must contain a number.",
+            type: "boolean",
+          },
+          containsUppercaseCharacter: {
+            description: "The password must contain an upper case character.",
+            type: "boolean",
+          },
+          maxPasswordLength: {
+            description: "Maximum password length. No default max length",
+            format: "int32",
+            type: "integer",
+          },
+          minPasswordLength: {
+            description: "Minimum password length. Range from 6 to 30",
+            format: "int32",
+            type: "integer",
           },
         },
         type: "object",
@@ -6217,9 +7002,21 @@ export default {
         },
         type: "object",
       },
+      GoogleCloudIdentitytoolkitAdminV2EmailPrivacyConfig: {
+        description:
+          "Configuration for settings related to email privacy and public visibility. Settings in this config protect against email enumeration, but may make some trade-offs in user-friendliness.",
+        properties: {
+          enableImprovedEmailPrivacy: {
+            description:
+              "Migrates the project to a state of improved email privacy. For example certain error codes are more generic to avoid giving away information on whether the account exists. In addition, this disables certain features that as a side-effect allow user enumeration. Enabling this toggle disables the fetchSignInMethodsForEmail functionality and changing the user's email to an unverified email. It is recommended to remove dependence on this functionality and enable this toggle to improve user privacy.",
+            type: "boolean",
+          },
+        },
+        type: "object",
+      },
       GoogleCloudIdentitytoolkitAdminV2EmailTemplate: {
         description:
-          "Email template. The subject and body fields can contain the following placeholders which will be replaced with the appropriate values: %LINK% - The link to use to redeem the send OOB code. %EMAIL% - The email where the email is being sent. %NEW_EMAIL% - The new email being set for the account (when applicable). %APP_NAME% - The GCP project's display name. %DISPLAY_NAME% - The user's display name.",
+          "Email template. The subject and body fields can contain the following placeholders which will be replaced with the appropriate values: %LINK% - The link to use to redeem the send OOB code. %EMAIL% - The email where the email is being sent. %NEW_EMAIL% - The new email being set for the account (when applicable). %APP_NAME% - The Google Cloud project's display name. %DISPLAY_NAME% - The user's display name.",
         properties: {
           body: { description: "Email body", type: "string" },
           bodyFormat: {
@@ -6368,6 +7165,16 @@ export default {
         },
         type: "object",
       },
+      GoogleCloudIdentitytoolkitAdminV2InitializeIdentityPlatformRequest: {
+        description: "Request for InitializeIdentityPlatform.",
+        properties: {},
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2InitializeIdentityPlatformResponse: {
+        description: "Response for InitializeIdentityPlatform. Empty for now.",
+        properties: {},
+        type: "object",
+      },
       GoogleCloudIdentitytoolkitAdminV2ListDefaultSupportedIdpConfigsResponse: {
         description: "Response for DefaultSupportedIdpConfigs",
         properties: {
@@ -6453,6 +7260,17 @@ export default {
         },
         type: "object",
       },
+      GoogleCloudIdentitytoolkitAdminV2MobileLinksConfig: {
+        description: "Configuration mobile links.",
+        properties: {
+          domain: {
+            description: "Open code in app domain to use for app links and universal links.",
+            enum: ["DOMAIN_UNSPECIFIED", "FIREBASE_DYNAMIC_LINK_DOMAIN", "HOSTING_DOMAIN"],
+            type: "string",
+          },
+        },
+        type: "object",
+      },
       GoogleCloudIdentitytoolkitAdminV2MonitoringConfig: {
         description: "Configuration related to monitoring project activity.",
         properties: {
@@ -6468,6 +7286,12 @@ export default {
           enabledProviders: {
             description: "A list of usable second factors for this project.",
             items: { enum: ["PROVIDER_UNSPECIFIED", "PHONE_SMS"], type: "string" },
+            type: "array",
+          },
+          providerConfigs: {
+            description:
+              "A list of usable second factors for this project along with their configurations. This field does not support phone based MFA, for that use the 'enabled_providers' field.",
+            items: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2ProviderConfig" },
             type: "array",
           },
           state: {
@@ -6547,8 +7371,55 @@ export default {
             type: "boolean",
           },
           token: {
+            deprecated: true,
             description: "Do not use. The `token` response type is not supported at the moment.",
             type: "boolean",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2PasswordPolicyConfig: {
+        description: "The configuration for the password policy on the project.",
+        properties: {
+          forceUpgradeOnSignin: {
+            description:
+              "Users must have a password compliant with the password policy to sign-in.",
+            type: "boolean",
+          },
+          lastUpdateTime: {
+            description:
+              "Output only. The last time the password policy on the project was updated.",
+            format: "google-datetime",
+            readOnly: true,
+            type: "string",
+          },
+          passwordPolicyEnforcementState: {
+            description: "Which enforcement mode to use for the password policy.",
+            enum: ["PASSWORD_POLICY_ENFORCEMENT_STATE_UNSPECIFIED", "OFF", "ENFORCE"],
+            type: "string",
+          },
+          passwordPolicyVersions: {
+            description:
+              "Must be of length 1. Contains the strength attributes for the password policy.",
+            items: {
+              $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2PasswordPolicyVersion",
+            },
+            type: "array",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2PasswordPolicyVersion: {
+        description: "The strength attributes for the password policy on the project.",
+        properties: {
+          customStrengthOptions: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2CustomStrengthOptions",
+          },
+          schemaVersion: {
+            description: "Output only. schema version number for the password policy",
+            format: "int32",
+            readOnly: true,
+            type: "integer",
           },
         },
         type: "object",
@@ -6585,11 +7456,135 @@ export default {
         },
         type: "object",
       },
+      GoogleCloudIdentitytoolkitAdminV2ProviderConfig: {
+        description:
+          "ProviderConfig describes the supported MFA providers along with their configurations.",
+        properties: {
+          state: {
+            description: "Describes the state of the MultiFactor Authentication type.",
+            enum: ["MFA_STATE_UNSPECIFIED", "DISABLED", "ENABLED", "MANDATORY"],
+            type: "string",
+          },
+          totpProviderConfig: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2TotpMfaProviderConfig",
+          },
+        },
+        type: "object",
+      },
       GoogleCloudIdentitytoolkitAdminV2QuotaConfig: {
         description: "Configuration related to quotas.",
         properties: {
           signUpQuotaConfig: {
             $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2TemporaryQuota",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2RecaptchaConfig: {
+        description: "The reCAPTCHA Enterprise integration config.",
+        properties: {
+          emailPasswordEnforcementState: {
+            description:
+              "The reCAPTCHA config for email/password provider, containing the enforcement status. The email/password provider contains all email related user flows protected by reCAPTCHA.",
+            enum: ["RECAPTCHA_PROVIDER_ENFORCEMENT_STATE_UNSPECIFIED", "OFF", "AUDIT", "ENFORCE"],
+            type: "string",
+          },
+          managedRules: {
+            description:
+              "The managed rules for authentication action based on reCAPTCHA scores. The rules are shared across providers for a given tenant project.",
+            items: {
+              $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2RecaptchaManagedRule",
+            },
+            type: "array",
+          },
+          phoneEnforcementState: {
+            description:
+              "The reCAPTCHA config for phone provider, containing the enforcement status. The phone provider contains all SMS related user flows protected by reCAPTCHA.",
+            enum: ["RECAPTCHA_PROVIDER_ENFORCEMENT_STATE_UNSPECIFIED", "OFF", "AUDIT", "ENFORCE"],
+            type: "string",
+          },
+          recaptchaKeys: {
+            description: "The reCAPTCHA keys.",
+            items: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2RecaptchaKey" },
+            type: "array",
+          },
+          tollFraudManagedRules: {
+            description:
+              "The managed rules for the authentication action based on reCAPTCHA toll fraud risk scores. Toll fraud managed rules will only take effect when the phone_enforcement_state is AUDIT or ENFORCE and use_sms_toll_fraud_protection is true.",
+            items: {
+              $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2RecaptchaTollFraudManagedRule",
+            },
+            type: "array",
+          },
+          useAccountDefender: {
+            description:
+              "Whether to use the account defender for reCAPTCHA assessment. Defaults to `false`.",
+            type: "boolean",
+          },
+          useSmsBotScore: {
+            description:
+              "Whether to use the rCE bot score for reCAPTCHA phone provider. Can only be true when the phone_enforcement_state is AUDIT or ENFORCE.",
+            type: "boolean",
+          },
+          useSmsTollFraudProtection: {
+            description:
+              "Whether to use the rCE sms toll fraud protection risk score for reCAPTCHA phone provider. Can only be true when the phone_enforcement_state is AUDIT or ENFORCE.",
+            type: "boolean",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2RecaptchaKey: {
+        description:
+          "The reCAPTCHA key config. reCAPTCHA Enterprise offers different keys for different client platforms.",
+        properties: {
+          key: {
+            description:
+              'The reCAPTCHA Enterprise key resource name, e.g. "projects/{project}/keys/{key}"',
+            type: "string",
+          },
+          type: {
+            description: "The client's platform type.",
+            enum: ["CLIENT_TYPE_UNSPECIFIED", "WEB", "IOS", "ANDROID"],
+            type: "string",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2RecaptchaManagedRule: {
+        description:
+          "The config for a reCAPTCHA managed rule. Models a single interval [start_score, end_score]. The start_score is implicit. It is either the closest smaller end_score (if one is available) or 0. Intervals in aggregate span [0, 1] without overlapping.",
+        properties: {
+          action: {
+            description:
+              "The action taken if the reCAPTCHA score of a request is within the interval [start_score, end_score].",
+            enum: ["RECAPTCHA_ACTION_UNSPECIFIED", "BLOCK"],
+            type: "string",
+          },
+          endScore: {
+            description:
+              "The end score (inclusive) of the score range for an action. Must be a value between 0.0 and 1.0, at 11 discrete values; e.g. 0, 0.1, 0.2, 0.3, ... 0.9, 1.0. A score of 0.0 indicates the riskiest request (likely a bot), whereas 1.0 indicates the safest request (likely a human). See https://cloud.google.com/recaptcha-enterprise/docs/interpret-assessment.",
+            format: "float",
+            type: "number",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2RecaptchaTollFraudManagedRule: {
+        description:
+          "The config for a reCAPTCHA toll fraud assessment managed rule. Models a single interval [start_score, end_score]. The end_score is implicit. It is either the closest smaller end_score (if one is available) or 0. Intervals in aggregate span [0, 1] without overlapping.",
+        properties: {
+          action: {
+            description:
+              "The action taken if the reCAPTCHA score of a request is within the interval [start_score, end_score].",
+            enum: ["RECAPTCHA_ACTION_UNSPECIFIED", "BLOCK"],
+            type: "string",
+          },
+          startScore: {
+            description:
+              "The start score (inclusive) for an action. Must be a value between 0.0 and 1.0, at 11 discrete values; e.g. 0, 0.1, 0.2, 0.3, ... 0.9, 1.0. A score of 0.0 indicates the safest request (likely legitimate), whereas 1.0 indicates the riskiest request (likely toll fraud). See https://cloud.google.com/recaptcha-enterprise/docs/sms-fraud-detection#create-assessment-sms.",
+            format: "float",
+            type: "number",
           },
         },
         type: "object",
@@ -6659,6 +7654,19 @@ export default {
           hashConfig: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2HashConfig" },
           phoneNumber: {
             $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2PhoneNumber",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2SmsRegionConfig: {
+        description:
+          "Configures the regions where users are allowed to send verification SMS for the project or tenant. This is based on the calling code of the destination phone number.",
+        properties: {
+          allowByDefault: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2AllowByDefault",
+          },
+          allowlistOnly: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2AllowlistOnly",
           },
         },
         type: "object",
@@ -6737,7 +7745,7 @@ export default {
             type: "string",
           },
           startTime: {
-            description: "When this quota will take affect",
+            description: "When this quota will take effect",
             format: "google-datetime",
             type: "string",
           },
@@ -6751,12 +7759,22 @@ export default {
             description: "Whether to allow email/password user authentication.",
             type: "boolean",
           },
+          autodeleteAnonymousUsers: {
+            description: "Whether anonymous users will be auto-deleted after a period of 30 days.",
+            type: "boolean",
+          },
+          client: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2ClientPermissionConfig",
+          },
           disableAuth: {
             description:
               "Whether authentication is disabled for the tenant. If true, the users under the disabled tenant are not allowed to sign-in. Admins of the disabled tenant are not able to manage its users.",
             type: "boolean",
           },
           displayName: { description: "Display name of the tenant.", type: "string" },
+          emailPrivacyConfig: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2EmailPrivacyConfig",
+          },
           enableAnonymousUser: {
             description: "Whether to enable anonymous user authentication.",
             type: "boolean",
@@ -6772,17 +7790,44 @@ export default {
           mfaConfig: {
             $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2MultiFactorAuthConfig",
           },
+          mobileLinksConfig: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2MobileLinksConfig",
+          },
+          monitoring: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2MonitoringConfig",
+          },
           name: {
             description:
               'Output only. Resource name of a tenant. For example: "projects/{project-id}/tenants/{tenant-id}"',
             readOnly: true,
             type: "string",
           },
+          passwordPolicyConfig: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2PasswordPolicyConfig",
+          },
+          recaptchaConfig: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2RecaptchaConfig",
+          },
+          smsRegionConfig: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2SmsRegionConfig",
+          },
           testPhoneNumbers: {
             additionalProperties: { type: "string" },
             description:
               "A map of pairs that can be used for MFA. The phone number should be in E.164 format (https://www.itu.int/rec/T-REC-E.164/) and a maximum of 10 pairs can be added (error will be thrown once exceeded).",
             type: "object",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitAdminV2TotpMfaProviderConfig: {
+        description: "TotpMFAProviderConfig represents the TOTP based MFA provider.",
+        properties: {
+          adjacentIntervals: {
+            description:
+              "The allowed number of adjacent intervals that will be used for verification to avoid clock skew.",
+            format: "int32",
+            type: "integer",
           },
         },
         type: "object",
@@ -6810,6 +7855,38 @@ export default {
         },
         type: "object",
       },
+      GoogleCloudIdentitytoolkitV2CustomStrengthOptions: {
+        description: "Custom strength options to enforce on user passwords.",
+        properties: {
+          containsLowercaseCharacter: {
+            description: "The password must contain a lower case character.",
+            type: "boolean",
+          },
+          containsNonAlphanumericCharacter: {
+            description: "The password must contain a non alpha numeric character.",
+            type: "boolean",
+          },
+          containsNumericCharacter: {
+            description: "The password must contain a number.",
+            type: "boolean",
+          },
+          containsUppercaseCharacter: {
+            description: "The password must contain an upper case character.",
+            type: "boolean",
+          },
+          maxPasswordLength: {
+            description: "Maximum password length. No default max length",
+            format: "int32",
+            type: "integer",
+          },
+          minPasswordLength: {
+            description: "Minimum password length. Range from 6 to 30",
+            format: "int32",
+            type: "integer",
+          },
+        },
+        type: "object",
+      },
       GoogleCloudIdentitytoolkitV2FinalizeMfaEnrollmentRequest: {
         description: "Finishes enrolling a second factor for the user.",
         properties: {
@@ -6827,6 +7904,9 @@ export default {
               "The ID of the Identity Platform tenant that the user enrolling MFA belongs to. If not set, the user belongs to the default Identity Platform project.",
             type: "string",
           },
+          totpVerificationInfo: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2FinalizeMfaTotpEnrollmentRequestInfo",
+          },
         },
         type: "object",
       },
@@ -6840,6 +7920,9 @@ export default {
           refreshToken: {
             description: "Refresh token updated to reflect MFA enrollment.",
             type: "string",
+          },
+          totpAuthInfo: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2FinalizeMfaTotpEnrollmentResponseInfo",
           },
         },
         type: "object",
@@ -6884,6 +7967,10 @@ export default {
       GoogleCloudIdentitytoolkitV2FinalizeMfaSignInRequest: {
         description: "Finalizes sign-in by verifying MFA challenge.",
         properties: {
+          mfaEnrollmentId: {
+            description: "The MFA enrollment ID from the user's list of current MFA enrollments.",
+            type: "string",
+          },
           mfaPendingCredential: {
             description: "Required. Pending credential from first factor sign-in.",
             type: "string",
@@ -6895,6 +7982,9 @@ export default {
             description:
               "The ID of the Identity Platform tenant the user is signing in to. If not set, the user will sign in to the default Identity Platform project.",
             type: "string",
+          },
+          totpVerificationInfo: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2MfaTotpSignInRequestInfo",
           },
         },
         type: "object",
@@ -6913,6 +8003,147 @@ export default {
         },
         type: "object",
       },
+      GoogleCloudIdentitytoolkitV2FinalizeMfaTotpEnrollmentRequestInfo: {
+        description: "Mfa request info specific to TOTP auth for FinalizeMfa.",
+        properties: {
+          sessionInfo: {
+            description: "An opaque string that represents the enrollment session.",
+            type: "string",
+          },
+          verificationCode: { description: "User-entered verification code.", type: "string" },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitV2FinalizeMfaTotpEnrollmentResponseInfo: {
+        description: "Mfa response info specific to TOTP auth for FinalizeMfa.",
+        properties: {},
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitV2MfaTotpSignInRequestInfo: {
+        description: "TOTP verification info for FinalizeMfaSignInRequest.",
+        properties: {
+          verificationCode: { description: "User-entered verification code.", type: "string" },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitV2PasswordPolicy: {
+        description: "Configuration for password policy.",
+        properties: {
+          allowedNonAlphanumericCharacters: {
+            description:
+              "Output only. Allowed characters which satisfy the non_alphanumeric requirement.",
+            items: { type: "string" },
+            readOnly: true,
+            type: "array",
+          },
+          customStrengthOptions: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2CustomStrengthOptions",
+          },
+          enforcementState: {
+            description: "Output only. Which enforcement mode to use for the password policy.",
+            enum: ["ENFORCEMENT_STATE_UNSPECIFIED", "OFF", "ENFORCE"],
+            readOnly: true,
+            type: "string",
+          },
+          forceUpgradeOnSignin: {
+            description:
+              "Users must have a password compliant with the password policy to sign-in.",
+            type: "boolean",
+          },
+          schemaVersion: {
+            description: "Output only. schema version number for the password policy",
+            format: "int32",
+            readOnly: true,
+            type: "integer",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitV2RecaptchaConfig: {
+        description: "Configuration for reCAPTCHA",
+        properties: {
+          recaptchaEnforcementState: {
+            description:
+              "The reCAPTCHA enforcement state for the providers that GCIP supports reCAPTCHA protection.",
+            items: {
+              $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2RecaptchaEnforcementState",
+            },
+            type: "array",
+          },
+          recaptchaKey: {
+            description:
+              'The reCAPTCHA Enterprise key resource name, e.g. "projects/{project}/keys/{key}". This will only be returned when the reCAPTCHA enforcement state is AUDIT or ENFORCE on at least one of the reCAPTCHA providers.',
+            type: "string",
+          },
+          useSmsBotScore: {
+            description: "Whether to use the rCE bot score for reCAPTCHA phone provider.",
+            type: "boolean",
+          },
+          useSmsTollFraudProtection: {
+            description:
+              "Whether to use the rCE sms toll fraud protection risk score for reCAPTCHA phone provider.",
+            type: "boolean",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitV2RecaptchaEnforcementState: {
+        description: "Enforcement states for reCAPTCHA protection.",
+        properties: {
+          enforcementState: {
+            description: "The reCAPTCHA enforcement state for the provider.",
+            enum: ["ENFORCEMENT_STATE_UNSPECIFIED", "OFF", "AUDIT", "ENFORCE"],
+            type: "string",
+          },
+          provider: {
+            description: "The provider that has reCAPTCHA protection.",
+            enum: ["RECAPTCHA_PROVIDER_UNSPECIFIED", "EMAIL_PASSWORD_PROVIDER", "PHONE_PROVIDER"],
+            type: "string",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitV2RevokeTokenRequest: {
+        description: "Request message for RevokeToken.",
+        properties: {
+          idToken: {
+            description:
+              "Required. A valid Identity Platform ID token to link the account. If there was a successful token revocation request on the account and no tokens are generated after the revocation, the duplicate requests will be ignored and returned immediately.",
+            type: "string",
+          },
+          providerId: {
+            description:
+              'Required. The idp provider for the token. Currently only supports Apple Idp. The format should be "apple.com".',
+            type: "string",
+          },
+          redirectUri: {
+            description:
+              "The redirect URI provided in the initial authorization request made by the client to the IDP. The URI must use the HTTPS protocol, include a domain name, and can't contain an IP address or localhost. Required if token_type is CODE.",
+            type: "string",
+          },
+          tenantId: {
+            description:
+              "The ID of the Identity Platform tenant the user is signing in to. If not set, the user will sign in to the default Identity Platform project.",
+            type: "string",
+          },
+          token: {
+            description:
+              "Required. The token to be revoked. If an authorization_code is passed in, the API will first exchange the code for access token and then revoke the token exchanged.",
+            type: "string",
+          },
+          tokenType: {
+            description: "Required. The type of the token to be revoked.",
+            enum: ["TOKEN_TYPE_UNSPECIFIED", "REFRESH_TOKEN", "ACCESS_TOKEN", "CODE"],
+            type: "string",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitV2RevokeTokenResponse: {
+        description: "Response message for RevokeToken. Empty for now.",
+        properties: {},
+        type: "object",
+      },
       GoogleCloudIdentitytoolkitV2StartMfaEnrollmentRequest: {
         description: "Sends MFA enrollment verification SMS for a user.",
         properties: {
@@ -6925,6 +8156,9 @@ export default {
               "The ID of the Identity Platform tenant that the user enrolling MFA belongs to. If not set, the user belongs to the default Identity Platform project.",
             type: "string",
           },
+          totpEnrollmentInfo: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2StartMfaTotpEnrollmentRequestInfo",
+          },
         },
         type: "object",
       },
@@ -6934,6 +8168,9 @@ export default {
           phoneSessionInfo: {
             $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2StartMfaPhoneResponseInfo",
           },
+          totpSessionInfo: {
+            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2StartMfaTotpEnrollmentResponseInfo",
+          },
         },
         type: "object",
       },
@@ -6942,6 +8179,22 @@ export default {
         properties: {
           autoRetrievalInfo: {
             $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2AutoRetrievalInfo",
+          },
+          captchaResponse: {
+            description:
+              "The reCAPTCHA Enterprise token provided by the reCAPTCHA client-side integration. Required when reCAPTCHA enterprise is enabled.",
+            type: "string",
+          },
+          clientType: {
+            description:
+              "The client type, web, android or ios. Required when reCAPTCHA Enterprise is enabled.",
+            enum: [
+              "CLIENT_TYPE_UNSPECIFIED",
+              "CLIENT_TYPE_WEB",
+              "CLIENT_TYPE_ANDROID",
+              "CLIENT_TYPE_IOS",
+            ],
+            type: "string",
           },
           iosReceipt: {
             description: "iOS only. Receipt of successful app token validation with APNS.",
@@ -6955,7 +8208,18 @@ export default {
             description: "Required for enrollment. Phone number to be enrolled as MFA.",
             type: "string",
           },
+          playIntegrityToken: {
+            description:
+              "Android only. Used to assert application identity in place of a recaptcha token (or safety net token). A Play Integrity Token can be generated via the [PlayIntegrity API] (https://developer.android.com/google/play/integrity) with applying SHA256 to the `phone_number` field as the nonce.",
+            type: "string",
+          },
           recaptchaToken: { description: "Web only. Recaptcha solution.", type: "string" },
+          recaptchaVersion: {
+            description:
+              "The reCAPTCHA version of the reCAPTCHA token in the captcha_response. Required when reCAPTCHA Enterprise is enabled.",
+            enum: ["RECAPTCHA_VERSION_UNSPECIFIED", "RECAPTCHA_ENTERPRISE"],
+            type: "string",
+          },
           safetyNetToken: {
             description:
               "Android only. Used to assert application identity in place of a recaptcha token. A SafetyNet Token can be generated via the [SafetyNet Android Attestation API](https://developer.android.com/training/safetynet/attestation.html), with the Base64 encoding of the `phone_number` field as the nonce.",
@@ -7002,6 +8266,45 @@ export default {
         properties: {
           phoneResponseInfo: {
             $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV2StartMfaPhoneResponseInfo",
+          },
+        },
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitV2StartMfaTotpEnrollmentRequestInfo: {
+        description: "Mfa request info specific to TOTP auth for StartMfa.",
+        properties: {},
+        type: "object",
+      },
+      GoogleCloudIdentitytoolkitV2StartMfaTotpEnrollmentResponseInfo: {
+        description: "Mfa response info specific to TOTP auth for StartMfa.",
+        properties: {
+          finalizeEnrollmentTime: {
+            description: "The time by which the enrollment must finish.",
+            format: "google-datetime",
+            type: "string",
+          },
+          hashingAlgorithm: {
+            description: "The hashing algorithm used to generate the verification code.",
+            type: "string",
+          },
+          periodSec: {
+            description: "Duration in seconds at which the verification code will change.",
+            format: "int32",
+            type: "integer",
+          },
+          sessionInfo: {
+            description: "An encoded string that represents the enrollment session.",
+            type: "string",
+          },
+          sharedSecretKey: {
+            description:
+              "A base 32 encoded string that represents the shared TOTP secret. The base 32 encoding is the one specified by [RFC4648#section-6](https://datatracker.ietf.org/doc/html/rfc4648#section-6). (This is the same as the base 32 encoding from [RFC3548#section-5](https://datatracker.ietf.org/doc/html/rfc3548#section-5).)",
+            type: "string",
+          },
+          verificationCodeLength: {
+            description: "The length of the verification code that needs to be generated.",
+            format: "int32",
+            type: "integer",
           },
         },
         type: "object",
@@ -7077,13 +8380,13 @@ export default {
           condition: { $ref: "#/components/schemas/GoogleTypeExpr" },
           members: {
             description:
-              "Specifies the principals requesting access for a Google Cloud resource. `members` can have the following values: * `allUsers`: A special identifier that represents anyone who is on the internet; with or without a Google account. * `allAuthenticatedUsers`: A special identifier that represents anyone who is authenticated with a Google account or a service account. * `user:{emailid}`: An email address that represents a specific Google account. For example, `alice@example.com` . * `serviceAccount:{emailid}`: An email address that represents a service account. For example, `my-other-app@appspot.gserviceaccount.com`. * `group:{emailid}`: An email address that represents a Google group. For example, `admins@example.com`. * `deleted:user:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a user that has been recently deleted. For example, `alice@example.com?uid=123456789012345678901`. If the user is recovered, this value reverts to `user:{emailid}` and the recovered user retains the role in the binding. * `deleted:serviceAccount:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a service account that has been recently deleted. For example, `my-other-app@appspot.gserviceaccount.com?uid=123456789012345678901`. If the service account is undeleted, this value reverts to `serviceAccount:{emailid}` and the undeleted service account retains the role in the binding. * `deleted:group:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a Google group that has been recently deleted. For example, `admins@example.com?uid=123456789012345678901`. If the group is recovered, this value reverts to `group:{emailid}` and the recovered group retains the role in the binding. * `domain:{domain}`: The G Suite domain (primary) that represents all the users of that domain. For example, `google.com` or `example.com`. ",
+              "Specifies the principals requesting access for a Google Cloud resource. `members` can have the following values: * `allUsers`: A special identifier that represents anyone who is on the internet; with or without a Google account. * `allAuthenticatedUsers`: A special identifier that represents anyone who is authenticated with a Google account or a service account. Does not include identities that come from external identity providers (IdPs) through identity federation. * `user:{emailid}`: An email address that represents a specific Google account. For example, `alice@example.com` . * `serviceAccount:{emailid}`: An email address that represents a Google service account. For example, `my-other-app@appspot.gserviceaccount.com`. * `serviceAccount:{projectid}.svc.id.goog[{namespace}/{kubernetes-sa}]`: An identifier for a [Kubernetes service account](https://cloud.google.com/kubernetes-engine/docs/how-to/kubernetes-service-accounts). For example, `my-project.svc.id.goog[my-namespace/my-kubernetes-sa]`. * `group:{emailid}`: An email address that represents a Google group. For example, `admins@example.com`. * `domain:{domain}`: The G Suite domain (primary) that represents all the users of that domain. For example, `google.com` or `example.com`. * `principal://iam.googleapis.com/locations/global/workforcePools/{pool_id}/subject/{subject_attribute_value}`: A single identity in a workforce identity pool. * `principalSet://iam.googleapis.com/locations/global/workforcePools/{pool_id}/group/{group_id}`: All workforce identities in a group. * `principalSet://iam.googleapis.com/locations/global/workforcePools/{pool_id}/attribute.{attribute_name}/{attribute_value}`: All workforce identities with a specific attribute value. * `principalSet://iam.googleapis.com/locations/global/workforcePools/{pool_id}/*`: All identities in a workforce identity pool. * `principal://iam.googleapis.com/projects/{project_number}/locations/global/workloadIdentityPools/{pool_id}/subject/{subject_attribute_value}`: A single identity in a workload identity pool. * `principalSet://iam.googleapis.com/projects/{project_number}/locations/global/workloadIdentityPools/{pool_id}/group/{group_id}`: A workload identity pool group. * `principalSet://iam.googleapis.com/projects/{project_number}/locations/global/workloadIdentityPools/{pool_id}/attribute.{attribute_name}/{attribute_value}`: All identities in a workload identity pool with a certain attribute. * `principalSet://iam.googleapis.com/projects/{project_number}/locations/global/workloadIdentityPools/{pool_id}/*`: All identities in a workload identity pool. * `deleted:user:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a user that has been recently deleted. For example, `alice@example.com?uid=123456789012345678901`. If the user is recovered, this value reverts to `user:{emailid}` and the recovered user retains the role in the binding. * `deleted:serviceAccount:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a service account that has been recently deleted. For example, `my-other-app@appspot.gserviceaccount.com?uid=123456789012345678901`. If the service account is undeleted, this value reverts to `serviceAccount:{emailid}` and the undeleted service account retains the role in the binding. * `deleted:group:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a Google group that has been recently deleted. For example, `admins@example.com?uid=123456789012345678901`. If the group is recovered, this value reverts to `group:{emailid}` and the recovered group retains the role in the binding. * `deleted:principal://iam.googleapis.com/locations/global/workforcePools/{pool_id}/subject/{subject_attribute_value}`: Deleted single identity in a workforce identity pool. For example, `deleted:principal://iam.googleapis.com/locations/global/workforcePools/my-pool-id/subject/my-subject-attribute-value`.",
             items: { type: "string" },
             type: "array",
           },
           role: {
             description:
-              "Role that is assigned to the list of `members`, or principals. For example, `roles/viewer`, `roles/editor`, or `roles/owner`.",
+              "Role that is assigned to the list of `members`, or principals. For example, `roles/viewer`, `roles/editor`, or `roles/owner`. For an overview of the IAM roles and permissions, see the [IAM documentation](https://cloud.google.com/iam/docs/roles-overview). For a list of the available pre-defined roles, see [here](https://cloud.google.com/iam/docs/understanding-roles).",
             type: "string",
           },
         },
@@ -7108,7 +8411,7 @@ export default {
       },
       GoogleIamV1Policy: {
         description:
-          'An Identity and Access Management (IAM) policy, which specifies access controls for Google Cloud resources. A `Policy` is a collection of `bindings`. A `binding` binds one or more `members`, or principals, to a single `role`. Principals can be user accounts, service accounts, Google groups, and domains (such as G Suite). A `role` is a named list of permissions; each `role` can be an IAM predefined role or a user-created custom role. For some types of Google Cloud resources, a `binding` can also specify a `condition`, which is a logical expression that allows access to a resource only if the expression evaluates to `true`. A condition can add constraints based on attributes of the request, the resource, or both. To learn which resources support conditions in their IAM policies, see the [IAM documentation](https://cloud.google.com/iam/help/conditions/resource-policies). **JSON example:** { "bindings": [ { "role": "roles/resourcemanager.organizationAdmin", "members": [ "user:mike@example.com", "group:admins@example.com", "domain:google.com", "serviceAccount:my-project-id@appspot.gserviceaccount.com" ] }, { "role": "roles/resourcemanager.organizationViewer", "members": [ "user:eve@example.com" ], "condition": { "title": "expirable access", "description": "Does not grant access after Sep 2020", "expression": "request.time < timestamp(\'2020-10-01T00:00:00.000Z\')", } } ], "etag": "BwWWja0YfJA=", "version": 3 } **YAML example:** bindings: - members: - user:mike@example.com - group:admins@example.com - domain:google.com - serviceAccount:my-project-id@appspot.gserviceaccount.com role: roles/resourcemanager.organizationAdmin - members: - user:eve@example.com role: roles/resourcemanager.organizationViewer condition: title: expirable access description: Does not grant access after Sep 2020 expression: request.time < timestamp(\'2020-10-01T00:00:00.000Z\') etag: BwWWja0YfJA= version: 3 For a description of IAM and its features, see the [IAM documentation](https://cloud.google.com/iam/docs/).',
+          'An Identity and Access Management (IAM) policy, which specifies access controls for Google Cloud resources. A `Policy` is a collection of `bindings`. A `binding` binds one or more `members`, or principals, to a single `role`. Principals can be user accounts, service accounts, Google groups, and domains (such as G Suite). A `role` is a named list of permissions; each `role` can be an IAM predefined role or a user-created custom role. For some types of Google Cloud resources, a `binding` can also specify a `condition`, which is a logical expression that allows access to a resource only if the expression evaluates to `true`. A condition can add constraints based on attributes of the request, the resource, or both. To learn which resources support conditions in their IAM policies, see the [IAM documentation](https://cloud.google.com/iam/help/conditions/resource-policies). **JSON example:** ``` { "bindings": [ { "role": "roles/resourcemanager.organizationAdmin", "members": [ "user:mike@example.com", "group:admins@example.com", "domain:google.com", "serviceAccount:my-project-id@appspot.gserviceaccount.com" ] }, { "role": "roles/resourcemanager.organizationViewer", "members": [ "user:eve@example.com" ], "condition": { "title": "expirable access", "description": "Does not grant access after Sep 2020", "expression": "request.time < timestamp(\'2020-10-01T00:00:00.000Z\')", } } ], "etag": "BwWWja0YfJA=", "version": 3 } ``` **YAML example:** ``` bindings: - members: - user:mike@example.com - group:admins@example.com - domain:google.com - serviceAccount:my-project-id@appspot.gserviceaccount.com role: roles/resourcemanager.organizationAdmin - members: - user:eve@example.com role: roles/resourcemanager.organizationViewer condition: title: expirable access description: Does not grant access after Sep 2020 expression: request.time < timestamp(\'2020-10-01T00:00:00.000Z\') etag: BwWWja0YfJA= version: 3 ``` For a description of IAM and its features, see the [IAM documentation](https://cloud.google.com/iam/docs/).',
         properties: {
           auditConfigs: {
             description: "Specifies cloud audit logging configuration for this policy.",
@@ -7209,6 +8512,7 @@ export default {
       GrantTokenRequest: {
         properties: {
           code: {
+            deprecated: true,
             description:
               "ID token to exchange for an access token and a refresh token. This field is called `code` to conform with the OAuth 2.0 specification. This field is deprecated and is ignored.",
             type: "string",
@@ -7259,6 +8563,10 @@ export default {
         description: "Emulator-specific configuration.",
         properties: {
           signIn: { properties: { allowDuplicateEmails: { type: "boolean" } }, type: "object" },
+          emailPrivacyConfig: {
+            properties: { enableImprovedEmailPrivacy: { type: "boolean" } },
+            type: "object",
+          },
         },
       },
       EmulatorV1ProjectsOobCodes: {
@@ -7295,6 +8603,57 @@ export default {
             },
           },
         },
+      },
+      GoogleCloudIdentitytoolkitV1PasskeyInfo: {
+        type: "object",
+        properties: { credentialId: { type: "string" }, name: { type: "string" } },
+      },
+      GoogleCloudIdentitytoolkitV2StartPasskeyEnrollmentRequest: {
+        type: "object",
+        properties: { idToken: { type: "string" }, tenantId: { type: "string" } },
+      },
+      GoogleCloudIdentitytoolkitV2StartPasskeyEnrollmentResponse: {
+        type: "object",
+        properties: { credentialCreationOptions: { type: "object" } },
+      },
+      GoogleCloudIdentitytoolkitV2FinalizePasskeyEnrollmentRequest: {
+        type: "object",
+        properties: {
+          idToken: { type: "string" },
+          tenantId: { type: "string" },
+          authenticatorRegistrationResponse: { type: "object" },
+          name: { type: "string" },
+          displayName: { type: "string" },
+        },
+      },
+      GoogleCloudIdentitytoolkitV2FinalizePasskeyEnrollmentResponse: {
+        type: "object",
+        properties: {
+          localId: { type: "string" },
+          idToken: { type: "string" },
+          refreshToken: { type: "string" },
+        },
+      },
+      GoogleCloudIdentitytoolkitV2StartPasskeySignInRequest: {
+        type: "object",
+        properties: { tenantId: { type: "string" } },
+      },
+      GoogleCloudIdentitytoolkitV2StartPasskeySignInResponse: {
+        type: "object",
+        properties: { credentialRequestOptions: { type: "object" } },
+      },
+      GoogleCloudIdentitytoolkitV2FinalizePasskeySignInRequest: {
+        type: "object",
+        properties: {
+          tenantId: { type: "string" },
+          authenticatorAuthenticationResponse: { type: "object" },
+          name: { type: "string" },
+          displayName: { type: "string" },
+        },
+      },
+      GoogleCloudIdentitytoolkitV2FinalizePasskeySignInResponse: {
+        type: "object",
+        properties: { idToken: { type: "string" }, refreshToken: { type: "string" } },
       },
     },
     parameters: {
@@ -7488,10 +8847,17 @@ export default {
           },
         },
       },
-      apiKey: {
+      apiKeyQuery: {
         type: "apiKey",
         name: "key",
         in: "query",
+        description:
+          "API key. Your API key identifies your project and provides you with API access, quota, and reports. Required unless you provide an OAuth 2.0 token.",
+      },
+      apiKeyHeader: {
+        type: "apiKey",
+        name: "x-goog-api-key",
+        in: "header",
         description:
           "API key. Your API key identifies your project and provides you with API access, quota, and reports. Required unless you provide an OAuth 2.0 token.",
       },

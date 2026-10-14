@@ -3,9 +3,35 @@ import * as backend from "../backend";
 import * as iam from "../../../gcp/iam";
 import { logger } from "../../../logger";
 import { FirebaseError } from "../../../error";
-import { regionInLocation } from "../../../gcp/location";
+import { regionInLocation, STORAGE_MULTI_REGION_TO_REGION_MAPPING } from "../../../gcp/location";
+import * as build from "../build";
 
 const PUBSUB_PUBLISHER_ROLE = "roles/pubsub.publisher";
+
+const bucketCache = new Map<string, { location: string }>();
+
+/**
+ * Clear the storage bucket cache. Used for testing.
+ * @internal
+ */
+export function clearCache(): void {
+  bucketCache.clear();
+}
+
+/**
+ * A memoized version of storage.getBucket that avoids repeated calls to the API.
+ *
+ * @param bucketName the bucket ID
+ */
+export async function getBucket(bucketName: string): Promise<{ location: string }> {
+  if (bucketCache.has(bucketName)) {
+    return bucketCache.get(bucketName)!;
+  }
+
+  const b = await storage.getBucket(bucketName);
+  bucketCache.set(bucketName, b);
+  return b;
+}
 
 /**
  * Finds the required project level IAM bindings for the Cloud Storage service agent
@@ -30,7 +56,7 @@ export async function obtainStorageBindings(projectNumber: string): Promise<Arra
  * @param eventTrigger the endpoints event trigger
  */
 export async function ensureStorageTriggerRegion(
-  endpoint: backend.Endpoint & backend.EventTriggered
+  endpoint: backend.Endpoint & backend.EventTriggered,
 ): Promise<void> {
   const { eventTrigger } = endpoint;
   if (!eventTrigger.region) {
@@ -38,16 +64,14 @@ export async function ensureStorageTriggerRegion(
     if (!eventTrigger.eventFilters?.bucket) {
       throw new FirebaseError(
         "Error: storage event trigger is missing bucket filter: " +
-          JSON.stringify(eventTrigger, null, 2)
+          JSON.stringify(eventTrigger, null, 2),
       );
     }
     logger.debug(
-      `Looking up bucket region for the storage event trigger on bucket ${eventTrigger.eventFilters.bucket}`
+      `Looking up bucket region for the storage event trigger on bucket ${eventTrigger.eventFilters.bucket}`,
     );
     try {
-      const bucket: { location: string } = await storage.getBucket(
-        eventTrigger.eventFilters.bucket
-      );
+      const bucket: { location: string } = await getBucket(eventTrigger.eventFilters.bucket);
       eventTrigger.region = bucket.location.toLowerCase();
       logger.debug("Setting the event trigger region to", eventTrigger.region, ".");
     } catch (err: any) {
@@ -61,7 +85,23 @@ export async function ensureStorageTriggerRegion(
     !regionInLocation(endpoint.region, eventTrigger.region)
   ) {
     throw new FirebaseError(
-      `A function in region ${endpoint.region} cannot listen to a bucket in region ${eventTrigger.region}`
+      `A function in region ${endpoint.region} cannot listen to a bucket in region ${eventTrigger.region}`,
     );
   }
+}
+
+/**
+ * Get the default region for a Storage event trigger.
+ */
+export async function getDefaultRegion(endpoint: build.Endpoint): Promise<string> {
+  if (!build.isEventTriggered(endpoint)) {
+    throw new FirebaseError("Storage getDefaultRegion requires an event-triggered endpoint");
+  }
+  const bucketName = endpoint.eventTrigger.eventFilters?.bucket;
+  if (!bucketName) {
+    throw new FirebaseError("Could not find bucket name in event trigger filters");
+  }
+  const bucket = await getBucket(bucketName);
+  const locationId = bucket.location.toLowerCase();
+  return STORAGE_MULTI_REGION_TO_REGION_MAPPING[locationId] || locationId;
 }

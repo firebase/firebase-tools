@@ -7,10 +7,9 @@ import { FirebaseError } from "./error";
 import * as utils from "./utils";
 
 const apiClient = new Client({
-  urlPrefix: googleOrigin,
+  urlPrefix: googleOrigin(),
 });
 
-// TODO: support for MFA at runtime was added in PR #3173, but this importer currently ignores `mfaInfo` and loses the data on import.
 const ALLOWED_JSON_KEYS = [
   "localId",
   "email",
@@ -25,12 +24,24 @@ const ALLOWED_JSON_KEYS = [
   "phoneNumber",
   "disabled",
   "customAttributes",
+  "mfaInfo",
 ];
 const ALLOWED_JSON_KEYS_RENAMING = {
   lastSignedInAt: "lastLoginAt",
 };
 const ALLOWED_PROVIDER_USER_INFO_KEYS = ["providerId", "rawId", "email", "displayName", "photoUrl"];
-const ALLOWED_PROVIDER_IDS = ["google.com", "facebook.com", "twitter.com", "github.com"];
+const ALLOWED_PROVIDER_IDS = [
+  "google.com",
+  "facebook.com",
+  "twitter.com",
+  "github.com",
+  "apple.com",
+  "microsoft.com",
+  "gc.apple.com",
+  "playgames.google.com",
+  "linkedin.com",
+  "yahoo.com",
+];
 
 function isValidBase64(str: string): boolean {
   const expected = Buffer.from(str, "base64").toString("base64");
@@ -130,6 +141,12 @@ export function transArrayToUser(arr: any[]): any {
   addProviderUserInfo(user, "facebook.com", arr.slice(11, 15));
   addProviderUserInfo(user, "twitter.com", arr.slice(15, 19));
   addProviderUserInfo(user, "github.com", arr.slice(19, 23));
+  addProviderUserInfo(user, "apple.com", arr.slice(28, 32));
+  addProviderUserInfo(user, "microsoft.com", arr.slice(32, 36));
+  addProviderUserInfo(user, "gc.apple.com", arr.slice(36, 40));
+  addProviderUserInfo(user, "playgames.google.com", arr.slice(40, 44));
+  addProviderUserInfo(user, "linkedin.com", arr.slice(44, 48));
+  addProviderUserInfo(user, "yahoo.com", arr.slice(48, 52));
 
   if (user.passwordHash && !isValidBase64(user.passwordHash)) {
     return {
@@ -175,48 +192,49 @@ function validateRequiredParameters(options: any): any {
     case "HMAC_MD5":
       if (!options.hashKey || options.hashKey === "") {
         throw new FirebaseError(
-          "Must provide hash key(base64 encoded) for hash algorithm " + options.hashAlgo
+          "Must provide hash key(base64 encoded) for hash algorithm " + options.hashAlgo,
         );
       }
       return { hashAlgo: hashAlgo, hashKey: options.hashKey, valid: true };
     case "MD5":
     case "SHA1":
     case "SHA256":
-    case "SHA512":
+    case "SHA512": {
       // MD5 is [0,8192] but SHA1, SHA256, and SHA512 are [1,8192]
       roundsNum = parseInt(options.rounds, 10);
       const minRounds = hashAlgo === "MD5" ? 0 : 1;
       if (isNaN(roundsNum) || roundsNum < minRounds || roundsNum > 8192) {
         throw new FirebaseError(
-          `Must provide valid rounds(${minRounds}..8192) for hash algorithm ${options.hashAlgo}`
+          `Must provide valid rounds(${minRounds}..8192) for hash algorithm ${options.hashAlgo}`,
         );
       }
       return { hashAlgo: hashAlgo, rounds: options.rounds, valid: true };
+    }
     case "PBKDF_SHA1":
     case "PBKDF2_SHA256":
       roundsNum = parseInt(options.rounds, 10);
       if (isNaN(roundsNum) || roundsNum < 0 || roundsNum > 120000) {
         throw new FirebaseError(
-          "Must provide valid rounds(0..120000) for hash algorithm " + options.hashAlgo
+          "Must provide valid rounds(0..120000) for hash algorithm " + options.hashAlgo,
         );
       }
       return { hashAlgo: hashAlgo, rounds: options.rounds, valid: true };
-    case "SCRYPT":
+    case "SCRYPT": {
       if (!options.hashKey || options.hashKey === "") {
         throw new FirebaseError(
-          "Must provide hash key(base64 encoded) for hash algorithm " + options.hashAlgo
+          "Must provide hash key(base64 encoded) for hash algorithm " + options.hashAlgo,
         );
       }
       roundsNum = parseInt(options.rounds, 10);
       if (isNaN(roundsNum) || roundsNum <= 0 || roundsNum > 8) {
         throw new FirebaseError(
-          "Must provide valid rounds(1..8) for hash algorithm " + options.hashAlgo
+          "Must provide valid rounds(1..8) for hash algorithm " + options.hashAlgo,
         );
       }
       const memCost = parseInt(options.memCost, 10);
       if (isNaN(memCost) || memCost <= 0 || memCost > 14) {
         throw new FirebaseError(
-          "Must provide valid memory cost(1..14) for hash algorithm " + options.hashAlgo
+          "Must provide valid memory cost(1..14) for hash algorithm " + options.hashAlgo,
         );
       }
       let saltSeparator = "";
@@ -231,9 +249,10 @@ function validateRequiredParameters(options: any): any {
         memCost: options.memCost,
         valid: true,
       };
+    }
     case "BCRYPT":
       return { hashAlgo: hashAlgo, valid: true };
-    case "STANDARD_SCRYPT":
+    case "STANDARD_SCRYPT": {
       const cpuMemCost = parseInt(options.memCost, 10);
       const parallelization = parseInt(options.parallelization, 10);
       const blockSize = parseInt(options.blockSize, 10);
@@ -246,6 +265,7 @@ function validateRequiredParameters(options: any): any {
         blockSize: blockSize,
         dkLen: dkLen,
       };
+    }
     default:
       throw new FirebaseError("Unsupported hash algorithm " + clc.bold(options.hashAlgo));
   }
@@ -260,7 +280,7 @@ function validateProviderUserInfo(providerUserInfo: { providerId: string; error?
     };
   }
   const keydiff = Object.keys(providerUserInfo).filter(
-    (k) => !ALLOWED_PROVIDER_USER_INFO_KEYS.includes(k)
+    (k) => !ALLOWED_PROVIDER_USER_INFO_KEYS.includes(k),
   );
   if (keydiff.length) {
     return {
@@ -316,7 +336,7 @@ async function sendRequest(projectId: string, userList: any[], hashOptions: any)
               account: JSON.stringify(userList[parseInt(rawInfo.index, 10)], null, 2),
               reason: rawInfo.message,
             };
-          })
+          }),
         );
       } else {
         utils.logSuccess("Imported successfully.");
@@ -329,7 +349,7 @@ export function serialImportUsers(
   projectId: string,
   hashOptions: any,
   userListArr: any[],
-  index: number
+  index: number,
 ): Promise<any> {
   return sendRequest(projectId, userListArr[index], hashOptions).then(() => {
     if (index < userListArr.length - 1) {

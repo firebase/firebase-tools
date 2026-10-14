@@ -8,9 +8,9 @@ import * as clc from "colorette";
 import { Constants } from "../emulator/constants";
 import { logLabeledWarning } from "../utils";
 import { ExtensionsEmulator } from "../emulator/extensionsEmulator";
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const Table = require("cli-table");
+import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook";
+import { Options } from "../options";
+import * as Table from "cli-table3";
 
 function stylizeLink(url: string): string {
   return clc.underline(clc.bold(url));
@@ -24,8 +24,9 @@ export const command = new Command("emulators:start")
   .option(commandUtils.FLAG_INSPECT_FUNCTIONS, commandUtils.DESC_INSPECT_FUNCTIONS)
   .option(commandUtils.FLAG_IMPORT, commandUtils.DESC_IMPORT)
   .option(commandUtils.FLAG_EXPORT_ON_EXIT, commandUtils.DESC_EXPORT_ON_EXIT)
+  .option(commandUtils.FLAG_VERBOSITY, commandUtils.DESC_VERBOSITY)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  .action((options: any) => {
+  .action((options: Options) => {
     const killSignalPromise = commandUtils.shutdownWhenKilled(options);
     return Promise.race([
       killSignalPromise,
@@ -33,7 +34,9 @@ export const command = new Command("emulators:start")
         let deprecationNotices;
         try {
           ({ deprecationNotices } = await controller.startAll(options));
+          await sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_STARTED });
         } catch (e: any) {
+          await sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_START_ERRORED });
           await controller.cleanShutdown();
           throw e;
         }
@@ -58,24 +61,27 @@ function printEmulatorOverview(options: any): void {
     if (info) {
       reservedPorts.push(info.port);
     }
+    controller.filterEmulatorTargets(options).forEach((emulator: Emulators) => {
+      reservedPorts.push(...(EmulatorRegistry.getInfo(emulator)?.reservedPorts || []));
+    });
   }
   const reservedPortsString = reservedPorts.length > 0 ? reservedPorts.join(", ") : "None";
 
-  const uiInfo = EmulatorRegistry.getInfo(Emulators.UI);
-  const hubInfo = EmulatorRegistry.getInfo(Emulators.HUB);
-  const uiUrl = uiInfo ? `http://${EmulatorRegistry.getInfoHostString(uiInfo)}` : "unknown";
+  const uiRunning = EmulatorRegistry.isRunning(Emulators.UI);
   const head = ["Emulator", "Host:Port"];
 
-  if (uiInfo) {
+  if (uiRunning) {
     head.push(`View in ${Constants.description(Emulators.UI)}`);
   }
 
   const successMessageTable = new Table();
   let successMsg = `${clc.green("✔")}  ${clc.bold(
-    "All emulators ready! It is now safe to connect your app."
+    "All emulators ready! It is now safe to connect your app.",
   )}`;
-  if (uiInfo) {
-    successMsg += `\n${clc.cyan("i")}  View Emulator UI at ${stylizeLink(uiUrl)}`;
+  if (uiRunning) {
+    successMsg += `\n${clc.cyan("i")}  View Emulator UI at ${stylizeLink(
+      EmulatorRegistry.url(Emulators.UI).toString(),
+    )}`;
   }
   successMessageTable.push([successMsg]);
 
@@ -92,40 +98,46 @@ function printEmulatorOverview(options: any): void {
       .map((emulator) => {
         const emulatorName = Constants.description(emulator).replace(/ emulator/i, "");
         const isSupportedByUi = EMULATORS_SUPPORTED_BY_UI.includes(emulator);
-        // The Extensions emulator runs as part of the Functions emulator, so display the Functions emulators info instead.
-        const info = EmulatorRegistry.getInfo(emulator);
-        if (!info) {
-          return [emulatorName, "Failed to initialize (see above)", "", ""];
+        const listen = commandUtils.getListenOverview(emulator);
+        if (!listen) {
+          const row = [emulatorName, "Failed to initialize (see above)"];
+          if (uiRunning) {
+            row.push("");
+          }
+          return row;
+        }
+        let uiLink = "n/a";
+        if (isSupportedByUi && uiRunning) {
+          const url = EmulatorRegistry.url(Emulators.UI);
+          url.pathname = `/${emulator}`;
+          uiLink = stylizeLink(url.toString());
         }
 
-        return [
-          emulatorName,
-          EmulatorRegistry.getInfoHostString(info),
-          isSupportedByUi && uiInfo ? stylizeLink(`${uiUrl}/${emulator}`) : clc.blackBright("n/a"),
-        ];
+        return [emulatorName, listen, uiLink];
       })
       .map((col) => col.slice(0, head.length))
-      .filter((v) => v)
+      .filter((v) => v),
   );
-  let extensionsTable: string = "";
+  let extensionsTable = "";
   if (EmulatorRegistry.isRunning(Emulators.EXTENSIONS)) {
     const extensionsEmulatorInstance = EmulatorRegistry.get(
-      Emulators.EXTENSIONS
+      Emulators.EXTENSIONS,
     ) as ExtensionsEmulator;
-    extensionsTable = extensionsEmulatorInstance.extensionsInfoTable(options);
+    extensionsTable = extensionsEmulatorInstance.extensionsInfoTable();
   }
+  const hubInfo = EmulatorRegistry.getInfo(Emulators.HUB);
   logger.info(`\n${successMessageTable}
 
 ${emulatorsTable}
 ${
   hubInfo
-    ? clc.blackBright("  Emulator Hub running at ") + EmulatorRegistry.getInfoHostString(hubInfo)
+    ? clc.blackBright(`  Emulator Hub host: ${hubInfo.host} port: ${hubInfo.port}`)
     : clc.blackBright("  Emulator Hub not running.")
 }
 ${clc.blackBright("  Other reserved ports:")} ${reservedPortsString}
 ${extensionsTable}
 Issues? Report them at ${stylizeLink(
-    "https://github.com/firebase/firebase-tools/issues"
+    "https://github.com/firebase/firebase-tools/issues",
   )} and attach the *-debug.log files.
  `);
 

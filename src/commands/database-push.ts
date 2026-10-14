@@ -4,7 +4,7 @@ import * as fs from "fs";
 import { Client } from "../apiv2";
 import { Command } from "../command";
 import { Emulators } from "../emulator/types";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
 import { populateInstanceDetails } from "../management/database";
 import { printNoticeIfEmulated } from "../emulator/commandUtils";
 import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
@@ -19,8 +19,9 @@ export const command = new Command("database:push <path> [infile]")
   .option("-d, --data <data>", "specify escaped JSON directly")
   .option(
     "--instance <instance>",
-    "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
+    "use the database <instance>.firebaseio.com (if omitted, use default database instance)",
   )
+  .option("--disable-triggers", "suppress any Cloud functions triggered by this operation")
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireDatabaseInstance)
   .before(populateInstanceDetails)
@@ -33,6 +34,9 @@ export const command = new Command("database:push <path> [infile]")
       utils.stringToStream(options.data) || (infile ? fs.createReadStream(infile) : process.stdin);
     const origin = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
     const u = new URL(utils.getDatabaseUrl(origin, options.instance, path + ".json"));
+    if (options.disableTriggers) {
+      u.searchParams.set("disableTriggers", "true");
+    }
 
     if (!infile && !options.data) {
       utils.explainStdin();
@@ -46,10 +50,13 @@ export const command = new Command("database:push <path> [infile]")
         method: "POST",
         path: u.pathname,
         body: inStream,
+        queryParams: u.searchParams,
       });
-    } catch (err: any) {
-      logger.debug(err);
-      throw new FirebaseError(`Unexpected error while pushing data: ${err}`, { exit: 2 });
+    } catch (err: unknown) {
+      logger.debug(getErrMsg(err));
+      throw new FirebaseError(`Unexpected error while pushing data: ${getErrMsg(err)}`, {
+        exit: 2,
+      });
     }
 
     if (!path.endsWith("/")) {
@@ -60,7 +67,7 @@ export const command = new Command("database:push <path> [infile]")
       origin,
       options.project,
       options.instance,
-      path + res.body.name
+      path + res.body.name,
     );
 
     utils.logSuccess("Data pushed successfully");

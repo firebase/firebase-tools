@@ -1,6 +1,6 @@
 # Function Deploy Integration Test
 
-Function deploy integration test cylcles through "create -> update -> update -> ..." phases to make sure all supported function triggers are deployed with correct configuration values.
+Function deploy integration test cycles through "create -> update -> update -> ..." phases to make sure all supported function triggers are deployed with correct configuration values.
 
 The test isn't "thread-safe" - there should be at most one test running on a project at any given time. I suggest you to use your own project to run the test.
 

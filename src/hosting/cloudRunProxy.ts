@@ -6,9 +6,13 @@ import { errorRequestHandler, proxyRequestHandler } from "./proxy";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { needProjectId } from "../projectUtils";
+import { EmulatorRegistry } from "../emulator/registry";
+import { Emulators } from "../emulator/types";
+import { FunctionsEmulator } from "../emulator/functionsEmulator";
 
 export interface CloudRunProxyOptions {
   project?: string;
+  targets?: string[];
 }
 
 export interface CloudRunProxyRewrite {
@@ -20,7 +24,7 @@ export interface CloudRunProxyRewrite {
 
 const cloudRunCache: { [s: string]: string } = {};
 
-const apiClient = new Client({ urlPrefix: cloudRunApiOrigin, apiVersion: "v1" });
+const apiClient = new Client({ urlPrefix: cloudRunApiOrigin(), apiVersion: "v1" });
 
 async function getCloudRunUrl(rewrite: CloudRunProxyRewrite, projectId: string): Promise<string> {
   const alreadyFetched = cloudRunCache[`${rewrite.run.region}/${rewrite.run.serviceId}`];
@@ -54,7 +58,7 @@ async function getCloudRunUrl(rewrite: CloudRunProxyRewrite, projectId: string):
  * the live Cloud Run service running within the given project.
  */
 export default function (
-  options: CloudRunProxyOptions
+  options: CloudRunProxyOptions,
 ): (r: CloudRunProxyRewrite) => Promise<RequestHandler> {
   return async (rewrite: CloudRunProxyRewrite) => {
     if (!rewrite.run) {
@@ -70,6 +74,17 @@ export default function (
     logger.info(`[hosting] Cloud Run rewrite ${JSON.stringify(rewrite)} triggered`);
 
     const textIdentifier = `Cloud Run service "${rewrite.run.serviceId}" for region "${rewrite.run.region}"`;
+
+    if (options.targets?.includes("functions") && EmulatorRegistry.isRunning(Emulators.FUNCTIONS)) {
+      const projectId = needProjectId(options);
+      const url = FunctionsEmulator.getHttpFunctionUrl(
+        projectId,
+        rewrite.run.serviceId,
+        rewrite.run.region,
+      );
+      return proxyRequestHandler(url, `local ${textIdentifier}`);
+    }
+
     return getCloudRunUrl(rewrite, needProjectId(options))
       .then((url) => proxyRequestHandler(url, textIdentifier))
       .catch(errorRequestHandler);

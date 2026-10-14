@@ -57,7 +57,7 @@ export function isValidPhoneNumber(phoneNumber: string): boolean {
   // is not worth the effort and bloat (500+ kB). libphonenumber-js is not used
   // either since it has different behaviors and may block numbers that are
   // valid in production.
-  return /^\+/.test(phoneNumber);
+  return phoneNumber.startsWith("+");
 }
 
 /**
@@ -164,7 +164,7 @@ export function logError(err: Error): void {
   }
   EmulatorLogger.forEmulator(Emulators.AUTH).log(
     "WARN",
-    err.stack || err.message || err.constructor.name
+    err.stack || err.message || err.constructor.name,
   );
 }
 
@@ -177,7 +177,7 @@ export function logError(err: Error): void {
  * terminal or Emulator UI).
  */
 export function authEmulatorUrl(req: express.Request): URL {
-  if (EmulatorRegistry.getInfo(Emulators.AUTH)) {
+  if (EmulatorRegistry.isRunning(Emulators.AUTH)) {
     return EmulatorRegistry.url(Emulators.AUTH);
   } else {
     return EmulatorRegistry.url(Emulators.AUTH, req);
@@ -193,7 +193,7 @@ export function authEmulatorUrl(req: express.Request): URL {
 export function mirrorFieldTo<D, K extends keyof D>(
   dest: D,
   field: K,
-  source: { [KK in K]?: D[KK] }
+  source: { [KK in K]?: D[KK] },
 ): void {
   const value = source[field] as D[K] | undefined;
   if (value === undefined) {

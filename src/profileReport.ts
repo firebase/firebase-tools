@@ -1,13 +1,11 @@
 import * as clc from "colorette";
-import Table = require("cli-table");
+import * as Table from "cli-table3";
 import * as fs from "fs";
 import * as _ from "lodash";
 import * as readline from "readline";
 
 import { FirebaseError } from "./error";
 import { logger } from "./logger";
-
-const DATA_LINE_REGEX = /^data: /;
 
 const BANDWIDTH_NOTE =
   "NOTE: The numbers reported here are only estimates of the data" +
@@ -25,11 +23,14 @@ const COLLAPSE_WILDCARD = ["$wildcard"];
 
 // 'static' helper methods
 
+/**
+ *
+ */
 export function extractJSON(line: string, input: any): string | null {
-  if (!input && !DATA_LINE_REGEX.test(line)) {
+  if (!input && !line.startsWith("data: ")) {
     return null;
   } else if (!input) {
-    line = line.substring(5);
+    line = line.substring(6);
   }
   try {
     return JSON.parse(line);
@@ -38,10 +39,16 @@ export function extractJSON(line: string, input: any): string | null {
   }
 }
 
+/**
+ *
+ */
 export function pathString(path: string[]): string {
   return `/${path ? path.join("/") : ""}`;
 }
 
+/**
+ *
+ */
 export function formatNumber(num: number) {
   const parts = num.toFixed(2).split(".");
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -51,6 +58,9 @@ export function formatNumber(num: number) {
   return parts.join(".");
 }
 
+/**
+ *
+ */
 export function formatBytes(bytes: number) {
   const threshold = 1000;
   if (Math.round(bytes) < threshold) {
@@ -66,6 +76,9 @@ export function formatBytes(bytes: number) {
   return formatNumber(formattedBytes) + " " + units[u];
 }
 
+/**
+ *
+ */
 export function extractReadableIndex(query: Record<string, any>): string {
   if (query.orderBy) {
     return query.orderBy;
@@ -93,7 +106,7 @@ export class ProfileReport {
   constructor(
     tmpFile: string,
     outStream: NodeJS.WritableStream,
-    options: ProfileReportOptions = {}
+    options: ProfileReportOptions = {},
   ) {
     this.tempFile = tmpFile;
     this.output = outStream;
@@ -146,10 +159,10 @@ export class ProfileReport {
     }
     opStats.times += 1;
 
-    if (data.hasOwnProperty("millis")) {
+    if (Object.prototype.hasOwnProperty.call(data, "millis")) {
       opStats.millis += data.millis;
     }
-    if (data.hasOwnProperty("pendingTime")) {
+    if (Object.prototype.hasOwnProperty.call(data, "pendingTime")) {
       opStats.pendingCount++;
       opStats.pendingTime += data.pendingTime;
     }
@@ -177,10 +190,10 @@ export class ProfileReport {
      * connects, disconnects, listens, unlistens). Such a request may
      * have non-trivial `pendingTime`.
      */
-    if (data.hasOwnProperty("millis")) {
+    if (Object.prototype.hasOwnProperty.call(data, "millis")) {
       node.millis += data.millis;
     }
-    if (data.hasOwnProperty("pendingTime")) {
+    if (Object.prototype.hasOwnProperty.call(data, "pendingTime")) {
       node.pendingCount++;
       node.pendingTime += data.pendingTime;
     }
@@ -432,7 +445,7 @@ export class ProfileReport {
         speedData.times,
         formatNumber(speedData.millis / speedData.times) + " ms",
         formatNumber(
-          speedData.pendingCount === 0 ? 0 : speedData.pendingTime / speedData.pendingCount
+          speedData.pendingCount === 0 ? 0 : speedData.pendingTime / speedData.pendingCount,
         ) + " ms",
       ];
       if (hasSecurity) {
@@ -542,8 +555,14 @@ export class ProfileReport {
           }
         }
       });
-      rl.on("error", () => {
-        reject();
+      rl.on("error", (err) => {
+        reject(
+          err instanceof Error
+            ? err
+            : new FirebaseError("There was an error creating the report.", {
+                original: err as any,
+              }),
+        );
       });
       outStream.on("error", () => {
         errored = true;
@@ -597,14 +616,14 @@ export class ProfileReport {
         write(clc.bold(clc.yellow(title)) + "\n");
       }
     };
-    const writeTable = (title: string, table: Table) => {
+    const writeTable = (title: string, table: Table.Table) => {
       writeTitle(title);
       write(table.toString() + "\n");
     };
     writeTitle(
       `Report operations collected from ${new Date(
-        this.state.startTime
-      ).toISOString()} over ${totalTime} ms.`
+        this.state.startTime,
+      ).toISOString()} over ${totalTime} ms.`,
     );
     writeTitle("Speed Report\n");
     write(SPEED_NOTE + "\n\n");

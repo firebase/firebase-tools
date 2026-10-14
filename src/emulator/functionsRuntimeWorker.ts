@@ -1,17 +1,22 @@
 import * as http from "http";
-import * as uuid from "uuid";
+import { randomUUID } from "crypto";
 
-import { FunctionsRuntimeInstance, InvokeRuntimeOpts } from "./functionsEmulator";
+import { FunctionsRuntimeInstance } from "./functionsEmulator";
 import { EmulatorLog, Emulators, FunctionsExecutionMode } from "./types";
-import { FunctionsRuntimeArgs, FunctionsRuntimeBundle } from "./functionsEmulatorShared";
+import { EmulatedTriggerDefinition, FunctionsRuntimeBundle } from "./functionsEmulatorShared";
 import { EventEmitter } from "events";
 import { EmulatorLogger, ExtensionLogInfo } from "./emulatorLogger";
 import { FirebaseError } from "../error";
 import { Serializable } from "child_process";
+import { getFunctionDiscoveryTimeout } from "../deploy/functions/runtimes/discovery";
+import { Runtime, runtimeIsLanguage } from "../deploy/functions/runtimes/supported";
 
 type LogListener = (el: EmulatorLog) => any;
 
 export enum RuntimeWorkerState {
+  // Worker has been created but is not ready to accept work
+  CREATED = "CREATED",
+
   // Worker is ready to accept new work
   IDLE = "IDLE",
 
@@ -26,33 +31,33 @@ export enum RuntimeWorkerState {
   FINISHED = "FINISHED",
 }
 
+/**
+ * Given no trigger key, worker is given this special key.
+ *
+ * This is useful when running the Functions Emulator in debug mode
+ * where single process shared amongst all triggers.
+ */
+const FREE_WORKER_KEY = "~free~";
+
 export class RuntimeWorker {
   readonly id: string;
-  readonly key: string;
-  readonly runtime: FunctionsRuntimeInstance;
+  readonly triggerKey: string;
 
   stateEvents: EventEmitter = new EventEmitter();
 
   private logListeners: Array<LogListener> = [];
-  private _state: RuntimeWorkerState = RuntimeWorkerState.IDLE;
+  private logger: EmulatorLogger;
+  private _state: RuntimeWorkerState = RuntimeWorkerState.CREATED;
 
-  constructor(key: string, runtime: FunctionsRuntimeInstance) {
-    this.id = uuid.v4();
-    this.key = key;
+  constructor(
+    triggerId: string | undefined,
+    readonly runtime: FunctionsRuntimeInstance,
+    readonly extensionLogInfo: ExtensionLogInfo,
+    readonly timeoutSeconds?: number,
+  ) {
+    this.id = randomUUID();
+    this.triggerKey = triggerId || FREE_WORKER_KEY;
     this.runtime = runtime;
-
-    this.runtime.events.on("log", (log: EmulatorLog) => {
-      if (log.type === "runtime-status") {
-        if (log.data.state === "idle") {
-          if (this.state === RuntimeWorkerState.BUSY) {
-            this.state = RuntimeWorkerState.IDLE;
-          } else if (this.state === RuntimeWorkerState.FINISHING) {
-            this.log(`IDLE --> FINISHING`);
-            this.runtime.process.kill();
-          }
-        }
-      }
-    });
 
     const childProc = this.runtime.process;
     let msgBuffer = "";
@@ -73,8 +78,15 @@ export class RuntimeWorker {
       });
     }
 
+    this.logger = triggerId
+      ? EmulatorLogger.forFunction(triggerId, extensionLogInfo)
+      : EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
+    this.onLogs((log: EmulatorLog) => {
+      this.logger.handleRuntimeLog(log);
+    }, true /* listen forever */);
+
     childProc.on("exit", () => {
-      this.log("exited");
+      this.logDebug("exited");
       this.state = RuntimeWorkerState.FINISHED;
     });
   }
@@ -99,12 +111,103 @@ export class RuntimeWorker {
     return lines[lines.length - 1];
   }
 
-  execute(frb: FunctionsRuntimeBundle, opts?: InvokeRuntimeOpts): void {
-    // Make a copy so we don't edit it
-    const execFrb: FunctionsRuntimeBundle = { ...frb };
-    const args: FunctionsRuntimeArgs = { frb: execFrb, opts };
+  readyForWork(): void {
+    this.state = RuntimeWorkerState.IDLE;
+  }
+
+  sendDebugMsg(debug: FunctionsRuntimeBundle["debug"]): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.runtime.process.send(JSON.stringify(debug), (err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
+  request(
+    req: http.RequestOptions,
+    resp: http.ServerResponse,
+    body?: unknown,
+    debug?: boolean,
+  ): Promise<void> {
+    if (this.triggerKey !== FREE_WORKER_KEY) {
+      this.logInfo(`Beginning execution of "${this.triggerKey}"`);
+    }
+    const startHrTime = process.hrtime();
+
     this.state = RuntimeWorkerState.BUSY;
-    this.runtime.process.send(JSON.stringify(args));
+    const onFinish = (): void => {
+      if (this.triggerKey !== FREE_WORKER_KEY) {
+        const elapsedHrTime = process.hrtime(startHrTime);
+        this.logInfo(
+          `Finished "${this.triggerKey}" in ${
+            elapsedHrTime[0] * 1000 + elapsedHrTime[1] / 1000000
+          }ms`,
+        );
+      }
+
+      if (this.state === RuntimeWorkerState.BUSY) {
+        this.state = RuntimeWorkerState.IDLE;
+      } else if (this.state === RuntimeWorkerState.FINISHING) {
+        this.logDebug(`IDLE --> FINISHING`);
+        this.runtime.process.kill();
+      }
+    };
+    return new Promise((resolve) => {
+      const reqOpts = {
+        ...this.runtime.conn.httpReqOpts(),
+        method: req.method,
+        path: req.path,
+        headers: req.headers,
+      };
+      if (this.timeoutSeconds) {
+        reqOpts.timeout = this.timeoutSeconds * 1000;
+      }
+      const proxy = http.request(reqOpts, (_resp: http.IncomingMessage) => {
+        resp.writeHead(_resp.statusCode || 200, _resp.headers);
+
+        let finished = false;
+        const finishReq = (event?: string): void => {
+          this.logger.log("DEBUG", `Finishing up request with event=${event}`);
+          if (!finished) {
+            finished = true;
+            onFinish();
+            resolve();
+          }
+        };
+        _resp.on("pause", () => finishReq("pause"));
+        _resp.on("close", () => finishReq("close"));
+        const piped = _resp.pipe(resp);
+        piped.on("finish", () => finishReq("finish"));
+      });
+      if (debug) {
+        proxy.setSocketKeepAlive(false);
+        proxy.setTimeout(0);
+      }
+      proxy.on("timeout", () => {
+        this.logger.log(
+          "ERROR",
+          `Your function timed out after ~${this.timeoutSeconds}s. To configure this timeout, see
+      https://firebase.google.com/docs/functions/manage-functions#set_timeout_and_memory_allocation.`,
+        );
+        proxy.destroy();
+      });
+      proxy.on("error", (err) => {
+        this.logger.log("ERROR", `Request to function failed: ${err}`);
+        resp.writeHead(500);
+        resp.write(JSON.stringify(err));
+        resp.end();
+        this.runtime.process.kill();
+        resolve();
+      });
+      if (body) {
+        proxy.write(body);
+      }
+      proxy.end();
+    });
   }
 
   get state(): RuntimeWorkerState {
@@ -124,7 +227,7 @@ export class RuntimeWorker {
       this.runtime.events.removeAllListeners();
     }
 
-    this.log(state);
+    this.logDebug(state);
     this._state = state;
     this.stateEvents.emit(this._state);
   }
@@ -137,36 +240,21 @@ export class RuntimeWorker {
     this.runtime.events.on("log", listener);
   }
 
-  waitForDone(): Promise<any> {
-    if (this.state === RuntimeWorkerState.IDLE || this.state === RuntimeWorkerState.FINISHED) {
-      return Promise.resolve();
-    }
-
-    return new Promise<void>((res) => {
-      const listener = () => {
-        this.stateEvents.removeListener(RuntimeWorkerState.IDLE, listener);
-        this.stateEvents.removeListener(RuntimeWorkerState.FINISHED, listener);
-        res();
-      };
-
-      // Finish on either IDLE or FINISHED states
-      this.stateEvents.once(RuntimeWorkerState.IDLE, listener);
-      this.stateEvents.once(RuntimeWorkerState.FINISHED, listener);
-    });
-  }
-
   isSocketReady(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const req = http
-        .request(
-          {
-            method: "GET",
-            path: "/__/health",
-            socketPath: this.runtime.socketPath,
-          },
-          () => resolve()
-        )
-        .end();
+      const req = http.request(
+        {
+          ...this.runtime.conn.httpReqOpts(),
+          method: "GET",
+          path: "/__/health",
+        },
+        () => {
+          // Set the worker state to IDLE for new work
+          this.readyForWork();
+          resolve();
+        },
+      );
+      req.end();
       req.on("error", (error) => {
         reject(error);
       });
@@ -178,28 +266,32 @@ export class RuntimeWorker {
     const timeout = new Promise<never>((resolve, reject) => {
       setTimeout(() => {
         reject(new FirebaseError("Failed to load function."));
-      }, 30_000);
+      }, getFunctionDiscoveryTimeout() || 30_000);
     });
     while (true) {
       try {
         await Promise.race([this.isSocketReady(), timeout]);
         break;
-      } catch (err: any) {
+      } catch (err: unknown) {
         // Allow us to wait until the server is listening.
-        if (["ECONNREFUSED", "ENOENT"].includes(err?.code)) {
-          await sleep(100);
-          continue;
+        if (typeof err === "object" && err !== null && "code" in err) {
+          const code = (err as { code: unknown }).code;
+          if (typeof code === "string" && ["ECONNREFUSED", "ENOENT"].includes(code)) {
+            await sleep(100);
+            continue;
+          }
         }
         throw err;
       }
     }
   }
 
-  private log(msg: string): void {
-    EmulatorLogger.forEmulator(Emulators.FUNCTIONS).log(
-      "DEBUG",
-      `[worker-${this.key}-${this.id}]: ${msg}`
-    );
+  private logDebug(msg: string): void {
+    this.logger.log("DEBUG", `[worker-${this.triggerKey}-${this.id}]: ${msg}`);
+  }
+
+  private logInfo(msg: string): void {
+    this.logger.logLabeled("BULLET", "functions", msg);
   }
 }
 
@@ -208,12 +300,16 @@ export class RuntimeWorkerPool {
 
   constructor(private mode: FunctionsExecutionMode = FunctionsExecutionMode.AUTO) {}
 
-  getKey(triggerId: string | undefined) {
+  getKey(triggerId: string | undefined, runtime?: Runtime): string {
     if (this.mode === FunctionsExecutionMode.SEQUENTIAL) {
       return "~shared~";
-    } else {
-      return triggerId || "~diagnostic~";
     }
+    // For Dart, use a shared key so all functions in a codebase share the same worker process.
+    // Dart loads all functions into a single process and routes based on request path.
+    if (runtimeIsLanguage(runtime, "dart")) {
+      return "~dart-shared~";
+    }
+    return triggerId || "~diagnostic~";
   }
 
   /**
@@ -222,15 +318,15 @@ export class RuntimeWorkerPool {
    * each BUSY worker we move it to the FINISHING state so that it will
    * kill itself after it's done with its current task.
    */
-  refresh() {
+  refresh(): void {
     for (const arr of this.workers.values()) {
       arr.forEach((w) => {
         if (w.state === RuntimeWorkerState.IDLE) {
-          this.log(`Shutting down IDLE worker (${w.key})`);
+          this.log(`Shutting down IDLE worker (${w.triggerKey})`);
           w.state = RuntimeWorkerState.FINISHING;
           w.runtime.process.kill();
         } else if (w.state === RuntimeWorkerState.BUSY) {
-          this.log(`Marking BUSY worker to finish (${w.key})`);
+          this.log(`Marking BUSY worker to finish (${w.triggerKey})`);
           w.state = RuntimeWorkerState.FINISHING;
         }
       });
@@ -240,7 +336,7 @@ export class RuntimeWorkerPool {
   /**
    * Immediately kill all workers.
    */
-  exit() {
+  exit(): void {
     for (const arr of this.workers.values()) {
       arr.forEach((w) => {
         if (w.state === RuntimeWorkerState.IDLE) {
@@ -257,42 +353,47 @@ export class RuntimeWorkerPool {
    *
    * @param triggerId
    */
-  readyForWork(triggerId: string | undefined): boolean {
-    const idleWorker = this.getIdleWorker(triggerId);
+  readyForWork(triggerId: string | undefined, runtime?: Runtime): boolean {
+    const idleWorker = this.getIdleWorker(triggerId, runtime);
     return !!idleWorker;
   }
 
   /**
-   * Submit work to be run by an idle worker for the givenn triggerId.
-   * Calls to this function should be guarded by readyForWork() to avoid throwing
-   * an exception.
+   * Submit request to be handled by an idle worker for the given triggerId.
+   * Caller should ensure that there is an idle worker to handle the request.
    *
    * @param triggerId
-   * @param frb
-   * @param opts
+   * @param req Request to send to the trigger.
+   * @param resp Response to proxy the response from the worker.
+   * @param body Request body.
+   * @param debug Debug payload to send prior to making request.
    */
-  submitWork(
-    triggerId: string | undefined,
-    frb: FunctionsRuntimeBundle,
-    opts?: InvokeRuntimeOpts
-  ): RuntimeWorker {
-    this.log(`submitWork(triggerId=${triggerId})`);
-    const worker = this.getIdleWorker(triggerId);
+  async submitRequest(
+    triggerId: string,
+    req: http.RequestOptions,
+    resp: http.ServerResponse,
+    body: unknown,
+    debug?: FunctionsRuntimeBundle["debug"],
+    runtime?: Runtime,
+  ): Promise<void> {
+    this.log(`submitRequest(triggerId=${triggerId})`);
+    const worker = this.getIdleWorker(triggerId, runtime);
     if (!worker) {
       throw new FirebaseError(
-        "Internal Error: can't call submitWork without checking for idle workers"
+        "Internal Error: can't call submitRequest without checking for idle workers",
       );
     }
-
-    worker.execute(frb, opts);
-    return worker;
+    if (debug) {
+      await worker.sendDebugMsg(debug);
+    }
+    return worker.request(req, resp, body, !!debug);
   }
 
-  getIdleWorker(triggerId: string | undefined): RuntimeWorker | undefined {
+  getIdleWorker(triggerId: string | undefined, runtime?: Runtime): RuntimeWorker | undefined {
     this.cleanUpWorkers();
-    const triggerWorkers = this.getTriggerWorkers(triggerId);
+    const triggerWorkers = this.getTriggerWorkers(triggerId, runtime);
     if (!triggerWorkers.length) {
-      this.setTriggerWorkers(triggerId, []);
+      this.setTriggerWorkers(triggerId, [], runtime);
       return;
     }
 
@@ -305,35 +406,48 @@ export class RuntimeWorkerPool {
     return;
   }
 
+  /**
+   * Adds a worker to the pool.
+   * Caller must set the worker status to ready by calling
+   * `worker.readyForWork()` or `worker.waitForSocketReady()`.
+   */
   addWorker(
-    triggerId: string | undefined,
+    trigger: EmulatedTriggerDefinition | undefined,
     runtime: FunctionsRuntimeInstance,
-    extensionLogInfo?: ExtensionLogInfo
+    extensionLogInfo: ExtensionLogInfo,
+    runtimeType?: Runtime,
   ): RuntimeWorker {
-    const worker = new RuntimeWorker(this.getKey(triggerId), runtime);
-    this.log(`addWorker(${worker.key})`);
+    const key = this.getKey(trigger?.id, runtimeType);
+    this.log(`addWorker(${key})`);
+    // Disable worker timeout if:
+    //   (1) This is a diagnostic call without trigger id OR
+    //   (2) If in SEQUENTIAL execution mode
+    const disableTimeout = !trigger?.id || this.mode === FunctionsExecutionMode.SEQUENTIAL;
+    const worker = new RuntimeWorker(
+      trigger?.id,
+      runtime,
+      extensionLogInfo,
+      disableTimeout ? undefined : trigger?.timeoutSeconds,
+    );
 
-    const keyWorkers = this.getTriggerWorkers(triggerId);
+    const keyWorkers = this.getTriggerWorkers(trigger?.id, runtimeType);
     keyWorkers.push(worker);
-    this.setTriggerWorkers(triggerId, keyWorkers);
+    this.setTriggerWorkers(trigger?.id, keyWorkers, runtimeType);
 
-    const logger = triggerId
-      ? EmulatorLogger.forFunction(triggerId, extensionLogInfo)
-      : EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
-    worker.onLogs((log: EmulatorLog) => {
-      logger.handleRuntimeLog(log);
-    }, true /* listen forever */);
-
-    this.log(`Adding worker with key ${worker.key}, total=${keyWorkers.length}`);
+    this.log(`Adding worker with key ${worker.triggerKey}, total=${keyWorkers.length}`);
     return worker;
   }
 
-  getTriggerWorkers(triggerId: string | undefined): Array<RuntimeWorker> {
-    return this.workers.get(this.getKey(triggerId)) || [];
+  getTriggerWorkers(triggerId: string | undefined, runtime?: Runtime): Array<RuntimeWorker> {
+    return this.workers.get(this.getKey(triggerId, runtime)) || [];
   }
 
-  private setTriggerWorkers(triggerId: string | undefined, workers: Array<RuntimeWorker>) {
-    this.workers.set(this.getKey(triggerId), workers);
+  private setTriggerWorkers(
+    triggerId: string | undefined,
+    workers: Array<RuntimeWorker>,
+    runtime?: Runtime,
+  ) {
+    this.workers.set(this.getKey(triggerId, runtime), workers);
   }
 
   private cleanUpWorkers() {
@@ -345,7 +459,7 @@ export class RuntimeWorkerPool {
 
       if (notDoneWorkers.length !== keyWorkers.length) {
         this.log(
-          `Cleaned up workers for ${key}: ${keyWorkers.length} --> ${notDoneWorkers.length}`
+          `Cleaned up workers for ${key}: ${keyWorkers.length} --> ${notDoneWorkers.length}`,
         );
       }
       this.setTriggerWorkers(key, notDoneWorkers);

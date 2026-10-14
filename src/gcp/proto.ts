@@ -37,8 +37,8 @@ export function assertOneOf<T>(typename: string, obj: T, oneof: string, ...field
   if (defined.length > 1) {
     throw new FirebaseError(
       `Invalid ${typename} definition. ${oneof} can only have one field defined, but found ${defined.join(
-        ","
-      )}`
+        ",",
+      )}`,
     );
   }
 }
@@ -67,12 +67,12 @@ export function copyIfPresent<Dest extends object, Keys extends (keyof Dest)[]>(
 export function convertIfPresent<
   Dest extends object,
   Src extends object,
-  Key extends keyof Src & keyof Dest
+  Key extends keyof Src & keyof Dest,
 >(
   dest: Dest,
   src: Src,
   key: Key,
-  converter: (from: Required<Src>[Key]) => Required<Dest>[Key]
+  converter: (from: Required<Src>[Key]) => Required<Dest>[Key],
 ): void;
 
 /**
@@ -82,13 +82,13 @@ export function convertIfPresent<
   Dest extends object,
   Src extends object,
   DestKey extends keyof Dest,
-  SrcKey extends keyof Src
+  SrcKey extends keyof Src,
 >(
   dest: Dest,
   src: Src,
   destKey: DestKey,
   srcKey: SrcKey,
-  converter: (from: Required<Src>[SrcKey]) => Required<Dest>[DestKey]
+  converter: (from: Required<Src>[SrcKey]) => Required<Dest>[DestKey],
 ): void;
 
 /** Overload */
@@ -97,21 +97,21 @@ export function convertIfPresent<
   Src extends object,
   DestKey extends keyof Dest,
   SrcKey extends keyof Src,
-  MutualKey extends keyof Dest & keyof Src
+  MutualKey extends keyof Dest & keyof Src,
 >(
   ...args:
     | [
         dest: Dest,
         src: Src,
         key: MutualKey,
-        converter: (from: Required<Src>[MutualKey]) => Required<Dest>[MutualKey]
+        converter: (from: Required<Src>[MutualKey]) => Required<Dest>[MutualKey],
       ]
     | [
         dest: Dest,
         src: Src,
         destKey: DestKey,
         srcKey: SrcKey,
-        converter: (from: Required<Src>[SrcKey]) => Required<Dest>[DestKey]
+        converter: (from: Required<Src>[SrcKey]) => Required<Dest>[DestKey],
       ]
 ): void {
   if (args.length === 4) {
@@ -132,7 +132,7 @@ export function renameIfPresent<DestKey extends string, SrcKey extends string, V
   dest: { [Key in DestKey]?: ValType },
   src: { [Key in SrcKey]?: ValType },
   destKey: DestKey,
-  srcKey: SrcKey
+  srcKey: SrcKey,
 ): void {
   if (!Object.prototype.hasOwnProperty.call(src, srcKey)) {
     return;
@@ -163,9 +163,15 @@ function fieldMasksHelper(
   prefixes: string[],
   cursor: unknown,
   doNotRecurseIn: string[],
-  masks: string[]
+  masks: string[],
 ): void {
-  if (typeof cursor !== "object" || Array.isArray(cursor) || cursor === null) {
+  // Empty arrays should never be sent because they're dropped by the one platform
+  // gateway and then services get confused why there's an update mask for a missing field"
+  if (Array.isArray(cursor) && !cursor.length) {
+    return;
+  }
+
+  if (typeof cursor !== "object" || (Array.isArray(cursor) && cursor.length) || cursor === null) {
     masks.push(prefixes.join("."));
     return;
   }
@@ -210,22 +216,56 @@ export function getInvokerMembers(invoker: string[], projectId: string): string[
  * '{service-account}@' or '{service-account}@{project}.iam.gserviceaccount.com'.
  * @param serviceAccount the custom service account created by the user
  * @param projectId the ID of the current project
+ * @param removeTypePrefix remove type prefix in the formatted service account
  * @return a correctly formatted service account string
  * @throws {@link FirebaseError} if the supplied service account string is empty or not of the correct form
  */
-export function formatServiceAccount(serviceAccount: string, projectId: string): string {
+export function formatServiceAccount(
+  serviceAccount: string,
+  projectId: string,
+  removeTypePrefix: boolean = false,
+): string {
   if (serviceAccount.length === 0) {
     throw new FirebaseError("Service account cannot be an empty string");
   }
   if (!serviceAccount.includes("@")) {
     throw new FirebaseError(
-      "Service account must be of the form 'service-account@' or 'service-account@{project-id}.iam.gserviceaccount.com'"
+      "Service account must be of the form 'service-account@' or 'service-account@{project-id}.iam.gserviceaccount.com'",
     );
   }
 
+  const prefix = removeTypePrefix ? "" : "serviceAccount:";
+
   if (serviceAccount.endsWith("@")) {
     const suffix = `${projectId}.iam.gserviceaccount.com`;
-    return `serviceAccount:${serviceAccount}${suffix}`;
+    return `${prefix}${serviceAccount}${suffix}`;
   }
-  return `serviceAccount:${serviceAccount}`;
+  return `${prefix}${serviceAccount}`;
+}
+
+/**
+ * Remove keys whose values are undefined.
+ * When we write an interface { foo?: number } there are three possible
+ * forms: { foo: 1 }, {}, and { foo: undefined }. The latter surprises
+ * most people and make unit test comparison flaky. This cleans that up.
+ */
+export function pruneUndefiends(obj: unknown): void {
+  if (typeof obj !== "object" || obj === null) {
+    return;
+  }
+  const keyable = obj as Record<string, unknown>;
+  for (const key of Object.keys(keyable)) {
+    if (keyable[key] === undefined) {
+      delete keyable[key];
+    } else if (typeof keyable[key] === "object") {
+      if (Array.isArray(keyable[key])) {
+        for (const sub of keyable[key] as unknown[]) {
+          pruneUndefiends(sub);
+        }
+        keyable[key] = (keyable[key] as unknown[]).filter((e) => e !== undefined);
+      } else {
+        pruneUndefiends(keyable[key]);
+      }
+    }
+  }
 }

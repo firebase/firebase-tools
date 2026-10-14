@@ -1,9 +1,6 @@
 import { parse } from "csv-parse";
-import * as Chain from "stream-chain";
 import * as clc from "colorette";
 import * as fs from "fs-extra";
-import * as Pick from "stream-json/filters/Pick";
-import * as StreamArray from "stream-json/streamers/StreamArray";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
@@ -11,6 +8,7 @@ import { logger } from "../logger";
 import { needProjectId } from "../projectUtils";
 import { Options } from "../options";
 import { requirePermissions } from "../requirePermissions";
+import { loadStreamJson } from "../streamJson";
 import {
   serialImportUsers,
   transArrayToUser,
@@ -21,20 +19,20 @@ import {
 const MAX_BATCH_SIZE = 1000;
 
 export const command = new Command("auth:import [dataFile]")
-  .description("import users into your Firebase project from a data file(.csv or .json)")
+  .description("import users into your Firebase project from a data file (.csv or .json)")
   .option(
     "--hash-algo <hashAlgo>",
-    "specify the hash algorithm used in password for these accounts"
+    "specify the hash algorithm used in password for these accounts",
   )
   .option("--hash-key <hashKey>", "specify the key used in hash algorithm")
   .option(
     "--salt-separator <saltSeparator>",
-    "specify the salt separator which will be appended to salt when verifying password. only used by SCRYPT now."
+    "specify the salt separator which will be appended to salt when verifying password. only used by SCRYPT now.",
   )
   .option("--rounds <rounds>", "specify how many rounds for hash calculation.")
   .option(
     "--mem-cost <memCost>",
-    "specify the memory cost for firebase scrypt, or cpu/memory cost for standard scrypt"
+    "specify the memory cost for firebase scrypt, or cpu/memory cost for standard scrypt",
   )
   .option("--parallelization <parallelization>", "specify the parallelization for standard scrypt.")
   .option("--block-size <blockSize>", "specify the block size (normally is 8) for standard scrypt.")
@@ -42,7 +40,7 @@ export const command = new Command("auth:import [dataFile]")
   .option(
     "--hash-input-order <hashInputOrder>",
     "specify the order of password and salt. Possible values are SALT_FIRST and PASSWORD_FIRST. " +
-      "MD5, SHA1, SHA256, SHA512, HMAC_MD5, HMAC_SHA1, HMAC_SHA256, HMAC_SHA512 support this flag."
+      "MD5, SHA1, SHA256, SHA512, HMAC_MD5, HMAC_SHA1, HMAC_SHA256, HMAC_SHA512 support this flag.",
   )
   .before(requirePermissions, ["firebaseauth.users.create", "firebaseauth.users.update"])
   .action(async (dataFile: string, options: Options) => {
@@ -83,8 +81,8 @@ export const command = new Command("auth:import [dataFile]")
               if (err) {
                 return reject(
                   new FirebaseError(
-                    `Line ${counter} (${record.join(",")}) has invalid data format: ${err}`
-                  )
+                    `Line ${counter} (${record.join(",")}) has invalid data format: ${err}`,
+                  ),
                 );
               }
               currentBatch.push(user);
@@ -103,11 +101,13 @@ export const command = new Command("auth:import [dataFile]")
         inStream.pipe(parser);
       });
     } else {
+      const { chain, pick, streamArray } = await loadStreamJson();
       userListArr = await new Promise<any[]>((resolve, reject) => {
-        const pipeline = new Chain([
-          Pick.withParser({ filter: /^users$/ }),
-          StreamArray.streamArray(),
-          ({ value }) => {
+        const pipeline = chain([
+          inStream,
+          pick.withParser({ filter: /^users$/ }),
+          streamArray(),
+          ({ value }: { value: Record<string, unknown> }) => {
             counter++;
             const user = validateUserJson(value);
             // TODO: Remove this casst once user can have an error.
@@ -122,14 +122,22 @@ export const command = new Command("auth:import [dataFile]")
             }
           },
         ]);
-        pipeline.once("error", reject);
-        pipeline.on("finish", () => {
+        let completed = false;
+        const onDone = () => {
+          if (completed) {
+            return;
+          }
+          completed = true;
           if (currentBatch.length) {
             batches.push(currentBatch);
+            currentBatch = [];
           }
           resolve(batches);
-        });
-        inStream.pipe(pipeline);
+        };
+        pipeline.once("error", reject);
+        pipeline.once("finish", onDone);
+        pipeline.once("end", onDone);
+        pipeline.resume();
       });
     }
 

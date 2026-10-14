@@ -1,6 +1,6 @@
 import * as clc from "colorette";
 
-import { User } from "../auth";
+import { User } from "../types/auth";
 import { Command } from "../command";
 import { logger } from "../logger";
 import * as utils from "../utils";
