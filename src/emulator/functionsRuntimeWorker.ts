@@ -3,7 +3,11 @@ import { randomUUID } from "crypto";
 
 import { FunctionsRuntimeInstance } from "./functionsEmulator";
 import { EmulatorLog, Emulators, FunctionsExecutionMode } from "./types";
-import { EmulatedTriggerDefinition, FunctionsRuntimeBundle } from "./functionsEmulatorShared";
+import {
+  debugHeaders,
+  EmulatedTriggerDefinition,
+  FunctionsRuntimeBundle,
+} from "./functionsEmulatorShared";
 import { EventEmitter } from "events";
 import { EmulatorLogger, ExtensionLogInfo } from "./emulatorLogger";
 import { FirebaseError } from "../error";
@@ -115,23 +119,11 @@ export class RuntimeWorker {
     this.state = RuntimeWorkerState.IDLE;
   }
 
-  sendDebugMsg(debug: FunctionsRuntimeBundle["debug"]): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.runtime.process.send(JSON.stringify(debug), (err) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve();
-        }
-      });
-    });
-  }
-
   request(
     req: http.RequestOptions,
     resp: http.ServerResponse,
     body?: unknown,
-    debug?: boolean,
+    debug?: FunctionsRuntimeBundle["debug"],
   ): Promise<void> {
     if (this.triggerKey !== FREE_WORKER_KEY) {
       this.logInfo(`Beginning execution of "${this.triggerKey}"`);
@@ -161,7 +153,7 @@ export class RuntimeWorker {
         ...this.runtime.conn.httpReqOpts(),
         method: req.method,
         path: req.path,
-        headers: req.headers,
+        headers: debug ? { ...req.headers, ...debugHeaders(debug) } : req.headers,
       };
       if (this.timeoutSeconds) {
         reqOpts.timeout = this.timeoutSeconds * 1000;
@@ -366,7 +358,7 @@ export class RuntimeWorkerPool {
    * @param req Request to send to the trigger.
    * @param resp Response to proxy the response from the worker.
    * @param body Request body.
-   * @param debug Debug payload to send prior to making request.
+   * @param debug Function to run, when the worker serves every trigger in debug mode.
    */
   async submitRequest(
     triggerId: string,
@@ -383,10 +375,7 @@ export class RuntimeWorkerPool {
         "Internal Error: can't call submitRequest without checking for idle workers",
       );
     }
-    if (debug) {
-      await worker.sendDebugMsg(debug);
-    }
-    return worker.request(req, resp, body, !!debug);
+    return worker.request(req, resp, body, debug);
   }
 
   getIdleWorker(triggerId: string | undefined, runtime?: Runtime): RuntimeWorker | undefined {
