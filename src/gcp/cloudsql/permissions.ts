@@ -43,8 +43,8 @@ export function ownerRolePermissions(
     // on existing databases, then grant cloudsqlsuperuser to firebaseowner so developer
     // migrations have full DDL privileges without owning firebasesuperuser system objects.
     // firebasesuperuser retains direct membership via WITH ADMIN from CREATE ROLE.
-    `REVOKE "${firebaseOwnerRole}" FROM "cloudsqlsuperuser"`,
-    `GRANT "cloudsqlsuperuser" TO "${firebaseOwnerRole}"`,
+    `REVOKE "${firebaseOwnerRole}" FROM "${CLOUDSQL_SUPER_USER}"`,
+    `GRANT "${CLOUDSQL_SUPER_USER}" TO "${firebaseOwnerRole}"`,
 
     `CREATE SCHEMA IF NOT EXISTS "${schema}" AUTHORIZATION "${firebaseOwnerRole}"`,
     `ALTER SCHEMA "${schema}" OWNER TO "${firebaseOwnerRole}"`,
@@ -65,7 +65,7 @@ export function writerRolePermissions(
   return [
     createRoleBypassRLS(firebaseWriterRole, superuser),
 
-    `GRANT "${firebaseWriterRole}" TO "cloudsqlsuperuser"`,
+    `GRANT "${firebaseWriterRole}" TO "${CLOUDSQL_SUPER_USER}"`,
 
     `GRANT USAGE ON SCHEMA "${schema}" TO "${firebaseWriterRole}"`,
 
@@ -92,7 +92,7 @@ export function readerRolePermissions(
   return [
     createRoleBypassRLS(firebaseReaderRole, superuser),
 
-    `GRANT "${firebaseReaderRole}" TO "cloudsqlsuperuser"`,
+    `GRANT "${firebaseReaderRole}" TO "${CLOUDSQL_SUPER_USER}"`,
 
     `GRANT USAGE ON SCHEMA "${schema}" TO "${firebaseReaderRole}"`,
 
