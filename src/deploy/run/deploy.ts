@@ -213,7 +213,8 @@ async function buildImage(
   const { serviceId, region } = svc.config;
   await artifactregistry.ensureDockerRepository(projectId, region, "cloud-run-source-deploy");
   const imageUri = `${region}-docker.pkg.dev/${projectId}/cloud-run-source-deploy/${serviceId}:${Date.now()}`;
-  logLabeledBullet("run", `Building service ${serviceId} in ${region}...`);
+  const builderDesc = svc.baseImage ? `base image ${svc.baseImage}` : "universal builder";
+  logLabeledBullet("run", `Building service ${serviceId} in ${region} (${builderDesc})...`);
   const buildEnv = svc.buildEnv || {};
   const env = {
     // Secrets aren't plain values. They're passed to Cloud Build by reference below.
@@ -238,6 +239,9 @@ async function buildImage(
   logger.debug(`Cloud Build config for service ${serviceId}: ${JSON.stringify(build)}`);
   await grantBuildSecretAccess(projectId, region, Object.values(secrets));
   const created = await cloudbuild.createBuild(projectId, region, build);
+  if (created.logUrl) {
+    logLabeledBullet("run", `Build logs: ${created.logUrl}`);
+  }
   await cloudbuild.waitForBuild(created);
   return imageUri;
 }
