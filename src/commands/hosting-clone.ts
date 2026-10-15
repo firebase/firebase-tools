@@ -98,12 +98,14 @@ To clone across different Firebase projects:
       resolveProjectId(targetSiteId, targetProjectId, options),
     ]);
 
+    const ensurePromises: Promise<void>[] = [];
     if (sourceProjectId !== defaultProjectId) {
-      await ensure(sourceProjectId, hostingApiOrigin(), "hosting", true);
+      ensurePromises.push(ensure(sourceProjectId, hostingApiOrigin(), "hosting", true));
     }
     if (targetProjectId !== defaultProjectId && targetProjectId !== sourceProjectId) {
-      await ensure(targetProjectId, hostingApiOrigin(), "hosting", true);
+      ensurePromises.push(ensure(targetProjectId, hostingApiOrigin(), "hosting", true));
     }
+    await Promise.all(ensurePromises);
 
     targetChannelId = normalizeName(targetChannelId);
     if (sourceChannelId) {

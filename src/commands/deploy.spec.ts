@@ -55,7 +55,7 @@ describe("deploy command hosting API enablement", () => {
     command as unknown as {
       befores: Array<{ fn: (options: Options) => Promise<void>; args: unknown[] }>;
     }
-  ).befores[3];
+  ).befores.find((b) => b.fn.toString().includes("requireHostingSite"));
 
   let ensureHostingApiStub: sinon.SinonStub;
   let requireHostingSiteStub: sinon.SinonStub;
@@ -70,6 +70,9 @@ describe("deploy command hosting API enablement", () => {
   });
 
   it("ensures hosting API is enabled when hosting is in filtered targets", async () => {
+    if (!hostingBefore) {
+      throw new Error("Could not find hosting before hook on deploy command");
+    }
     const options = {
       project: "my-project",
       filteredTargets: ["hosting"],
@@ -87,6 +90,9 @@ describe("deploy command hosting API enablement", () => {
   });
 
   it("does not check hosting API when hosting is not in filtered targets", async () => {
+    if (!hostingBefore) {
+      throw new Error("Could not find hosting before hook on deploy command");
+    }
     const options = {
       project: "my-project",
       filteredTargets: ["firestore"],
