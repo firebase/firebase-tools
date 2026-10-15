@@ -7,11 +7,10 @@ import { Command } from "../command";
 import { Options } from "../options";
 import { needProjectId, needProjectNumber } from "../projectUtils";
 import { requirePermissions } from "../requirePermissions";
-import { isFirebaseManaged } from "../deploymentTool";
 import { logBullet, logSuccess } from "../utils";
 import { confirm } from "../prompt";
-import { destroySecretVersion } from "../gcp/secretManager";
 import { requireAuth } from "../requireAuth";
+import { FirebaseError } from "../error";
 
 export const command = new Command("functions:secrets:prune")
   .withForce("destroy unused secrets without prompt")
@@ -30,10 +29,11 @@ export const command = new Command("functions:secrets:prune")
 
     logBullet("Loading secrets...");
 
-    const haveBackend = await backend.existingBackend({ projectId } as args.Context);
-    const haveEndpoints = backend
-      .allEndpoints(haveBackend)
-      .filter((e) => isFirebaseManaged(e.labels || []));
+    const context = { projectId } as args.Context;
+    const haveBackend = await backend.existingBackend(context);
+    backend.assertAllRegionsReachable(context);
+    // Every function counts as a consumer, whatever tool deployed it.
+    const haveEndpoints = backend.allEndpoints(haveBackend);
 
     const pruned = await secrets.pruneSecrets({ projectNumber, projectId }, haveEndpoints);
 
@@ -48,14 +48,17 @@ export const command = new Command("functions:secrets:prune")
         pruned.map((sv) => `${sv.secret}@${sv.version}`).join("\n\t"),
     );
 
-    const confirmed =
-      options.destroy ||
-      (await confirm({
-        message: `Do you want to destroy unused secret versions?`,
-        default: true,
-        force: options.force,
-        nonInteractive: options.nonInteractive,
-      }));
+    if (options.nonInteractive && !options.force) {
+      throw new FirebaseError(
+        "Refusing to destroy secret versions in non-interactive mode. Pass --force to destroy them without confirmation.",
+      );
+    }
+    const confirmed = await confirm({
+      message: `Do you want to destroy unused secret versions?`,
+      default: true,
+      force: options.force,
+      nonInteractive: options.nonInteractive,
+    });
     if (!confirmed) {
       logBullet(
         "Run the following commands to destroy each unused secret version:\n\t" +
@@ -65,6 +68,18 @@ export const command = new Command("functions:secrets:prune")
       );
       return;
     }
-    await Promise.all(pruned.map((sv) => destroySecretVersion(projectId, sv.secret, sv.version)));
+    const { destroyed, erred } = await secrets.destroySecretVersions(pruned);
+    if (destroyed.length) {
+      logBullet(
+        "Destroyed secret versions:\n\t" +
+          destroyed.map((sv) => `${sv.secret}@${sv.version}`).join("\n\t"),
+      );
+    }
+    if (erred.length) {
+      throw new FirebaseError(
+        `Failed to destroy ${erred.length} secret versions:\n\t` +
+          erred.map((e) => e.message).join("\n\t"),
+      );
+    }
     logSuccess("Destroyed all unused secrets!");
   });
