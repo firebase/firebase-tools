@@ -1,4 +1,6 @@
+import { randomUUID } from "crypto";
 import { tmpdir } from "os";
+import * as path from "path";
 import * as utils from "../../utils";
 import { Constants } from "../constants";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../types";
@@ -47,6 +49,15 @@ export class StorageEmulator implements EmulatorInstance {
   private _buckets: Map<string, CloudStorageBucketMetadata> = new Map();
   private _cloudFunctions: StorageCloudFunctions;
   private _persistence: Persistence;
+  // Each instance needs its own directory: stop() deletes it, which would otherwise wipe the blobs
+  // of any other Storage emulator running on the same machine.
+  private readonly persistenceTmpDir = path.join(
+    tmpdir(),
+    "firebase",
+    "storage",
+    "blobs",
+    randomUUID(),
+  );
   private _uploadService: UploadService;
   private _storageLayer: StorageLayer;
   /** StorageLayer that validates requests solely based on admin credentials.  */
@@ -153,6 +164,6 @@ export class StorageEmulator implements EmulatorInstance {
   }
 
   private getPersistenceTmpDir(): string {
-    return `${tmpdir()}/firebase/storage/blobs`;
+    return this.persistenceTmpDir;
   }
 }
