@@ -13,3 +13,4 @@
 - Updated the Firebase SQL Connect local toolkit to v3.4.23, which includes the following changes:
   - Updated the Golang dependency version to 1.26.9.
   - Improved Native SQL query validation, wrapper aliasing, and line-comment handling to support the SQL editor in Firebase SQL.
+- Updates Hosting's `superstatic` dependency to v11. (#11292)
