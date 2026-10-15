@@ -168,41 +168,60 @@ describe("run prepare", () => {
         FIREBASE_WEBAPP_CONFIG: JSON.stringify(webConfig),
         FIREBASE_CONFIG: firebaseConfig,
       });
-      // The default service account already has the role.
-      expect(hasRolesStub).to.have.been.calledWith("my-project", defaultSa, [adminSdkRole]);
-      expect(addRolesStub).not.to.have.been.called;
+      // The app was already linked, so this deploy doesn't check IAM again.
+      expect(hasRolesStub).not.to.have.been.called;
     });
 
-    it("grants the Admin SDK role to the default service account if it's missing", async () => {
+    it("says how to grant the Admin SDK role when it links an app, without granting it", async () => {
+      const warnStub = sinon.stub(utils, "logLabeledWarning");
       hasRolesStub.resolves(false);
 
       await prepareRun(web, { context: { appId } });
 
-      expect(addRolesStub).to.have.been.calledWith("my-project", defaultSa, [adminSdkRole]);
+      expect(hasRolesStub).to.have.been.calledWith("my-project", defaultSa, [adminSdkRole]);
+      expect(warnStub).to.have.been.calledWithMatch(
+        "run",
+        `${defaultSa} doesn't have ${adminSdkRole}. Service web runs as this account`,
+      );
+      expect(warnStub).to.have.been.calledWithMatch(
+        "run",
+        `gcloud projects add-iam-policy-binding my-project --member=serviceAccount:${defaultSa} ` +
+          `--role=${adminSdkRole} --condition=None`,
+      );
+      expect(addRolesStub).not.to.have.been.called;
     });
 
-    it("checks and grants the Admin SDK role on a custom service account", async () => {
+    it("checks the service's own service account, and never changes its roles", async () => {
       const customSa = "web@my-project.iam.gserviceaccount.com";
-      getServiceStub.resolves(
-        linked({ ...liveWeb, template: { ...liveWeb.template, serviceAccount: customSa } }),
-      );
+      getServiceStub.resolves({
+        ...liveWeb,
+        template: { ...liveWeb.template, serviceAccount: customSa },
+      });
       hasRolesStub.resolves(false);
 
-      await prepareRun(web);
+      await prepareRun(web, { context: { appId } });
 
       expect(hasRolesStub).to.have.been.calledWith("my-project", customSa, [adminSdkRole]);
-      expect(addRolesStub).to.have.been.calledWith("my-project", customSa, [adminSdkRole]);
+      expect(addRolesStub).not.to.have.been.called;
     });
 
-    it("warns and continues if it isn't allowed to grant the Admin SDK role", async () => {
+    it("says how to grant the role, and keeps deploying, if it can't check the role", async () => {
       const warnStub = sinon.stub(utils, "logLabeledWarning");
-      hasRolesStub.resolves(false);
-      addRolesStub.rejects({ status: 403 });
+      hasRolesStub.rejects(
+        new FirebaseError("The caller does not have permission", { status: 403 }),
+      );
 
       const [svc] = await prepareRun(web, { context: { appId } });
 
       expect(svc.autoInit?.appId).to.equal(appId);
-      expect(warnStub).to.have.been.calledWithMatch("run", /or ask an admin to grant this role/);
+      expect(warnStub).to.have.been.calledWithMatch(
+        "run",
+        `Couldn't check whether ${defaultSa} has ${adminSdkRole} (The caller does not have permission)`,
+      );
+      expect(warnStub).to.have.been.calledWithMatch(
+        "run",
+        "gcloud projects add-iam-policy-binding",
+      );
     });
 
     it("lets the context set or clear the linked app", async () => {

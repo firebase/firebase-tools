@@ -1,6 +1,6 @@
 import { webApps } from "../../apphosting/app";
 import { getAutoinitEnvVars } from "../../apphosting/utils";
-import { FirebaseError, getErrMsg, getError, getErrStatus } from "../../error";
+import { FirebaseError, getErrMsg, getError } from "../../error";
 import { WebConfig } from "../../fetchWebSetup";
 import { RunSingle } from "../../firebaseConfig";
 import { getDefaultServiceAccount } from "../../gcp/computeEngine";
@@ -88,7 +88,10 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
     // Firebase SDKs auto-initialize from the app's config. The build gets both config env vars (the
     // build env annotation can override them), and the container gets FIREBASE_CONFIG.
     const autoInitEnv = getAutoinitEnvVars(await getWebAppConfig(context, config, appId));
-    await ensureAutoInitIam(context, existing);
+    if (appId !== existing?.annotations?.[FIREBASE_APP_ANNOTATION]) {
+      // This deploy links the app, so check now whether Admin SDKs will be able to use it.
+      await checkAdminSdkRole(context, config, existing);
+    }
     svc.autoInit = { appId, firebaseConfig: autoInitEnv.FIREBASE_CONFIG };
     svc.buildEnv = { ...autoInitEnv, ...buildEnv };
   }
@@ -123,45 +126,40 @@ async function getWebAppConfig(
 }
 
 /**
- * Ensures the service's runtime service account has the IAM role needed for Firebase Admin SDK
- * auto-initialization.
+ * Warns, with the command to fix it, if the service's runtime service account might not be allowed
+ * to make Firebase Admin SDK calls. It only reads IAM: the role is project-wide, and the account
+ * (by default, the Compute Engine default service account) may be shared by other workloads, so
+ * granting it is left to the user.
  */
-async function ensureAutoInitIam(
+async function checkAdminSdkRole(
   context: Context,
+  config: RunSingle,
   existing: runv2.Service | undefined,
 ): Promise<void> {
   const serviceAccount =
     existing?.template?.serviceAccount ||
     (await getDefaultServiceAccount(await getProjectNumber(context)));
+  let problem = "";
   try {
-    if (
-      await resourceManager.serviceAccountHasRoles(
-        context.projectId,
-        serviceAccount,
-        [ADMIN_SDK_ROLE],
-        /* skipAccountLookup= */ true,
-      )
-    ) {
-      return;
-    }
-    logLabeledWarning(
-      "run",
-      `Service account ${serviceAccount} is missing role ${ADMIN_SDK_ROLE} required for Firebase Admin SDK auto-initialization. Granting ${ADMIN_SDK_ROLE} to ${serviceAccount}...`,
-    );
-    await resourceManager.addServiceAccountToRoles(
+    const hasRole = await resourceManager.serviceAccountHasRoles(
       context.projectId,
       serviceAccount,
       [ADMIN_SDK_ROLE],
       /* skipAccountLookup= */ true,
     );
-  } catch (err: unknown) {
-    if (getErrStatus(err) === 403) {
-      logLabeledWarning(
-        "run",
-        `Failed to grant ${ADMIN_SDK_ROLE} to ${serviceAccount}. Make sure you have the resourcemanager.projects.setIamPolicy permission, or ask an admin to grant this role.`,
-      );
-    } else {
-      throw err;
+    if (!hasRole) {
+      problem = `${serviceAccount} doesn't have ${ADMIN_SDK_ROLE}`;
     }
+  } catch (err: unknown) {
+    problem = `Couldn't check whether ${serviceAccount} has ${ADMIN_SDK_ROLE} (${getErrMsg(err)})`;
+  }
+  if (problem) {
+    logLabeledWarning(
+      "run",
+      `${problem}. Service ${config.serviceId} runs as this account, so if its Firebase Admin SDK ` +
+        `calls fail with permission errors, grant the role with:\n` +
+        `  gcloud projects add-iam-policy-binding ${context.projectId} ` +
+        `--member=serviceAccount:${serviceAccount} --role=${ADMIN_SDK_ROLE} --condition=None`,
+    );
   }
 }
