@@ -88,7 +88,8 @@ describe("hosting prepare", () => {
     siteConfig.webFramework = "fake-framework";
 
     // Edit the in-memory config to add a web framework
-    hostingStub.createVersion.callsFake((siteId, version) => {
+    hostingStub.createVersion.callsFake((projectId, siteId, version) => {
+      expect(projectId).to.equal("project");
       expect(siteId).to.equal(siteConfig.site);
       expect(version.status).to.equal("CREATED");
       expect(version.labels).to.deep.equal({
@@ -126,7 +127,8 @@ describe("hosting prepare", () => {
     // Do not set a web framework on siteConfig
 
     // Edit the in-memory config to add a web framework
-    hostingStub.createVersion.callsFake((siteId, version) => {
+    hostingStub.createVersion.callsFake((projectId, siteId, version) => {
+      expect(projectId).to.equal("project");
       expect(siteId).to.equal(siteConfig.site);
       expect(version.status).to.equal("CREATED");
       // Note: we're missing the web framework label

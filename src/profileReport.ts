@@ -7,8 +7,6 @@ import * as readline from "readline";
 import { FirebaseError } from "./error";
 import { logger } from "./logger";
 
-const DATA_LINE_REGEX = /^data: /;
-
 const BANDWIDTH_NOTE =
   "NOTE: The numbers reported here are only estimates of the data" +
   " payloads from read operations. They are NOT a valid measure of your bandwidth bill.";
@@ -25,11 +23,14 @@ const COLLAPSE_WILDCARD = ["$wildcard"];
 
 // 'static' helper methods
 
+/**
+ *
+ */
 export function extractJSON(line: string, input: any): string | null {
-  if (!input && !DATA_LINE_REGEX.test(line)) {
+  if (!input && !line.startsWith("data: ")) {
     return null;
   } else if (!input) {
-    line = line.substring(5);
+    line = line.substring(6);
   }
   try {
     return JSON.parse(line);
@@ -38,10 +39,16 @@ export function extractJSON(line: string, input: any): string | null {
   }
 }
 
+/**
+ *
+ */
 export function pathString(path: string[]): string {
   return `/${path ? path.join("/") : ""}`;
 }
 
+/**
+ *
+ */
 export function formatNumber(num: number) {
   const parts = num.toFixed(2).split(".");
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -51,6 +58,9 @@ export function formatNumber(num: number) {
   return parts.join(".");
 }
 
+/**
+ *
+ */
 export function formatBytes(bytes: number) {
   const threshold = 1000;
   if (Math.round(bytes) < threshold) {
@@ -66,6 +76,9 @@ export function formatBytes(bytes: number) {
   return formatNumber(formattedBytes) + " " + units[u];
 }
 
+/**
+ *
+ */
 export function extractReadableIndex(query: Record<string, any>): string {
   if (query.orderBy) {
     return query.orderBy;
@@ -542,8 +555,14 @@ export class ProfileReport {
           }
         }
       });
-      rl.on("error", () => {
-        reject();
+      rl.on("error", (err) => {
+        reject(
+          err instanceof Error
+            ? err
+            : new FirebaseError("There was an error creating the report.", {
+                original: err as any,
+              }),
+        );
       });
       outStream.on("error", () => {
         errored = true;
