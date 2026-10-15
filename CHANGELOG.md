@@ -1,0 +1,1 @@
+- Updates Hosting's `superstatic` dependency to v11. (#11292)
