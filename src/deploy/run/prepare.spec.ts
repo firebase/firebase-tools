@@ -163,7 +163,7 @@ describe("run prepare", () => {
 
       expect(getWebAppStub).to.have.been.calledWith("my-project", appId, "web");
       expect(getAppConfigStub).to.have.been.calledWith(appId, managementApps.AppPlatform.WEB);
-      expect(svc).to.include({ appId, firebaseConfig });
+      expect(svc.autoInit).to.deep.equal({ appId, firebaseConfig });
       expect(svc.buildEnv).to.deep.equal({
         FIREBASE_WEBAPP_CONFIG: JSON.stringify(webConfig),
         FIREBASE_CONFIG: firebaseConfig,
@@ -201,7 +201,7 @@ describe("run prepare", () => {
 
       const [svc] = await prepareRun(web, { context: { appId } });
 
-      expect(svc.appId).to.equal(appId);
+      expect(svc.autoInit?.appId).to.equal(appId);
       expect(warnStub).to.have.been.calledWithMatch("run", /or ask an admin to grant this role/);
     });
 
@@ -209,10 +209,10 @@ describe("run prepare", () => {
       getServiceStub.resolves(linked(liveWeb));
 
       const [withNewApp] = await prepareRun(web, { context: { appId: "1:123:web:def" } });
-      expect(withNewApp.appId).to.equal("1:123:web:def");
+      expect(withNewApp.autoInit?.appId).to.equal("1:123:web:def");
 
       const [cleared] = await prepareRun(web, { context: { appId: null } });
-      expect(cleared).not.to.have.any.keys("appId", "firebaseConfig", "buildEnv");
+      expect(cleared).not.to.have.any.keys("autoInit", "buildEnv");
     });
 
     it("lets the build env annotation override the app's config at build time only", async () => {
@@ -222,7 +222,7 @@ describe("run prepare", () => {
       const [svc] = await prepareRun(web);
 
       expect(svc.buildEnv).to.include({ FIREBASE_CONFIG: override });
-      expect(svc.firebaseConfig).to.equal(firebaseConfig);
+      expect(svc.autoInit?.firebaseConfig).to.equal(firebaseConfig);
     });
 
     it("fails if the linked app can't be looked up", async () => {

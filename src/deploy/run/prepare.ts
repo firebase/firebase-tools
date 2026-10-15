@@ -89,8 +89,7 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
     // build env annotation can override them), and the container gets FIREBASE_CONFIG.
     const autoInitEnv = getAutoinitEnvVars(await getWebAppConfig(context, config, appId));
     await ensureAutoInitIam(context, existing);
-    svc.appId = appId;
-    svc.firebaseConfig = autoInitEnv.FIREBASE_CONFIG;
+    svc.autoInit = { appId, firebaseConfig: autoInitEnv.FIREBASE_CONFIG };
     svc.buildEnv = { ...autoInitEnv, ...buildEnv };
   }
   return svc;

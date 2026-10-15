@@ -132,7 +132,7 @@ describe("run deploy", () => {
     } as unknown as runv2.Service;
 
     it("is saved on a new service", async () => {
-      await deployOne({ config: web, appId: "1:123:web:abc" });
+      await deployOne({ config: web, autoInit: { appId: "1:123:web:abc", firebaseConfig: "{}" } });
 
       expect(createServiceStub).to.have.been.calledWithMatch("my-project", "us-central1", "web", {
         annotations: { [APP_ID]: "1:123:web:abc" },
@@ -140,7 +140,11 @@ describe("run deploy", () => {
     });
 
     it("replaces the app saved on an existing service", async () => {
-      await deployOne({ config: web, existing: linkedWeb, appId: "1:123:web:def" });
+      await deployOne({
+        config: web,
+        existing: linkedWeb,
+        autoInit: { appId: "1:123:web:def", firebaseConfig: "{}" },
+      });
 
       expect(updateServiceStub).to.have.been.calledWithMatch(
         { annotations: { team: "frontend", [APP_ID]: "1:123:web:def" } },
@@ -155,7 +159,11 @@ describe("run deploy", () => {
     });
 
     it("keeps the service's annotations as they are if the app didn't change", async () => {
-      await deployOne({ config: web, existing: linkedWeb, appId: "1:123:web:abc" });
+      await deployOne({
+        config: web,
+        existing: linkedWeb,
+        autoInit: { appId: "1:123:web:abc", firebaseConfig: "{}" },
+      });
 
       expect(updateServiceStub.firstCall.args[0].annotations).to.deep.equal({
         team: "frontend",
@@ -358,7 +366,11 @@ describe("run deploy", () => {
       const linked = { ...withConfig("old"), annotations: { [APP_ID]: "1:123:web:abc" } };
 
       it("is set from the linked app's current config", () => {
-        const svc = { config: web, existing: linked, firebaseConfig: "current" };
+        const svc = {
+          config: web,
+          existing: linked,
+          autoInit: { appId: "1:123:web:abc", firebaseConfig: "current" },
+        };
 
         const template = revisionTemplate(svc, image);
 

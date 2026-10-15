@@ -269,10 +269,10 @@ export function revisionTemplate(
   // FIREBASE_WEBAPP_CONFIG is only needed at build time, so it isn't set on the container.
   const wasLinked = svc.existing?.annotations?.[FIREBASE_APP_ANNOTATION] !== undefined;
   const otherEnv = (container.env || []).filter((e) => e.name !== "FIREBASE_CONFIG");
-  if (svc.firebaseConfig !== undefined) {
+  if (svc.autoInit) {
     // An app is linked. Always rewrite FIREBASE_CONFIG from the app's current config, so that
     // changes like enabling Storage reach the service.
-    container.env = [...otherEnv, { name: "FIREBASE_CONFIG", value: svc.firebaseConfig }];
+    container.env = [...otherEnv, { name: "FIREBASE_CONFIG", value: svc.autoInit.firebaseConfig }];
   } else if (wasLinked) {
     // This deploy unlinks the app (--clear-app): the service had an app, and the deploy has none.
     // Remove the FIREBASE_CONFIG that was set for the app.
@@ -329,8 +329,8 @@ export function localBuildTemplate(
  */
 function serviceAnnotationsToDeploy(svc: ServiceDeploy): Record<string, string> {
   const annotations = { ...svc.existing?.annotations };
-  if (svc.appId !== undefined) {
-    annotations[FIREBASE_APP_ANNOTATION] = svc.appId;
+  if (svc.autoInit) {
+    annotations[FIREBASE_APP_ANNOTATION] = svc.autoInit.appId;
   } else {
     delete annotations[FIREBASE_APP_ANNOTATION];
   }
