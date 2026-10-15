@@ -1,0 +1,1 @@
+- Fixed `firebase deploy --only functions` requiring permission to act as the App Engine default service account. The deploy now checks the service accounts the functions will actually run as (#11227).
