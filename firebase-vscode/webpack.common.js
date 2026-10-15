@@ -167,7 +167,8 @@ const extensionConfig = {
             // Stub out these runtime requirements
             // TODO: copy the dependencies into dist instead of removing them via search/replace.
             {
-              search: 'const mware = require("./" + name)(spec, config);',
+              search:
+                'const mware = require("./" + _.kebabCase(name))(spec, config);',
               replace: 'return "";',
             },
           ],
