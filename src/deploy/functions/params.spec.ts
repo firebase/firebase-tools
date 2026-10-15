@@ -57,6 +57,21 @@ describe("CEL resolution", () => {
     ).to.equal("asdf jkl;");
   });
 
+  it("can interpolate a nested ternary into a CEL expression", () => {
+    const ternary =
+      '{{ params.PROJECT_ID == "xxx" ? "aaa" : params.PROJECT_ID == "yyy" ? "bbb" : "ccc" }}';
+    const projectId = {
+      PROJECT_ID: new params.ParamValue("yyy", false, { string: true }),
+    };
+    expect(params.resolveString(`sa-${ternary}@proj.iam`, projectId)).to.equal("sa-bbb@proj.iam");
+    expect(
+      params.resolveString(`${ternary}/{{ params.REGION }}`, {
+        ...projectId,
+        REGION: new params.ParamValue("west1", false, { string: true }),
+      }),
+    ).to.equal("bbb/west1");
+  });
+
   it("throws instead of coercing a param value with the wrong type", () => {
     expect(() =>
       params.resolveString("{{ params.foo }}", {
