@@ -75,7 +75,7 @@ export async function onboardCrashlyticsWeb(
     ensure(projectId, CRASHLYTICS_TELEMETRY_SERVICE, "crashlytics", false),
     ensure(projectId, "firebasetelemetryadmin.googleapis.com", "crashlytics", false),
   ];
-  if (experiments.isEnabled("crashlyticsWebTrace")) {
+  if (experiments.isEnabled("crashlyticsWebBreadcrumbs")) {
     requiredApis.push(ensure(projectId, "cloudtrace.googleapis.com", "crashlytics", false));
   }
   await Promise.all(requiredApis);
@@ -130,7 +130,7 @@ export async function onboardCrashlyticsWeb(
   );
   logLabeledSuccess("crashlytics", "Cloud Logging routing sink configured.");
 
-  if (experiments.isEnabled("crashlyticsWebTrace")) {
+  if (experiments.isEnabled("crashlyticsWebBreadcrumbs")) {
     logLabeledBullet("crashlytics", "Provisioning Cloud Trace storage...");
     try {
       await provisionTraceStorage(projectId);
