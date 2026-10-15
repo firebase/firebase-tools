@@ -291,5 +291,11 @@
     "@google-cloud/cloud-sql-connector": {
       "uuid": "^11.1.1"
     }
+  },
+  "allowScripts": {
+    "esbuild": true,
+    "protobufjs": false,
+    "puppeteer": false,
+    "re2": true
   }
 }
