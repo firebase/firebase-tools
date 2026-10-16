@@ -49,50 +49,59 @@ const WEBPACK_LAYERS_NAMES = {
   /**
    * The browser client bundle layer for actions.
    */ actionBrowser: "action-browser",
-  apiNode: "api-node",
-  apiEdge: "api-edge",
+  /**
+   * The layer for the API routes.
+   */ api: "api",
   /**
    * The layer for the middleware code.
    */ middleware: "middleware",
-  instrument: "instrument",
   /**
    * The layer for assets on the edge.
    */ edgeAsset: "edge-asset",
   /**
    * The browser client bundle layer for App directory.
    */ appPagesBrowser: "app-pages-browser",
-  pagesDirBrowser: "pages-dir-browser",
-  pagesDirEdge: "pages-dir-edge",
-  pagesDirNode: "pages-dir-node",
+  /**
+   * The server bundle layer for metadata routes.
+   */ appMetadataRoute: "app-metadata-route",
+  /**
+   * The layer for the server bundle for App Route handlers.
+   */ appRouteHandler: "app-route-handler",
 } as const;
 
 // This is copied from Next.js source code to keep WEBPACK_LAYERS in sync with the Next.js definition.
 export const WEBPACK_LAYERS: typeof NEXTJS_WEBPACK_LAYERS = {
   ...WEBPACK_LAYERS_NAMES,
+  pagesDirBrowser: "pages-dir-browser",
+  pagesDirEdge: "pages-dir-edge",
+  pagesDirNode: "pages-dir-node",
+  apiNode: "api-node",
+  apiEdge: "api-edge",
+  instrument: "instrument",
   GROUP: {
     builtinReact: [WEBPACK_LAYERS_NAMES.reactServerComponents, WEBPACK_LAYERS_NAMES.actionBrowser],
     serverOnly: [
+      WEBPACK_LAYERS_NAMES.middleware,
       WEBPACK_LAYERS_NAMES.reactServerComponents,
       WEBPACK_LAYERS_NAMES.actionBrowser,
-      WEBPACK_LAYERS_NAMES.instrument,
-      WEBPACK_LAYERS_NAMES.middleware,
+      "instrument",
     ],
-    neutralTarget: [WEBPACK_LAYERS_NAMES.apiNode, WEBPACK_LAYERS_NAMES.apiEdge],
+    neutralTarget: ["api-node", "api-edge"],
     clientOnly: [WEBPACK_LAYERS_NAMES.serverSideRendering, WEBPACK_LAYERS_NAMES.appPagesBrowser],
     bundled: [
-      WEBPACK_LAYERS_NAMES.reactServerComponents,
-      WEBPACK_LAYERS_NAMES.actionBrowser,
-      WEBPACK_LAYERS_NAMES.serverSideRendering,
-      WEBPACK_LAYERS_NAMES.appPagesBrowser,
       WEBPACK_LAYERS_NAMES.shared,
-      WEBPACK_LAYERS_NAMES.instrument,
       WEBPACK_LAYERS_NAMES.middleware,
+      WEBPACK_LAYERS_NAMES.reactServerComponents,
+      WEBPACK_LAYERS_NAMES.serverSideRendering,
+      WEBPACK_LAYERS_NAMES.actionBrowser,
+      "instrument",
+      WEBPACK_LAYERS_NAMES.appPagesBrowser,
     ],
     appPages: [
       WEBPACK_LAYERS_NAMES.reactServerComponents,
       WEBPACK_LAYERS_NAMES.serverSideRendering,
-      WEBPACK_LAYERS_NAMES.appPagesBrowser,
       WEBPACK_LAYERS_NAMES.actionBrowser,
+      WEBPACK_LAYERS_NAMES.appPagesBrowser,
     ],
   },
 };
