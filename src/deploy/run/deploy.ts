@@ -2,7 +2,11 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import { CLOUD_RUN_SIZE_LIMIT_BYTES } from "../../apphosting/constants";
-import { localBuild, validateLocalBuildNodeVersion } from "../../apphosting/localbuilds";
+import {
+  googleBuildable,
+  localBuild,
+  validateLocalBuildNodeVersion,
+} from "../../apphosting/localbuilds";
 import { FirebaseError, getErrMsg } from "../../error";
 import { AppHostingSingle, RunSingle } from "../../firebaseConfig";
 import { Backend } from "../../gcp/apphosting";
@@ -58,7 +62,7 @@ async function deployRemoteBuild(
 ): Promise<void> {
   const { projectId } = context;
   const source = await uploadSource(projectId, options, svc.config);
-  const image = await buildImage(projectId, svc, source);
+  const image = await buildImage(projectId, options, svc, source);
   const template = revisionTemplate(svc, image, options.message as string | undefined);
   svc.deployed = await rollOut(projectId, svc, template);
 }
@@ -132,7 +136,10 @@ async function buildLocally(
   return { outputFiles, runCommand: buildConfig.runCommand, env };
 }
 
-/** Zips the service's source and uploads it to the region's source bucket. */
+/**
+ * Zips the whole project, like App Hosting does, and uploads it to the region's source bucket. An
+ * app in a monorepo needs the monorepo's root files, like its lockfile and shared packages.
+ */
 async function uploadSource(
   projectId: string,
   options: Options,
@@ -140,11 +147,10 @@ async function uploadSource(
 ): Promise<runv2.StorageSource> {
   const { serviceId, region } = config;
   const bucketName = await sourceBucket(projectId, options, region);
-  const cfg = toAppHostingConfig(config);
   // The zip is a tmp file, so it's deleted when the CLI exits.
   const archive = await createSourceDeployArchive(
-    cfg,
-    path.join(options.config.projectDir, cfg.rootDir),
+    toAppHostingConfig(config),
+    options.config.projectDir,
   );
   logLabeledBullet("run", `Uploading source for service ${serviceId} in ${region}...`);
   const { bucket, object } = await gcs.uploadObject(
@@ -204,13 +210,17 @@ async function sourceBucket(projectId: string, options: Options, region: string)
 /** Builds the uploaded source into an image on Cloud Build and returns the image's URI. */
 async function buildImage(
   projectId: string,
+  options: Options,
   svc: ServiceDeploy,
   source: runv2.StorageSource,
 ): Promise<string> {
-  const { serviceId, region } = svc.config;
+  const { serviceId, region, rootDir } = svc.config;
   await artifactregistry.ensureDockerRepository(projectId, region, "cloud-run-source-deploy");
   const imageUri = `${region}-docker.pkg.dev/${projectId}/cloud-run-source-deploy/${serviceId}:${Date.now()}`;
   logLabeledBullet("run", `Building service ${serviceId} in ${region}...`);
+  // The upload is the whole project, so tell the buildpacks which folder is the app, the same way
+  // App Hosting's local builds do.
+  const buildable = googleBuildable(options.config.projectDir, rootDir);
   const buildpackBuild: runv2.BuildpacksBuild = {
     environmentVariables: {
       // Cloud Build only takes plain values, so pass only the non-secret env vars. Prepare already
@@ -219,6 +229,7 @@ async function buildImage(
       // Use App Hosting's buildpacks, which need to know where to write the output bundle.
       X_GOOGLE_TARGET_PLATFORM: "fah",
       FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
+      ...(buildable ? { GOOGLE_BUILDABLE: buildable } : {}),
     },
   };
   // Only images built for a base image can have their base image updated automatically.
