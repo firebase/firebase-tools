@@ -270,6 +270,30 @@ describe("validate", () => {
       );
     });
 
+    it("names every function with too little CPU for more than 1GiB of memory", () => {
+      const endpoints: backend.Endpoint[] = [
+        { ...ENDPOINT_BASE, id: "big1", platform: "gcfv2", cpu: 0.5, availableMemoryMb: 2048 },
+        { ...ENDPOINT_BASE, id: "big2", platform: "gcfv2", cpu: 0.99, availableMemoryMb: 4096 },
+        { ...ENDPOINT_BASE, id: "atLimit", platform: "gcfv2", cpu: 0.5, availableMemoryMb: 1024 },
+        { ...ENDPOINT_BASE, id: "fullCpu", platform: "gcfv2", cpu: 1, availableMemoryMb: 2048 },
+      ];
+
+      expect(() => validate.endpointsAreValid(backend.of(...endpoints))).to.throw(
+        "The functions big1,big2 have too little CPU for their memory allocation. A minimum of 1 CPU is needed to set a memory limit greater than 1GiB",
+      );
+    });
+
+    it("names only the functions with too little CPU for more than 512MiB of memory when both tiers are violated", () => {
+      const endpoints: backend.Endpoint[] = [
+        { ...ENDPOINT_BASE, id: "small", platform: "gcfv2", cpu: 0.25, availableMemoryMb: 1024 },
+        { ...ENDPOINT_BASE, id: "big", platform: "gcfv2", cpu: 0.5, availableMemoryMb: 2048 },
+      ];
+
+      expect(() => validate.endpointsAreValid(backend.of(...endpoints))).to.throw(
+        "The functions small have too little CPU for their memory allocation. A minimum of 0.5 CPU is needed to set a memory limit greater than 512MiB",
+      );
+    });
+
     for (const [mem, cpu] of [
       [1024, 4],
       [2048, 6],

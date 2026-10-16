@@ -1,1 +1,2 @@
 - Ensured the Firebase Hosting API is enabled before deploying and running other Hosting commands.
+- Fixed the deploy error for functions with too little CPU for more than 1GiB of memory so it names the affected functions.
