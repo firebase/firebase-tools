@@ -7,7 +7,9 @@ import { FirebaseError, getErrMsg } from "../../error";
 import { AppHostingSingle, RunSingle } from "../../firebaseConfig";
 import { Backend } from "../../gcp/apphosting";
 import * as artifactregistry from "../../gcp/artifactregistry";
+import * as cloudbuild from "../../gcp/cloudbuild";
 import * as runv2 from "../../gcp/runv2";
+import * as secretManager from "../../gcp/secretManager";
 import * as gcs from "../../gcp/storage";
 import { getProjectNumber } from "../../getProjectNumber";
 import { logger } from "../../logger";
@@ -16,7 +18,8 @@ import { cloneDeep, logLabeledBullet } from "../../utils";
 import { prepareLocalBuildScratchDirectory } from "../apphosting/prepare";
 import { createLocalBuildTarArchive, createSourceDeployArchive } from "../apphosting/util";
 import { Context, Payload, ServiceDeploy } from "./args";
-import { nonSecretValues, secretNames, toLocalBuildEnv } from "./buildEnv";
+import { rcsBuildConfig, releaseTags, secretVersionName } from "./buildConfig";
+import { nonSecretValues, SecretRef, secretNames, toLocalBuildEnv } from "./buildEnv";
 import { mainContainer } from "./util";
 
 const DEPLOY_MESSAGE_ANNOTATION = "firebase.google.com/deploy-message";
@@ -210,24 +213,57 @@ async function buildImage(
   const { serviceId, region } = svc.config;
   await artifactregistry.ensureDockerRepository(projectId, region, "cloud-run-source-deploy");
   const imageUri = `${region}-docker.pkg.dev/${projectId}/cloud-run-source-deploy/${serviceId}:${Date.now()}`;
-  logLabeledBullet("run", `Building service ${serviceId} in ${region}...`);
-  const buildpackBuild: runv2.BuildpacksBuild = {
-    environmentVariables: {
-      // Cloud Build only takes plain values, so pass only the non-secret env vars. Prepare already
-      // rejects secrets for builds on Cloud Build.
-      ...nonSecretValues(svc.buildEnv || {}),
-      // Use App Hosting's buildpacks, which need to know where to write the output bundle.
-      X_GOOGLE_TARGET_PLATFORM: "fah",
-      FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
-    },
+  const builderDesc = svc.baseImage ? `base image ${svc.baseImage}` : "universal builder";
+  logLabeledBullet("run", `Building service ${serviceId} in ${region} (${builderDesc})...`);
+  const buildEnv = svc.buildEnv || {};
+  const env = {
+    // Secrets aren't plain values. They're passed to Cloud Build by reference below.
+    ...nonSecretValues(buildEnv),
+    // Use App Hosting's buildpacks, which need to know where to write the output bundle.
+    X_GOOGLE_TARGET_PLATFORM: "fah",
+    FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
   };
-  // Only images built for a base image can have their base image updated automatically.
-  if (svc.baseImage) {
-    buildpackBuild.baseImage = svc.baseImage;
-    buildpackBuild.enableAutomaticUpdates = true;
+  const secrets: Record<string, string> = {};
+  for (const name of secretNames(buildEnv)) {
+    secrets[name] = secretVersionName(projectId, (buildEnv[name] as SecretRef).secret);
   }
-  await runv2.submitBuild(projectId, region, { storageSource: source, imageUri, buildpackBuild });
+  const build = rcsBuildConfig({
+    region,
+    imageUri,
+    source,
+    baseImage: svc.baseImage,
+    env,
+    secrets,
+    release: await releaseTags(region, svc.baseImage),
+  });
+  logger.debug(`Cloud Build config for service ${serviceId}: ${JSON.stringify(build)}`);
+  await grantBuildSecretAccess(projectId, region, Object.values(secrets));
+  const created = await cloudbuild.createBuild(projectId, region, build);
+  if (created.logUrl) {
+    logLabeledBullet("run", `Build logs: ${created.logUrl}`);
+  }
+  await cloudbuild.waitForBuild(created);
   return imageUri;
+}
+
+/** Lets builds read the secrets: Cloud Build reads them as its default service account. */
+async function grantBuildSecretAccess(
+  projectId: string,
+  region: string,
+  versionNames: string[],
+): Promise<void> {
+  if (!versionNames.length) {
+    return;
+  }
+  const buildServiceAccount = await cloudbuild.getDefaultBuildServiceAccount(projectId, region);
+  for (const versionName of versionNames) {
+    const { secret } = secretManager.parseSecretVersionResourceName(versionName);
+    await secretManager.ensureServiceAgentRole(
+      secret,
+      [buildServiceAccount],
+      "roles/secretmanager.secretAccessor",
+    );
+  }
 }
 
 /**

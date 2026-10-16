@@ -1,5 +1,7 @@
 import { Client } from "../apiv2";
 import { cloudbuildOrigin } from "../api";
+import { FirebaseError } from "../error";
+import { pollOperation } from "../operation-poller";
 
 const PAGE_SIZE_MAX = 100;
 
@@ -8,6 +10,97 @@ const client = new Client({
   auth: true,
   apiVersion: "v2",
 });
+
+// Builds are in Cloud Build's v1 API.
+const buildsClient = new Client({ urlPrefix: cloudbuildOrigin(), auth: true, apiVersion: "v1" });
+
+export interface BuildStep {
+  id?: string;
+  name: string;
+  entrypoint?: string;
+  args?: string[];
+  env?: string[];
+  secretEnv?: string[];
+}
+
+export interface Build {
+  name?: string;
+  logUrl?: string;
+  status?: string;
+  source?: { storageSource: { bucket: string; object: string } };
+  steps: BuildStep[];
+  images?: string[];
+  availableSecrets?: { secretManager: { versionName: string; env: string }[] };
+  artifacts?: {
+    images?: string[];
+    oci?: { file: string; registryPath: string; tags?: string[] }[];
+  };
+  options?: {
+    env?: string[];
+    volumes?: { name: string; path: string }[];
+    logStreamingOption?: string;
+    logging?: string;
+    requestedVerifyOption?: string;
+  };
+  tags?: string[];
+  timeout?: string;
+  queueTtl?: string;
+}
+
+const PENDING_BUILD_STATUSES = ["STATUS_UNKNOWN", "PENDING", "QUEUED", "WORKING"];
+
+/** Starts a Cloud Build v1 build and returns its metadata. */
+export async function createBuild(
+  projectId: string,
+  location: string,
+  build: Build,
+): Promise<Build & { name: string }> {
+  const res = await buildsClient.post<Build, { metadata?: { build?: Build } }>(
+    `/projects/${projectId}/locations/${location}/builds`,
+    build,
+  );
+  const created = res.body.metadata?.build;
+  if (!created?.name) {
+    throw new FirebaseError("Failed to start the build: no build was returned.");
+  }
+  return { ...created, name: created.name };
+}
+
+/** Polls a Cloud Build v1 build until completion and throws if it did not succeed. */
+export async function waitForBuild(build: { name: string; logUrl?: string }): Promise<void> {
+  let status: string | undefined;
+  await pollOperation({
+    apiOrigin: cloudbuildOrigin(),
+    apiVersion: "v1",
+    operationResourceName: build.name,
+    masterTimeout: 30 * 60 * 1000,
+    maxBackoff: 10_000,
+    doneFn: (b?: { status?: string }) => {
+      status = b?.status;
+      return !b?.status || !PENDING_BUILD_STATUSES.includes(b.status);
+    },
+  });
+  if (status !== "SUCCESS") {
+    throw new FirebaseError(
+      `Cloud Build failed with status ${status ?? "UNKNOWN"}. View the build logs at ${build.logUrl ?? ""}`,
+    );
+  }
+}
+
+/** Returns the email of the default Cloud Build service account in `location`. */
+export async function getDefaultBuildServiceAccount(
+  projectId: string,
+  location: string,
+): Promise<string> {
+  const res = await buildsClient.get<{ serviceAccountEmail?: string }>(
+    `/projects/${projectId}/locations/${location}/defaultServiceAccount`,
+  );
+  const email = res.body.serviceAccountEmail?.split("/").pop();
+  if (!email) {
+    throw new FirebaseError(`Cloud Build has no default service account in ${location}.`);
+  }
+  return email;
+}
 
 export interface OperationMetadata {
   createTime: string;

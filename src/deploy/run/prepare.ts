@@ -3,7 +3,7 @@ import { RunSingle } from "../../firebaseConfig";
 import { Options } from "../../options";
 import { logLabeledBullet } from "../../utils";
 import { Context, Payload, ServiceDeploy } from "./args";
-import { BUILD_ENV_ANNOTATION, getBuildEnv, secretNames } from "./buildEnv";
+import { BUILD_ENV_ANNOTATION, getBuildEnv } from "./buildEnv";
 import { prereqs } from "./prereqs";
 import { getExistingService, getServiceConfigs, mainContainer } from "./util";
 
@@ -42,18 +42,6 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
   }
 
   const buildEnv = getBuildEnv(existing);
-  const secrets = secretNames(buildEnv);
-  // Only local builds can use secrets: they read them on your machine, with your credentials.
-  // Builds on Cloud Build only take plain values, and passing a secret's value there would store
-  // it in plain text in the build.
-  if (secrets.length && !config.localBuild) {
-    throw new FirebaseError(
-      `Service ${serviceId} in ${region} has build secrets (${secrets.join(", ")}), but only ` +
-        `local builds can use secrets: builds on Cloud Build only take plain values. To use ` +
-        `them, set "localBuild": true for this service in firebase.json.`,
-    );
-  }
-
   const svc: ServiceDeploy = { config, existing, baseImage };
   if (Object.keys(buildEnv).length) {
     logLabeledBullet(
