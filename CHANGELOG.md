@@ -1,1 +1,2 @@
 - Ensured the Firebase Hosting API is enabled before deploying and running other Hosting commands.
+- Improved the error shown when a Hosting rewrite targets a function in the wrong region. It now names the function, the rewrite region, and the regions where the function was found. (#11289)

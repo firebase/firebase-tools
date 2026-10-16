@@ -61,10 +61,7 @@ export function findEndpointForRewrite(
   if (endpoints.length === 0) {
     return { matchingEndpoint: undefined, foundMatchingId: false };
   }
-  if (endpoints.length === 1) {
-    if (region && region !== endpoints[0].region) {
-      return { matchingEndpoint: undefined, foundMatchingId: true };
-    }
+  if (!region && endpoints.length === 1) {
     return { matchingEndpoint: endpoints[0], foundMatchingId: true };
   }
   if (!region) {
@@ -81,10 +78,16 @@ export function findEndpointForRewrite(
     );
     return { matchingEndpoint: us, foundMatchingId: true };
   }
-  return {
-    matchingEndpoint: endpoints.find((e) => e.region === region),
-    foundMatchingId: true,
-  };
+  const matchingEndpoint = endpoints.find((e) => e.region === region);
+  if (!matchingEndpoint) {
+    const regions = endpoints.map((e) => `\`${e.region}\``).join(", ");
+    throw new FirebaseError(
+      `Rewrite for function \`${id}\` in firebase.json targets region \`${region}\`, ` +
+        `but \`${id}\` was only found in ${regions}. Update the rewrite's \`region\` ` +
+        `in firebase.json to ${endpoints.length === 1 ? "that region" : "one of these regions"}.`,
+    );
+  }
+  return { matchingEndpoint, foundMatchingId: true };
 }
 
 /**
@@ -165,15 +168,6 @@ export async function convertConfig(
         : existingEndpointSearch?.matchingEndpoint;
 
       if (!endpoint) {
-        // If we find a function matching the function ID we are looking for in either
-        // existing or currently-deploying backends, we consider it a firebase function.
-        // In this case, we throw an error if the rewrite doesn't point to a valid region.
-        if (deployingEndpointSearch.foundMatchingId || existingEndpointSearch?.foundMatchingId) {
-          throw new FirebaseError(
-            `Unable to find a valid endpoint for function. Functions matching the rewrite
-  are present but in the wrong region.`,
-          );
-        }
         // This could possibly succeed if there has been a function written
         // outside firebase tooling. But it will break in v2. We might need to
         // revisit this.
