@@ -3,7 +3,7 @@ import { FirebaseError } from "../error";
 
 // TODO: Consider making this use REP in the future so we can be used by more
 // customers.
-import { cloudbuildOrigin, runOrigin } from "../api";
+import { runOrigin } from "../api";
 import * as proto from "./proto";
 import { assertImplements, RecursiveKeyOf } from "../metaprogramming";
 import { LongRunningOperation, pollOperation } from "../operation-poller";
@@ -32,7 +32,8 @@ export interface Scaling {
 
 export interface Container {
   name: string;
-  image: string;
+  /** The image to run. Unset when Cloud Run builds the image from sourceCode (see buildConfig). */
+  image?: string;
   command?: string[];
   args?: string[];
   env?: EnvVar[];
@@ -51,8 +52,20 @@ export interface Container {
   sourceCode?: {
     cloudStorageSource: StorageSource;
   };
+  /** Set with sourceCode to have Cloud Run build the image (Cloud Run's build API). */
+  buildConfig?: ContainerBuildConfig;
   // Lots more. Most intereeseting is baseImageUri and maybe buildInfo.
 }
+
+/** How Cloud Run builds a container's image from its source code. */
+export interface ContainerBuildConfig {
+  /** Where to push the image, without a tag, e.g. us-central1-docker.pkg.dev/my-project/repo/web. */
+  imageRepositoryUri: string;
+  buildpacksBuild?: {
+    environmentVariables?: Record<string, string>;
+  };
+}
+
 export interface RevisionTemplate {
   revision?: string;
   labels?: Record<string, string>;
@@ -148,78 +161,6 @@ export interface StorageSource {
   bucket: string;
   object: string;
   generation?: string;
-}
-
-export interface BuildpacksBuild {
-  // Deprecated, presumedly in favor of baseImage?
-  runtime?: string;
-  functionTarget?: string;
-  cacheImageUrl?: string;
-  baseImage?: string;
-
-  // NOTE: build-time environment variables, which are not currently used.
-  environmentVariables?: Record<string, string>;
-
-  enableAutomaticUpdates?: boolean;
-  projectDescriptor?: string;
-}
-
-export interface Build {
-  runtime?: string;
-  functionTarget?: string;
-  storageSource: StorageSource;
-  imageUri: string;
-  buildpackBuild: BuildpacksBuild;
-}
-
-export interface SubmitBuildResponse {
-  buildOperation: {
-    metadata?: { build?: { name: string; logUrl?: string } };
-  };
-  baseImageUri?: string;
-  baseImageWarning?: string;
-}
-
-const PENDING_BUILD_STATUSES = ["STATUS_UNKNOWN", "PENDING", "QUEUED", "WORKING"];
-
-/**
- * Submits a build to Cloud Build using the v2 API and waits for the build to finish.
- * Used for building source code into container images.
- */
-export async function submitBuild(
-  projectId: string,
-  location: string,
-  build: Build,
-): Promise<void> {
-  const res = await client.post<Build, SubmitBuildResponse>(
-    `/projects/${projectId}/locations/${location}/builds:submit`,
-    build,
-  );
-  if (res.body?.baseImageWarning) {
-    logger.warn(res.body.baseImageWarning);
-  }
-  const cloudBuild = res.body?.buildOperation?.metadata?.build;
-  if (!cloudBuild) {
-    throw new FirebaseError("Failed to submit build: no build was returned.");
-  }
-  // The returned operation can't be polled for regional builds, so poll the build itself.
-  let status: string | undefined;
-  await pollOperation({
-    apiOrigin: cloudbuildOrigin(),
-    apiVersion: "v1",
-    operationResourceName: cloudBuild.name,
-    masterTimeout: 30 * 60 * 1000,
-    maxBackoff: 10_000,
-    doneFn: (b?: { status?: string }) => {
-      status = b?.status;
-      return !b?.status || !PENDING_BUILD_STATUSES.includes(b.status);
-    },
-  });
-  if (status !== "SUCCESS") {
-    throw new FirebaseError(
-      `Cloud Build failed with status ${status ?? "UNKNOWN"}. View the build logs at ${cloudBuild.logUrl ?? ""}`,
-    );
-  }
 }
 
 /**
