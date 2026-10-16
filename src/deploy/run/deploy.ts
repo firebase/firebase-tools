@@ -267,13 +267,8 @@ export function revisionTemplate(
   }
   // FIREBASE_CONFIG is how the Admin SDK auto-initializes at runtime. The client SDK's
   // FIREBASE_WEBAPP_CONFIG is only needed at build time, so it isn't set on the container.
-  // TODO: Once Cloud Run sets FIREBASE_CONFIG itself from the firebase.google.com/app-id
-  // annotation, the CLI should only set the annotation, and remove the FIREBASE_CONFIG values it
-  // wrote: Cloud Run won't replace a value that's already on the container (user values win), so
-  // ours would hide its fresh one. To tell the CLI's values from the user's, record what the CLI
-  // writes (e.g. a hash in a firebase.google.com/ annotation), and only overwrite or remove
-  // FIREBASE_CONFIG while the live value still matches. That also stops this code from overwriting
-  // a value the user set on a linked service.
+  // TODO: Once Cloud Run sets FIREBASE_CONFIG from the app-id annotation, stop setting it here and
+  // remove the values the CLI wrote (track them with a hash annotation, so user-set values stay).
   const wasLinked = svc.existing?.annotations?.[FIREBASE_APP_ANNOTATION] !== undefined;
   const otherEnv = (container.env || []).filter((e) => e.name !== "FIREBASE_CONFIG");
   if (svc.autoInit) {
