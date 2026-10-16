@@ -96,7 +96,13 @@ describe("onboarding", () => {
     );
     expect(ensureStub).to.have.been.calledWith(
       "test-project",
-      "firebasetelemetryadmin.googleapis.com",
+      onboarding.CRASHLYTICS_TELEMETRY_ADMIN_SERVICE,
+      "crashlytics",
+      false,
+    );
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      onboarding.CRASHLYTICS_SERVICE,
       "crashlytics",
       false,
     );
@@ -183,7 +189,13 @@ describe("onboarding", () => {
     );
     expect(ensureStub).to.have.been.calledWith(
       "test-project",
-      "firebasetelemetryadmin.googleapis.com",
+      onboarding.CRASHLYTICS_TELEMETRY_ADMIN_SERVICE,
+      "crashlytics",
+      false,
+    );
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      onboarding.CRASHLYTICS_SERVICE,
       "crashlytics",
       false,
     );
@@ -260,7 +272,13 @@ describe("onboarding", () => {
     );
     expect(ensureStub).to.have.been.calledWith(
       "test-project",
-      "firebasetelemetryadmin.googleapis.com",
+      onboarding.CRASHLYTICS_TELEMETRY_ADMIN_SERVICE,
+      "crashlytics",
+      false,
+    );
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      onboarding.CRASHLYTICS_SERVICE,
       "crashlytics",
       false,
     );
