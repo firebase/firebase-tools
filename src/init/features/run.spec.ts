@@ -309,6 +309,17 @@ describe("init run", () => {
       });
     });
 
+    it("fails without deploying if it can't create the web app", async () => {
+      // getOrCreateWebApp returns nothing, after a warning, when the project is out of web apps.
+      getOrCreateWebAppStub.resolves(undefined);
+
+      await expect(actuate(webSetup({ createWebApp: true }), config, options)).to.be.rejectedWith(
+        "Couldn't create a Firebase web app for service web",
+      );
+
+      expect(deployStub).to.not.have.been.called;
+    });
+
     it("doesn't write firebase.json if the deploy fails", async () => {
       deployStub.rejects(new Error("build failed"));
 

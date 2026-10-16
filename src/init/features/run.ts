@@ -215,9 +215,18 @@ export async function actuate(setup: Setup, config: Config, options: Options): P
   // Deploy with the base image that init asked for, and the Firebase Web App to link. A new app is
   // created only now, after every question has been answered.
   const settings: Partial<Context> = { baseImage: info.baseImage || null };
-  const appId = info.createWebApp
-    ? (await webApps.getOrCreateWebApp(setup.projectId as string, null, info.serviceId))?.id
-    : info.appId;
+  let appId = info.appId;
+  if (info.createWebApp) {
+    // App Hosting's helper only warns, and returns nothing, when the project is out of web apps:
+    // App Hosting backends work without one. Fail instead of deploying an unlinked service.
+    appId = (await webApps.getOrCreateWebApp(setup.projectId as string, null, info.serviceId))?.id;
+    if (!appId) {
+      throw new FirebaseError(
+        `Couldn't create a Firebase web app for service ${info.serviceId}. Delete an unused web ` +
+          `app in the Firebase console, or run "firebase init run" again and pick an existing app.`,
+      );
+    }
+  }
   if (appId) {
     settings.appId = appId;
   }
