@@ -1,0 +1,1 @@
+- Ensured the Firebase Hosting API is enabled before deploying and running other Hosting commands.
