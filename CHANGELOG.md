@@ -1,1 +1,3 @@
 - Ensured the Firebase Hosting API is enabled before deploying and running other Hosting commands.
+- Fixed an issue where a retryable error on the first function deployed in a region caused the remaining functions to build in parallel instead of reusing its build.
+- Fixed v2 function deploys waiting on a shared build when the `functionsv2deployoptimizations` experiment is disabled.
