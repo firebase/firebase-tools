@@ -147,17 +147,38 @@ steps:
           echo "Skipping credentials for firepit-builder for preview."
         fi
 
-  # Publish the firepit builds.
+  # Publish the firepit builds, create draft release with artifacts, validate, publish, and move latest tag.
   - name: "gcr.io/$PROJECT_ID/firepit-builder"
     entrypoint: "bash"
     args:
       - "-c"
       - |
         if [ "${_VERSION}" != "preview" ]; then
-          GITHUB_TOKEN=$(cat ~/.config/hub) node /usr/src/app/pipeline.js --package=firebase-tools@$(cat /workspace/version_number.txt) --publish
-          echo "Please review the draft release notes at https://github.com/${_REPOSITORY_ORG}/${_REPOSITORY_NAME}/releases. If it looks good, publish it"
+          cp -v ${_REPOSITORY_NAME}/scripts/firepit-builder/pipeline.js /usr/src/app/pipeline.js
+          GITHUB_TOKEN=$(cat ~/.config/hub) GITHUB_REPOSITORY="${_REPOSITORY_ORG}/${_REPOSITORY_NAME}" REPOSITORY_ORG="${_REPOSITORY_ORG}" REPOSITORY_NAME="${_REPOSITORY_NAME}" node /usr/src/app/pipeline.js --package=firebase-tools@$(cat /workspace/version_number.txt) --publish
         else
           echo "Skipping firepit build for preview version."
+        fi
+
+  # Verify npm latest tag is pointing to the new version.
+  - name: "gcr.io/$PROJECT_ID/package-builder"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        if [ "${_VERSION}" != "preview" ]; then
+          VERSION_NUM="$(cat /workspace/version_number.txt)"
+          echo "Verifying npm latest tag for firebase-tools..."
+          LATEST_TAG=$(npm view firebase-tools dist-tags.latest --registry https://wombat-dressing-room.appspot.com)
+          echo "Current npm latest tag: $${LATEST_TAG}"
+          if [ "$${LATEST_TAG}" != "$${VERSION_NUM}" ]; then
+            echo "Updating npm latest tag to $${VERSION_NUM}..."
+            npm dist-tag add "firebase-tools@$${VERSION_NUM}" latest --registry https://wombat-dressing-room.appspot.com
+            npm dist-tag rm firebase-tools staging --registry https://wombat-dressing-room.appspot.com 2>/dev/null || true
+          fi
+          echo "Verified npm latest tag is pointing to $${VERSION_NUM}."
+        else
+          echo "Skipping npm latest tag check for preview version."
         fi
 
   # Tag the previous version of the docker image
