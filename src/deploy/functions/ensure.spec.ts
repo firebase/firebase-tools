@@ -157,12 +157,6 @@ describe("ensureSecretAccess", () => {
     secret: "MY_SECRET_0",
     version: "2",
   };
-  const secret1: backend.SecretEnvVar = {
-    projectId: "project",
-    key: "ANOTHER_SECRET",
-    secret: "ANOTHER_SECRET",
-    version: "1",
-  };
   const e: backend.Endpoint = {
     ...ENDPOINT,
     project: projectId,
@@ -184,84 +178,34 @@ describe("ensureSecretAccess", () => {
     secretManagerMock.restore();
   });
 
-  it("ensures access to default service account", async () => {
-    const b = backend.of({
-      ...e,
-      secretEnvironmentVariables: [secret0],
-    });
+  it("grants secret access to specified service accounts", async () => {
     secretManagerMock
       .expects("ensureServiceAgentRole")
       .once()
       .withExactArgs(
-        { name: secret0.secret, projectId: projectId },
-        [DEFAULT_SA],
-        "roles/secretmanager.secretAccessor",
-      );
-    await ensure.secretAccess(projectId, b, backend.empty());
-  });
-
-  it("ensures access to all secrets", async () => {
-    const b = backend.of({
-      ...e,
-      secretEnvironmentVariables: [secret0, secret1],
-    });
-    secretManagerMock.expects("ensureServiceAgentRole").twice();
-    await ensure.secretAccess(projectId, b, backend.empty());
-  });
-
-  it("combines service account to make one call per secret", async () => {
-    const b = backend.of(
-      {
-        ...e,
-        secretEnvironmentVariables: [secret0],
-      },
-      {
-        ...e,
-        id: "another-id",
-        serviceAccount: "foo@bar.com",
-        secretEnvironmentVariables: [secret0],
-      },
-    );
-    secretManagerMock
-      .expects("ensureServiceAgentRole")
-      .once()
-      .withExactArgs(
-        { name: secret0.secret, projectId: projectId },
-        [DEFAULT_SA, "foo@bar.com"],
-        "roles/secretmanager.secretAccessor",
-      );
-    await ensure.secretAccess(projectId, b, backend.empty());
-  });
-
-  it("skips calling IAM if secret is already bound to a service account", async () => {
-    const b = backend.of({
-      ...e,
-      secretEnvironmentVariables: [secret0],
-    });
-    secretManagerMock.expects("ensureServiceAgentRole").never();
-    await ensure.secretAccess(projectId, b, b);
-  });
-
-  it("does not include service account already bounud to a secret", async () => {
-    const haveEndpoint = {
-      ...e,
-      secretEnvironmentVariables: [secret0],
-    };
-    const haveBackend = backend.of(haveEndpoint);
-    const wantBackend = backend.of(haveEndpoint, {
-      ...e,
-      id: "another-id",
-      serviceAccount: "foo@bar.com",
-      secretEnvironmentVariables: [secret0],
-    });
-    secretManagerMock
-      .expects("ensureServiceAgentRole")
-      .once()
-      .withExactArgs(
-        { name: secret0.secret, projectId: projectId },
+        { name: secret0.secret, projectId },
         ["foo@bar.com"],
         "roles/secretmanager.secretAccessor",
       );
-    await ensure.secretAccess(projectId, wantBackend, haveBackend);
+    await ensure.grantSecretAccess({
+      projectId,
+      secret: secret0.secret,
+      serviceAccounts: ["foo@bar.com"],
+    });
+  });
+
+  it("calculates secretsAccessDelta correctly", async () => {
+    const b = backend.of({
+      ...e,
+      secretEnvironmentVariables: [secret0],
+    });
+    const delta = await ensure.secretsAccessDelta({
+      projectId,
+      wantBackend: b,
+      haveBackend: backend.empty(),
+    });
+    expect(delta).to.deep.equal({
+      [secret0.secret]: [DEFAULT_SA],
+    });
   });
 });

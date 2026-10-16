@@ -199,7 +199,7 @@ function validateRequiredParameters(options: any): any {
     case "MD5":
     case "SHA1":
     case "SHA256":
-    case "SHA512":
+    case "SHA512": {
       // MD5 is [0,8192] but SHA1, SHA256, and SHA512 are [1,8192]
       roundsNum = parseInt(options.rounds, 10);
       const minRounds = hashAlgo === "MD5" ? 0 : 1;
@@ -209,6 +209,7 @@ function validateRequiredParameters(options: any): any {
         );
       }
       return { hashAlgo: hashAlgo, rounds: options.rounds, valid: true };
+    }
     case "PBKDF_SHA1":
     case "PBKDF2_SHA256":
       roundsNum = parseInt(options.rounds, 10);
@@ -218,7 +219,7 @@ function validateRequiredParameters(options: any): any {
         );
       }
       return { hashAlgo: hashAlgo, rounds: options.rounds, valid: true };
-    case "SCRYPT":
+    case "SCRYPT": {
       if (!options.hashKey || options.hashKey === "") {
         throw new FirebaseError(
           "Must provide hash key(base64 encoded) for hash algorithm " + options.hashAlgo,
@@ -248,9 +249,10 @@ function validateRequiredParameters(options: any): any {
         memCost: options.memCost,
         valid: true,
       };
+    }
     case "BCRYPT":
       return { hashAlgo: hashAlgo, valid: true };
-    case "STANDARD_SCRYPT":
+    case "STANDARD_SCRYPT": {
       const cpuMemCost = parseInt(options.memCost, 10);
       const parallelization = parseInt(options.parallelization, 10);
       const blockSize = parseInt(options.blockSize, 10);
@@ -263,6 +265,7 @@ function validateRequiredParameters(options: any): any {
         blockSize: blockSize,
         dkLen: dkLen,
       };
+    }
     default:
       throw new FirebaseError("Unsupported hash algorithm " + clc.bold(options.hashAlgo));
   }

@@ -23,8 +23,10 @@ export async function setup(setup: any, config: Config): Promise<void> {
 
   // Write the latest supported runtime version to the config.
   config.set("functions.runtime", latest("dart"));
-  // Add dart specific ignores to config.
-  config.set("functions.ignore", [".dart_tool", "build"]);
+  // Add dart specific ignores to config. `build/` is intentionally not ignored: for
+  // projects whose declared language version supports cross-compilation, `dart build cli`
+  // writes the deployable bundle there (see DART_BUNDLE_EXECUTABLE_PATH).
+  config.set("functions.ignore", [".dart_tool"]);
 
   const install = await confirm({
     message: "Do you want to install dependencies now?",

@@ -23,7 +23,9 @@ export interface ServerTool<InputSchema extends ZodTypeAny = z.ZodAny> {
   mcp: {
     name: string;
     description?: string;
+    humanReadableDescription?: string;
     inputSchema: any;
+    outputSchema?: any;
     annotations?: {
       title?: string;
 
@@ -47,10 +49,11 @@ export interface ServerTool<InputSchema extends ZodTypeAny = z.ZodAny> {
   isAvailable: (ctx: McpContext) => Promise<boolean>;
 }
 
-export function tool<InputSchema extends ZodTypeAny>(
+export function tool<InputSchema extends ZodTypeAny, OutputSchema extends ZodTypeAny = z.ZodAny>(
   feature: ServerFeature,
-  options: Omit<ServerTool<InputSchema>["mcp"], "inputSchema"> & {
+  options: Omit<ServerTool<InputSchema>["mcp"], "inputSchema" | "outputSchema"> & {
     inputSchema: InputSchema;
+    outputSchema?: OutputSchema;
     isAvailable?: (ctx: McpContext) => Promise<boolean>;
   },
   fn: ServerTool<InputSchema>["fn"],
@@ -63,6 +66,13 @@ export function tool<InputSchema extends ZodTypeAny>(
       inputSchema: cleanSchema(
         z.toJSONSchema(options.inputSchema, { target: "draft-7", io: "input" }),
       ),
+      ...(options.outputSchema
+        ? {
+            outputSchema: cleanSchema(
+              z.toJSONSchema(options.outputSchema, { target: "draft-7", io: "output" }),
+            ),
+          }
+        : {}),
     },
     fn,
     isAvailable: (ctx: McpContext) => {

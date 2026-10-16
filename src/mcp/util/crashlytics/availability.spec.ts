@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import * as mockfs from "mock-fs";
+import nock from "../../../test/helpers/nock";
 import { isCrashlyticsAvailable } from "./availability";
 import { McpContext } from "../../types";
 import { Config } from "../../../config";
@@ -9,6 +10,7 @@ import { RC } from "../../../rc";
 describe("isCrashlyticsAvailable", () => {
   afterEach(() => {
     mockfs.restore();
+    nock.cleanAll();
   });
 
   const mockContext = (projectDir: string): McpContext => ({
@@ -293,6 +295,90 @@ describe("isCrashlyticsAvailable", () => {
     const result = await isCrashlyticsAvailable(mockContext("/test-dir"));
 
     expect(result).to.be.false;
+  });
+
+  it("should return true for a Web project with matching telemetry config and app ID", async () => {
+    mockfs({
+      "/test-dir": {
+        "package.json": JSON.stringify({}),
+        "firebase.js": 'const firebaseConfig = { appId: "1:12345:web:67890" };',
+      },
+    });
+
+    nock("https://firebasetelemetryadmin.googleapis.com")
+      .get("/v1alpha/projects/test-project/locations/global/configs")
+      .reply(200, {
+        configs: [
+          {
+            name: "projects/test-project/locations/global/configs/1:12345:web:67890",
+            appId: "1:12345:web:67890",
+          },
+        ],
+      });
+
+    const result = await isCrashlyticsAvailable(mockContext("/test-dir"));
+
+    expect(result).to.be.true;
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should return false for a Web project with non-matching telemetry config app ID", async () => {
+    mockfs({
+      "/test-dir": {
+        "package.json": JSON.stringify({}),
+        "firebase.js": 'const firebaseConfig = { appId: "1:12345:web:67890" };',
+      },
+    });
+
+    nock("https://firebasetelemetryadmin.googleapis.com")
+      .get("/v1alpha/projects/test-project/locations/global/configs")
+      .reply(200, {
+        configs: [
+          {
+            name: "projects/test-project/locations/global/configs/1:99999:web:00000",
+            appId: "1:99999:web:00000",
+          },
+        ],
+      });
+
+    const result = await isCrashlyticsAvailable(mockContext("/test-dir"));
+
+    expect(result).to.be.false;
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should return false for a Web project with no telemetry configs", async () => {
+    mockfs({
+      "/test-dir": {
+        "package.json": JSON.stringify({}),
+      },
+    });
+
+    nock("https://firebasetelemetryadmin.googleapis.com")
+      .get("/v1alpha/projects/test-project/locations/global/configs")
+      .reply(200, { configs: [] });
+
+    const result = await isCrashlyticsAvailable(mockContext("/test-dir"));
+
+    expect(result).to.be.false;
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should return false for a Web project when ListConfigs endpoint returns 404", async () => {
+    mockfs({
+      "/test-dir": {
+        "package.json": JSON.stringify({}),
+      },
+    });
+
+    nock("https://firebasetelemetryadmin.googleapis.com")
+      .get("/v1alpha/projects/test-project/locations/global/configs")
+      .reply(404, { error: { message: "Not found" } });
+
+    const result = await isCrashlyticsAvailable(mockContext("/test-dir"));
+
+    expect(result).to.be.false;
+    expect(nock.isDone()).to.be.true;
   });
 
   it("should return true if any platform uses crashlytics in a multi-platform project", async () => {

@@ -71,6 +71,8 @@ export const validate_security_rules = tool(
     name: "validate_security_rules",
     description:
       "Use this to check Firebase Security Rules for Firestore, Storage, or Realtime Database for syntax and validation errors.",
+    humanReadableDescription:
+      "Validate syntax and check for errors in Firestore, Storage, or Realtime Database security rules.",
     inputSchema: z.object({
       type: z.enum(["firestore", "storage", "rtdb"]),
       source: z

@@ -2,14 +2,10 @@ import * as os from "os";
 import * as path from "path";
 import * as fs from "fs";
 import { randomBytes } from "crypto";
-import * as _ from "lodash";
-import * as express from "express";
-import { CloudFunction } from "firebase-functions";
-
 import * as backend from "../deploy/functions/backend";
 import * as build from "../deploy/functions/build";
 import { Constants } from "./constants";
-import { BackendInfo, EmulatableBackend, InvokeRuntimeOpts } from "./functionsEmulator";
+import { BackendInfo, EmulatableBackend } from "./functionsEmulator";
 import { ENV_DIRECTORY } from "../extensions/manifest";
 import { substituteParams } from "../extensions/extensionsHelper";
 import { ExtensionSpec, ExtensionVersion } from "../extensions/types";
@@ -26,7 +22,31 @@ const V2_EVENTS = [
   ...events.v2.STORAGE_EVENTS,
   ...events.v2.DATABASE_EVENTS,
   ...events.v2.FIRESTORE_EVENTS,
+  ...events.v2.AUTH_EVENTS,
 ];
+
+/**
+ * Extracts the tenant ID from an Auth event payload.
+ *
+ * For 2nd Gen Auth events, CloudEvents v1.0 extension attributes are stored at the top level
+ * using lowercase attribute names (`event.tenantid`), matching Eventarc's attribute-based filtering.
+ */
+export function getEventTenantId(
+  eventPayload: Record<string, unknown> | null | undefined,
+): string | undefined {
+  if (!eventPayload || typeof eventPayload !== "object") {
+    return undefined;
+  }
+
+  // 2nd Gen Eventarc CloudEvent top-level context attribute (`tenantid`).
+  // Per CloudEvents v1.0 specification, extension attribute names must be lowercase.
+  // In Firebase Auth 2nd Gen triggers, tenant filtering matches against this attribute.
+  if (typeof eventPayload.tenantid === "string") {
+    return eventPayload.tenantid;
+  }
+
+  return undefined;
+}
 
 /**
  * Label for eventarc event sources.
@@ -79,15 +99,6 @@ export interface EventTrigger {
   service?: string;
 }
 
-export interface EmulatedTriggerMap {
-  [name: string]: EmulatedTrigger;
-}
-
-export interface FunctionsRuntimeArgs {
-  frb: FunctionsRuntimeBundle;
-  opts?: InvokeRuntimeOpts;
-}
-
 export interface FunctionsRuntimeBundle {
   proto: any;
   disabled_features?: FunctionsRuntimeFeatures;
@@ -105,35 +116,6 @@ export interface FunctionsRuntimeBundle {
 
 export interface FunctionsRuntimeFeatures {
   timeout?: boolean;
-}
-
-export class EmulatedTrigger {
-  /*
-  Here we create a trigger from a single definition (data about what resources does this trigger on, etc) and
-  the actual module which contains multiple functions / definitions. We locate the one we need below using
-  definition.entryPoint
-   */
-  constructor(
-    public definition: EmulatedTriggerDefinition,
-    private module: any,
-  ) {}
-
-  get memoryLimitBytes(): number {
-    return (this.definition.availableMemoryMb || 128) * 1024 * 1024;
-  }
-
-  get timeoutMs(): number {
-    return (this.definition.timeoutSeconds || 60) * 1000;
-  }
-
-  getRawFunction(): CloudFunction<any> {
-    if (!this.module) {
-      throw new Error("EmulatedTrigger has not been provided a module.");
-    }
-
-    const func = _.get(this.module, this.definition.entryPoint);
-    return func.__emulator_func || func;
-  }
 }
 
 /**
@@ -213,7 +195,7 @@ export function emulatedFunctionsFromEndpoints(
           resource: eventTrigger.eventFilters!.resource,
         };
       } else {
-        // TODO(colerogers): v2 events implemented are pubsub, storage, rtdb, and custom events
+        // v2 events implemented are pubsub, storage, rtdb, firestore, alerts, auth, and custom events
         if (!eventServiceImplemented(eventTrigger.eventType) && !eventTrigger.channel) {
           continue;
         }
@@ -296,25 +278,6 @@ export function emulatedFunctionsByRegion(
 }
 
 /**
- * Converts an array of EmulatedTriggerDefinitions to a map of EmulatedTriggers, which contain information on execution,
- * @param {EmulatedTriggerDefinition[]} definitions An array of regionalized, parsed trigger definitions
- * @param {object} module Actual module which contains multiple functions / definitions
- * @return a map of trigger ids to EmulatedTriggers
- */
-export function getEmulatedTriggersFromDefinitions(
-  definitions: EmulatedTriggerDefinition[],
-  module: any, // eslint-disable-line @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-explicit-any
-): EmulatedTriggerMap {
-  return definitions.reduce(
-    (obj: { [triggerName: string]: EmulatedTrigger }, definition: EmulatedTriggerDefinition) => {
-      obj[definition.id] = new EmulatedTrigger(definition, module);
-      return obj;
-    },
-    {},
-  );
-}
-
-/**
  * Create a path that used to create a tempfile for IPC over socket files.
  */
 export function getTemporarySocketPath(): string {
@@ -385,12 +348,12 @@ export function getServiceFromEventType(eventType: string): string {
   if (eventType.includes("firebasealerts")) {
     return Constants.SERVICE_FIREALERTS;
   }
+  if (eventType.includes("auth")) {
+    return Constants.SERVICE_AUTH;
+  }
   // Below this point are services that do not have a emulator.
   if (eventType.includes("analytics")) {
     return Constants.SERVICE_ANALYTICS;
-  }
-  if (eventType.includes("auth")) {
-    return Constants.SERVICE_AUTH;
   }
   if (eventType.includes("crashlytics")) {
     return Constants.SERVICE_CRASHLYTICS;
@@ -403,22 +366,6 @@ export function getServiceFromEventType(eventType: string): string {
   }
 
   return "";
-}
-
-/**
- * Create a Promise which can be awaited to recieve request bodies as strings.
- */
-export function waitForBody(req: express.Request): Promise<string> {
-  let data = "";
-  return new Promise((resolve) => {
-    req.on("data", (chunk: any) => {
-      data += chunk;
-    });
-
-    req.on("end", () => {
-      resolve(data);
-    });
-  });
 }
 
 /**
