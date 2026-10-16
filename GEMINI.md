@@ -75,5 +75,4 @@ npm run format                   # Auto-fix formatting issues
       - `### Scenarios Tested`
       - `### Sample Commands`
       - Reference issues with "Fixes #123" in the description.
-    - **Keep public repository metadata clean:** Because `firebase-tools` is a public open-source repository, do not include internal usernames or automated agent task prefixes in commit messages, PR titles, or PR descriptions.
 3.  **Update Changelog:** For any user-facing change (new features, bug fixes, deprecations), add a corresponding entry to `CHANGELOG.md`.
