@@ -152,7 +152,11 @@ export async function createOrReplaceJob(job: Job): Promise<any> {
   const jobName = job.name.split("/").pop();
   const existingJob = await getJob(job.name);
   // if no job is found, create one
-  if (existingJob.status === 404) {
+  if (existingJob.status === 403) {
+    throw new FirebaseError(`Failed to create scheduler job ${job.name}: Ensure you have the 'cloudscheduler.jobs.get' permission`);
+
+  }
+  else if (existingJob.status === 404) {
     let newJob;
     try {
       newJob = await createJob(job);
