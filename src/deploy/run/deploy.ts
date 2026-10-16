@@ -267,8 +267,7 @@ export function revisionTemplate(
   }
   // FIREBASE_CONFIG is how the Admin SDK auto-initializes at runtime. The client SDK's
   // FIREBASE_WEBAPP_CONFIG is only needed at build time, so it isn't set on the container.
-  // TODO: Once Cloud Run sets FIREBASE_CONFIG from the app-id annotation, stop setting it here and
-  // remove the values the CLI wrote (track them with a hash annotation, so user-set values stay).
+  // TODO: Stop setting FIREBASE_CONFIG once Cloud Run injects it from the app-id annotation.
   const wasLinked = svc.existing?.annotations?.[FIREBASE_APP_ANNOTATION] !== undefined;
   const otherEnv = (container.env || []).filter((e) => e.name !== "FIREBASE_CONFIG");
   if (svc.autoInit) {
