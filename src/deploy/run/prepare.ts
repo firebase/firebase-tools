@@ -85,15 +85,16 @@ async function prepareService(context: Context, config: RunSingle): Promise<Serv
     svc.buildEnv = buildEnv;
   }
   if (appId) {
-    // Firebase SDKs auto-initialize from the app's config. The build gets both config env vars (the
-    // build env annotation can override them), and the container gets FIREBASE_CONFIG.
+    // Firebase SDKs auto-initialize from the app's config. The build gets both config env vars, and
+    // the container gets FIREBASE_CONFIG. They always come from the app, even if the build env
+    // annotation sets them: users override auto-init in code, not with these env vars.
     const autoInitEnv = getAutoinitEnvVars(await getWebAppConfig(context, config, appId));
     if (appId !== existing?.annotations?.[FIREBASE_APP_ANNOTATION]) {
       // This deploy links the app, so check now whether Admin SDKs will be able to use it.
       await checkAdminSdkRole(context, config, existing);
     }
     svc.autoInit = { appId, firebaseConfig: autoInitEnv.FIREBASE_CONFIG };
-    svc.buildEnv = { ...autoInitEnv, ...buildEnv };
+    svc.buildEnv = { ...buildEnv, ...autoInitEnv };
   }
   return svc;
 }

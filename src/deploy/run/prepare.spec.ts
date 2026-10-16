@@ -234,14 +234,17 @@ describe("run prepare", () => {
       expect(cleared).not.to.have.any.keys("autoInit", "buildEnv");
     });
 
-    it("lets the build env annotation override the app's config at build time only", async () => {
-      const override = '{"projectId":"my-other-project"}';
-      getServiceStub.resolves(linked(withBuildEnv({ FIREBASE_CONFIG: override })));
+    it("uses the app's config at build time even if the build env annotation sets it", async () => {
+      getServiceStub.resolves(
+        linked(withBuildEnv({ FIREBASE_CONFIG: "mine", FIREBASE_WEBAPP_CONFIG: "mine" })),
+      );
 
       const [svc] = await prepareRun(web);
 
-      expect(svc.buildEnv).to.include({ FIREBASE_CONFIG: override });
-      expect(svc.autoInit?.firebaseConfig).to.equal(firebaseConfig);
+      expect(svc.buildEnv).to.deep.equal({
+        FIREBASE_WEBAPP_CONFIG: JSON.stringify(webConfig),
+        FIREBASE_CONFIG: firebaseConfig,
+      });
     });
 
     it("fails if the linked app can't be looked up", async () => {
