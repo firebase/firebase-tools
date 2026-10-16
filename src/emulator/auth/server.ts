@@ -227,6 +227,9 @@ export async function createApp(
     );
   };
   const apis = await exegesisExpress.middleware(specForRouter(), {
+    // Eager ajv compilation of the entire 386 KB Identity Toolkit spec takes ~10-20s.
+    // Compiling validation schemas lazily on first use cuts startup time and speeds up unit tests.
+    lazyCompileValidationSchemas: true,
     controllers: { auth: toExegesisController(authOperations, getProjectStateById) },
     authenticators: {
       apiKeyQuery: apiKeyAuthenticator,
