@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "15.33.0",
+  "version": "15.34.0",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "mcpName": "io.github.firebase/firebase-mcp",
@@ -291,5 +291,11 @@
     "@google-cloud/cloud-sql-connector": {
       "uuid": "^11.1.1"
     }
+  },
+  "allowScripts": {
+    "esbuild": true,
+    "protobufjs": false,
+    "puppeteer": false,
+    "re2": true
   }
 }

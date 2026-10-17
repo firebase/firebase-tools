@@ -10,6 +10,11 @@ source scripts/set-default-credentials.sh
 # Prepare the storage emulator rules runtime
 firebase setup:emulators:storage
 
+# Ensure Puppeteer browser is installed for conformance tests
+if [ -z "$PUPPETEER_EXECUTABLE_PATH" ]; then
+  node node_modules/puppeteer/install.js
+fi
+
 # Determine port check method once globally.
 if command -v nc >/dev/null 2>&1; then
   is_port_in_use() {
