@@ -11,13 +11,21 @@ const client = new Client({ urlPrefix: remoteConfigApiOrigin(), apiVersion: "v1"
  * Gets Etag for Remote Config Project Template
  * @param projectNumber Input is the Firebase Project's project number
  * @param versionNumber Firebase Remote Config Template version number
+ * @param templateType Template type to get etag for (e.g. "firebase-server")
  * @return {Promise<string>} Returns a Promise of the Remote Config Template Etag string
  */
-export async function getEtag(projectNumber: string, versionNumber?: string): Promise<string> {
+export async function getEtag(
+  projectNumber: string,
+  versionNumber?: string,
+  templateType?: string,
+): Promise<string> {
   const reqPath = `/projects/${projectNumber}/remoteConfig`;
-  const queryParams: { versionNumber?: string } = {};
+  const queryParams: { versionNumber?: string; templateType?: string } = {};
   if (versionNumber) {
     queryParams.versionNumber = versionNumber;
+  }
+  if (templateType) {
+    queryParams.templateType = templateType;
   }
   const response = await client.request<void, void>({
     method: "GET",
@@ -64,15 +72,20 @@ export async function deployTemplate(
   projectNumber: string,
   template: RemoteConfigTemplate,
   etag: string,
-  options?: { force: boolean },
+  options?: { force: boolean; templateType?: string },
 ): Promise<RemoteConfigTemplate> {
   const reqPath = `/projects/${projectNumber}/remoteConfig`;
+  const queryParams: { templateType?: string } = {};
+  if (options?.templateType) {
+    queryParams.templateType = options.templateType;
+  }
   if (options?.force) {
     etag = "*";
   }
   const response = await client.request<any, RemoteConfigTemplate>({
     method: "PUT",
     path: reqPath,
+    queryParams,
     headers: { "If-Match": etag },
     body: {
       conditions: template.conditions,
@@ -96,7 +109,7 @@ export function publishTemplate(
   projectNumber: string,
   template: RemoteConfigTemplate,
   etag: string,
-  options?: { force: boolean },
+  options?: { force: boolean; templateType?: string },
 ): Promise<RemoteConfigTemplate> {
   const temporaryTemplate = {
     conditions: template.conditions,
