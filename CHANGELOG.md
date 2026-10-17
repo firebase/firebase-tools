@@ -1,1 +1,2 @@
 - Ensured the Firebase Hosting API is enabled before deploying and running other Hosting commands.
+- Fixed the Firestore emulator exiting when it could not watch the rules file for changes. It now logs a warning instead. (#4298)
