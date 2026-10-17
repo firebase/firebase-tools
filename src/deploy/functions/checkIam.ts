@@ -9,6 +9,7 @@ import * as iam from "../../gcp/iam";
 import * as gce from "../../gcp/computeEngine";
 import * as args from "./args";
 import * as backend from "./backend";
+import * as proto from "../../gcp/proto";
 import { trackGA4 } from "../../track";
 import * as utils from "../../utils";
 
@@ -161,25 +162,89 @@ export function obtainPubSubServiceAgentBindings(projectNumber: string): iam.Bin
   return [serviceAccountTokenCreatorBinding];
 }
 
+function explicitServiceAccount(endpoint: backend.Endpoint): string {
+  return endpoint.serviceAccount
+    ? proto.formatServiceAccount(endpoint.serviceAccount, endpoint.project, true)
+    : "";
+}
+
 /**
- * Finds the required project level IAM bindings for the default compute service agent.
- * Before a user creates an EventArc trigger, this agent must be granted the invoker and event receiver roles.
+ * Resolves the service account emails that functions will run as.
+ * Explicit endpoint.serviceAccount values are expanded to full emails; missing values use the default compute SA.
  * @param projectNumber project number
- * @param existingPolicy the project level IAM policy
+ * @param endpoints endpoints to resolve service accounts for
  */
-export async function obtainDefaultComputeServiceAgentBindings(
+export async function resolveRuntimeServiceAccounts(
   projectNumber: string,
-): Promise<iam.Binding[]> {
-  const defaultComputeServiceAgent = `serviceAccount:${await gce.getDefaultServiceAccount(projectNumber)}`;
-  const runInvokerBinding: iam.Binding = {
-    role: RUN_INVOKER_ROLE,
-    members: [defaultComputeServiceAgent],
-  };
-  const eventarcEventReceiverBinding: iam.Binding = {
-    role: EVENTARC_EVENT_RECEIVER_ROLE,
-    members: [defaultComputeServiceAgent],
-  };
-  return [runInvokerBinding, eventarcEventReceiverBinding];
+  endpoints: backend.Endpoint[],
+): Promise<string[]> {
+  const serviceAccounts = endpoints.map(explicitServiceAccount);
+  const needsDefault = serviceAccounts.includes("");
+  let defaultSa: string | null = null;
+  if (needsDefault) {
+    defaultSa = await gce.getDefaultServiceAccount(projectNumber);
+    if (!defaultSa) {
+      throw new FirebaseError(
+        "Could not determine the default compute service account for project " +
+          `${projectNumber}. Ensure the Compute Engine API is enabled.`,
+      );
+    }
+  }
+
+  const resolved = serviceAccounts.map((sa) => (sa === "" ? (defaultSa as string) : sa));
+
+  return [...new Set(resolved)];
+}
+
+/**
+ * Finds the required project level IAM bindings for function runtime service accounts.
+ * Before a user creates an EventArc trigger, these accounts must be granted the invoker and event receiver roles.
+ */
+export function obtainComputeServiceAgentBindings(serviceAccountEmails: string[]): iam.Binding[] {
+  if (serviceAccountEmails.length === 0) {
+    return [];
+  }
+  const members = serviceAccountEmails.map((sa) => `serviceAccount:${sa}`);
+  return [
+    { role: RUN_INVOKER_ROLE, members },
+    { role: EVENTARC_EVENT_RECEIVER_ROLE, members },
+  ];
+}
+
+/**
+ * Finds the GCF v2 event-triggered endpoints that are new or whose runtime service account changed,
+ * since their Eventarc triggers run as that account.
+ * @param projectNumber project number
+ * @param want backend that we want to deploy
+ * @param have backend that we have currently deployed
+ */
+export async function eventarcEndpointsNeedingRoles(
+  projectNumber: string,
+  want: backend.Backend,
+  have: backend.Backend,
+): Promise<backend.Endpoint[]> {
+  const needsRoles: backend.Endpoint[] = [];
+  for (const endpoint of backend.allEndpoints(want)) {
+    if (endpoint.platform !== "gcfv2" || !backend.isEventTriggered(endpoint)) {
+      continue;
+    }
+    // Declarative security grants the managed account its roles at release, after creating it.
+    if (endpoint.serviceAccount?.startsWith("firebase-fn-")) {
+      continue;
+    }
+    const existing = have.endpoints[endpoint.region]?.[endpoint.id];
+    if (existing && explicitServiceAccount(existing) === explicitServiceAccount(endpoint)) {
+      continue;
+    }
+    if (existing) {
+      const resolved = await resolveRuntimeServiceAccounts(projectNumber, [existing, endpoint]);
+      if (resolved.length === 1) {
+        continue;
+      }
+    }
+    needsRoles.push(endpoint);
+  }
+  return needsRoles;
 }
 
 /**
@@ -204,15 +269,8 @@ export async function ensureGenkitMonitoringRoles(
     return;
   }
 
-  const serviceAccounts = newEndpoints
-    .map((endpoint) => endpoint.serviceAccount || "")
-    .filter((value, index, self) => self.indexOf(value) === index);
-  const defaultServiceAccountIndex = serviceAccounts.indexOf("");
-  if (defaultServiceAccountIndex !== -1) {
-    serviceAccounts[defaultServiceAccountIndex] = await gce.getDefaultServiceAccount(projectNumber);
-  }
-
-  const members = serviceAccounts.filter((sa) => !!sa).map((sa) => `serviceAccount:${sa}`);
+  const serviceAccounts = await resolveRuntimeServiceAccounts(projectNumber, newEndpoints);
+  const members = serviceAccounts.map((sa) => `serviceAccount:${sa}`);
   const requiredBindings: iam.Binding[] = [];
   for (const monitoringRole of GENKIT_MONITORING_ROLES) {
     requiredBindings.push({
@@ -249,21 +307,21 @@ export async function ensureServiceAgentRoles(
   const newServices = wantServices.filter(
     (wantS) => !haveServices.find((haveS) => wantS.name === haveS.name),
   );
-  if (newServices.length === 0) {
-    return;
-  }
 
   // obtain all the bindings we need to have active in the project
-  const requiredBindingsPromises: Array<Promise<Array<iam.Binding>>> = [];
-  for (const service of newServices) {
-    requiredBindingsPromises.push(service.requiredProjectBindings!(projectNumber));
-  }
-  const nestedRequiredBindings = await Promise.all(requiredBindingsPromises);
+  const nestedRequiredBindings = await Promise.all(
+    newServices.map((service) => service.requiredProjectBindings!(projectNumber)),
+  );
   const requiredBindings = [...flattenArray(nestedRequiredBindings)];
-  if (haveServices.length === 0) {
+  if (newServices.length > 0 && haveServices.length === 0) {
     requiredBindings.push(...obtainPubSubServiceAgentBindings(projectNumber));
-    requiredBindings.push(...(await obtainDefaultComputeServiceAgentBindings(projectNumber)));
   }
+  const eventarcEndpoints = await eventarcEndpointsNeedingRoles(projectNumber, want, have);
+  const runtimeServiceAccounts = await resolveRuntimeServiceAccounts(
+    projectNumber,
+    eventarcEndpoints,
+  );
+  requiredBindings.push(...obtainComputeServiceAgentBindings(runtimeServiceAccounts));
   if (requiredBindings.length === 0) {
     return;
   }
@@ -271,7 +329,10 @@ export async function ensureServiceAgentRoles(
     projectId,
     projectNumber,
     requiredBindings,
-    newServices.map((service) => service.api),
+    [
+      ...newServices.map((service) => service.api),
+      ...eventarcEndpoints.map((endpoint) => endpoint.id),
+    ],
     dryRun,
   );
 }
