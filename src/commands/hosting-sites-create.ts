@@ -9,6 +9,8 @@ import { Options } from "../options";
 import { requirePermissions } from "../requirePermissions";
 import { createSite, Site } from "../hosting/api";
 import { FirebaseError } from "../error";
+import { ensure } from "../ensureApiEnabled";
+import { hostingApiOrigin } from "../api";
 
 const LOG_TAG = "hosting:sites";
 
@@ -16,6 +18,7 @@ export const command = new Command("hosting:sites:create [siteId]")
   .description("create a Firebase Hosting site")
   .option("--app <appId>", "specify an existing Firebase Web App ID")
   .before(requirePermissions, ["firebasehosting.sites.update"])
+  .before((options) => ensure(needProjectId(options), hostingApiOrigin(), "hosting", true))
   .action(async (siteId: string | undefined, options: Options & { app: string }): Promise<Site> => {
     const projectId = needProjectId(options);
     const appId = options.app;

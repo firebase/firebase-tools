@@ -1,5 +1,2 @@
-- Added `crashlytics:heapdumps:{enable,disable,status}` commands to manage Crashlytics Android heap dump collection. (#11225)
-- Removed unused dependencies `proxy-agent`, `universal-analytics`, and `@apphosting/common`.
-- Fixed an issue where throttled task queues stopped processing remaining tasks when a task exhausted its retries or timed out (#6989, #11040).
-- Fixed a race condition in `SourceTokenScraper` that could cause concurrent function deployments to hang when refreshing an expired source token (#6989).
+- Ensured the Firebase Hosting API is enabled before deploying and running other Hosting commands.
 - Fixed the Functions emulator repeating the "External network resource requested!" and "Google API requested!" warnings for a URL it has already reported. (#4939)
