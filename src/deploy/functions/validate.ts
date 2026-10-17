@@ -215,7 +215,7 @@ export function cpuConfigIsValid(endpoints: backend.Endpoint[]): void {
     (endpoint) => mem(endpoint) > 1024 && cpu(endpoint) < 1,
   );
   if (tooSmallCPUBig) {
-    const msg = `The functions ${tooSmallCPUSmall} have too little CPU for their memory allocation. A minimum of 1 CPU is needed to set a memory limit greater than 1GiB`;
+    const msg = `The functions ${tooSmallCPUBig} have too little CPU for their memory allocation. A minimum of 1 CPU is needed to set a memory limit greater than 1GiB`;
     throw new FirebaseError(msg);
   }
   const tooSmallMemory4CPU = matchingIds(
