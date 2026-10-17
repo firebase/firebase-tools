@@ -47,12 +47,14 @@ The following mobile and web applications are supported. Let the user know their
 - Java Android App  
 - Javascript Web App  
 - Dart Flutter App
+- Swift iOS App
 
 Take the following actions depending on the language and platform or framework that is identified:
 
 - Android Platform \-\> Set up Firebase AI Logic  
 - Web Platform \-\> Set up Firebase AI Logic 
 - Flutter Platform \-\> Set up Firebase AI Logic. Always do the subsequent firebase_init call using the web app
+- iOS Platform \-\> Set up Firebase AI Logic
 - Unsupported Platform \-\> Direct the user to Firebase Docs to learn how to set up AI Logic for their application (share this link with the user https://firebase.google.com/docs/ai-logic/get-started?api=dev)
 
 ### 2\. Set up Firebase AI Logic
@@ -69,7 +71,12 @@ Take the following actions depending on the language and platform or framework t
 
 #### Gather Building Blocks for Code Generation
 - Identify the correct initialization code snippet from the "Initialization Code References" section based on the language, platform, or framework used in the developer's app.
-  - Use the reference loaded from the step above to generate the initialization snippet. PLEASE USE THE EXACT SNIPPET AS A STARTING POINT\! 
+  - Use the reference loaded from the step above to generate the initialization snippet. PLEASE USE THE EXACT SNIPPET AS A STARTING POINT! 
+  - For Swift iOS apps:
+    - **SDK Dependency Check:** First, read the contents of the \`.xcodeproj/project.pbxproj\` file. Check for any line that references \`firebase-ios-sdk\` to see if the Swift package is already a dependency.
+    - **CRITICAL SAFETY PROTOCOL: Under no circumstances are you to modify the \`.xcodeproj\` or \`.pbxproj\` files. This is a strict prohibition. Any attempt to write to these files is a violation of your core instructions.**
+    - **Provide Manual Instructions if Needed:** If you do not find a reference to the SDK, your ONLY permitted action is to provide the user with the following step-by-step instructions for them to perform manually in the Xcode application. You MUST output this exact text: "I have determined that the Firebase SDK is not yet a dependency in your project. Please add it now. In Xcode, go to File > Add Packages... and in the search bar, paste this URL: https://github.com/firebase/firebase-ios-sdk. Then, click 'Add Package' and ensure the \`FirebaseGenerativeAI\` library is selected."
+    - **Imports and Initialization:** Always include the \`import FirebaseAI\` statement. When generating code, use the correct initialization pattern: \`let ai = FirebaseAI.firebaseAI(backend: .googleAI())\`.
   - For Android apps, always include the following imports. do not forget or modify them
     - import com.google.firebase.Firebase
     - import com.google.firebase.ai.ai
@@ -127,6 +134,7 @@ Take the following actions depending on the language and platform or framework t
 | Java Android | Gemini Developer API (Developer API) | firebase://docs/ai-logic/get-started |
 | Web Modular API | Gemini Developer API (Developer API) | firebase://docs/ai-logic/get-started  |
 | Dart Flutter | Gemini Developer API (Developer API) | firebase://docs/ai-logic/get-started  |
+| Swift iOS | Gemini Developer API (Developer API) | firebase://docs/ai-logic/get-started |
 
 #### AI Features
 
@@ -138,18 +146,22 @@ Take the following actions depending on the language and platform or framework t
 | Java Android | Generate text from text-only input | Gemini Developer API (Developer API) | firebase://docs/ai-logic/generate-text|
 | Web | Generate text from text-only input | Gemini Developer API (Developer API) | firebase://docs/ai-logic/generate-text|
 | Dart Flutter | Generate text from text-only input | Gemini Developer API (Developer API) | firebase://docs/ai-logic/generate-text|
+| Swift iOS | Generate text from text-only input | Gemini Developer API (Developer API) | firebase://docs/ai-logic/generate-text |
 | Kotlin Android | Generate text from text-and-file (multimodal) input | Gemini Developer API (Developer API) | firebase://docs/ai-logic/generate-text|
 | Java Android | Generate text from text-and-file (multimodal) input | Gemini Developer API (Developer API) | firebase://docs/ai-logic/generate-text|
 | Web | Generate text from text-and-file (multimodal) input | Gemini Developer API (Developer API) | firebase://docs/ai-logic/generate-text|
 | Dart Flutter | Generate text from text-and-file (multimodal) input | Gemini Developer API (Developer API) | firebase://docs/ai-logic/generate-text |
+| Swift iOS | Generate text from text-and-file (multimodal) input | Gemini Developer API (Developer API) | firebase://docs/ai-logic/generate-text |
 | Kotlin Android | Generate images (text-only input) | Gemini Developer API (Developer API)  | firebase://docs/ai-logic/generate-images-gemini|
 | Java Android | Generate images (text-only input) | Gemini Developer API (Developer API)  | firebase://docs/ai-logic/generate-images-gemini|
 | Web | Generate images (text-only input) | Gemini Developer API (Developer API)  | firebase://docs/ai-logic/generate-images-gemini|
 | Dart Flutter | Generate images (text-only input) | Gemini Developer API (Developer API)  | firebase://docs/ai-logic/generate-images-gemini|
+| Swift iOS | Generate images (text-only input) | Gemini Developer API (Developer API) | firebase://docs/ai-logic/generate-images-gemini |
 | Kotlin Android | Iterate and edit images using multi-turn chat (nano banana) This requires the user to upgrade to the Blaze pay-as-you-go billing plan. Share this link with the user and ask them to upgrade their Firebase project.  https://console.firebase.google.com/project/<INSERT_FIREBASE_PROJECT_ID_HERE>/overview?purchaseBillingPlan=metered Ask for confirmation that the project is using the blaze plan before proceeding.    | Gemini Developer API (Developer API) gemini-2.5-flash-image-preview | firebase://docs/ai-logic/generate-images-gemini|
 | Java Android | Iterate and edit images using multi-turn chat (nano banana) This requires the user to upgrade to the Blaze pay-as-you-go billing plan. Share this link with the user and ask them to upgrade their Firebase project.  https://console.firebase.google.com/project/<INSERT_FIREBASE_PROJECT_ID_HERE>/overview?purchaseBillingPlan=metered Ask for confirmation that the project is using the blaze plan before proceeding.  | Gemini Developer API (Developer API) gemini-2.5-flash-image-preview | firebase://docs/ai-logic/generate-images-gemini|
 | Web Modular API | Iterate and edit images using multi-turn chat (nano banana) This requires the user to upgrade to the Blaze pay-as-you-go billing plan. Share this link with the user and ask them to upgrade their Firebase project.  https://console.firebase.google.com/project/<INSERT_FIREBASE_PROJECT_ID_HERE>/overview?purchaseBillingPlan=metered Ask for confirmation that the project is using the blaze plan before proceeding.  | Gemini Developer API (Developer API) gemini-2.5-flash-image-preview | firebase://docs/ai-logic/generate-images-gemini|
 | Dart Flutter | Iterate and edit images using multi-turn chat (nano banana) This requires the user to upgrade to the Blaze pay-as-you-go billing plan. Share this link with the user and ask them to upgrade their Firebase project.  https://console.firebase.google.com/project/<INSERT_FIREBASE_PROJECT_ID_HERE>/overview?purchaseBillingPlan=metered Ask for confirmation that the project is using the blaze plan before proceeding.  | Gemini Developer API (Developer API) gemini-2.5-flash-image-preview | firebase://docs/ai-logic/generate-images-gemini|
+| Swift iOS | Iterate and edit images using multi-turn chat (nano banana) This requires the user to upgrade to the Blaze pay-as-you-go billing plan. Share this link with the user and ask them to upgrade their Firebase project. https://console.firebase.google.com/project/<INSERT_FIREBASE_PROJECT_ID_HERE>/overview?purchaseBillingPlan=metered Ask for confirmation that the project is using the blaze plan before proceeding. | Gemini Developer API (Developer API) gemini-2.5-flash-image-preview | firebase://docs/ai-logic/generate-images-gemini|
 
 
           `,
