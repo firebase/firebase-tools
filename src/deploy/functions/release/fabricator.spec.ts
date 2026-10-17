@@ -5,6 +5,7 @@ import { FirebaseError } from "../../../error";
 import * as fabricator from "./fabricator";
 import * as reporter from "./reporter";
 import * as executor from "./executor";
+import * as experiments from "../../../experiments";
 import * as gcfNSV2 from "../../../gcp/cloudfunctionsv2";
 import * as gcfNS from "../../../gcp/cloudfunctions";
 import * as eventarcNS from "../../../gcp/eventarc";
@@ -156,6 +157,102 @@ describe("Fabricator", () => {
       ...JSON.parse(JSON.stringify(base)),
       ...trigger,
     } as backend.Endpoint;
+  }
+
+  const saNotFoundError = new FirebaseError(
+    "Service account firebase-fn-123@proj.iam.gserviceaccount.com was not found",
+    { status: 404 },
+  );
+  const saPropagationError = new FirebaseError(
+    "Validation failed for trigger: The request was invalid: invalid service account firebase-fn-123@proj.iam.gserviceaccount.com provided",
+    { status: 400 },
+  );
+
+  function fabricatorWithRetries(retries = 5): fabricator.Fabricator {
+    return new fabricator.Fabricator({
+      ...ctorArgs,
+      functionExecutor: new executor.QueueExecutor({
+        retries,
+        backoff: 1,
+        maxBackoff: 1,
+      }),
+    });
+  }
+
+  interface TokenArg {
+    name: string;
+    sourceToken?: string;
+    buildConfig?: { sourceToken?: string };
+  }
+
+  async function verifyScraperBlocksAcrossRetries(
+    method: "createV1Function" | "updateV1Function" | "createV2Function" | "updateV2Function",
+  ): Promise<void> {
+    const isV2 = method.includes("V2");
+    const fabWithQueue = fabricatorWithRetries();
+    // fn2's first two attempts must land well inside the token lifetime; its last attempt sleeps
+    // past it so the next retry has to refresh the token.
+    const tokenLifetimeMs = 100;
+    const sc = new scraper.SourceTokenScraper(tokenLifetimeMs);
+    const apiStub =
+      method === "createV1Function"
+        ? gcf.createFunction
+        : method === "updateV1Function"
+          ? gcf.updateFunction
+          : method === "createV2Function"
+            ? gcfv2.createFunction
+            : gcfv2.updateFunction;
+    const getToken = (fn: Partial<TokenArg>): string | undefined =>
+      isV2 ? fn.buildConfig?.sourceToken : fn.sourceToken;
+
+    // Retries mutate the same API object, so record what each call actually sent.
+    const sent: Array<{ name?: string; token?: string }> = [];
+    apiStub.callsFake(async (fn: Partial<TokenArg>) => {
+      sent.push({ name: fn.name, token: getToken(fn) });
+      switch (sent.length) {
+        case 2:
+          return { name: "op1", type: "create", done: false };
+        case 4:
+          await new Promise((resolve) => setTimeout(resolve, tokenLifetimeMs * 2));
+          throw saPropagationError;
+        case 5:
+          return { name: "op2", type: "create", done: false };
+        default:
+          throw saPropagationError;
+      }
+    });
+    poller.pollOperation.callsFake((opts: pollerNS.OperationPollerOptions) => {
+      if (opts.operationResourceName === "op1") {
+        opts.onPoll?.({
+          metadata: {
+            sourceToken: "scraped-token",
+            target: "projects/test-project/locations/us-central1/functions/fn1",
+          },
+        });
+      }
+      return Promise.resolve(isV2 ? { serviceConfig: { service: "service" } } : undefined);
+    });
+    gcf.setInvokerCreate.resolves();
+    run.setInvokerCreate.resolves();
+
+    const platform = isV2 ? "gcfv2" : "gcfv1";
+    const ep1 = endpoint({ httpsTrigger: {} }, { id: "fn1", platform });
+    const ep2 = endpoint({ httpsTrigger: {} }, { id: "fn2", platform });
+
+    await Promise.all([fabWithQueue[method](ep1, sc), fabWithQueue[method](ep2, sc)]);
+
+    const fn1 = backend.functionName(ep1);
+    const fn2 = backend.functionName(ep2);
+    expect(sent).to.deep.equal([
+      // fn1 builds from source, retrying a transient error while fn2 waits.
+      { name: fn1, token: undefined },
+      { name: fn1, token: undefined },
+      // fn2 reuses fn1's build across its own retries...
+      { name: fn2, token: "scraped-token" },
+      { name: fn2, token: "scraped-token" },
+      // ...until the token expires during its backoff and it builds from source.
+      { name: fn2, token: undefined },
+    ]);
   }
 
   describe("createV1Function", () => {
@@ -345,6 +442,10 @@ describe("Fabricator", () => {
       await fab.createV1Function(ep1, new scraper.SourceTokenScraper());
       expect(gcf.setInvokerCreate).to.not.have.been.called;
     });
+
+    it("keeps waiting functions blocked on scraper while first function retries a transient error", async () => {
+      await verifyScraperBlocksAcrossRetries("createV1Function");
+    });
   });
 
   describe("updateV1Function", () => {
@@ -432,6 +533,10 @@ describe("Fabricator", () => {
 
       await fab.updateV1Function(ep, new scraper.SourceTokenScraper());
       expect(gcf.setInvokerUpdate).to.not.have.been.called;
+    });
+
+    it("keeps waiting functions blocked on scraper while first function retries a transient error", async () => {
+      await verifyScraperBlocksAcrossRetries("updateV1Function");
     });
   });
 
@@ -634,61 +739,124 @@ describe("Fabricator", () => {
       );
     });
 
-    it("tries to grab new token on abort", async () => {
+    it("releases waiting functions to build from source when the first exhausts its retries", async () => {
+      const fabWithQueue = fabricatorWithRetries(1);
       const sc = new scraper.SourceTokenScraper();
-      sc.poller({
-        metadata: {
-          sourceToken: "magic token",
-          target: "projects/p/locations/l/functions/f",
-        },
+      const sent: Array<{ name: string; token?: string }> = [];
+      gcfv2.createFunction.callsFake((fn: TokenArg) => {
+        sent.push({ name: fn.name, token: fn.buildConfig?.sourceToken });
+        return sent.length <= 2
+          ? Promise.reject(saNotFoundError)
+          : Promise.resolve({ name: "op", done: false });
       });
+      poller.pollOperation.callsFake((opts: pollerNS.OperationPollerOptions) => {
+        opts.onPoll?.({
+          metadata: {
+            sourceToken: "fn2-token",
+            target: "projects/test-project/locations/us-central1/functions/fn2",
+          },
+        });
+        return Promise.resolve({ serviceConfig: { service: "service" } });
+      });
+      run.setInvokerCreate.resolves();
+      const ep1 = endpoint({ httpsTrigger: {} }, { id: "fn1", platform: "gcfv2" });
+      const ep2 = endpoint({ httpsTrigger: {} }, { id: "fn2", platform: "gcfv2" });
 
-      gcfv2.createFunction.onFirstCall().rejects({ message: "unknown" });
-      gcfv2.createFunction.resolves({ name: "op", done: true });
+      const fn1 = fabWithQueue.createV2Function(ep1, sc);
+      const fn2 = fabWithQueue.createV2Function(ep2, sc);
+      await expect(fn1).to.be.rejectedWith(reporter.DeploymentError, "create");
+      await fn2;
 
-      const ep1 = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
-      const ep2 = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
-      const fn1 = fab.createV2Function(ep1, sc);
-      const fn2 = fab.createV2Function(ep2, sc);
-      try {
-        await Promise.all([fn1, fn2]);
-      } catch (err) {
-        // do nothing, error is expected
-      }
-      await expect(sc.withToken(async (t) => t)).to.eventually.equal("magic token");
+      expect(sent).to.deep.equal([
+        { name: backend.functionName(ep1), token: undefined },
+        { name: backend.functionName(ep1), token: undefined },
+        { name: backend.functionName(ep2), token: undefined },
+      ]);
+      // fn2's build becomes the shared token for later deploys.
+      await expect(sc.withToken((getToken) => getToken())).to.eventually.equal("fn2-token");
     });
 
     it("deletes broken function and retries on cloud run quota exhaustion", async () => {
+      const fabWithQueue = fabricatorWithRetries();
       gcfv2.createFunction.onFirstCall().rejects({ message: "Cloud Run quota exhausted", code: 8 });
+      // A later transient error must not delete the function again.
+      gcfv2.createFunction.onSecondCall().rejects({ message: "Too many requests", status: 429 });
       gcfv2.createFunction.resolves({ name: "op", done: false });
 
       gcfv2.deleteFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ name: "op" });
 
       const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
-      await fab.createV2Function(ep, new scraper.SourceTokenScraper());
+      await fabWithQueue.createV2Function(ep, new scraper.SourceTokenScraper());
 
-      expect(gcfv2.createFunction).to.have.been.calledTwice;
-      expect(gcfv2.deleteFunction).to.have.been.called;
+      expect(gcfv2.createFunction).to.have.been.calledThrice;
+      expect(gcfv2.deleteFunction).to.have.been.calledOnce;
+    });
+
+    it("gives up when deleting a broken function keeps hitting cloud run quota exhaustion", async () => {
+      const fabWithQueue = fabricatorWithRetries(2);
+      gcfv2.createFunction.rejects({ message: "Cloud Run quota exhausted", code: 8 });
+      gcfv2.deleteFunction.rejects({ message: "Cloud Run quota exhausted", code: 8 });
+
+      const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
+      await expect(
+        fabWithQueue.createV2Function(ep, new scraper.SourceTokenScraper()),
+      ).to.be.rejectedWith(reporter.DeploymentError, "create");
+
+      expect(gcfv2.createFunction).to.have.been.calledOnce;
+      expect(gcfv2.deleteFunction).to.have.been.calledTwice;
+    });
+
+    it("reuses the source token when cloud run quota exhaustion is reported on the operation", async () => {
+      const fabWithQueue = fabricatorWithRetries();
+      // Retries mutate the same apiFunction object, so record what each call actually sent.
+      const sent: Array<{ name: string; token?: string }> = [];
+      gcfv2.createFunction.callsFake((fn: TokenArg) => {
+        sent.push({ name: fn.name, token: fn.buildConfig?.sourceToken });
+        return Promise.resolve({ name: sent.length === 1 ? "op1" : "op2", done: false });
+      });
+      gcfv2.deleteFunction.resolves({ name: "del-op", done: false });
+      poller.pollOperation.callsFake((opts: pollerNS.OperationPollerOptions) => {
+        if (opts.operationResourceName !== "op1") {
+          return Promise.resolve({ serviceConfig: { service: "service" } });
+        }
+        // The build finished (token minted) before Cloud Run service creation hit the quota.
+        opts.onPoll?.({
+          metadata: {
+            sourceToken: "scraped-token",
+            target: "projects/test-project/locations/us-central1/functions/fn1",
+          },
+        });
+        opts.onPoll?.({
+          done: true,
+          error: { name: "op1", code: 8, message: "Cloud Run quota exhausted" },
+        });
+        return Promise.reject(new FirebaseError("Cloud Run quota exhausted", { status: 8 }));
+      });
+      run.setInvokerCreate.resolves();
+
+      const ep1 = endpoint({ httpsTrigger: {} }, { id: "fn1", platform: "gcfv2" });
+      const ep2 = endpoint({ httpsTrigger: {} }, { id: "fn2", platform: "gcfv2" });
+      const sc = new scraper.SourceTokenScraper();
+
+      await Promise.all([
+        fabWithQueue.createV2Function(ep1, sc),
+        fabWithQueue.createV2Function(ep2, sc),
+      ]);
+
+      expect(sent).to.have.lengthOf(3);
+      expect(sent[0]).to.deep.equal({ name: backend.functionName(ep1), token: undefined });
+      expect(sent.slice(1)).to.have.deep.members([
+        { name: backend.functionName(ep1), token: "scraped-token" },
+        { name: backend.functionName(ep2), token: "scraped-token" },
+      ]);
+      expect(gcfv2.deleteFunction).to.have.been.calledOnceWith(backend.functionName(ep1));
     });
 
     it("retries createV2Function and succeeds when service account 404 occurs", async () => {
-      const queueExec = new executor.QueueExecutor({
-        retries: 5,
-        backoff: 1,
-        maxBackoff: 1,
-      });
-      const fabWithQueue = new fabricator.Fabricator({
-        ...ctorArgs,
-        functionExecutor: queueExec,
-      });
+      const fabWithQueue = fabricatorWithRetries();
 
-      const saError = new FirebaseError(
-        "Service account firebase-fn-123@proj.iam.gserviceaccount.com was not found",
-        { status: 404 },
-      );
-
-      gcfv2.createFunction.onFirstCall().rejects(saError);
+      gcfv2.createFunction.onFirstCall().rejects(saNotFoundError);
       gcfv2.createFunction.onSecondCall().resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
       run.setInvokerCreate.resolves();
@@ -701,22 +869,9 @@ describe("Fabricator", () => {
     });
 
     it("retries createV2Function and succeeds when service account 400 propagation error occurs", async () => {
-      const queueExec = new executor.QueueExecutor({
-        retries: 5,
-        backoff: 1,
-        maxBackoff: 1,
-      });
-      const fabWithQueue = new fabricator.Fabricator({
-        ...ctorArgs,
-        functionExecutor: queueExec,
-      });
+      const fabWithQueue = fabricatorWithRetries();
 
-      const saError = new FirebaseError(
-        "Validation failed for trigger: The request was invalid: invalid service account firebase-fn-123@proj.iam.gserviceaccount.com provided",
-        { status: 400 },
-      );
-
-      gcfv2.createFunction.onFirstCall().rejects(saError);
+      gcfv2.createFunction.onFirstCall().rejects(saPropagationError);
       gcfv2.createFunction.onSecondCall().resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
       run.setInvokerCreate.resolves();
@@ -729,15 +884,7 @@ describe("Fabricator", () => {
     });
 
     it("retries createV2Function and succeeds when service account 403 propagation error occurs", async () => {
-      const queueExec = new executor.QueueExecutor({
-        retries: 5,
-        backoff: 1,
-        maxBackoff: 1,
-      });
-      const fabWithQueue = new fabricator.Fabricator({
-        ...ctorArgs,
-        functionExecutor: queueExec,
-      });
+      const fabWithQueue = fabricatorWithRetries();
 
       const saError = new FirebaseError(
         "Could not create Cloud Run service projects/p/locations/l/services/s. Permission 'iam.serviceaccounts.actAs' denied on service account firebase-fn-456@proj.iam.gserviceaccount.com (or it may not exist).",
@@ -754,6 +901,10 @@ describe("Fabricator", () => {
       await fabWithQueue.createV2Function(ep, sc);
 
       expect(gcfv2.createFunction).to.have.been.calledTwice;
+    });
+
+    it("keeps waiting functions blocked on scraper while first function retries a transient error", async () => {
+      await verifyScraperBlocksAcrossRetries("createV2Function");
     });
 
     it("throws on set invoker failure", async () => {
@@ -953,6 +1104,54 @@ describe("Fabricator", () => {
     });
   });
 
+  describe("v2 deploys with functionsv2deployoptimizations disabled", () => {
+    beforeEach(() => {
+      experiments.setEnabled("functionsv2deployoptimizations", false);
+    });
+
+    afterEach(() => {
+      experiments.setEnabled("functionsv2deployoptimizations", null);
+    });
+
+    // Resolves the first function's operation only after the second function has called the API,
+    // so this deadlocks (and times out) if the second function waits on the scraper.
+    function holdFirstOpUntilSecondCall(apiStub: sinon.SinonStub): void {
+      apiStub.resolves({ name: "op", done: false });
+      poller.pollOperation.callsFake(async () => {
+        while (apiStub.callCount < 2) {
+          await new Promise((resolve) => setTimeout(resolve, 1));
+        }
+        return { serviceConfig: { service: "service" } };
+      });
+    }
+
+    it("does not make createV2Function calls wait for a source token", async () => {
+      holdFirstOpUntilSecondCall(gcfv2.createFunction);
+      run.setInvokerCreate.resolves();
+      const ep1 = endpoint({ httpsTrigger: {} }, { id: "fn1", platform: "gcfv2" });
+      const ep2 = endpoint({ httpsTrigger: {} }, { id: "fn2", platform: "gcfv2" });
+      const sc = new scraper.SourceTokenScraper();
+
+      await Promise.all([fab.createV2Function(ep1, sc), fab.createV2Function(ep2, sc)]);
+
+      const calls = gcfv2.createFunction.getCalls().map((c) => c.args[0] as TokenArg);
+      expect(calls.map((c) => c.buildConfig?.sourceToken)).to.deep.equal([undefined, undefined]);
+    });
+
+    it("does not make updateV2Function calls wait for a source token", async () => {
+      holdFirstOpUntilSecondCall(gcfv2.updateFunction);
+      run.setInvokerUpdate.resolves();
+      const ep1 = endpoint({ httpsTrigger: {} }, { id: "fn1", platform: "gcfv2" });
+      const ep2 = endpoint({ httpsTrigger: {} }, { id: "fn2", platform: "gcfv2" });
+      const sc = new scraper.SourceTokenScraper();
+
+      await Promise.all([fab.updateV2Function(ep1, sc), fab.updateV2Function(ep2, sc)]);
+
+      const calls = gcfv2.updateFunction.getCalls().map((c) => c.args[0] as TokenArg);
+      expect(calls.map((c) => c.buildConfig?.sourceToken)).to.deep.equal([undefined, undefined]);
+    });
+  });
+
   describe("updateV2Function", () => {
     it("throws on update function failure", async () => {
       gcfv2.updateFunction.rejects(new Error("Server failure"));
@@ -1097,28 +1296,8 @@ describe("Fabricator", () => {
       expect(run.setInvokerUpdate).to.not.have.been.called;
     });
 
-    it("tries to grab new token on abort", async () => {
-      const sc = new scraper.SourceTokenScraper();
-      sc.poller({
-        metadata: {
-          sourceToken: "magic token",
-          target: "projects/p/locations/l/functions/f",
-        },
-      });
-
-      gcfv2.updateFunction.onFirstCall().rejects({ message: "unknown" });
-      gcfv2.updateFunction.resolves({ name: "op", done: true });
-
-      const ep1 = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
-      const ep2 = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
-      const fn1 = fab.updateV2Function(ep1, sc);
-      const fn2 = fab.updateV2Function(ep2, sc);
-      try {
-        await Promise.all([fn1, fn2]);
-      } catch (err) {
-        // do nothing, error is expected
-      }
-      await expect(sc.withToken(async (t) => t)).to.eventually.equal("magic token");
+    it("keeps waiting functions blocked on scraper while first function retries a transient error", async () => {
+      await verifyScraperBlocksAcrossRetries("updateV2Function");
     });
   });
 
