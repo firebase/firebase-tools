@@ -1,1 +1,2 @@
 - Ensured the Firebase Hosting API is enabled before deploying and running other Hosting commands.
+- Fixed the Functions emulator repeating the "External network resource requested!" and "Google API requested!" warnings for a URL it has already reported. (#4939)
