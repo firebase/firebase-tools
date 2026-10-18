@@ -1,1 +1,2 @@
 - Ensured the Firebase Hosting API is enabled before deploying and running other Hosting commands.
+- Fixed parsing of `.env` files with Windows (CRLF) line endings so carriage returns no longer leak into multi-line double-quoted values.
