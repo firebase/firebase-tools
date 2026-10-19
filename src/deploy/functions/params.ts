@@ -530,9 +530,17 @@ async function ensureSecret(
     const desc = secretParam.description ? `${secretParam.description} ${notice}` : notice;
     logger.info(`\n${clc.bold(label)}: ${(await marked(desc)).trim()}`);
     const promptMessage = `Enter ${secretParam.format === "json" ? "a JSON value" : "a value"} for ${label}:`;
-    const secretValue = await password({
-      message: promptMessage,
-    });
+    let secretValue = "";
+    while (true) {
+      secretValue = await password({
+        message: promptMessage,
+      });
+      if (secretValue !== "") {
+        break;
+      }
+      logger.error("Secrets cannot have an empty value. Retrying...")
+    }
+
     if (secretParam.format === "json") {
       validateJsonSecret(secretParam.name, secretValue);
     }

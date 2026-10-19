@@ -714,6 +714,41 @@ describe("resolveParams", () => {
     }
   });
 
+  it("retries the secret prompt if the empty string is given", async () => {
+    const inputStub = sinon.stub(prompt, "password");
+    inputStub.onFirstCall().returns("");
+    inputStub.onSecondCall().returns("secret-val");
+
+    const getSecretMetadataStub = sinon.stub(secretManager, "getSecretMetadata").resolves({
+      secret: undefined,
+    });
+    const createSecretStub = sinon.stub(secretManager, "createSecret").resolves();
+    const addVersionStub = sinon.stub(secretManager, "addVersion").resolves();
+    const paramsToResolve: params.Param[] = [
+      {
+        name: "API_KEY",
+        label: "API Key",
+        description: "Key used to authenticate with 3rd party API.",
+        type: "secret",
+        resourceId: "API_KEY",
+      },
+    ];
+    try {
+      await params.resolveParams({
+        params: paramsToResolve,
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "my-codebase",
+      });
+      sinon.assert.calledTwice(inputStub);
+    } finally {
+      inputStub.restore();
+      getSecretMetadataStub.restore();
+      createSecretStub.restore();
+      addVersionStub.restore();
+    }
+  });
+
   it("logs Onetime existing secret reference message only when both secretEnvParams and writeDefaultSecretBindings are enabled", async () => {
     const paramsToResolve: params.Param[] = [{ name: "MY_SECRET", type: "secret" }];
     const mockSecret = { name: "MY_SECRET", projectId: "foo", labels: {}, replication: {} };
