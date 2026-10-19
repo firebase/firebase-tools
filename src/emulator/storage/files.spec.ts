@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { mkdtempSync } from "fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import * as path from "path";
 
@@ -255,21 +255,27 @@ describe("files", () => {
         await uploadDecoded(storageLayer, "bucket", "users/B/photo.png", "from B");
         await uploadDecoded(storageLayer, "bucket", "users/A/../B/photo.png", "from A");
         const exportDir = mkdtempSync(path.join(tmpdir(), "storage-export-"));
-        await storageLayer.export(exportDir, { initiatedBy: "test" });
+        const importDir = mkdtempSync(path.join(tmpdir(), "storage-import-"));
+        try {
+          await storageLayer.export(exportDir, { initiatedBy: "test" });
 
-        const imported = new StorageLayer(
-          "project",
-          new Map(),
-          new Map(),
-          ALWAYS_TRUE_RULES_VALIDATOR,
-          ALWAYS_TRUE_ADMIN_CREDENTIAL_VALIDATOR,
-          new Persistence(mkdtempSync(path.join(tmpdir(), "storage-import-"))),
-          new StorageCloudFunctions("project"),
-        );
-        imported.import(exportDir, { initiatedBy: "test" });
+          const imported = new StorageLayer(
+            "project",
+            new Map(),
+            new Map(),
+            ALWAYS_TRUE_RULES_VALIDATOR,
+            ALWAYS_TRUE_ADMIN_CREDENTIAL_VALIDATOR,
+            new Persistence(importDir),
+            new StorageCloudFunctions("project"),
+          );
+          imported.import(exportDir, { initiatedBy: "test" });
 
-        expect(await readData(imported, "users/B/photo.png")).to.equal("from B");
-        expect(await readData(imported, "users/A/../B/photo.png")).to.equal("from A");
+          expect(await readData(imported, "users/B/photo.png")).to.equal("from B");
+          expect(await readData(imported, "users/A/../B/photo.png")).to.equal("from A");
+        } finally {
+          rmSync(exportDir, { recursive: true, force: true });
+          rmSync(importDir, { recursive: true, force: true });
+        }
       });
     });
 
@@ -294,6 +300,40 @@ describe("files", () => {
           bucketId: "fake-project-id.appspot.com",
           decodedObjectId: "test_upload.jpg",
         });
+      });
+
+      it("should not treat | in a Windows-exported object name as a separator", async () => {
+        const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
+        const exportDir = mkdtempSync(path.join(tmpdir(), "storage-export-"));
+        try {
+          mkdirSync(path.join(exportDir, "metadata"));
+          mkdirSync(path.join(exportDir, "blobs"));
+          writeFileSync(
+            path.join(exportDir, "buckets.json"),
+            JSON.stringify({ buckets: [{ id: "bucket" }] }),
+          );
+          writeFileSync(
+            path.join(exportDir, "metadata", "object.json"),
+            StoredFileMetadata.toJSON(
+              new StoredFileMetadata(
+                { name: "a|b\\c.txt", bucket: "bucket", contentType: "text/plain" },
+                new StorageCloudFunctions("project"),
+                Buffer.from("data"),
+              ),
+            ),
+          );
+          writeFileSync(path.join(exportDir, "blobs", "object"), "data");
+
+          storageLayer.import(exportDir, { initiatedBy: "test" });
+
+          const { data } = await storageLayer.getObject({
+            bucketId: "bucket",
+            decodedObjectId: "a|b/c.txt",
+          });
+          expect(data.toString()).to.equal("data");
+        } finally {
+          rmSync(exportDir, { recursive: true, force: true });
+        }
       });
     });
 

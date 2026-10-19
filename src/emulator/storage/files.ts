@@ -635,8 +635,9 @@ export class StorageLayer {
       }
 
       // Exports written on Windows by older versions stored object names with `\` separators.
+      // Such a name is recognized by its first separator being `\`.
       let fileName = metadata.name;
-      if (getPathSep(fileName) === "\\") {
+      if (/[/\\]/.exec(fileName)?.[0] === "\\") {
         fileName = fileName.split("\\").join("/");
       }
 
@@ -658,11 +659,4 @@ export class StorageLayer {
       }
     }
   }
-}
-
-/** Returns file separator used in given path, either '\\' or '/'. */
-function getPathSep(decodedPath: string): string {
-  // Checks for the first matching file separator
-  const firstSepIndex = decodedPath.search(/[\/|\\\\]/g);
-  return decodedPath[firstSepIndex];
 }
