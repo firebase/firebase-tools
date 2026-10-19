@@ -716,8 +716,8 @@ describe("resolveParams", () => {
 
   it("retries the secret prompt if the empty string is given", async () => {
     const inputStub = sinon.stub(prompt, "password");
-    inputStub.onFirstCall().returns("");
-    inputStub.onSecondCall().returns("secret-val");
+    inputStub.onFirstCall().resolves("");
+    inputStub.onSecondCall().resolves("secret-val");
 
     const getSecretMetadataStub = sinon.stub(secretManager, "getSecretMetadata").resolves({
       secret: undefined,
@@ -740,7 +740,7 @@ describe("resolveParams", () => {
         userEnvs: {},
         codebase: "my-codebase",
       });
-      sinon.assert.calledTwice(inputStub);
+      expect(inputStub).to.have.been.calledTwice;
     } finally {
       inputStub.restore();
       getSecretMetadataStub.restore();

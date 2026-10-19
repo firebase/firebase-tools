@@ -538,7 +538,7 @@ async function ensureSecret(
       if (secretValue !== "") {
         break;
       }
-      logger.error("Secrets cannot have an empty value. Retrying...")
+      logger.error("Secrets cannot have an empty value. Retrying...");
     }
 
     if (secretParam.format === "json") {
