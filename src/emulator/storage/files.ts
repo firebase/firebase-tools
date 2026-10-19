@@ -522,8 +522,14 @@ export class StorageLayer {
     return metadata;
   }
 
+  /**
+   * Returns the key an object is stored under. Object names are literal in Cloud Storage, so the
+   * key must keep the name as is: `path.join` would collapse `.` and `..` segments (and, on
+   * Windows, treat `\` as a separator), letting two different names share one stored object.
+   * Bucket names cannot contain `/`, so the key is unique per bucket and object.
+   */
   private path(bucket: string, object: string): string {
-    return path.join(bucket, object);
+    return `${bucket}/${object}`;
   }
 
   public get dirPath(): string {
@@ -628,11 +634,11 @@ export class StorageLayer {
         continue;
       }
 
+      // Exports written on Windows by older versions stored object names with `\` separators.
+      // Such a name is recognized by its first separator being `\`.
       let fileName = metadata.name;
-      const objectNameSep = getPathSep(fileName);
-      // Replace all file separators with that of current platform for compatibility
-      if (fileName !== path.sep) {
-        fileName = fileName.split(objectNameSep).join(path.sep);
+      if (/[/\\]/.exec(fileName)?.[0] === "\\") {
+        fileName = fileName.split("\\").join("/");
       }
 
       const filepath = this.path(metadata.bucket, fileName);
@@ -653,11 +659,4 @@ export class StorageLayer {
       }
     }
   }
-}
-
-/** Returns file separator used in given path, either '\\' or '/'. */
-function getPathSep(decodedPath: string): string {
-  // Checks for the first matching file separator
-  const firstSepIndex = decodedPath.search(/[\/|\\\\]/g);
-  return decodedPath[firstSepIndex];
 }
