@@ -156,8 +156,6 @@ export class FirebaseMcpServer {
       this.currentLogLevel = params.level;
       return {};
     });
-
-    void this.detectProjectSetup();
   }
 
   /** Wait until initialization has finished. */
@@ -508,6 +506,7 @@ export class FirebaseMcpServer {
   }
 
   async start(options?: { useSSE?: boolean; port?: number }): Promise<void> {
+    void this.detectProjectSetup();
     if (options?.useSSE) {
       const app = express();
 
