@@ -1,11 +1,12 @@
 import { basename, dirname } from "path";
 import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
-import { Config, Env, store } from "./config";
+import { Config, Env, store, RunConfig } from "./config";
 import * as yaml from "yaml";
 import * as jsYaml from "js-yaml";
 import * as path from "path";
 import { fileExistsSync } from "../fsutils";
 import { FirebaseError } from "../error";
+import { ApiRunConfig } from "../gcp/apphosting";
 
 export type Secret = Omit<Env, "value">;
 export type EnvMap = Record<string, Omit<Env, "variable">>;
@@ -18,6 +19,7 @@ export class AppHostingYamlConfig {
   // Holds the basename of the file (e.g. apphosting.yaml vs apphosting.staging.yaml)
   public filename: string | undefined;
   public env: EnvMap = {};
+  public runConfig?: RunConfig;
 
   /**
    * Reads in the App Hosting yaml file found in filePath, parses the secrets and
@@ -37,6 +39,9 @@ export class AppHostingYamlConfig {
     if (loadedAppHostingYaml.env) {
       config.env = toEnvMap(loadedAppHostingYaml.env);
     }
+    if (loadedAppHostingYaml.runConfig) {
+      config.runConfig = loadedAppHostingYaml.runConfig;
+    }
 
     return config;
   }
@@ -52,8 +57,8 @@ export class AppHostingYamlConfig {
   /**
    * Merges this AppHostingYamlConfig with another config, the incoming config
    * has precedence if there are any conflicting configurations.
-   * */
-  merge(other: AppHostingYamlConfig, allowSecretsToBecomePlaintext: boolean = true) {
+   */
+  merge(other: AppHostingYamlConfig, allowSecretsToBecomePlaintext = true) {
     if (!allowSecretsToBecomePlaintext) {
       const wereSecrets = Object.entries(this.env)
         .filter(([, env]) => env.secret)
@@ -69,6 +74,13 @@ export class AppHostingYamlConfig {
       ...this.env,
       ...other.env,
     };
+
+    if (other.runConfig) {
+      this.runConfig = {
+        ...this.runConfig,
+        ...other.runConfig,
+      };
+    }
   }
 
   /**
@@ -84,6 +96,9 @@ export class AppHostingYamlConfig {
     }
 
     yamlConfigToWrite.env = toEnvList(this.env);
+    if (this.runConfig) {
+      yamlConfigToWrite.runConfig = this.runConfig;
+    }
 
     store(filePath, yaml.parseDocument(jsYaml.dump(yamlConfigToWrite)));
   }
@@ -103,4 +118,22 @@ export function toEnvList(envs: EnvMap): Env[] {
   return Object.entries(envs).map(([variable, env]) => {
     return { ...env, variable };
   });
+}
+
+/**
+ * Converts yaml runConfig (e.g. memoryMiB) to the API schema expected by App Hosting backend (memoryMib).
+ */
+export function toApiRunConfig(runConfig?: RunConfig): ApiRunConfig | undefined {
+  if (!runConfig) {
+    return undefined;
+  }
+  const { memoryMiB, ...rest } = runConfig;
+  const apiConfig: ApiRunConfig = {
+    ...rest,
+    ...(memoryMiB !== undefined ? { memoryMib: memoryMiB } : {}),
+  };
+  if (Object.keys(apiConfig).length === 0) {
+    return undefined;
+  }
+  return apiConfig;
 }

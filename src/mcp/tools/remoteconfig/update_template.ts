@@ -11,6 +11,8 @@ export const update_template = tool(
     name: "update_template",
     description:
       "Use this to publish a new remote config template or roll back to a specific version for the project",
+    humanReadableDescription:
+      "Publish a new Firebase Remote Config template or rollback to a previous version.",
     inputSchema: z
       .object({
         template: z.object({}).optional().describe("The Remote Config template object to publish."),

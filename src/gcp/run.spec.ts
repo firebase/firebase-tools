@@ -452,4 +452,32 @@ describe("run", () => {
       expect(run.serviceIsResolved(service)).to.be.true;
     });
   });
+
+  describe("listLocations", () => {
+    let getStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      getStub = sinon.stub(Client.prototype, "get");
+    });
+
+    afterEach(() => {
+      getStub.restore();
+    });
+
+    it("returns location IDs from the Cloud Run API", async () => {
+      getStub.resolves({
+        body: { locations: [{ locationId: "us-central1" }, { locationId: "europe-west1" }] },
+      });
+
+      const locations = await run.listLocations("my-project");
+      expect(locations).to.deep.equal(["us-central1", "europe-west1"]);
+      expect(getStub).to.have.been.calledOnceWithExactly("/projects/my-project/locations");
+    });
+
+    it("returns an empty array when locations is omitted", async () => {
+      getStub.resolves({ body: {} });
+
+      expect(await run.listLocations("my-project")).to.deep.equal([]);
+    });
+  });
 });

@@ -16,8 +16,9 @@ import {
   listBackends,
   parseBackendName,
   serviceAgentEmail,
+  ApiRunConfig,
 } from "../../gcp/apphosting";
-import { AppHostingYamlConfig, EnvMap } from "../../apphosting/yaml";
+import { AppHostingYamlConfig, EnvMap, toApiRunConfig } from "../../apphosting/yaml";
 import { WebConfig } from "../../fetchWebSetup";
 import { Env, getAppHostingConfiguration, splitEnvVars } from "../../apphosting/config";
 import { getGitRepositoryLink, parseGitRepositoryLinkName } from "../../gcp/devConnect";
@@ -181,6 +182,7 @@ export default async function (context: Context, options: Options): Promise<void
 
   const buildEnv: Record<string, EnvMap> = {};
   const runtimeEnv: Record<string, EnvMap> = {};
+  const runConfigs: Record<string, ApiRunConfig> = {};
 
   for (const cfg of Object.values(context.backendConfigs)) {
     if (!cfg.localBuild) {
@@ -216,6 +218,7 @@ export default async function (context: Context, options: Options): Promise<void
       options,
       buildEnv,
       runtimeEnv,
+      runConfigs,
     );
     await injectAutoInitEnvVars(cfg, backends, buildEnv, runtimeEnv);
 
@@ -239,6 +242,7 @@ export default async function (context: Context, options: Options): Promise<void
         {
           nonInteractive: options.nonInteractive,
           allowLocalBuildSecrets: !!options.allowLocalBuildSecrets,
+          rootDir: cfg.rootDir,
         },
       );
       context.backendLocalBuilds[cfg.backendId] = {
@@ -247,6 +251,7 @@ export default async function (context: Context, options: Options): Promise<void
         buildConfig: {
           ...buildConfig,
           env: mergeEnvVars(buildConfig.env || [], runtimeEnv[cfg.backendId] || {}),
+          ...(runConfigs[cfg.backendId] ? { runConfig: runConfigs[cfg.backendId] } : {}),
         },
       };
     } catch (e: unknown) {
@@ -265,13 +270,14 @@ export async function injectEnvVarsFromApphostingConfig(
   options: Options,
   buildEnv: Record<string, EnvMap>,
   runtimeEnv: Record<string, EnvMap>,
+  runConfigs?: Record<string, ApiRunConfig>,
 ): Promise<void> {
   for (const cfg of configs) {
     const rootDir = options.projectRoot || process.cwd();
     const appDir = path.join(rootDir, cfg.rootDir || "");
     let yamlConfig = AppHostingYamlConfig.empty();
     try {
-      yamlConfig = await getAppHostingConfiguration(appDir);
+      yamlConfig = await getAppHostingConfiguration(appDir, /* includeLocalConfigs= */ false);
     } catch (e: unknown) {
       logLabeledWarning(
         "apphosting",
@@ -283,6 +289,13 @@ export async function injectEnvVarsFromApphostingConfig(
 
     buildEnv[cfg.backendId] = { ...buildEnv[cfg.backendId], ...build };
     runtimeEnv[cfg.backendId] = { ...runtimeEnv[cfg.backendId], ...runtime };
+
+    if (runConfigs && yamlConfig.runConfig) {
+      const apiRunConfig = toApiRunConfig(yamlConfig.runConfig);
+      if (apiRunConfig) {
+        runConfigs[cfg.backendId] = { ...runConfigs[cfg.backendId], ...apiRunConfig };
+      }
+    }
   }
 }
 
@@ -305,6 +318,8 @@ export async function injectAutoInitEnvVars(
       )) as WebConfig;
 
       // We inject autoinit env vars into the build and runtime env vars.
+      // TODO: Match FAH remote builds by only injecting FIREBASE_CONFIG (and not
+      // FIREBASE_WEBAPP_CONFIG) into runtimeEnv.
       const autoinitVars = getAutoinitEnvVars(webappConfig);
       for (const [envVarName, envVarValue] of Object.entries(autoinitVars)) {
         buildEnv[cfg.backendId][envVarName] ??= { value: envVarValue };
@@ -419,7 +434,7 @@ async function ensureAppHostingServiceAgentRoles(
  * isolated scratch workspace in the `.local_build_<backendId>` folder that contains exactly the same
  * source files that would be uploaded to Cloud Build.
  */
-async function prepareLocalBuildScratchDirectory(
+export async function prepareLocalBuildScratchDirectory(
   rootDir: string,
   localBuildScratchDir: string,
   cfg: AppHostingSingle,

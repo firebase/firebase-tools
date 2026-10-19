@@ -13,6 +13,8 @@ export const create_app = tool(
     name: "create_app",
     description:
       "Use this to create a new Firebase App in the currently active Firebase Project. Firebase Apps can be iOS, Android, or Web.",
+    humanReadableDescription:
+      "Create a new iOS, Android, or Web app in the active Firebase project.",
     inputSchema: z.object({
       display_name: z
         .string()

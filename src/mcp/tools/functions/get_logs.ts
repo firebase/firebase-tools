@@ -47,6 +47,8 @@ export const get_logs = tool(
     name: "get_logs",
     description:
       "Use this to retrieve a page of Cloud Functions log entries using Google Cloud Logging advanced filters.",
+    humanReadableDescription:
+      "Retrieve and filter Cloud Functions log entries from Google Cloud Logging.",
     inputSchema: z.object({
       function_names: z
         .array(z.string())

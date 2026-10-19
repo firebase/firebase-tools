@@ -110,7 +110,7 @@ export function cli(pkg: any) {
         if (code === 1 && cmd) {
           help = "Having trouble? Try " + clc.bold("firebase [command] --help");
         } else {
-          help = "Having trouble? Try again or contact support with contents of firebase-debug.log";
+          help = `Having trouble? Try again or contact support with contents of ${logFilename}`;
         }
 
         if (cmd) {

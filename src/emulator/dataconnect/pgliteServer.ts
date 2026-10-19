@@ -79,8 +79,14 @@ export class PostgresServer {
       socket.on("end", () => {
         logger.debug("Postgres client disconnected");
       });
+      // Log and destroy individual client socket errors instead of escalating them
+      // to server-level errors.
       socket.on("error", (err) => {
-        server.emit("error", err);
+        logger.debug(
+          "Postgres client socket error (if this happened during request cancellation, it is expected and harmless):",
+          err,
+        );
+        socket.destroy();
       });
     });
     this.server = server;
@@ -229,7 +235,7 @@ export class PostgresServer {
       await db.waitReady;
       return db;
     } catch (err: unknown) {
-      if (pg17Dir && hasMessage(err) && /Database already exists/.test(err.message)) {
+      if (pg17Dir && hasMessage(err) && err.message.includes("Database already exists")) {
         // Clear out the current pglite data
         fs.rmSync(pg17Dir, { force: true, recursive: true });
         const db = new PGlite({ ...baseArgs, dataDir: pg17Dir });
