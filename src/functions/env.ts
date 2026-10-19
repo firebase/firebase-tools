@@ -381,9 +381,13 @@ export function checkForDuplicateKeys(
   envsWithoutLocal?: Record<string, string>,
 ): void {
   for (const key of keys) {
-    const definedInEnv = fullEnv.hasOwnProperty(key);
+    const definedInEnv = Object.prototype.hasOwnProperty.call(fullEnv, key);
     if (definedInEnv) {
-      if (envsWithoutLocal && isEmulator && envsWithoutLocal.hasOwnProperty(key)) {
+      if (
+        envsWithoutLocal &&
+        isEmulator &&
+        Object.prototype.hasOwnProperty.call(envsWithoutLocal, key)
+      ) {
         logWarning(
           clc.cyan(clc.yellow("functions: ")) +
             `Writing parameter ${key} to emulator-specific config .env.local. This will overwrite your existing definition only when emulating.`,

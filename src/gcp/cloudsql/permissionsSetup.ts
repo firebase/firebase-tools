@@ -204,31 +204,11 @@ export async function greenFieldSchemaSetup(
   schema: string,
   options: Options,
 ) {
-  // Detect the minimal necessary revokes to avoid errors for users who used the old sql permissions setup.
-  const revokes = [];
-  if (
-    await checkSQLRoleIsGranted(
-      options,
-      instanceId,
-      databaseId,
-      "cloudsqlsuperuser",
-      firebaseowner(databaseId, schema),
-    )
-  ) {
-    logger.warn(
-      "Detected cloudsqlsuperuser was previously given to firebase owner, revoking to improve database security.",
-    );
-    revokes.push(`REVOKE "cloudsqlsuperuser" FROM "${firebaseowner(databaseId, schema)}"`);
-  }
-
   const user = (await getIAMUser(options)).user;
   const projectNumber = await needProjectNumber(options);
   const { user: fdcP4SAUser } = toDatabaseUser(getDataConnectP4SA(projectNumber));
 
   const sqlRoleSetupCmds = concat(
-    // For backward compatibality we sometimes need to revoke some roles.
-    revokes,
-
     // We shoud make sure schema exists since this setup runs prior to executing the diffs.
     [`CREATE SCHEMA IF NOT EXISTS "${schema}"`],
 
@@ -243,6 +223,8 @@ export async function greenFieldSchemaSetup(
 
     // Grant firebaseowner role to the current IAM user.
     `GRANT "${firebaseowner(databaseId, schema)}" TO "${user}"`,
+    // Ensure data-plane P4SA login role cannot escalate to firebaseowner / cloudsqlsuperuser.
+    `REVOKE "${firebaseowner(databaseId, schema)}" FROM "${fdcP4SAUser}"`,
     // Grant firebaswriter to the FDC P4SA user
     `GRANT "${firebasewriter(databaseId, schema)}" TO "${fdcP4SAUser}"`,
 
@@ -460,7 +442,14 @@ export async function grantRoleTo(
 ): Promise<void> {
   // Upsert new user account into the database.
   const projectId = needProjectId(options);
+  const projectNumber = await needProjectNumber(options);
   const { user, mode } = toDatabaseUser(email);
+  const { user: fdcP4SAUser } = toDatabaseUser(getDataConnectP4SA(String(projectNumber)));
+  if (role === "owner" && user === fdcP4SAUser) {
+    throw new FirebaseError(
+      `Cannot grant the "owner" role to the Data Connect service agent (${email}). The service agent must only hold data-plane roles (writer/reader).`,
+    );
+  }
   await cloudSqlAdminClient.createUser(projectId, instanceId, mode, user);
 
   const fdcSqlRole = fdcSqlRoleMap[role as keyof typeof fdcSqlRoleMap](databaseId, schema);

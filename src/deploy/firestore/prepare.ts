@@ -156,15 +156,15 @@ export default async function (context: any, options: DeployOptions): Promise<vo
 
     // Used for edge case when deploying to a named database
     // https://github.com/firebase/firebase-tools/pull/6129
-    const excludeRules = targets.indexOf("firestore:indexes") >= 0;
-    const excludeIndexes = targets.indexOf("firestore:rules") >= 0;
+    const excludeRules = targets.includes("firestore:indexes");
+    const excludeIndexes = targets.includes("firestore:rules");
 
     // Used for edge case when deploying --only firestore:rules,firestore:indexes
     // https://github.com/firebase/firebase-tools/issues/6857
-    const includeRules = targets.indexOf("firestore:rules") >= 0;
-    const includeIndexes = targets.indexOf("firestore:indexes") >= 0;
+    const includeRules = targets.includes("firestore:rules");
+    const includeIndexes = targets.includes("firestore:indexes");
 
-    const onlyFirestore = targets.indexOf("firestore") >= 0;
+    const onlyFirestore = targets.includes("firestore");
 
     context.firestoreIndexes = !excludeIndexes || includeIndexes || onlyFirestore;
     context.firestoreRules = !excludeRules || includeRules || onlyFirestore;

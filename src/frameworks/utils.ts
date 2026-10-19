@@ -496,7 +496,7 @@ ${prefix}${clc.bold("Submit a feature request:")} ${FEATURE_REQUEST_URL}
 ${prefix}We'd love to learn from you. Express your interest in helping us shape the future of Firebase Hosting: ${MAILING_LIST_URL}`;
 }
 
-export function validateLocales(locales: string[] | undefined = []) {
+export function validateLocales(locales: readonly string[] | undefined = []) {
   const invalidLocales = locales.filter(
     (locale) => !VALID_LOCALE_FORMATS.some((format) => locale.match(format)),
   );

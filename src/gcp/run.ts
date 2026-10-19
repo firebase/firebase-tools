@@ -367,3 +367,13 @@ export async function fetchServiceLogs(projectId: string, serviceId: string): Pr
     });
   }
 }
+
+/**
+ * Lists the IDs of the regions that Cloud Run supports (e.g. "us-central1").
+ */
+export async function listLocations(projectId: string): Promise<string[]> {
+  const res = await client.get<{ locations?: Array<{ locationId: string }> }>(
+    `/projects/${projectId}/locations`,
+  );
+  return res.body?.locations?.map((l) => l.locationId) ?? [];
+}

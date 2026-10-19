@@ -40,7 +40,7 @@ export interface WireSecret {
 type SecretVersionState = "STATE_UNSPECIFIED" | "ENABLED" | "DISABLED" | "DESTROYED";
 
 export interface Replication {
-  automatic?: {};
+  automatic?: Record<string, unknown>;
   userManaged?: {
     replicas: Array<{
       location: string;
