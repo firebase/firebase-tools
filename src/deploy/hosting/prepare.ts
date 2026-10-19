@@ -13,6 +13,8 @@ import { HostingSource, RunRewrite } from "../../firebaseConfig";
 import * as backend from "../functions/backend";
 import { ensureTargeted } from "../../functions/ensureTargeted";
 import { generateSSRCodebaseId } from "../../frameworks";
+import { ensure } from "../../ensureApiEnabled";
+import { hostingApiOrigin } from "../../api";
 
 function handlePublicDirectoryFlag(options: HostingOptions & DeployOptions): void {
   // Allow the public directory to be overridden by the --public flag
@@ -114,6 +116,8 @@ export async function prepare(
     return Promise.resolve();
   }
 
+  await ensure(context.projectId, hostingApiOrigin(), "hosting", true);
+
   const versions = await Promise.all(
     configs.map(async (config) => {
       // Get the site to confirm that it exists on this project
@@ -152,7 +156,7 @@ export async function prepare(
         trackGA4("hosting_version", {
           framework: config.webFramework || "classic",
         }),
-        api.createVersion(config.site, version),
+        api.createVersion(context.projectId, config.site, version),
       ]);
       return versionName;
     }),

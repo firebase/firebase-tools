@@ -10,4 +10,3 @@ echo "Running with npm: $(which npm)"
 echo "Running with Application Creds: ${GOOGLE_APPLICATION_CREDENTIALS}"
 
 mocha scripts/dataconnect-test/tests.ts
-rm -rf ../../clean

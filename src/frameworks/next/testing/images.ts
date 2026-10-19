@@ -26,9 +26,12 @@ export const imagesManifest: ImagesManifest = {
     disableStaticImages: false,
     minimumCacheTTL: 60,
     formats: ["image/avif", "image/webp"],
+    maximumDiskCacheSize: undefined,
+    maximumResponseBody: 50000000,
     dangerouslyAllowSVG: false,
     contentSecurityPolicy: "script-src 'none'; frame-src 'none'; sandbox;",
     contentDispositionType: "inline",
+    localPatterns: undefined,
     remotePatterns: [
       {
         protocol: "https",
@@ -37,6 +40,7 @@ export const imagesManifest: ImagesManifest = {
         pathname: "^(?:\\/image\\/upload(?:\\/(?!\\.)(?:(?:(?!(?:^|\\/)\\.).)*?)|$))$",
       },
     ],
+    qualities: undefined,
     unoptimized: false,
     sizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840, 16, 32, 48, 64, 96, 128, 256, 384],
   },
