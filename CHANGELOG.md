@@ -1,1 +1,2 @@
 - Ensured the Firebase Hosting API is enabled before deploying and running other Hosting commands.
+- Web frameworks deploys now warn when the SSR function is not publicly invokable, which makes server-rendered requests through Hosting return 403 (#10690)
