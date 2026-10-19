@@ -439,7 +439,7 @@ describe("Project management", () => {
 
         expect(err).to.be.an.instanceOf(FirebaseError);
         expect(err?.message).to.equal(
-          `Failed to add Firebase to Google Cloud Platform project ${clc.bold(PROJECT_ID)} because your account has not accepted the Firebase Terms of Service. Please accept the Terms of Service in the Firebase console at ${api.consoleOrigin()} and try again.`,
+          `Failed to add Firebase to Google Cloud Platform project ${clc.bold(PROJECT_ID)} because your account has not accepted the Firebase Terms of Service. Please accept the Terms of Service in the Firebase console at ${api.consoleOrigin()}/?forceCheckTos=true and try again.`,
         );
         expect(err?.original).to.be.an.instanceOf(FirebaseError);
         expect(nock.isDone()).to.be.true;

@@ -96,7 +96,7 @@ describe("listExtensions", () => {
   });
 
   afterEach(() => {
-    experiments.setEnabled("extMigrationFeatures", false);
+    experiments.setEnabled("extMigrationFeatures", null);
     sinon.restore();
   });
 
@@ -108,7 +108,7 @@ describe("listExtensions", () => {
     expect(result).to.eql([]);
   });
 
-  describe("when extMigrationFeatures experiment is disabled (default)", () => {
+  describe("when extMigrationFeatures experiment is disabled", () => {
     beforeEach(() => {
       experiments.setEnabled("extMigrationFeatures", false);
     });

@@ -121,27 +121,32 @@ describe("FirebaseMcpServer.mcpCallTool", () => {
   });
 });
 
-describe("FirebaseMcpServer project detection", () => {
+describe("FirebaseMcpServer lifecycle", () => {
   afterEach(() => {
     sinon.restore();
   });
 
-  it("does not start project detection when constructed", () => {
-    const detectStub = sinon.stub(FirebaseMcpServer.prototype, "detectProjectSetup").resolves();
+  it("does not trigger project setup or feature detection on construction", () => {
+    const setupSpy = sinon.spy(FirebaseMcpServer.prototype, "detectProjectSetup");
+    const rootSpy = sinon.spy(FirebaseMcpServer.prototype, "detectProjectRoot");
+    const featuresSpy = sinon.spy(FirebaseMcpServer.prototype, "detectActiveFeatures");
 
     new FirebaseMcpServer({});
 
-    expect(detectStub.called).to.be.false;
+    expect(setupSpy.called).to.be.false;
+    expect(rootSpy.called).to.be.false;
+    expect(featuresSpy.called).to.be.false;
   });
 
-  it("starts project detection when started", async () => {
-    const detectStub = sinon.stub(FirebaseMcpServer.prototype, "detectProjectSetup").resolves();
+  it("triggers project setup when start() is called", async () => {
     const server = new FirebaseMcpServer({});
-    sinon.stub(server.server, "connect").resolves();
+    const setupStub = sinon.stub(server, "detectProjectSetup").resolves();
+    const connectStub = sinon.stub(server.server, "connect").resolves();
 
     await server.start();
 
-    expect(detectStub.calledOnce).to.be.true;
+    expect(setupStub.calledOnce).to.be.true;
+    expect(connectStub.calledOnce).to.be.true;
   });
 
   it("handles rejection in background project detection without unhandled rejection", async () => {

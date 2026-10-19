@@ -510,7 +510,6 @@ export class FirebaseMcpServer {
     void this.detectProjectSetup().catch((err: unknown) => {
       this.logger.debug(`[mcp] Background project detection failed: ${err}`);
     });
-
     if (options?.useSSE) {
       const app = express();
 
