@@ -247,6 +247,7 @@ jobs:
     needs: unit
     if: contains(fromJSON('["push", "merge_group"]'), github.event_name) || (github.event_name == 'pull_request' && github.base_ref == 'next')
     runs-on: windows-latest
+    timeout-minutes: 35
 
     env:
       FIREBASE_EMULATORS_PATH: ${{ github.workspace }}/emulator-cache
@@ -280,11 +281,14 @@ jobs:
           - node-version: "24.18"
             script: "npm run test:functions-discover"
     steps:
-      # Exclude workspace and npm caches from Windows Defender real-time scanning.
+      # Disable real-time monitoring and exclude workspace, npm cache, and temp dirs from Windows Defender scanning.
       # Windows Defender locks files during rapid disk operations (npm ci, binary/emulator extraction),
       # which causes intermittent EPERM errors and test runner deadlocks on Windows runners.
       - name: Disable Windows Defender for workspace
-        run: Set-MpPreference -ExclusionPath @("${{ github.workspace }}", "$env:LocalAppData\npm-cache", "$env:AppData\npm")
+        run: |
+          Set-MpPreference -DisableRealtimeMonitoring $true -ErrorAction SilentlyContinue
+          Add-MpPreference -ExclusionProcess @("node.exe") -ErrorAction SilentlyContinue
+          Add-MpPreference -ExclusionPath @("${{ github.workspace }}", "C:\npm\cache", "$env:TEMP") -ErrorAction SilentlyContinue
         shell: powershell
 
       - name: Setup Java JDK
@@ -313,10 +317,15 @@ jobs:
       - run: echo ${{ secrets.service_account_json_base64 }} > tmp.txt
       - run: certutil -decode tmp.txt scripts/service-account.json
       - run: npm ci --prefer-offline --no-audit
+        timeout-minutes: 10
       - run: ${{ matrix.script }}
+        timeout-minutes: 20
       - name: Print debug logs
         if: failure()
-        run: Get-ChildItem -Path . -Filter "*debug.log" -Recurse | ForEach-Object { Get-Content $_.FullName }
+        timeout-minutes: 2
+        run: |
+          Get-ChildItem -Path . -Filter "*debug.log" -File -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "`n=== $($_.FullName) ==="; Get-Content $_.FullName -ErrorAction SilentlyContinue }
+          Get-ChildItem -Path . -Directory -Exclude "node_modules", ".git" | Get-ChildItem -Filter "*debug.log" -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "`n=== $($_.FullName) ==="; Get-Content $_.FullName -ErrorAction SilentlyContinue }
 
   check-package-lock:
     runs-on: ubuntu-latest
