@@ -33,12 +33,19 @@ export const command = new Command("dataconnect:services:list")
     });
     const jsonOutput: { services: Record<string, any>[] } = { services: [] };
     for (const service of services) {
-      const schema = (await client.getSchema(service.name)) ?? {
+      const schema = (await client.getSchema(service.name, undefined, [
+        "name",
+        "datasources",
+        "updateTime",
+      ])) ?? {
         name: "",
         datasources: [{}],
         source: { files: [] },
       };
-      const connectors = await client.listConnectors(service.name);
+      const connectors = await client.listConnectors(service.name, [
+        "connectors.name",
+        "connectors.updateTime",
+      ]);
       const serviceName = names.parseServiceName(service.name);
       const postgresDatasource = schema?.datasources.find((d) => d.postgresql);
       const instanceName = postgresDatasource?.postgresql?.cloudSql?.instance ?? "";
