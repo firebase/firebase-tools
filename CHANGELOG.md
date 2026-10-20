@@ -1,2 +1,2 @@
 - Ensured the Firebase Hosting API is enabled before deploying and running other Hosting commands.
-- Retry on empty input for Secret param values in Firebase Functions (#11310)
+- Fixed an issue where empty inputs were accepted for Secret param values in Firebase Functions (#11310)
