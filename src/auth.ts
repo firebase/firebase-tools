@@ -615,7 +615,7 @@ async function loginWithLocalhost<ResultType>(
       const queryState = searchParams.get("state");
       const queryCode = searchParams.get("code");
 
-      if (queryState !== _nonce || typeof queryCode !== "string") {
+      if (queryState !== _nonce || !queryCode) {
         const html = await readTemplate("loginFailure.html");
         respondHtml(req, res, 400, html);
         reject(new FirebaseError("Unexpected error while logging in"));
