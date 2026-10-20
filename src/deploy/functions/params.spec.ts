@@ -714,7 +714,7 @@ describe("resolveParams", () => {
     }
   });
 
-  it("retries via validate when blank input is provided", async () => {
+  it("validates that secret prompt input is not empty", async () => {
     const passwordStub = sinon.stub(prompt, "password").resolves("secret-val");
     const getSecretMetadataStub = sinon.stub(secretManager, "getSecretMetadata").resolves({
       secret: undefined,
@@ -722,22 +722,6 @@ describe("resolveParams", () => {
     const createSecretStub = sinon.stub(secretManager, "createSecret").resolves();
     const addVersionStub = sinon.stub(secretManager, "addVersion").resolves();
 
-    const simulatedInputs = ["", "valid-secret"];
-    const validationResults: Array<boolean | string> = [];
-    passwordStub.callsFake(
-      async (options: {
-        validate?: (val: string) => boolean | string | Promise<boolean | string>;
-      }) => {
-        for (const input of simulatedInputs) {
-          const isValid = options.validate ? await options.validate(input) : true;
-          validationResults.push(isValid);
-          if (isValid === true) {
-            return input;
-          }
-        }
-        throw new Error("this should never happen");
-      },
-    );
     const paramsToResolve: params.Param[] = [
       {
         name: "API_KEY",
@@ -747,6 +731,7 @@ describe("resolveParams", () => {
         resourceId: "API_KEY",
       },
     ];
+
     try {
       await params.resolveParams({
         params: paramsToResolve,
@@ -754,8 +739,19 @@ describe("resolveParams", () => {
         userEnvs: {},
         codebase: "my-codebase",
       });
+
+      // 1. Verify password prompt was called once
       expect(passwordStub).to.have.been.calledOnce;
-      expect(validationResults).to.deep.equal(["Secrets cannot have an empty value.", true]);
+
+      // 2. Verify the validate contract directly (both empty and valid cases)
+      const opts = passwordStub.firstCall.args[0];
+      expect(opts.validate).to.be.a("function");
+      expect(opts.validate!("")).to.equal("Secrets cannot have an empty value.");
+      expect(opts.validate!("secret-val")).to.be.true;
+
+      // 3. Verify downstream Secret Manager propagation
+      expect(createSecretStub).to.have.been.calledOnceWith("foo", "API_KEY", sinon.match.any);
+      expect(addVersionStub).to.have.been.calledOnceWith("foo", "API_KEY", "secret-val");
     } finally {
       passwordStub.restore();
       getSecretMetadataStub.restore();
