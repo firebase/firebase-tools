@@ -606,7 +606,12 @@ async function loginWithLocalhost<ResultType>(
 ): Promise<ResultType> {
   return new Promise<ResultType>((resolve, reject) => {
     const server = http.createServer(async (req, res) => {
-      const searchParams = new URL(req.url || "", callbackUrl).searchParams;
+      let searchParams: URLSearchParams;
+      try {
+        searchParams = new URL(req.url || "", callbackUrl).searchParams;
+      } catch {
+        searchParams = new URLSearchParams();
+      }
       const queryState = searchParams.get("state");
       const queryCode = searchParams.get("code");
 
