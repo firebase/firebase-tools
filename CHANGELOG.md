@@ -1,2 +1,3 @@
 - Ensured the Firebase Hosting API is enabled before deploying and running other Hosting commands.
+- Fixed `.env` values written by the CLI for function params and extensions being truncated at `#`, trimmed, or split across lines when read back.
 - Fixed an issue where the Firebase MCP server always suggested `npx firebase-tools@latest` even when the `firebase` CLI was installed.

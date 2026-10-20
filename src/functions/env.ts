@@ -361,7 +361,7 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
   );
   let lines = "";
   for (const k of Object.keys(toWrite)) {
-    lines += formatUserEnvForWrite(k, toWrite[k]);
+    lines += `${formatUserEnvForWrite(k, toWrite[k])}\n`;
   }
   fs.appendFileSync(path.join(configDir, targetEnvFile), lines);
 }
@@ -401,15 +401,19 @@ export function checkForDuplicateKeys(
   }
 }
 
-function formatUserEnvForWrite(key: string, value: string): string {
+/**
+ * Formats a single key, value pair as a dotenv line (without a trailing newline) that parse() reads back unchanged.
+ */
+export function formatUserEnvForWrite(key: string, value: string): string {
   const escapedValue = value.replace(
     ALL_ESCAPABLE_CHARACTERS_RE,
     (match) => CHARACTERS_TO_ESCAPE_SEQUENCES[match],
   );
-  if (escapedValue !== value) {
-    return `${key}="${escapedValue}"\n`;
+  // Unquoted values end at "#" and lose surrounding whitespace when parsed.
+  if (escapedValue !== value || /#|^\s|\s$/.test(value)) {
+    return `${key}="${escapedValue}"`;
   }
-  return `${key}=${escapedValue}\n`;
+  return `${key}=${escapedValue}`;
 }
 
 /**

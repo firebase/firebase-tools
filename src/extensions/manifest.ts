@@ -7,6 +7,7 @@ import { getExtensionSpec, ManifestInstanceSpec } from "../deploy/extensions/pla
 import { logger } from "../logger";
 import { confirm, select } from "../prompt";
 import { readEnvFile } from "./paramHelper";
+import { formatUserEnvForWrite } from "../functions/env";
 import { FirebaseError } from "../error";
 import { isLocalPath, logPrefix } from "./extensionsHelper";
 import { logLabeledBullet } from "../utils";
@@ -115,7 +116,7 @@ export async function writeLocalSecrets(
       .sort((a, b) => {
         return a[0].localeCompare(b[0]);
       })
-      .map((r) => `${r[0]}=${r[1]}`)
+      .map((r) => formatUserEnvForWrite(r[0], r[1]))
       .join("\n");
     if (content) {
       await config.askWriteProjectFile(
@@ -234,7 +235,7 @@ async function writeEnvFiles(
       .sort((a, b) => {
         return a[0].localeCompare(b[0]);
       })
-      .map((r) => `${r[0]}=${r[1].baseValue}`)
+      .map((r) => formatUserEnvForWrite(r[0], r[1].baseValue))
       .join("\n");
     await config.askWriteProjectFile(`extensions/${spec.instanceId}.env`, content, force);
   }
