@@ -77,7 +77,7 @@ describe("onboarding", () => {
     requireAuthStub = sinon.stub(requireAuth, "requireAuth").resolves("user@example.com");
     isEnabledStub = sinon.stub(experiments, "isEnabled");
     isEnabledStub.withArgs("crashlyticsWebAlerts").returns(true);
-    isEnabledStub.withArgs("crashlyticsWebTrace").returns(true);
+    isEnabledStub.withArgs("crashlyticsWebBreadcrumbs").returns(true);
   });
 
   afterEach(() => {
@@ -96,7 +96,19 @@ describe("onboarding", () => {
     );
     expect(ensureStub).to.have.been.calledWith(
       "test-project",
-      "firebasetelemetryadmin.googleapis.com",
+      onboarding.CRASHLYTICS_TELEMETRY_ADMIN_SERVICE,
+      "crashlytics",
+      false,
+    );
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      onboarding.CRASHLYTICS_SERVICE,
+      "crashlytics",
+      false,
+    );
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      onboarding.CLIENT_TELEMETRY_SERVICE,
       "crashlytics",
       false,
     );
@@ -170,8 +182,8 @@ describe("onboarding", () => {
     expect(res.alertPolicies).to.be.undefined;
   });
 
-  it("should skip only the Cloud Trace API enablement and storage provisioning when crashlyticsWebTrace experiment is disabled", async () => {
-    isEnabledStub.withArgs("crashlyticsWebTrace").returns(false);
+  it("should skip only the Cloud Trace API enablement and storage provisioning when crashlyticsWebBreadcrumbs experiment is disabled", async () => {
+    isEnabledStub.withArgs("crashlyticsWebBreadcrumbs").returns(false);
 
     await onboarding.onboardCrashlyticsWeb("test-project", "1:123:web:456");
 
@@ -183,7 +195,19 @@ describe("onboarding", () => {
     );
     expect(ensureStub).to.have.been.calledWith(
       "test-project",
-      "firebasetelemetryadmin.googleapis.com",
+      onboarding.CRASHLYTICS_TELEMETRY_ADMIN_SERVICE,
+      "crashlytics",
+      false,
+    );
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      onboarding.CRASHLYTICS_SERVICE,
+      "crashlytics",
+      false,
+    );
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      onboarding.CLIENT_TELEMETRY_SERVICE,
       "crashlytics",
       false,
     );
@@ -260,7 +284,19 @@ describe("onboarding", () => {
     );
     expect(ensureStub).to.have.been.calledWith(
       "test-project",
-      "firebasetelemetryadmin.googleapis.com",
+      onboarding.CRASHLYTICS_TELEMETRY_ADMIN_SERVICE,
+      "crashlytics",
+      false,
+    );
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      onboarding.CRASHLYTICS_SERVICE,
+      "crashlytics",
+      false,
+    );
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      onboarding.CLIENT_TELEMETRY_SERVICE,
       "crashlytics",
       false,
     );
