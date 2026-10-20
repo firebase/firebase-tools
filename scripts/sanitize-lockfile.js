@@ -1,8 +1,13 @@
 const fs = require("fs");
+const path = require("path");
 
+const ROOT_DIR = path.resolve(__dirname, "..");
 const REGISTRY_RE =
   /"resolved":\s*"https?:\/\/(?!registry\.npmjs\.org\/)[^"]*?\/((?:@[^/]+\/)?[^/@]+\/-\/[^"]+\.tgz)"/g;
-const LOCKFILES = ["npm-shrinkwrap.json", "firebase-vscode/package-lock.json"];
+const LOCKFILES = [
+  path.join(ROOT_DIR, "npm-shrinkwrap.json"),
+  path.join(ROOT_DIR, "firebase-vscode/package-lock.json"),
+];
 
 for (const file of LOCKFILES) {
   if (fs.existsSync(file)) {
