@@ -27,7 +27,7 @@
     "lint:ts": "eslint --cache --config .eslintrc.js --ext .ts,.js .",
     "mocha:fast": "mocha 'src/**/*.spec.{ts,js}'",
     "mocha": "nyc mocha 'src/**/*.spec.{ts,js}'",
-    "sanitize:lockfile": "node -e \"const fs = require('fs'); const re = /\\\"resolved\\\": \\\"https?:\\/\\/(?!registry\\.npmjs\\.org\\/)[^\\\"]*?\\/((?:@[^/]+\\/)?[^/@]+\\/-\\/[^\\\"]+\\.tgz)\\\"/g; for (const f of ['npm-shrinkwrap.json', 'firebase-vscode/package-lock.json']) { if (fs.existsSync(f)) { const c = fs.readFileSync(f, 'utf8'); const n = c.replace(re, (_, p) => '\\\"resolved\\\": \\\"https://registry.npmjs.org/' + p + '\\\"'); if (n !== c) fs.writeFileSync(f, n); } }\"",
+    "sanitize:lockfile": "node scripts/sanitize-lockfile.js",
     "prepare": "npm run sanitize:lockfile && npm run clean && npm run build:publish",
     "test": "npm run lint:quiet && npm run test:compile && npm run mocha",
     "test:appdistribution": "npm run lint:quiet && npm run test:compile && nyc mocha 'src/appdistribution/*.spec.{ts,js}'",
