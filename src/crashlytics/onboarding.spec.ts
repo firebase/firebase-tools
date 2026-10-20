@@ -28,6 +28,7 @@ describe("onboarding", () => {
   let getAppConfigStub: sinon.SinonStub;
   let updateAppApiKeyRestrictionStub: sinon.SinonStub;
   let logLabeledWarningStub: sinon.SinonStub;
+  let logLabeledSuccessStub: sinon.SinonStub;
   let checkboxStub: sinon.SinonStub;
   let enableAlertsStub: sinon.SinonStub;
   let requireAuthStub: sinon.SinonStub;
@@ -67,6 +68,7 @@ describe("onboarding", () => {
     });
     updateAppApiKeyRestrictionStub = sinon.stub(apikeys, "updateAppApiKeyRestriction").resolves();
     logLabeledWarningStub = sinon.stub(utils, "logLabeledWarning");
+    logLabeledSuccessStub = sinon.stub(utils, "logLabeledSuccess");
     checkboxStub = sinon
       .stub(prompt, "checkbox")
       .resolves([AlertType.ALERT_TYPE_NEW_ISSUE, AlertType.ALERT_TYPE_REGRESSED_ISSUE]);
@@ -145,6 +147,10 @@ describe("onboarding", () => {
     );
     expect(res.config.enablementState).to.equal("ENABLED");
     expect(res.alertPolicies).to.have.lengthOf(2);
+    expect(logLabeledSuccessStub).to.have.been.calledWith(
+      "crashlytics",
+      "Crashlytics email alerts configured successfully.",
+    );
   });
 
   it("should use options.user.email directly when present without calling requireAuth", async () => {
@@ -266,7 +272,12 @@ describe("onboarding", () => {
 
     expect(enableAlertsStub).to.have.been.calledOnce;
     expect(logLabeledWarningStub).to.have.been.calledWith("crashlytics", alertError.message);
+    expect(logLabeledSuccessStub).to.not.have.been.calledWith(
+      "crashlytics",
+      "Crashlytics email alerts configured successfully.",
+    );
     expect(res.config.enablementState).to.equal("ENABLED");
+    expect(res.alertPolicies).to.be.undefined;
   });
 
   it("should successfully onboard web app and log a warning without calling updateAppApiKeyRestriction if apiKey is missing", async () => {
