@@ -30,7 +30,24 @@ describe("cloudFunctions", () => {
           },
           params: {},
           timestamp: /.*/,
-          data: { uid: "foobar", metadata: {}, customClaims: {} },
+          data: {
+            uid: "foobar",
+            metadata: {
+              creationTime: "2026-01-01T00:00:00.000Z",
+              lastSignInTime: "2026-01-02T00:00:00.000Z",
+            },
+            providerData: [
+              {
+                rawId: "google-uid-123",
+                providerId: "google.com",
+                email: "user@example.com",
+                displayName: "Test User",
+                photoURL: "https://example.com/photo.png",
+                federatedId: "fed-123",
+              },
+            ],
+            customClaims: {},
+          },
         })
         .reply(200, {});
 
@@ -44,13 +61,43 @@ describe("cloudFunctions", () => {
           source: "//identitytoolkit.googleapis.com/projects/project-foo",
           subject: "users/foobar",
           data: {
-            value: { uid: "foobar", metadata: {}, customClaims: {} },
+            value: {
+              uid: "foobar",
+              metadata: {
+                createTime: "2026-01-01T00:00:00.000Z",
+                lastSignInTime: "2026-01-02T00:00:00.000Z",
+              },
+              providerData: [
+                {
+                  uid: "google-uid-123",
+                  providerId: "google.com",
+                  email: "user@example.com",
+                  displayName: "Test User",
+                  photoURL: "https://example.com/photo.png",
+                },
+              ],
+              customClaims: {},
+            },
           },
         })
         .reply(200, {});
 
       const cf = new AuthCloudFunction("project-foo");
-      await cf.dispatch("create", { localId: "foobar" });
+      await cf.dispatch("create", {
+        localId: "foobar",
+        createdAt: String(Date.parse("2026-01-01T00:00:00.000Z")),
+        lastLoginAt: String(Date.parse("2026-01-02T00:00:00.000Z")),
+        providerUserInfo: [
+          {
+            rawId: "google-uid-123",
+            providerId: "google.com",
+            email: "user@example.com",
+            displayName: "Test User",
+            photoUrl: "https://example.com/photo.png",
+            federatedId: "fed-123",
+          },
+        ],
+      });
       expect(nock.isDone()).to.be.true;
     });
 
@@ -81,7 +128,7 @@ describe("cloudFunctions", () => {
           subject: "users/tenant-user",
           tenantid: "tenant-a",
           data: {
-            oldValue: { uid: "tenant-user", tenantId: "tenant-a", metadata: {}, customClaims: {} },
+            oldValue: { uid: "tenant-user", metadata: {}, customClaims: {} },
           },
         })
         .reply(200, {});
