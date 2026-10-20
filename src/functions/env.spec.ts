@@ -597,6 +597,31 @@ FOO=foo
       expect(envs["QUOTES"]).to.equal("'\"'");
     });
 
+    it("quotes values that parse() would otherwise truncate or trim", () => {
+      env.writeUserEnvs(
+        {
+          HASH: "https://example.com/#/home",
+          LEADING_SPACE: "  foo",
+          TRAILING_SPACE: "foo  ",
+        },
+        {
+          projectId: "project",
+          projectAlias: "alias",
+          projectDir: projectTmpdir,
+          functionsSource: tmpdir,
+        },
+      );
+      const envs = env.loadUserEnvs({
+        projectId: "project",
+        projectAlias: "alias",
+        projectDir: projectTmpdir,
+        functionsSource: tmpdir,
+      });
+      expect(envs["HASH"]).to.equal("https://example.com/#/home");
+      expect(envs["LEADING_SPACE"]).to.equal("  foo");
+      expect(envs["TRAILING_SPACE"]).to.equal("foo  ");
+    });
+
     it("shouldn't write anything if any of the keys fails key format validation", () => {
       try {
         env.writeUserEnvs(

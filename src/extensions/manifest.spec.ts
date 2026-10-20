@@ -4,6 +4,7 @@ import * as sinon from "sinon";
 import * as manifest from "./manifest";
 import * as paramHelper from "./paramHelper";
 import * as refs from "./refs";
+import * as env from "../functions/env";
 
 import { Config } from "../config";
 import * as prompt from "../prompt";
@@ -576,6 +577,53 @@ describe("manifest", () => {
         `a=pikachu`,
         false,
       );
+    });
+
+    it("should quote values so that they parse back unchanged", async () => {
+      sandbox.stub(prompt, "select").resolves("overwrite");
+      sandbox.stub(prompt, "confirm").resolves(true);
+      const params = {
+        a: "line one\nline two",
+        b: "#ff0000",
+        c: "pikachu",
+      };
+
+      await manifest.writeToManifest(
+        [
+          {
+            instanceId: "instance-1",
+            ref: {
+              publisherId: "firebase",
+              extensionId: "bigquery-export",
+              version: "1.0.0",
+            },
+            params: {
+              a: { baseValue: params.a },
+              b: { baseValue: params.b },
+              c: { baseValue: params.c },
+            },
+            extensionSpec: {
+              name: "bigquery-export",
+              version: "1.0.0",
+              resources: [],
+              sourceUrl: "",
+              params: [
+                { param: "a", label: "", type: ParamType.STRING },
+                { param: "b", label: "", type: ParamType.STRING },
+                { param: "c", label: "", type: ParamType.STRING },
+              ],
+              systemParams: [],
+            },
+          },
+        ],
+        generateBaseConfig(),
+        { nonInteractive: false, force: false },
+        true /** allowOverwrite */,
+      );
+
+      expect(askWriteProjectFileStub).to.have.been.calledOnce;
+      const content = askWriteProjectFileStub.firstCall.args[1] as string;
+      expect(env.parse(content)).to.deep.equal({ envs: params, errors: [] });
     });
   });
 
