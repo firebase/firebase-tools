@@ -4,7 +4,6 @@ import * as http from "http";
 import * as jwt from "jsonwebtoken";
 import * as opn from "open";
 import * as portfinder from "portfinder";
-import * as url from "url";
 
 import * as apiv2 from "./apiv2";
 import { configstore } from "./configstore";
@@ -607,11 +606,16 @@ async function loginWithLocalhost<ResultType>(
 ): Promise<ResultType> {
   return new Promise<ResultType>((resolve, reject) => {
     const server = http.createServer(async (req, res) => {
-      const query = url.parse(`${req.url}`, true).query || {};
-      const queryState = query.state;
-      const queryCode = query.code;
+      let searchParams: URLSearchParams;
+      try {
+        searchParams = new URL(req.url || "", callbackUrl).searchParams;
+      } catch {
+        searchParams = new URLSearchParams();
+      }
+      const queryState = searchParams.get("state");
+      const queryCode = searchParams.get("code");
 
-      if (queryState !== _nonce || typeof queryCode !== "string") {
+      if (queryState !== _nonce || !queryCode) {
         const html = await readTemplate("loginFailure.html");
         respondHtml(req, res, 400, html);
         reject(new FirebaseError("Unexpected error while logging in"));
