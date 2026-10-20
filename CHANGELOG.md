@@ -1,1 +1,2 @@
 - Ensured the Firebase Hosting API is enabled before deploying and running other Hosting commands.
+- Fixed a Node.js `url.parse()` deprecation warning during `firebase login`.
