@@ -69,6 +69,11 @@ const orderedLogLevels = [
 ] as const;
 
 export class FirebaseMcpServer {
+  private static readonly CLI_VERSION_CHECK_TIMEOUT_MS = 2000;
+  private static readonly DEFAULT_FIREBASE_CLI_COMMAND = "firebase";
+  private static readonly FALLBACK_FIREBASE_CLI_COMMAND = "npx firebase-tools@latest";
+  private cliCommand?: string;
+
   private _ready = false;
   private _readyPromises: { resolve: () => void; reject: (err: unknown) => void }[] = [];
   private _pendingMessages: { level: LoggingLevel; data: unknown }[] = [];
@@ -80,7 +85,6 @@ export class FirebaseMcpServer {
   enabledTools?: string[];
   clientInfo?: { name?: string; version?: string };
   emulatorHubClient?: EmulatorHubClient;
-  private cliCommand?: string;
 
   // logging spec:
   // https://modelcontextprotocol.io/specification/2025-03-26/server/utilities/logging
@@ -156,8 +160,6 @@ export class FirebaseMcpServer {
       this.currentLogLevel = params.level;
       return {};
     });
-
-    void this.detectProjectSetup();
   }
 
   /** Wait until initialization has finished. */
@@ -332,8 +334,22 @@ export class FirebaseMcpServer {
 
   private _getFirebaseCliCommand(): string {
     if (!this.cliCommand) {
-      const testCommand = crossSpawn.sync("firebase --version");
-      this.cliCommand = testCommand.error ? "npx firebase-tools@latest" : "firebase";
+      try {
+        const testCommand = crossSpawn.sync(
+          FirebaseMcpServer.DEFAULT_FIREBASE_CLI_COMMAND,
+          ["--version"],
+          {
+            timeout: FirebaseMcpServer.CLI_VERSION_CHECK_TIMEOUT_MS,
+            stdio: "ignore",
+          },
+        );
+        this.cliCommand =
+          testCommand.error || testCommand.status !== 0
+            ? FirebaseMcpServer.FALLBACK_FIREBASE_CLI_COMMAND
+            : FirebaseMcpServer.DEFAULT_FIREBASE_CLI_COMMAND;
+      } catch {
+        this.cliCommand = FirebaseMcpServer.FALLBACK_FIREBASE_CLI_COMMAND;
+      }
     }
     return this.cliCommand;
   }
@@ -508,6 +524,11 @@ export class FirebaseMcpServer {
   }
 
   async start(options?: { useSSE?: boolean; port?: number }): Promise<void> {
+    void this.detectProjectSetup().catch((err: unknown) => {
+      this.logger.error(
+        `Failed to detect project setup: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    });
     if (options?.useSSE) {
       const app = express();
 

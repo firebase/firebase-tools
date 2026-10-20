@@ -15,6 +15,7 @@ import { deploy, localBuildTemplate, remoteBuildTemplate, revisionTemplate } fro
 const NODEJS22 = "us-central1-docker.pkg.dev/serverless-runtimes/google-22/runtimes/nodejs22";
 const DEPLOY_MESSAGE = "firebase.google.com/deploy-message";
 const ROLLOUT_TIMEOUT_MS = 30 * 60 * 1000;
+const APP_ID = "firebase.google.com/app-id";
 
 describe("run deploy", () => {
   const options = { config: { projectDir: "/project" } } as unknown as Options;
@@ -80,6 +81,7 @@ describe("run deploy", () => {
       "web",
       {
         name: "projects/my-project/locations/us-central1/services/web",
+        annotations: {},
         template: {
           containers: [
             {
@@ -139,6 +141,7 @@ describe("run deploy", () => {
     expect(updateServiceStub).to.have.been.calledOnceWithExactly(
       {
         name: "projects/my-project/locations/us-central1/services/web",
+        annotations: {},
         // A container can't have both an image and a build config, so the old image is gone.
         template: {
           containers: [{ name: "web", sourceCode: { cloudStorageSource: source }, buildConfig }],
@@ -148,8 +151,56 @@ describe("run deploy", () => {
           { type: "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION", revision: "web-000", tag: "preview" },
         ],
       },
-      { updateMask: ["template", "traffic"], pollTimeoutMs: ROLLOUT_TIMEOUT_MS },
+      { updateMask: ["template", "traffic", "annotations"], pollTimeoutMs: ROLLOUT_TIMEOUT_MS },
     );
+  });
+
+  describe("linked Firebase Web App", () => {
+    const linkedWeb = {
+      name: "projects/my-project/locations/us-central1/services/web",
+      annotations: { team: "frontend", [APP_ID]: "1:123:web:abc" },
+      template: { containers: [{ name: "web", image: "old-image" }] },
+    } as unknown as runv2.Service;
+
+    it("is saved on a new service", async () => {
+      await deployOne({ config: web, autoInit: { appId: "1:123:web:abc", firebaseConfig: "{}" } });
+
+      expect(createServiceStub).to.have.been.calledWithMatch("my-project", "us-central1", "web", {
+        annotations: { [APP_ID]: "1:123:web:abc" },
+      });
+    });
+
+    it("replaces the app saved on an existing service", async () => {
+      await deployOne({
+        config: web,
+        existing: linkedWeb,
+        autoInit: { appId: "1:123:web:def", firebaseConfig: "{}" },
+      });
+
+      expect(updateServiceStub).to.have.been.calledWithMatch(
+        { annotations: { team: "frontend", [APP_ID]: "1:123:web:def" } },
+        { updateMask: ["template", "traffic", "annotations"] },
+      );
+    });
+
+    it("is removed when the service is unlinked", async () => {
+      await deployOne({ config: web, existing: linkedWeb });
+
+      expect(updateServiceStub.firstCall.args[0].annotations).to.deep.equal({ team: "frontend" });
+    });
+
+    it("keeps the service's annotations as they are if the app didn't change", async () => {
+      await deployOne({
+        config: web,
+        existing: linkedWeb,
+        autoInit: { appId: "1:123:web:abc", firebaseConfig: "{}" },
+      });
+
+      expect(updateServiceStub.firstCall.args[0].annotations).to.deep.equal({
+        team: "frontend",
+        [APP_ID]: "1:123:web:abc",
+      });
+    });
   });
 
   describe("local builds", () => {
@@ -358,6 +409,54 @@ describe("run deploy", () => {
           sourceCode: { cloudStorageSource: source },
           buildConfig,
         });
+      });
+    });
+
+    describe("FIREBASE_CONFIG", () => {
+      /** The live web service, with FIREBASE_CONFIG set to `value`. */
+      function withConfig(value: string): runv2.Service {
+        return webRunning({ env: [{ name: "FIREBASE_CONFIG", value }] });
+      }
+      const linked = { ...withConfig("old"), annotations: { [APP_ID]: "1:123:web:abc" } };
+
+      it("is set from the linked app's current config", () => {
+        const svc = {
+          config: web,
+          existing: linked,
+          autoInit: { appId: "1:123:web:abc", firebaseConfig: "current" },
+        };
+
+        const template = revisionTemplate(svc);
+
+        expect(template.containers?.[0].env).to.deep.equal([
+          { name: "FIREBASE_CONFIG", value: "current" },
+        ]);
+      });
+
+      it("is removed when the app is unlinked, and the other env vars stay", () => {
+        const existing = {
+          ...webRunning({
+            env: [
+              { name: "MODE", value: "prod" },
+              { name: "FIREBASE_CONFIG", value: "old" },
+            ],
+          }),
+          annotations: { [APP_ID]: "1:123:web:abc" },
+        };
+
+        const template = revisionTemplate({ config: web, existing });
+
+        expect(template.containers?.[0].env).to.deep.equal([{ name: "MODE", value: "prod" }]);
+      });
+
+      it("is left alone if the user set it on a service that was never linked", () => {
+        const svc = { config: web, existing: withConfig("mine") };
+
+        const template = revisionTemplate(svc);
+
+        expect(template.containers?.[0].env).to.deep.equal([
+          { name: "FIREBASE_CONFIG", value: "mine" },
+        ]);
       });
     });
 
