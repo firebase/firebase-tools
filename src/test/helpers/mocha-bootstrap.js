@@ -1,3 +1,6 @@
+// Match CI (.github/workflows/node-test.yml) so colorette does not emit ANSI codes in local TTY runs.
+process.env.NO_COLOR = "true";
+
 const path = require("path");
 const chai = require("chai");
 const chaiAsPromised = require("chai-as-promised");
