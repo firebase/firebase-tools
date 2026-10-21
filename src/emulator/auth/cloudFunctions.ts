@@ -121,7 +121,9 @@ export class AuthCloudFunction {
   }
 
   private toIsoTimestamp(epochMs?: string): string | undefined {
-    return epochMs ? new Date(parseInt(epochMs, 10)).toISOString() : undefined;
+    if (!epochMs) return undefined;
+    const ms = parseInt(epochMs, 10);
+    return isNaN(ms) ? undefined : new Date(ms).toISOString();
   }
 
   private createBaseUserInfoPayload(user: UserInfo): BaseUserInfoPayload {

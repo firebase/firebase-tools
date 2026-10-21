@@ -113,7 +113,20 @@ describe("cloudFunctions", () => {
           },
           params: {},
           timestamp: /.*/,
-          data: { uid: "tenant-user", tenantId: "tenant-a", metadata: {}, customClaims: {} },
+          data: {
+            uid: "tenant-user",
+            tenantId: "tenant-a",
+            metadata: {
+              creationTime: "2026-01-01T00:00:00.000Z",
+            },
+            providerData: [
+              {
+                rawId: "github-uid-456",
+                providerId: "github.com",
+              },
+            ],
+            customClaims: {},
+          },
         })
         .reply(200, {});
 
@@ -128,13 +141,36 @@ describe("cloudFunctions", () => {
           subject: "users/tenant-user",
           tenantid: "tenant-a",
           data: {
-            oldValue: { uid: "tenant-user", metadata: {}, customClaims: {} },
+            oldValue: {
+              uid: "tenant-user",
+              metadata: {
+                createTime: "2026-01-01T00:00:00.000Z",
+              },
+              providerData: [
+                {
+                  uid: "github-uid-456",
+                  providerId: "github.com",
+                },
+              ],
+              customClaims: {},
+            },
           },
         })
         .reply(200, {});
 
       const cf = new AuthCloudFunction("project-foo");
-      await cf.dispatch("delete", { localId: "tenant-user", tenantId: "tenant-a" });
+      await cf.dispatch("delete", {
+        localId: "tenant-user",
+        tenantId: "tenant-a",
+        createdAt: String(Date.parse("2026-01-01T00:00:00.000Z")),
+        lastLoginAt: "not-a-valid-timestamp",
+        providerUserInfo: [
+          {
+            rawId: "github-uid-456",
+            providerId: "github.com",
+          },
+        ],
+      });
       expect(nock.isDone()).to.be.true;
     });
 
