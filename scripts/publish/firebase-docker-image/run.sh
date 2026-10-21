@@ -52,7 +52,7 @@ if [[ "$REPO_NAME" != "staging" ]]; then
   gcloud --project $BUILD_PROJECT \
     builds \
     submit \
-    --no-source \
     --config=cloudbuild-promote.yaml \
-    --substitutions=_TARGET_PROJECT_ID=$TARGET_PROJECT_ID
+    --substitutions=_TARGET_PROJECT_ID=$TARGET_PROJECT_ID,_REPO_NAME=$REPO_NAME \
+    .
 fi

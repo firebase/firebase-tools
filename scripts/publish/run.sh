@@ -44,7 +44,7 @@ if [[ $VERSION != "preview" ]]; then
   gcloud --project fir-tools-builds \
     builds \
     submit \
-    --no-source \
     --config=./firebase-docker-image/cloudbuild-promote.yaml \
-    --substitutions=_TARGET_PROJECT_ID=firebase-cli
+    --substitutions=_TARGET_PROJECT_ID=firebase-cli \
+    ./firebase-docker-image
 fi
