@@ -907,6 +907,11 @@ describe("cloudfunctionsv2", () => {
   });
 
   describe("createFunction", () => {
+    afterEach(() => {
+      sinon.restore();
+      nock.cleanAll();
+    });
+
     it("should set default environment variables", async () => {
       const testFunction = {
         ...CLOUD_FUNCTION_V2,
@@ -945,45 +950,38 @@ describe("cloudfunctionsv2", () => {
     });
 
     it("logs service account propagation errors at debug level without warning banners", async () => {
-      const sandbox = sinon.createSandbox();
-      const warnSpy = sandbox.spy(utils, "logLabeledWarning");
-      const debugSpy: sinon.SinonSpy = sandbox.spy(logger, "debug");
-      try {
-        nock(functionsV2Origin())
-          .post("/v2/projects/project/locations/region/functions")
-          .query({ functionId: "id" })
-          .reply(404, {
-            error: {
-              message:
-                "Service account projects/-/serviceAccounts/firebase-fn-101@project.iam.gserviceaccount.com was not found.",
-            },
-          });
+      const warnSpy = sinon.spy(utils, "logLabeledWarning");
+      const debugSpy = sinon.spy(logger, "debug");
+      nock(functionsV2Origin())
+        .post("/v2/projects/project/locations/region/functions")
+        .query({ functionId: "id" })
+        .reply(404, {
+          error: {
+            message:
+              "Service account projects/-/serviceAccounts/firebase-fn-101@project.iam.gserviceaccount.com was not found.",
+          },
+        });
 
-        await expect(cloudfunctionsv2.createFunction(CLOUD_FUNCTION_V2)).to.eventually.be.rejected;
-        expect(warnSpy.called).to.be.false;
-        expect(debugSpy.calledWithMatch("Waiting for service account propagation")).to.be.true;
-      } finally {
-        sandbox.restore();
-        nock.cleanAll();
-      }
+      await expect(
+        cloudfunctionsv2.createFunction(CLOUD_FUNCTION_V2),
+      ).to.eventually.be.rejectedWith(
+        "Service account projects/-/serviceAccounts/firebase-fn-101@project.iam.gserviceaccount.com was not found.",
+      );
+      expect(warnSpy.called).to.be.false;
+      expect(debugSpy.calledWith(sinon.match("Waiting for service account propagation"))).to.be
+        .true;
     });
 
     it("logs only Waiting to retry warning on 429 Quota Exceeded", async () => {
-      const sandbox = sinon.createSandbox();
-      const warnSpy = sandbox.spy(utils, "logLabeledWarning");
-      try {
-        nock(functionsV2Origin())
-          .post("/v2/projects/project/locations/region/functions")
-          .query({ functionId: "id" })
-          .reply(429, { error: { message: "Quota exceeded" } });
+      const warnSpy = sinon.spy(utils, "logLabeledWarning");
+      nock(functionsV2Origin())
+        .post("/v2/projects/project/locations/region/functions")
+        .query({ functionId: "id" })
+        .reply(429, { error: { message: "Quota exceeded" } });
 
-        await expect(cloudfunctionsv2.createFunction(CLOUD_FUNCTION_V2)).to.eventually.be.rejected;
-        expect(warnSpy.callCount).to.equal(1);
-        expect(warnSpy.firstCall.args[1]).to.include("Waiting to retry...");
-      } finally {
-        sandbox.restore();
-        nock.cleanAll();
-      }
+      await expect(cloudfunctionsv2.createFunction(CLOUD_FUNCTION_V2)).to.eventually.be.rejected;
+      expect(warnSpy.callCount).to.equal(1);
+      expect(warnSpy.firstCall.args[1]).to.include("Waiting to retry...");
     });
   });
 

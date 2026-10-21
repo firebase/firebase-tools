@@ -173,8 +173,13 @@ export function captureRuntimeValidationError(errMessage: string): string {
  * @param type Type of deployment - create, update, or delete.
  * @param err The error returned from the operation.
  */
-function functionsOpLogReject(funcName: string, type: string, err: any): void {
-  const errMessage = typeof err?.message === "string" ? err.message : String(err?.message ?? "");
+function functionsOpLogReject(funcName: string, type: string, err: any): never {
+  const errMessage: string =
+    typeof err?.message === "string"
+      ? (err.message as string)
+      : typeof err === "string"
+        ? err
+        : String(err ?? "");
   // Sniff for runtime validation errors and log a more user-friendly warning.
   if (errMessage.includes("Runtime validation errors")) {
     const capturedMessage = captureRuntimeValidationError(errMessage);
@@ -197,11 +202,14 @@ function functionsOpLogReject(funcName: string, type: string, err: any): void {
       clc.bold(clc.yellow("functions:")) + " failed to " + type + " function " + funcName,
     );
   }
-  throw new FirebaseError(`Failed to ${type} function ${funcName}`, {
-    original: err,
-    status: err?.context?.response?.statusCode,
-    context: { function: funcName },
-  });
+  throw new FirebaseError(
+    `Failed to ${type} function ${funcName}${errMessage ? `: ${errMessage}` : ""}`,
+    {
+      original: err,
+      status: err?.context?.response?.statusCode,
+      context: { function: funcName },
+    },
+  );
 }
 
 /**

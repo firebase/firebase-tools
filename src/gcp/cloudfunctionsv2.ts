@@ -225,8 +225,13 @@ interface GenerateUploadUrlResponse {
  * @param type Type of deployment - create, update, or delete.
  * @param err The error returned from the operation.
  */
-function functionsOpLogReject(func: InputCloudFunction, type: string, err: any): void {
-  const errMessage = typeof err?.message === "string" ? err.message : String(err?.message ?? "");
+function functionsOpLogReject(func: InputCloudFunction, type: string, err: any): never {
+  const errMessage: string =
+    typeof err?.message === "string"
+      ? (err.message as string)
+      : typeof err === "string"
+        ? err
+        : String(err ?? "");
   // Sniff for runtime validation errors and log a more user-friendly warning.
   if (errMessage.includes("Runtime validation errors")) {
     const capturedMessage = captureRuntimeValidationError(errMessage);
@@ -268,13 +273,16 @@ function functionsOpLogReject(func: InputCloudFunction, type: string, err: any):
         `Since this is your first time using 2nd gen functions, we need a little bit longer to finish setting everything up. Retry the deployment in a few minutes.`,
       );
     }
-    utils.logLabeledWarning("functions", ` failed to ${type} function ${func.name}`);
+    utils.logLabeledWarning("functions", `failed to ${type} function ${func.name}`);
   }
-  throw new FirebaseError(`Failed to ${type} function ${func.name}`, {
-    original: err,
-    status: err?.context?.response?.statusCode,
-    context: { function: func.name },
-  });
+  throw new FirebaseError(
+    `Failed to ${type} function ${func.name}${errMessage ? `: ${errMessage}` : ""}`,
+    {
+      original: err,
+      status: err?.context?.response?.statusCode,
+      context: { function: func.name },
+    },
+  );
 }
 
 /**

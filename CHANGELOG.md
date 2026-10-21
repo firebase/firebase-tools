@@ -1,2 +1,2 @@
 - Ensured the Firebase Hosting API is enabled before deploying and running other Hosting commands.
-- Fixed an issue where Cloud Functions deployments logged premature failure warnings when retrying transient service account propagation or quota errors.
+- Fixed an issue where Cloud Functions deployments logged premature failure warnings when retrying transient service account propagation or quota errors. (#11325)

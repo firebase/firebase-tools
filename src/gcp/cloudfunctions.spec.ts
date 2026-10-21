@@ -762,27 +762,29 @@ describe("cloudfunctions", () => {
   });
 
   describe("createFunction", () => {
-    it("logs service account propagation errors at debug level without warning banners", async () => {
-      const sandbox = sinon.createSandbox();
-      const warnSpy = sandbox.spy(utils, "logWarning");
-      const debugSpy: sinon.SinonSpy = sandbox.spy(logger, "debug");
-      try {
-        nock(functionsOrigin())
-          .post("/v1/projects/project/locations/region/functions")
-          .reply(404, {
-            error: {
-              message:
-                "Service account projects/-/serviceAccounts/firebase-fn-201@project.iam.gserviceaccount.com does not exist.",
-            },
-          });
+    afterEach(() => {
+      sinon.restore();
+      nock.cleanAll();
+    });
 
-        await expect(cloudfunctions.createFunction(CLOUD_FUNCTION)).to.eventually.be.rejected;
-        expect(warnSpy.called).to.be.false;
-        expect(debugSpy.calledWithMatch("Waiting for service account propagation")).to.be.true;
-      } finally {
-        sandbox.restore();
-        nock.cleanAll();
-      }
+    it("logs service account propagation errors at debug level without warning banners", async () => {
+      const warnSpy = sinon.spy(utils, "logWarning");
+      const debugSpy = sinon.spy(logger, "debug");
+      nock(functionsOrigin())
+        .post("/v1/projects/project/locations/region/functions")
+        .reply(404, {
+          error: {
+            message:
+              "Service account projects/-/serviceAccounts/firebase-fn-201@project.iam.gserviceaccount.com does not exist.",
+          },
+        });
+
+      await expect(cloudfunctions.createFunction(CLOUD_FUNCTION)).to.eventually.be.rejectedWith(
+        "Service account projects/-/serviceAccounts/firebase-fn-201@project.iam.gserviceaccount.com does not exist.",
+      );
+      expect(warnSpy.called).to.be.false;
+      expect(debugSpy.calledWith(sinon.match("Waiting for service account propagation"))).to.be
+        .true;
     });
   });
 });
