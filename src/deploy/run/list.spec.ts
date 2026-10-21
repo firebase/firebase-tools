@@ -1,9 +1,9 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import * as runv2 from "../gcp/runv2";
-import { logger } from "../logger";
-import * as utils from "../utils";
-import { listRunServices, serviceRows } from "./run-services-list";
+import * as runv2 from "../../gcp/runv2";
+import { logger } from "../../logger";
+import * as utils from "../../utils";
+import { listRunServices, serviceRows } from "./list";
 
 function service(region: string, serviceId: string, baseImageUri?: string): runv2.Service {
   return {

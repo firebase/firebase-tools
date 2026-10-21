@@ -1,9 +1,9 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import { FirebaseError } from "../error";
-import * as run from "../gcp/run";
-import * as runv2 from "../gcp/runv2";
-import { getServiceSpec } from "./run-services-get";
+import { FirebaseError } from "../../error";
+import * as run from "../../gcp/run";
+import * as runv2 from "../../gcp/runv2";
+import { getServiceSpec } from "./get";
 
 const SPEC = { kind: "Service" } as run.Service;
 
