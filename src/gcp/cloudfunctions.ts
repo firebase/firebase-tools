@@ -11,6 +11,7 @@ import * as projectConfig from "../functions/projectConfig";
 import { Client } from "../apiv2";
 import { functionsOrigin } from "../api";
 import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1";
+import { isServiceAccountPropagationError } from "../deploy/functions/release/executor";
 import {
   BLOCKING_EVENT_TO_LABEL_KEY,
   BLOCKING_LABEL,
@@ -173,14 +174,19 @@ export function captureRuntimeValidationError(errMessage: string): string {
  * @param err The error returned from the operation.
  */
 function functionsOpLogReject(funcName: string, type: string, err: any): void {
+  const errMessage = typeof err?.message === "string" ? err.message : String(err?.message ?? "");
   // Sniff for runtime validation errors and log a more user-friendly warning.
-  if ((err?.message as string).includes("Runtime validation errors")) {
-    const capturedMessage = captureRuntimeValidationError(err.message);
+  if (errMessage.includes("Runtime validation errors")) {
+    const capturedMessage = captureRuntimeValidationError(errMessage);
     utils.logWarning(
       clc.bold(clc.yellow("functions:")) + " " + capturedMessage + " for function " + funcName,
     );
   }
-  if (err?.context?.response?.statusCode === 429) {
+  if (isServiceAccountPropagationError(err)) {
+    logger.debug(
+      `Waiting for service account propagation while trying to ${type} ${funcName}: ${errMessage}`,
+    );
+  } else if (err?.context?.response?.statusCode === 429) {
     utils.logWarning(
       `${clc.bold(
         clc.yellow("functions:"),

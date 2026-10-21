@@ -1,10 +1,13 @@
 import { expect } from "chai";
+import * as sinon from "sinon";
 import nock from "../test/helpers/nock";
 
 import * as cloudfunctionsv2 from "./cloudfunctionsv2";
 import * as backend from "../deploy/functions/backend";
 import * as events from "../functions/events";
 import * as projectConfig from "../functions/projectConfig";
+import * as utils from "../utils";
+import { logger } from "../logger";
 import { BLOCKING_LABEL, CODEBASE_LABEL, HASH_LABEL } from "../functions/constants";
 import { functionsV2Origin } from "../api";
 
@@ -939,6 +942,48 @@ describe("cloudfunctionsv2", () => {
 
       await cloudfunctionsv2.createFunction(testFunction);
       expect(scope.isDone()).to.be.true;
+    });
+
+    it("logs service account propagation errors at debug level without warning banners", async () => {
+      const sandbox = sinon.createSandbox();
+      const warnSpy = sandbox.spy(utils, "logLabeledWarning");
+      const debugSpy: sinon.SinonSpy = sandbox.spy(logger, "debug");
+      try {
+        nock(functionsV2Origin())
+          .post("/v2/projects/project/locations/region/functions")
+          .query({ functionId: "id" })
+          .reply(404, {
+            error: {
+              message:
+                "Service account projects/-/serviceAccounts/firebase-fn-101@project.iam.gserviceaccount.com was not found.",
+            },
+          });
+
+        await expect(cloudfunctionsv2.createFunction(CLOUD_FUNCTION_V2)).to.eventually.be.rejected;
+        expect(warnSpy.called).to.be.false;
+        expect(debugSpy.calledWithMatch("Waiting for service account propagation")).to.be.true;
+      } finally {
+        sandbox.restore();
+        nock.cleanAll();
+      }
+    });
+
+    it("logs only Waiting to retry warning on 429 Quota Exceeded", async () => {
+      const sandbox = sinon.createSandbox();
+      const warnSpy = sandbox.spy(utils, "logLabeledWarning");
+      try {
+        nock(functionsV2Origin())
+          .post("/v2/projects/project/locations/region/functions")
+          .query({ functionId: "id" })
+          .reply(429, { error: { message: "Quota exceeded" } });
+
+        await expect(cloudfunctionsv2.createFunction(CLOUD_FUNCTION_V2)).to.eventually.be.rejected;
+        expect(warnSpy.callCount).to.equal(1);
+        expect(warnSpy.firstCall.args[1]).to.include("Waiting to retry...");
+      } finally {
+        sandbox.restore();
+        nock.cleanAll();
+      }
     });
   });
 
