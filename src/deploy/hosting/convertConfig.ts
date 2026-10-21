@@ -11,6 +11,7 @@ import * as runTags from "../../hosting/runTags";
 import { assertExhaustive } from "../../functional";
 import * as experiments from "../../experiments";
 import { logger } from "../../logger";
+import { ssrFunctionId } from "../../frameworks/constants";
 
 /**
  * extractPattern contains the logic for extracting exactly one glob/regexp
@@ -78,16 +79,45 @@ export function findEndpointForRewrite(
     );
     return { matchingEndpoint: us, foundMatchingId: true };
   }
-  const matchingEndpoint = endpoints.find((e) => e.region === region);
-  if (!matchingEndpoint) {
-    const regions = endpoints.map((e) => `\`${e.region}\``).join(", ");
-    throw new FirebaseError(
-      `Rewrite for function \`${id}\` in firebase.json targets region \`${region}\`, ` +
-        `but \`${id}\` was only found in ${regions}. Update the rewrite's \`region\` ` +
-        `in firebase.json to ${endpoints.length === 1 ? "that region" : "one of these regions"}.`,
-    );
+  return {
+    matchingEndpoint: endpoints.find((e) => e.region === region),
+    foundMatchingId: true,
+  };
+}
+
+function wrongRegionError(
+  deploy: HostingDeploy,
+  id: string,
+  region: string,
+  wantBackend: backend.Backend,
+  haveBackend: backend.Backend,
+  foundIn: backend.Backend,
+): FirebaseError {
+  const regionsOf = (b: backend.Backend): string[] =>
+    backend
+      .allEndpoints(b)
+      .filter((e) => e.id === id)
+      .map((e) => e.region);
+  const regions = regionsOf(foundIn);
+  const regionList = regions.map((r) => `\`${r}\``).join(", ");
+
+  let problem = `but \`${id}\` was only found in ${regionList}.`;
+  if (foundIn === wantBackend && regionsOf(haveBackend).includes(region)) {
+    problem =
+      `but this deploy only deploys \`${id}\` to ${regionList}, so the existing ` +
+      `\`${id}\` in \`${region}\` will be deleted.`;
   }
-  return { matchingEndpoint, foundMatchingId: true };
+
+  const target = regions.length === 1 ? "that region" : "one of these regions";
+  // Web frameworks generate this rewrite from frameworksBackend.region, so it isn't in firebase.json.
+  const fix =
+    deploy.config.source && id === ssrFunctionId(deploy.config.site)
+      ? `Set \`frameworksBackend.region\` for site \`${deploy.config.site}\` in firebase.json to ${target}.`
+      : `Update the rewrite's \`region\` in firebase.json to ${target}.`;
+
+  return new FirebaseError(
+    `Rewrite for function \`${id}\` targets region \`${region}\`, ${problem} ${fix}`,
+  );
 }
 
 /**
@@ -166,6 +196,15 @@ export async function convertConfig(
       const endpoint = deployingEndpointSearch.matchingEndpoint
         ? deployingEndpointSearch.matchingEndpoint
         : existingEndpointSearch?.matchingEndpoint;
+
+      const foundIn = deployingEndpointSearch.foundMatchingId
+        ? wantBackend
+        : existingEndpointSearch?.foundMatchingId
+          ? haveBackend
+          : undefined;
+      if (!endpoint && foundIn && region) {
+        throw wrongRegionError(deploy, id, region, wantBackend, haveBackend, foundIn);
+      }
 
       if (!endpoint) {
         // This could possibly succeed if there has been a function written

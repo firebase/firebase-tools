@@ -537,7 +537,7 @@ describe("convertConfig", () => {
         ),
       ).to.eventually.be.rejectedWith(
         FirebaseError,
-        `Rewrite for function \`${FUNCTION_ID}\` in firebase.json targets region \`asia-northeast1\`, ` +
+        `Rewrite for function \`${FUNCTION_ID}\` targets region \`asia-northeast1\`, ` +
           `but \`${FUNCTION_ID}\` was only found in \`europe-west1\`. Update the rewrite's \`region\` ` +
           `in firebase.json to that region.`,
       );
@@ -570,7 +570,7 @@ describe("convertConfig", () => {
         ),
       ).to.eventually.be.rejectedWith(
         FirebaseError,
-        `Rewrite for function \`${FUNCTION_ID}\` in firebase.json targets region \`us-central1\`, ` +
+        `Rewrite for function \`${FUNCTION_ID}\` targets region \`us-central1\`, ` +
           `but \`${FUNCTION_ID}\` was only found in \`europe-west1\`. Update the rewrite's \`region\` ` +
           `in firebase.json to that region.`,
       );
@@ -608,12 +608,23 @@ describe("convertConfig", () => {
         ),
       ).to.eventually.be.rejectedWith(
         FirebaseError,
-        `Rewrite for function \`${FUNCTION_ID}\` in firebase.json targets region \`asia-northeast1\`, ` +
+        `Rewrite for function \`${FUNCTION_ID}\` targets region \`asia-northeast1\`, ` +
           `but \`${FUNCTION_ID}\` was only found in \`europe-west1\`, \`us-east1\`. Update the rewrite's ` +
           `\`region\` in firebase.json to one of these regions.`,
       );
     });
-    it("should throw when rewrite points to function being deleted", async () => {
+    it("should say the function will be deleted when rewrite points to its old region", async () => {
+      existingBackendStub.resolves(
+        backend.of({
+          id: FUNCTION_ID,
+          project: PROJECT_ID,
+          entryPoint: FUNCTION_ID,
+          runtime: "nodejs16",
+          region: "asia-northeast1",
+          platform: "gcfv1",
+          httpsTrigger: {},
+        }),
+      );
       await expect(
         convertConfig(
           { projectId: "1" },
@@ -651,7 +662,47 @@ describe("convertConfig", () => {
             version: "14",
           },
         ),
-      ).to.eventually.be.rejectedWith(FirebaseError);
+      ).to.eventually.be.rejectedWith(
+        FirebaseError,
+        `Rewrite for function \`${FUNCTION_ID}\` targets region \`asia-northeast1\`, ` +
+          `but this deploy only deploys \`${FUNCTION_ID}\` to \`europe-west1\`, so the existing ` +
+          `\`${FUNCTION_ID}\` in \`asia-northeast1\` will be deleted. Update the rewrite's ` +
+          `\`region\` in firebase.json to that region.`,
+      );
+    });
+    it("should point to frameworksBackend.region when a generated frameworks rewrite is in the wrong region", async () => {
+      existingBackendStub.resolves(
+        backend.of({
+          id: "ssrfoo",
+          project: PROJECT_ID,
+          entryPoint: "ssrfoo",
+          runtime: "nodejs22",
+          region: "europe-west1",
+          platform: "gcfv2",
+          httpsTrigger: {},
+        }),
+      );
+      await expect(
+        convertConfig(
+          { projectId: "1" },
+          {},
+          {
+            config: {
+              site: "foo",
+              source: ".",
+              rewrites: [
+                { glob: "/**", function: { functionId: "ssrfoo", region: "us-central1" } },
+              ],
+            },
+            version: "14",
+          },
+        ),
+      ).to.eventually.be.rejectedWith(
+        FirebaseError,
+        "Rewrite for function `ssrfoo` targets region `us-central1`, but `ssrfoo` was only found " +
+          "in `europe-west1`. Set `frameworksBackend.region` for site `foo` in firebase.json to " +
+          "that region.",
+      );
     });
   });
 
