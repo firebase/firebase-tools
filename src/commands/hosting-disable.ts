@@ -8,12 +8,14 @@ import { requireHostingSite } from "../requireHostingSite";
 import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
 import * as utils from "../utils";
+import { ensure } from "../ensureApiEnabled";
 
 export const command = new Command("hosting:disable")
   .description("stop serving web traffic to your Firebase Hosting site")
   .option("-f, --force", "skip confirmation")
   .option("-s, --site <siteName>", "the site to disable")
   .before(requirePermissions, ["firebasehosting.sites.update"])
+  .before((options) => ensure(needProjectId(options), hostingApiOrigin(), "hosting", true))
   .before(requireHostingSite)
   .action(async (options) => {
     const projectId = needProjectId(options);

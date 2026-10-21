@@ -204,6 +204,7 @@
     ]
   },
   "scripts": {
+    "sanitize:lockfile": "node ../scripts/sanitize-lockfile.js",
     "vscode:prepublish": "npm run build",
     "copyfiles": "cp -r node_modules/@vscode/codicons/dist resources/dist",
     "pkg": "vsce package",

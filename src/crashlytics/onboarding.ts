@@ -24,6 +24,9 @@ export const CRASHLYTICS_TELEMETRY_BUCKET_ID = "firebase-telemetry";
 export const CRASHLYTICS_TELEMETRY_SINK_ID = "firebase-telemetry-routing";
 export const CRASHLYTICS_TELEMETRY_RESOURCE_TYPE = "firebasetelemetry.googleapis.com/App";
 export const CRASHLYTICS_TELEMETRY_SERVICE = "firebasetelemetry.googleapis.com";
+export const CRASHLYTICS_TELEMETRY_ADMIN_SERVICE = "firebasetelemetryadmin.googleapis.com";
+export const CRASHLYTICS_SERVICE = "firebasecrashlytics.googleapis.com";
+export const CLIENT_TELEMETRY_SERVICE = "clienttelemetry.googleapis.com";
 
 export interface OnboardWebResult {
   bucket: LogBucket;
@@ -73,7 +76,9 @@ export async function onboardCrashlyticsWeb(
   logLabeledBullet("crashlytics", "Enabling required telemetry APIs...");
   const requiredApis = [
     ensure(projectId, CRASHLYTICS_TELEMETRY_SERVICE, "crashlytics", false),
-    ensure(projectId, "firebasetelemetryadmin.googleapis.com", "crashlytics", false),
+    ensure(projectId, CRASHLYTICS_TELEMETRY_ADMIN_SERVICE, "crashlytics", false),
+    ensure(projectId, CRASHLYTICS_SERVICE, "crashlytics", false),
+    ensure(projectId, CLIENT_TELEMETRY_SERVICE, "crashlytics", false),
   ];
   if (experiments.isEnabled("crashlyticsWebBreadcrumbs")) {
     requiredApis.push(ensure(projectId, "cloudtrace.googleapis.com", "crashlytics", false));
@@ -149,7 +154,7 @@ export async function onboardCrashlyticsWeb(
   );
   logLabeledSuccess("crashlytics", "Crashlytics telemetry configured successfully.");
 
-  if (!experiments.isEnabled("crashlyticsWebAlerts") || options.nonInteractive) {
+  if (options.nonInteractive) {
     return { bucket, sink, config };
   }
 
