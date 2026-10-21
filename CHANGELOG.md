@@ -1,4 +1,5 @@
 - Ensured the Firebase Hosting API is enabled before deploying and running other Hosting commands.
+- Fixed an issue where empty inputs were accepted for Secret param values in Firebase Functions.
 - Fixed an issue where the Firebase MCP server always suggested `npx firebase-tools@latest` even when the `firebase` CLI was installed.
 - Fixed a Node.js `url.parse()` deprecation warning during `firebase login`.
 - Fixed 2nd Gen Auth Emulator CloudEvent payloads to use `metadata.createTime`, `providerData[].uid`, and top-level `tenantid` matching the Eventarc `google.events.firebase.auth.v2.AuthEventData` wire format.
