@@ -9,7 +9,10 @@ import {
   FIREBASE_APP_ANNOTATION,
   fullServiceName,
   getExistingService,
+  isManagedByAnotherProduct,
   mainContainer,
+  parseServiceName,
+  SERVICE_ID_REGEX,
 } from "../../deploy/run/util";
 import { FirebaseError } from "../../error";
 import { RunSingle } from "../../firebaseConfig";
@@ -23,7 +26,6 @@ import { requirePermissions } from "../../requirePermissions";
 import { logBullet } from "../../utils";
 
 const DEFAULT_IGNORE = ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"];
-const SERVICE_ID_REGEX = /^[a-z]([-a-z0-9]{0,47}[a-z0-9])?$/;
 
 export interface RunInfo {
   serviceId: string;
@@ -142,7 +144,7 @@ async function promptWebApp(projectId: string): Promise<string | undefined> {
 async function promptExistingService(projectId: string): Promise<runv2.Service | undefined> {
   const allServices = await runv2.listServices(projectId, /* functionsOnly= */ false);
   // Skip services that another product (e.g. Cloud Functions or App Hosting) manages.
-  const services = allServices.filter((s) => !s.labels?.[runv2.CLIENT_NAME_LABEL]);
+  const services = allServices.filter((s) => !isManagedByAnotherProduct(s));
   if (services.length === 0) {
     logBullet("No Cloud Run services to update. Creating a new service instead.");
     return undefined;
@@ -155,15 +157,6 @@ async function promptExistingService(projectId: string): Promise<runv2.Service |
     message: "Which service would you like to update?",
     choices,
   });
-}
-
-/**
- * Extracts the region and service ID from a Cloud Run service resource name
- * (projects/{project}/locations/{region}/services/{serviceId}).
- */
-function parseServiceName(name: string): { region: string; serviceId: string } {
-  const parts = name.split("/");
-  return { region: parts[3], serviceId: parts[5] };
 }
 
 async function promptNewServiceId(projectId: string, region: string): Promise<string> {
