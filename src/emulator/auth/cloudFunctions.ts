@@ -19,7 +19,7 @@ type CreateEvent = EventContext & {
   data: UserInfoPayload;
 };
 
-type AuthCloudEventData = { value: V2UserInfoPayload } | { oldValue: V2UserInfoPayload };
+type AuthCloudEventData = { value: UserInfoPayloadV2 } | { oldValue: UserInfoPayloadV2 };
 
 export class AuthCloudFunction {
   private logger = EmulatorLogger.forEmulator(Emulators.AUTH);
@@ -123,7 +123,9 @@ export class AuthCloudFunction {
   private toIsoTimestamp(epochMs?: string): string | undefined {
     if (!epochMs) return undefined;
     const ms = parseInt(epochMs, 10);
-    return isNaN(ms) ? undefined : new Date(ms).toISOString();
+    if (isNaN(ms)) return undefined;
+    const date = new Date(ms);
+    return isNaN(date.getTime()) ? undefined : date.toISOString();
   }
 
   private createBaseUserInfoPayload(user: UserInfo): BaseUserInfoPayload {
@@ -139,7 +141,7 @@ export class AuthCloudFunction {
     };
   }
 
-  private createV2UserInfoPayload(user: UserInfo): V2UserInfoPayload {
+  private createV2UserInfoPayload(user: UserInfo): UserInfoPayloadV2 {
     return {
       ...this.createBaseUserInfoPayload(user),
       metadata: {
@@ -152,7 +154,7 @@ export class AuthCloudFunction {
     };
   }
 
-  private createV2ProviderUserInfoPayload(info: ProviderUserInfo): V2ProviderUserInfoPayload {
+  private createV2ProviderUserInfoPayload(info: ProviderUserInfo): ProviderUserInfoPayloadV2 {
     return {
       uid: info.rawId,
       providerId: info.providerId,
@@ -201,21 +203,21 @@ type BaseUserInfoPayload = {
 };
 
 // Matches google.events.firebase.auth.v2.User (google-cloudevents data.proto).
-type V2UserInfoPayload = BaseUserInfoPayload & {
+interface UserInfoPayloadV2 extends BaseUserInfoPayload {
   metadata: {
     createTime?: string;
     lastSignInTime?: string;
   };
-  providerData?: V2ProviderUserInfoPayload[];
-};
+  providerData?: ProviderUserInfoPayloadV2[];
+}
 
-type V2ProviderUserInfoPayload = {
+interface ProviderUserInfoPayloadV2 {
   uid: string;
   displayName?: string;
   email?: string;
   photoURL?: string;
   providerId: string;
-};
+}
 
 // This should have the same fields as go/firebase-auth-event-payload and ONLY
 // those fields, in that order. These fields are a subset of UserRecord in Admin

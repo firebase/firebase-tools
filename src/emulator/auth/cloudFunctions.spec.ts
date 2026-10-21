@@ -203,7 +203,11 @@ describe("cloudFunctions", () => {
         .reply(200, {});
 
       const cf = new AuthCloudFunction("project-foo");
-      await cf.dispatch("create", { localId: "foobar" });
+      await cf.dispatch("create", {
+        localId: "foobar",
+        createdAt: "not-a-valid-timestamp",
+        lastLoginAt: "99999999999999999",
+      });
       expect(nock.isDone()).to.be.true;
     });
   });
