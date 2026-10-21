@@ -2,3 +2,4 @@
 - Fixed an issue where empty inputs were accepted for Secret param values in Firebase Functions.
 - Fixed an issue where the Firebase MCP server always suggested `npx firebase-tools@latest` even when the `firebase` CLI was installed.
 - Fixed a Node.js `url.parse()` deprecation warning during `firebase login`.
+- Fixed `functions:secrets:set` and `functions:secrets:prune` not destroying unused versions of secrets created with v13.6.1 or later. (#11066)
