@@ -4,6 +4,13 @@ import * as experiments from "../experiments";
 
 export const NPM_COMMAND_TIMEOUT_MILLIES = 60_000;
 
+/**
+ * The id of the function that serves a web frameworks site's server-side content.
+ */
+export function ssrFunctionId(site: string): string {
+  return `ssr${site.toLowerCase().replace(/-/g, "").substring(0, 20)}`;
+}
+
 export const SupportLevelWarnings = {
   [SupportLevel.Experimental]: (framework: string) => `Thank you for trying our ${clc.italic(
     "experimental",

@@ -2,3 +2,4 @@
 - Fixed an issue where empty inputs were accepted for Secret param values in Firebase Functions.
 - Fixed an issue where the Firebase MCP server always suggested `npx firebase-tools@latest` even when the `firebase` CLI was installed.
 - Fixed a Node.js `url.parse()` deprecation warning during `firebase login`.
+- Improved the error shown when a Hosting rewrite targets a function in the wrong region. It now names the function, the rewrite region, and the regions where the function was found. (#11289)
