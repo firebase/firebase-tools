@@ -13,6 +13,8 @@ import { HostingSource, RunRewrite } from "../../firebaseConfig";
 import * as backend from "../functions/backend";
 import { ensureTargeted } from "../../functions/ensureTargeted";
 import { generateSSRCodebaseId } from "../../frameworks";
+import { ensure } from "../../ensureApiEnabled";
+import { hostingApiOrigin } from "../../api";
 
 function handlePublicDirectoryFlag(options: HostingOptions & DeployOptions): void {
   // Allow the public directory to be overridden by the --public flag
@@ -113,6 +115,8 @@ export async function prepare(
   if (configs.length === 0) {
     return Promise.resolve();
   }
+
+  await ensure(context.projectId, hostingApiOrigin(), "hosting", true);
 
   const versions = await Promise.all(
     configs.map(async (config) => {

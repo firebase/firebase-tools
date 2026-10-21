@@ -15,8 +15,10 @@ import {
 import * as utils from "../utils";
 import { requireAuth } from "../requireAuth";
 import { logger } from "../logger";
-import { needProjectId } from "../projectUtils";
+import { getProjectId, needProjectId } from "../projectUtils";
 import { Options } from "../options";
+import { ensure } from "../ensureApiEnabled";
+import { hostingApiOrigin } from "../api";
 
 export const command = new Command("hosting:clone <source> <targetChannel>")
   .description("clone a version from one site to another")
@@ -85,10 +87,25 @@ To clone across different Firebase projects:
       );
     }
 
+    const defaultProjectId =
+      !sourceProjectId || !targetProjectId ? getProjectId(options) : undefined;
+    if (defaultProjectId) {
+      await ensure(defaultProjectId, hostingApiOrigin(), "hosting", true);
+    }
+
     [sourceProjectId, targetProjectId] = await Promise.all([
       resolveProjectId(sourceSiteId, sourceProjectId, options),
       resolveProjectId(targetSiteId, targetProjectId, options),
     ]);
+
+    const ensurePromises: Promise<void>[] = [];
+    if (sourceProjectId !== defaultProjectId) {
+      ensurePromises.push(ensure(sourceProjectId, hostingApiOrigin(), "hosting", true));
+    }
+    if (targetProjectId !== defaultProjectId && targetProjectId !== sourceProjectId) {
+      ensurePromises.push(ensure(targetProjectId, hostingApiOrigin(), "hosting", true));
+    }
+    await Promise.all(ensurePromises);
 
     targetChannelId = normalizeName(targetChannelId);
     if (sourceChannelId) {
