@@ -145,6 +145,7 @@ export interface Service {
   // Is this redundant with the Build API?
   buildConfig?: BuildConfig;
   uri?: string;
+  latestCreatedRevision?: string;
 }
 
 export type ServiceOutputFields =
@@ -169,7 +170,7 @@ export interface StorageSource {
  */
 export async function updateService(
   service: Omit<Service, ServiceOutputFields>,
-  opts: { updateMask?: string[]; pollTimeoutMs?: number } = {},
+  opts: { updateMask?: string[]; pollTimeoutMs?: number; pollMaxBackoffMs?: number } = {},
 ): Promise<Service> {
   // If no explicit updateMask is provided, infer the mask from the fields set on the service.
   let updateMask = opts.updateMask;
@@ -192,6 +193,7 @@ export async function updateService(
     apiVersion: API_VERSION,
     operationResourceName: res.body.name,
     masterTimeout: opts.pollTimeoutMs,
+    maxBackoff: opts.pollMaxBackoffMs,
   });
   return svc;
 }
@@ -205,7 +207,7 @@ export async function createService(
   location: string,
   serviceId: string,
   service: Omit<Service, ServiceOutputFields>,
-  opts: { pollTimeoutMs?: number } = {},
+  opts: { pollTimeoutMs?: number; pollMaxBackoffMs?: number } = {},
 ): Promise<Service> {
   // The create API expects the name to be empty or unset, as the parent is in the URL
   // and resource ID is a query param.
@@ -225,6 +227,7 @@ export async function createService(
     apiVersion: API_VERSION,
     operationResourceName: res.body.name,
     masterTimeout: opts.pollTimeoutMs,
+    maxBackoff: opts.pollMaxBackoffMs,
   });
   return svc;
 }
@@ -257,6 +260,22 @@ export async function getService(
 ): Promise<Service> {
   const name = `projects/${projectId}/locations/${location}/services/${serviceId}`;
   const res = await client.get<Service>(name);
+  return res.body;
+}
+
+/** A revision's status. Like Service, it only has the fields that the CLI uses. */
+export interface Revision {
+  name: string;
+  containerStatuses?: Array<{
+    name: string;
+    /** How building the container's image went, if Cloud Run built it (see Container.buildConfig). */
+    buildStatus?: { status?: "SUCCESS" | "FAILURE" | "PENDING"; cloudBuildLogUrl?: string };
+  }>;
+}
+
+/** Gets a revision, e.g. a service's latestCreatedRevision. */
+export async function getRevision(name: string): Promise<Revision> {
+  const res = await client.get<Revision>(name);
   return res.body;
 }
 

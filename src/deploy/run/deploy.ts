@@ -3,7 +3,7 @@ import * as os from "os";
 import * as path from "path";
 import { CLOUD_RUN_SIZE_LIMIT_BYTES } from "../../apphosting/constants";
 import { localBuild, validateLocalBuildNodeVersion } from "../../apphosting/localbuilds";
-import { FirebaseError, getErrMsg } from "../../error";
+import { FirebaseError, getErrMsg, getError } from "../../error";
 import { AppHostingSingle, RunSingle } from "../../firebaseConfig";
 import { Backend } from "../../gcp/apphosting";
 import * as artifactregistry from "../../gcp/artifactregistry";
@@ -21,10 +21,11 @@ import { FIREBASE_APP_ANNOTATION, mainContainer } from "./util";
 
 const DEPLOY_MESSAGE_ANNOTATION = "firebase.google.com/deploy-message";
 /**
- * Rolling out a revision can take longer than the operation poller's default timeout, especially
- * when Cloud Run builds its image first.
+ * How to wait for a rollout. Cloud Run builds the image first, which can take longer than the
+ * operation poller's default timeout. Check at least every 10 seconds, so that the deploy ends soon
+ * after the rollout does; by default, the poller backs off to a minute between checks.
  */
-const ROLLOUT_TIMEOUT_MS = 30 * 60 * 1000;
+const ROLLOUT_POLLING = { pollTimeoutMs: 30 * 60 * 1000, pollMaxBackoffMs: 10 * 1000 } as const;
 /** The Artifact Registry repository that Cloud Run pushes the images it builds to. */
 const IMAGE_REPOSITORY = "cloud-run-source-deploy";
 
@@ -73,7 +74,43 @@ async function deployRemoteBuild(
   const message = options.message as string | undefined;
   const template = remoteBuildTemplate(svc, source, imageRepository, message);
   logLabeledBullet("run", `Building and deploying service ${serviceId} in ${region}...`);
-  svc.deployed = await rollOut(projectId, svc, template);
+  try {
+    svc.deployed = await rollOut(projectId, svc, template);
+  } catch (err: unknown) {
+    throw (await buildFailure(projectId, svc.config, err)) ?? err;
+  }
+}
+
+/**
+ * If the rollout failed because Cloud Run couldn't build the image, returns an error that links to
+ * the build's logs. Cloud Run's own error has the build's raw output instead.
+ */
+async function buildFailure(
+  projectId: string,
+  config: RunSingle,
+  err: unknown,
+): Promise<FirebaseError | undefined> {
+  const { serviceId, region } = config;
+  try {
+    const { latestCreatedRevision } = await runv2.getService(projectId, region, serviceId);
+    if (!latestCreatedRevision) {
+      return undefined;
+    }
+    const revision = await runv2.getRevision(latestCreatedRevision);
+    const failed = revision.containerStatuses?.find((c) => c.buildStatus?.status === "FAILURE");
+    const logUrl = failed?.buildStatus?.cloudBuildLogUrl;
+    if (!logUrl) {
+      return undefined;
+    }
+    return new FirebaseError(
+      `Failed to build service ${serviceId} in ${region}. View the build logs at ${logUrl}`,
+      { original: getError(err) },
+    );
+  } catch (lookupErr: unknown) {
+    // Without the build's status, the rollout's own error is the best one to show.
+    logger.debug(`Couldn't look up the build of service ${serviceId}: ${getErrMsg(lookupErr)}`);
+    return undefined;
+  }
 }
 
 /**
@@ -384,9 +421,7 @@ function createNewService(
     invokerIamDisabled: true,
     ingress: "INGRESS_TRAFFIC_ALL",
   };
-  return runv2.createService(projectId, region, serviceId, service, {
-    pollTimeoutMs: ROLLOUT_TIMEOUT_MS,
-  });
+  return runv2.createService(projectId, region, serviceId, service, ROLLOUT_POLLING);
 }
 
 /** Rolls out a new revision of an existing service and sends it all traffic. */
@@ -407,7 +442,7 @@ function deployRevision(
   };
   return runv2.updateService(update, {
     updateMask: ["template", "traffic", "annotations"],
-    pollTimeoutMs: ROLLOUT_TIMEOUT_MS,
+    ...ROLLOUT_POLLING,
   });
 }
 

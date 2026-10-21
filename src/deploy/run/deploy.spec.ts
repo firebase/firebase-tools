@@ -2,6 +2,7 @@ import { expect } from "chai";
 import * as fs from "fs";
 import * as sinon from "sinon";
 import * as localbuilds from "../../apphosting/localbuilds";
+import { FirebaseError } from "../../error";
 import * as artifactregistry from "../../gcp/artifactregistry";
 import * as runv2 from "../../gcp/runv2";
 import * as gcs from "../../gcp/storage";
@@ -14,7 +15,7 @@ import { deploy, localBuildTemplate, remoteBuildTemplate, revisionTemplate } fro
 
 const NODEJS22 = "us-central1-docker.pkg.dev/serverless-runtimes/google-22/runtimes/nodejs22";
 const DEPLOY_MESSAGE = "firebase.google.com/deploy-message";
-const ROLLOUT_TIMEOUT_MS = 30 * 60 * 1000;
+const ROLLOUT_POLLING = { pollTimeoutMs: 30 * 60 * 1000, pollMaxBackoffMs: 10 * 1000 };
 const APP_ID = "firebase.google.com/app-id";
 
 describe("run deploy", () => {
@@ -69,7 +70,6 @@ describe("run deploy", () => {
       { backendId: "web" },
       "/project/apps/web",
     );
-    // Cloud Run pushes the image it builds to this repository, but doesn't create it.
     expect(ensureRepoStub).to.have.been.calledWith(
       "my-project",
       "us-central1",
@@ -96,7 +96,7 @@ describe("run deploy", () => {
         invokerIamDisabled: true,
         ingress: "INGRESS_TRAFFIC_ALL",
       },
-      { pollTimeoutMs: ROLLOUT_TIMEOUT_MS },
+      ROLLOUT_POLLING,
     );
     expect(svc.deployed).to.deep.equal({ uri: "https://web.run.app" });
   });
@@ -151,8 +151,49 @@ describe("run deploy", () => {
           { type: "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION", revision: "web-000", tag: "preview" },
         ],
       },
-      { updateMask: ["template", "traffic", "annotations"], pollTimeoutMs: ROLLOUT_TIMEOUT_MS },
+      { updateMask: ["template", "traffic", "annotations"], ...ROLLOUT_POLLING },
     );
+  });
+
+  describe("when the rollout fails", () => {
+    const rolloutError = new Error("Build projects/123/locations/us-central1/builds/b1 failed: {}");
+    const logUrl = "https://console.cloud.google.com/cloud-build/builds;region=us-central1/b1";
+    let getRevisionStub: sinon.SinonStub;
+
+    function revisionBuilt(status: "SUCCESS" | "FAILURE"): runv2.Revision {
+      const buildStatus = { status, cloudBuildLogUrl: logUrl };
+      return { name: "web-1", containerStatuses: [{ name: "web", buildStatus }] };
+    }
+
+    beforeEach(() => {
+      createServiceStub.rejects(rolloutError);
+      sinon.stub(runv2, "getService").resolves({
+        latestCreatedRevision:
+          "projects/my-project/locations/us-central1/services/web/revisions/web-1",
+      } as runv2.Service);
+      getRevisionStub = sinon.stub(runv2, "getRevision");
+    });
+
+    it("links to the build's logs if Cloud Run couldn't build the image", async () => {
+      getRevisionStub.resolves(revisionBuilt("FAILURE"));
+
+      await expect(deployOne({ config: web })).to.be.rejectedWith(
+        FirebaseError,
+        `Failed to build service web in us-central1. View the build logs at ${logUrl}`,
+      );
+    });
+
+    it("rethrows the rollout's error if the build didn't fail", async () => {
+      getRevisionStub.resolves(revisionBuilt("SUCCESS"));
+
+      await expect(deployOne({ config: web })).to.be.rejectedWith(rolloutError);
+    });
+
+    it("rethrows the rollout's error if it can't look up the build", async () => {
+      getRevisionStub.rejects(new Error("HTTP Error: 403"));
+
+      await expect(deployOne({ config: web })).to.be.rejectedWith(rolloutError);
+    });
   });
 
   describe("linked Firebase Web App", () => {
