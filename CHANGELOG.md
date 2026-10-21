@@ -2,5 +2,4 @@
 - Fixed an issue where empty inputs were accepted for Secret param values in Firebase Functions.
 - Fixed an issue where the Firebase MCP server always suggested `npx firebase-tools@latest` even when the `firebase` CLI was installed.
 - Fixed a Node.js `url.parse()` deprecation warning during `firebase login`.
-- Updated the Firebase SQL Connect local toolkit to v3.4.24, which includes the following changes:
-  - [changed] Bundle SQL migration statement parsing into the Firebase Data Connect emulator.
+- Updated the Firebase SQL Connect local toolkit to v3.4.24, which includes some internal bug fixes.
