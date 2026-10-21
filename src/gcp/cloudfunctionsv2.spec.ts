@@ -979,7 +979,9 @@ describe("cloudfunctionsv2", () => {
         .query({ functionId: "id" })
         .reply(429, { error: { message: "Quota exceeded" } });
 
-      await expect(cloudfunctionsv2.createFunction(CLOUD_FUNCTION_V2)).to.eventually.be.rejected;
+      await expect(
+        cloudfunctionsv2.createFunction(CLOUD_FUNCTION_V2),
+      ).to.eventually.be.rejectedWith("Quota exceeded");
       expect(warnSpy.callCount).to.equal(1);
       expect(warnSpy.firstCall.args[1]).to.include("Waiting to retry...");
     });

@@ -1,6 +1,6 @@
 import * as clc from "colorette";
 
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
 import { logger } from "../logger";
 import * as backend from "../deploy/functions/backend";
 import * as utils from "../utils";
@@ -174,12 +174,7 @@ export function captureRuntimeValidationError(errMessage: string): string {
  * @param err The error returned from the operation.
  */
 function functionsOpLogReject(funcName: string, type: string, err: any): never {
-  const errMessage: string =
-    typeof err?.message === "string"
-      ? (err.message as string)
-      : typeof err === "string"
-        ? err
-        : String(err ?? "");
+  const errMessage = getErrMsg(err);
   // Sniff for runtime validation errors and log a more user-friendly warning.
   if (errMessage.includes("Runtime validation errors")) {
     const capturedMessage = captureRuntimeValidationError(errMessage);

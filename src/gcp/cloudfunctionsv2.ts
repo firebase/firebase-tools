@@ -1,5 +1,5 @@
 import { Client, ClientVerbOptions } from "../apiv2";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
 import { functionsV2Origin } from "../api";
 import { logger } from "../logger";
 import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1";
@@ -226,12 +226,7 @@ interface GenerateUploadUrlResponse {
  * @param err The error returned from the operation.
  */
 function functionsOpLogReject(func: InputCloudFunction, type: string, err: any): never {
-  const errMessage: string =
-    typeof err?.message === "string"
-      ? (err.message as string)
-      : typeof err === "string"
-        ? err
-        : String(err ?? "");
+  const errMessage = getErrMsg(err);
   // Sniff for runtime validation errors and log a more user-friendly warning.
   if (errMessage.includes("Runtime validation errors")) {
     const capturedMessage = captureRuntimeValidationError(errMessage);
