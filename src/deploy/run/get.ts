@@ -13,6 +13,8 @@ export async function getServiceSpec(
   serviceId: string,
   region?: string,
 ): Promise<run.Service> {
+  // Lists even when a region is given, to keep one code path. If listing turns out to be slow,
+  // fetch the service directly with run.getService when there's a region.
   const matches = (await runv2.listServices(projectId, /* functionsOnly= */ false)).filter((s) => {
     const name = parseServiceName(s.name);
     return name.serviceId === serviceId && (!region || name.region === region);
