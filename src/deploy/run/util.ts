@@ -128,11 +128,3 @@ export function parseServiceName(name: string): { region: string; serviceId: str
   const parts = name.split("/");
   return { region: parts[3], serviceId: parts[5] };
 }
-
-/**
- * Returns whether another product, like Cloud Functions or App Hosting, manages the service. Those
- * services are deployed with that product's own commands, not `firebase deploy --only run`.
- */
-export function isManagedByAnotherProduct(service: Pick<runv2.Service, "labels">): boolean {
-  return !!service.labels?.[runv2.CLIENT_NAME_LABEL];
-}

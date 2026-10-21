@@ -3,12 +3,7 @@ import * as sinon from "sinon";
 import * as runv2 from "../../gcp/runv2";
 import { Options } from "../../options";
 import * as utils from "../../utils";
-import {
-  getExistingService,
-  getServiceConfigs,
-  isManagedByAnotherProduct,
-  parseServiceName,
-} from "./util";
+import { getExistingService, getServiceConfigs } from "./util";
 
 describe("run util", () => {
   afterEach(() => sinon.restore());
@@ -109,27 +104,6 @@ describe("run util", () => {
     it("rethrows other errors", async () => {
       sinon.stub(runv2, "getService").rejects({ status: 403 });
       await expect(getExistingService("p", "r", "s")).to.be.rejected;
-    });
-  });
-
-  describe("parseServiceName", () => {
-    it("returns the region and service ID", () => {
-      expect(parseServiceName("projects/p/locations/europe-west1/services/web")).to.deep.equal({
-        region: "europe-west1",
-        serviceId: "web",
-      });
-    });
-  });
-
-  describe("isManagedByAnotherProduct", () => {
-    it("is true for services with a goog-managed-by label", () => {
-      expect(isManagedByAnotherProduct({ labels: { [runv2.CLIENT_NAME_LABEL]: "cloudfunctions" } }))
-        .to.be.true;
-    });
-
-    it("is false for services without one", () => {
-      expect(isManagedByAnotherProduct({ labels: { other: "x" } })).to.be.false;
-      expect(isManagedByAnotherProduct({})).to.be.false;
     });
   });
 });

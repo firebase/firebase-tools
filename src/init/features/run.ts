@@ -9,7 +9,6 @@ import {
   FIREBASE_APP_ANNOTATION,
   fullServiceName,
   getExistingService,
-  isManagedByAnotherProduct,
   mainContainer,
   parseServiceName,
   SERVICE_ID_REGEX,
@@ -144,7 +143,7 @@ async function promptWebApp(projectId: string): Promise<string | undefined> {
 async function promptExistingService(projectId: string): Promise<runv2.Service | undefined> {
   const allServices = await runv2.listServices(projectId, /* functionsOnly= */ false);
   // Skip services that another product (e.g. Cloud Functions or App Hosting) manages.
-  const services = allServices.filter((s) => !isManagedByAnotherProduct(s));
+  const services = allServices.filter((s) => !s.labels?.[runv2.CLIENT_NAME_LABEL]);
   if (services.length === 0) {
     logBullet("No Cloud Run services to update. Creating a new service instead.");
     return undefined;
