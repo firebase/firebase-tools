@@ -78,7 +78,6 @@ describe("onboarding", () => {
     ]);
     requireAuthStub = sinon.stub(requireAuth, "requireAuth").resolves("user@example.com");
     isEnabledStub = sinon.stub(experiments, "isEnabled");
-    isEnabledStub.withArgs("crashlyticsWebAlerts").returns(true);
     isEnabledStub.withArgs("crashlyticsWebBreadcrumbs").returns(true);
   });
 
@@ -174,16 +173,6 @@ describe("onboarding", () => {
     const res = await onboarding.onboardCrashlyticsWeb("test-project", "1:123:web:456");
 
     expect(checkboxStub).to.have.been.calledOnce;
-    expect(enableAlertsStub).to.not.have.been.called;
-    expect(res.alertPolicies).to.be.undefined;
-  });
-
-  it("should skip alerting prompt and setup when crashlyticsWebAlerts experiment is disabled", async () => {
-    isEnabledStub.withArgs("crashlyticsWebAlerts").returns(false);
-
-    const res = await onboarding.onboardCrashlyticsWeb("test-project", "1:123:web:456");
-
-    expect(checkboxStub).to.not.have.been.called;
     expect(enableAlertsStub).to.not.have.been.called;
     expect(res.alertPolicies).to.be.undefined;
   });
