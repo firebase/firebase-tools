@@ -31,6 +31,37 @@ import * as ensure from "./ensure";
 import * as functionsConfig from "../../functionsConfig";
 import * as args from "./args";
 
+describe("applyRuntimeUpdatePolicy", () => {
+  function endpoint(platform: backend.FunctionsPlatform, id = "fn"): backend.Endpoint {
+    return {
+      id,
+      platform,
+      project: "project",
+      region: "us-central1",
+      entryPoint: id,
+      httpsTrigger: {},
+    };
+  }
+
+  for (const policy of ["automatic", "on-deploy"] as const) {
+    it(`applies ${policy} only to Gen 2 functions in a mixed codebase`, () => {
+      const gen1 = endpoint("gcfv1", "gen1");
+      const gen2 = endpoint("gcfv2", "gen2");
+      const run = endpoint("run", "run");
+      prepare.applyRuntimeUpdatePolicy(backend.of(gen1, gen2, run), policy);
+      expect(gen2.runtimeUpdatePolicy).to.equal(policy);
+      expect(gen1).not.to.have.property("runtimeUpdatePolicy");
+      expect(run).not.to.have.property("runtimeUpdatePolicy");
+    });
+  }
+
+  it("does not set a policy when the configuration is omitted", () => {
+    const gen2 = endpoint("gcfv2");
+    prepare.applyRuntimeUpdatePolicy(backend.of(gen2), undefined);
+    expect(gen2).not.to.have.property("runtimeUpdatePolicy");
+  });
+});
+
 describe("partition env helper", () => {
   it("splits a Record into two based on which keys begin with FIREBASE_SECRET_REF", () => {
     const input = {
