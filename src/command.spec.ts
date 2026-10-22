@@ -1,10 +1,13 @@
 import { expect } from "chai";
+import { Command as Program } from "commander";
 import * as sinon from "sinon";
 import * as rc from "./rc";
+import * as track from "./track";
+import * as utils from "./utils";
 import nock from "./test/helpers/nock";
 import { configstore } from "./configstore";
 
-import { Command, validateProjectId } from "./command";
+import { Command, CLIClient, validateProjectId } from "./command";
 import { FirebaseError } from "./error";
 
 describe("Command", () => {
@@ -31,6 +34,32 @@ describe("Command", () => {
         // do nothing
       });
     }).not.to.throw();
+  });
+
+  it("should not mutate its options when registered more than once", () => {
+    command.option("-x, --foobar", "description", "value");
+    command.withForce();
+
+    // A fresh client (commander program) per registration mirrors firebase-tools
+    // being imported as a module and used across multiple CLI invocations, where
+    // each runner re-registers the same cached command instance (see
+    // src/commands/index.ts).
+    const makeClient = () => ({ cli: new Program() }) as CLIClient;
+
+    // register() used to shift the flags out of each stored option array, so
+    // repeated registration eventually passed `undefined` to commander and threw
+    // `Cannot read properties of undefined (reading 'indexOf')`.
+    expect(() => {
+      command.register(makeClient());
+      command.register(makeClient());
+      command.register(makeClient());
+    }).not.to.throw();
+
+    // The stored option definitions must be preserved across registrations.
+    expect((command as unknown as { options: unknown[][] }).options).to.deep.equal([
+      ["-x, --foobar", "description", "value"],
+      ["-f, --force", "automatically accept all interactive prompts"],
+    ]);
   });
 
   describe("runner", () => {
@@ -240,6 +269,75 @@ describe("Command", () => {
 
     expect(result).to.deep.eq({
       except: "firestore,hosting,auth",
+    });
+  });
+
+  describe("register", () => {
+    let exitStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sinon.stub(configstore, "get").returns({});
+      sinon
+        .stub(rc, "loadRC")
+        .returns(new rc.RC(undefined, { projects: { default: "default-project" } }));
+      sinon.stub(track, "trackGA4").resolves();
+      sinon.stub(track, "trackEmulator").resolves();
+      exitStub = sinon.stub(process, "exit");
+    });
+
+    afterEach(() => {
+      sinon.restore();
+      nock.cleanAll();
+    });
+
+    it("should still call client.errorOut when analytics tracking times out on command error", async () => {
+      const deployError = new FirebaseError("There was an error deploying functions", { exit: 2 });
+      sinon.stub(utils, "withTimeout").rejects(new Error("Timed out."));
+      let resolveErrorOut!: () => void;
+      const errorOutCalled = new Promise<void>((resolve) => {
+        resolveErrorOut = resolve;
+      });
+      const errorOutStub = sinon.stub().callsFake(() => {
+        resolveErrorOut();
+      });
+      const client = {
+        cli: new Program(),
+        errorOut: errorOutStub,
+      } as unknown as CLIClient;
+      command.action(() => {
+        throw deployError;
+      });
+      command.register(client);
+
+      client.cli.parse(["node", "firebase", "example"]);
+      await errorOutCalled;
+
+      expect(errorOutStub.calledOnceWithExactly(deployError)).to.be.true;
+      expect(exitStub.called).to.be.false;
+    });
+
+    it("should exit cleanly without calling client.errorOut when analytics tracking times out on success", async () => {
+      sinon.stub(utils, "withTimeout").rejects(new Error("Timed out."));
+      let resolveExit!: () => void;
+      const exitCalled = new Promise<void>((resolve) => {
+        resolveExit = resolve;
+      });
+      exitStub.callsFake((() => {
+        resolveExit();
+      }) as unknown as typeof process.exit);
+      const errorOutStub = sinon.stub();
+      const client = {
+        cli: new Program(),
+        errorOut: errorOutStub,
+      } as unknown as CLIClient;
+      command.action(() => "ok");
+      command.register(client);
+
+      client.cli.parse(["node", "firebase", "example"]);
+      await exitCalled;
+
+      expect(exitStub.calledOnce).to.be.true;
+      expect(errorOutStub.called).to.be.false;
     });
   });
 });

@@ -37,6 +37,7 @@ export type MediaUploadRequest = {
   bucketId: string;
   objectId: string;
   dataRaw: Buffer;
+  contentType?: string;
   authorization?: string;
 };
 
@@ -100,6 +101,7 @@ export class UploadService {
       objectId: request.objectId,
       uploadType: UploadType.MEDIA,
       dataRaw: request.dataRaw,
+      metadata: request.contentType ? { contentType: request.contentType } : undefined,
       authorization: request.authorization,
     });
     this._persistence.deleteFile(upload.path, /* failSilently = */ true);

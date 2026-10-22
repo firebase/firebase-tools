@@ -169,17 +169,17 @@ function deepClean(obj: any, isRootLevel: boolean = false): any {
   const cleanedObj = { ...obj };
 
   // Rule 1: Remove $schema (applies to any level, but typically at root)
-  if (cleanedObj.hasOwnProperty("$schema")) {
+  if (Object.prototype.hasOwnProperty.call(cleanedObj, "$schema")) {
     delete cleanedObj.$schema;
   }
 
   // Remove additionalProperties
-  if (cleanedObj.hasOwnProperty("additionalProperties")) {
+  if (Object.prototype.hasOwnProperty.call(cleanedObj, "additionalProperties")) {
     delete cleanedObj.additionalProperties;
   }
 
   // Rule 2 & 3: Handle 'type' for "array" (only at root) and "null" (always)
-  if (cleanedObj.hasOwnProperty("type")) {
+  if (Object.prototype.hasOwnProperty.call(cleanedObj, "type")) {
     const currentType = cleanedObj.type;
     if (Array.isArray(currentType)) {
       let filteredTypes = currentType.filter((t: string) => t !== "null");
@@ -227,13 +227,13 @@ function deepClean(obj: any, isRootLevel: boolean = false): any {
 
   // Recursively clean 'properties'
   if (
-    cleanedObj.hasOwnProperty("properties") &&
+    Object.prototype.hasOwnProperty.call(cleanedObj, "properties") &&
     typeof cleanedObj.properties === "object" &&
     cleanedObj.properties !== null
   ) {
     const newProperties: Record<string, any> = {};
     for (const key in cleanedObj.properties) {
-      if (cleanedObj.properties.hasOwnProperty(key)) {
+      if (Object.prototype.hasOwnProperty.call(cleanedObj.properties, key)) {
         // Properties are never root level in this recursive call
         const cleanedPropertySchema = deepClean(cleanedObj.properties[key], false);
         if (cleanedPropertySchema !== null) {
@@ -251,7 +251,7 @@ function deepClean(obj: any, isRootLevel: boolean = false): any {
 
   // Recursively clean 'items'
   if (
-    cleanedObj.hasOwnProperty("items") &&
+    Object.prototype.hasOwnProperty.call(cleanedObj, "items") &&
     typeof cleanedObj.items === "object" &&
     cleanedObj.items !== null
   ) {
@@ -268,13 +268,13 @@ function deepClean(obj: any, isRootLevel: boolean = false): any {
   const defKeywords = ["$defs", "definitions"];
   for (const keyword of defKeywords) {
     if (
-      cleanedObj.hasOwnProperty(keyword) &&
+      Object.prototype.hasOwnProperty.call(cleanedObj, keyword) &&
       typeof cleanedObj[keyword] === "object" &&
       cleanedObj[keyword] !== null
     ) {
       const newDefs: Record<string, any> = {};
       for (const defKey in cleanedObj[keyword]) {
-        if (cleanedObj[keyword].hasOwnProperty(defKey)) {
+        if (Object.prototype.hasOwnProperty.call(cleanedObj[keyword], defKey)) {
           // Definitions are never root level in this recursive call
           const cleanedDef = deepClean(cleanedObj[keyword][defKey], false);
           if (cleanedDef !== null) {
@@ -293,7 +293,10 @@ function deepClean(obj: any, isRootLevel: boolean = false): any {
   // Recursively clean schema arrays like anyOf, allOf, oneOf
   const schemaArrayKeywords = ["anyOf", "allOf", "oneOf"];
   for (const keyword of schemaArrayKeywords) {
-    if (cleanedObj.hasOwnProperty(keyword) && Array.isArray(cleanedObj[keyword])) {
+    if (
+      Object.prototype.hasOwnProperty.call(cleanedObj, keyword) &&
+      Array.isArray(cleanedObj[keyword])
+    ) {
       const newSchemaArray = cleanedObj[keyword]
         // Sub-schemas in anyOf etc. are not root level in this recursive call
         .map((subSchema: any) => deepClean(subSchema, false))
@@ -312,7 +315,7 @@ function deepClean(obj: any, isRootLevel: boolean = false): any {
 /** Takes a zodToJsonSchema output and cleans it up to be more compatible with LLM limitations. */
 export function cleanSchema(schema: Record<string, any>): Record<string, any> {
   // Initial check for top-level array type before deep cleaning
-  if (schema && schema.hasOwnProperty("type")) {
+  if (schema && Object.prototype.hasOwnProperty.call(schema, "type")) {
     const topLevelType = schema.type;
     if (topLevelType === "array") {
       return {};

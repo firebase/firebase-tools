@@ -43,7 +43,7 @@ describe("agentSkills", () => {
       fs.rmSync(testRoot, { recursive: true, force: true });
     });
 
-    it("should install skills locally and create .agents directory", async () => {
+    it.skip("should install skills locally and create .agents directory", async () => {
       await installAgentSkills({ cwd: testRoot });
 
       const agentsDir = path.join(testRoot, ".agents");

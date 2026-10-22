@@ -132,6 +132,7 @@ const dynamicDispatch = exports as {
  */
 export async function getAppHostingConfiguration(
   backendDir: string,
+  includeLocalConfigs = true,
 ): Promise<AppHostingYamlConfig> {
   const appHostingConfigPaths = dynamicDispatch.listAppHostingFilesInPath(backendDir);
   // generate a map to make it easier to interface between file name and it's path
@@ -151,14 +152,16 @@ export async function getAppHostingConfiguration(
     output.merge(baseFile, /* allowSecretsToBecomePlaintext= */ false);
   }
 
-  if (emulatorsFilePath) {
-    const emulatorsConfig = await AppHostingYamlConfig.loadFromFile(emulatorsFilePath);
-    output.merge(emulatorsConfig, /* allowSecretsToBecomePlaintext= */ false);
-  }
+  if (includeLocalConfigs) {
+    if (emulatorsFilePath) {
+      const emulatorsConfig = await AppHostingYamlConfig.loadFromFile(emulatorsFilePath);
+      output.merge(emulatorsConfig, /* allowSecretsToBecomePlaintext= */ false);
+    }
 
-  if (localFilePath) {
-    const localYamlConfig = await AppHostingYamlConfig.loadFromFile(localFilePath);
-    output.merge(localYamlConfig, /* allowSecretsToBecomePlaintext= */ true);
+    if (localFilePath) {
+      const localYamlConfig = await AppHostingYamlConfig.loadFromFile(localFilePath);
+      output.merge(localYamlConfig, /* allowSecretsToBecomePlaintext= */ true);
+    }
   }
 
   return output;

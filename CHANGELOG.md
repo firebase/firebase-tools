@@ -1,1 +1,2 @@
 - Fixed issue where `firebase init firestore` incorrectly gets rules from different database. (#7981)
+- Fixed an issue where the Firebase MCP server referred to `update_firebase_environment` instead of `firebase_update_environment`.

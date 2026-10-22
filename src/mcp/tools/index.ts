@@ -143,7 +143,11 @@ export async function markdownDocsOfTools(): Promise<string> {
     if (feature === "firebase") {
       feature = "core";
     }
-    const description = (tool.mcp?.description || "").replaceAll("\n", "<br>");
+    const description = (
+      tool.mcp.humanReadableDescription ||
+      tool.mcp.description ||
+      ""
+    ).replaceAll("\n", "<br>");
     doc += `
 | ${tool.mcp.name} | ${feature} | ${description} |`;
   }
