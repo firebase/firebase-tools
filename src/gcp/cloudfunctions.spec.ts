@@ -786,5 +786,28 @@ describe("cloudfunctions", () => {
       expect(debugSpy.calledWith(sinon.match("Waiting for service account propagation"))).to.be
         .true;
     });
+
+    it("logs warning banner when 404 is for a non-managed service account", async () => {
+      const warnSpy = sinon.spy(utils, "logWarning");
+      const debugSpy = sinon.spy(logger, "debug");
+      nock(functionsOrigin())
+        .post("/v1/projects/project/locations/region/functions")
+        .reply(404, {
+          error: {
+            message:
+              "Service account projects/-/serviceAccounts/custom-sa@project.iam.gserviceaccount.com does not exist.",
+          },
+        });
+
+      await expect(cloudfunctions.createFunction(CLOUD_FUNCTION)).to.eventually.be.rejectedWith(
+        "Service account projects/-/serviceAccounts/custom-sa@project.iam.gserviceaccount.com does not exist.",
+      );
+      expect(warnSpy.calledOnce).to.be.true;
+      expect(warnSpy.firstCall.args[0]).to.include(
+        "failed to create function projects/project/locations/region/functions/id",
+      );
+      expect(debugSpy.calledWith(sinon.match("Waiting for service account propagation"))).to.be
+        .false;
+    });
   });
 });
