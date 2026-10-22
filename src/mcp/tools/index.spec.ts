@@ -103,7 +103,7 @@ describe("getRemoteToolsByFeature", () => {
     fetchStub.resetHistory();
     await getRemoteToolsByFeature([]);
     // If features is empty, it should use all keys in ONEMCP_SERVERS.
-    expect(fetchStub).to.have.been.calledTwice;
+    expect(fetchStub).to.have.been.calledThrice;
   });
 
   it("should return flattened results from all remote servers", async () => {

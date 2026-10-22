@@ -4,22 +4,26 @@ import {
   ensureExtensionsApiEnabled,
   diagnoseAndFixProject,
   logPrefix,
+  ensureInstanceSpec,
 } from "../extensions/extensionsHelper";
 import { requirePermissions } from "../requirePermissions";
-import { logLabeledBullet, logLabeledWarning, logLabeledSuccess } from "../utils";
+import { logLabeledWarning } from "../utils";
 import * as manifest from "../extensions/manifest";
-import { deleteInstance } from "../extensions/extensionsApi";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
-import { confirm } from "../prompt";
+import { uninstallExtension } from "../extensions/migrate";
+import { getInstance } from "../extensions/extensionsApi";
+import { secretsNeedingEjection } from "../extensions/export";
 import { FirebaseError } from "../error";
+import { ExtensionInstance } from "../extensions/types";
+import { confirm } from "../prompt";
 
 export const command = new Command("ext:uninstall <extensionInstanceId>")
   .description("uninstall an extension that is installed in your Firebase project by instance ID")
   .option("--local", "deprecated")
   .option(
     "--immediate",
-    "immediately destroy GCP resources instead of waiting on next deploy. Can be run outside a firebase project directory.",
+    "immediately destroy GCP resources instead of waiting on next deploy. Can be run outside a firebase project directory if --project is specified.",
   )
   .withForce()
   .before(requirePermissions, ["firebaseextensions.instances.delete"])
@@ -35,38 +39,49 @@ export const command = new Command("ext:uninstall <extensionInstanceId>")
     }
     if (options.immediate) {
       const projectId = needProjectId(options);
-      let config;
+      let instance: ExtensionInstance | undefined;
       try {
-        config = manifest.loadConfig(options);
-      } catch {
-        logLabeledBullet(
-          logPrefix,
-          "No firebase.json found. Proceeding to immediate extension instance teardown.",
+        instance = await getInstance(projectId, instanceId);
+      } catch (err: unknown) {
+        if (err instanceof FirebaseError && err.status === 404) {
+          logLabeledWarning(
+            logPrefix,
+            "ext:uninstall called with --immediate, but no deployed GCP resources found for the extension.",
+          );
+          const config = manifest.loadConfig(options);
+          manifest.removeFromManifest(instanceId, config);
+          return;
+        }
+        throw new FirebaseError(
+          `Failed to retrieve extension instance ${instanceId}: ${err instanceof Error ? err.message : String(err)}`,
+          {
+            original: err instanceof Error ? err : undefined,
+            exit: 1,
+          },
         );
       }
-      if (config && manifest.instanceExists(instanceId, config)) {
-        manifest.removeFromManifest(instanceId, config);
+      if (!instance) {
+        throw new FirebaseError(`Failed to retrieve extension instance ${instanceId}`);
       }
-
-      if (
-        !(await confirm({
-          message: `About to delete Extensions instance ${projectId}/${instanceId}, its associated resources, and service account. Continue?`,
+      instance = await ensureInstanceSpec(instance);
+      const outstandingSecrets = await secretsNeedingEjection(instance);
+      if (outstandingSecrets.length > 0) {
+        const shouldContinue = await confirm({
+          message: `Extension instance ${instanceId} has secrets with the "firebase-extensions-managed" label:\n${outstandingSecrets.join(", ")}\nContinuing with extension uninstall will permanently destroy these secrets.\nYou can keep these secrets by running ext:export, or by manually removing the label in the Cloud Console.\nContinue?`,
+          default: false,
           nonInteractive: options.nonInteractive,
           force: options.force,
-          default: true,
-        }))
-      ) {
-        return;
+        });
+        if (!shouldContinue) {
+          if (options.nonInteractive && !options.force) {
+            throw new FirebaseError(
+              `Extension instance ${instanceId} has managed secrets that would be permanently destroyed. Re-run with --force in non-interactive mode to confirm deletion.`,
+            );
+          }
+          return;
+        }
       }
-      try {
-        await deleteInstance(projectId, instanceId);
-      } catch (err: unknown) {
-        throw new FirebaseError(
-          `Error when attempting deletion: ${err instanceof Error ? err.message : String(err)}`,
-          { original: err instanceof Error ? err : undefined },
-        );
-      }
-      logLabeledSuccess(logPrefix, `Deleted Extensions instance ${projectId}/${instanceId}.`);
+      await uninstallExtension(projectId, instanceId, options, false);
       return;
     }
     const config = manifest.loadConfig(options);

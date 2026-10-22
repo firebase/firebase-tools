@@ -120,5 +120,74 @@ Standard documentation and configuration details.
           "https://github.com/firebase/extensions/tree/main/firestore-send-email/README.md",
       });
     });
+
+    it("should revert to PENDING_PUBLISHER and remove npmPackage when tag is removed from README", () => {
+      const readmes = {
+        "firebase/firestore-send-email": "# Readme without any replacement tag",
+      };
+      const initialRegistry: ReplacementRegistrySchema = {
+        replacements: {
+          "firebase/firestore-send-email": {
+            status: "REPLACEMENT_AVAILABLE",
+            npmPackage: "@firebase-function-kits/firestore-send-email",
+            extensionRepositoryUrl:
+              "https://github.com/firebase/extensions/tree/main/firestore-send-email/README.md",
+          },
+        },
+      };
+
+      const { updatedRegistry, results } = processExtensionReadmes(readmes, initialRegistry);
+      expect(results[0].status).to.equal("PENDING_PUBLISHER");
+      expect(results[0].detectedPackage).to.be.undefined;
+      expect(updatedRegistry.replacements["firebase/firestore-send-email"]).to.deep.equal({
+        status: "PENDING_PUBLISHER",
+        extensionRepositoryUrl:
+          "https://github.com/firebase/extensions/tree/main/firestore-send-email/README.md",
+      });
+      expect(updatedRegistry.replacements["firebase/firestore-send-email"]).to.not.have.property(
+        "npmPackage",
+      );
+    });
+
+    it("should preserve CONFIRMED_NO_REPLACEMENT entries without altering their status or properties", () => {
+      const readmes = {
+        "moralis/moralis-streams": "# Readme without replacement tag",
+      };
+      const initialRegistry: ReplacementRegistrySchema = {
+        replacements: {
+          "moralis/moralis-streams": {
+            status: "CONFIRMED_NO_REPLACEMENT",
+            extensionRepositoryUrl:
+              "https://github.com/moralisweb3/moralis-firebase-extensions/tree/main/moralis-streams/README.md",
+          },
+        },
+      };
+
+      const { updatedRegistry, results } = processExtensionReadmes(readmes, initialRegistry);
+      expect(results).to.have.lengthOf(1);
+      expect(results[0]).to.deep.equal({
+        extensionRef: "moralis/moralis-streams",
+        status: "CONFIRMED_NO_REPLACEMENT",
+      });
+      expect(updatedRegistry.replacements["moralis/moralis-streams"]).to.deep.equal({
+        status: "CONFIRMED_NO_REPLACEMENT",
+        extensionRepositoryUrl:
+          "https://github.com/moralisweb3/moralis-firebase-extensions/tree/main/moralis-streams/README.md",
+      });
+    });
+
+    it("should ignore extensions in readmes that do not exist in registry", () => {
+      const readmes = {
+        "uncataloged/nonexistent-extension":
+          '<!-- FIREBASE_EXTENSION_REPLACEMENT: package="@test/pkg" -->',
+      };
+      const initialRegistry: ReplacementRegistrySchema = {
+        replacements: {},
+      };
+
+      const { updatedRegistry, results } = processExtensionReadmes(readmes, initialRegistry);
+      expect(results).to.have.lengthOf(0);
+      expect(updatedRegistry.replacements).to.deep.equal({});
+    });
   });
 });

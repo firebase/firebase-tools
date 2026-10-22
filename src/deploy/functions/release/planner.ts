@@ -1,7 +1,9 @@
 import {
   EndpointFilter,
   endpointMatchesAnyFilter,
+  generationDowngradeMessage,
   getFunctionLabel,
+  isCodebasePartiallyFiltered,
 } from "../functionsDeployHelper";
 import { isFirebaseManaged } from "../../../deploymentTool";
 import { FirebaseError } from "../../../error";
@@ -177,11 +179,7 @@ export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan
   let serviceAccountToCreate: string | undefined;
   let serviceAccountToDelete: string | undefined;
 
-  const isFiltered = !!(
-    filters &&
-    filters.some((f) => f.idChunks && f.idChunks.length > 0) &&
-    !deleteAll
-  );
+  const isPartiallyFiltered = isCodebasePartiallyFiltered(codebase, filters);
 
   const hasWantEndpoints = backend.someEndpoint(wantBackend, () => true);
 
@@ -191,7 +189,7 @@ export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan
     if (!existingManagedSA && managedSA) {
       serviceAccountToCreate = managedSA;
     }
-  } else if (existingManagedSA && !isFiltered) {
+  } else if (existingManagedSA && (!isPartiallyFiltered || deleteAll)) {
     serviceAccountToDelete = existingManagedSA;
   }
 
@@ -392,10 +390,9 @@ export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endp
       )}] Changing from ${haveType} function to ${wantType} function is not allowed. Please delete your function and create a new one instead.`,
     );
   }
-  if (want.platform === "gcfv1" && have.platform === "gcfv2") {
-    throw new FirebaseError(
-      `[${getFunctionLabel(want)}] Functions cannot be downgraded from GCFv2 to GCFv1`,
-    );
+  const downgrade = generationDowngradeMessage(want, have);
+  if (downgrade) {
+    throw new FirebaseError(downgrade);
   }
 
   // We need to call from module exports so tests can stub this behavior, but that

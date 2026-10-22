@@ -14,6 +14,7 @@ import { trackEmulator } from "../track";
 import { Constants } from "./constants";
 import { EmulatorInfo, EmulatorInstance, Emulators, FunctionsExecutionMode } from "./types";
 import * as chokidar from "chokidar";
+import * as minimatch from "minimatch";
 import * as portfinder from "portfinder";
 
 import * as spawn from "cross-spawn";
@@ -35,6 +36,7 @@ import {
   prepareEndpoints,
   BlockingTrigger,
   getTemporarySocketPath,
+  getEventTenantId,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
@@ -174,12 +176,6 @@ export interface FunctionsRuntimeInstance {
   conn: IPCConn | TCPConn;
 }
 
-export interface InvokeRuntimeOpts {
-  nodeBinary: string;
-  extensionTriggers?: ParsedTriggerDefinition[];
-  ignore_warnings?: boolean;
-}
-
 interface RequestWithRawBody extends express.Request {
   rawBody: Buffer;
 }
@@ -191,6 +187,26 @@ interface EmulatedTriggerRecord {
   ignored: boolean;
 
   url?: string;
+}
+
+export function createIgnoredFilter(ignore?: string[]): chokidar.Matcher[] {
+  const ignored: chokidar.Matcher[] = [
+    /(^|[\/\\])\../, // Ignore hidden files/dirs (covers .dart_tool, .git, etc.)
+    /.+\.log/, // Ignore log files
+    /.+?[\\\/]node_modules[\\\/].+?/, // Ignore node_modules
+    /.+?[\\\/]venv[\\\/].+?/, // Ignore venv
+  ];
+  if (ignore) {
+    const minimatchInstances = ignore.map((pattern) => {
+      const p = pattern.startsWith("**/") ? pattern : `**/${pattern}`;
+      return new minimatch.Minimatch(p, { dot: true });
+    });
+    ignored.push((filePath: string) => {
+      const normalized = filePath.replace(/\\/g, "/");
+      return minimatchInstances.some((m) => m.match(normalized));
+    });
+  }
+  return ignored;
 }
 
 export class FunctionsEmulator implements EmulatorInstance {
@@ -357,13 +373,22 @@ export class FunctionsEmulator implements EmulatorInstance {
       } else {
         triggerKey = `${this.args.projectId}:${event.eventType}`;
       }
-      if (event.data.bucket) {
+      if (event.data?.bucket) {
         triggerKey += `:${event.data.bucket}`;
       }
       const triggers = this.multicastTriggers[triggerKey] || [];
 
       const { host, port } = this.getInfo();
-      triggers.forEach((triggerId) => {
+      const eventTenantId = getEventTenantId(event);
+      for (const triggerId of triggers) {
+        const record = this.getTriggerRecordByKey(triggerId);
+
+        // If the trigger has a tenant filter ({ tenantId: "..." }),
+        // ensure the event matches the expected tenant.
+        const filterTenantId = record?.def?.eventTrigger?.eventFilters?.tenantid;
+        if (filterTenantId && filterTenantId !== eventTenantId) {
+          continue;
+        }
         const work: Work = () => {
           return new Promise<void>((resolve, reject) => {
             const trigReq = http.request({
@@ -381,7 +406,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         };
         work.type = `${triggerId}-${new Date().toISOString()}`;
         this.workQueue.submit(work);
-      });
+      }
       res.json({ status: "multicast_acknowledged" });
     };
 
@@ -518,13 +543,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         this.logger.logLabeled("SUCCESS", "functions", `build_runner initial build completed`);
       } else {
         const watcher = chokidar.watch(backend.functionsDir, {
-          ignored: [
-            /(^|[\/\\])\../, // Ignore hidden files/dirs (covers .dart_tool, .git, etc.)
-            /.+\.log/, // Ignore log files
-            /.+?[\\\/]node_modules[\\\/].+?/, // Ignore node_modules
-            /.+?[\\\/]venv[\\\/].+?/, // Ignore venv
-            ...(backend.ignore?.map((i) => `**/${i}`) ?? []),
-          ],
+          ignored: createIgnoredFilter(backend.ignore),
           persistent: true,
         });
 
@@ -626,7 +645,13 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
         await this.loadDynamicExtensionBackends();
       }
-      build.applyPrefix(discoveredBuild, emulatableBackend.prefix || "");
+      build.applyEndpointPrefix(discoveredBuild, emulatableBackend.prefix || "");
+      if (emulatableBackend.env?.FIREBASE_KIT_INSTANCE_ID) {
+        build.applyKitSecretRefPrefix(
+          discoveredBuild,
+          emulatableBackend.env.FIREBASE_KIT_INSTANCE_ID,
+        );
+      }
       const resolution = await resolveBackend({
         build: discoveredBuild,
         firebaseConfig: JSON.parse(firebaseConfig),

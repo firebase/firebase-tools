@@ -32,29 +32,23 @@ describe("functions:kits:install", () => {
   });
 
   describe("command configuration", () => {
-    it("should have requireConfig and requireAuth as before hooks", () => {
-      expect(originalBefores).to.deep.equal([
-        { fn: requireConfig, args: [] },
-        { fn: requireAuth, args: [] },
-      ]);
+    it("should assert kits experiment and require config/auth in before hooks", () => {
+      expect(originalBefores).to.have.lengthOf(3);
+      originalBefores[0].fn();
+      expect(assertEnabledStub).to.have.been.calledWith("kits", "install a function kit");
+      expect(originalBefores[1]).to.deep.equal({ fn: requireConfig, args: [] });
+      expect(originalBefores[2]).to.deep.equal({ fn: requireAuth, args: [] });
+    });
+
+    it("should fail if kits experiment is disabled", () => {
+      assertEnabledStub.throws(new FirebaseError("kits experiment disabled"));
+      expect(() => {
+        originalBefores[0].fn();
+      }).to.throw(FirebaseError, "kits experiment disabled");
     });
   });
 
   describe("command action", () => {
-    it("should assert that kits experiment is enabled", async () => {
-      assertEnabledStub.throws(new FirebaseError("kits experiment disabled"));
-
-      await expect(
-        command.runner()({
-          package: "@firebase-function-kits/firestore-bigquery-export",
-          cwd: "/mock/project",
-          nonInteractive: true,
-        }),
-      ).to.be.rejectedWith(FirebaseError, "kits experiment disabled");
-
-      expect(assertEnabledStub).to.have.been.calledWith("kits", "install a function kit");
-    });
-
     it("should throw an error if not in a Firebase project directory", async () => {
       await expect(
         command.runner()({

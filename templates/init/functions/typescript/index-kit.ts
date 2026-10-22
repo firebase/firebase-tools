@@ -12,6 +12,7 @@ import * as params from "firebase-functions/params";
 // the value to differ. Learn more at
 // https://firebase.google.com/docs/functions/config-env#params
 export const regionParam = params.defineString("FUNCTION_DEFAULT_REGION", {
+  input: { text: { nonEmpty: true } },
   description: "Global default region where functions should be deployed. Can be overriden per-function.",
 });
 
@@ -28,7 +29,7 @@ setGlobalOptions({
   // running at the same time. This helps mitigate the impact of unexpected
   // traffic spikes by instead downgrading performance. This limit is a
   // per-function limit.
-  maxInstances: 10,
+  // maxInstances: 100,
 });
 
 // Exports the functions located in the kit.

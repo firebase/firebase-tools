@@ -10,7 +10,7 @@ import {
   ejectSecretsFromInstance,
   secretsNeedingEjection,
 } from "../extensions/export";
-import { ensureExtensionsApiEnabled } from "../extensions/extensionsHelper";
+import { ensureExtensionsApiEnabled, ensureInstanceSpec } from "../extensions/extensionsHelper";
 import * as manifest from "../extensions/manifest";
 import { buildBindingOptionsWithBaseValue } from "../extensions/paramHelper";
 import { partition } from "../functional";
@@ -23,13 +23,14 @@ import { requirePermissions } from "../requirePermissions";
 import { getInstance } from "../extensions/extensionsApi";
 import { last, logLabeledBullet, logLabeledError, logLabeledWarning } from "../utils";
 import { ExtensionInstance } from "../extensions/types";
-import { writeUserEnvs, UserEnvsOpts, hasUserEnvs } from "../functions/env";
-import { mkdirSync } from "fs";
-import { resolve } from "path";
+import { writeUserEnvs, UserEnvsOpts } from "../functions/env";
+import { mkdirSync, statSync } from "fs";
+import { join, resolve } from "path";
 import { Config } from "../config";
 import { normalizeAndValidate, isKitConfig } from "../functions/projectConfig";
 import { FirebaseError } from "../error";
 import * as experiments from "../experiments";
+import { ensureInstanceUpToDate } from "../extensions/migrate";
 
 export const command = new Command("ext:export")
   .description("export Extension instances installed on a project to a local Firebase directory")
@@ -61,7 +62,7 @@ export const command = new Command("ext:export")
       // - explicitly sets unspecified user params to the empty string instead of leaving them out (and causing a prompt on first deploy)
       // - coerces system param naming format to be valid .env keys (e.g EXT_MIGRATED_SYSTEM_MEMORY=256 instead of firebaseextensions.v1beta.function/memory=256)
       // - writes references to secrets in the Functions format (e.g FIREBASE_SECRET_REF_API_KEY=foo:latest instead of API_KEY=projects/${param:PROJECT_NUMBER}/secrets/API_KEY/versions/latest)
-      // - makes DeploymentInstanceSpec.eventarcChannel and allowedEventTypes available as FIREBASE_EVENTARC_CHANNEL and EXT_SELECTED_EVENTS
+      // - makes DeploymentInstanceSpec.eventarcChannel and allowedEventTypes available as EVENTARC_CHANNEL and EXT_SELECTED_EVENTS
       await fnHandler(options);
     } else {
       // Extensions handler:
@@ -152,7 +153,7 @@ async function fnHandler(options: Options): Promise<void> {
     return;
   }
   const projectId = needProjectId(options);
-  const instance = await getInstance(projectId, options.instance as string);
+  let instance = await getInstance(projectId, options.instance as string);
   if (typeof instance === "undefined") {
     logger.info(`No extension matching instance ID ${options.instance} found`);
     return;
@@ -162,6 +163,16 @@ async function fnHandler(options: Options): Promise<void> {
       `Extension ${options.instance} is in state ${instance.state}. To export a non-ACTIVE extension, use the --force option.`,
     );
   }
+  instance = await ensureInstanceSpec(instance);
+  if (!instance.config?.source?.spec) {
+    throw new FirebaseError(
+      `Could not load extension specification for ${options.instance}. Unable to export configuration.`,
+    );
+  }
+  instance = await ensureInstanceUpToDate(projectId, instance, {
+    nonInteractive: options.nonInteractive,
+    force: options.force,
+  });
 
   const instanceId = last(instance.name.split("/")) ?? "";
   if (instanceId !== options.instance) {
@@ -173,7 +184,9 @@ async function fnHandler(options: Options): Promise<void> {
 
   const convertedEnv = functionsEnvFromInstance(instance);
   const writeLocation: UserEnvsOpts = kitExportTarget(instanceId, projectId, options);
-  if (hasUserEnvs(writeLocation)) {
+  // Function kit installation with `kits:install --no-configure` creates an empty
+  // `.env.<projectId>` file via `fs.ensureFileSync`. We only abort if a non-empty configuration exists.
+  if (hasNonEmptyProjectEnv(writeLocation)) {
     logger.info(
       `Exported extensions config appears to already exist in /${instanceId}, aborting write.`,
     );
@@ -184,6 +197,27 @@ async function fnHandler(options: Options): Promise<void> {
     });
     writeUserEnvs(convertedEnv, writeLocation);
   }
+}
+
+/**
+ * Checks if a project-specific dotenv file exists and is non-empty.
+ * `kits:install --no-configure` creates an empty `.env.<projectId>` file on disk (whereas regular install
+ * populates it), so we only treat the configuration as already existing if the file has non-zero size.
+ */
+export function hasNonEmptyProjectEnv(opts: UserEnvsOpts): boolean {
+  const configDir = opts.configDir || opts.functionsSource;
+  const files = [
+    `.env.${opts.projectId}`,
+    ...(opts.projectAlias ? [`.env.${opts.projectAlias}`] : []),
+  ];
+  return files.some((f) => {
+    const fullPath = join(configDir, f);
+    try {
+      return statSync(fullPath).size > 0;
+    } catch {
+      return false;
+    }
+  });
 }
 
 /**

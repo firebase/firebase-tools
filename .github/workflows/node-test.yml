@@ -64,6 +64,15 @@ jobs:
           cache: npm
           cache-dependency-path: firebase-vscode/package-lock.json
 
+      - name: Cache VS Code test binary
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # ratchet:actions/cache@v4
+        with:
+          path: firebase-vscode/.vscode-test
+          key: ${{ runner.os }}-vscode-test-${{ hashFiles('firebase-vscode/src/test/constants.ts') }}
+          restore-keys: |
+            ${{ runner.os }}-vscode-test-
+        continue-on-error: true
+
       - run: npm i -g npm@9.5
       - run: npm ci
       - run: npm install
@@ -149,17 +158,12 @@ jobs:
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
 
-      - name: Cache ESLint
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # ratchet:actions/cache@v4
-        with:
-          path: .eslintcache
-          key: eslint-${{ runner.os }}-node${{ matrix.node-version }}-${{ hashFiles('**/*.ts', '**/*.js') }}
-          restore-keys: |
-            eslint-${{ runner.os }}-node${{ matrix.node-version }}-
-
       - run: npm i -g npm@9.5
       - run: npm ci
       - run: npm test -- -- --forbid-only
+        if: matrix.node-version == '24'
+      - run: npm run mocha:fast -- --forbid-only
+        if: matrix.node-version != '24'
 
       - uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # ratchet:codecov/codecov-action@v5
         if: matrix.node-version == '24'
@@ -243,6 +247,7 @@ jobs:
     needs: unit
     if: contains(fromJSON('["push", "merge_group"]'), github.event_name) || (github.event_name == 'pull_request' && github.base_ref == 'next')
     runs-on: windows-latest
+    timeout-minutes: 35
 
     env:
       FIREBASE_EMULATORS_PATH: ${{ github.workspace }}/emulator-cache
@@ -276,11 +281,14 @@ jobs:
           - node-version: "24.18"
             script: "npm run test:functions-discover"
     steps:
-      # Exclude workspace and npm caches from Windows Defender real-time scanning.
+      # Disable real-time monitoring and exclude workspace, npm cache, and temp dirs from Windows Defender scanning.
       # Windows Defender locks files during rapid disk operations (npm ci, binary/emulator extraction),
       # which causes intermittent EPERM errors and test runner deadlocks on Windows runners.
       - name: Disable Windows Defender for workspace
-        run: Set-MpPreference -ExclusionPath @("${{ github.workspace }}", "$env:LocalAppData\npm-cache", "$env:AppData\npm")
+        run: |
+          Set-MpPreference -DisableRealtimeMonitoring $true -ErrorAction SilentlyContinue
+          Add-MpPreference -ExclusionProcess @("node.exe") -ErrorAction SilentlyContinue
+          Add-MpPreference -ExclusionPath @("${{ github.workspace }}", "C:\npm\cache", "$env:TEMP") -ErrorAction SilentlyContinue
         shell: powershell
 
       - name: Setup Java JDK
@@ -309,10 +317,15 @@ jobs:
       - run: echo ${{ secrets.service_account_json_base64 }} > tmp.txt
       - run: certutil -decode tmp.txt scripts/service-account.json
       - run: npm ci --prefer-offline --no-audit
+        timeout-minutes: 10
       - run: ${{ matrix.script }}
+        timeout-minutes: 20
       - name: Print debug logs
         if: failure()
-        run: Get-ChildItem -Path . -Filter "*debug.log" -Recurse | ForEach-Object { Get-Content $_.FullName }
+        timeout-minutes: 2
+        run: |
+          Get-ChildItem -Path . -Filter "*debug.log" -File -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "`n=== $($_.FullName) ==="; Get-Content $_.FullName -ErrorAction SilentlyContinue }
+          Get-ChildItem -Path . -Directory -Exclude "node_modules", ".git" | Get-ChildItem -Filter "*debug.log" -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "`n=== $($_.FullName) ==="; Get-Content $_.FullName -ErrorAction SilentlyContinue }
 
   check-package-lock:
     runs-on: ubuntu-latest
@@ -331,10 +344,11 @@ jobs:
         uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # ratchet:actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-      - run: npm i -g npm@11.9
+      - run: npm i -g npm@11.17
       # --ignore-scripts prevents the `prepare` script from being run.
       - run: npm install --package-lock-only --ignore-scripts
-      - run: "git diff --exit-code -- npm-shrinkwrap.json || (echo 'Error: npm-shrinkwrap.json is changed during npm install! Please make sure to use npm >= 8 and commit npm-shrinkwrap.json.' && false)"
+      - run: npm run sanitize:lockfile
+      - run: "git diff --exit-code -- npm-shrinkwrap.json || (echo 'Error: npm-shrinkwrap.json is changed during npm install! Please make sure to use npm >= 11.10, run npm run sanitize:lockfile, and commit npm-shrinkwrap.json.' && false)"
 
   check-package-lock-vsce:
     runs-on: ubuntu-latest
@@ -353,10 +367,11 @@ jobs:
         uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # ratchet:actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-      - run: npm i -g npm@11.9
+      - run: npm i -g npm@11.17
       # --ignore-scripts prevents the `prepare` script from being run.
       - run: "(cd firebase-vscode && npm install --package-lock-only --ignore-scripts)"
-      - run: "git diff --exit-code -- firebase-vscode/package-lock.json || (echo 'Error: firebase-vscode/package-lock.json is changed during npm install! Please make sure to use npm >= 8 and commit firebase-vscode/package-lock.json.' && false)"
+      - run: npm run sanitize:lockfile
+      - run: "git diff --exit-code -- firebase-vscode/package-lock.json || (echo 'Error: firebase-vscode/package-lock.json is changed during npm install! Please make sure to use npm >= 11.10, run npm run sanitize:lockfile, and commit firebase-vscode/package-lock.json.' && false)"
 
   check-json-schema:
     runs-on: ubuntu-latest

@@ -318,6 +318,8 @@ export async function injectAutoInitEnvVars(
       )) as WebConfig;
 
       // We inject autoinit env vars into the build and runtime env vars.
+      // TODO: Match FAH remote builds by only injecting FIREBASE_CONFIG (and not
+      // FIREBASE_WEBAPP_CONFIG) into runtimeEnv.
       const autoinitVars = getAutoinitEnvVars(webappConfig);
       for (const [envVarName, envVarValue] of Object.entries(autoinitVars)) {
         buildEnv[cfg.backendId][envVarName] ??= { value: envVarValue };
@@ -432,7 +434,7 @@ async function ensureAppHostingServiceAgentRoles(
  * isolated scratch workspace in the `.local_build_<backendId>` folder that contains exactly the same
  * source files that would be uploaded to Cloud Build.
  */
-async function prepareLocalBuildScratchDirectory(
+export async function prepareLocalBuildScratchDirectory(
   rootDir: string,
   localBuildScratchDir: string,
   cfg: AppHostingSingle,

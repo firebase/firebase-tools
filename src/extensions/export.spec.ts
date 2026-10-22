@@ -3,14 +3,19 @@ import * as sinon from "sinon";
 
 import {
   functionsEnvFromInstance,
+  memoryToMb,
   parameterizeProject,
+  parseMemory,
+  resolveMigratedMemory,
   setSecretParamsToLatest,
   ejectSecretsFromInstance,
+  secretsNeedingEjection,
 } from "./export";
 import { DeploymentInstanceSpec } from "../deploy/extensions/planner";
 import { ExtensionInstance, ParamType } from "./types";
 import * as secretsModule from "../deploy/extensions/secrets";
 import { FirebaseError } from "../error";
+import { MemoryOption } from "firebase-functions/v2/options";
 
 describe("ext:export helpers", () => {
   describe("parameterizeProject", () => {
@@ -125,6 +130,124 @@ describe("ext:export helpers", () => {
       });
     }
   });
+
+  describe("memoryToMb", () => {
+    const testCases: { input?: string; expected: number }[] = [
+      { input: "256", expected: 256 },
+      { input: "512", expected: 512 },
+      { input: "1024", expected: 1024 },
+      { input: "256Mi", expected: 256 },
+      { input: "512Mi", expected: 512 },
+      { input: "512MiB", expected: 512 },
+      { input: "1Gi", expected: 1024 },
+      { input: "1GiB", expected: 1024 },
+      { input: "2Gi", expected: 2048 },
+      { input: "2GiB", expected: 2048 },
+      { input: "1G", expected: 1024 },
+      { input: "1GB", expected: 1024 },
+      { input: "0.5Gi", expected: 512 },
+      { input: "-256", expected: 0 },
+      { input: "invalid", expected: 0 },
+      { input: "", expected: 0 },
+      { input: "   ", expected: 0 },
+      { input: undefined, expected: 0 },
+    ];
+
+    for (const { input, expected } of testCases) {
+      it(`should parse "${String(input)}" to ${expected} MB`, () => {
+        expect(memoryToMb(input)).to.equal(expected);
+      });
+    }
+  });
+
+  describe("parseMemory", () => {
+    const testCases: { input?: string; expected?: MemoryOption }[] = [
+      { input: "256", expected: "256MiB" },
+      { input: "512", expected: "512MiB" },
+      { input: "1024", expected: "1GiB" },
+      { input: "2048", expected: "2GiB" },
+      { input: "4096", expected: "4GiB" },
+      { input: "8192", expected: "8GiB" },
+      { input: "16384", expected: "16GiB" },
+      { input: "32768", expected: "32GiB" },
+      { input: "256Mi", expected: "256MiB" },
+      { input: "512Mi", expected: "512MiB" },
+      { input: "512MiB", expected: "512MiB" },
+      { input: "1024Mi", expected: "1GiB" },
+      { input: "2048Mi", expected: "2GiB" },
+      { input: "1Gi", expected: "1GiB" },
+      { input: "1GiB", expected: "1GiB" },
+      { input: "2Gi", expected: "2GiB" },
+      { input: "2GiB", expected: "2GiB" },
+      { input: "1G", expected: "1GiB" },
+      { input: "1GB", expected: "1GiB" },
+      { input: "0.5Gi", expected: "512MiB" },
+      { input: "300", expected: undefined },
+      { input: "-256", expected: undefined },
+      { input: "invalid", expected: undefined },
+      { input: "", expected: undefined },
+      { input: "   ", expected: undefined },
+      { input: undefined, expected: undefined },
+    ];
+
+    for (const { input, expected } of testCases) {
+      it(`should parse "${String(input)}" to ${String(expected)}`, () => {
+        expect(parseMemory(input)).to.equal(expected);
+      });
+    }
+  });
+
+  describe("resolveMigratedMemory", () => {
+    it("should return undefined if no memory params are present", () => {
+      expect(resolveMigratedMemory({}, [])).to.be.undefined;
+    });
+
+    it("should return V1 memory if only V1 is present", () => {
+      expect(
+        resolveMigratedMemory({ "firebaseextensions.v1beta.function/memory": "256" }, []),
+      ).to.equal("256");
+    });
+
+    it("should return V2 memory if only V2 is present", () => {
+      expect(
+        resolveMigratedMemory({ "firebaseextensions.v1beta.v2function/memory": "512Mi" }, []),
+      ).to.equal("512Mi");
+    });
+
+    it("should select the highest value when both V1 and V2 are present", () => {
+      expect(
+        resolveMigratedMemory(
+          {
+            "firebaseextensions.v1beta.function/memory": "1024",
+            "firebaseextensions.v1beta.v2function/memory": "512Mi",
+          },
+          [],
+        ),
+      ).to.equal("1024");
+
+      expect(
+        resolveMigratedMemory(
+          {
+            "firebaseextensions.v1beta.function/memory": "256",
+            "firebaseextensions.v1beta.v2function/memory": "512Mi",
+          },
+          [],
+        ),
+      ).to.equal("512Mi");
+    });
+
+    it("should fall back to spec defaults when live params are missing", () => {
+      expect(
+        resolveMigratedMemory({ "firebaseextensions.v1beta.function/memory": "1024" }, [
+          {
+            param: "firebaseextensions.v1beta.v2function/memory",
+            label: "Memory",
+            default: "256Mi",
+          },
+        ]),
+      ).to.equal("1024");
+    });
+  });
 });
 
 describe("functionsEnvFromInstance", () => {
@@ -217,6 +340,104 @@ describe("functionsEnvFromInstance", () => {
     });
   });
 
+  it("does not export optional secrets with no value", () => {
+    const instance: ExtensionInstance = {
+      name: "",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      config: {
+        name: "",
+        createTime: "",
+        params: {
+          SET_OPTIONAL_SECRET: "projects/1234/secrets/SET_OPTIONAL_SECRET/versions/latest",
+          EMPTY_OPTIONAL_SECRET: "",
+        },
+        systemParams: {},
+        source: {
+          name: "",
+          state: "ACTIVE",
+          packageUri: "",
+          hash: "",
+          spec: {
+            name: "",
+            version: "1",
+            resources: [],
+            params: [
+              {
+                type: ParamType.SECRET,
+                param: "SET_OPTIONAL_SECRET",
+                label: "optional secret with value",
+                required: false,
+              },
+              {
+                type: ParamType.SECRET,
+                param: "EMPTY_OPTIONAL_SECRET",
+                label: "optional secret with empty string",
+                required: false,
+              },
+              {
+                type: ParamType.SECRET,
+                param: "MISSING_OPTIONAL_SECRET",
+                label: "optional secret omitted from live params",
+              },
+            ],
+            systemParams: [],
+          },
+        },
+      },
+    };
+    const output = functionsEnvFromInstance(instance);
+    expect(output).to.deep.equal({
+      FIREBASE_SECRET_REF_SET_OPTIONAL_SECRET:
+        "projects/1234/secrets/SET_OPTIONAL_SECRET/versions/latest",
+    });
+  });
+
+  it("throws when a required secret has no value", () => {
+    const paramCases: Record<string, string>[] = [{}, { REQUIRED_SECRET: "" }];
+    for (const params of paramCases) {
+      const instance: ExtensionInstance = {
+        name: "",
+        createTime: "",
+        updateTime: "",
+        state: "ACTIVE",
+        serviceAccountEmail: "",
+        config: {
+          name: "",
+          createTime: "",
+          params,
+          systemParams: {},
+          source: {
+            name: "",
+            state: "ACTIVE",
+            packageUri: "",
+            hash: "",
+            spec: {
+              name: "",
+              version: "1",
+              resources: [],
+              params: [
+                {
+                  type: ParamType.SECRET,
+                  param: "REQUIRED_SECRET",
+                  label: "required secret missing from live params",
+                  required: true,
+                },
+              ],
+              systemParams: [],
+            },
+          },
+        },
+      };
+      expect(() => functionsEnvFromInstance(instance)).to.throw(
+        FirebaseError,
+        /Secret REQUIRED_SECRET was defined in the extension spec, but is missing in live deployed secrets/,
+      );
+    }
+  });
+
   it("system params", () => {
     const instance: ExtensionInstance = {
       name: "",
@@ -255,7 +476,7 @@ describe("functionsEnvFromInstance", () => {
     };
     const output = functionsEnvFromInstance(instance);
     expect(output).to.deep.equal({
-      EXT_MIGRATED_SYSTEM_MEMORY: "256",
+      EXT_MIGRATED_SYSTEM_MEMORY: "256MiB",
       EXT_MIGRATED_SYSTEM_MININSTANCES: "10",
     });
   });
@@ -298,8 +519,157 @@ describe("functionsEnvFromInstance", () => {
     };
     const output = functionsEnvFromInstance(instance);
     expect(output).to.deep.equal({
-      EXT_MIGRATED_SYSTEM_MEMORY: "256",
+      EXT_MIGRATED_SYSTEM_MEMORY: "256MiB",
       EXT_MIGRATED_SYSTEM_MININSTANCES: "10",
+    });
+  });
+
+  it("system params (both v1 and v2 functions, v2 higher)", () => {
+    const instance: ExtensionInstance = {
+      name: "",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      config: {
+        name: "",
+        createTime: "",
+        params: {},
+        systemParams: {
+          "firebaseextensions.v1beta.function/memory": "256",
+          "firebaseextensions.v1beta.v2function/memory": "512Mi",
+        },
+        source: {
+          name: "",
+          state: "ACTIVE",
+          packageUri: "",
+          hash: "",
+          spec: {
+            name: "",
+            version: "1",
+            resources: [],
+            params: [],
+            systemParams: [],
+          },
+        },
+      },
+    };
+    const output = functionsEnvFromInstance(instance);
+    expect(output).to.deep.equal({
+      EXT_MIGRATED_SYSTEM_MEMORY: "512MiB",
+    });
+  });
+
+  it("system params (both v1 and v2 functions, v1 higher)", () => {
+    const instance: ExtensionInstance = {
+      name: "",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      config: {
+        name: "",
+        createTime: "",
+        params: {},
+        systemParams: {
+          "firebaseextensions.v1beta.function/memory": "1024",
+          "firebaseextensions.v1beta.v2function/memory": "512Mi",
+        },
+        source: {
+          name: "",
+          state: "ACTIVE",
+          packageUri: "",
+          hash: "",
+          spec: {
+            name: "",
+            version: "1",
+            resources: [],
+            params: [],
+            systemParams: [],
+          },
+        },
+      },
+    };
+    const output = functionsEnvFromInstance(instance);
+    expect(output).to.deep.equal({
+      EXT_MIGRATED_SYSTEM_MEMORY: "1GiB",
+    });
+  });
+
+  it("system params (both v1 and v2 functions, equal memory)", () => {
+    const instance: ExtensionInstance = {
+      name: "",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      config: {
+        name: "",
+        createTime: "",
+        params: {},
+        systemParams: {
+          "firebaseextensions.v1beta.function/memory": "256",
+          "firebaseextensions.v1beta.v2function/memory": "256Mi",
+        },
+        source: {
+          name: "",
+          state: "ACTIVE",
+          packageUri: "",
+          hash: "",
+          spec: {
+            name: "",
+            version: "1",
+            resources: [],
+            params: [],
+            systemParams: [],
+          },
+        },
+      },
+    };
+    const output = functionsEnvFromInstance(instance);
+    expect(output).to.deep.equal({
+      EXT_MIGRATED_SYSTEM_MEMORY: "256MiB",
+    });
+  });
+
+  it("system params (v1 in live, v2 in spec defaults, v1 higher)", () => {
+    const instance: ExtensionInstance = {
+      name: "",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      config: {
+        name: "",
+        createTime: "",
+        params: {},
+        systemParams: {
+          "firebaseextensions.v1beta.function/memory": "1024",
+        },
+        source: {
+          name: "",
+          state: "ACTIVE",
+          packageUri: "",
+          hash: "",
+          spec: {
+            name: "",
+            version: "1",
+            resources: [],
+            params: [],
+            systemParams: [
+              {
+                param: "firebaseextensions.v1beta.v2function/memory",
+                label: "Memory",
+                default: "256Mi",
+              },
+            ],
+          },
+        },
+      },
+    };
+    const output = functionsEnvFromInstance(instance);
+    expect(output).to.deep.equal({
+      EXT_MIGRATED_SYSTEM_MEMORY: "1GiB",
     });
   });
 
@@ -474,5 +844,209 @@ describe("ejectSecretsFromInstance", () => {
 
     const changed = await ejectSecretsFromInstance(instance);
     expect(changed).to.deep.equal({ success: [], fail: ["my-proj/API_KEY"] });
+  });
+
+  it("should skip optional secrets with no value", async () => {
+    const instance: ExtensionInstance = {
+      name: "projects/my-proj/instances/my-inst",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      config: {
+        name: "projects/my-proj/instances/my-inst/configurations/1",
+        createTime: "",
+        params: {
+          API_KEY: "projects/my-proj/secrets/API_KEY/versions/1",
+          EMPTY_OPTIONAL_SECRET: "",
+        },
+        systemParams: {},
+        source: {
+          name: "sources/1",
+          state: "ACTIVE",
+          packageUri: "",
+          hash: "",
+          spec: {
+            name: "my-ext",
+            version: "1.0.0",
+            resources: [],
+            params: [
+              {
+                param: "API_KEY",
+                label: "API Key",
+                type: ParamType.SECRET,
+                required: true,
+              },
+              {
+                param: "EMPTY_OPTIONAL_SECRET",
+                label: "Empty Optional Secret",
+                type: ParamType.SECRET,
+                required: false,
+              },
+              {
+                param: "MISSING_OPTIONAL_SECRET",
+                label: "Missing Optional Secret",
+                type: ParamType.SECRET,
+              },
+            ],
+            systemParams: [],
+          },
+        },
+      },
+    };
+
+    transferSecretToKitsStub.resolves();
+    const changed = await ejectSecretsFromInstance(instance);
+    expect(changed).to.deep.equal({ success: ["my-proj/API_KEY"], fail: [] });
+    expect(transferSecretToKitsStub).to.have.been.calledOnceWithExactly("my-proj", "API_KEY");
+  });
+
+  it("should throw when a required secret is missing in live params", async () => {
+    const instance: ExtensionInstance = {
+      name: "projects/my-proj/instances/my-inst",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      config: {
+        name: "projects/my-proj/instances/my-inst/configurations/1",
+        createTime: "",
+        params: {},
+        systemParams: {},
+        source: {
+          name: "sources/1",
+          state: "ACTIVE",
+          packageUri: "",
+          hash: "",
+          spec: {
+            name: "my-ext",
+            version: "1.0.0",
+            resources: [],
+            params: [
+              {
+                param: "REQUIRED_SECRET",
+                label: "Required Secret",
+                type: ParamType.SECRET,
+                required: true,
+              },
+            ],
+            systemParams: [],
+          },
+        },
+      },
+    };
+
+    await expect(ejectSecretsFromInstance(instance)).to.be.rejectedWith(
+      FirebaseError,
+      /Secret REQUIRED_SECRET was defined in the extension spec, but is missing in live deployed secrets/,
+    );
+  });
+});
+
+describe("secretsNeedingEjection", () => {
+  let secretHasExtensionsLabelStub: sinon.SinonStub;
+
+  beforeEach(() => {
+    secretHasExtensionsLabelStub = sinon.stub(secretsModule, "secretHasExtensionsLabel");
+  });
+
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it("should skip optional secrets with no value", async () => {
+    const instance: ExtensionInstance = {
+      name: "projects/my-proj/instances/my-inst",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      config: {
+        name: "projects/my-proj/instances/my-inst/configurations/1",
+        createTime: "",
+        params: {
+          API_KEY: "projects/my-proj/secrets/API_KEY/versions/1",
+          EMPTY_OPTIONAL_SECRET: "",
+        },
+        systemParams: {},
+        source: {
+          name: "sources/1",
+          state: "ACTIVE",
+          packageUri: "",
+          hash: "",
+          spec: {
+            name: "my-ext",
+            version: "1.0.0",
+            resources: [],
+            params: [
+              {
+                param: "API_KEY",
+                label: "API Key",
+                type: ParamType.SECRET,
+                required: true,
+              },
+              {
+                param: "EMPTY_OPTIONAL_SECRET",
+                label: "Empty Optional Secret",
+                type: ParamType.SECRET,
+                required: false,
+              },
+              {
+                param: "MISSING_OPTIONAL_SECRET",
+                label: "Missing Optional Secret",
+                type: ParamType.SECRET,
+              },
+            ],
+            systemParams: [],
+          },
+        },
+      },
+    };
+
+    secretHasExtensionsLabelStub.resolves(true);
+    const needingEjection = await secretsNeedingEjection(instance);
+    expect(needingEjection).to.deep.equal(["my-proj/API_KEY"]);
+    expect(secretHasExtensionsLabelStub).to.have.been.calledOnceWithExactly("my-proj", "API_KEY");
+  });
+
+  it("should throw when a required secret is missing in live params", async () => {
+    const instance: ExtensionInstance = {
+      name: "projects/my-proj/instances/my-inst",
+      createTime: "",
+      updateTime: "",
+      state: "ACTIVE",
+      serviceAccountEmail: "",
+      config: {
+        name: "projects/my-proj/instances/my-inst/configurations/1",
+        createTime: "",
+        params: {},
+        systemParams: {},
+        source: {
+          name: "sources/1",
+          state: "ACTIVE",
+          packageUri: "",
+          hash: "",
+          spec: {
+            name: "my-ext",
+            version: "1.0.0",
+            resources: [],
+            params: [
+              {
+                param: "REQUIRED_SECRET",
+                label: "Required Secret",
+                type: ParamType.SECRET,
+                required: true,
+              },
+            ],
+            systemParams: [],
+          },
+        },
+      },
+    };
+
+    await expect(secretsNeedingEjection(instance)).to.be.rejectedWith(
+      FirebaseError,
+      /Secret REQUIRED_SECRET was defined in the extension spec, but is missing in live deployed secrets/,
+    );
   });
 });
