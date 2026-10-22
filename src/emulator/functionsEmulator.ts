@@ -14,6 +14,7 @@ import { trackEmulator } from "../track";
 import { Constants } from "./constants";
 import { EmulatorInfo, EmulatorInstance, Emulators, FunctionsExecutionMode } from "./types";
 import * as chokidar from "chokidar";
+import * as minimatch from "minimatch";
 import * as portfinder from "portfinder";
 
 import * as spawn from "cross-spawn";
@@ -186,6 +187,25 @@ interface EmulatedTriggerRecord {
   ignored: boolean;
 
   url?: string;
+}
+
+export function createIgnoredFilter(ignore?: string[]): chokidar.Matcher[] {
+  const ignored: chokidar.Matcher[] = [
+    /(^|[\/\\])\../, // Ignore hidden files/dirs (covers .dart_tool, .git, etc.)
+    /.+\.log/, // Ignore log files
+    /.+?[\\\/]node_modules[\\\/].+?/, // Ignore node_modules
+    /.+?[\\\/]venv[\\\/].+?/, // Ignore venv
+  ];
+  if (ignore) {
+    const patterns = ignore.map((pattern) =>
+      pattern.startsWith("**/") ? pattern : `**/${pattern}`,
+    );
+    ignored.push((filePath: string) => {
+      const normalized = filePath.replace(/\\/g, "/");
+      return patterns.some((p) => minimatch(normalized, p, { dot: true }));
+    });
+  }
+  return ignored;
 }
 
 export class FunctionsEmulator implements EmulatorInstance {
@@ -522,13 +542,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         this.logger.logLabeled("SUCCESS", "functions", `build_runner initial build completed`);
       } else {
         const watcher = chokidar.watch(backend.functionsDir, {
-          ignored: [
-            /(^|[\/\\])\../, // Ignore hidden files/dirs (covers .dart_tool, .git, etc.)
-            /.+\.log/, // Ignore log files
-            /.+?[\\\/]node_modules[\\\/].+?/, // Ignore node_modules
-            /.+?[\\\/]venv[\\\/].+?/, // Ignore venv
-            ...(backend.ignore?.map((i) => `**/${i}`) ?? []),
-          ],
+          ignored: createIgnoredFilter(backend.ignore),
           persistent: true,
         });
 
