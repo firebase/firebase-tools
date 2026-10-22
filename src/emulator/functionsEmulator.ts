@@ -197,12 +197,13 @@ export function createIgnoredFilter(ignore?: string[]): chokidar.Matcher[] {
     /.+?[\\\/]venv[\\\/].+?/, // Ignore venv
   ];
   if (ignore) {
-    const patterns = ignore.map((pattern) =>
-      pattern.startsWith("**/") ? pattern : `**/${pattern}`,
-    );
+    const minimatchInstances = ignore.map((pattern) => {
+      const p = pattern.startsWith("**/") ? pattern : `**/${pattern}`;
+      return new minimatch.Minimatch(p, { dot: true });
+    });
     ignored.push((filePath: string) => {
       const normalized = filePath.replace(/\\/g, "/");
-      return patterns.some((p) => minimatch(normalized, p, { dot: true }));
+      return minimatchInstances.some((m) => m.match(normalized));
     });
   }
   return ignored;
