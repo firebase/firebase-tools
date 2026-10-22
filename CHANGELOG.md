@@ -1,1 +1,2 @@
+- Fixed an issue where the Firebase MCP server referred to `update_firebase_environment` instead of `firebase_update_environment`.
 - Fixed an issue where Cloud Functions deployments logged premature failure warnings when retrying transient service account propagation or quota errors. (#11325)
