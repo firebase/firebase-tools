@@ -1,2 +1,2 @@
-- Added `crashlytics:heapdumps:{enable,disable,status}` commands to manage Crashlytics Android heap dump collection. (#11225)
-- Removed unused dependencies `proxy-agent`, `universal-analytics`, and `@apphosting/common`.
+- Updated chokidar dependency to ^4.0.3 to remove vulnerable braces dependency (#11308).
+- Fixed an issue where the Firebase MCP server referred to `update_firebase_environment` instead of `firebase_update_environment`.
