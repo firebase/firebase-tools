@@ -167,9 +167,10 @@ steps:
       - "-c"
       - |
         if [ "${_VERSION}" != "preview" ]; then
+          set -e
           VERSION_NUM="$(cat /workspace/version_number.txt)"
           echo "Verifying npm latest tag for firebase-tools..."
-          LATEST_TAG=$(npm view firebase-tools dist-tags.latest --registry https://wombat-dressing-room.appspot.com)
+          LATEST_TAG=$(npm view firebase-tools dist-tags.latest --registry https://wombat-dressing-room.appspot.com || true)
           echo "Current npm latest tag: $${LATEST_TAG}"
           if [ "$${LATEST_TAG}" != "$${VERSION_NUM}" ]; then
             echo "Updating npm latest tag to $${VERSION_NUM}..."
@@ -177,6 +178,22 @@ steps:
             npm dist-tag rm firebase-tools staging --registry https://wombat-dressing-room.appspot.com 2>/dev/null || true
           fi
           echo "Verified npm latest tag is pointing to $${VERSION_NUM}."
+
+          # The Docker image build below runs `npm update` against the "latest" tag, which only
+          # moved a moment ago, so wait for the public registry to serve the new tag.
+          timeout=900
+          elapsed=0
+          interval=15
+          until [ "$$(npm view firebase-tools dist-tags.latest --registry https://registry.npmjs.org --prefer-online 2>/dev/null)" = "$${VERSION_NUM}" ]; do
+            if [ $$elapsed -ge $$timeout ]; then
+              echo "Timeout after $${elapsed}s waiting for registry.npmjs.org to report latest=$${VERSION_NUM}."
+              exit 1
+            fi
+            echo "Waiting for registry.npmjs.org to report latest=$${VERSION_NUM}... ($${elapsed}s/$${timeout}s)"
+            sleep $$interval
+            elapsed=$$((elapsed + interval))
+          done
+          echo "registry.npmjs.org reports latest=$${VERSION_NUM}."
         else
           echo "Skipping npm latest tag check for preview version."
         fi

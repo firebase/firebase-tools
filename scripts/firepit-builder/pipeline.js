@@ -125,25 +125,26 @@ if (isPublishing) {
   const releaseCheck = exec(`hub release show "${releaseTag}"`, { silent: true });
   shelljs.config.fatal = true;
 
+  // Fail rather than creating a replacement release: this step publishes the release
+  // automatically, and a fresh release would go out without the CHANGELOG release notes.
   if (releaseCheck.code !== 0) {
-    echo(`Release ${releaseTag} not found, creating draft release with standalone artifacts...`);
-    const attachArgs = publishedFiles.map((f) => `-a "${path.join("../dist", f)}"`).join(" ");
-    exec(`hub release create --draft -m "${releaseTag}" ${attachArgs} "${releaseTag}"`);
-  } else {
-    echo(`Attaching standalone artifacts to release ${releaseTag}...`);
-    publishedFiles.forEach((filename) => {
-      echo(`Attaching ${filename}...`);
-      hub(
-        "release",
-        "edit",
-        "-m",
-        '""',
-        "-a",
-        `"${path.join("../dist", filename)}"`,
-        `"${releaseTag}"`,
-      );
-    });
+    throw new Error(
+      `Draft release ${releaseTag} not found. It should have been created by scripts/publish.sh: ${releaseCheck.stderr}`,
+    );
   }
+  echo(`Attaching standalone artifacts to release ${releaseTag}...`);
+  publishedFiles.forEach((filename) => {
+    echo(`Attaching ${filename}...`);
+    hub(
+      "release",
+      "edit",
+      "-m",
+      '""',
+      "-a",
+      `"${path.join("../dist", filename)}"`,
+      `"${releaseTag}"`,
+    );
+  });
 
   // 3. Validate that the draft release has all of the expected artifacts
   echo(`Validating that draft release ${releaseTag} has all expected artifacts...`);
@@ -227,6 +228,9 @@ if (isPublishing) {
     "--registry",
     registry,
   );
+  // Intentionally don't fail if the staging tag can't be removed. By this point the
+  // release is published and latest has moved, so a leftover staging tag is harmless
+  // and gets overwritten by the next release.
   shelljs.config.fatal = false;
   npm("dist-tag", "rm", "firebase-tools", "staging", "--registry", registry);
   shelljs.config.fatal = true;
