@@ -1,3 +1,2 @@
 - Fixed Hosting shutdown leaving earlier sites running when serving multiple sites.
-- Ensured the Firebase Hosting API is enabled before deploying and running other Hosting commands.
-- Fixed an issue where the Firebase MCP server always suggested `npx firebase-tools@latest` even when the `firebase` CLI was installed.
+- Fixed an issue where the Firebase MCP server referred to `update_firebase_environment` instead of `firebase_update_environment`.
