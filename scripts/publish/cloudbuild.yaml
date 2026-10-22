@@ -160,7 +160,7 @@ steps:
           echo "Skipping firepit build for preview version."
         fi
 
-  # Verify npm latest tag is pointing to the new version.
+  # Verify npm latest tag is pointing to the new version (never moving it backwards).
   - name: "gcr.io/$PROJECT_ID/package-builder"
     entrypoint: "bash"
     args:
@@ -169,13 +169,30 @@ steps:
         if [ "${_VERSION}" != "preview" ]; then
           set -e
           VERSION_NUM="$(cat /workspace/version_number.txt)"
+          SEMVER_RE='^[0-9]+\.[0-9]+\.[0-9]+$$'
           echo "Verifying npm latest tag for firebase-tools..."
-          LATEST_TAG=$(npm view firebase-tools dist-tags.latest --registry https://wombat-dressing-room.appspot.com || true)
+          LATEST_TAG=""
+          for attempt in 1 2 3 4 5; do
+            LATEST_TAG=$$(npm view firebase-tools dist-tags.latest --registry https://wombat-dressing-room.appspot.com 2>/dev/null || true)
+            if [[ "$${LATEST_TAG}" =~ $${SEMVER_RE} ]]; then
+              break
+            fi
+            sleep 5
+          done
           echo "Current npm latest tag: $${LATEST_TAG}"
+          if ! [[ "$${VERSION_NUM}" =~ $${SEMVER_RE} && "$${LATEST_TAG}" =~ $${SEMVER_RE} ]]; then
+            echo "Error: can't compare version '$${VERSION_NUM}' with npm latest '$${LATEST_TAG}'." >&2
+            exit 1
+          fi
+          IFS=. read -r new_major new_minor new_patch <<< "$${VERSION_NUM}"
+          IFS=. read -r cur_major cur_minor cur_patch <<< "$${LATEST_TAG}"
+          if (( new_major < cur_major || (new_major == cur_major && (new_minor < cur_minor || (new_minor == cur_minor && new_patch < cur_patch))) )); then
+            echo "WARNING: Not moving npm latest tag: $${VERSION_NUM} is older than the current latest ($${LATEST_TAG})."
+            exit 0
+          fi
           if [ "$${LATEST_TAG}" != "$${VERSION_NUM}" ]; then
             echo "Updating npm latest tag to $${VERSION_NUM}..."
             npm dist-tag add "firebase-tools@$${VERSION_NUM}" latest --registry https://wombat-dressing-room.appspot.com
-            npm dist-tag rm firebase-tools staging --registry https://wombat-dressing-room.appspot.com 2>/dev/null || true
           fi
           echo "Verified npm latest tag is pointing to $${VERSION_NUM}."
 

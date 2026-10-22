@@ -26,6 +26,30 @@ const useCommands = (...executables) =>
 
 const { hub, npm } = useCommands("hub", "npm");
 
+/**
+ * Compares two MAJOR.MINOR.PATCH release versions.
+ * Throws on anything else (e.g. prereleases), since we can't safely order those here.
+ * @param {string} a version to compare.
+ * @param {string} b version to compare against.
+ * @return {number} positive if a is newer than b, negative if older, and 0 if equal.
+ */
+function compareReleaseVersions(a, b) {
+  const parse = (v) => {
+    if (!/^\d+\.\d+\.\d+$/.test(v || "")) {
+      throw new Error(`Expected a MAJOR.MINOR.PATCH version, got "${v}"`);
+    }
+    return v.split(".").map(Number);
+  };
+  const pa = parse(a);
+  const pb = parse(b);
+  for (let i = 0; i < 3; i++) {
+    if (pa[i] !== pb[i]) {
+      return pa[i] - pb[i];
+    }
+  }
+  return 0;
+}
+
 cd(tempdir());
 rm("-rf", "firepit_pipeline");
 mkdir("firepit_pipeline");
@@ -217,24 +241,36 @@ if (isPublishing) {
   hub("release", "edit", "--draft=false", "-m", '""', `"${releaseTag}"`);
   echo(`Successfully published release ${releaseTag}!`);
 
-  // 5. Move the npm latest tag
-  echo(`Moving npm latest tag to firebase-tools@${packageJson.version}...`);
+  // 5. Move the npm latest tag, but never backwards: re-running this pipeline for an
+  // older version must not downgrade everyone who installs firebase-tools@latest.
   const registry = "https://wombat-dressing-room.appspot.com";
-  npm(
-    "dist-tag",
-    "add",
-    `"firebase-tools@${packageJson.version}"`,
-    "latest",
-    "--registry",
-    registry,
+  const version = packageJson.version;
+  const distTags = JSON.parse(
+    exec(`npm view firebase-tools dist-tags --json --registry ${registry}`, { silent: true })
+      .stdout,
   );
-  // Intentionally don't fail if the staging tag can't be removed. By this point the
-  // release is published and latest has moved, so a leftover staging tag is harmless
-  // and gets overwritten by the next release.
-  shelljs.config.fatal = false;
-  npm("dist-tag", "rm", "firebase-tools", "staging", "--registry", registry);
-  shelljs.config.fatal = true;
-  echo(`Successfully moved npm latest tag to firebase-tools@${packageJson.version}!`);
+  const currentLatest = distTags.latest;
+  const comparison = compareReleaseVersions(version, currentLatest);
+  if (comparison > 0) {
+    echo(`Moving npm latest tag from ${currentLatest} to firebase-tools@${version}...`);
+    npm("dist-tag", "add", `"firebase-tools@${version}"`, "latest", "--registry", registry);
+    echo(`Successfully moved npm latest tag to firebase-tools@${version}!`);
+  } else if (comparison === 0) {
+    echo(`npm latest tag already points to firebase-tools@${version}.`);
+  } else {
+    echo(
+      `WARNING: Not moving npm latest tag: firebase-tools@${version} is older than the current latest (${currentLatest}).`,
+    );
+  }
+  // Only clean up the staging tag if it belongs to this release, so we don't clobber a
+  // newer release that's in flight. Intentionally don't fail if it can't be removed: by
+  // this point the release is published, so a leftover staging tag is harmless and
+  // gets overwritten by the next release.
+  if (distTags.staging === version) {
+    shelljs.config.fatal = false;
+    npm("dist-tag", "rm", "firebase-tools", "staging", "--registry", registry);
+    shelljs.config.fatal = true;
+  }
 
   cd("..");
 } else {
