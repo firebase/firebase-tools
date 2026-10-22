@@ -90,6 +90,9 @@ export function calculateChangesets(
     !!(
       !want[id].targetedByOnly && // Don't skip the function if its --only targeted.
       have[id].state === "ACTIVE" && // Only skip the function if its in a known good state
+      // A codebase policy change must deploy even when source and env hashes match.
+      (want[id].runtimeUpdatePolicy === undefined ||
+        want[id].runtimeUpdatePolicy === have[id].runtimeUpdatePolicy) &&
       have[id].hash &&
       want[id].hash &&
       want[id].hash === have[id].hash
