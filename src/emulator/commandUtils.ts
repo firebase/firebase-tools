@@ -56,6 +56,10 @@ export const DESC_VERBOSITY = "One of: DEBUG, INFO, QUIET, SILENT. "; // TODO co
 export const FLAG_UI = "--ui";
 export const DESC_UI = "run the Emulator UI";
 
+export const FLAG_SKIP_DATACONNECT_SDK_GENERATION = "--skip-dataconnect-sdk-generation";
+export const DESC_SKIP_DATACONNECT_SDK_GENERATION =
+  "skip automatic SDK generation in the Data Connect emulator; existing SDKs must be kept up to date separately";
+
 // Flags for the ext:dev:emulators:* commands
 export const FLAG_TEST_CONFIG = "--test-config <firebase.json file>";
 export const DESC_TEST_CONFIG =
