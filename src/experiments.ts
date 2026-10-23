@@ -236,12 +236,7 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: true,
   },
-  crashlyticsWebAlerts: {
-    shortDescription: "Enable configuring Crashlytics email alerts during web app onboarding.",
-    default: false,
-    public: false,
-  },
-  crashlyticsWebTrace: {
+  crashlyticsWebBreadcrumbs: {
     shortDescription: "Enable provisioning Cloud Trace storage during web app onboarding.",
     default: false,
     public: false,
