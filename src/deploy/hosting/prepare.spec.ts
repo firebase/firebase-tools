@@ -14,11 +14,14 @@ import * as utils from "../../utils";
 import { addPinnedFunctionsToOnlyString, hasPinnedFunctions, prepare, unsafePins } from "./prepare";
 import { cloneDeep } from "../../utils";
 import * as backend from "../functions/backend";
+import * as ensureApiEnabled from "../../ensureApiEnabled";
+import { hostingApiOrigin } from "../../api";
 
 describe("hosting prepare", () => {
   let hostingStub: sinon.SinonStubbedInstance<typeof hostingApi>;
   let trackingStub: sinon.SinonStubbedInstance<typeof tracking>;
   let backendStub: sinon.SinonStubbedInstance<typeof backend>;
+  let ensureApiStub: sinon.SinonStub;
   let loggerStub: sinon.SinonStub;
   let siteConfig: config.HostingResolved;
   let firebaseJson: FirebaseConfig;
@@ -28,6 +31,7 @@ describe("hosting prepare", () => {
     hostingStub = sinon.stub(hostingApi);
     trackingStub = sinon.stub(tracking);
     backendStub = sinon.stub(backend);
+    ensureApiStub = sinon.stub(ensureApiEnabled, "ensure").resolves();
     loggerStub = sinon.stub(utils, "logLabeledBullet");
     hostingStub.getSite.resolves({
       name: "projects/project/sites/site",
@@ -107,6 +111,12 @@ describe("hosting prepare", () => {
     expect(trackingStub.trackGA4).to.have.been.calledOnceWith("hosting_version", {
       framework: "fake-framework",
     });
+    expect(ensureApiStub).to.have.been.calledOnceWith(
+      "project",
+      hostingApiOrigin(),
+      "hosting",
+      true,
+    );
     expect(hostingStub.createVersion).to.have.been.calledOnce;
     expect(context.hosting).to.deep.equal({
       deploys: [

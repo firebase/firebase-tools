@@ -60,12 +60,12 @@ export class SourceTokenScraper {
       }
       return tokenResult.token;
     } else if (this.fetchState === "VALID") {
-      const tokenResult = await this.promise;
       if (this.isTokenExpired()) {
         this.fetchState = "FETCHING";
         this.promise = new Promise((resolve) => (this.resolve = resolve));
         return undefined;
       }
+      const tokenResult = await this.promise;
       return tokenResult.token;
     } else {
       assertExhaustive(this.fetchState);

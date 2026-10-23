@@ -1,13 +1,22 @@
 import * as path from "path";
 import { Setup } from "..";
+import { webApps } from "../../apphosting/app";
 import { Config } from "../../config";
+import { deploy } from "../../deploy";
+import { Context } from "../../deploy/run/args";
 import { prereqs, RUN_PERMISSIONS } from "../../deploy/run/prereqs";
-import { getExistingService } from "../../deploy/run/util";
+import {
+  FIREBASE_APP_ANNOTATION,
+  fullServiceName,
+  getExistingService,
+  mainContainer,
+} from "../../deploy/run/util";
 import { FirebaseError } from "../../error";
 import { RunSingle } from "../../firebaseConfig";
 import { dirExistsSync } from "../../fsutils";
 import * as run from "../../gcp/run";
 import * as runv2 from "../../gcp/runv2";
+import { AppPlatform, listFirebaseApps } from "../../management/apps";
 import { Options } from "../../options";
 import { input, select } from "../../prompt";
 import { requirePermissions } from "../../requirePermissions";
@@ -21,6 +30,11 @@ export interface RunInfo {
   region: string;
   baseImage: string;
   rootDir: string;
+  localBuild?: boolean;
+  /** The Firebase Web App to link. */
+  appId?: string;
+  /** Link a new Firebase Web App. Actuate creates it, so quitting init partway leaves none behind. */
+  createWebApp?: boolean;
 }
 
 /**
@@ -60,20 +74,69 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
     serviceId = await promptNewServiceId(projectId, region);
   }
 
+  // Firebase SDKs auto-initialize from a linked Firebase Web App. Keep the service's app, or ask
+  // which app to link. A new app is created in actuate, so quitting init partway leaves none behind.
+  const appId = existing?.annotations?.[FIREBASE_APP_ANNOTATION] ?? (await promptWebApp(projectId));
+
   // If firebase.json already has this service, its saved settings are the defaults.
   const savedEntry = findRunEntry(getRunEntries(config), serviceId, region);
 
+  const localBuild = await select({
+    message: "Would you like to build your app locally or remotely?",
+    choices: [
+      { name: "Build remotely on Cloud Build", value: false },
+      { name: "Build locally", value: true },
+    ],
+    default: savedEntry?.localBuild === true,
+  });
+
   // A base image turns on automatic base image updates, which are off by default. So there's no
-  // default base image, except that an existing service keeps its own.
+  // default base image, except that an existing service keeps its own. Local builds need one.
   const rawBaseImage = await input({
-    message: "Which base image should your app use, if any? (e.g. nodejs20, nodejs22)",
-    default: existing?.template.containers?.[0]?.baseImageUri,
+    message: localBuild
+      ? "Which base image should your app use? (e.g. nodejs20, nodejs22)"
+      : "Which base image should your app use, if any? (e.g. nodejs20, nodejs22)",
+    default: mainContainer(existing?.template)?.baseImageUri,
+    validate: (img: string) =>
+      localBuild && !img.trim() ? "Local builds require a base image." : true,
   });
   const baseImage = (rawBaseImage || "").trim();
 
   const rootDir = await promptRootDir(config.projectDir, savedEntry?.rootDir ?? "/");
 
-  setup.featureInfo = { ...setup.featureInfo, run: { serviceId, region, baseImage, rootDir } };
+  const runInfo: RunInfo = { serviceId, region, baseImage, rootDir };
+  if (localBuild) {
+    runInfo.localBuild = true;
+  }
+  if (appId) {
+    runInfo.appId = appId;
+  } else {
+    runInfo.createWebApp = true;
+  }
+  setup.featureInfo = { ...setup.featureInfo, run: runInfo };
+}
+
+/**
+ * Asks which of the project's Firebase Web Apps to link. Returns undefined to create a new app,
+ * which is the default, and what happens without asking if the project has no web apps.
+ */
+async function promptWebApp(projectId: string): Promise<string | undefined> {
+  const apps = await listFirebaseApps(projectId, AppPlatform.WEB);
+  if (!apps.length) {
+    return undefined;
+  }
+  const choice = await select<string>({
+    message: "Which Firebase web app should this service use for Firebase SDK auto-initialization?",
+    choices: [
+      { name: "Create a new web app", value: webApps.CREATE_NEW_FIREBASE_WEB_APP },
+      ...apps.map((app) => ({
+        name: app.displayName ? `${app.displayName} (${app.appId})` : app.appId,
+        value: app.appId,
+      })),
+    ],
+    default: webApps.CREATE_NEW_FIREBASE_WEB_APP,
+  });
+  return choice === webApps.CREATE_NEW_FIREBASE_WEB_APP ? undefined : choice;
 }
 
 async function promptExistingService(projectId: string): Promise<runv2.Service | undefined> {
@@ -134,32 +197,58 @@ async function promptRootDir(projectDir: string, defaultDir: string): Promise<st
 }
 
 /**
- * Adds the service to firebase.json. Init writes the file once every feature is set up, so a
- * failed init leaves it untouched.
+ * Adds the service to `config` (the in-memory firebase.json) and deploys it, since Cloud Run
+ * services only change on deploy. Init saves firebase.json once every feature is set up, so if the
+ * deploy fails, the file isn't changed.
  */
-export async function actuate(setup: Setup, config: Config): Promise<void> {
+export async function actuate(setup: Setup, config: Config, options: Options): Promise<void> {
   const info = setup.featureInfo?.run;
   if (!info) {
     return;
   }
-  upsertRunConfig(
-    {
-      serviceId: info.serviceId,
-      rootDir: info.rootDir,
-      region: info.region,
-    },
-    config,
+  const service = { serviceId: info.serviceId, rootDir: info.rootDir, region: info.region };
+  if (info.localBuild) {
+    upsertRunConfig({ ...service, localBuild: true }, config);
+  } else {
+    upsertRunConfig(service, config);
+  }
+  // Deploy with the base image that init asked for, and the Firebase Web App to link. A new app is
+  // created only now, after every question has been answered.
+  const settings: Partial<Context> = { baseImage: info.baseImage || null };
+  let appId = info.appId;
+  if (info.createWebApp) {
+    // App Hosting's helper only warns, and returns nothing, when the project is out of web apps:
+    // App Hosting backends work without one. Fail instead of deploying an unlinked service.
+    appId = (await webApps.getOrCreateWebApp(setup.projectId as string, null, info.serviceId))?.id;
+    if (!appId) {
+      throw new FirebaseError(
+        `Couldn't create a Firebase web app for service ${info.serviceId}. Delete an unused web ` +
+          `app in the Firebase console, or run "firebase init run" again and pick an existing app.`,
+      );
+    }
+  }
+  if (appId) {
+    settings.appId = appId;
+  }
+  // Name the region too, so that only this service deploys, not ones with the same ID elsewhere.
+  await deploy(
+    ["run"],
+    { ...options, projectId: setup.projectId, config, only: `run:${fullServiceName(info)}` },
+    settings,
   );
 }
 
 /**
- * Adds a new service to firebase.json with the default ignore list. If the service is already
- * there (same service ID and region), only its rootDir changes; nothing else in the entry is added
- * or removed.
+ * Adds or updates the service in `config`, the in-memory copy of firebase.json. It doesn't save
+ * the file; init does that at the end.
+ * - New service: adds an entry with the default ignore list.
+ * - Service already listed (same service ID and region): updates rootDir and localBuild, the only
+ *   init answers saved in firebase.json that can change. The rest of the entry, like a custom
+ *   ignore list, stays as the user left it.
  * Exported for unit testing.
  */
 export function upsertRunConfig(
-  service: { serviceId: string; rootDir: string; region: string },
+  service: { serviceId: string; rootDir: string; region: string; localBuild?: boolean },
   config: Config,
 ): void {
   const entries = getRunEntries(config);
@@ -167,6 +256,11 @@ export function upsertRunConfig(
   const existing = findRunEntry(entries, service.serviceId, service.region);
   if (existing) {
     existing.rootDir = service.rootDir;
+    if (service.localBuild) {
+      existing.localBuild = true;
+    } else {
+      delete existing.localBuild;
+    }
   } else {
     entries.push({ ...service, ignore: DEFAULT_IGNORE });
   }
