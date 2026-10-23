@@ -6,6 +6,7 @@ import { IdpJwtPayload } from "../operations";
 import { OobRecord, PhoneVerificationRecord, Tenant, UserInfo } from "../state";
 import { TestAgent, PROJECT_ID } from "./setup";
 import { MfaEnrollment, MfaEnrollments, Schemas } from "../types";
+import { generateTotpCode } from "../totp";
 
 export { PROJECT_ID };
 export const TEST_PHONE_NUMBER = "+15555550100";
@@ -385,6 +386,39 @@ export async function enrollPhoneMfa(
   expect(mfaFinalRes.body.idToken).to.be.a("string");
   expect(mfaFinalRes.body.refreshToken).to.be.a("string");
   return { idToken: mfaFinalRes.body.idToken, refreshToken: mfaFinalRes.body.refreshToken };
+}
+
+export async function enrollTotpMfa(
+  testAgent: TestAgent,
+  idToken: string,
+  tenantId?: string,
+): Promise<{ idToken: string; refreshToken: string; sharedSecretKey: string }> {
+  const mfaStartRes = await testAgent
+    .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:start")
+    .query({ key: "fake-api-key" })
+    .send({ idToken, totpEnrollmentInfo: {}, tenantId });
+  expectStatusCode(200, mfaStartRes);
+  const { sessionInfo, sharedSecretKey } = mfaStartRes.body.totpSessionInfo as {
+    sessionInfo: string;
+    sharedSecretKey: string;
+  };
+
+  const mfaFinalRes = await testAgent
+    .post("/identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:finalize")
+    .query({ key: "fake-api-key" })
+    .send({
+      idToken,
+      totpVerificationInfo: { sessionInfo, verificationCode: generateTotpCode(sharedSecretKey) },
+      tenantId,
+    });
+  expectStatusCode(200, mfaFinalRes);
+  expect(mfaFinalRes.body.idToken).to.be.a("string");
+  expect(mfaFinalRes.body.refreshToken).to.be.a("string");
+  return {
+    idToken: mfaFinalRes.body.idToken,
+    refreshToken: mfaFinalRes.body.refreshToken,
+    sharedSecretKey,
+  };
 }
 
 export async function deleteAccount(
