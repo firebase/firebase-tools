@@ -58,7 +58,7 @@ export const DESC_UI = "run the Emulator UI";
 
 export const FLAG_SKIP_DATACONNECT_SDK_GENERATION = "--skip-dataconnect-sdk-generation";
 export const DESC_SKIP_DATACONNECT_SDK_GENERATION =
-  "skip automatic SDK generation in the SQL Connect emulator; existing SDKs must be kept up to date separately";
+  "skip automatic SDK generation in the Data Connect emulator; existing SDKs must be kept up to date separately";
 
 // Flags for the ext:dev:emulators:* commands
 export const FLAG_TEST_CONFIG = "--test-config <firebase.json file>";
