@@ -148,10 +148,6 @@ export function rcsBuildConfig(i: BuildInput): Build {
       );
     }
   }
-  // Names only: the google.utils.secret-scan buildpack fails the build if these values are in its output.
-  if (secretNames.length) {
-    allEnv.GOOGLE_BUILD_SECRETS_TO_SCAN = secretNames.join(",");
-  }
 
   // Escape literal "$" as "$$" so Cloud Build doesn't treat user env values as substitutions.
   const stepEnv = Object.entries(allEnv).map(([k, v]) =>

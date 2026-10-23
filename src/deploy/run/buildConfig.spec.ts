@@ -70,7 +70,6 @@ const EXPECTED_WITH_BASE_IMAGE: Build = {
         "API_URL=https://api.example.com",
         "X_GOOGLE_TARGET_PLATFORM=fah",
         "FIREBASE_OUTPUT_BUNDLE_DIR=/workspace/.apphosting",
-        "GOOGLE_BUILD_SECRETS_TO_SCAN=NPM_TOKEN",
         `SHIM_PRE_ARGS=--phase=pre --app_image_unique=${IMAGE} --app_image_stable=${STABLE_IMAGE} ` +
           "--env_var_names=BUILDER_OUTPUT,GOOGLE_RUNTIME,GOOGLE_LABEL_BUILDER_VERSION," +
           "GOOGLE_LABEL_BUILDER_IMAGE,GOOGLE_LABEL_RUN_IMAGE,GOOGLE_LABEL_SOURCE," +
@@ -78,7 +77,7 @@ const EXPECTED_WITH_BASE_IMAGE: Build = {
           "GOOGLE_RUNTIME_IMAGE_REGION,GOOGLE_RUNTIME_VERSION,X_GOOGLE_SKIP_RUNTIME_LAUNCH," +
           "GOOGLE_BUILD_ENV,GOOGLE_BUILD_UNIVERSE,GOOGLE_TPC_TARBALL_PROJECT,GOOGLE_TPC_HOSTNAME," +
           "X_GOOGLE_SET_NODE_HEAP_SIZE,GOOGLE_LABEL_BUILD_ID,GOOGLE_LABEL_BASE_IMAGE,API_URL," +
-          "X_GOOGLE_TARGET_PLATFORM,FIREBASE_OUTPUT_BUNDLE_DIR,GOOGLE_BUILD_SECRETS_TO_SCAN,NPM_TOKEN " +
+          "X_GOOGLE_TARGET_PLATFORM,FIREBASE_OUTPUT_BUNDLE_DIR,NPM_TOKEN " +
           "--experimental_skip_retag_cache",
         "SHIM_POST_ARGS=--phase=post --oci_report=/workspace/report.toml --oci_output_dir=/workspace/oci_output/",
       ],
@@ -149,7 +148,6 @@ describe("buildConfig", () => {
     expect(withoutSecrets.availableSecrets).to.be.undefined;
     expect(withoutSecrets.steps[0].secretEnv).to.be.undefined;
     expect(withoutSecrets.steps[0].env?.join("\n")).not.to.include("NPM_TOKEN");
-    expect(withoutSecrets.steps[0].env?.join("\n")).not.to.include("GOOGLE_BUILD_SECRETS_TO_SCAN");
   });
 
   it("generates the 3-step universal builder config when baseImage is unset", () => {
