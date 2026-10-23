@@ -898,7 +898,9 @@ async function main(): Promise<void> {
       }
     } catch (err: unknown) {
       new EmulatorLog("FATAL", "runtime-error", getErrStack(err)).log();
-      res.status(500).send(getErrMsg(err));
+      if (!res.headersSent) {
+        res.status(500).send(getErrMsg(err));
+      }
     }
   }
 
