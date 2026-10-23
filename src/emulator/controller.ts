@@ -266,6 +266,7 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
 
 interface EmulatorOptions extends Options {
   extDevEnv?: Record<string, string>;
+  skipDataconnectSdkGeneration?: boolean;
   logVerbosity?: "DEBUG" | "INFO" | "QUIET" | "SILENT";
 }
 
@@ -910,7 +911,7 @@ export async function startAll(
       config: options.config,
       autoconnectToPostgres: true,
       postgresListen: listenForEmulator["dataconnect.postgres"],
-      enable_output_generated_sdk: true, // TODO: source from arguments
+      enable_output_generated_sdk: !options.skipDataconnectSdkGeneration,
       enable_output_schema_extensions: true,
       debug: options.debug,
       account,

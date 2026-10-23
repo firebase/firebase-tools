@@ -13,6 +13,10 @@ export const command = new Command("emulators:exec <script>")
   .option(commandUtils.FLAG_IMPORT, commandUtils.DESC_IMPORT)
   .option(commandUtils.FLAG_EXPORT_ON_EXIT, commandUtils.DESC_EXPORT_ON_EXIT)
   .option(commandUtils.FLAG_VERBOSITY, commandUtils.DESC_VERBOSITY)
+  .option(
+    commandUtils.FLAG_SKIP_DATACONNECT_SDK_GENERATION,
+    commandUtils.DESC_SKIP_DATACONNECT_SDK_GENERATION,
+  )
   .option(commandUtils.FLAG_UI, commandUtils.DESC_UI)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   .action((script: string, options: any) => {
