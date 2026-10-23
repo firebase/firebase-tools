@@ -26,6 +26,7 @@ export const cursor: AIToolModule = {
    * - `rules/FIREBASE.mdc`: The main entry point for project-specific context, importing other rule files.
    * - `rules/FIREBASE_BASE.md`: Contains fundamental details about the Firebase project.
    * - `rules/FIREBASE_FUNCTIONS.md`: (Optional) Contains information about Cloud Functions if the feature is enabled.
+   * - `rules/FIREBASE_FIRESTORE.md`: (Optional) Contains information about Cloud Firestore if the feature is enabled.
    *
    * File ownership:
    * - .cursor/mcp.json: Merges with existing config (preserves user settings)
@@ -92,11 +93,26 @@ export const cursor: AIToolModule = {
       files.push({ path: functionsPromptPath, updated: functionsResult.updated });
     }
 
+    if (enabledFeatures.includes("firestore")) {
+      const firestoreContent = generateFeaturePromptSection("firestore");
+      const firestorePromptPath = path.join(CURSOR_RULES_DIR, "FIREBASE_FIRESTORE.md");
+
+      const firestoreResult = await replaceFirebaseFile(
+        config,
+        firestorePromptPath,
+        firestoreContent,
+      );
+      files.push({ path: firestorePromptPath, updated: firestoreResult.updated });
+    }
+
     // Create the main `FIREBASE.mdc` file, which acts as an entry point
     // for Cursor's AI and imports the other context files.
     const imports = ["@FIREBASE_BASE.md"];
     if (enabledFeatures.includes("functions")) {
       imports.push("@FIREBASE_FUNCTIONS.md");
+    }
+    if (enabledFeatures.includes("firestore")) {
+      imports.push("@FIREBASE_FIRESTORE.md");
     }
     const importContent = `# Firebase Context\n\n${imports.join("\n")}\n`;
 

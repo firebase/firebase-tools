@@ -101,9 +101,9 @@ export async function doSetup(setup: Setup, config: Config) {
 function getEnabledFeatures(config: any): string[] {
   const features = [];
   if (config.functions) features.push("functions");
+  if (config.firestore) features.push("firestore");
 
   // Future: Add these when we have corresponding prompt files
-  // if (config.firestore)) features.push("firestore");
   // if (config.hosting)) features.push("hosting");
   // if (config.storage)) features.push("storage");
   // if (config.database)) features.push("database");

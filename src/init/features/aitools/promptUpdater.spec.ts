@@ -32,6 +32,9 @@ Base Firebase content`);
     readFileSyncStub.withArgs(sinon.match(/FIREBASE_FUNCTIONS\.md$/)).returns(`# Firebase Functions
 
 Functions specific content`);
+    readFileSyncStub.withArgs(sinon.match(/FIREBASE_FIRESTORE\.md$/)).returns(`# Firebase Firestore
+
+Firestore specific content`);
   });
 
   afterEach(() => {
@@ -57,6 +60,16 @@ Functions specific content`);
       expect(result.content).to.include("Base Firebase content");
       expect(result.content).to.include("# Firebase Functions");
       expect(result.content).to.include("Functions specific content");
+    });
+
+    it("should include firestore content when enabled", () => {
+      const result = generatePromptSection(["firestore"]);
+
+      expect(result.content).to.include("<firebase_prompts hash=");
+      expect(result.content).to.include("# Firebase CLI Context");
+      expect(result.content).to.include("Base Firebase content");
+      expect(result.content).to.include("# Firebase Firestore");
+      expect(result.content).to.include("Firestore specific content");
     });
 
     it("should generate consistent hash for same content", () => {
@@ -265,6 +278,17 @@ More user content`;
       expect(content).to.include("Functions specific content");
     });
 
+    it("should generate wrapped content for firestore feature", () => {
+      const content = generateFeaturePromptSection("firestore");
+
+      expect(content).to.include("<firebase_firestore_prompts hash=");
+      expect(content).to.include(
+        "<!-- Firebase Firestore Context - Auto-generated, do not edit -->",
+      );
+      expect(content).to.include("# Firebase Firestore");
+      expect(content).to.include("Firestore specific content");
+    });
+
     it("should return empty string for unknown feature", () => {
       const content = generateFeaturePromptSection("unknown");
 
@@ -283,6 +307,12 @@ More user content`;
       const content = getFeatureContent("functions");
 
       expect(content).to.equal("# Firebase Functions\n\nFunctions specific content");
+    });
+
+    it("should return raw content for firestore feature", () => {
+      const content = getFeatureContent("firestore");
+
+      expect(content).to.equal("# Firebase Firestore\n\nFirestore specific content");
     });
 
     it("should return empty string for unknown feature", () => {
