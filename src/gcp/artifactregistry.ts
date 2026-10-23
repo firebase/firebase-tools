@@ -69,12 +69,6 @@ export interface CleanupPolicy {
   mostRecentVersions?: CleanupPolicyMostRecentVersions;
 }
 
-/** Delete a package. */
-export async function deletePackage(name: string): Promise<Operation> {
-  const res = await client.delete<Operation>(name);
-  return res.body;
-}
-
 /**
  * Get a repository from Artifact Registry.
  */
