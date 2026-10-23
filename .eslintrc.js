@@ -54,7 +54,6 @@ module.exports = {
 
         "@typescript-eslint/explicit-function-return-type": ["warn", { allowExpressions: true }], // TODO(bkendall): SET to error.
         "@typescript-eslint/no-floating-promises": "warn", // TODO(bkendall): remove, allow to error.
-        "@typescript-eslint/no-inferrable-types": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-misused-promises": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-unsafe-argument": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-unsafe-assignment": "warn", // TODO(bkendall): remove, allow to error.

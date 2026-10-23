@@ -82,7 +82,7 @@ export class HubExport {
     if (!fs.existsSync(metadataPath)) {
       return undefined;
     }
-    let mdString: string = "";
+    let mdString = "";
     try {
       mdString = fs.readFileSync(metadataPath, "utf8").toString();
       return JSON.parse(mdString) as ExportMetadata;
