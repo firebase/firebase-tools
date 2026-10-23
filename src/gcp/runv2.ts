@@ -3,7 +3,7 @@ import { FirebaseError } from "../error";
 
 // TODO: Consider making this use REP in the future so we can be used by more
 // customers.
-import { cloudbuildOrigin, runOrigin } from "../api";
+import { runOrigin } from "../api";
 import * as proto from "./proto";
 import { assertImplements, RecursiveKeyOf } from "../metaprogramming";
 import { LongRunningOperation, pollOperation } from "../operation-poller";
@@ -32,7 +32,8 @@ export interface Scaling {
 
 export interface Container {
   name: string;
-  image: string;
+  /** The image to run. Unset when Cloud Run builds the image from sourceCode (see buildConfig). */
+  image?: string;
   command?: string[];
   args?: string[];
   env?: EnvVar[];
@@ -51,8 +52,20 @@ export interface Container {
   sourceCode?: {
     cloudStorageSource: StorageSource;
   };
+  /** Set with sourceCode to have Cloud Run build the image (Cloud Run's build API). */
+  buildConfig?: ContainerBuildConfig;
   // Lots more. Most intereeseting is baseImageUri and maybe buildInfo.
 }
+
+/** How Cloud Run builds a container's image from its source code. */
+export interface ContainerBuildConfig {
+  /** Where to push the image, without a tag, e.g. us-central1-docker.pkg.dev/my-project/repo/web. */
+  imageRepositoryUri: string;
+  buildpacksBuild?: {
+    environmentVariables?: Record<string, string>;
+  };
+}
+
 export interface RevisionTemplate {
   revision?: string;
   labels?: Record<string, string>;
@@ -132,6 +145,7 @@ export interface Service {
   // Is this redundant with the Build API?
   buildConfig?: BuildConfig;
   uri?: string;
+  latestCreatedRevision?: string;
 }
 
 export type ServiceOutputFields =
@@ -150,85 +164,13 @@ export interface StorageSource {
   generation?: string;
 }
 
-export interface BuildpacksBuild {
-  // Deprecated, presumedly in favor of baseImage?
-  runtime?: string;
-  functionTarget?: string;
-  cacheImageUrl?: string;
-  baseImage?: string;
-
-  // NOTE: build-time environment variables, which are not currently used.
-  environmentVariables?: Record<string, string>;
-
-  enableAutomaticUpdates?: boolean;
-  projectDescriptor?: string;
-}
-
-export interface Build {
-  runtime?: string;
-  functionTarget?: string;
-  storageSource: StorageSource;
-  imageUri: string;
-  buildpackBuild: BuildpacksBuild;
-}
-
-export interface SubmitBuildResponse {
-  buildOperation: {
-    metadata?: { build?: { name: string; logUrl?: string } };
-  };
-  baseImageUri?: string;
-  baseImageWarning?: string;
-}
-
-const PENDING_BUILD_STATUSES = ["STATUS_UNKNOWN", "PENDING", "QUEUED", "WORKING"];
-
-/**
- * Submits a build to Cloud Build using the v2 API and waits for the build to finish.
- * Used for building source code into container images.
- */
-export async function submitBuild(
-  projectId: string,
-  location: string,
-  build: Build,
-): Promise<void> {
-  const res = await client.post<Build, SubmitBuildResponse>(
-    `/projects/${projectId}/locations/${location}/builds:submit`,
-    build,
-  );
-  if (res.body?.baseImageWarning) {
-    logger.warn(res.body.baseImageWarning);
-  }
-  const cloudBuild = res.body?.buildOperation?.metadata?.build;
-  if (!cloudBuild) {
-    throw new FirebaseError("Failed to submit build: no build was returned.");
-  }
-  // The returned operation can't be polled for regional builds, so poll the build itself.
-  let status: string | undefined;
-  await pollOperation({
-    apiOrigin: cloudbuildOrigin(),
-    apiVersion: "v1",
-    operationResourceName: cloudBuild.name,
-    masterTimeout: 30 * 60 * 1000,
-    maxBackoff: 10_000,
-    doneFn: (b?: { status?: string }) => {
-      status = b?.status;
-      return !b?.status || !PENDING_BUILD_STATUSES.includes(b.status);
-    },
-  });
-  if (status !== "SUCCESS") {
-    throw new FirebaseError(
-      `Cloud Build failed with status ${status ?? "UNKNOWN"}. View the build logs at ${cloudBuild.logUrl ?? ""}`,
-    );
-  }
-}
-
 /**
  * Updates an existing Cloud Run service.
  * Tracks the long-running operation until completion.
  */
 export async function updateService(
   service: Omit<Service, ServiceOutputFields>,
-  opts: { updateMask?: string[]; pollTimeoutMs?: number } = {},
+  opts: { updateMask?: string[]; pollTimeoutMs?: number; pollMaxBackoffMs?: number } = {},
 ): Promise<Service> {
   // If no explicit updateMask is provided, infer the mask from the fields set on the service.
   let updateMask = opts.updateMask;
@@ -251,6 +193,7 @@ export async function updateService(
     apiVersion: API_VERSION,
     operationResourceName: res.body.name,
     masterTimeout: opts.pollTimeoutMs,
+    maxBackoff: opts.pollMaxBackoffMs,
   });
   return svc;
 }
@@ -264,7 +207,7 @@ export async function createService(
   location: string,
   serviceId: string,
   service: Omit<Service, ServiceOutputFields>,
-  opts: { pollTimeoutMs?: number } = {},
+  opts: { pollTimeoutMs?: number; pollMaxBackoffMs?: number } = {},
 ): Promise<Service> {
   // The create API expects the name to be empty or unset, as the parent is in the URL
   // and resource ID is a query param.
@@ -284,6 +227,7 @@ export async function createService(
     apiVersion: API_VERSION,
     operationResourceName: res.body.name,
     masterTimeout: opts.pollTimeoutMs,
+    maxBackoff: opts.pollMaxBackoffMs,
   });
   return svc;
 }
@@ -316,6 +260,22 @@ export async function getService(
 ): Promise<Service> {
   const name = `projects/${projectId}/locations/${location}/services/${serviceId}`;
   const res = await client.get<Service>(name);
+  return res.body;
+}
+
+/** A revision's status. Like Service, it only has the fields that the CLI uses. */
+export interface Revision {
+  name: string;
+  containerStatuses?: Array<{
+    name: string;
+    /** How building the container's image went, if Cloud Run built it (see Container.buildConfig). */
+    buildStatus?: { status?: "SUCCESS" | "FAILURE" | "PENDING"; cloudBuildLogUrl?: string };
+  }>;
+}
+
+/** Gets a revision, e.g. a service's latestCreatedRevision. */
+export async function getRevision(name: string): Promise<Revision> {
+  const res = await client.get<Revision>(name);
   return res.body;
 }
 

@@ -1,14 +1,13 @@
 import { ensure } from "../../ensureApiEnabled";
 import * as artifactregistry from "../../gcp/artifactregistry";
 
+// Cloud Run's service agent creates the builds, so deployers don't need Cloud Build permissions.
 export const RUN_PERMISSIONS = [
   "run.services.get",
   "run.services.create",
   "run.services.update",
   "run.services.setIamPolicy",
   "run.operations.get",
-  "cloudbuild.builds.create",
-  "cloudbuild.builds.get",
   "storage.buckets.get",
   "storage.buckets.list",
   "storage.buckets.create",
