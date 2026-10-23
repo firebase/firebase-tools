@@ -30,7 +30,7 @@ export async function writeToManifest(
   specs: ManifestInstanceSpec[],
   config: Config,
   options: { nonInteractive: boolean; force: boolean },
-  allowOverwrite: boolean = false,
+  allowOverwrite = false,
 ): Promise<void> {
   if (
     config.has("extensions") &&
@@ -208,7 +208,7 @@ export function writeExtensionsToFirebaseJson(specs: ManifestInstanceSpec[], con
   for (const s of specs) {
     let target;
     if (s.ref) {
-      target = refs.toExtensionVersionRef(s.ref!);
+      target = refs.toExtensionVersionRef(s.ref);
     } else if (s.localPath) {
       target = s.localPath;
     } else {
