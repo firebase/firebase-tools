@@ -76,7 +76,6 @@ export const command = new Command("auth:import [dataFile]")
                 return str === "" ? undefined : str;
               });
               const user = transArrayToUser(trimmed);
-              // TODO: Remove this casst once user can have an error.
               const err = user.error;
               if (err) {
                 return reject(
