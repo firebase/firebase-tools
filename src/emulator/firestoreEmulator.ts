@@ -4,6 +4,7 @@ import * as clc from "colorette";
 import * as path from "path";
 
 import * as utils from "../utils";
+import { getErrMsg } from "../error";
 import * as downloadableEmulators from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators, Severity } from "../emulator/types";
 import { EmulatorRegistry } from "./registry";
@@ -45,25 +46,30 @@ export class FirestoreEmulator implements EmulatorInstance {
     if (this.args.rules && this.args.project_id) {
       const rulesPath = this.args.rules;
       this.rulesWatcher = chokidar.watch(rulesPath, { persistent: true, ignoreInitial: true });
-      this.rulesWatcher.on("change", async () => {
-        // There have been some race conditions reported (on Windows) where reading the
-        // file too quickly after the watcher fires results in an empty file being read.
-        // Adding a small delay prevents that at very little cost.
-        await new Promise((res) => setTimeout(res, 5));
+      this.rulesWatcher.on("change", () => {
+        const update = async (): Promise<void> => {
+          // There have been some race conditions reported (on Windows) where reading the
+          // file too quickly after the watcher fires results in an empty file being read.
+          // Adding a small delay prevents that at very little cost.
+          await new Promise((res) => setTimeout(res, 5));
 
-        utils.logLabeledBullet("firestore", "Change detected, updating rules...");
-        const newContent = fs.readFileSync(rulesPath, "utf8").toString();
-        const issues = await this.updateRules(newContent);
-        if (issues) {
-          for (const issue of issues) {
-            utils.logWarning(this.prettyPrintRulesIssue(rulesPath, issue));
+          utils.logLabeledBullet("firestore", "Change detected, updating rules...");
+          const newContent = fs.readFileSync(rulesPath, "utf8").toString();
+          const issues = await this.updateRules(newContent);
+          if (issues) {
+            for (const issue of issues) {
+              utils.logWarning(this.prettyPrintRulesIssue(rulesPath, issue));
+            }
           }
-        }
-        if (issues.some((issue) => issue.severity === Severity.ERROR)) {
-          utils.logWarning("Failed to update rules");
-        } else {
-          utils.logLabeledSuccess("firestore", "Rules updated.");
-        }
+          if (issues.some((issue) => issue.severity === Severity.ERROR)) {
+            utils.logWarning("Failed to update rules");
+          } else {
+            utils.logLabeledSuccess("firestore", "Rules updated.");
+          }
+        };
+        update().catch((err: unknown) => {
+          utils.logWarning(`Failed to update rules: ${getErrMsg(err)}`);
+        });
       });
     }
 
