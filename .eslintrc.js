@@ -30,6 +30,7 @@ module.exports = {
         ],
       },
     ],
+    "no-constant-condition": ["error", { checkLoops: false }], // Allow intentional `while (true)` polling/retry loops.
     "no-useless-escape": "warn", // TODO(bkendall): remove, allow to error.
   },
   overrides: [
@@ -67,8 +68,6 @@ module.exports = {
         "@typescript-eslint/prefer-regexp-exec": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/restrict-plus-operands": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/restrict-template-expressions": "warn", // TODO(bkendall): remove, allow to error.
-        "no-constant-condition": "warn", // TODO(bkendall): remove, allow to error.
-        "no-fallthrough": "warn", // TODO(bkendall): remove, allow to error.
       },
     },
     {
