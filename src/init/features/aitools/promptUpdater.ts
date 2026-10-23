@@ -20,8 +20,8 @@ const FIREBASE_TAG_REGEX = /<firebase_prompts(?:\s+hash="([^"]+)")?>([\s\S]*?)<\
 const PROMPT_FILES: Record<string, string> = {
   base: "FIREBASE.md",
   functions: "FIREBASE_FUNCTIONS.md",
+  firestore: "FIREBASE_FIRESTORE.md",
   // Future: More Firebase product support
-  // firestore: "FIREBASE_FIRESTORE.md",
   // hosting: "FIREBASE_HOSTING.md",
 };
 

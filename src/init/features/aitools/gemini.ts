@@ -27,6 +27,7 @@ export const gemini: AIToolModule = {
    * - `contexts/FIREBASE.md`: The main entry point for project-specific context. It imports other files.
    * - `contexts/FIREBASE-BASE.md`: Contains fundamental details about the Firebase project.
    * - `contexts/FIREBASE-FUNCTIONS.md`: (Optional) Contains information about Firebase Functions if the feature is enabled.
+   * - `contexts/FIREBASE-FIRESTORE.md`: (Optional) Contains information about Cloud Firestore if the feature is enabled.
    *
    * File ownership:
    * - ALL files under .gemini/extensions/firebase/: Fully managed by us
@@ -87,6 +88,18 @@ export const gemini: AIToolModule = {
         "",
         "<!-- Import Firebase Functions context -->",
         `@./contexts/FIREBASE-FUNCTIONS.md`,
+      );
+    }
+    if (enabledFeatures.includes("firestore")) {
+      const firestoreContent = generateFeaturePromptSection("firestore");
+      const firestorePath = `${CONTEXTS_DIR}/FIREBASE-FIRESTORE.md`;
+      const firestoreResult = await replaceFirebaseFile(config, firestorePath, firestoreContent);
+      files.push({ path: firestorePath, updated: firestoreResult.updated });
+
+      imports.push(
+        "",
+        "<!-- Import Firebase Firestore context -->",
+        `@./contexts/FIREBASE-FIRESTORE.md`,
       );
     }
     const importContent = imports.join("\n");
