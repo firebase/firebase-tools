@@ -213,7 +213,7 @@ export async function doSetupSourceDeploy(
   projectId: string,
   backendId: string,
   nonInteractive: boolean,
-  rootDir: string = "/",
+  rootDir = "/",
 ): Promise<{ backend: Backend; location: string }> {
   const location = await promptLocation(
     projectId,

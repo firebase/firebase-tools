@@ -46,7 +46,7 @@ export class PostgresServer {
   public db: PGlite | undefined = undefined;
   private server: net.Server | undefined = undefined;
 
-  public async createPGServer(host: string = "127.0.0.1", port: number): Promise<net.Server> {
+  public async createPGServer(host = "127.0.0.1", port: number): Promise<net.Server> {
     const getDb = this.getDb.bind(this);
 
     const server = net.createServer(async (socket) => {
