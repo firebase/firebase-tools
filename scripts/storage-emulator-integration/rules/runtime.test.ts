@@ -3,7 +3,7 @@ import {
   StorageRulesRuntime,
 } from "../../../src/emulator/storage/rules/runtime";
 import { expect } from "chai";
-import { StorageRulesFiles } from "../../emulator-tests/fixtures";
+import { StorageRulesFiles } from "../../../src/emulator/testing/fixtures";
 import * as jwt from "jsonwebtoken";
 import { EmulatorLogger } from "../../../src/emulator/emulatorLogger";
 import { ExpressionValue } from "../../../src/emulator/storage/rules/expressionValue";
