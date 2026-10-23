@@ -176,11 +176,12 @@ describe("cloudFunctions", () => {
 
     it("should not send TOTP shared secrets to functions", async () => {
       const functionsUrl = EmulatorRegistry.url(Emulators.FUNCTIONS).toString();
-      // Matches both the v1 and v2 requests, but only if the secret is absent.
+      // Captures both the v1 and the v2 request.
+      const bodies: string[] = [];
       nock(functionsUrl)
         .post("/functions/projects/project-foo/trigger_multicast", (body) => {
-          const json = JSON.stringify(body);
-          return json.includes("enrollment-id") && !json.includes("SECRETKEY");
+          bodies.push(JSON.stringify(body));
+          return true;
         })
         .twice()
         .reply(200, {});
@@ -193,6 +194,11 @@ describe("cloudFunctions", () => {
         ],
       });
       expect(nock.isDone()).to.be.true;
+      // The v1 payload still lists the enrollment; the v2 payload has no mfaInfo.
+      expect(bodies.some((json) => json.includes("enrollment-id"))).to.be.true;
+      for (const json of bodies) {
+        expect(json).not.to.include("SECRETKEY");
+      }
     });
 
     it("should still dispatch v2 CloudEvent if v1 legacy dispatch fails", async () => {
