@@ -310,34 +310,12 @@ export function toTitleCase(txt: string): string {
 }
 
 /**
- * capitalizeFirstLetter capitalizes the first letter of the input string
- * @param txt the string to transform
- * @return the input string with the first letter capitalized
- */
-export function capitalizeFirstLetter(txt: string): string {
-  return txt.charAt(0).toUpperCase() + txt.substring(1);
-}
-
-/**
  * lowercaseFirstLetter makes the first letter of a string lowercase
  * @param txt a string to transform
  * @return the input string but with the first letter lowercase
  */
 export function lowercaseFirstLetter(txt: string): string {
   return txt.charAt(0).toLowerCase() + txt.substring(1);
-}
-
-/**
- * snakeToCamelCase transforms text from snake_case to camelCase.
- * @param txt the snake_case string to transform
- * @return a camelCase string
- */
-export function snakeToCamelCase(txt: string): string {
-  let ret = txt.toLowerCase();
-  ret = ret.replace(/_/g, " ");
-  ret = ret.replace(/\w\S*/g, toTitleCase);
-  ret = ret.charAt(0).toLowerCase() + ret.substring(1);
-  return ret;
 }
 
 /**
