@@ -121,6 +121,7 @@ describe("localBuild", () => {
       expect(process.env.MY_BUILD_SECRET).to.be.undefined;
       expect(process.env.MY_PLAIN_VAR).to.be.undefined;
       expect(options?.env?.MY_BUILD_SECRET).to.equal("secret-value");
+      expect(options?.env?.GOOGLE_BUILD_SECRETS_TO_SCAN).to.equal("MY_BUILD_SECRET");
       expect(options?.env?.MY_RUNTIME_SECRET).to.be.undefined;
       expect(options?.env?.MY_PLAIN_VAR).to.equal("plain-value");
       return {
@@ -153,12 +154,39 @@ describe("localBuild", () => {
     expect(process.env.MY_RUNTIME_SECRET).to.be.undefined;
   });
 
+  it("respects a user-set GOOGLE_BUILD_SECRETS_TO_SCAN instead of overriding it", async () => {
+    sinon.stub(childProcess, "spawnSync").callsFake((_command: any, _args: any, options: any) => {
+      expect(options?.env?.MY_BUILD_SECRET).to.equal("secret-value");
+      expect(options?.env?.GOOGLE_BUILD_SECRETS_TO_SCAN).to.equal("");
+      return {
+        status: 0,
+        output: ["", "mock output", ""],
+        pid: 12345,
+        stdout: "",
+        stderr: "",
+        signal: null,
+      } as any;
+    });
+    sinon.stub(secrets, "loadSecret").resolves("secret-value");
+
+    await localBuild(
+      "test-project",
+      "./",
+      {
+        MY_BUILD_SECRET: { secret: "my-secret-id", availability: ["BUILD"] },
+        GOOGLE_BUILD_SECRETS_TO_SCAN: { value: "" },
+      },
+      { nonInteractive: true, allowLocalBuildSecrets: true },
+    );
+  });
+
   it("handles environment variables that do not contain secrets", async () => {
     sinon.stub(childProcess, "spawnSync").callsFake((command: any, args: any, options: any) => {
       expect(process.env.MY_PLAIN_VAR).to.be.undefined;
       expect(process.env.ANOTHER_VAR).to.be.undefined;
       expect(options?.env?.MY_PLAIN_VAR).to.equal("plain-value");
       expect(options?.env?.ANOTHER_VAR).to.equal("another-value");
+      expect(options?.env?.GOOGLE_BUILD_SECRETS_TO_SCAN).to.be.undefined;
       return {
         status: 0,
         output: ["", "mock output", ""],

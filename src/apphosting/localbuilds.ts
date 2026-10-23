@@ -281,6 +281,12 @@ async function toProcessEnv(projectId: string, env: EnvMap): Promise<NodeJS.Proc
     }),
   );
 
+  // Names only: the google.utils.secret-scan buildpack fails the build if these values are in its output.
+  const secretNames = buildVars.filter(([, value]) => value.secret).map(([key]) => key);
+  if (secretNames.length && !("GOOGLE_BUILD_SECRETS_TO_SCAN" in env)) {
+    resolvedEntries.push(["GOOGLE_BUILD_SECRETS_TO_SCAN", secretNames.join(",")]);
+  }
+
   return Object.fromEntries(resolvedEntries) as NodeJS.ProcessEnv;
 }
 
