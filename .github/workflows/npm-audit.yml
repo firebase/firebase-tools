@@ -1,0 +1,56 @@
+name: npm audit
+
+# Fails when the dependencies that ship to users (`--omit=dev`) have a known
+# high or critical vulnerability. Runs on dependency changes, on pushes to main,
+# and on a daily schedule so that newly published advisories surface without
+# waiting for a dependency PR.
+on:
+  pull_request:
+    branches:
+      - main
+      - next
+    paths:
+      - "package.json"
+      - "npm-shrinkwrap.json"
+      - ".github/workflows/npm-audit.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "package.json"
+      - "npm-shrinkwrap.json"
+      - ".github/workflows/npm-audit.yml"
+  schedule:
+    # Every day at 14:17 UTC.
+    - cron: "17 14 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+  NO_COLOR: true
+
+jobs:
+  audit-prod:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # ratchet:actions/setup-node@v3
+        with:
+          node-version: "24"
+      # Match the npm version used by the check-package-lock job in node-test.yml.
+      - run: npm i -g npm@11.9
+      # `npm audit` only needs the lockfile, so no `npm ci` is required.
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+      - name: Report all findings (informational)
+        if: ${{ always() }}
+        run: npm audit || true
