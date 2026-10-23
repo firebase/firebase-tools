@@ -109,7 +109,7 @@ export async function updateFirebaseSection(
   } else if (match) {
     // Replace existing section
     finalContent =
-      currentContent.substring(0, match.index!) +
+      currentContent.substring(0, match.index) +
       newSection +
       currentContent.substring(match.index! + match[0].length);
   } else {

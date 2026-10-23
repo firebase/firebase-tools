@@ -112,7 +112,7 @@ export function updateExtensionInstanceTask(
       await extensionsApi.updateInstanceFromRegistry({
         projectId,
         instanceId: instanceSpec.instanceId,
-        extRef: refs.toExtensionVersionRef(instanceSpec.ref!),
+        extRef: refs.toExtensionVersionRef(instanceSpec.ref),
         params: instanceSpec.params,
         systemParams: instanceSpec.systemParams,
         canEmitEvents: !!instanceSpec.allowedEventTypes,

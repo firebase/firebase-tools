@@ -807,7 +807,7 @@ export class Fabricator {
     }
     if (invoker) {
       await this.executor
-        .run(() => gcf.setInvokerUpdate(endpoint.project, backend.functionName(endpoint), invoker!))
+        .run(() => gcf.setInvokerUpdate(endpoint.project, backend.functionName(endpoint), invoker))
         .catch(rethrowAs(endpoint, "set invoker"));
     }
   }
@@ -898,7 +898,7 @@ export class Fabricator {
 
     if (invoker) {
       await this.executor
-        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!))
+        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker))
         .catch(rethrowAs(endpoint, "set invoker"));
     }
   }
@@ -1030,7 +1030,7 @@ export class Fabricator {
 
     if (invoker) {
       await this.executor
-        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!))
+        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker))
         .catch(rethrowAs(endpoint, "set invoker"));
     }
   }

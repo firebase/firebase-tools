@@ -178,7 +178,7 @@ export class HubExport {
     const firestoreExportBody = {
       database: `projects/${this.projectId}/databases/(default)`,
       export_directory: this.tmpDir,
-      export_name: metadata.firestore!!.path,
+      export_name: metadata.firestore!.path,
     };
 
     await EmulatorRegistry.client(Emulators.FIRESTORE).post(

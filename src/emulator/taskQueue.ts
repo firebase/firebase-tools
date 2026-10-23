@@ -266,7 +266,7 @@ export class TaskQueue {
       throw new Error("Trying to dispatch a nonexistent task");
     }
 
-    const emulatedTask = this.dispatches[dispatchIndex] as EmulatedTask;
+    const emulatedTask = this.dispatches[dispatchIndex];
 
     if (
       emulatedTask.metadata.lastRunTime !== null &&
@@ -332,7 +332,7 @@ export class TaskQueue {
     if (this.dispatches[dispatchIndex] === null) {
       throw new Error("Trying to retry a nonexistent task");
     }
-    const { metadata } = this.dispatches[dispatchIndex] as EmulatedTask;
+    const { metadata } = this.dispatches[dispatchIndex];
     const { retryConfig } = this.config;
 
     // Determine if the task has failed

@@ -219,7 +219,7 @@ export class FirebaseMcpServer {
         return null;
       }),
     );
-    this.detectedFeatures = detected.filter((f) => !!f) as ServerFeature[];
+    this.detectedFeatures = detected.filter((f) => !!f);
     this.logger.debug(
       `detected features of Firebase MCP server:  ${this.detectedFeatures.join(", ") || "<none>"}`,
     );

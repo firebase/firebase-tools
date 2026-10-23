@@ -222,7 +222,7 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
   if (deployTarget) {
     const options = await architectHost
       .getOptionsForTarget(deployTarget)
-      .catch(() => workspaceProject.targets.get(deployTarget!.target)?.options);
+      .catch(() => workspaceProject.targets.get(deployTarget.target)?.options);
     if (!options) throw new FirebaseError("Unable to get options for ng-deploy.");
     if (options.buildTarget) {
       assertIsString(options.buildTarget);
@@ -541,7 +541,7 @@ export async function getBuildConfig(sourceDir: string, configuration: string) {
       : prerenderTarget
         ? [prerenderTarget]
         : [browserTarget, serverTarget].filter((it) => !!it)
-  ).map((it) => targetStringFromTarget(it!));
+  ).map((it) => targetStringFromTarget(it));
   const buildOrBrowserTarget = buildTarget || browserTarget;
   if (!buildOrBrowserTarget) {
     throw new AssertionError({ message: "expected build or browser target defined" });
