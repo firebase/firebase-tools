@@ -14,6 +14,7 @@ module.exports = {
   rules: {
     "jsdoc/newline-after-description": "off",
     "jsdoc/require-jsdoc": ["warn", { publicOnly: true }],
+    "no-constant-condition": ["error", { checkLoops: false }], // Allow intentional `while (true)` and `do ... while (true)` loops.
     "no-restricted-globals": ["error", "name", "length"],
     "prefer-arrow-callback": "error",
     "prettier/prettier": "error",
@@ -66,8 +67,6 @@ module.exports = {
         "@typescript-eslint/prefer-regexp-exec": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/restrict-plus-operands": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/restrict-template-expressions": "warn", // TODO(bkendall): remove, allow to error.
-        "no-constant-condition": "warn", // TODO(bkendall): remove, allow to error.
-        "no-fallthrough": "warn", // TODO(bkendall): remove, allow to error.
       },
     },
     {
