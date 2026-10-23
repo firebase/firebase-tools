@@ -42,7 +42,7 @@ export function extensionsDeploymentHandler(
 export function createExtensionInstanceTask(
   projectId: string,
   instanceSpec: DeploymentInstanceSpec,
-  validateOnly: boolean = false,
+  validateOnly = false,
 ): ExtensionDeploymentTask {
   const run = async () => {
     if (!validateOnly) {
@@ -99,7 +99,7 @@ export function createExtensionInstanceTask(
 export function updateExtensionInstanceTask(
   projectId: string,
   instanceSpec: DeploymentInstanceSpec,
-  validateOnly: boolean = false,
+  validateOnly = false,
 ): ExtensionDeploymentTask {
   const run = async () => {
     if (!validateOnly) {
@@ -151,7 +151,7 @@ export function updateExtensionInstanceTask(
 export function configureExtensionInstanceTask(
   projectId: string,
   instanceSpec: DeploymentInstanceSpec,
-  validateOnly: boolean = false,
+  validateOnly = false,
 ): ExtensionDeploymentTask {
   const run = async () => {
     if (!validateOnly) {
