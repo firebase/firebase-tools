@@ -112,6 +112,7 @@ export class EmulatorHub extends ExpressBasedEmulator {
           res.status(403).json({
             message: `Export cannot be triggered by external callers.`,
           });
+          return;
         }
         const path: string = req.body.path;
         const initiatedBy: string = req.body.initiatedBy || "unknown";
@@ -184,6 +185,7 @@ export class EmulatorHub extends ExpressBasedEmulator {
           res.status(403).json({
             message: `Clear SQL Connect cannot be triggered by external callers.`,
           });
+          return;
         }
         utils.logLabeledBullet("emulators", `Clearing data from SQL Connect data sources.`);
 
