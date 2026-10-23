@@ -560,7 +560,7 @@ export class ProfileReport {
           err instanceof Error
             ? err
             : new FirebaseError("There was an error creating the report.", {
-                original: err as any,
+                original: err,
               }),
         );
       });

@@ -835,7 +835,7 @@ async function refreshTokens(
       updateAccount(account);
     }
 
-    return lastAccessToken!;
+    return lastAccessToken;
   } catch (err: any) {
     if (err?.context?.body?.error === "invalid_scope") {
       throw new FirebaseError(

@@ -1059,7 +1059,7 @@ describe("import/export end to end", () => {
     );
 
     const config = readConfig();
-    const hubPort = config.emulators!.hub!.port;
+    const hubPort = config.emulators!.hub.port;
     const host = await localhost();
 
     // Ask for export using HTTP POST to hub
