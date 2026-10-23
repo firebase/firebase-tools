@@ -439,18 +439,6 @@ export async function createSource(
 }
 
 /**
- * Get a extension source by its fully qualified path
- * @param sourceName the fully qualified path of the extension source (/projects/<projectId>/sources/<sourceId>)
- */
-export async function getSource(sourceName: string): Promise<ExtensionSource> {
-  const res = await extensionsApiClient.get<ExtensionSource>(`/${sourceName}`);
-  if (res.body.spec) {
-    populateSpec(res.body.spec);
-  }
-  return res.body;
-}
-
-/**
  * @param extensionVersionRef user-friendly identifier for the ExtensionVersion (publisher-id/extension-id@1.0.0)
  */
 export async function getExtensionVersion(extensionVersionRef: string): Promise<ExtensionVersion> {
