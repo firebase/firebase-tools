@@ -208,7 +208,7 @@ export function writeExtensionsToFirebaseJson(specs: ManifestInstanceSpec[], con
   for (const s of specs) {
     let target;
     if (s.ref) {
-      target = refs.toExtensionVersionRef(s.ref!);
+      target = refs.toExtensionVersionRef(s.ref);
     } else if (s.localPath) {
       target = s.localPath;
     } else {
