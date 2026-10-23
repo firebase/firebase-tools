@@ -52,16 +52,9 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
   ): Promise<string> {
     return page.evaluate(
       async (filename, text, format, metadata) => {
-        try {
-          const ref = firebase.storage().ref(filename);
-          const res = await ref.putString(text, format, JSON.parse(metadata));
-          return res.state;
-        } catch (err) {
-          if (err instanceof Error) {
-            throw err.message;
-          }
-          throw err;
-        }
+        const ref = firebase.storage().ref(filename);
+        const res = await ref.putString(text, format, JSON.parse(metadata));
+        return res.state;
       },
       filename,
       text,
@@ -104,6 +97,12 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
     browser = await puppeteer.launch({
       headless: !TEST_ENV.showBrowser,
       devtools: true,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-web-security",
+        "--disable-features=IsolateOrigins,site-per-process,BlockInsecurePrivateNetworkRequests",
+      ],
     });
     page = await browser.newPage();
     await page.goto("https://example.com", { waitUntil: "networkidle2" });
@@ -278,10 +277,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
               .put(_file, { contentType: "text/plain" });
             return task.state;
           } catch (err: any) {
-            if (err instanceof Error) {
-              return err.message;
-            }
-            throw err;
+            return err instanceof Error ? err.message : String(err);
           }
         }, IMAGE_FILE_BASE64);
         expect(uploadState).to.include("User does not have permission");
@@ -292,10 +288,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
           try {
             return await uploadText(page, "upload/allowIfNoExistingFile.txt", "some-other-content");
           } catch (err: any) {
-            if (err instanceof Error) {
-              return err.message;
-            }
-            throw err;
+            return err instanceof Error ? err.message : String(err);
           }
         }
 
@@ -701,10 +694,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
             await firebase.storage().ref(filename).delete();
             return "success";
           } catch (err) {
-            if (err instanceof Error) {
-              return err.message;
-            }
-            throw err;
+            return err instanceof Error ? err.message : String(err);
           }
         }, "delete/disallowIfContentTypeText");
 
