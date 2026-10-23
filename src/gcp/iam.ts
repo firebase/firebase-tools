@@ -9,11 +9,6 @@ import * as crypto from "crypto";
 
 const apiClient = new Client({ urlPrefix: iamOrigin(), apiVersion: "v1" });
 
-/** Returns the default cloud build service agent */
-export function getDefaultCloudBuildServiceAgent(projectNumber: string): string {
-  return `${projectNumber}@cloudbuild.gserviceaccount.com`;
-}
-
 // IAM Policy
 // https://cloud.google.com/resource-manager/reference/rest/Shared.Types/Policy
 export interface Binding {
