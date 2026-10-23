@@ -404,12 +404,14 @@ export async function promiseWhile<T>(
         if (check(res)) {
           return resolve(res);
         }
-        setTimeout(run, interval);
+        // run catches all errors and routes them to promiseReject
+        setTimeout(() => void run(), interval);
       } catch (err: unknown) {
         return promiseReject(err);
       }
     };
-    run();
+    // run catches all errors and routes them to promiseReject
+    void run();
   });
 }
 

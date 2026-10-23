@@ -254,7 +254,10 @@ describe("Frameworks utils", () => {
       nock("http://localhost:8999").post("/api", "payload").reply(404);
 
       const app = express();
-      app.use(simpleProxy("http://localhost:8999"));
+      const proxy = simpleProxy("http://localhost:8999");
+      app.use((req, res, next) => {
+        void proxy(req, res, next).catch(next);
+      });
       app.use((req, res) => {
         res.json({ rawBody: (req as any).rawBody?.toString() });
       });
@@ -266,7 +269,10 @@ describe("Frameworks utils", () => {
       nock("http://localhost:8999").post("/api", "payload").reply(200, "handled");
 
       const app = express();
-      app.use(simpleProxy("http://localhost:8999"));
+      const proxy = simpleProxy("http://localhost:8999");
+      app.use((req, res, next) => {
+        void proxy(req, res, next).catch(next);
+      });
       app.use((_req, res) => {
         res.status(500).send("should not cascade");
       });
@@ -284,7 +290,10 @@ describe("Frameworks utils", () => {
         .reply(404);
 
       const app = express();
-      app.use(simpleProxy("http://localhost:8999"));
+      const proxy = simpleProxy("http://localhost:8999");
+      app.use((req, res, next) => {
+        void proxy(req, res, next).catch(next);
+      });
       app.use((req, res) => {
         res.json({ rawBody: (req as any).rawBody?.toString() });
       });

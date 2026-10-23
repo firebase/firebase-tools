@@ -55,7 +55,6 @@ module.exports = {
         "@typescript-eslint/no-extra-non-null-assertion": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-floating-promises": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-inferrable-types": "warn", // TODO(bkendall): remove, allow to error.
-        "@typescript-eslint/no-misused-promises": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-unnecessary-type-assertion": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-unsafe-argument": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-unsafe-assignment": "warn", // TODO(bkendall): remove, allow to error.

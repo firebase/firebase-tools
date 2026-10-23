@@ -12,6 +12,7 @@ import { FunctionsEmulator } from "./functionsEmulator";
 import { ExpressBasedEmulator } from "./ExpressBasedEmulator";
 import { PortName } from "./portUtils";
 import { DataConnectEmulator } from "./dataconnectEmulator";
+import { asyncHandler } from "./shared/express";
 
 // We use the CLI version from package.json
 const pkg = require("../../package.json");
@@ -104,86 +105,98 @@ export class EmulatorHub extends ExpressBasedEmulator {
       res.json(this.getRunningEmulatorsMapping());
     });
 
-    app.post(EmulatorHub.PATH_EXPORT, async (req, res) => {
-      if (req.headers.origin) {
-        res.status(403).json({
-          message: `Export cannot be triggered by external callers.`,
-        });
-      }
-      const path: string = req.body.path;
-      const initiatedBy: string = req.body.initiatedBy || "unknown";
-      const targets: string[] = req.body.targets;
-      utils.logLabeledBullet("emulators", `Received export request. Exporting data to ${path}.`);
-      try {
-        await new HubExport(this.args.projectId, {
-          path,
-          initiatedBy,
-          targets,
-        }).exportAll();
-        utils.logLabeledSuccess("emulators", "Export complete.");
-        res.status(200).send({
-          message: "OK",
-        });
-      } catch (e: any) {
-        const errorString = e.message || JSON.stringify(e);
-        utils.logLabeledWarning("emulators", `Export failed: ${errorString}`);
-        res.status(500).json({
-          message: errorString,
-        });
-      }
-    });
+    app.post(
+      EmulatorHub.PATH_EXPORT,
+      asyncHandler(async (req, res) => {
+        if (req.headers.origin) {
+          res.status(403).json({
+            message: `Export cannot be triggered by external callers.`,
+          });
+        }
+        const path: string = req.body.path;
+        const initiatedBy: string = req.body.initiatedBy || "unknown";
+        const targets: string[] = req.body.targets;
+        utils.logLabeledBullet("emulators", `Received export request. Exporting data to ${path}.`);
+        try {
+          await new HubExport(this.args.projectId, {
+            path,
+            initiatedBy,
+            targets,
+          }).exportAll();
+          utils.logLabeledSuccess("emulators", "Export complete.");
+          res.status(200).send({
+            message: "OK",
+          });
+        } catch (e: any) {
+          const errorString = e.message || JSON.stringify(e);
+          utils.logLabeledWarning("emulators", `Export failed: ${errorString}`);
+          res.status(500).json({
+            message: errorString,
+          });
+        }
+      }),
+    );
 
-    app.put(EmulatorHub.PATH_DISABLE_FUNCTIONS, async (req, res) => {
-      utils.logLabeledBullet(
-        "emulators",
-        `Disabling Cloud Functions triggers, non-HTTP functions will not execute.`,
-      );
+    app.put(
+      EmulatorHub.PATH_DISABLE_FUNCTIONS,
+      asyncHandler(async (req, res) => {
+        utils.logLabeledBullet(
+          "emulators",
+          `Disabling Cloud Functions triggers, non-HTTP functions will not execute.`,
+        );
 
-      const instance = EmulatorRegistry.get(Emulators.FUNCTIONS);
-      if (!instance) {
-        res.status(400).json({ error: "The Cloud Functions emulator is not running." });
-        return;
-      }
+        const instance = EmulatorRegistry.get(Emulators.FUNCTIONS);
+        if (!instance) {
+          res.status(400).json({ error: "The Cloud Functions emulator is not running." });
+          return;
+        }
 
-      const emu = instance as FunctionsEmulator;
-      await emu.disableBackgroundTriggers();
-      res.status(200).json({ enabled: false });
-    });
+        const emu = instance as FunctionsEmulator;
+        await emu.disableBackgroundTriggers();
+        res.status(200).json({ enabled: false });
+      }),
+    );
 
-    app.put(EmulatorHub.PATH_ENABLE_FUNCTIONS, async (req, res) => {
-      utils.logLabeledBullet(
-        "emulators",
-        `Enabling Cloud Functions triggers, non-HTTP functions will execute.`,
-      );
+    app.put(
+      EmulatorHub.PATH_ENABLE_FUNCTIONS,
+      asyncHandler(async (req, res) => {
+        utils.logLabeledBullet(
+          "emulators",
+          `Enabling Cloud Functions triggers, non-HTTP functions will execute.`,
+        );
 
-      const instance = EmulatorRegistry.get(Emulators.FUNCTIONS);
-      if (!instance) {
-        res.status(400).send("The Cloud Functions emulator is not running.");
-        return;
-      }
+        const instance = EmulatorRegistry.get(Emulators.FUNCTIONS);
+        if (!instance) {
+          res.status(400).send("The Cloud Functions emulator is not running.");
+          return;
+        }
 
-      const emu = instance as FunctionsEmulator;
-      await emu.reloadTriggers();
-      res.status(200).json({ enabled: true });
-    });
+        const emu = instance as FunctionsEmulator;
+        await emu.reloadTriggers();
+        res.status(200).json({ enabled: true });
+      }),
+    );
 
-    app.post(EmulatorHub.PATH_CLEAR_DATA_CONNECT, async (req, res) => {
-      if (req.headers.origin) {
-        res.status(403).json({
-          message: `Clear SQL Connect cannot be triggered by external callers.`,
-        });
-      }
-      utils.logLabeledBullet("emulators", `Clearing data from SQL Connect data sources.`);
+    app.post(
+      EmulatorHub.PATH_CLEAR_DATA_CONNECT,
+      asyncHandler(async (req, res) => {
+        if (req.headers.origin) {
+          res.status(403).json({
+            message: `Clear SQL Connect cannot be triggered by external callers.`,
+          });
+        }
+        utils.logLabeledBullet("emulators", `Clearing data from SQL Connect data sources.`);
 
-      const instance = EmulatorRegistry.get(Emulators.DATACONNECT) as DataConnectEmulator;
-      if (!instance) {
-        res.status(400).json({ error: "The SQL Connect emulator is not running." });
-        return;
-      }
+        const instance = EmulatorRegistry.get(Emulators.DATACONNECT) as DataConnectEmulator;
+        if (!instance) {
+          res.status(400).json({ error: "The SQL Connect emulator is not running." });
+          return;
+        }
 
-      await instance.clearData();
-      res.status(200).json({ success: true });
-    });
+        await instance.clearData();
+        res.status(200).json({ success: true });
+      }),
+    );
 
     return app;
   }
