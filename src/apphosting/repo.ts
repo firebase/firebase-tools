@@ -20,7 +20,7 @@ export interface ConnectionNameParts {
 const APPHOSTING_CONN_PATTERN = /.+\/apphosting-github-conn-.+$/;
 const APPHOSTING_OAUTH_CONN_NAME = "apphosting-github-oauth";
 const CONNECTION_NAME_REGEX =
-  /^projects\/(?<projectId>[^\/]+)\/locations\/(?<location>[^\/]+)\/connections\/(?<id>[^\/]+)$/;
+  /^projects\/(?<projectId>[^/]+)\/locations\/(?<location>[^/]+)\/connections\/(?<id>[^/]+)$/;
 
 /**
  * Exported for unit testing.

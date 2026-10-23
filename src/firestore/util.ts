@@ -20,15 +20,15 @@ interface FieldName {
 }
 
 // projects/$PROJECT_ID/databases/$DATABASE_ID
-const DATABASE_NAME_REGEX = /projects\/([^\/]+?)\/databases\/([^\/]+)/;
+const DATABASE_NAME_REGEX = /projects\/([^/]+?)\/databases\/([^/]+)/;
 
 // projects/$PROJECT_ID/databases/$DATABASE_ID/collectionGroups/$COLLECTION_GROUP_ID/indexes/$INDEX_ID
 const INDEX_NAME_REGEX =
-  /projects\/([^\/]+?)\/databases\/([^\/]+?)\/collectionGroups\/([^\/]+?)\/indexes\/([^\/]*)/;
+  /projects\/([^/]+?)\/databases\/([^/]+?)\/collectionGroups\/([^/]+?)\/indexes\/([^/]*)/;
 
 // projects/$PROJECT_ID/databases/$DATABASE_ID/collectionGroups/$COLLECTION_GROUP_ID/fields/$FIELD_ID
 const FIELD_NAME_REGEX =
-  /projects\/([^\/]+?)\/databases\/([^\/]+?)\/collectionGroups\/([^\/]+?)\/fields\/([^\/]*)/;
+  /projects\/([^/]+?)\/databases\/([^/]+?)\/collectionGroups\/([^/]+?)\/fields\/([^/]*)/;
 
 /**
  * Parse a Database name into useful pieces.

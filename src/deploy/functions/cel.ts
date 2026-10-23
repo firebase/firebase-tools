@@ -176,7 +176,7 @@ function preprocessLists(
   params: Record<string, ParamValue>,
 ): CelExpression {
   let rv = expr;
-  const listMatcher = /\[[^\[\]]*\]/g;
+  const listMatcher = /\[[^[\]]*\]/g;
   let match: RegExpMatchArray | null;
   while ((match = listMatcher.exec(expr)) != null) {
     const list = match[0];

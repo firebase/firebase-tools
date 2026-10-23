@@ -30,7 +30,6 @@ module.exports = {
         ],
       },
     ],
-    "no-useless-escape": "warn", // TODO(bkendall): remove, allow to error.
   },
   overrides: [
     {
