@@ -30,7 +30,7 @@ export async function writeToManifest(
   specs: ManifestInstanceSpec[],
   config: Config,
   options: { nonInteractive: boolean; force: boolean },
-  allowOverwrite: boolean = false,
+  allowOverwrite = false,
 ): Promise<void> {
   if (
     config.has("extensions") &&
