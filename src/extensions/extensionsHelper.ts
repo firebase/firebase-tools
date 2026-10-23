@@ -97,7 +97,7 @@ export const resourceTypeToNiceName: Record<string, string> = {
   "firebaseextensions.v1beta.function": "Cloud Function",
 };
 export type ReleaseStage = "alpha" | "beta" | "rc" | "stable";
-const repoRegex = new RegExp(`^https:\/\/github\.com\/[^\/]+\/[^\/]+$`);
+const repoRegex = new RegExp(`^https://github.com/[^/]+/[^/]+$`);
 const stageOptions = ["rc", "alpha", "beta", "stable"];
 
 /**
@@ -403,7 +403,7 @@ export function validateSpec(spec: any) {
 export async function promptForValidInstanceId(instanceId: string): Promise<string> {
   let instanceIdIsValid = false;
   let newInstanceId = "";
-  const instanceIdRegex = /^[a-z][a-z\d\-]*[a-z\d]$/;
+  const instanceIdRegex = /^[a-z][a-z\d-]*[a-z\d]$/;
   while (!instanceIdIsValid) {
     newInstanceId = await input({
       default: instanceId,

@@ -119,7 +119,7 @@ export function getUsedProducts(spec: ExtensionSpec): DeferredProduct[] {
  * Parses out trigger eventType from the propertiesYaml.
  */
 function getTriggerType(propertiesYaml: string | undefined) {
-  return propertiesYaml?.match(/eventType:\ ([\S]+)/)?.[1];
+  return propertiesYaml?.match(/eventType: ([\S]+)/)?.[1];
 }
 
 async function isStorageProvisioned(projectId: string): Promise<boolean> {

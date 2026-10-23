@@ -44,7 +44,7 @@ import { NPM_COMMAND_TIMEOUT_MILLIES } from "../constants";
 import { execSync } from "child_process";
 import { FirebaseError } from "../../error";
 
-export const I18N_SOURCE = /\/:nextInternalLocale(\([^\)]+\))?/;
+export const I18N_SOURCE = /\/:nextInternalLocale(\([^)]+\))?/;
 
 /**
  * Remove escaping from characters used for Regex patch matching that Next.js
