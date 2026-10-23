@@ -2,21 +2,18 @@ import * as semver from "semver";
 
 import { FirebaseError } from "../error";
 import * as extensionsApi from "./extensionsApi";
-import { ExtensionSource } from "./types";
 import { isLocalOrURLPath } from "./extensionsHelper";
 
 /**
  * @param projectId Id of the project containing the instance to update
  * @param instanceId Id of the instance to update
  * @param extRef Extension reference
- * @param source An ExtensionSource to update to (if extRef is not passed in)
  * @param params Actual fields to update
  */
 
 export interface UpdateOptions {
   projectId: string;
   instanceId: string;
-  source?: ExtensionSource;
   extRef?: string;
   params?: { [key: string]: string };
   systemParams?: { [key: string]: string };
@@ -26,7 +23,7 @@ export interface UpdateOptions {
 }
 
 /**
- * Performs all the work to fully update a extensionInstance
+ * Performs all the work to fully update an extension instance
  * Checks if billing is required,
  * adds any newly required roles from the associated service account,
  * removes any roles that are no longer needed,
@@ -37,7 +34,6 @@ export async function update(updateOptions: UpdateOptions): Promise<any> {
   const {
     projectId,
     instanceId,
-    source,
     extRef,
     params,
     systemParams,
@@ -56,20 +52,9 @@ export async function update(updateOptions: UpdateOptions): Promise<any> {
       allowedEventTypes,
       eventarcChannel,
     });
-  } else if (source) {
-    return await extensionsApi.updateInstance({
-      projectId,
-      instanceId,
-      extensionSource: source,
-      params,
-      systemParams,
-      canEmitEvents,
-      allowedEventTypes,
-      eventarcChannel,
-    });
   }
   throw new FirebaseError(
-    `Neither a source nor a version of the extension was supplied for ${instanceId}. Please make sure this is a valid extension and try again.`,
+    `A version of the extension was not supplied for ${instanceId}. Please make sure this is a valid extension and try again.`,
   );
 }
 
