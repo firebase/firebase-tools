@@ -14,6 +14,7 @@ module.exports = {
   rules: {
     "jsdoc/newline-after-description": "off",
     "jsdoc/require-jsdoc": ["warn", { publicOnly: true }],
+    "no-constant-condition": ["error", { checkLoops: false }], // Allow intentional `while (true)` and `do ... while (true)` loops.
     "no-restricted-globals": ["error", "name", "length"],
     "prefer-arrow-callback": "error",
     "prettier/prettier": "error",
@@ -30,7 +31,6 @@ module.exports = {
         ],
       },
     ],
-    "no-constant-condition": ["error", { checkLoops: false }], // Allow intentional `while (true)` polling/retry loops.
     "no-useless-escape": "warn", // TODO(bkendall): remove, allow to error.
   },
   overrides: [
