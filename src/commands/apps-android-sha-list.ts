@@ -27,7 +27,7 @@ function logCertificatesList(certificates: AppAndroidShaData[]): void {
   logger.info(table.toString());
 }
 
-function logCertificatesCount(count: number = 0): void {
+function logCertificatesCount(count = 0): void {
   if (count === 0) {
     return;
   }
@@ -38,7 +38,7 @@ function logCertificatesCount(count: number = 0): void {
 export const command = new Command("apps:android:sha:list <appId>")
   .description("list the SHA certificate hashes for a given app id")
   .before(requireAuth)
-  .action(async (appId: string = "", options: any): Promise<AppAndroidShaData[]> => {
+  .action(async (appId: string, options: any): Promise<AppAndroidShaData[]> => {
     const projectId = needProjectId(options);
 
     const shaCertificates = await promiseWithSpinner<AppAndroidShaData[]>(
