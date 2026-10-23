@@ -38,8 +38,7 @@ function logCertificatesCount(count = 0): void {
 export const command = new Command("apps:android:sha:list <appId>")
   .description("list the SHA certificate hashes for a given app id")
   .before(requireAuth)
-  // eslint-disable-next-line @typescript-eslint/no-inferrable-types -- Command.action's contextual param type is `any`; keep `string`.
-  .action(async (appId: string = "", options: any): Promise<AppAndroidShaData[]> => {
+  .action(async (appId: string, options: any): Promise<AppAndroidShaData[]> => {
     const projectId = needProjectId(options);
 
     const shaCertificates = await promiseWithSpinner<AppAndroidShaData[]>(

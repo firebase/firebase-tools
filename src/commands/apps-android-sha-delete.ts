@@ -9,8 +9,7 @@ import { promiseWithSpinner } from "../utils";
 export const command = new Command("apps:android:sha:delete <appId> <shaId>")
   .description("delete a SHA certificate hash for a given app id")
   .before(requireAuth)
-  // eslint-disable-next-line @typescript-eslint/no-inferrable-types -- Command.action's contextual param type is `any`; keep `string`.
-  .action(async (appId: string = "", shaId: string = "", options: any): Promise<void> => {
+  .action(async (appId: string, shaId: string, options: any): Promise<void> => {
     const projectId = needProjectId(options);
 
     await promiseWithSpinner<void>(
