@@ -1,10 +1,13 @@
 import { expect } from "chai";
+import * as sinon from "sinon";
 import nock from "../test/helpers/nock";
 
 import * as cloudfunctionsv2 from "./cloudfunctionsv2";
 import * as backend from "../deploy/functions/backend";
 import * as events from "../functions/events";
 import * as projectConfig from "../functions/projectConfig";
+import * as utils from "../utils";
+import { logger } from "../logger";
 import { BLOCKING_LABEL, CODEBASE_LABEL, HASH_LABEL } from "../functions/constants";
 import { functionsV2Origin } from "../api";
 
@@ -904,6 +907,11 @@ describe("cloudfunctionsv2", () => {
   });
 
   describe("createFunction", () => {
+    afterEach(() => {
+      sinon.restore();
+      nock.cleanAll();
+    });
+
     it("should set default environment variables", async () => {
       const testFunction = {
         ...CLOUD_FUNCTION_V2,
@@ -940,9 +948,147 @@ describe("cloudfunctionsv2", () => {
       await cloudfunctionsv2.createFunction(testFunction);
       expect(scope.isDone()).to.be.true;
     });
+
+    it("logs service account propagation errors at debug level without warning banners", async () => {
+      const warnSpy = sinon.spy(utils, "logLabeledWarning");
+      const debugSpy = sinon.spy(logger, "debug");
+      const scope = nock(functionsV2Origin())
+        .post("/v2/projects/project/locations/region/functions")
+        .query({ functionId: "id" })
+        .reply(404, {
+          error: {
+            message:
+              "Service account projects/-/serviceAccounts/firebase-fn-101@project.iam.gserviceaccount.com was not found.",
+          },
+        });
+
+      await expect(
+        cloudfunctionsv2.createFunction({
+          ...CLOUD_FUNCTION_V2,
+          buildConfig: { ...CLOUD_FUNCTION_V2.buildConfig },
+          serviceConfig: { ...CLOUD_FUNCTION_V2.serviceConfig },
+        }),
+      ).to.eventually.be.rejectedWith(
+        "Service account projects/-/serviceAccounts/firebase-fn-101@project.iam.gserviceaccount.com was not found.",
+      );
+      expect(warnSpy.called).to.be.false;
+      expect(debugSpy.calledWith(sinon.match("Waiting for service account propagation"))).to.be
+        .true;
+      expect(scope.isDone()).to.be.true;
+    });
+
+    it("suppresses warnings for 400 Eventarc and 403 Cloud Run service account propagation errors", async () => {
+      const warnSpy = sinon.spy(utils, "logLabeledWarning");
+      const debugSpy = sinon.spy(logger, "debug");
+      const scope400 = nock(functionsV2Origin())
+        .post("/v2/projects/project/locations/region/functions")
+        .query({ functionId: "id" })
+        .reply(400, {
+          error: {
+            message:
+              "The request was invalid: invalid service account firebase-fn-102@project.iam.gserviceaccount.com provided",
+          },
+        });
+      const scope403 = nock(functionsV2Origin())
+        .post("/v2/projects/project/locations/region/functions")
+        .query({ functionId: "id" })
+        .reply(403, {
+          error: {
+            message:
+              "Permission 'iam.serviceaccounts.actAs' denied on service account firebase-fn-103@project.iam.gserviceaccount.com (or it may not exist).",
+          },
+        });
+
+      await expect(
+        cloudfunctionsv2.createFunction({
+          ...CLOUD_FUNCTION_V2,
+          buildConfig: { ...CLOUD_FUNCTION_V2.buildConfig },
+          serviceConfig: { ...CLOUD_FUNCTION_V2.serviceConfig },
+        }),
+      ).to.eventually.be.rejectedWith(
+        "invalid service account firebase-fn-102@project.iam.gserviceaccount.com provided",
+      );
+      await expect(
+        cloudfunctionsv2.createFunction({
+          ...CLOUD_FUNCTION_V2,
+          buildConfig: { ...CLOUD_FUNCTION_V2.buildConfig },
+          serviceConfig: { ...CLOUD_FUNCTION_V2.serviceConfig },
+        }),
+      ).to.eventually.be.rejectedWith(
+        "Permission 'iam.serviceaccounts.actAs' denied on service account firebase-fn-103@project.iam.gserviceaccount.com (or it may not exist).",
+      );
+      expect(warnSpy.called).to.be.false;
+      expect(
+        debugSpy.calledWith(
+          sinon.match(
+            "Waiting for service account propagation while trying to create projects/project/locations/region/functions/id",
+          ),
+        ),
+      ).to.be.true;
+      expect(scope400.isDone()).to.be.true;
+      expect(scope403.isDone()).to.be.true;
+    });
+
+    it("logs warning banners when 404 is for a non-managed service account", async () => {
+      const warnSpy = sinon.spy(utils, "logLabeledWarning");
+      const debugSpy = sinon.spy(logger, "debug");
+      const scope = nock(functionsV2Origin())
+        .post("/v2/projects/project/locations/region/functions")
+        .query({ functionId: "id" })
+        .reply(404, {
+          error: {
+            message:
+              "Service account projects/-/serviceAccounts/custom-sa@project.iam.gserviceaccount.com was not found.",
+          },
+        });
+
+      await expect(
+        cloudfunctionsv2.createFunction({
+          ...CLOUD_FUNCTION_V2,
+          buildConfig: { ...CLOUD_FUNCTION_V2.buildConfig },
+          serviceConfig: { ...CLOUD_FUNCTION_V2.serviceConfig },
+        }),
+      ).to.eventually.be.rejectedWith(
+        /^Failed to create function projects\/project\/locations\/region\/functions\/id$/,
+      );
+      expect(warnSpy.callCount).to.equal(2);
+      expect(warnSpy.firstCall.args[1]).to.include(
+        "Service account projects/-/serviceAccounts/custom-sa@project.iam.gserviceaccount.com was not found.",
+      );
+      expect(warnSpy.secondCall.args[1]).to.equal(
+        "failed to create function projects/project/locations/region/functions/id",
+      );
+      expect(debugSpy.calledWith(sinon.match("Waiting for service account propagation"))).to.be
+        .false;
+      expect(scope.isDone()).to.be.true;
+    });
+
+    it("logs only Waiting to retry warning on 429 Quota Exceeded", async () => {
+      const warnSpy = sinon.spy(utils, "logLabeledWarning");
+      const scope = nock(functionsV2Origin())
+        .post("/v2/projects/project/locations/region/functions")
+        .query({ functionId: "id" })
+        .reply(429, { error: { message: "Quota exceeded" } });
+
+      await expect(
+        cloudfunctionsv2.createFunction({
+          ...CLOUD_FUNCTION_V2,
+          buildConfig: { ...CLOUD_FUNCTION_V2.buildConfig },
+          serviceConfig: { ...CLOUD_FUNCTION_V2.serviceConfig },
+        }),
+      ).to.eventually.be.rejectedWith("Quota exceeded");
+      expect(warnSpy.callCount).to.equal(1);
+      expect(warnSpy.firstCall.args[1]).to.include("Waiting to retry...");
+      expect(scope.isDone()).to.be.true;
+    });
   });
 
   describe("updateFunction", () => {
+    afterEach(() => {
+      sinon.restore();
+      nock.cleanAll();
+    });
+
     it("should set default environment variables", async () => {
       const scope = nock(functionsV2Origin())
         .patch("/v2/projects/project/locations/region/functions/id", (body) => {
@@ -964,6 +1110,39 @@ describe("cloudfunctionsv2", () => {
         .reply(200, { name: "operations/123", done: true });
 
       await cloudfunctionsv2.updateFunction(CLOUD_FUNCTION_V2);
+      expect(scope.isDone()).to.be.true;
+    });
+
+    it("logs service account propagation errors at debug level without warning banners on update", async () => {
+      const warnSpy = sinon.spy(utils, "logLabeledWarning");
+      const debugSpy = sinon.spy(logger, "debug");
+      const scope = nock(functionsV2Origin())
+        .patch("/v2/projects/project/locations/region/functions/id")
+        .query(true)
+        .reply(403, {
+          error: {
+            message:
+              "Permission 'iam.serviceaccounts.actAs' denied on service account firebase-fn-104@project.iam.gserviceaccount.com (or it may not exist).",
+          },
+        });
+
+      await expect(
+        cloudfunctionsv2.updateFunction({
+          ...CLOUD_FUNCTION_V2,
+          buildConfig: { ...CLOUD_FUNCTION_V2.buildConfig },
+          serviceConfig: { ...CLOUD_FUNCTION_V2.serviceConfig },
+        }),
+      ).to.eventually.be.rejectedWith(
+        "Permission 'iam.serviceaccounts.actAs' denied on service account firebase-fn-104@project.iam.gserviceaccount.com (or it may not exist).",
+      );
+      expect(warnSpy.called).to.be.false;
+      expect(
+        debugSpy.calledWith(
+          sinon.match(
+            "Waiting for service account propagation while trying to update projects/project/locations/region/functions/id",
+          ),
+        ),
+      ).to.be.true;
       expect(scope.isDone()).to.be.true;
     });
   });
