@@ -1,2 +1,3 @@
 - Updated chokidar dependency to ^4.0.3 to remove vulnerable braces dependency (#11308).
+- Fixed Hosting shutdown leaving earlier sites running when serving multiple sites.
 - Fixed an issue where the Firebase MCP server referred to `update_firebase_environment` instead of `firebase_update_environment`.
