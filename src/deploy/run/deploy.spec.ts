@@ -56,10 +56,7 @@ describe("run deploy", () => {
   it("uploads the source, builds it, and creates a public service", async () => {
     const svc = await deployOne({ config: web, baseImage: NODEJS22 });
 
-    expect(createArchiveStub).to.have.been.calledWithMatch(
-      { backendId: "web" },
-      "/project/apps/web",
-    );
+    expect(createArchiveStub).to.have.been.calledWithMatch({ backendId: "web" }, "/project");
     expect(submitBuildStub).to.have.been.calledWithMatch("my-project", "us-central1", {
       storageSource: { bucket: "source-bucket", object: "web.zip" },
       imageUri: image,
@@ -71,6 +68,23 @@ describe("run deploy", () => {
       ingress: "INGRESS_TRAFFIC_ALL",
     });
     expect(svc.deployed).to.deep.equal({ uri: "https://web.run.app" });
+  });
+
+  it("uploads the whole project and tells the buildpacks which folder is the app", async () => {
+    await deployOne({ config: web });
+
+    // Like App Hosting, so an app in a monorepo has the monorepo's lockfile and shared packages.
+    expect(createArchiveStub).to.have.been.calledWithMatch({ backendId: "web" }, "/project");
+    const { environmentVariables } = submitBuildStub.firstCall.args[2].buildpackBuild;
+    expect(environmentVariables).to.include({ GOOGLE_BUILDABLE: "apps/web" });
+  });
+
+  it("doesn't set GOOGLE_BUILDABLE for an app at the project's root", async () => {
+    await deployOne({ config: { ...web, rootDir: "." } });
+
+    expect(createArchiveStub).to.have.been.calledWithMatch({ backendId: "web" }, "/project");
+    const { environmentVariables } = submitBuildStub.firstCall.args[2].buildpackBuild;
+    expect(environmentVariables).not.to.have.property("GOOGLE_BUILDABLE");
   });
 
   it("builds without a base image if the service doesn't have one", async () => {
