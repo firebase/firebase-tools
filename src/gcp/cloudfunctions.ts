@@ -3,6 +3,7 @@ import * as clc from "colorette";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import * as backend from "../deploy/functions/backend";
+import * as build from "../deploy/functions/build";
 import * as utils from "../utils";
 import * as proto from "./proto";
 import * as supported from "../deploy/functions/runtimes/supported";
@@ -18,6 +19,8 @@ import {
   CODEBASE_LABEL,
   HASH_LABEL,
 } from "../functions/constants";
+import * as tf from "../functions/iac/terraform";
+import { assertExhaustive } from "../functional";
 
 export const API_VERSION = "v1";
 const client = new Client({ urlPrefix: functionsOrigin(), apiVersion: API_VERSION });
@@ -156,7 +159,7 @@ export function captureRuntimeValidationError(errMessage: string): string {
   //     runtime: Runtime validation errors: [error_code: INVALID_RUNTIME\n
   //     message: \"Runtime \\\"nodejs22\\\" is not supported on GCF Gen1\"\n]`
   const regex = /message: "((?:\\.|[^"\\])*)"/;
-  const match = errMessage.match(regex);
+  const match = regex.exec(errMessage);
   if (match && match[1]) {
     // The captured string may still contain escaped quotes (e.g., \\").
     // This replaces them with a standard double quote.
@@ -737,4 +740,213 @@ export function functionFromEndpoint(
     };
   }
   return gcfFunction;
+}
+
+/**
+ * Create Terraform resource blocks for all resources associated with a Cloud Function.
+ * Assumes source information provided upstream.
+ * See: https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/cloudfunctions_function
+ */
+// Missing types: Tasks, Schedules, IAM roles
+// Field support for region (cannot know if it's a list or string without access to the params block)
+// NOTE: Do we have ABIU in firebase-functions? Think that's only App Hosting. Leaving update policy as default for now.
+// NOTE:  I think we might have to do a lot of resolving that Build normally does? E.g. resource names?
+export function terraformFromEndpoint(
+  id: string,
+  endpoint: build.Endpoint,
+  bucket: tf.Expression,
+  archive: tf.Expression,
+): tf.Block[] {
+  if (endpoint.platform !== "gcfv1") {
+    throw new FirebaseError(
+      `Cannot create 1st gen function terraform for endpoint ${id} with platform ${endpoint.platform}`,
+      { exit: 1 },
+    );
+  }
+  if (!endpoint.runtime || !supported.isRuntime(endpoint.runtime)) {
+    throw new FirebaseError(
+      `Cannot create 1st gen function terraform for endpoint ${id} with invalid runtime ${endpoint.runtime}`,
+      { exit: 1 },
+    );
+  }
+
+  const compute = functionTerraform(id, endpoint, bucket, archive);
+  const permissions = invokerTerraform(id, endpoint);
+  return [
+    compute,
+    ...(permissions ? [permissions] : []),
+    // TODO: advanced triggers
+  ];
+}
+
+// Exported just for testing.
+/**
+ * Create a Terraform resource block for a Cloud Function.
+ */
+export function functionTerraform(
+  id: string,
+  endpoint: build.Endpoint,
+  bucket: tf.Expression,
+  archive: tf.Expression,
+): tf.Block {
+  const nestedBlocks: tf.Block[] = [];
+  const attributes: Record<string, tf.Value> = {
+    name: tf.expr(`var.extension_id == null ? "${id}" : "ext-\${var.extension_id}-${id}"`),
+    runtime: endpoint.runtime,
+    project: tf.expr("var.project"),
+    source_archive_bucket: bucket,
+    source_archive_object: archive,
+    docker_repository: "ARTIFACT_REGISTRY",
+  };
+
+  let regionValue: tf.Value;
+  if (typeof endpoint.region === "string") {
+    regionValue = endpoint.region;
+  } else if (!endpoint.region || endpoint.region.length === 0) {
+    regionValue = tf.expr("var.location");
+  } else if (endpoint.region.length === 1) {
+    regionValue = endpoint.region[0];
+  } else {
+    attributes["for_each"] = tf.expr(`toset(${JSON.stringify(endpoint.region)})`);
+    regionValue = tf.expr("each.value");
+  }
+  attributes["region"] = regionValue;
+
+  tf.copyField(attributes, endpoint, "entryPoint");
+  tf.copyField(attributes, endpoint, "availableMemoryMb");
+  tf.copyField(attributes, endpoint, "minInstances");
+  tf.copyField(attributes, endpoint, "maxInstances");
+
+  tf.renameField(attributes, endpoint, "timeout", "timeoutSeconds");
+  tf.renameField(
+    attributes,
+    endpoint,
+    "service_account_email",
+    "serviceAccount",
+    tf.serviceAccount,
+  );
+
+  // Nit: I could make copyField do this correctly, but the type decls get even more ugly
+  if (endpoint.environmentVariables) {
+    attributes["environment_variables"] = endpoint.environmentVariables;
+  }
+  if (endpoint.secretEnvironmentVariables) {
+    attributes["secret_environment_variables"] = endpoint.secretEnvironmentVariables.map(
+      (secret) => {
+        return {
+          key: secret.key,
+          secret: secret.secret,
+          project: tf.expr("var.project"),
+          // TODO: Where does this get resolved normally?
+          version: "latest",
+        };
+      },
+    );
+  }
+  if (endpoint.vpc) {
+    if (typeof endpoint.vpc.connector === "string") {
+      const connector = endpoint.vpc.connector;
+      if (connector.includes("/")) {
+        attributes["vpc_connector"] = connector;
+      } else {
+        const regionString =
+          typeof regionValue === "string" ? regionValue : `\${${regionValue.value}}`;
+        attributes["vpc_connector"] =
+          `projects/\${var.project}/locations/${regionString}/connectors/${connector}`;
+      }
+    }
+    tf.renameField(attributes, endpoint.vpc, "vpc_connector_egress_settings", "egressSettings");
+  }
+
+  // TODO: codebase label, deployment tool label (or some general extensions-y thing)
+  attributes.labels = {
+    ...endpoint.labels,
+  };
+
+  if (build.isHttpsTriggered(endpoint) || build.isCallableTriggered(endpoint)) {
+    attributes["https_trigger_security_level"] = "SECURE_ALWAYS";
+    attributes["trigger_http"] = true;
+    if (build.isCallableTriggered(endpoint)) {
+      attributes["labels"]["deployment-callable"] = "true";
+      // Note: Genkit callables are only v2
+    }
+  } else if (build.isEventTriggered(endpoint)) {
+    if (typeof endpoint.eventTrigger.retry === "string") {
+      throw new FirebaseError("Cannot have a parameterized retry policy in terraform yet", {
+        exit: 1,
+      });
+    }
+    nestedBlocks.push({
+      type: "event_trigger",
+      attributes: {
+        event_type: endpoint.eventTrigger.eventType,
+        // V1 always uses "resource" as its event filter and it is always required.
+        resource: endpoint.eventTrigger.eventFilters!.resource!,
+        // TODO: Failure policy
+      },
+    });
+  } else if (build.isScheduleTriggered(endpoint)) {
+    throw new FirebaseError("Scheduled functions are not supported in terraform yet", { exit: 1 });
+  } else if (build.isTaskQueueTriggered(endpoint)) {
+    throw new FirebaseError("Task queue functions are not supported in terraform yet", { exit: 1 });
+  } else if (build.isBlockingTriggered(endpoint)) {
+    throw new FirebaseError("Blocking functions are not supported in terraform yet", { exit: 1 });
+  } else if (build.isDataConnectGraphqlTriggered(endpoint)) {
+    throw new FirebaseError("Data connector functions are not supported in terraform yet", {
+      exit: 1,
+    });
+  } else {
+    // There is no valid endpoint because we've handled every valid trigger type before this.
+    assertExhaustive(endpoint);
+  }
+
+  return {
+    type: "resource",
+    labels: ["google_cloudfunctions_function", utils.toLowerSnakeCase(id)],
+    attributes,
+    nestedBlocks: nestedBlocks.length > 0 ? nestedBlocks : undefined,
+  };
+}
+
+/**
+ * Create a Terraform IAM binding block for a Cloud Function invoker.
+ */
+export function invokerTerraform(id: string, endpoint: build.Endpoint): tf.Block | null {
+  if (!build.isCallableTriggered(endpoint) && !build.isHttpsTriggered(endpoint)) {
+    return null;
+  }
+
+  // NOTE: This logic basically has to be redone in Terraform as an HCL expression as well for variables.
+  // Should I just make that the way all the time?
+  const members =
+    build.isCallableTriggered(endpoint) ||
+    !endpoint.httpsTrigger.invoker ||
+    endpoint.httpsTrigger.invoker.includes("public")
+      ? ["allUsers"]
+      : endpoint.httpsTrigger.invoker?.includes("private")
+        ? []
+        : endpoint.httpsTrigger.invoker?.map((sa) => `serviceAccount:${tf.serviceAccount(sa)}`);
+
+  const resourceName = utils.toLowerSnakeCase(id);
+  const attributes: Record<string, tf.Value> = {
+    role: "roles/cloudfunctions.invoker",
+    members: members,
+  };
+
+  if (Array.isArray(endpoint.region) && endpoint.region.length > 1) {
+    attributes["for_each"] = tf.expr(`google_cloudfunctions_function.${resourceName}`);
+    attributes["cloud_function"] = tf.expr("each.value.name");
+    attributes["region"] = tf.expr("each.value.region");
+    attributes["project"] = tf.expr("each.value.project");
+  } else {
+    attributes["cloud_function"] = tf.expr(`google_cloudfunctions_function.${resourceName}.name`);
+    attributes["region"] = tf.expr(`google_cloudfunctions_function.${resourceName}.region`);
+    attributes["project"] = tf.expr(`google_cloudfunctions_function.${resourceName}.project`);
+  }
+
+  return {
+    type: "resource",
+    labels: ["google_cloudfunctions_function_iam_binding", resourceName],
+    attributes,
+  };
 }
