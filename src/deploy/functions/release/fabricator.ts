@@ -806,8 +806,11 @@ export class Fabricator {
       invoker = ["public"];
     }
     if (invoker) {
+      const invokerUpdate = invoker;
       await this.executor
-        .run(() => gcf.setInvokerUpdate(endpoint.project, backend.functionName(endpoint), invoker!))
+        .run(() =>
+          gcf.setInvokerUpdate(endpoint.project, backend.functionName(endpoint), invokerUpdate),
+        )
         .catch(rethrowAs(endpoint, "set invoker"));
     }
   }
@@ -897,8 +900,9 @@ export class Fabricator {
     }
 
     if (invoker) {
+      const invokerUpdate = invoker;
       await this.executor
-        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!))
+        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invokerUpdate))
         .catch(rethrowAs(endpoint, "set invoker"));
     }
   }
@@ -1029,8 +1033,9 @@ export class Fabricator {
     }
 
     if (invoker) {
+      const invokerUpdate = invoker;
       await this.executor
-        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!))
+        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invokerUpdate))
         .catch(rethrowAs(endpoint, "set invoker"));
     }
   }
