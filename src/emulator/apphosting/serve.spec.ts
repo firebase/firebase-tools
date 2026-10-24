@@ -94,17 +94,27 @@ describe("serve", () => {
       expect(spawnWithCommandStringStub.getCall(0).args[0]).to.eq(startCommand + " --port 5002");
     });
 
-    it("should reject the custom command if a port is specified", async () => {
-      const startCommand = "ng serve --port 5004";
+    it("should allow custom command with port specified and show warning", async () => {
+      const startCommand = "npm run dev -- --port 5004";
       checkListenableStub.onFirstCall().returns(true);
       configsStub.getLocalAppHostingConfiguration.resolves(AppHostingYamlConfig.empty());
 
-      await expect(serve.start({ startCommand })).to.be.rejectedWith(
-        FirebaseError,
-        /Specifying a port in the start command is not supported by the apphosting emulator/,
-      );
+      await serve.start({ startCommand });
 
-      expect(spawnWithCommandStringStub).to.not.be.called;
+      expect(spawnWithCommandStringStub).to.be.called;
+      expect(spawnWithCommandStringStub.getCall(0).args[0]).to.eq(startCommand);
+      // Should log a warning about port mismatch
+    });
+
+    it("should not add port to ng serve if already specified", async () => {
+      const startCommand = "ng serve --port 5002";
+      checkListenableStub.onFirstCall().returns(true);
+      configsStub.getLocalAppHostingConfiguration.resolves(AppHostingYamlConfig.empty());
+
+      await serve.start({ startCommand });
+
+      expect(spawnWithCommandStringStub).to.be.called;
+      expect(spawnWithCommandStringStub.getCall(0).args[0]).to.eq(startCommand);
     });
 
     it("Should pass plaintext environment variables", async () => {
