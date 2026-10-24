@@ -238,7 +238,10 @@ export async function pruneSecrets(
   const prunedSecrets: Set<string> = new Set();
 
   // Collect all Firebase managed secret versions
-  const haveSecrets = await listSecrets(projectId, `labels.${FIREBASE_MANAGED}=true`);
+  const haveSecrets = await listSecrets(
+    projectId,
+    `labels.${FIREBASE_MANAGED}=true OR labels.${FIREBASE_MANAGED}=functions`,
+  );
   for (const secret of haveSecrets) {
     const versions = await listSecretVersions(projectId, secret.name, `NOT state: DESTROYED`);
     for (const version of versions) {
