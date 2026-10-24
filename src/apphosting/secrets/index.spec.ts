@@ -28,6 +28,12 @@ describe("secrets", () => {
     gcsm.labels.restore();
     gcsm.getIamPolicy.throws("Unexpected getIamPolicy call");
     gcsm.setIamPolicy.throws("Unexpected setIamPolicy call");
+    // Unstubbed, this reaches the Compute API over the network and races mocha's 2s
+    // timeout. The fake derives the address from its argument so the tests still pin
+    // that the project number is passed through.
+    sinon
+      .stub(gce, "getDefaultServiceAccount")
+      .callsFake((pn: string) => Promise.resolve(`${pn}-compute@developer.gserviceaccount.com`));
   });
 
   afterEach(() => {
@@ -49,7 +55,7 @@ describe("secrets", () => {
       const backend = {} as any as apphosting.Backend;
       expect(await secrets.serviceAccountsForBackend("number", backend)).to.deep.equal({
         buildServiceAccount: gcb.getDefaultServiceAccount("number"),
-        runServiceAccount: await gce.getDefaultServiceAccount("number"),
+        runServiceAccount: "number-compute@developer.gserviceaccount.com",
       });
     });
   });

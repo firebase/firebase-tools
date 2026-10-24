@@ -1,10 +1,12 @@
 import { expect } from "chai";
+import * as sinon from "sinon";
 import nock from "../test/helpers/nock";
 
 import { FirebaseError } from "../error";
 import * as api from "../api";
 import * as backend from "../deploy/functions/backend";
 import * as cloudscheduler from "./cloudscheduler";
+import * as gce from "./computeEngine";
 import { cloneDeep } from "../utils";
 
 const VERSION = "v1";
@@ -157,6 +159,19 @@ describe("cloudscheduler", () => {
   });
 
   describe("jobFromEndpoint", () => {
+    beforeEach(() => {
+      // Unstubbed, this reaches the Compute API over the network and each v2 endpoint
+      // test races mocha's 2s timeout. The fake derives the address from its argument
+      // so the tests still pin that jobFromEndpoint passes the project number through.
+      sinon
+        .stub(gce, "getDefaultServiceAccount")
+        .callsFake((pn: string) => Promise.resolve(`${pn}-compute@developer.gserviceaccount.com`));
+    });
+
+    afterEach(() => {
+      sinon.verifyAndRestore();
+    });
+
     const V1_ENDPOINT: backend.Endpoint = {
       platform: "gcfv1",
       id: "id",
