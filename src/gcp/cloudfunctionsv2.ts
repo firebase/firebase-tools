@@ -1,5 +1,5 @@
 import { Client, ClientVerbOptions } from "../apiv2";
-import { FirebaseError, getErrMsg } from "../error";
+import { FirebaseError, getError, getErrMsg } from "../error";
 import { functionsV2Origin } from "../api";
 import { logger } from "../logger";
 import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1";
@@ -18,7 +18,11 @@ import {
 } from "../functions/constants";
 import { RequireKeys } from "../metaprogramming";
 import { captureRuntimeValidationError } from "./cloudfunctions";
-import { isServiceAccountPropagationError } from "../deploy/functions/release/executor";
+import {
+  isQuotaExhaustion,
+  isServiceAccountPropagationError,
+  parseErrorCode,
+} from "../deploy/functions/release/executor";
 import { AI_LOGIC_EVENTS_TO_TRIGGER, AI_LOGIC_TRIGGERS_TO_EVENTS } from "./ailogic";
 import { isAILogicEvent } from "../deploy/functions/services/ailogic";
 import { mebibytes } from "./k8s";
@@ -225,14 +229,18 @@ interface GenerateUploadUrlResponse {
  * @param type Type of deployment - create, update, or delete.
  * @param err The error returned from the operation.
  */
-function functionsOpLogReject(func: InputCloudFunction, type: string, err: any): never {
+function functionsOpLogReject(
+  func: InputCloudFunction,
+  type: "create" | "update" | "delete",
+  err: unknown,
+): never {
   const errMessage = getErrMsg(err);
+  let suppressed = false;
   // Sniff for runtime validation errors and log a more user-friendly warning.
   if (errMessage.includes("Runtime validation errors")) {
     const capturedMessage = captureRuntimeValidationError(errMessage);
     utils.logLabeledWarning("functions", capturedMessage + " for function " + func.name);
-  }
-  if (errMessage.includes("maxScale may not exceed")) {
+  } else if (errMessage.includes("maxScale may not exceed")) {
     const maxInstances = func.serviceConfig.maxInstanceCount || DEFAULT_MAX_INSTANCE_COUNT;
     utils.logLabeledWarning(
       "functions",
@@ -248,10 +256,12 @@ function functionsOpLogReject(func: InputCloudFunction, type: string, err: any):
       `You can adjust the max instances value in your function's runtime options:\n\t${suggestedFix}`,
     );
   } else if (isServiceAccountPropagationError(err)) {
+    suppressed = true;
     logger.debug(
       `Waiting for service account propagation while trying to ${type} ${func.name}: ${errMessage}`,
     );
-  } else if (err?.context?.response?.statusCode === 429) {
+  } else if (isQuotaExhaustion(err)) {
+    suppressed = true;
     utils.logLabeledWarning(
       "functions",
       `Got "Quota Exceeded" error while trying to ${type} ${func.name}. Waiting to retry...`,
@@ -271,10 +281,10 @@ function functionsOpLogReject(func: InputCloudFunction, type: string, err: any):
     utils.logLabeledWarning("functions", `failed to ${type} function ${func.name}`);
   }
   throw new FirebaseError(
-    `Failed to ${type} function ${func.name}${errMessage ? `: ${errMessage}` : ""}`,
+    `Failed to ${type} function ${func.name}${suppressed && errMessage ? `: ${errMessage}` : ""}`,
     {
-      original: err,
-      status: err?.context?.response?.statusCode,
+      original: getError(err),
+      status: parseErrorCode(err),
       context: { function: func.name },
     },
   );
