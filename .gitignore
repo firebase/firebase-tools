@@ -18,7 +18,6 @@ ui-debug.log
 test_output.log
 scripts/emulator-tests/functions/index.js
 yarn.lock
-.npmrc
 .eslintcache
 *.tsbuildinfo
 
