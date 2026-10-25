@@ -154,7 +154,7 @@ export async function onboardCrashlyticsWeb(
   );
   logLabeledSuccess("crashlytics", "Crashlytics telemetry configured successfully.");
 
-  if (!experiments.isEnabled("crashlyticsWebAlerts") || options.nonInteractive) {
+  if (options.nonInteractive) {
     return { bucket, sink, config };
   }
 

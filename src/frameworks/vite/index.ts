@@ -24,7 +24,7 @@ export const DEFAULT_BUILD_SCRIPT = ["vite build", "tsc && vite build"];
 export const initViteTemplate = (template: string) => async (setup: any, config: any) =>
   await init(setup, config, template);
 
-export async function init(setup: any, config: any, baseTemplate: string = "vanilla") {
+export async function init(setup: any, config: any, baseTemplate = "vanilla") {
   const template = await select({
     default: "JavaScript",
     message: "What language would you like to use?",
@@ -93,6 +93,7 @@ export async function build(root: string, target: string) {
 
   // Downcasting as `string` as otherwise it is inferred as `readonly 'NODE_ENV'`,
   // but `env[key]` expects a non-readonly variable.
+  // eslint-disable-next-line @typescript-eslint/no-inferrable-types -- widened to `string` on purpose, see above.
   const envKey: string = "NODE_ENV";
   // Voluntarily making .env[key] not statically analyzable to avoid
   // Webpack from converting it to "development" = target;

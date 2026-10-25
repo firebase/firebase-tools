@@ -1,6 +1,5 @@
 import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
-import { AuthConfig } from "../../firebaseConfig";
 import { provisionFirebaseApp } from "../../management/provisioning/provision";
 import { AppPlatform } from "../../management/apps";
 import { FirebaseAuthInput, ProviderMode } from "../../management/provisioning/types";
@@ -9,7 +8,7 @@ import { logSuccess } from "../../utils";
 
 export async function deploy(context: any, options: Options): Promise<void> {
   const projectId = needProjectId(options);
-  const config = options.config.src.auth as AuthConfig | undefined;
+  const config = options.config.src.auth;
 
   if (!config) {
     return;
