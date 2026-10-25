@@ -190,15 +190,20 @@ export class EmulatorLogger {
           this.log("WARN", `Your function was killed because it raised an unhandled error.`);
         }
         break;
+      // Each runtime process dedupes these by href on its own, but that cache dies
+      // with the process, so a long-lived emulator re-warns about the same URL every
+      // time the worker pool starts a new runtime. WARN_ONCE keys on the rendered
+      // text, which contains the href, so every distinct URL is still reported - once
+      // per emulator session instead of once per runtime. (#4939)
       case "googleapis-network-access":
         this.log(
-          "WARN",
+          "WARN_ONCE",
           `Google API requested!\n   - URL: "${systemLog.data.href}"\n   - Be careful, this may be a production service.`,
         );
         break;
       case "unidentified-network-access":
         this.log(
-          "WARN",
+          "WARN_ONCE",
           `External network resource requested!\n   - URL: "${systemLog.data.href}"\n - Be careful, this may be a production service.`,
         );
         break;
