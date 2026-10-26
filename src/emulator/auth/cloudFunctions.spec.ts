@@ -174,6 +174,33 @@ describe("cloudFunctions", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should not send TOTP shared secrets to functions", async () => {
+      const functionsUrl = EmulatorRegistry.url(Emulators.FUNCTIONS).toString();
+      // Captures both the v1 and the v2 request.
+      const bodies: string[] = [];
+      nock(functionsUrl)
+        .post("/functions/projects/project-foo/trigger_multicast", (body) => {
+          bodies.push(JSON.stringify(body));
+          return true;
+        })
+        .twice()
+        .reply(200, {});
+
+      const cf = new AuthCloudFunction("project-foo");
+      await cf.dispatch("delete", {
+        localId: "totp-user",
+        mfaInfo: [
+          { mfaEnrollmentId: "enrollment-id", totpInfo: {}, emulatorTotpSecret: "SECRETKEY" },
+        ],
+      });
+      expect(nock.isDone()).to.be.true;
+      // The v1 payload still lists the enrollment; the v2 payload has no mfaInfo.
+      expect(bodies.some((json) => json.includes("enrollment-id"))).to.be.true;
+      for (const json of bodies) {
+        expect(json).not.to.include("SECRETKEY");
+      }
+    });
+
     it("should still dispatch v2 CloudEvent if v1 legacy dispatch fails", async () => {
       const functionsUrl = EmulatorRegistry.url(Emulators.FUNCTIONS).toString();
       nock(functionsUrl)
