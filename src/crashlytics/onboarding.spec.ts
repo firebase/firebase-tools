@@ -13,6 +13,7 @@ import * as apps from "../management/apps";
 import * as apikeys from "../gcp/apikeys";
 import * as prompt from "../prompt";
 import * as requireAuth from "../requireAuth";
+import * as cloudtrace from "../gcp/cloudtrace";
 import * as utils from "../utils";
 import { FirebaseError } from "../error";
 import { AlertType } from "./types";
@@ -21,11 +22,13 @@ describe("onboarding", () => {
   let ensureStub: sinon.SinonStub;
   let bucketStub: sinon.SinonStub;
   let sinkStub: sinon.SinonStub;
+  let provisionTraceStub: sinon.SinonStub;
   let configStub: sinon.SinonStub;
   let checkBillingStub: sinon.SinonStub;
   let getAppConfigStub: sinon.SinonStub;
   let updateAppApiKeyRestrictionStub: sinon.SinonStub;
   let logLabeledWarningStub: sinon.SinonStub;
+  let logLabeledSuccessStub: sinon.SinonStub;
   let checkboxStub: sinon.SinonStub;
   let enableAlertsStub: sinon.SinonStub;
   let requireAuthStub: sinon.SinonStub;
@@ -51,6 +54,7 @@ describe("onboarding", () => {
       destination: "dest",
       filter: "filter",
     });
+    provisionTraceStub = sinon.stub(cloudtrace, "provisionTraceStorage").resolves();
     configStub = sinon.stub(firebasetelemetry, "createOrUpdateTelemetryConfig").resolves({
       name: "projects/test-project/locations/global/configs/1-123-web-456",
       appId: "1:123:web:456",
@@ -64,6 +68,7 @@ describe("onboarding", () => {
     });
     updateAppApiKeyRestrictionStub = sinon.stub(apikeys, "updateAppApiKeyRestriction").resolves();
     logLabeledWarningStub = sinon.stub(utils, "logLabeledWarning");
+    logLabeledSuccessStub = sinon.stub(utils, "logLabeledSuccess");
     checkboxStub = sinon
       .stub(prompt, "checkbox")
       .resolves([AlertType.ALERT_TYPE_NEW_ISSUE, AlertType.ALERT_TYPE_REGRESSED_ISSUE]);
@@ -72,10 +77,8 @@ describe("onboarding", () => {
       { name: "projects/test-project/alertPolicies/222", notificationChannels: ["ch-1"] },
     ]);
     requireAuthStub = sinon.stub(requireAuth, "requireAuth").resolves("user@example.com");
-    isEnabledStub = sinon
-      .stub(experiments, "isEnabled")
-      .withArgs("crashlyticsWebAlerts")
-      .returns(true);
+    isEnabledStub = sinon.stub(experiments, "isEnabled");
+    isEnabledStub.withArgs("crashlyticsWebBreadcrumbs").returns(true);
   });
 
   afterEach(() => {
@@ -86,7 +89,36 @@ describe("onboarding", () => {
   it("should successfully onboard web app and enable selected alerts", async () => {
     const res = await onboarding.onboardCrashlyticsWeb("test-project", "1:123:web:456");
 
-    expect(ensureStub).to.have.been.calledTwice;
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      onboarding.CRASHLYTICS_TELEMETRY_SERVICE,
+      "crashlytics",
+      false,
+    );
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      onboarding.CRASHLYTICS_TELEMETRY_ADMIN_SERVICE,
+      "crashlytics",
+      false,
+    );
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      onboarding.CRASHLYTICS_SERVICE,
+      "crashlytics",
+      false,
+    );
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      onboarding.CLIENT_TELEMETRY_SERVICE,
+      "crashlytics",
+      false,
+    );
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      "cloudtrace.googleapis.com",
+      "crashlytics",
+      false,
+    );
     expect(bucketStub).to.have.been.calledWith(
       "test-project",
       "firebase-telemetry",
@@ -94,6 +126,7 @@ describe("onboarding", () => {
       true,
     );
     expect(sinkStub).to.have.been.calledOnce;
+    expect(provisionTraceStub).to.have.been.calledWith("test-project");
     expect(configStub).to.have.been.calledWith(
       "test-project",
       "1:123:web:456",
@@ -113,6 +146,10 @@ describe("onboarding", () => {
     );
     expect(res.config.enablementState).to.equal("ENABLED");
     expect(res.alertPolicies).to.have.lengthOf(2);
+    expect(logLabeledSuccessStub).to.have.been.calledWith(
+      "crashlytics",
+      "Crashlytics email alerts configured successfully.",
+    );
   });
 
   it("should use options.user.email directly when present without calling requireAuth", async () => {
@@ -140,14 +177,42 @@ describe("onboarding", () => {
     expect(res.alertPolicies).to.be.undefined;
   });
 
-  it("should skip alerting prompt and setup when crashlyticsWebAlerts experiment is disabled", async () => {
-    isEnabledStub.withArgs("crashlyticsWebAlerts").returns(false);
+  it("should skip only the Cloud Trace API enablement and storage provisioning when crashlyticsWebBreadcrumbs experiment is disabled", async () => {
+    isEnabledStub.withArgs("crashlyticsWebBreadcrumbs").returns(false);
 
-    const res = await onboarding.onboardCrashlyticsWeb("test-project", "1:123:web:456");
+    await onboarding.onboardCrashlyticsWeb("test-project", "1:123:web:456");
 
-    expect(checkboxStub).to.not.have.been.called;
-    expect(enableAlertsStub).to.not.have.been.called;
-    expect(res.alertPolicies).to.be.undefined;
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      onboarding.CRASHLYTICS_TELEMETRY_SERVICE,
+      "crashlytics",
+      false,
+    );
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      onboarding.CRASHLYTICS_TELEMETRY_ADMIN_SERVICE,
+      "crashlytics",
+      false,
+    );
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      onboarding.CRASHLYTICS_SERVICE,
+      "crashlytics",
+      false,
+    );
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      onboarding.CLIENT_TELEMETRY_SERVICE,
+      "crashlytics",
+      false,
+    );
+    expect(ensureStub).to.not.have.been.calledWith(
+      "test-project",
+      "cloudtrace.googleapis.com",
+      "crashlytics",
+      false,
+    );
+    expect(provisionTraceStub).to.not.have.been.called;
   });
 
   it("should skip alerting prompt and setup in non-interactive mode", async () => {
@@ -196,7 +261,12 @@ describe("onboarding", () => {
 
     expect(enableAlertsStub).to.have.been.calledOnce;
     expect(logLabeledWarningStub).to.have.been.calledWith("crashlytics", alertError.message);
+    expect(logLabeledSuccessStub).to.not.have.been.calledWith(
+      "crashlytics",
+      "Crashlytics email alerts configured successfully.",
+    );
     expect(res.config.enablementState).to.equal("ENABLED");
+    expect(res.alertPolicies).to.be.undefined;
   });
 
   it("should successfully onboard web app and log a warning without calling updateAppApiKeyRestriction if apiKey is missing", async () => {
@@ -206,7 +276,36 @@ describe("onboarding", () => {
 
     const res = await onboarding.onboardCrashlyticsWeb("test-project", "1:123:web:456");
 
-    expect(ensureStub).to.have.been.calledTwice;
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      onboarding.CRASHLYTICS_TELEMETRY_SERVICE,
+      "crashlytics",
+      false,
+    );
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      onboarding.CRASHLYTICS_TELEMETRY_ADMIN_SERVICE,
+      "crashlytics",
+      false,
+    );
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      onboarding.CRASHLYTICS_SERVICE,
+      "crashlytics",
+      false,
+    );
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      onboarding.CLIENT_TELEMETRY_SERVICE,
+      "crashlytics",
+      false,
+    );
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      "cloudtrace.googleapis.com",
+      "crashlytics",
+      false,
+    );
     expect(bucketStub).to.have.been.calledWith(
       "test-project",
       "firebase-telemetry",
@@ -214,6 +313,7 @@ describe("onboarding", () => {
       true,
     );
     expect(sinkStub).to.have.been.calledOnce;
+    expect(provisionTraceStub).to.have.been.calledWith("test-project");
     expect(configStub).to.have.been.calledWith(
       "test-project",
       "1:123:web:456",
@@ -236,6 +336,19 @@ describe("onboarding", () => {
     const res = await onboarding.onboardCrashlyticsWeb("test-project", "1:123:web:456");
 
     expect(updateAppApiKeyRestrictionStub).to.have.been.calledOnce;
+    expect(logLabeledWarningStub).to.have.been.calledWith("crashlytics", fakeError.message);
+    expect(res.config.enablementState).to.equal("ENABLED");
+  });
+
+  it("should successfully onboard web app and log a warning if provisionTraceStorage throws an error", async () => {
+    const fakeError = new FirebaseError(
+      "Failed to provision trace storage for project test-project",
+    );
+    provisionTraceStub.rejects(fakeError);
+
+    const res = await onboarding.onboardCrashlyticsWeb("test-project", "1:123:web:456");
+
+    expect(provisionTraceStub).to.have.been.calledOnce;
     expect(logLabeledWarningStub).to.have.been.calledWith("crashlytics", fakeError.message);
     expect(res.config.enablementState).to.equal("ENABLED");
   });
