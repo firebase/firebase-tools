@@ -64,7 +64,7 @@ class DefaultStorageRulesManager implements StorageRulesManager {
 
   async start(): Promise<StorageRulesIssues> {
     const issues = await this.loadRuleset();
-    this.updateWatcher(this._rules.name);
+    await this.updateWatcher(this._rules.name);
     return issues;
   }
 
@@ -76,38 +76,58 @@ class DefaultStorageRulesManager implements StorageRulesManager {
     await this._watcher.close();
   }
 
-  private updateWatcher(rulesFile: string): void {
-    this._watcher = chokidar
-      .watch(rulesFile, { persistent: true, ignoreInitial: true })
-      .on("change", async () => {
-        // There have been some race conditions reported (on Windows) where reading the
-        // file too quickly after the watcher fires results in an empty file being read.
-        // Adding a small delay prevents that at very little cost.
-        await new Promise((res) => setTimeout(res, 5));
-
-        // In some OSes and CI environments, chokidar can emit a 'change' event
-        // when a file is deleted or if it is a non-existent mock file (e.g. /dev/null/storage.rules).
-        // Because we are inside an async callback that is not awaited by the event emitter,
-        // any synchronous errors thrown by `readFile` will result in an UnhandledPromiseRejection,
-        // which crashes the process. We catch these errors to prevent the emulator and tests from crashing.
-        try {
-          const content = readFile(rulesFile);
-          this._rules.content = content;
-          this._logger.logLabeled(
-            "BULLET",
-            "storage",
-            "Change detected, updating rules for Cloud Storage...",
-          );
-          await this.loadRuleset();
-        } catch (e) {
-          const message = e instanceof Error ? e.message : String(e);
-          this._logger.logLabeled(
-            "DEBUG",
-            "storage",
-            `A rule file change was detected, but there was an error reading it: ${message}`,
-          );
+  private updateWatcher(rulesFile: string): Promise<void> {
+    return new Promise((resolve) => {
+      let isResolved = false;
+      const done = (): void => {
+        if (!isResolved) {
+          isResolved = true;
+          resolve();
         }
-      });
+      };
+      // Fallback timer so start() never hangs if chokidar ready event doesn't fire
+      const timer = setTimeout(done, 1000);
+
+      this._watcher = chokidar
+        .watch(rulesFile, { persistent: true, ignoreInitial: true })
+        .on("ready", () => {
+          clearTimeout(timer);
+          done();
+        })
+        .on("error", () => {
+          clearTimeout(timer);
+          done();
+        })
+        .on("change", async () => {
+          // There have been some race conditions reported (on Windows) where reading the
+          // file too quickly after the watcher fires results in an empty file being read.
+          // Adding a small delay prevents that at very little cost.
+          await new Promise((res) => setTimeout(res, 5));
+
+          // In some OSes and CI environments, chokidar can emit a 'change' event
+          // when a file is deleted or if it is a non-existent mock file (e.g. /dev/null/storage.rules).
+          // Because we are inside an async callback that is not awaited by the event emitter,
+          // any synchronous errors thrown by `readFile` will result in an UnhandledPromiseRejection,
+          // which crashes the process. We catch these errors to prevent the emulator and tests from crashing.
+          try {
+            const content = readFile(rulesFile);
+            this._rules.content = content;
+            this._logger.logLabeled(
+              "BULLET",
+              "storage",
+              "Change detected, updating rules for Cloud Storage...",
+            );
+            await this.loadRuleset();
+          } catch (e) {
+            const message = e instanceof Error ? e.message : String(e);
+            this._logger.logLabeled(
+              "DEBUG",
+              "storage",
+              `A rule file change was detected, but there was an error reading it: ${message}`,
+            );
+          }
+        });
+    });
   }
 
   private async loadRuleset(): Promise<StorageRulesIssues> {

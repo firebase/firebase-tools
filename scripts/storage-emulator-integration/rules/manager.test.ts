@@ -115,6 +115,7 @@ describe("Storage Rules Manager", () => {
           ruleset: rulesManager.getRuleset("bucket"),
           projectId: PROJECT_ID,
         })),
+      SETUP_TIMEOUT,
     );
   });
 });
