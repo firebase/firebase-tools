@@ -20,7 +20,7 @@ export async function pickHostingSiteName(
   const projectId = needProjectId(options);
   const projectNumber = await needProjectNumber(options);
   let id = siteId;
-  let nameConfirmed: boolean = false;
+  let nameConfirmed = false;
   let suggestion: string | undefined;
 
   // If we were given an ID, we're going to start with that, so don't check the project ID.
