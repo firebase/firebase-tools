@@ -5,6 +5,7 @@ import * as os from "os";
 import * as path from "path";
 import * as build from "./build";
 import * as prepare from "./prepare";
+import * as params from "./params";
 import * as experiments from "../../experiments";
 import * as runtimes from "./runtimes";
 import * as backend from "./backend";
@@ -26,6 +27,9 @@ import { ValidatedConfig } from "../../functions/projectConfig";
 import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1";
 import { latest } from "./runtimes/supported";
 import * as functionsEnv from "../../functions/env";
+import * as ensure from "./ensure";
+import * as functionsConfig from "../../functionsConfig";
+import * as args from "./args";
 
 describe("partition env helper", () => {
   it("splits a Record into two based on which keys begin with FIREBASE_SECRET_REF", () => {
@@ -630,6 +634,69 @@ describe("prepare", () => {
           expect(want.endpoints["onDocumentCreate"].region).to.deep.equal([expectedRegion]);
         });
       });
+
+      it("resolves region when database location is eur3 with parameterized database", async () => {
+        const want = build.of({
+          onDocumentCreate: {
+            platform: "gcfv2",
+            entryPoint: "entry",
+            project: "project",
+            runtime: latest("nodejs"),
+            eventTrigger: {
+              eventType: "google.cloud.firestore.document.v1.created",
+              eventFilters: { database: "{{ params.DATABASE }}" },
+              retry: false,
+            },
+            region: [build.REGION_TBD],
+          },
+        });
+        const have = backend.empty();
+        const paramValues = {
+          DATABASE: new params.ParamValue("custom-db", false, { string: true }),
+        };
+
+        getDatabaseStub.resolves({ locationId: "eur3" });
+
+        await prepare.resolveDefaultRegionsForBuild(want, have, paramValues);
+
+        const ep = want.endpoints["onDocumentCreate"];
+        expect(ep.region).to.deep.equal(["europe-west1"]);
+        expect(getDatabaseStub).to.have.been.calledWith("project", "custom-db");
+        expect(build.isEventTriggered(ep)).to.be.true;
+        if (build.isEventTriggered(ep)) {
+          expect(ep.eventTrigger.eventFilters).to.deep.equal({ database: "{{ params.DATABASE }}" });
+          expect(ep.eventTrigger.eventFilters?.database).to.equal("{{ params.DATABASE }}");
+        }
+      });
+
+      it("falls back to us-central1 if parameterized trigger database resolution fails", async () => {
+        const want = build.of({
+          onDocumentCreate: {
+            platform: "gcfv2",
+            entryPoint: "entry",
+            project: "project",
+            runtime: latest("nodejs"),
+            eventTrigger: {
+              eventType: "google.cloud.firestore.document.v1.created",
+              eventFilters: { database: "{{ params.UNDEFINED_DB }}" },
+              retry: false,
+            },
+            region: [build.REGION_TBD],
+          },
+        });
+        const have = backend.empty();
+
+        await prepare.resolveDefaultRegionsForBuild(want, have, {});
+
+        const ep = want.endpoints["onDocumentCreate"];
+        expect(ep.region).to.deep.equal(["us-central1"]);
+        expect(build.isEventTriggered(ep)).to.be.true;
+        if (build.isEventTriggered(ep)) {
+          expect(ep.eventTrigger.eventFilters).to.deep.equal({
+            database: "{{ params.UNDEFINED_DB }}",
+          });
+        }
+      });
     });
 
     describe("Storage event triggers", () => {
@@ -664,6 +731,40 @@ describe("prepare", () => {
 
           expect(want.endpoints["onArchive"].region).to.deep.equal([expectedRegion]);
         });
+      });
+
+      it("resolves region when bucket location is eu with parameterized bucket", async () => {
+        const want = build.of({
+          onArchive: {
+            platform: "gcfv2",
+            entryPoint: "entry",
+            project: "project",
+            runtime: latest("nodejs"),
+            eventTrigger: {
+              eventType: "google.cloud.storage.object.v1.archived",
+              eventFilters: { bucket: "{{ params.BUCKET }}" },
+              retry: false,
+            },
+            region: [build.REGION_TBD],
+          },
+        });
+        const have = backend.empty();
+        const paramValues = {
+          BUCKET: new params.ParamValue("custom-bucket", false, { string: true }),
+        };
+
+        getBucketStub.resolves({ location: "eu" });
+
+        await prepare.resolveDefaultRegionsForBuild(want, have, paramValues);
+
+        const ep = want.endpoints["onArchive"];
+        expect(ep.region).to.deep.equal(["europe-west1"]);
+        expect(getBucketStub).to.have.been.calledWith("custom-bucket");
+        expect(build.isEventTriggered(ep)).to.be.true;
+        if (build.isEventTriggered(ep)) {
+          expect(ep.eventTrigger.eventFilters).to.deep.equal({ bucket: "{{ params.BUCKET }}" });
+          expect(ep.eventTrigger.eventFilters?.bucket).to.equal("{{ params.BUCKET }}");
+        }
       });
     });
 
@@ -1842,6 +1943,90 @@ describe("prepare", () => {
         );
         expect(e.serviceAccount).to.be.null;
       });
+    });
+  });
+
+  describe("writeResolvedSecretRefs gating", () => {
+    let sandbox: sinon.SinonSandbox;
+    let writeResolvedSecretRefsStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      sandbox.stub(ensureApiEnabled, "ensure").resolves();
+      sandbox.stub(ensureApiEnabled, "check").resolves(false);
+      sandbox.stub(ensure, "cloudBuildEnabled").resolves();
+      sandbox.stub(functionsConfig, "getFirebaseConfig").resolves({ projectId: "test-project" });
+      sandbox.stub(backend, "existingBackend").resolves(backend.empty());
+      sandbox.stub(backend, "checkAvailability").resolves();
+      sandbox.stub(runtimes, "getRuntimeDelegate").resolves({
+        language: "nodejs",
+        runtime: latest("nodejs"),
+        bin: "node",
+        validate: sandbox.stub().resolves(),
+        build: sandbox.stub().resolves(),
+        watch: sandbox.stub().resolves(() => Promise.resolve()),
+        discoverBuild: sandbox.stub().resolves(build.empty()),
+      });
+      sandbox.stub(functionsEnv, "loadUserEnvs").returns({});
+      sandbox.stub(functionsEnv, "writeResolvedParams");
+      writeResolvedSecretRefsStub = sandbox.stub(functionsEnv, "writeResolvedSecretRefs");
+      sandbox.stub(functionsEnv, "hasUserEnvs").returns(false);
+      sandbox.stub(build, "resolveBackend").resolves({
+        backend: backend.empty(),
+        envs: {},
+        secretRefs: { MY_SECRET: "MY_SECRET:latest" },
+      });
+    });
+
+    afterEach(() => {
+      experiments.setEnabled("secretEnvParams", null);
+      experiments.setEnabled("writeDefaultSecretBindings", null);
+      sandbox.restore();
+    });
+
+    function createDeployOptions(): Options {
+      return {
+        project: "test-project",
+        projectNumber: "123456789",
+        config: {
+          src: {
+            functions: [{ source: "functions", codebase: "default" }],
+          },
+          path: (p: string) => `/mock/project/${p}`,
+          projectDir: "/mock/project",
+        },
+      } as unknown as Options;
+    }
+
+    it("writes resolved secret refs when both secretEnvParams and writeDefaultSecretBindings are enabled", async () => {
+      experiments.setEnabled("secretEnvParams", true);
+      experiments.setEnabled("writeDefaultSecretBindings", true);
+
+      await prepare.prepare({} as args.Context, createDeployOptions(), {} as args.Payload);
+
+      expect(writeResolvedSecretRefsStub).to.have.been.calledOnceWith(
+        { MY_SECRET: "MY_SECRET:latest" },
+        {},
+        sinon.match.object,
+      );
+    });
+
+    it("does not write resolved secret refs when writeDefaultSecretBindings is disabled", async () => {
+      experiments.setEnabled("secretEnvParams", true);
+      experiments.setEnabled("writeDefaultSecretBindings", false);
+
+      await prepare.prepare({} as args.Context, createDeployOptions(), {} as args.Payload);
+
+      expect(writeResolvedSecretRefsStub).to.not.have.been.called;
+    });
+
+    it("does not write resolved secret refs when secretEnvParams is disabled", async () => {
+      experiments.setEnabled("secretEnvParams", false);
+      experiments.setEnabled("writeDefaultSecretBindings", true);
+
+      await prepare.prepare({} as args.Context, createDeployOptions(), {} as args.Payload);
+
+      expect(writeResolvedSecretRefsStub).to.not.have.been.called;
     });
   });
 });

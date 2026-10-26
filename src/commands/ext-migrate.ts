@@ -137,7 +137,7 @@ export const command = new Command("ext:migrate")
     }
 
     const shouldUninstall = await confirm({
-      message: `Functions kit ${kitInstanceId} successfully deployed. After checking function logs to verify that your backend is performing correctly, you should uninstall extension instance ${plan.instanceId}. Uninstall it now?`,
+      message: `Functions kit ${kitInstanceId} successfully deployed. After checking function logs to verify that your backend is performing correctly, you should uninstall extension instance ${plan.instanceId}. It can take a few minutes for Eventarc to fully provision and new kits to react to events. Uninstall it now?`,
       default: false,
       nonInteractive: options.nonInteractive,
       force: options.force,

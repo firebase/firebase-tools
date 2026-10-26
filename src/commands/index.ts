@@ -93,6 +93,10 @@ export function load(client: CLIClient): CLIClient {
     client.crashlytics.sourcemap = {};
     client.crashlytics.sourcemap.upload = loadCommand("crashlytics-sourcemap-upload");
   }
+  client.crashlytics.heapdumps = {};
+  client.crashlytics.heapdumps.enable = loadCommand("crashlytics-heapdumps-enable");
+  client.crashlytics.heapdumps.disable = loadCommand("crashlytics-heapdumps-disable");
+  client.crashlytics.heapdumps.status = loadCommand("crashlytics-heapdumps-status");
   client.database = {};
   client.database.get = loadCommand("database-get");
   client.database.import = loadCommand("database-import");
@@ -301,6 +305,11 @@ export function load(client: CLIClient): CLIClient {
   client.remoteconfig.experiments.get = loadCommand("remoteconfig-experiments-get");
   client.remoteconfig.experiments.list = loadCommand("remoteconfig-experiments-list");
   client.remoteconfig.experiments.delete = loadCommand("remoteconfig-experiments-delete");
+  if (experiments.isEnabled("directcloudrun")) {
+    client.run = {};
+    client.run.services = {};
+    client.run.services.update = loadCommand("run-services-update");
+  }
   client.serve = loadCommand("serve");
   client.setup = {};
   client.setup.emulators = {};

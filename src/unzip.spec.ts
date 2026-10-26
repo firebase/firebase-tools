@@ -32,12 +32,14 @@ describe("isChildDir", () => {
 describe("unzip", () => {
   let tempDir: string;
 
-  before(async () => {
-    tempDir = await fs.promises.mkdtemp(path.join(tmpdir(), "firebasetest-"));
+  before(() => {
+    tempDir = fs.mkdtempSync(path.join(tmpdir(), "firebasetest-"));
   });
 
-  after(async () => {
-    await fs.promises.rm(tempDir, { recursive: true });
+  // Synchronous so the hooks cannot trip Mocha's 2s hook timeout when the
+  // runner is loaded; the extraction tests already need 10s for the same reason.
+  after(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
   for (const { name, archivePath, inflatedDir, wantErr } of ZIP_CASES) {
@@ -52,7 +54,7 @@ describe("unzip", () => {
     } else {
       it(`should throw "${wantErr}" when reading a zip file with ${name} case`, async () => {
         const unzipPath = path.join(tempDir, name);
-        expect(unzip(archivePath, unzipPath)).to.eventually.be.rejectedWith(wantErr);
+        await expect(unzip(archivePath, unzipPath)).to.eventually.be.rejectedWith(wantErr);
       });
     }
   }

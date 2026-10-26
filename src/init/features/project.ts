@@ -100,12 +100,7 @@ export async function doSetup(setup: any, config: any, options: any): Promise<vo
   }
 }
 
-async function usingProject(
-  setup: any,
-  config: any,
-  projectId: string,
-  from: string = "",
-): Promise<void> {
+async function usingProject(setup: any, config: any, projectId: string, from = ""): Promise<void> {
   const pm = await getFirebaseProject(projectId);
   const label = `${pm.projectId}` + (pm.displayName ? ` (${pm.displayName})` : "");
   utils.logBullet(`Using project ${label} ${from ? "from ${from}" : ""}.`);

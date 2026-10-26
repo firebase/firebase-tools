@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+import * as crossSpawn from "cross-spawn";
 import { FirebaseMcpServer } from "./index";
 import * as requireAuthModule from "../requireAuth";
 import * as trackModule from "../track";
@@ -118,5 +119,141 @@ describe("FirebaseMcpServer.mcpCallTool", () => {
     } as any);
 
     expect(toolFn.firstCall.args[0]).to.deep.equal({ foo: "bar" });
+  });
+});
+
+describe("FirebaseMcpServer lifecycle", () => {
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it("does not trigger project setup or feature detection on construction", () => {
+    const setupSpy = sinon.spy(FirebaseMcpServer.prototype, "detectProjectSetup");
+    const rootSpy = sinon.spy(FirebaseMcpServer.prototype, "detectProjectRoot");
+    const featuresSpy = sinon.spy(FirebaseMcpServer.prototype, "detectActiveFeatures");
+
+    new FirebaseMcpServer({});
+
+    expect(setupSpy.called).to.be.false;
+    expect(rootSpy.called).to.be.false;
+    expect(featuresSpy.called).to.be.false;
+  });
+
+  it("triggers project setup when start() is called", async () => {
+    const server = new FirebaseMcpServer({});
+    const setupStub = sinon.stub(server, "detectProjectSetup").resolves();
+    const connectStub = sinon.stub(server.server, "connect").resolves();
+
+    await server.start();
+
+    expect(setupStub.calledOnce).to.be.true;
+    expect(connectStub.calledOnce).to.be.true;
+  });
+
+  it("catches and logs a rejected detectProjectSetup() on start() without an unhandled rejection", async () => {
+    const server = new FirebaseMcpServer({});
+    const setupStub = sinon.stub(server, "detectProjectSetup").rejects(new Error("setup failure"));
+    sinon.stub(server.server, "connect").resolves();
+    const errorSpy = sinon.spy();
+    sinon.stub(server, "logger").get(() => ({
+      debug: sinon.stub(),
+      info: sinon.stub(),
+      notice: sinon.stub(),
+      warning: sinon.stub(),
+      error: errorSpy,
+      critical: sinon.stub(),
+      alert: sinon.stub(),
+      emergency: sinon.stub(),
+    }));
+
+    await server.start();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(setupStub.calledOnce).to.be.true;
+    expect(errorSpy.calledOnce).to.be.true;
+    expect(errorSpy.firstCall.args[0]).to.equal("Failed to detect project setup: setup failure");
+  });
+});
+
+describe("FirebaseMcpServer.mcpGetPrompt", () => {
+  let server: FirebaseMcpServer;
+
+  beforeEach(() => {
+    sinon.stub(FirebaseMcpServer.prototype, "detectProjectRoot").resolves("/test/project");
+    sinon.stub(FirebaseMcpServer.prototype, "detectActiveFeatures").resolves([]);
+    sinon.stub(trackModule, "trackGA4").resolves();
+
+    server = new FirebaseMcpServer({ activeFeatures: ["core"] });
+    server.clientInfo = { name: "test-client", version: "0.0.0" };
+    sinon.stub(server, "getProjectId").resolves(undefined);
+    sinon.stub(server, "getAuthenticatedUser").resolves(null);
+    sinon.stub(server as any, "safeCheckBillingEnabled").resolves(false);
+  });
+
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it("uses 'firebase' in prompt instructions and caches command across calls when CLI is present", async () => {
+    const syncStub = sinon.stub(crossSpawn, "sync").returns({
+      status: 0,
+      stdout: Buffer.from("15.34.0"),
+      stderr: Buffer.from(""),
+      output: [],
+      pid: 1234,
+      signal: null,
+    });
+
+    const res1 = await server.mcpGetPrompt({
+      method: "prompts/get",
+      params: { name: "firebase:deploy", arguments: { prompt: "deploy" } },
+    });
+    const content1 = res1.messages[0].content;
+    expect(content1.type).to.equal("text");
+    if (content1.type === "text") {
+      expect(content1.text).to.include("`firebase login`");
+    }
+    expect(syncStub.calledOnce).to.be.true;
+    expect(syncStub.firstCall.args).to.deep.equal([
+      "firebase",
+      ["--version"],
+      { timeout: 2000, stdio: "ignore" },
+    ]);
+
+    // Subsequent calls on the same server instance should reuse the cached command
+    const res2 = await server.mcpGetPrompt({
+      method: "prompts/get",
+      params: { name: "firebase:deploy", arguments: { prompt: "deploy" } },
+    });
+    const content2 = res2.messages[0].content;
+    expect(content2.type).to.equal("text");
+    if (content2.type === "text") {
+      expect(content2.text).to.include("`firebase login`");
+    }
+    expect(syncStub.calledOnce).to.be.true;
+  });
+
+  it("falls back to 'npx firebase-tools@latest' in prompt instructions when CLI check fails", async () => {
+    const err = new Error("spawn firebase ENOENT");
+    (err as any).code = "ENOENT";
+    sinon.stub(crossSpawn, "sync").returns({
+      error: err,
+      status: null,
+      stdout: Buffer.from(""),
+      stderr: Buffer.from(""),
+      output: [],
+      pid: 0,
+      signal: null,
+    });
+
+    const res = await server.mcpGetPrompt({
+      method: "prompts/get",
+      params: { name: "firebase:deploy", arguments: { prompt: "deploy" } },
+    });
+    const content = res.messages[0].content;
+    expect(content.type).to.equal("text");
+    if (content.type === "text") {
+      expect(content.text).to.include("`npx firebase-tools@latest login`");
+    }
   });
 });
