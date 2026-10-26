@@ -135,7 +135,7 @@ describe("onboarding", () => {
     );
     expect(updateAppApiKeyRestrictionStub).to.have.been.calledWith({
       apiKey: "fake-api-key-123",
-      service: onboarding.CRASHLYTICS_TELEMETRY_SERVICE,
+      service: onboarding.CLIENT_TELEMETRY_SERVICE,
     });
     expect(checkboxStub).to.have.been.calledOnce;
     expect(enableAlertsStub).to.have.been.calledOnceWith(
@@ -324,7 +324,7 @@ describe("onboarding", () => {
     expect(logLabeledWarningStub).to.have.been.calledWith(
       "crashlytics",
       `No API key found for this app. If you configure an API key later, ` +
-        `please rerun this command or manually add '${onboarding.CRASHLYTICS_TELEMETRY_SERVICE}' to its allowed APIs in the Google Cloud Console if the key is restricted.`,
+        `please rerun this command or manually add '${onboarding.CLIENT_TELEMETRY_SERVICE}' to its allowed APIs in the Google Cloud Console if the key is restricted.`,
     );
     expect(res.config.enablementState).to.equal("ENABLED");
   });
