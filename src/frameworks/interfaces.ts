@@ -46,12 +46,14 @@ export type FrameworksOptions = HostingOptions &
   Options & {
     frameworksDevModeHandle?: RequestHandler;
     nonInteractive?: boolean;
+    wasm?: boolean;
   };
 
 export type FrameworkContext = {
   projectId?: string;
   hostingChannel?: string;
   site?: string;
+  wasm?: boolean;
 };
 
 export interface Framework {
