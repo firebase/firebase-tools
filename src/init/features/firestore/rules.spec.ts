@@ -79,7 +79,7 @@ describe("firestore rules", () => {
         rulesFilename: "firestore.rules",
         rules: "",
         writeRules: false,
-        databaseId: "",
+        databaseId: "(default)",
         locationId: "",
         indexesFilename: "",
         indexes: "",
@@ -89,6 +89,52 @@ describe("firestore rules", () => {
 
       expect(getRulesetNameStub.calledOnceWith("test-project", "cloud.firestore", releases)).to.be
         .true;
+      expect(getRulesetContentStub.calledOnceWith("ruleset-name")).to.be.true;
+      expect(writeStub.calledOnceWith("firestore.rules", "console rules")).to.be.true;
+      expect(info.rules).to.equal("console rules");
+    });
+
+    it("should download rules from console for named database", async () => {
+      const databaseName = "named-database";
+      const setup: Setup = {
+        config: {},
+        rcfile: { projects: {}, targets: {}, etags: {} },
+        projectId: "test-project",
+        instructions: [],
+      };
+      const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
+      const releases: gcp.rules.Release[] = [
+        { rulesetName: "ruleset-name", name: "release-name", createTime: "", updateTime: "" },
+      ];
+      sandbox.stub(gcp.rules, "listAllReleases").resolves(releases);
+      const getRulesetNameStub = sandbox
+        .stub(gcp.rules, "getLatestRulesetName")
+        .resolves("ruleset-name");
+      const getRulesetContentStub = sandbox
+        .stub(gcp.rules, "getRulesetContent")
+        .resolves([{ name: "file.rules", content: "console rules" }]);
+      const writeStub = sandbox.stub(cfg, "confirmWriteProjectFile").resolves(true);
+
+      const info = {
+        rulesFilename: "firestore.rules",
+        rules: "",
+        writeRules: false,
+        databaseId: databaseName,
+        locationId: "",
+        indexesFilename: "",
+        indexes: "",
+        writeIndexes: false,
+      };
+      await initRules(setup, cfg, info);
+
+      expect(
+        getRulesetNameStub.calledOnceWith(
+          "test-project",
+          "cloud.firestore",
+          releases,
+          databaseName,
+        ),
+      ).to.be.true;
       expect(getRulesetContentStub.calledOnceWith("ruleset-name")).to.be.true;
       expect(writeStub.calledOnceWith("firestore.rules", "console rules")).to.be.true;
       expect(info.rules).to.equal("console rules");
