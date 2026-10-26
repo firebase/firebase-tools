@@ -4,7 +4,12 @@ import * as clc from "colorette";
 import { FirebaseError } from "../../error";
 import { getSecretVersion, SecretVersion } from "../../gcp/secretManager";
 import { logger } from "../../logger";
-import { EndpointFilter, endpointMatchesFilter, getFunctionLabel } from "./functionsDeployHelper";
+import {
+  EndpointFilter,
+  endpointMatchesFilter,
+  generationDowngradeMessage,
+  getFunctionLabel,
+} from "./functionsDeployHelper";
 import { serviceForEndpoint } from "./services";
 import * as fsutils from "../../fsutils";
 import * as backend from "./backend";
@@ -130,6 +135,30 @@ export function endpointsAreValid(
     throw new FirebaseError(msg);
   }
   cpuConfigIsValid(endpoints);
+}
+
+/**
+ * Rejects an existing gcfv2 function or Cloud Run service being redeployed as gcfv1. Runs
+ * before the source is prepared, and before inferDetailsFromExisting copies settings that
+ * are only legal on the existing generation onto the gcfv1 endpoint.
+ */
+export function noGenerationDowngrades(
+  wantBackends: Record<string, backend.Backend>,
+  existingBackend: backend.Backend,
+): void {
+  const msgs: string[] = [];
+  for (const wantBackend of Object.values(wantBackends)) {
+    for (const want of backend.allEndpoints(wantBackend).sort(backend.compareFunctions)) {
+      const have = existingBackend.endpoints[want.region]?.[want.id];
+      const msg = have && generationDowngradeMessage(want, have);
+      if (msg) {
+        msgs.push(msg);
+      }
+    }
+  }
+  if (msgs.length) {
+    throw new FirebaseError(msgs.join("\n"));
+  }
 }
 
 /**

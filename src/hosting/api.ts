@@ -266,13 +266,13 @@ const apiClient = new Client({
 
 /**
  * getChannel retrieves information about a channel.
- * @param project the project ID or number (can be provided `-`),
+ * @param project the project ID or number.
  * @param site the site for the channel.
  * @param channelId the specific channel ID.
  * @return the channel, or null if the channel is not found.
  */
 export async function getChannel(
-  project: string | number = "-",
+  project: string,
   site: string,
   channelId: string,
 ): Promise<Channel | null> {
@@ -291,13 +291,10 @@ export async function getChannel(
 
 /**
  * listChannels retrieves information about a channel.
- * @param project the project ID or number (can be provided `-`),
+ * @param project the project ID or number.
  * @param site the site for the channel.
  */
-export async function listChannels(
-  project: string | number = "-",
-  site: string,
-): Promise<Channel[]> {
+export async function listChannels(project: string, site: string): Promise<Channel[]> {
   const channels: Channel[] = [];
   let nextPageToken = "";
   for (;;) {
@@ -324,13 +321,13 @@ export async function listChannels(
 
 /**
  * Creates a Channel.
- * @param project the project ID or number (can be provided `-`),
+ * @param project the project ID or number.
  * @param site the site for the channel.
  * @param channelId the specific channel ID.
  * @param ttlMillis the duration from now to set the expireTime.
  */
 export async function createChannel(
-  project: string | number = "-",
+  project: string,
   site: string,
   channelId: string,
   ttlMillis: number = DEFAULT_DURATION,
@@ -344,13 +341,13 @@ export async function createChannel(
 
 /**
  * Updates a channel's TTL.
- * @param project the project ID or number (can be provided `-`),
+ * @param project the project ID or number.
  * @param site the site for the channel.
  * @param channelId the specific channel ID.
  * @param ttlMillis the duration from now to set the expireTime.
  */
 export async function updateChannelTtl(
-  project: string | number = "-",
+  project: string,
   site: string,
   channelId: string,
   ttlMillis: number = ONE_WEEK_MS,
@@ -365,12 +362,12 @@ export async function updateChannelTtl(
 
 /**
  * Deletes a channel.
- * @param project the project ID or number (can be provided `-`),
+ * @param project the project ID or number.
  * @param site the site for the channel.
  * @param channelId the specific channel ID.
  */
 export async function deleteChannel(
-  project: string | number = "-",
+  project: string,
   site: string,
   channelId: string,
 ): Promise<void> {
@@ -379,13 +376,17 @@ export async function deleteChannel(
 
 /**
  * Creates a version
+ * @param project the project ID or number.
+ * @param siteId the site for the version.
+ * @param version the version configuration.
  */
 export async function createVersion(
+  project: string,
   siteId: string,
   version: Omit<Version, VERSION_OUTPUT_FIELDS>,
 ): Promise<string> {
   const res = await apiClient.post<typeof version, { name: string }>(
-    `projects/-/sites/${siteId}/versions`,
+    `/projects/${project}/sites/${siteId}/versions`,
     version,
   );
   return res.body.name;
@@ -393,14 +394,19 @@ export async function createVersion(
 
 /**
  * Updates a version.
+ * @param project the project ID or number.
+ * @param site the site for the version.
+ * @param versionId the specific version ID.
+ * @param version the partial version configuration.
  */
 export async function updateVersion(
+  project: string,
   site: string,
   versionId: string,
   version: Partial<Version>,
 ): Promise<Version> {
   const res = await apiClient.patch<Partial<Version>, Version>(
-    `projects/-/sites/${site}/versions/${versionId}`,
+    `/projects/${project}/sites/${site}/versions/${versionId}`,
     version,
     {
       queryParams: {
@@ -424,8 +430,10 @@ interface ListVersionsResponse {
 
 /**
  * Get a list of all versions for a site, automatically handling pagination.
+ * @param project the project ID or number.
+ * @param site the site for the version.
  */
-export async function listVersions(site: string): Promise<Version[]> {
+export async function listVersions(project: string, site: string): Promise<Version[]> {
   let pageToken: string | undefined = undefined;
   const versions: Version[] = [];
   do {
@@ -433,9 +441,12 @@ export async function listVersions(site: string): Promise<Version[]> {
     if (pageToken) {
       queryParams.pageToken = pageToken;
     }
-    const res = await apiClient.get<ListVersionsResponse>(`projects/-/sites/${site}/versions`, {
-      queryParams,
-    });
+    const res = await apiClient.get<ListVersionsResponse>(
+      `/projects/${project}/sites/${site}/versions`,
+      {
+        queryParams,
+      },
+    );
     versions.push(...(res.body.versions ?? []));
     pageToken = res.body.nextPageToken;
   } while (pageToken);
@@ -444,11 +455,13 @@ export async function listVersions(site: string): Promise<Version[]> {
 
 /**
  * Create a version a clone.
+ * @param project the project ID or number.
  * @param site the site for the version.
  * @param versionName the specific version ID.
  * @param finalize whether or not to immediately finalize the version.
  */
 export async function cloneVersion(
+  project: string,
   site: string,
   versionName: string,
   finalize = false,
@@ -456,7 +469,7 @@ export async function cloneVersion(
   const res = await apiClient.post<
     CloneVersionRequest,
     operationPoller.LongRunningOperation<Version>
-  >(`/projects/-/sites/${site}/versions:clone`, {
+  >(`/projects/${project}/sites/${site}/versions:clone`, {
     sourceVersion: versionName,
     finalize,
   });
@@ -474,18 +487,21 @@ type PartialRelease = Partial<Pick<Release, "message" | "type">>;
 
 /**
  * Create a release on a channel.
+ * @param project the project ID or number.
  * @param site the site for the version.
  * @param channel the channel for the release.
  * @param version the specific version ID.
+ * @param partialRelease additional release options.
  */
 export async function createRelease(
+  project: string,
   site: string,
   channel: string,
   version: string,
   partialRelease?: PartialRelease,
 ): Promise<Release> {
   const res = await apiClient.post<PartialRelease, Release>(
-    `/projects/-/sites/${site}/channels/${channel}/releases`,
+    `/projects/${project}/sites/${site}/channels/${channel}/releases`,
     partialRelease,
     { queryParams: { versionName: version } },
   );
@@ -705,7 +721,6 @@ export async function cleanAuthState(
 
 /**
  * Retrieves all site domains
- *
  * @param project project ID
  * @param site site id
  * @return array of domains
@@ -729,7 +744,6 @@ export async function getSiteDomains(project: string, site: string): Promise<Dom
 
 /**
  * Join the default domain and the custom domains of a Hosting site
- *
  * @param projectId the project id
  * @param siteId the site id
  * @return array of domains

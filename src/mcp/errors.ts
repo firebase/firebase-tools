@@ -9,7 +9,7 @@ export function noProjectDirectory(projectRoot: string | undefined): CallToolRes
   return mcpError(
     `The current project directory '${
       projectRoot || "<NO PROJECT DIRECTORY FOUND>"
-    }' does not exist. Please use the 'update_firebase_environment' tool to target a different project directory.`,
+    }' does not exist. Please use the 'firebase_update_environment' tool to target a different project directory.`,
   );
 }
 

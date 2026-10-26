@@ -8,6 +8,8 @@ import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
 import { requireConfig } from "../requireConfig";
 import { logger } from "../logger";
+import { ensure } from "../ensureApiEnabled";
+import { hostingApiOrigin } from "../api";
 
 const LOG_TAG = "hosting:sites";
 
@@ -16,6 +18,7 @@ export const command = new Command("hosting:sites:delete <siteId>")
   .withForce()
   .before(requireConfig)
   .before(requirePermissions, ["firebasehosting.sites.delete"])
+  .before((options) => ensure(needProjectId(options), hostingApiOrigin(), "hosting", true))
   .action(
     async (
       siteId: string,

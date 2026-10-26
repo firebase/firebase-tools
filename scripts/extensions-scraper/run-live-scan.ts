@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { extractReplacementFromReadme, getRepoUrlForExtension, toRawGithubUrl } from "./index";
+import { getRepoUrlForExtension, processExtensionReadmes, toRawGithubUrl } from "./index";
 import { ReplacementRegistrySchema } from "../../src/extensions/replacementRegistry";
 
 interface FetchResult {
@@ -38,12 +38,12 @@ async function runLiveScan(): Promise<void> {
   const entries = Object.entries(registry.replacements);
   console.log(`\n[Scraper] Starting live scan for ${entries.length} extensions...\n`);
 
-  let detectedCount = 0;
-  let pendingCount = 0;
   let noReplacementCount = 0;
+  const fetchedReadmes: Record<string, string> = {};
   const failedExtensions: Array<{ extRef: string; url: string; reason: string }> = [];
 
   for (const [extRef, entry] of entries) {
+    // Skip fetching extensions that are already marked as having no replacement planned
     if (entry.status === "CONFIRMED_NO_REPLACEMENT") {
       noReplacementCount++;
       console.log(`[⊘ NO REPLACEMENT] ${extRef}`);
@@ -68,19 +68,9 @@ async function runLiveScan(): Promise<void> {
     }
 
     const fetchResult = await fetchUrlContent(rawUrl);
-    const discoveredPackage = extractReplacementFromReadme(fetchResult.text);
 
-    if (discoveredPackage) {
-      detectedCount++;
-      registry.replacements[extRef] = {
-        ...registry.replacements[extRef],
-        status: "REPLACEMENT_AVAILABLE",
-        npmPackage: discoveredPackage,
-      };
-      console.log(`[✓ DETECTED] ${extRef}`);
-      console.log(`  Package: ${discoveredPackage}`);
-      console.log(`  Web URL: ${webUrl}\n`);
-    } else if (!fetchResult.ok && failedExtensions.length < 50) {
+    // Guard against unreachable URLs early to ensure only successful fetches are processed
+    if (!fetchResult.ok) {
       const errReason =
         fetchResult.error ??
         (fetchResult.statusCode ? `HTTP ${fetchResult.statusCode}` : "Unreachable");
@@ -89,19 +79,44 @@ async function runLiveScan(): Promise<void> {
         url: webUrl,
         reason: errReason,
       });
-      console.log(`[✗ UNREACHABLE] ${extRef}`);
+      console.log(`[✗ UNREACHABLE] ${extRef} (Skipped registry update due to fetch failure)`);
       console.log(`  Web URL: ${webUrl}`);
       console.log(`  Error:   ${errReason}\n`);
-    } else {
+      continue;
+    }
+
+    // Collect fetched README content for centralized processing
+    fetchedReadmes[extRef] = fetchResult.text;
+  }
+
+  // Deduplicate registry mutations by delegating to processExtensionReadmes()
+  const { updatedRegistry, results } = processExtensionReadmes(fetchedReadmes, registry);
+
+  let detectedCount = 0;
+  let pendingCount = 0;
+
+  for (const r of results) {
+    const entry = updatedRegistry.replacements[r.extensionRef];
+    const webUrl = entry?.extensionRepositoryUrl ?? "";
+
+    if (r.status === "REPLACEMENT_AVAILABLE") {
+      detectedCount++;
+      console.log(`[✓ DETECTED] ${r.extensionRef}`);
+      console.log(`  Package: ${r.detectedPackage}`);
+      console.log(`  Web URL: ${webUrl}\n`);
+    } else if (r.status === "PENDING_PUBLISHER") {
       pendingCount++;
-      console.log(`[• PENDING] ${extRef}`);
+      console.log(`[• PENDING] ${r.extensionRef}`);
       console.log(`  Web URL: ${webUrl} (README active, no replacement tag yet)\n`);
     }
   }
 
-  if (detectedCount > 0) {
-    fs.writeFileSync(replacementsPath, JSON.stringify(registry, null, 2) + "\n");
+  // Guard against completely offline or empty runs overwriting the file
+  if (detectedCount > 0 || pendingCount > 0) {
+    fs.writeFileSync(replacementsPath, JSON.stringify(updatedRegistry, null, 2) + "\n");
     console.log(`[Scraper] Successfully updated ${replacementsPath}\n`);
+  } else {
+    console.log(`[Scraper] No updates processed (scan was offline or empty). File unchanged.\n`);
   }
 
   console.log("=======================================================");

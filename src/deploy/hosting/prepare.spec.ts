@@ -14,11 +14,14 @@ import * as utils from "../../utils";
 import { addPinnedFunctionsToOnlyString, hasPinnedFunctions, prepare, unsafePins } from "./prepare";
 import { cloneDeep } from "../../utils";
 import * as backend from "../functions/backend";
+import * as ensureApiEnabled from "../../ensureApiEnabled";
+import { hostingApiOrigin } from "../../api";
 
 describe("hosting prepare", () => {
   let hostingStub: sinon.SinonStubbedInstance<typeof hostingApi>;
   let trackingStub: sinon.SinonStubbedInstance<typeof tracking>;
   let backendStub: sinon.SinonStubbedInstance<typeof backend>;
+  let ensureApiStub: sinon.SinonStub;
   let loggerStub: sinon.SinonStub;
   let siteConfig: config.HostingResolved;
   let firebaseJson: FirebaseConfig;
@@ -28,6 +31,7 @@ describe("hosting prepare", () => {
     hostingStub = sinon.stub(hostingApi);
     trackingStub = sinon.stub(tracking);
     backendStub = sinon.stub(backend);
+    ensureApiStub = sinon.stub(ensureApiEnabled, "ensure").resolves();
     loggerStub = sinon.stub(utils, "logLabeledBullet");
     hostingStub.getSite.resolves({
       name: "projects/project/sites/site",
@@ -88,7 +92,8 @@ describe("hosting prepare", () => {
     siteConfig.webFramework = "fake-framework";
 
     // Edit the in-memory config to add a web framework
-    hostingStub.createVersion.callsFake((siteId, version) => {
+    hostingStub.createVersion.callsFake((projectId, siteId, version) => {
+      expect(projectId).to.equal("project");
       expect(siteId).to.equal(siteConfig.site);
       expect(version.status).to.equal("CREATED");
       expect(version.labels).to.deep.equal({
@@ -106,6 +111,12 @@ describe("hosting prepare", () => {
     expect(trackingStub.trackGA4).to.have.been.calledOnceWith("hosting_version", {
       framework: "fake-framework",
     });
+    expect(ensureApiStub).to.have.been.calledOnceWith(
+      "project",
+      hostingApiOrigin(),
+      "hosting",
+      true,
+    );
     expect(hostingStub.createVersion).to.have.been.calledOnce;
     expect(context.hosting).to.deep.equal({
       deploys: [
@@ -126,7 +137,8 @@ describe("hosting prepare", () => {
     // Do not set a web framework on siteConfig
 
     // Edit the in-memory config to add a web framework
-    hostingStub.createVersion.callsFake((siteId, version) => {
+    hostingStub.createVersion.callsFake((projectId, siteId, version) => {
+      expect(projectId).to.equal("project");
       expect(siteId).to.equal(siteConfig.site);
       expect(version.status).to.equal("CREATED");
       // Note: we're missing the web framework label

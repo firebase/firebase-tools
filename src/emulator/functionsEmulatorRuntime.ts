@@ -880,7 +880,7 @@ async function main(): Promise<void> {
 
       switch (FUNCTION_SIGNATURE) {
         case "event":
-        case "cloudevent":
+        case "cloudevent": {
           let reqBody;
           const rawBody = (req as RequestWithRawBody).rawBody;
           if (EventUtils.isBinaryCloudEvent(req)) {
@@ -892,6 +892,7 @@ async function main(): Promise<void> {
           await processBackground(trigger, reqBody, FUNCTION_SIGNATURE);
           res.send({ status: "acknowledged" });
           break;
+        }
         case "http":
           await runHTTPS(trigger, [req, res]);
       }

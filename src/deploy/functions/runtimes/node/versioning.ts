@@ -38,7 +38,6 @@ export const FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING =
  */
 export function findModuleVersion(name: string, resolvedPath: string): string | undefined {
   let searchPath = path.dirname(resolvedPath);
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     if (searchPath === "/" || path.basename(searchPath) === "node_modules") {
       logger.debug(

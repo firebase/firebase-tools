@@ -1,4 +1,6 @@
 import { expect } from "chai";
+import * as chokidar from "chokidar";
+import { createIgnoredFilter } from "./functionsEmulator";
 import {
   extractParamsFromPath,
   isValidWildcardMatch,
@@ -182,5 +184,53 @@ describe("FunctionsEmulatorUtils", () => {
         expect(isLocalHost(t.href)).to.eq(t.expected);
       });
     }
+  });
+
+  describe("createIgnoredFilter", () => {
+    function matches(filter: chokidar.Matcher[], filePath: string): boolean {
+      return filter.some((matcher) => {
+        if (typeof matcher === "function") {
+          return matcher(filePath);
+        }
+        if (matcher instanceof RegExp) {
+          return matcher.test(filePath);
+        }
+        return false;
+      });
+    }
+
+    it("should ignore hidden files and directories", () => {
+      const filter = createIgnoredFilter();
+      expect(matches(filter, ".git/config")).to.be.true;
+      expect(matches(filter, "src/.hidden.js")).to.be.true;
+      expect(matches(filter, ".dart_tool/package_config.json")).to.be.true;
+    });
+
+    it("should ignore log files", () => {
+      const filter = createIgnoredFilter();
+      expect(matches(filter, "firebase-debug.log")).to.be.true;
+      expect(matches(filter, "path/to/debug.log")).to.be.true;
+    });
+
+    it("should ignore node_modules and venv", () => {
+      const filter = createIgnoredFilter();
+      expect(matches(filter, "functions/node_modules/express/index.js")).to.be.true;
+      expect(matches(filter, "functions/venv/bin/activate")).to.be.true;
+    });
+
+    it("should not ignore regular source files when no custom ignore is provided", () => {
+      const filter = createIgnoredFilter();
+      expect(matches(filter, "src/index.ts")).to.be.false;
+      expect(matches(filter, "package.json")).to.be.false;
+    });
+
+    it("should support custom globs in ignore list", () => {
+      const filter = createIgnoredFilter(["*.tmp", "dist/**", "ignored.txt"]);
+      expect(matches(filter, "cache.tmp")).to.be.true;
+      expect(matches(filter, "dist/bundle.js")).to.be.true;
+      expect(matches(filter, "sub/dir/dist/bundle.js")).to.be.true;
+      expect(matches(filter, "ignored.txt")).to.be.true;
+      expect(matches(filter, "src/index.ts")).to.be.false;
+    });
   });
 });

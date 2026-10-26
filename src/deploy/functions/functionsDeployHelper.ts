@@ -172,6 +172,27 @@ export function getFunctionLabel(fn: backend.TargetIds & { codebase?: string }):
 }
 
 /**
+ * Explains why a gcfv1 endpoint may not take over a name that already exists as something
+ * else, or undefined if the update is legal. A gcfv1 function is a different resource to a
+ * gcfv2 function or a Cloud Run service, so the CLI cannot update one into the other.
+ * Shared so that prepare-time validation and the release planner cannot drift apart.
+ */
+export function generationDowngradeMessage(
+  want: backend.Endpoint,
+  have: backend.Endpoint,
+): string | undefined {
+  if (want.platform !== "gcfv1" || have.platform === "gcfv1") {
+    return undefined;
+  }
+  const from = have.platform === "gcfv2" ? "GCFv2" : "Cloud Run";
+  return (
+    `[${getFunctionLabel(want)}] Functions cannot be downgraded from ${from} to GCFv1. ` +
+    `To recreate it as GCFv1, delete the existing function first: ` +
+    `firebase functions:delete ${want.id} --region ${want.region}`
+  );
+}
+
+/**
  * Returns list of codebases specified in firebase.json filtered by --only filters if present.
  */
 export function targetCodebases(config: ValidatedConfig, filters?: EndpointFilter[]): string[] {

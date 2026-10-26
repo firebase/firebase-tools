@@ -108,10 +108,11 @@ export async function updateFirebaseSection(
     finalContent = options?.header ? `${options.header}\n\n${newSection}` : newSection;
   } else if (match) {
     // Replace existing section
+    const start = match.index!;
     finalContent =
-      currentContent.substring(0, match.index!) +
+      currentContent.substring(0, start) +
       newSection +
-      currentContent.substring(match.index! + match[0].length);
+      currentContent.substring(start + match[0].length);
   } else {
     // Append to existing file
     const separator = currentContent.endsWith("\n") ? "\n" : "\n\n";

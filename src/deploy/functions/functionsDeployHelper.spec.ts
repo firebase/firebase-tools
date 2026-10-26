@@ -643,6 +643,51 @@ describe("functionsDeployHelper", () => {
     });
   });
 
+  describe("generationDowngradeMessage", () => {
+    const v1: backend.Endpoint = { ...ENDPOINT, platform: "gcfv1" };
+
+    it("rejects an existing gcfv2 function being redeployed as gcfv1", () => {
+      const have: backend.Endpoint = { ...ENDPOINT, platform: "gcfv2" };
+
+      expect(helper.generationDowngradeMessage(v1, have)).to.match(
+        /cannot be downgraded from GCFv2 to GCFv1/,
+      );
+    });
+
+    it("rejects an existing Cloud Run service being redeployed as gcfv1", () => {
+      const have: backend.Endpoint = { ...ENDPOINT, platform: "run" };
+
+      expect(helper.generationDowngradeMessage(v1, have)).to.match(
+        /cannot be downgraded from Cloud Run to GCFv1/,
+      );
+    });
+
+    it("tells the user how to recreate the function as gcfv1", () => {
+      const have: backend.Endpoint = { ...ENDPOINT, platform: "gcfv2" };
+
+      expect(helper.generationDowngradeMessage(v1, have)).to.contain(
+        "firebase functions:delete foo --region us-central1",
+      );
+    });
+
+    it("allows every other change of platform", () => {
+      for (const [want, have] of [
+        ["gcfv1", "gcfv1"],
+        ["gcfv2", "gcfv1"],
+        ["gcfv2", "run"],
+        ["run", "gcfv2"],
+      ] as const) {
+        expect(
+          helper.generationDowngradeMessage(
+            { ...ENDPOINT, platform: want },
+            { ...ENDPOINT, platform: have },
+          ),
+          `${have} to ${want}`,
+        ).to.be.undefined;
+      }
+    });
+  });
+
   describe("isCodebasePartiallyFiltered", () => {
     it("should return false when filters is undefined or empty", () => {
       expect(helper.isCodebasePartiallyFiltered("codebaseA")).to.be.false;

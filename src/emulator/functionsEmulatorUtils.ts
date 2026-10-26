@@ -66,10 +66,6 @@ export function trimSlashes(str: string): string {
     .join("/");
 }
 
-export function removePathSegments(path: string, count: number): string {
-  return trimSlashes(path).split("/").slice(count).join("/");
-}
-
 /**
  * Parse a runtime string like "nodejs10" or "10" into a single number.
  * Returns undefined if the string does not match the expected pattern.

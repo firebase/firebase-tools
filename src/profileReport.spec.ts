@@ -1,7 +1,7 @@
 import { expect } from "chai";
-
 import * as stream from "stream";
-import { extractReadableIndex, formatNumber, ProfileReport } from "./profileReport";
+
+import { extractJSON, extractReadableIndex, formatNumber, ProfileReport } from "./profileReport";
 import { SAMPLE_INPUT_PATH, SAMPLE_OUTPUT_PATH } from "./test/fixtures/profiler-data";
 
 function combinerFunc(obj1: any, obj2: any): any {
@@ -99,5 +99,31 @@ describe("profilerReport", () => {
     const query = { index: {} };
     const result = extractReadableIndex(query);
     expect(result).to.eq(".value");
+  });
+
+  describe("extractJSON", () => {
+    it("should return parsed JSON when line starts with data: and input is false", () => {
+      const line = 'data: {"path":["public"],"name":"rest-read"}';
+      const result = extractJSON(line, false);
+      expect(result).to.deep.eq({ path: ["public"], name: "rest-read" });
+    });
+
+    it("should return null when line does not start with data: and input is false", () => {
+      const line = "event: log";
+      const result = extractJSON(line, false);
+      expect(result).to.be.null;
+    });
+
+    it("should return parsed JSON directly when input is true", () => {
+      const line = '{"path":["public"],"name":"rest-read"}';
+      const result = extractJSON(line, true);
+      expect(result).to.deep.eq({ path: ["public"], name: "rest-read" });
+    });
+
+    it("should return null for malformed JSON", () => {
+      const line = "data: {invalid-json}";
+      const result = extractJSON(line, false);
+      expect(result).to.be.null;
+    });
   });
 });

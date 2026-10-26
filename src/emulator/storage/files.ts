@@ -174,7 +174,7 @@ export class StorageLayer {
       throw new NotFoundError("File not found");
     }
 
-    return { metadata: metadata!, data: this.getBytes(request.bucketId, request.decodedObjectId)! };
+    return { metadata: metadata, data: this.getBytes(request.bucketId, request.decodedObjectId)! };
   }
 
   private getMetadata(bucket: string, object: string): StoredFileMetadata | undefined {
@@ -299,7 +299,7 @@ export class StorageLayer {
       if (!upload.metadata) {
         return undefined;
       }
-      const value: any | undefined = (upload.metadata! as any)[field];
+      const value: any | undefined = (upload.metadata as any)[field];
       return value === null ? undefined : value;
     }
     const metadata = new StoredFileMetadata(

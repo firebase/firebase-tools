@@ -298,6 +298,7 @@ export abstract class Throttler<T, R> {
     }
     this.cleanupTask(cursorIndex);
     this.finish(error);
+    this.process();
   }
 
   private cleanupTask(cursorIndex: number): void {

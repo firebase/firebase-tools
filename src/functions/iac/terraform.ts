@@ -228,7 +228,7 @@ function serializeResourceAttributes(
 /**
  * Converts a block to a string.
  */
-export function blockToString(block: Block, indentation: number = 0): string {
+export function blockToString(block: Block, indentation = 0): string {
   const labels = (block.labels || []).map((l) => `"${l}"`).join(" ");
 
   if (block.type === "resource" && block.labels?.length) {

@@ -262,11 +262,10 @@ export class TaskQueue {
   }
 
   async runTask(dispatchIndex: number): Promise<void> {
-    if (this.dispatches[dispatchIndex] === null) {
+    const emulatedTask = this.dispatches[dispatchIndex];
+    if (emulatedTask === null) {
       throw new Error("Trying to dispatch a nonexistent task");
     }
-
-    const emulatedTask = this.dispatches[dispatchIndex] as EmulatedTask;
 
     if (
       emulatedTask.metadata.lastRunTime !== null &&
@@ -329,10 +328,11 @@ export class TaskQueue {
   }
 
   handleRetry(dispatchIndex: number): void {
-    if (this.dispatches[dispatchIndex] === null) {
+    const task = this.dispatches[dispatchIndex];
+    if (task === null) {
       throw new Error("Trying to retry a nonexistent task");
     }
-    const { metadata } = this.dispatches[dispatchIndex] as EmulatedTask;
+    const { metadata } = task;
     const { retryConfig } = this.config;
 
     // Determine if the task has failed

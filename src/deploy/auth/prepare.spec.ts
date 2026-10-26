@@ -72,7 +72,77 @@ describe("deploy/auth/prepare", () => {
     expect(context.auth.appId).to.equal("1:12345:web:other");
   });
 
-  it("should create Default Web App if no web apps exist", async () => {
+  it("should use existing Android app if Default Web App not found", async () => {
+    listAppsStub.resolves([
+      {
+        appId: "1:12345:android:my-app",
+        displayName: "My Android App",
+        platform: apps.AppPlatform.ANDROID,
+      },
+    ]);
+
+    const options = {
+      config: { src: { auth: { providers: {} } } },
+      project: "test-project",
+    } as unknown as Options;
+    const context: any = {};
+
+    await prepare.prepare(context, options);
+
+    expect(createAppStub).to.not.be.called;
+    expect(context.auth.appId).to.equal("1:12345:android:my-app");
+    expect(context.auth.platform).to.equal(apps.AppPlatform.ANDROID);
+  });
+
+  it("should use existing iOS app if Default Web App not found", async () => {
+    listAppsStub.resolves([
+      {
+        appId: "1:12345:ios:my-app",
+        displayName: "My iOS App",
+        platform: apps.AppPlatform.IOS,
+      },
+    ]);
+
+    const options = {
+      config: { src: { auth: { providers: {} } } },
+      project: "test-project",
+    } as unknown as Options;
+    const context: any = {};
+
+    await prepare.prepare(context, options);
+
+    expect(createAppStub).to.not.be.called;
+    expect(context.auth.appId).to.equal("1:12345:ios:my-app");
+    expect(context.auth.platform).to.equal(apps.AppPlatform.IOS);
+  });
+
+  it("should prefer Default Web App even if other mobile apps exist", async () => {
+    listAppsStub.resolves([
+      {
+        appId: "1:12345:android:my-app",
+        displayName: "My Android App",
+        platform: apps.AppPlatform.ANDROID,
+      },
+      {
+        appId: "1:12345:web:default",
+        displayName: "Default Web App",
+        platform: apps.AppPlatform.WEB,
+      },
+    ]);
+
+    const options = {
+      config: { src: { auth: { providers: {} } } },
+      project: "test-project",
+    } as unknown as Options;
+    const context: any = {};
+
+    await prepare.prepare(context, options);
+
+    expect(createAppStub).to.not.be.called;
+    expect(context.auth.appId).to.equal("1:12345:web:default");
+  });
+
+  it("should create Default Web App if no apps exist", async () => {
     listAppsStub.resolves([]);
 
     const options = {

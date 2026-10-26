@@ -9,6 +9,15 @@ The Firebase Command Line Interface (CLI) Tools can be used to test, manage, and
 
 To get started with the Firebase CLI, read the full list of commands below or check out the [documentation](https://firebase.google.com/docs/cli).
 
+> [!TIP]
+> Using an AI assistant? Install [Firebase agent skills](https://github.com/firebase/agent-skills) to give it Firebase-specific knowledge, best practices, and workflows, including how to use the Firebase CLI and MCP server effectively:
+>
+> ```bash
+> npx skills add firebase/agent-skills
+> ```
+>
+> See the [Firebase agent skills documentation](https://firebase.google.com/docs/ai-assistance/agent-skills) for more information.
+
 ## Installation
 
 ### Node Package

@@ -140,4 +140,45 @@ describe("artifactRegistry", () => {
       );
     });
   });
+
+  describe("ensureDockerRepository", () => {
+    it("does nothing if the repository already exists", async () => {
+      nock(artifactRegistryDomain())
+        .get(`/${API_VERSION}/${REPO_NAME}`)
+        .reply(200, { name: REPO_NAME, format: "DOCKER" });
+
+      await artifactRegistry.ensureDockerRepository(PROJECT_ID, REGION, REPO);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("creates the repository and polls the operation when it returns 404", async () => {
+      const opName = `projects/${PROJECT_ID}/locations/${REGION}/operations/create-repo`;
+      nock(artifactRegistryDomain())
+        .get(`/${API_VERSION}/${REPO_NAME}`)
+        .reply(404, { error: { message: "Not Found" } });
+      nock(artifactRegistryDomain())
+        .post(`/${API_VERSION}/projects/${PROJECT_ID}/locations/${REGION}/repositories`, {
+          format: "DOCKER",
+        })
+        .query({ repositoryId: REPO })
+        .reply(200, { name: opName });
+      nock(artifactRegistryDomain())
+        .get(`/${API_VERSION}/${opName}`)
+        .reply(200, { name: opName, done: true, response: { name: REPO_NAME, format: "DOCKER" } });
+
+      await artifactRegistry.ensureDockerRepository(PROJECT_ID, REGION, REPO);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("rethrows non-404 errors", async () => {
+      nock(artifactRegistryDomain())
+        .get(`/${API_VERSION}/${REPO_NAME}`)
+        .reply(403, { error: { message: "Permission Denied" } });
+
+      await expect(
+        artifactRegistry.ensureDockerRepository(PROJECT_ID, REGION, REPO),
+      ).to.be.rejectedWith("Permission Denied");
+      expect(nock.isDone()).to.be.true;
+    });
+  });
 });

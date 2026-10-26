@@ -84,65 +84,93 @@ describe("replacementRegistry", () => {
     });
   });
 
+  const mockRegistry: ReplacementRegistrySchema = {
+    replacements: {
+      "firebase/firestore-send-email": {
+        status: "REPLACEMENT_AVAILABLE",
+        npmPackage: "@firebase-function-kits/firestore-send-email",
+        extensionRepositoryUrl:
+          "https://github.com/firebase/extensions/tree/main/firestore-send-email/README.md",
+      },
+      "moralis/moralis-streams": {
+        status: "CONFIRMED_NO_REPLACEMENT",
+        extensionRepositoryUrl:
+          "https://github.com/moralisweb3/moralis-firebase-extensions/tree/main/moralis-streams/README.md",
+      },
+      "firebase/firestore-bundle-builder": {
+        status: "PENDING_PUBLISHER",
+        extensionRepositoryUrl:
+          "https://github.com/firebase/firestore-bundle-builder/blob/master/README.md",
+      },
+    },
+  };
+
   describe("getExtensionReplacement", () => {
     it("should return replacement info for a known 1P extension", () => {
-      const rep = getExtensionReplacement("firebase/storage-resize-images");
+      const rep = getExtensionReplacement("firebase/firestore-send-email", mockRegistry);
       expect(rep).to.not.be.undefined;
       expect(rep?.status).to.equal("REPLACEMENT_AVAILABLE");
-      expect(rep?.npmPackage).to.equal("@firebase-function-kits/storage-resize-images");
+      expect(rep?.npmPackage).to.equal("@firebase-function-kits/firestore-send-email");
       expect(rep?.extensionRepositoryUrl).to.be.a("string").that.is.not.empty;
     });
 
     it("should return replacement info for confirmed no replacement extension", () => {
-      const rep = getExtensionReplacement("moralis/moralis-streams");
+      const rep = getExtensionReplacement("moralis/moralis-streams", mockRegistry);
       expect(rep).to.not.be.undefined;
       expect(rep?.status).to.equal("CONFIRMED_NO_REPLACEMENT");
       expect(rep?.npmPackage).to.be.undefined;
     });
 
     it("should return undefined for empty extensionRef", () => {
-      const rep = getExtensionReplacement("");
+      const rep = getExtensionReplacement("", mockRegistry);
       expect(rep).to.be.undefined;
     });
 
     it("should return undefined for unknown extension", () => {
-      const rep = getExtensionReplacement("unknown/random-extension");
+      const rep = getExtensionReplacement("unknown/random-extension", mockRegistry);
       expect(rep).to.be.undefined;
     });
   });
 
   describe("getReplacementPackageName", () => {
     it("should return npmPackage when replacement is available for extensionRef", () => {
-      const pkg = getReplacementPackageName("firebase/storage-resize-images");
-      expect(pkg).to.equal("@firebase-function-kits/storage-resize-images");
+      const pkg = getReplacementPackageName("firebase/firestore-send-email", mockRegistry);
+      expect(pkg).to.equal("@firebase-function-kits/firestore-send-email");
     });
 
     it("should return undefined when extension has no replacement", () => {
-      const pkg = getReplacementPackageName("moralis/moralis-streams");
+      const pkg = getReplacementPackageName("moralis/moralis-streams", mockRegistry);
       expect(pkg).to.be.undefined;
     });
 
     it("should return undefined for empty or unknown extension", () => {
-      expect(getReplacementPackageName("")).to.be.undefined;
-      expect(getReplacementPackageName("unknown/random-extension")).to.be.undefined;
+      expect(getReplacementPackageName("", mockRegistry)).to.be.undefined;
+      expect(getReplacementPackageName("unknown/random-extension", mockRegistry)).to.be.undefined;
     });
   });
 
   describe("getDeprecationWarningMessage", () => {
     it("should format deprecation message for known extension", () => {
-      const msg = getDeprecationWarningMessage("firebase/firestore-send-email");
+      const msg = getDeprecationWarningMessage("firebase/firestore-send-email", mockRegistry);
       expect(msg).to.include("firebase/firestore-send-email");
       expect(msg).to.include("deprecated and will be decommissioned");
+      expect(msg).to.include("@firebase-function-kits/firestore-send-email");
     });
 
     it("should format deprecation message when no replacement is planned", () => {
-      const msg = getDeprecationWarningMessage("moralis/moralis-streams");
+      const msg = getDeprecationWarningMessage("moralis/moralis-streams", mockRegistry);
       expect(msg).to.include("moralis/moralis-streams");
       expect(msg).to.include("No npm package replacement is planned");
     });
 
+    it("should format deprecation message for pending publisher extension", () => {
+      const msg = getDeprecationWarningMessage("firebase/firestore-bundle-builder", mockRegistry);
+      expect(msg).to.include("firebase/firestore-bundle-builder");
+      expect(msg).to.include("A replacement package has not yet been announced");
+    });
+
     it("should return undefined for unknown extension", () => {
-      const msg = getDeprecationWarningMessage("unknown/random-extension");
+      const msg = getDeprecationWarningMessage("unknown/random-extension", mockRegistry);
       expect(msg).to.be.undefined;
     });
   });

@@ -102,7 +102,7 @@ describe("FunctionsRuntimeWorker", () => {
     requestStub.restore();
   });
 
-  function mockSuccessfulRequest(statusCode: number = 200, body: string = "") {
+  function mockSuccessfulRequest(statusCode = 200, body = "") {
     requestStub.callsFake((options: any, callback: any) => {
       const mockRes = new PassThrough();
       (mockRes as any).statusCode = statusCode;

@@ -3,6 +3,8 @@ import { artifactRegistryDomain } from "../api";
 import { assertImplements, DeepOmit, RecursiveKeyOf } from "../metaprogramming";
 import * as api from "../ensureApiEnabled";
 import * as proto from "./proto";
+import { getErrStatus } from "../error";
+import { pollOperation } from "../operation-poller";
 
 export const API_VERSION = "v1";
 
@@ -94,4 +96,32 @@ export async function updateRepository(repo: RepositoryInput): Promise<Repositor
     queryParams: { updateMask: updateMask.join(",") },
   });
   return res.body;
+}
+
+/**
+ * Creates a Docker repository in Artifact Registry if it doesn't exist yet.
+ */
+export async function ensureDockerRepository(
+  projectId: string,
+  location: string,
+  repositoryId: string,
+): Promise<void> {
+  try {
+    await getRepository(`projects/${projectId}/locations/${location}/repositories/${repositoryId}`);
+    return;
+  } catch (err: unknown) {
+    if (getErrStatus(err) !== 404) {
+      throw err;
+    }
+  }
+  const res = await client.post<{ format: string }, Operation>(
+    `/projects/${projectId}/locations/${location}/repositories`,
+    { format: "DOCKER" },
+    { queryParams: { repositoryId } },
+  );
+  await pollOperation({
+    apiOrigin: artifactRegistryDomain(),
+    apiVersion: API_VERSION,
+    operationResourceName: res.body.name,
+  });
 }

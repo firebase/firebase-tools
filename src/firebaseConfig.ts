@@ -324,6 +324,7 @@ export type EmulatorsConfig = {
     host?: string;
     port?: number;
   };
+  // eslint-disable-next-line @typescript-eslint/ban-types -- {} needed to preserve byte-identical schema/firebase-config.json
   extensions?: {};
   eventarc?: {
     host?: string;
@@ -366,6 +367,18 @@ export type AppHostingMultiple = AppHostingSingle[];
 
 export type AppHostingConfig = AppHostingSingle | AppHostingMultiple;
 
+export interface RunSingle {
+  serviceId: string;
+  region: string;
+  rootDir?: string;
+  ignore?: string[];
+  localBuild?: boolean;
+}
+
+export type RunMultiple = RunSingle[];
+
+export type RunConfig = RunSingle | RunMultiple;
+
 export interface AuthConfig {
   providers?: {
     anonymous?: boolean;
@@ -392,4 +405,5 @@ export type FirebaseConfig = {
   dataconnect?: DataConnectConfig;
   apphosting?: AppHostingConfig;
   auth?: AuthConfig;
+  run?: RunConfig;
 };

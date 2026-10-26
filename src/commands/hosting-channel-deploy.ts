@@ -17,12 +17,14 @@ import { needProjectId } from "../projectUtils";
 import { logger } from "../logger";
 import { requireConfig } from "../requireConfig";
 import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils";
-import { logLabeledSuccess, datetimeString, logLabeledWarning, consoleUrl } from "../utils";
+import { logLabeledSuccess, datetimeString, logLabeledWarning, consoleUrl, last } from "../utils";
 import { hostingConfig } from "../hosting/config";
 import { marked } from "marked";
 import { requireHostingSite } from "../requireHostingSite";
 import { HostingOptions } from "../hosting/options";
 import { Options } from "../options";
+import { ensure } from "../ensureApiEnabled";
+import { hostingApiOrigin } from "../api";
 
 const LOG_TAG = "hosting:channel";
 
@@ -45,6 +47,7 @@ export const command = new Command("hosting:channel:deploy [channelId]")
   .option("--no-authorized-domains", "do not sync channel domains with Firebase Auth")
   .before(requireConfig)
   .before(requirePermissions, ["firebasehosting.sites.update"])
+  .before((options) => ensure(needProjectId(options), hostingApiOrigin(), "hosting", true))
   .before(requireHostingSite)
   .action(hostingChannelDeployAction);
 
@@ -176,13 +179,13 @@ export async function hostingChannelDeployAction(
     if (d.expireTime) {
       expires = `[expires ${bold(datetimeString(new Date(d.expireTime)))}]`;
     }
-    const versionPrefix = `sites/${d.site}/versions/`;
+    const versionPrefix = `projects/${projectId}/sites/${d.site}/versions/`;
     const versionName = versionNames.find((v) => {
-      return v.startsWith(versionPrefix);
+      return v.startsWith(versionPrefix) || v.startsWith(`sites/${d.site}/versions/`);
     });
     let version = "";
     if (versionName) {
-      d.version = versionName.replace(versionPrefix, "");
+      d.version = last(versionName.split("/")) || "";
       version = ` [version ${bold(d.version)}]`;
     }
     logLabeledSuccess(

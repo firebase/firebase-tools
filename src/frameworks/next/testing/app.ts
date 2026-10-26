@@ -32,17 +32,23 @@ export const prerenderManifest: PrerenderManifest = {
   routes: {
     "/": {
       initialRevalidateSeconds: false,
+      initialExpireSeconds: undefined,
       srcRoute: "/",
       dataRoute: "/index.rsc",
       experimentalPPR: false,
+      renderingMode: undefined,
       prefetchDataRoute: "",
+      allowHeader: [],
     },
     "/api/static": {
       initialRevalidateSeconds: false,
+      initialExpireSeconds: undefined,
       srcRoute: "/api/static",
       dataRoute: "",
       experimentalPPR: false,
+      renderingMode: undefined,
       prefetchDataRoute: "",
+      allowHeader: [],
     },
   },
   dynamicRoutes: {},

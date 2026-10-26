@@ -82,7 +82,7 @@ describe("Storage persistence conformance tests", () => {
         firebase.initializeApp(appConfig);
         if (!useProductionServers) {
           firebase.auth().useEmulator(authEmulatorHost);
-          const [storageHost, storagePort] = storageEmulatorHost.split(":") as string[];
+          const [storageHost, storagePort] = storageEmulatorHost.split(":");
           (firebase.storage() as any).useEmulator(storageHost, storagePort);
         }
       },

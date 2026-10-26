@@ -5,10 +5,13 @@ import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
+import { ensure } from "../ensureApiEnabled";
+import { hostingApiOrigin } from "../api";
 
 export const command = new Command("hosting:sites:get <siteId>")
   .description("print info about a Firebase Hosting site")
   .before(requirePermissions, ["firebasehosting.sites.get"])
+  .before((options) => ensure(needProjectId(options), hostingApiOrigin(), "hosting", true))
   .action(async (siteId: string, options): Promise<Site> => {
     const projectId = needProjectId(options);
     if (!siteId) {
