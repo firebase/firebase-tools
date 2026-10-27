@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import * as sinon from "sinon";
 import nock from "../test/helpers/nock";
 
 import { functionsOrigin } from "../api";
@@ -7,6 +8,8 @@ import * as backend from "../deploy/functions/backend";
 import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../functions/events/v1";
 import * as cloudfunctions from "./cloudfunctions";
 import * as projectConfig from "../functions/projectConfig";
+import * as utils from "../utils";
+import { logger } from "../logger";
 import { BLOCKING_LABEL, CODEBASE_LABEL, HASH_LABEL } from "../functions/constants";
 
 describe("cloudfunctions", () => {
@@ -755,6 +758,62 @@ describe("cloudfunctions", () => {
           "service-account1@",
         ]),
       ).to.not.be.rejected;
+    });
+  });
+
+  describe("createFunction", () => {
+    afterEach(() => {
+      sinon.restore();
+      nock.cleanAll();
+    });
+
+    it("logs service account propagation errors at debug level without warning banners", async () => {
+      const warnSpy = sinon.spy(utils, "logWarning");
+      const debugSpy = sinon.spy(logger, "debug");
+      const scope = nock(functionsOrigin())
+        .post("/v1/projects/project/locations/region/functions")
+        .reply(404, {
+          error: {
+            message:
+              "Service account projects/-/serviceAccounts/firebase-fn-201@project.iam.gserviceaccount.com does not exist.",
+          },
+        });
+
+      await expect(
+        cloudfunctions.createFunction({ ...CLOUD_FUNCTION }),
+      ).to.eventually.be.rejectedWith(
+        "Service account projects/-/serviceAccounts/firebase-fn-201@project.iam.gserviceaccount.com does not exist.",
+      );
+      expect(warnSpy.called).to.be.false;
+      expect(debugSpy.calledWith(sinon.match("Waiting for service account propagation"))).to.be
+        .true;
+      expect(scope.isDone()).to.be.true;
+    });
+
+    it("logs warning banner when 404 is for a non-managed service account", async () => {
+      const warnSpy = sinon.spy(utils, "logWarning");
+      const debugSpy = sinon.spy(logger, "debug");
+      const scope = nock(functionsOrigin())
+        .post("/v1/projects/project/locations/region/functions")
+        .reply(404, {
+          error: {
+            message:
+              "Service account projects/-/serviceAccounts/custom-sa@project.iam.gserviceaccount.com does not exist.",
+          },
+        });
+
+      await expect(
+        cloudfunctions.createFunction({ ...CLOUD_FUNCTION }),
+      ).to.eventually.be.rejectedWith(
+        "Service account projects/-/serviceAccounts/custom-sa@project.iam.gserviceaccount.com does not exist.",
+      );
+      expect(warnSpy.calledOnce).to.be.true;
+      expect(warnSpy.firstCall.args[0]).to.include(
+        "failed to create function projects/project/locations/region/functions/id",
+      );
+      expect(debugSpy.calledWith(sinon.match("Waiting for service account propagation"))).to.be
+        .false;
+      expect(scope.isDone()).to.be.true;
     });
   });
 });

@@ -1,6 +1,6 @@
 import * as clc from "colorette";
 
-import { FirebaseError } from "../error";
+import { FirebaseError, getError, getErrMsg } from "../error";
 import { logger } from "../logger";
 import * as backend from "../deploy/functions/backend";
 import * as utils from "../utils";
@@ -11,6 +11,11 @@ import * as projectConfig from "../functions/projectConfig";
 import { Client } from "../apiv2";
 import { functionsOrigin } from "../api";
 import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1";
+import {
+  isQuotaExhaustion,
+  isServiceAccountPropagationError,
+  parseErrorCode,
+} from "../deploy/functions/release/executor";
 import {
   BLOCKING_EVENT_TO_LABEL_KEY,
   BLOCKING_LABEL,
@@ -172,15 +177,23 @@ export function captureRuntimeValidationError(errMessage: string): string {
  * @param type Type of deployment - create, update, or delete.
  * @param err The error returned from the operation.
  */
-function functionsOpLogReject(funcName: string, type: string, err: any): void {
+function functionsOpLogReject(
+  funcName: string,
+  type: "create" | "update" | "delete",
+  err: unknown,
+): never {
+  const errMessage = getErrMsg(err);
   // Sniff for runtime validation errors and log a more user-friendly warning.
-  if ((err?.message as string).includes("Runtime validation errors")) {
-    const capturedMessage = captureRuntimeValidationError(err.message);
+  if (errMessage.includes("Runtime validation errors")) {
+    const capturedMessage = captureRuntimeValidationError(errMessage);
     utils.logWarning(
       clc.bold(clc.yellow("functions:")) + " " + capturedMessage + " for function " + funcName,
     );
-  }
-  if (err?.context?.response?.statusCode === 429) {
+  } else if (isServiceAccountPropagationError(err)) {
+    logger.debug(
+      `Waiting for service account propagation while trying to ${type} ${funcName}: ${errMessage}`,
+    );
+  } else if (isQuotaExhaustion(err)) {
     utils.logWarning(
       `${clc.bold(
         clc.yellow("functions:"),
@@ -191,11 +204,14 @@ function functionsOpLogReject(funcName: string, type: string, err: any): void {
       clc.bold(clc.yellow("functions:")) + " failed to " + type + " function " + funcName,
     );
   }
-  throw new FirebaseError(`Failed to ${type} function ${funcName}`, {
-    original: err,
-    status: err?.context?.response?.statusCode,
-    context: { function: funcName },
-  });
+  throw new FirebaseError(
+    `Failed to ${type} function ${funcName}${errMessage ? `: ${errMessage}` : ""}`,
+    {
+      original: getError(err),
+      status: parseErrorCode(err),
+      context: { function: funcName },
+    },
+  );
 }
 
 /**
