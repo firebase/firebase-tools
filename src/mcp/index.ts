@@ -219,7 +219,7 @@ export class FirebaseMcpServer {
         return null;
       }),
     );
-    this.detectedFeatures = detected.filter((f) => !!f) as ServerFeature[];
+    this.detectedFeatures = detected.filter((f): f is ServerFeature => !!f);
     this.logger.debug(
       `detected features of Firebase MCP server:  ${this.detectedFeatures.join(", ") || "<none>"}`,
     );
@@ -303,7 +303,7 @@ export class FirebaseMcpServer {
     return getProjectId(await this.resolveOptions());
   }
 
-  async getAuthenticatedUser(skipAutoAuth: boolean = false): Promise<string | null> {
+  async getAuthenticatedUser(skipAutoAuth = false): Promise<string | null> {
     try {
       this.logger.debug("calling requireAuth");
       const email = await requireAuth(await this.resolveOptions(), skipAutoAuth);

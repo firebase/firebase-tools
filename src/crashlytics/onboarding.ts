@@ -87,7 +87,7 @@ export async function onboardCrashlyticsWeb(
     try {
       await updateAppApiKeyRestriction({
         apiKey: appConfig.apiKey,
-        service: CRASHLYTICS_TELEMETRY_SERVICE,
+        service: CLIENT_TELEMETRY_SERVICE,
       });
       logLabeledSuccess("crashlytics", "API key restrictions updated for Crashlytics Telemetry.");
     } catch (err: unknown) {
@@ -97,7 +97,7 @@ export async function onboardCrashlyticsWeb(
     logLabeledWarning(
       "crashlytics",
       `No API key found for this app. If you configure an API key later, ` +
-        `please rerun this command or manually add '${CRASHLYTICS_TELEMETRY_SERVICE}' to its allowed APIs in the Google Cloud Console if the key is restricted.`,
+        `please rerun this command or manually add '${CLIENT_TELEMETRY_SERVICE}' to its allowed APIs in the Google Cloud Console if the key is restricted.`,
     );
   }
 
