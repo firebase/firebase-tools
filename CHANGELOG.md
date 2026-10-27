@@ -1,2 +1,4 @@
 - Updated chokidar dependency to ^4.0.3 to remove vulnerable braces dependency (#11308).
 - Fixed an issue where the Firebase MCP server referred to `update_firebase_environment` instead of `firebase_update_environment`.
+- Updated the Firebase SQL Connect local toolkit to v3.4.25, which includes the following changes:
+  - Internal improvements and bug fixes.
