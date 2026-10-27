@@ -11,6 +11,7 @@ import {
   isThirdPartyPackage,
   checkPackageHasShrinkwrap,
   promptSecurityConfirmation,
+  scaffoldKitFiles,
   resolveSdkSpecifierToSave,
   getKitPackagesToSave,
   buildAndInstallKit,
@@ -525,6 +526,63 @@ describe("functions/kits/sources/npm", () => {
           packageName: "@firebase-function-kits/my-kit",
         }),
       ).to.be.rejectedWith(FirebaseError, "Installation cancelled.");
+    });
+  });
+
+  describe("scaffoldKitFiles", () => {
+    it("should scaffold kit source directory files without creating instance config directories", async () => {
+      const writtenFiles: Record<string, unknown> = {};
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: {},
+        path: (rel: string) => path.join("/mock/project", rel),
+        askWriteProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+          return Promise.resolve();
+        },
+      } as unknown as Config;
+
+      const paths = await scaffoldKitFiles({
+        config: mockConfig,
+        kitId: "my-kit",
+        packageName: "@scope/pkg",
+      });
+
+      expect(paths.sourcePath).to.equal("function-kits/my-kit/source");
+      expect(paths.absSourcePath).to.equal("/mock/project/function-kits/my-kit/source");
+      expect(writtenFiles["function-kits/my-kit/source/package.json"]).to.deep.include({
+        name: "my-kit-wrapper",
+        dependencies: {},
+      });
+      expect(writtenFiles["function-kits/my-kit/source/tsconfig.json"]).to.be.a("string");
+      expect(writtenFiles["function-kits/my-kit/source/.gitignore"]).to.be.a("string");
+      expect(writtenFiles["function-kits/my-kit/source/src/index.ts"]).to.include("@scope/pkg");
+    });
+
+    it("should handle existing package.json containing null", async () => {
+      mockFs({
+        "/mock/project/function-kits/my-kit/source/package.json": null,
+      });
+      const writtenFiles: Record<string, unknown> = {};
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: {},
+        path: (rel: string) => path.join("/mock/project", rel),
+        askWriteProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+          return Promise.resolve();
+        },
+      } as unknown as Config;
+
+      await scaffoldKitFiles({
+        config: mockConfig,
+        kitId: "my-kit",
+        packageName: "@scope/pkg",
+      });
+
+      expect(writtenFiles["function-kits/my-kit/source/package.json"]).to.deep.equal({
+        name: "my-kit-wrapper",
+      });
     });
   });
 
