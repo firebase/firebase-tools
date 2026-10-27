@@ -11,7 +11,8 @@ import { confirm } from "../../../prompt";
 import { readTemplateSync } from "../../../templates";
 import { logLabeledBullet, logLabeledWarning } from "../../../utils";
 import * as supported from "../../../deploy/functions/runtimes/supported";
-import { FUNCTION_KITS_DIR, sanitizeToKitId } from "./types";
+import { isKitConfig, ValidatedKitSingle, ValidatedSingle } from "../../projectConfig";
+import { FUNCTION_KITS_DIR, KitSourceAdapter, PreparedKitSource, sanitizeToKitId } from "./types";
 
 export const TEMPLATES = {
   installation: "init/functions/typescript/index-kit.ts",
@@ -40,6 +41,14 @@ export interface WriteKitIndexTsOptions {
   sourcePath: string;
   packageName: string;
   templateType: TemplateType;
+}
+
+export interface NpmPackageAdapterOptions {
+  config: Config;
+  package: string;
+  template?: TemplateType;
+  nonInteractive?: boolean;
+  force?: boolean;
 }
 
 interface PackageLockEntry {
@@ -442,4 +451,58 @@ export async function buildAndInstallKit(
   } catch (err: unknown) {
     throw new FirebaseError(`TypeScript build failed: ${getErrMsg(err)}`);
   }
+}
+
+/**
+ * Creates a KitSourceAdapter for an NPM package kit.
+ */
+export function createNpmPackageAdapter(options: NpmPackageAdapterOptions): KitSourceAdapter {
+  validateNpmPackageName(options.package);
+  const { packageName } = parseNpmPackageSpecifier(options.package);
+  const templateType = options.template || DEFAULT_TEMPLATE;
+  if (!(templateType in TEMPLATES)) {
+    const validTemplates = Object.keys(TEMPLATES)
+      .map((t) => `'${t}'`)
+      .join(" or ");
+    throw new FirebaseError(
+      `Invalid template '${templateType}'. Template must be ${validTemplates}.`,
+    );
+  }
+
+  return {
+    defaultKitId: sanitizePackageNameToKitName(packageName) || "kit",
+    findExistingKit(existingFunctions: ValidatedSingle[]): ValidatedKitSingle | undefined {
+      return existingFunctions.find(
+        (c): c is ValidatedKitSingle => isKitConfig(c) && c.sourcePackage?.name === packageName,
+      );
+    },
+    async validateAndConfirm(): Promise<void> {
+      await validateNpmPackageExists(options.package);
+      await promptSecurityConfirmation({
+        rawPkgName: options.package,
+        packageName,
+        nonInteractive: options.nonInteractive,
+        force: options.force,
+      });
+    },
+    async prepareSource(kitId: string, createdPaths: string[]): Promise<PreparedKitSource> {
+      const absKitDir = options.config.path(path.join(FUNCTION_KITS_DIR, kitId));
+      createdPaths.push(absKitDir);
+
+      const { sourcePath, absSourcePath } = await scaffoldKitFiles(
+        options.config,
+        kitId,
+        kitId,
+        packageName,
+        templateType,
+      );
+      await buildAndInstallKit(absSourcePath, options.package, isThirdPartyPackage(packageName));
+
+      return {
+        sourcePath,
+        sourcePackage: { name: packageName },
+        predeploy: ['npm --prefix "$RESOURCE_DIR" run build'],
+      };
+    },
+  };
 }

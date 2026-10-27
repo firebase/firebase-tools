@@ -3,9 +3,15 @@ import * as sinon from "sinon";
 import * as path from "path";
 import * as fs from "fs-extra";
 
-import { validateAndResolveDirectoryKit, buildAndInstallDirectoryKit } from "./directory";
+import {
+  validateAndResolveDirectoryKit,
+  buildAndInstallDirectoryKit,
+  createDirectoryAdapter,
+} from "./directory";
 import * as initSpawn from "../../../init/spawn";
+import { Config } from "../../../config";
 import { FirebaseError } from "../../../error";
+import { ValidatedKitSingle } from "../../projectConfig";
 
 describe("functions/kits/sources/directory", () => {
   let wrapSpawnStub: sinon.SinonStub;
@@ -207,6 +213,48 @@ describe("functions/kits/sources/directory", () => {
         FirebaseError,
         /TypeScript build failed: tsc error/,
       );
+    });
+  });
+
+  describe("createDirectoryAdapter", () => {
+    it("should find existing kit by local directory path", () => {
+      const existingKits: ValidatedKitSingle[] = [
+        {
+          kit: "dir-kit",
+          source: "my-local-kit",
+          instances: { inst1: "function-kits/dir-kit/config-inst1" },
+        },
+      ];
+      const adapter = createDirectoryAdapter({
+        config: { projectDir: "/mock/project" } as Config,
+        directory: "my-local-kit",
+      });
+
+      expect(adapter.defaultKitId).to.equal("my-local-kit");
+      expect(adapter.findExistingKit(existingKits)).to.equal(existingKits[0]);
+    });
+
+    it("should prepare directory source and return predeploy when build script exists", async () => {
+      (fs.pathExists as sinon.SinonStub).withArgs("/mock/project/my-kit").resolves(true);
+      (fs.pathExists as sinon.SinonStub)
+        .withArgs(path.join("/mock/project/my-kit", "package.json"))
+        .resolves(true);
+      (fs.readJson as sinon.SinonStub)
+        .withArgs(path.join("/mock/project/my-kit", "package.json"))
+        .resolves({ scripts: { build: "tsc" } });
+
+      const adapter = createDirectoryAdapter({
+        config: { projectDir: "/mock/project" } as Config,
+        directory: "my-kit",
+      });
+
+      await adapter.validateAndConfirm();
+      const prepared = await adapter.prepareSource("my-kit", []);
+
+      expect(prepared).to.deep.equal({
+        sourcePath: "my-kit",
+        predeploy: ['npm --prefix "$RESOURCE_DIR" run build'],
+      });
     });
   });
 });
