@@ -30,6 +30,12 @@ export const ALL_EXPERIMENTS = experiments({
   rtdbmanagement: {
     shortDescription: "Use new endpoint to administer realtime database instances",
   },
+
+  // Firestore experiments
+  firestorewatchmutability: {
+    shortDescription: "Enable Firestore Watch mutability during database creation and update",
+    public: false,
+  },
   // Cloud Functions for Firebase experiments
   functionsv2deployoptimizations: {
     shortDescription: "Optimize deployments of v2 firebase functions",

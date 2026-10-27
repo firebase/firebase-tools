@@ -1,6 +1,7 @@
 import * as clc from "colorette";
 
 import { Command } from "../command";
+import * as experiments from "../experiments";
 import * as fsi from "../firestore/api";
 import * as types from "../firestore/api-types";
 import { logger } from "../logger";
@@ -31,7 +32,9 @@ export const command = new Command("firestore:databases:create <database>")
   )
   .option(
     "--realtime-updates <enablement>",
-    "Whether realtime updates are enabled for this database, for example 'ENABLED' or 'DISABLED'. Can only be specified for 'enterprise' edition databases. Defaults to 'ENABLED' when firestore-data-access is enabled, otherwise the server default is used.",
+    experiments.isEnabled("firestorewatchmutability")
+      ? "Whether realtime updates are enabled for this database, for example 'ENABLED' or 'DISABLED'. Defaults to 'ENABLED' for Standard edition databases and for Enterprise edition databases when firestore-data-access is enabled, otherwise the server default is used."
+      : "Whether realtime updates are enabled for this database, for example 'ENABLED' or 'DISABLED'. Can only be specified for 'enterprise' edition databases. Defaults to 'ENABLED' when firestore-data-access is enabled, otherwise the server default is used.",
   )
   .option(
     "--firestore-data-access <enablement>",
@@ -130,6 +133,15 @@ export const command = new Command("firestore:databases:create <database>")
     }
 
     types.validateEnablementOption(options.realtimeUpdates, "realtime-updates", helpCommandText);
+    if (
+      !experiments.isEnabled("firestorewatchmutability") &&
+      databaseEdition !== types.DatabaseEdition.ENTERPRISE &&
+      options.realtimeUpdates
+    ) {
+      throw new FirebaseError(
+        `The --realtime-updates flag can only be specified for 'enterprise' edition databases. ${helpCommandText}`,
+      );
+    }
     let realtimeUpdatesMode: types.RealtimeUpdatesMode | undefined;
     if (options.realtimeUpdates === types.EnablementOption.ENABLED) {
       realtimeUpdatesMode = types.RealtimeUpdatesMode.ENABLED;

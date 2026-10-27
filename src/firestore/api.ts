@@ -858,17 +858,20 @@ export class FirestoreApi {
    * @param databaseId the name of the Firestore Database
    * @param deleteProtectionState DELETE_PROTECTION_ENABLED or DELETE_PROTECTION_DISABLED
    * @param pointInTimeRecoveryEnablement POINT_IN_TIME_RECOVERY_ENABLED or POINT_IN_TIME_RECOVERY_DISABLED
+   * @param realtimeUpdatesMode REALTIME_UPDATES_MODE_ENABLED or REALTIME_UPDATES_MODE_DISABLED
    */
   async updateDatabase(
     project: string,
     databaseId: string,
     deleteProtectionState?: types.DatabaseDeleteProtectionState,
     pointInTimeRecoveryEnablement?: types.PointInTimeRecoveryEnablement,
+    realtimeUpdatesMode?: types.RealtimeUpdatesMode,
   ): Promise<types.DatabaseResp> {
     const url = `/projects/${project}/databases/${databaseId}`;
     const payload: types.DatabaseReq = {
       deleteProtectionState,
       pointInTimeRecoveryEnablement,
+      realtimeUpdatesMode,
     };
     const res = await this.apiClient.patch<types.DatabaseReq, { response?: types.DatabaseResp }>(
       url,

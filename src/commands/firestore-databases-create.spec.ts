@@ -1,6 +1,7 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
 import { Command } from "../command";
+import * as experiments from "../experiments";
 import { command as firestoreDatabasesCreate } from "./firestore-databases-create";
 import * as fsi from "../firestore/api";
 import * as types from "../firestore/api-types";
@@ -439,6 +440,126 @@ describe("firestore:databases:create", () => {
       firestoreDataAccessMode: types.DataAccessMode.ENABLED,
       mongodbCompatibleDataAccessMode: types.DataAccessMode.DISABLED,
       cmekConfig: undefined,
+    });
+  });
+
+  describe("with firestorewatchmutability experiment", () => {
+    let wasEnabled: boolean;
+
+    beforeEach(() => {
+      wasEnabled = experiments.isEnabled("firestorewatchmutability");
+    });
+
+    afterEach(() => {
+      experiments.setEnabled("firestorewatchmutability", wasEnabled);
+    });
+
+    it("should create a standard database with realtimeUpdates ENABLED when enabled", async () => {
+      experiments.setEnabled("firestorewatchmutability", true);
+      const options = {
+        project: PROJECT,
+        location: LOCATION,
+        realtimeUpdates: "ENABLED",
+        json: true,
+      };
+      const expectedDatabase = mockDatabaseResp({});
+      firestoreApiStub.createDatabase.resolves(expectedDatabase);
+
+      const result = await command.runner()(DATABASE, options);
+
+      expect(result).to.deep.equal(expectedDatabase);
+      sinon.assert.calledOnceWithExactly(firestoreApiStub.createDatabase, {
+        project: PROJECT,
+        databaseId: DATABASE,
+        locationId: LOCATION,
+        type: types.DatabaseType.FIRESTORE_NATIVE,
+        databaseEdition: types.DatabaseEdition.STANDARD,
+        deleteProtectionState: types.DatabaseDeleteProtectionState.DISABLED,
+        pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement.DISABLED,
+        realtimeUpdatesMode: types.RealtimeUpdatesMode.ENABLED,
+        firestoreDataAccessMode: types.DataAccessMode.UNSPECIFIED,
+        mongodbCompatibleDataAccessMode: types.DataAccessMode.UNSPECIFIED,
+        cmekConfig: undefined,
+      });
+    });
+
+    it("should create a standard database with realtimeUpdates DISABLED when enabled", async () => {
+      experiments.setEnabled("firestorewatchmutability", true);
+      const options = {
+        project: PROJECT,
+        location: LOCATION,
+        realtimeUpdates: "DISABLED",
+        json: true,
+      };
+      const expectedDatabase = mockDatabaseResp({
+        realtimeUpdatesMode: types.RealtimeUpdatesMode.DISABLED,
+      });
+      firestoreApiStub.createDatabase.resolves(expectedDatabase);
+
+      const result = await command.runner()(DATABASE, options);
+
+      expect(result).to.deep.equal(expectedDatabase);
+      sinon.assert.calledOnceWithExactly(firestoreApiStub.createDatabase, {
+        project: PROJECT,
+        databaseId: DATABASE,
+        locationId: LOCATION,
+        type: types.DatabaseType.FIRESTORE_NATIVE,
+        databaseEdition: types.DatabaseEdition.STANDARD,
+        deleteProtectionState: types.DatabaseDeleteProtectionState.DISABLED,
+        pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement.DISABLED,
+        realtimeUpdatesMode: types.RealtimeUpdatesMode.DISABLED,
+        firestoreDataAccessMode: types.DataAccessMode.UNSPECIFIED,
+        mongodbCompatibleDataAccessMode: types.DataAccessMode.UNSPECIFIED,
+        cmekConfig: undefined,
+      });
+    });
+
+    it("should throw an error when realtimeUpdates is set on standard database when disabled", async () => {
+      experiments.setEnabled("firestorewatchmutability", false);
+      const options = {
+        project: PROJECT,
+        location: LOCATION,
+        realtimeUpdates: "DISABLED",
+        json: true,
+      };
+
+      await expect(command.runner()(DATABASE, options)).to.be.rejectedWith(
+        FirebaseError,
+        "The --realtime-updates flag can only be specified for 'enterprise' edition databases.",
+      );
+    });
+
+    it("should still allow creating an enterprise database with realtimeUpdates when disabled", async () => {
+      experiments.setEnabled("firestorewatchmutability", false);
+      const options = {
+        project: PROJECT,
+        location: LOCATION,
+        edition: "enterprise",
+        realtimeUpdates: "DISABLED",
+        json: true,
+      };
+      const expectedDatabase = mockDatabaseResp({
+        databaseEdition: types.DatabaseEdition.ENTERPRISE,
+        realtimeUpdatesMode: types.RealtimeUpdatesMode.DISABLED,
+      });
+      firestoreApiStub.createDatabase.resolves(expectedDatabase);
+
+      const result = await command.runner()(DATABASE, options);
+
+      expect(result).to.deep.equal(expectedDatabase);
+      sinon.assert.calledOnceWithExactly(firestoreApiStub.createDatabase, {
+        project: PROJECT,
+        databaseId: DATABASE,
+        locationId: LOCATION,
+        type: types.DatabaseType.FIRESTORE_NATIVE,
+        databaseEdition: types.DatabaseEdition.ENTERPRISE,
+        deleteProtectionState: types.DatabaseDeleteProtectionState.DISABLED,
+        pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement.DISABLED,
+        realtimeUpdatesMode: types.RealtimeUpdatesMode.DISABLED,
+        firestoreDataAccessMode: types.DataAccessMode.ENABLED,
+        mongodbCompatibleDataAccessMode: types.DataAccessMode.DISABLED,
+        cmekConfig: undefined,
+      });
     });
   });
 
