@@ -5,7 +5,12 @@ import * as os from "os";
 import Transport from "winston-transport";
 import { stripVTControlCharacters } from "node:util";
 import { SPLAT } from "triple-beam";
-import { logger as cliLogger, useConsoleLoggers, useFileLogger, tryStringify } from "../../src/logger";
+import {
+  logger as cliLogger,
+  useConsoleLoggers,
+  useFileLogger,
+  tryStringify,
+} from "../../src/logger";
 import { setInquirerLogger } from "./stubs/inquirer-stub";
 import { getRootFolders } from "./core/config";
 
@@ -37,8 +42,17 @@ for (const logLevel in pluginLogger) {
  */
 export function logSetup() {
   // Log to console (use built in CLI functionality)
-  process.env.DEBUG = "true";
-  useConsoleLoggers();
+  const prevDebug = process.env.DEBUG;
+  try {
+    process.env.DEBUG = "true";
+    useConsoleLoggers();
+  } finally {
+    if (prevDebug === undefined) {
+      delete process.env.DEBUG;
+    } else {
+      process.env.DEBUG = prevDebug;
+    }
+  }
 
   // Log to file
   // Only log to file if firebase.debug extension setting is true.

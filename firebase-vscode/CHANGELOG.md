@@ -1,6 +1,7 @@
 ## NEXT
 
 - [Fixed] Fix false warning about missing Firebase CLI by checking configured `firebasePath` and using robust version parsing.
+- [Fixed] Prevent logSetup() from leaking DEBUG to child processes and use robust bottom-to-top version extraction for CLI version check (#11363).
 
 ## 2.4.3
 

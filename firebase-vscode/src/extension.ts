@@ -16,6 +16,7 @@ import {
   setupFirebasePath,
   updateIdxSetting,
 } from "./utils/settings";
+import { parseVersion } from "./utils/version";
 import { registerFdc } from "./data-connect";
 import { ExecutionParamsService } from "./data-connect/execution/execution-params";
 import { AnalyticsLogger, IDX_METRIC_NOTICE } from "./analytics";
@@ -89,6 +90,7 @@ async function checkCLIInstallation(): Promise<void> {
     ];
     setIsVSCodeExtension(true);
     const env = { ...process.env, VSCODE_CWD: "" };
+    delete env.DEBUG;
 
     // On macOS/Linux, run commands through a login shell to load user profile environments (NVM, Homebrew, etc.)
     const isWin = process.platform === "win32";
@@ -103,16 +105,14 @@ async function checkCLIInstallation(): Promise<void> {
     };
 
     const versionRes = runCommand("firebase --version");
-    const versionStdout = versionRes.status === 0 ? versionRes.stdout?.toString().trim() : "";
-    const currentVersion = versionStdout
-      ? (semver.valid(versionStdout) || semver.coerce(versionStdout)?.version)
-      : undefined;
+    const versionStdout =
+      versionRes.status === 0 ? versionRes.stdout?.toString().trim() : "";
+    const currentVersion = parseVersion(versionStdout);
 
     const npmVersionRes = runCommand("npm --version");
-    const npmStdout = npmVersionRes.status === 0 ? npmVersionRes.stdout?.toString().trim() : "";
-    const npmVersion = npmStdout
-      ? (semver.valid(npmStdout) || semver.coerce(npmStdout)?.version)
-      : undefined;
+    const npmStdout =
+      npmVersionRes.status === 0 ? npmVersionRes.stdout?.toString().trim() : "";
+    const npmVersion = parseVersion(npmStdout);
 
     if (!currentVersion) {
       message = `The Firebase CLI is not installed (or not available on $PATH). If you would like to install it, run ${
