@@ -48,7 +48,7 @@ import {
   parseNpmPackageSpecifier,
   promptSecurityConfirmation,
   sanitizePackageNameToKitName,
-  ScaffoldedKitPaths,
+  ScaffoldedKitSourcePaths,
   scaffoldKitFiles,
   TEMPLATES,
   TemplateType,
@@ -58,6 +58,11 @@ import {
 } from "./sources";
 
 export * from "./sources";
+
+export interface ScaffoldedKitPaths extends ScaffoldedKitSourcePaths {
+  configDirPath: string;
+  absConfigDirPath: string;
+}
 
 export interface ExistingFunctionsInfo {
   existingFunctions: ValidatedSingle[];
@@ -497,13 +502,21 @@ export function revertFunctionsConfig(options: RevertFunctionsConfigOptions): vo
  * and updates firebase.json.
  */
 export async function scaffoldKit(options: ScaffoldKitOptions): Promise<ScaffoldedKitPaths> {
-  const paths = await scaffoldKitFiles(
-    options.config,
-    options.kitId,
-    options.instanceId,
-    options.packageName,
-    options.templateType,
-  );
+  const { sourcePath, absSourcePath } = await scaffoldKitFiles({
+    config: options.config,
+    kitId: options.kitId,
+    packageName: options.packageName,
+    templateType: options.templateType,
+  });
+  const configDirPath = path.join(FUNCTION_KITS_DIR, options.kitId, `config-${options.instanceId}`);
+  const absConfigDirPath = options.config.path(configDirPath);
+  await fs.ensureDir(absConfigDirPath);
+  const paths: ScaffoldedKitPaths = {
+    sourcePath,
+    configDirPath,
+    absSourcePath,
+    absConfigDirPath,
+  };
 
   if (options.seedEnv?.envs && Object.keys(options.seedEnv.envs).length > 0) {
     seedKitInstanceEnv({
@@ -974,8 +987,23 @@ export async function resolvePackageSource(
     defaultKitName: packageName,
     sourcePackageName: packageName,
     hasBuildScript: true,
-    setup: (kitId: string, instanceId: string) =>
-      scaffoldKitFiles(options.config, kitId, instanceId, packageName, templateType),
+    setup: async (kitId: string, instanceId: string) => {
+      const { sourcePath, absSourcePath } = await scaffoldKitFiles({
+        config: options.config,
+        kitId,
+        packageName,
+        templateType,
+      });
+      const configDirPath = path.join(FUNCTION_KITS_DIR, kitId, `config-${instanceId}`);
+      const absConfigDirPath = options.config.path(configDirPath);
+      await fs.ensureDir(absConfigDirPath);
+      return {
+        sourcePath,
+        configDirPath,
+        absSourcePath,
+        absConfigDirPath,
+      };
+    },
     buildAndInstall: (absSourcePath: string) =>
       buildAndInstallKit(absSourcePath, rawPkgName, isThirdParty),
   };

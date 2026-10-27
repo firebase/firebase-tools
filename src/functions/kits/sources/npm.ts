@@ -29,11 +29,9 @@ export interface PromptSecurityConfirmationOptions {
   force?: boolean;
 }
 
-export interface ScaffoldedKitPaths {
+export interface ScaffoldedKitSourcePaths {
   sourcePath: string;
-  configDirPath: string;
   absSourcePath: string;
-  absConfigDirPath: string;
 }
 
 export interface WriteKitIndexTsOptions {
@@ -41,6 +39,13 @@ export interface WriteKitIndexTsOptions {
   sourcePath: string;
   packageName: string;
   templateType: TemplateType;
+}
+
+export interface ScaffoldKitFilesOptions {
+  config: Config;
+  kitId: string;
+  packageName: string;
+  templateType?: TemplateType;
 }
 
 export interface NpmPackageAdapterOptions {
@@ -279,23 +284,16 @@ export async function writeKitIndexTs(options: WriteKitIndexTsOptions): Promise<
 }
 
 /**
- * Scaffolds the kit directory structure, package.json, tsconfig, gitignore, and index.ts source files.
+ * Scaffolds the kit source directory structure, package.json, tsconfig, gitignore, and index.ts source files.
  */
 export async function scaffoldKitFiles(
-  config: Config,
-  kitId: string,
-  instanceId: string,
-  packageName: string,
-  templateType: TemplateType = DEFAULT_TEMPLATE,
-): Promise<ScaffoldedKitPaths> {
+  options: ScaffoldKitFilesOptions,
+): Promise<ScaffoldedKitSourcePaths> {
+  const { config, kitId, packageName, templateType = DEFAULT_TEMPLATE } = options;
   const sourcePath = path.join(FUNCTION_KITS_DIR, kitId, "source");
-  const configDirPath = path.join(FUNCTION_KITS_DIR, kitId, `config-${instanceId}`);
-
   const absSourcePath = config.path(sourcePath);
-  const absConfigDirPath = config.path(configDirPath);
 
   await fs.ensureDir(absSourcePath);
-  await fs.ensureDir(absConfigDirPath);
 
   await writeKitPackageJson(config, sourcePath, kitId);
   await config.askWriteProjectFile(
@@ -308,7 +306,7 @@ export async function scaffoldKitFiles(
   );
   await writeKitIndexTs({ config, sourcePath, packageName, templateType });
 
-  return { sourcePath, configDirPath, absSourcePath, absConfigDirPath };
+  return { sourcePath, absSourcePath };
 }
 
 /**
@@ -489,13 +487,12 @@ export function createNpmPackageAdapter(options: NpmPackageAdapterOptions): KitS
       const absKitDir = options.config.path(path.join(FUNCTION_KITS_DIR, kitId));
       createdPaths.push(absKitDir);
 
-      const { sourcePath, absSourcePath } = await scaffoldKitFiles(
-        options.config,
-        kitId,
+      const { sourcePath, absSourcePath } = await scaffoldKitFiles({
+        config: options.config,
         kitId,
         packageName,
         templateType,
-      );
+      });
       await buildAndInstallKit(absSourcePath, options.package, isThirdPartyPackage(packageName));
 
       return {
