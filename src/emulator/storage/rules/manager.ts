@@ -6,6 +6,9 @@ import { StorageRulesIssues, StorageRulesRuntime, StorageRulesetInstance } from 
 import { RulesConfig } from "..";
 import { readFile } from "../../../fsutils";
 
+const WATCHER_READY_TIMEOUT_MS = 1000;
+const WATCHER_CHANGE_DELAY_MS = 5;
+
 /**
  * Keeps track of rules source file(s) and generated ruleset(s), either one for all storage
  * resources or different rules for different resources.
@@ -64,7 +67,7 @@ class DefaultStorageRulesManager implements StorageRulesManager {
 
   async start(): Promise<StorageRulesIssues> {
     const issues = await this.loadRuleset();
-    this.updateWatcher(this._rules.name);
+    await this.updateWatcher(this._rules.name);
     return issues;
   }
 
@@ -76,12 +79,12 @@ class DefaultStorageRulesManager implements StorageRulesManager {
     await this._watcher.close();
   }
 
-  private updateWatcher(rulesFile: string): void {
+  private updateWatcher(rulesFile: string): Promise<void> {
     const handleFileChange = async (): Promise<void> => {
       // There have been some race conditions reported (on Windows) where reading the
       // file too quickly after the watcher fires results in an empty file being read.
       // Adding a small delay prevents that at very little cost.
-      await new Promise((res) => setTimeout(res, 5));
+      await new Promise((res) => setTimeout(res, WATCHER_CHANGE_DELAY_MS));
 
       // In some OSes and CI environments, chokidar can emit a 'change' event
       // when a file is deleted or if it is a non-existent mock file (e.g. /dev/null/storage.rules).
@@ -107,12 +110,32 @@ class DefaultStorageRulesManager implements StorageRulesManager {
       }
     };
 
-    // handleFileChange catches all errors and logs via logger
-    this._watcher = chokidar
-      .watch(rulesFile, { persistent: true, ignoreInitial: true })
-      .on("change", () => {
-        void handleFileChange();
-      });
+    return new Promise((resolve) => {
+      // Fallback timer so start() never hangs if chokidar ready event doesn't fire
+      const timer = setTimeout(resolve, WATCHER_READY_TIMEOUT_MS);
+      timer.unref?.();
+
+      this._watcher = chokidar
+        .watch(rulesFile, { persistent: true, ignoreInitial: true })
+        .once("ready", () => {
+          clearTimeout(timer);
+          resolve();
+        })
+        .on("error", (err: unknown) => {
+          clearTimeout(timer);
+          const message = err instanceof Error ? err.message : String(err);
+          this._logger.logLabeled(
+            "DEBUG",
+            "storage",
+            `A storage rules file watcher error occurred: ${message}`,
+          );
+          resolve();
+        })
+        .on("change", () => {
+          // handleFileChange catches all errors and logs via logger
+          void handleFileChange();
+        });
+    });
   }
 
   private async loadRuleset(): Promise<StorageRulesIssues> {
