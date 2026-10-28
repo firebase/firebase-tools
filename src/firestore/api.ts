@@ -868,14 +868,24 @@ export class FirestoreApi {
     realtimeUpdatesMode?: types.RealtimeUpdatesMode,
   ): Promise<types.DatabaseResp> {
     const url = `/projects/${project}/databases/${databaseId}`;
-    const payload: types.DatabaseReq = {
-      deleteProtectionState,
-      pointInTimeRecoveryEnablement,
-      realtimeUpdatesMode,
-    };
+    const payload: types.DatabaseReq = {};
+    const updateMask: string[] = [];
+    if (deleteProtectionState) {
+      payload.deleteProtectionState = deleteProtectionState;
+      updateMask.push("delete_protection_state");
+    }
+    if (pointInTimeRecoveryEnablement) {
+      payload.pointInTimeRecoveryEnablement = pointInTimeRecoveryEnablement;
+      updateMask.push("point_in_time_recovery_enablement");
+    }
+    if (realtimeUpdatesMode) {
+      payload.realtimeUpdatesMode = realtimeUpdatesMode;
+      updateMask.push("realtime_updates_mode");
+    }
     const res = await this.apiClient.patch<types.DatabaseReq, { response?: types.DatabaseResp }>(
       url,
       payload,
+      { queryParams: { updateMask: updateMask.join(",") } },
     );
     const database = res.body.response;
     if (!database) {

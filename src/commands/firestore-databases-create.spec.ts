@@ -454,6 +454,34 @@ describe("firestore:databases:create", () => {
       experiments.setEnabled("firestorewatchmutability", wasEnabled);
     });
 
+    it("should default realtimeUpdatesMode to ENABLED for standard database when enabled", async () => {
+      experiments.setEnabled("firestorewatchmutability", true);
+      const options = {
+        project: PROJECT,
+        location: LOCATION,
+        json: true,
+      };
+      const expectedDatabase = mockDatabaseResp({});
+      firestoreApiStub.createDatabase.resolves(expectedDatabase);
+
+      const result = (await command.runner()(DATABASE, options)) as types.DatabaseResp;
+
+      expect(result).to.deep.equal(expectedDatabase);
+      sinon.assert.calledOnceWithExactly(firestoreApiStub.createDatabase, {
+        project: PROJECT,
+        databaseId: DATABASE,
+        locationId: LOCATION,
+        type: types.DatabaseType.FIRESTORE_NATIVE,
+        databaseEdition: types.DatabaseEdition.STANDARD,
+        deleteProtectionState: types.DatabaseDeleteProtectionState.DISABLED,
+        pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement.DISABLED,
+        realtimeUpdatesMode: types.RealtimeUpdatesMode.ENABLED,
+        firestoreDataAccessMode: types.DataAccessMode.UNSPECIFIED,
+        mongodbCompatibleDataAccessMode: types.DataAccessMode.UNSPECIFIED,
+        cmekConfig: undefined,
+      });
+    });
+
     it("should create a standard database with realtimeUpdates ENABLED when enabled", async () => {
       experiments.setEnabled("firestorewatchmutability", true);
       const options = {
@@ -465,7 +493,7 @@ describe("firestore:databases:create", () => {
       const expectedDatabase = mockDatabaseResp({});
       firestoreApiStub.createDatabase.resolves(expectedDatabase);
 
-      const result = await command.runner()(DATABASE, options);
+      const result = (await command.runner()(DATABASE, options)) as types.DatabaseResp;
 
       expect(result).to.deep.equal(expectedDatabase);
       sinon.assert.calledOnceWithExactly(firestoreApiStub.createDatabase, {
@@ -496,7 +524,7 @@ describe("firestore:databases:create", () => {
       });
       firestoreApiStub.createDatabase.resolves(expectedDatabase);
 
-      const result = await command.runner()(DATABASE, options);
+      const result = (await command.runner()(DATABASE, options)) as types.DatabaseResp;
 
       expect(result).to.deep.equal(expectedDatabase);
       sinon.assert.calledOnceWithExactly(firestoreApiStub.createDatabase, {
@@ -544,7 +572,7 @@ describe("firestore:databases:create", () => {
       });
       firestoreApiStub.createDatabase.resolves(expectedDatabase);
 
-      const result = await command.runner()(DATABASE, options);
+      const result = (await command.runner()(DATABASE, options)) as types.DatabaseResp;
 
       expect(result).to.deep.equal(expectedDatabase);
       sinon.assert.calledOnceWithExactly(firestoreApiStub.createDatabase, {

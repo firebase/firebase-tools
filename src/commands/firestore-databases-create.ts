@@ -148,12 +148,15 @@ export const command = new Command("firestore:databases:create <database>")
     } else if (options.realtimeUpdates === types.EnablementOption.DISABLED) {
       realtimeUpdatesMode = types.RealtimeUpdatesMode.DISABLED;
     }
-    // If not specified by the user, default realtimeUpdatesMode to ENABLED when
-    // firestoreDataAccessMode == ENABLED.
+    // If not specified by the user, default realtimeUpdatesMode to ENABLED for
+    // Enterprise edition when firestoreDataAccessMode == ENABLED, and for Standard
+    // edition when the firestorewatchmutability experiment is enabled.
     if (
       realtimeUpdatesMode == null &&
-      databaseEdition === types.DatabaseEdition.ENTERPRISE &&
-      firestoreDataAccessMode === types.DataAccessMode.ENABLED
+      ((databaseEdition === types.DatabaseEdition.STANDARD &&
+        experiments.isEnabled("firestorewatchmutability")) ||
+        (databaseEdition === types.DatabaseEdition.ENTERPRISE &&
+          firestoreDataAccessMode === types.DataAccessMode.ENABLED))
     ) {
       realtimeUpdatesMode = types.RealtimeUpdatesMode.ENABLED;
     }

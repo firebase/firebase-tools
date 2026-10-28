@@ -44,6 +44,7 @@ command
     if (!experiments.isEnabled("firestorewatchmutability") && options.realtimeUpdates) {
       throw new FirebaseError(
         "The --realtime-updates flag is only available when the 'firestorewatchmutability' experiment is enabled. To enable it, run 'firebase experiments:enable firestorewatchmutability'.",
+        { exit: 1 },
       );
     }
 
