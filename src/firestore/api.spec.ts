@@ -1,6 +1,5 @@
 import { expect } from "chai";
-import nock from "../test/helpers/nock";
-
+import * as nock from "nock";
 import { firestoreOrigin } from "../api";
 import { FirebaseError } from "../error";
 import { FirestoreApi } from "./api";
@@ -21,7 +20,6 @@ describe("FirestoreApi", () => {
 
   afterEach(() => {
     nock.cleanAll();
-    nock.enableNetConnect();
   });
 
   describe("updateDatabase", () => {
