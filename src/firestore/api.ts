@@ -882,11 +882,18 @@ export class FirestoreApi {
       payload.realtimeUpdatesMode = realtimeUpdatesMode;
       updateMask.push("realtime_updates_mode");
     }
-    const res = await this.apiClient.patch<types.DatabaseReq, { response?: types.DatabaseResp }>(
-      url,
-      payload,
-      { queryParams: { updateMask: updateMask.join(",") } },
-    );
+    const res = await this.apiClient.patch<
+      types.DatabaseReq,
+      { name: string; done?: boolean; response?: types.DatabaseResp }
+    >(url, payload, { queryParams: { updateMask: updateMask.join(",") } });
+    if (!res.body.done) {
+      return await pollOperation<types.DatabaseResp>({
+        apiOrigin: firestoreOrigin(),
+        apiVersion: "v1",
+        operationResourceName: res.body.name,
+        masterTimeout: 600000,
+      });
+    }
     const database = res.body.response;
     if (!database) {
       throw new FirebaseError("Not found");
