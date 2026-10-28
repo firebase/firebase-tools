@@ -2,6 +2,7 @@ import { expect } from "chai";
 import * as fs from "fs";
 import * as sinon from "sinon";
 import * as localbuilds from "../../apphosting/localbuilds";
+import { FirebaseError } from "../../error";
 import * as artifactregistry from "../../gcp/artifactregistry";
 import * as runv2 from "../../gcp/runv2";
 import * as gcs from "../../gcp/storage";
@@ -10,21 +11,32 @@ import { Options } from "../../options";
 import * as apphostingPrepare from "../apphosting/prepare";
 import * as apphostingUtil from "../apphosting/util";
 import { ServiceDeploy } from "./args";
-import { deploy, localBuildTemplate, revisionTemplate } from "./deploy";
+import { deploy, localBuildTemplate, remoteBuildTemplate, revisionTemplate } from "./deploy";
 
 const NODEJS22 = "us-central1-docker.pkg.dev/serverless-runtimes/google-22/runtimes/nodejs22";
 const DEPLOY_MESSAGE = "firebase.google.com/deploy-message";
+const ROLLOUT_POLLING = { pollTimeoutMs: 30 * 60 * 1000, pollMaxBackoffMs: 10 * 1000 };
 const APP_ID = "firebase.google.com/app-id";
 
 describe("run deploy", () => {
   const options = { config: { projectDir: "/project" } } as unknown as Options;
   const web = { serviceId: "web", region: "us-central1", rootDir: "apps/web" };
-  // Date.now() is stubbed to return 42, which tags the image.
-  const image = "us-central1-docker.pkg.dev/my-project/cloud-run-source-deploy/web:42";
+  const source = { bucket: "source-bucket", object: "web.zip" };
+  const imageRepository = "us-central1-docker.pkg.dev/my-project/cloud-run-source-deploy/web";
+  /** How Cloud Run builds web's source. */
+  const buildConfig = {
+    imageRepositoryUri: imageRepository,
+    buildpacksBuild: {
+      environmentVariables: {
+        X_GOOGLE_TARGET_PLATFORM: "fah",
+        FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
+      },
+    },
+  };
   const scratchDir = "/tmp/run-local-build-web-abc123";
   const builtApp = { bucket: "source-bucket", object: "web.tar.gz" };
   let createArchiveStub: sinon.SinonStub;
-  let submitBuildStub: sinon.SinonStub;
+  let ensureRepoStub: sinon.SinonStub;
   let createServiceStub: sinon.SinonStub;
   let updateServiceStub: sinon.SinonStub;
 
@@ -38,12 +50,10 @@ describe("run deploy", () => {
     sinon
       .stub(gcs, "uploadObject")
       .resolves({ bucket: "source-bucket", object: "web.zip", generation: "1" });
-    sinon.stub(artifactregistry, "ensureDockerRepository").resolves();
-    submitBuildStub = sinon.stub(runv2, "submitBuild").resolves();
+    ensureRepoStub = sinon.stub(artifactregistry, "ensureDockerRepository").resolves();
     const deployed = { uri: "https://web.run.app" } as runv2.Service;
     createServiceStub = sinon.stub(runv2, "createService").resolves(deployed);
     updateServiceStub = sinon.stub(runv2, "updateService").resolves(deployed);
-    sinon.stub(Date, "now").returns(42);
   });
 
   afterEach(() => sinon.restore());
@@ -53,41 +63,59 @@ describe("run deploy", () => {
     return svc;
   }
 
-  it("uploads the source, builds it, and creates a public service", async () => {
+  it("uploads the source and creates a public service that Cloud Run builds from it", async () => {
     const svc = await deployOne({ config: web, baseImage: NODEJS22 });
 
     expect(createArchiveStub).to.have.been.calledWithMatch(
       { backendId: "web" },
       "/project/apps/web",
     );
-    expect(submitBuildStub).to.have.been.calledWithMatch("my-project", "us-central1", {
-      storageSource: { bucket: "source-bucket", object: "web.zip" },
-      imageUri: image,
-      buildpackBuild: { baseImage: NODEJS22, enableAutomaticUpdates: true },
-    });
-    expect(createServiceStub).to.have.been.calledWithMatch("my-project", "us-central1", "web", {
-      template: { containers: [{ name: "web", image, baseImageUri: NODEJS22 }] },
-      invokerIamDisabled: true,
-      ingress: "INGRESS_TRAFFIC_ALL",
-    });
+    expect(ensureRepoStub).to.have.been.calledWith(
+      "my-project",
+      "us-central1",
+      "cloud-run-source-deploy",
+    );
+    expect(createServiceStub).to.have.been.calledOnceWithExactly(
+      "my-project",
+      "us-central1",
+      "web",
+      {
+        name: "projects/my-project/locations/us-central1/services/web",
+        annotations: {},
+        template: {
+          containers: [
+            {
+              name: "web",
+              baseImageUri: NODEJS22,
+              sourceCode: { cloudStorageSource: source },
+              buildConfig,
+            },
+          ],
+        },
+        client: "cli-firebase",
+        invokerIamDisabled: true,
+        ingress: "INGRESS_TRAFFIC_ALL",
+      },
+      ROLLOUT_POLLING,
+    );
     expect(svc.deployed).to.deep.equal({ uri: "https://web.run.app" });
   });
 
   it("builds without a base image if the service doesn't have one", async () => {
     await deployOne({ config: web });
 
-    // Without a base image, Cloud Build can't turn on automatic base image updates.
-    const { buildpackBuild } = submitBuildStub.firstCall.args[2];
-    expect(buildpackBuild).not.to.have.property("baseImage");
-    expect(buildpackBuild).not.to.have.property("enableAutomaticUpdates");
+    // Without a base image, Cloud Run doesn't turn on automatic base image updates.
+    const container = createServiceStub.firstCall.args[3].template.containers[0];
+    expect(container).not.to.have.property("baseImageUri");
   });
 
-  it("passes the service's plain build env vars to Cloud Build, but never secrets", async () => {
+  it("passes the service's plain build env vars to the build, but never secrets", async () => {
     const buildEnv = { API_URL: "https://api.example.com", NPM_TOKEN: { secret: "npm-token" } };
 
     await deployOne({ config: web, buildEnv });
 
-    const { environmentVariables } = submitBuildStub.firstCall.args[2].buildpackBuild;
+    const container = createServiceStub.firstCall.args[3].template.containers[0];
+    const { environmentVariables } = container.buildConfig.buildpacksBuild;
     expect(environmentVariables).to.include({ API_URL: "https://api.example.com" });
     expect(environmentVariables).not.to.have.property("NPM_TOKEN");
   });
@@ -114,14 +142,58 @@ describe("run deploy", () => {
       {
         name: "projects/my-project/locations/us-central1/services/web",
         annotations: {},
-        template: { containers: [{ name: "web", image }] },
+        // A container can't have both an image and a build config, so the old image is gone.
+        template: {
+          containers: [{ name: "web", sourceCode: { cloudStorageSource: source }, buildConfig }],
+        },
         traffic: [
           { type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 },
           { type: "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION", revision: "web-000", tag: "preview" },
         ],
       },
-      { updateMask: ["template", "traffic", "annotations"], pollTimeoutMs: 10 * 60 * 1000 },
+      { updateMask: ["template", "traffic", "annotations"], ...ROLLOUT_POLLING },
     );
+  });
+
+  describe("when the rollout fails", () => {
+    const rolloutError = new Error("Build projects/123/locations/us-central1/builds/b1 failed: {}");
+    const logUrl = "https://console.cloud.google.com/cloud-build/builds;region=us-central1/b1";
+    let getRevisionStub: sinon.SinonStub;
+
+    function revisionBuilt(status: "SUCCESS" | "FAILURE"): runv2.Revision {
+      const buildStatus = { status, cloudBuildLogUrl: logUrl };
+      return { name: "web-1", containerStatuses: [{ name: "web", buildStatus }] };
+    }
+
+    beforeEach(() => {
+      createServiceStub.rejects(rolloutError);
+      sinon.stub(runv2, "getService").resolves({
+        latestCreatedRevision:
+          "projects/my-project/locations/us-central1/services/web/revisions/web-1",
+      } as runv2.Service);
+      getRevisionStub = sinon.stub(runv2, "getRevision");
+    });
+
+    it("links to the build's logs if Cloud Run couldn't build the image", async () => {
+      getRevisionStub.resolves(revisionBuilt("FAILURE"));
+
+      await expect(deployOne({ config: web })).to.be.rejectedWith(
+        FirebaseError,
+        `Failed to build service web in us-central1. View the build logs at ${logUrl}`,
+      );
+    });
+
+    it("rethrows the rollout's error if the build didn't fail", async () => {
+      getRevisionStub.resolves(revisionBuilt("SUCCESS"));
+
+      await expect(deployOne({ config: web })).to.be.rejectedWith(rolloutError);
+    });
+
+    it("rethrows the rollout's error if it can't look up the build", async () => {
+      getRevisionStub.rejects(new Error("HTTP Error: 403"));
+
+      await expect(deployOne({ config: web })).to.be.rejectedWith(rolloutError);
+    });
   });
 
   describe("linked Firebase Web App", () => {
@@ -222,7 +294,8 @@ describe("run deploy", () => {
       const container = await deployLocalBuild();
 
       expect(tarArchiveStub).to.have.been.calledWithMatch(sinon.match.any, scratchDir, [".next"]);
-      expect(submitBuildStub).not.to.have.been.called;
+      expect(ensureRepoStub).not.to.have.been.called;
+      expect(container).not.to.have.property("buildConfig");
       expect(container).to.deep.include({
         image: "scratch",
         sourceCode: { cloudStorageSource: builtApp },
@@ -304,20 +377,18 @@ describe("run deploy", () => {
       } as runv2.Service;
     }
 
-    it("starts a new service with just the image", () => {
-      expect(revisionTemplate({ config: web }, image)).to.deep.equal({
-        containers: [{ name: "web", image }],
-      });
+    it("starts a new service with just a named container", () => {
+      expect(revisionTemplate({ config: web })).to.deep.equal({ containers: [{ name: "web" }] });
     });
 
-    it("keeps the live revision's settings, but not its name", () => {
-      const template = revisionTemplate({ config: web, existing, baseImage: NODEJS22 }, image);
+    it("keeps the live revision's settings, but not its name or image", () => {
+      const template = revisionTemplate({ config: web, existing, baseImage: NODEJS22 });
 
       expect(template).to.deep.equal({
         serviceAccount: "web@my-project.iam.gserviceaccount.com",
         annotations: { team: "frontend" },
         containers: [
-          { name: "web", image, baseImageUri: NODEJS22, env: [{ name: "MODE", value: "prod" }] },
+          { name: "web", baseImageUri: NODEJS22, env: [{ name: "MODE", value: "prod" }] },
         ],
       });
       // The live service itself isn't changed.
@@ -325,37 +396,61 @@ describe("run deploy", () => {
     });
 
     it("sets the base image, or clears it", () => {
-      const withBaseImage = revisionTemplate(
-        { config: web, existing, baseImage: "nodejs24" },
-        image,
-      );
+      const withBaseImage = revisionTemplate({ config: web, existing, baseImage: "nodejs24" });
       expect(withBaseImage.containers?.[0].baseImageUri).to.equal("nodejs24");
 
-      const withoutBaseImage = revisionTemplate({ config: web, existing }, image);
+      const withoutBaseImage = revisionTemplate({ config: web, existing });
       expect(withoutBaseImage.containers?.[0]).not.to.have.property("baseImageUri");
     });
 
     it("sets the deploy message, or clears the last one", () => {
-      const withMessage = revisionTemplate({ config: web, existing }, image, "Fix the login page");
+      const withMessage = revisionTemplate({ config: web, existing }, "Fix the login page");
       expect(withMessage.annotations).to.deep.equal({
         team: "frontend",
         [DEPLOY_MESSAGE]: "Fix the login page",
       });
 
-      const withoutMessage = revisionTemplate({ config: web, existing }, image);
+      const withoutMessage = revisionTemplate({ config: web, existing });
       expect(withoutMessage.annotations).to.deep.equal({ team: "frontend" });
     });
 
-    it("switches a service from a local build back to an image", () => {
+    it("drops a local build's output and start command", () => {
       const fromLocalBuild = webRunning({
         image: "scratch",
         command: ["npm", "run", "start"],
         sourceCode: { cloudStorageSource: builtApp },
       });
 
-      const template = revisionTemplate({ config: web, existing: fromLocalBuild }, image);
+      const template = revisionTemplate({ config: web, existing: fromLocalBuild });
 
-      expect(template).to.deep.equal({ containers: [{ name: "web", image }] });
+      expect(template).to.deep.equal({ containers: [{ name: "web" }] });
+    });
+
+    it("drops the last remote build's source and build config, but keeps the command", () => {
+      const fromRemoteBuild = webRunning({
+        command: ["node", "server.js"],
+        sourceCode: { cloudStorageSource: source },
+        buildConfig,
+      });
+
+      const template = revisionTemplate({ config: web, existing: fromRemoteBuild });
+
+      expect(template).to.deep.equal({
+        containers: [{ name: "web", command: ["node", "server.js"] }],
+      });
+    });
+
+    describe("remoteBuildTemplate", () => {
+      it("has Cloud Run build the uploaded source with App Hosting's buildpacks", () => {
+        const template = remoteBuildTemplate({ config: web, existing }, source, imageRepository);
+
+        expect(template.containers?.[0]).to.deep.equal({
+          name: "web",
+          env: [{ name: "MODE", value: "prod" }],
+          sourceCode: { cloudStorageSource: source },
+          buildConfig,
+        });
+      });
     });
 
     describe("FIREBASE_CONFIG", () => {
@@ -372,7 +467,7 @@ describe("run deploy", () => {
           autoInit: { appId: "1:123:web:abc", firebaseConfig: "current" },
         };
 
-        const template = revisionTemplate(svc, image);
+        const template = revisionTemplate(svc);
 
         expect(template.containers?.[0].env).to.deep.equal([
           { name: "FIREBASE_CONFIG", value: "current" },
@@ -390,7 +485,7 @@ describe("run deploy", () => {
           annotations: { [APP_ID]: "1:123:web:abc" },
         };
 
-        const template = revisionTemplate({ config: web, existing }, image);
+        const template = revisionTemplate({ config: web, existing });
 
         expect(template.containers?.[0].env).to.deep.equal([{ name: "MODE", value: "prod" }]);
       });
@@ -398,7 +493,7 @@ describe("run deploy", () => {
       it("is left alone if the user set it on a service that was never linked", () => {
         const svc = { config: web, existing: withConfig("mine") };
 
-        const template = revisionTemplate(svc, image);
+        const template = revisionTemplate(svc);
 
         expect(template.containers?.[0].env).to.deep.equal([
           { name: "FIREBASE_CONFIG", value: "mine" },
@@ -407,6 +502,28 @@ describe("run deploy", () => {
     });
 
     describe("localBuildTemplate", () => {
+      it("switches a service from a remote build to a local build", () => {
+        const fromRemoteBuild = webRunning({
+          sourceCode: { cloudStorageSource: source },
+          buildConfig,
+        });
+        const build = { outputFiles: [".next"], runCommand: "npm run start", env: [] };
+
+        const template = localBuildTemplate(
+          { config: web, existing: fromRemoteBuild },
+          build,
+          builtApp,
+        );
+
+        // A container can't have both an image and a build config.
+        expect(template.containers?.[0]).to.deep.equal({
+          name: "web",
+          image: "scratch",
+          sourceCode: { cloudStorageSource: builtApp },
+          command: ["npm", "run", "start"],
+        });
+      });
+
       it("runs a local build's output with the build's start command", () => {
         // The command is split on whitespace, so stray spaces don't become empty arguments.
         const build = { outputFiles: [".next"], runCommand: " npm  run start ", env: [] };

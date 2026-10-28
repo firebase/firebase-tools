@@ -7,7 +7,6 @@ import { latest } from "../deploy/functions/runtimes/supported";
 import { CODEBASE_LABEL } from "../functions/constants";
 import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
-import { logger } from "../logger";
 import * as poller from "../operation-poller";
 
 describe("runv2", () => {
@@ -599,100 +598,31 @@ describe("runv2", () => {
     });
   });
 
-  describe("submitBuild, updateService, and createService", () => {
+  describe("updateService and createService", () => {
     let sandbox: sinon.SinonSandbox;
     let postStub: sinon.SinonStub;
     let patchStub: sinon.SinonStub;
     let pollStub: sinon.SinonStub;
-    let warnStub: sinon.SinonStub;
 
     beforeEach(() => {
       sandbox = sinon.createSandbox();
       postStub = sandbox.stub(Client.prototype, "post");
       patchStub = sandbox.stub(Client.prototype, "patch");
       pollStub = sandbox.stub(poller, "pollOperation");
-      warnStub = sandbox.stub(logger, "warn");
     });
 
     afterEach(() => {
       sandbox.restore();
     });
 
-    it("submitBuild submits a build, logs baseImageWarning, and polls until SUCCESS", async () => {
-      postStub.resolves({
-        body: {
-          baseImageWarning: "nodejs20 is deprecated",
-          buildOperation: {
-            metadata: {
-              build: { name: "projects/p/locations/r/builds/b1", logUrl: "http://logs" },
-            },
-          },
-        },
-      });
-      pollStub.callsFake(async (opts: { doneFn?: (b: { status?: string }) => boolean }) => {
-        expect(opts.doneFn?.({ status: "WORKING" })).to.be.false;
-        expect(opts.doneFn?.({ status: "SUCCESS" })).to.be.true;
-      });
-
-      const build: runv2.Build = {
-        imageUri: IMAGE_URI,
-        storageSource: { bucket: "b", object: "o" },
-        buildpackBuild: { baseImage: "nodejs22" },
-      };
-      await runv2.submitBuild(PROJECT_ID, LOCATION, build);
-
-      expect(postStub).to.have.been.calledOnceWithExactly(
-        `/projects/${PROJECT_ID}/locations/${LOCATION}/builds:submit`,
-        build,
-      );
-      expect(warnStub).to.have.been.calledOnceWithExactly("nodejs20 is deprecated");
-      expect(pollStub).to.have.been.calledOnce;
-    });
-
-    it("submitBuild throws when no build metadata is returned", async () => {
-      postStub.resolves({ body: { buildOperation: {} } });
-
-      await expect(
-        runv2.submitBuild(PROJECT_ID, LOCATION, {
-          imageUri: IMAGE_URI,
-          storageSource: { bucket: "b", object: "o" },
-          buildpackBuild: {},
-        }),
-      ).to.be.rejectedWith("Failed to submit build: no build was returned.");
-    });
-
-    it("submitBuild throws when the Cloud Build fails", async () => {
-      postStub.resolves({
-        body: {
-          buildOperation: {
-            metadata: {
-              build: { name: "projects/p/locations/r/builds/b1", logUrl: "http://logs" },
-            },
-          },
-        },
-      });
-      pollStub.callsFake(async (opts: { doneFn?: (b: { status?: string }) => boolean }) => {
-        expect(opts.doneFn?.({ status: "FAILURE" })).to.be.true;
-      });
-
-      await expect(
-        runv2.submitBuild(PROJECT_ID, LOCATION, {
-          imageUri: IMAGE_URI,
-          storageSource: { bucket: "b", object: "o" },
-          buildpackBuild: {},
-        }),
-      ).to.be.rejectedWith(
-        "Cloud Build failed with status FAILURE. View the build logs at http://logs",
-      );
-    });
-
-    it("updateService uses explicit updateMask and pollTimeoutMs when provided", async () => {
+    it("updateService uses explicit updateMask and polling options when provided", async () => {
       patchStub.resolves({ body: { name: "operations/op1" } });
       pollStub.resolves(BASE_RUN_SERVICE);
 
       await runv2.updateService(BASE_RUN_SERVICE, {
         updateMask: ["template", "traffic"],
         pollTimeoutMs: 60000,
+        pollMaxBackoffMs: 10000,
       });
 
       expect(patchStub).to.have.been.calledOnceWithExactly(
@@ -703,6 +633,7 @@ describe("runv2", () => {
       expect(pollStub).to.have.been.calledWithMatch({
         operationResourceName: "operations/op1",
         masterTimeout: 60000,
+        maxBackoff: 10000,
       });
     });
 
@@ -712,6 +643,7 @@ describe("runv2", () => {
 
       await runv2.createService(PROJECT_ID, LOCATION, SERVICE_ID, BASE_RUN_SERVICE, {
         pollTimeoutMs: 60000,
+        pollMaxBackoffMs: 10000,
       });
 
       const expectedBody: Partial<runv2.Service> = { ...BASE_RUN_SERVICE };
@@ -724,6 +656,7 @@ describe("runv2", () => {
       expect(pollStub).to.have.been.calledWithMatch({
         operationResourceName: "operations/op2",
         masterTimeout: 60000,
+        maxBackoff: 10000,
       });
     });
   });
