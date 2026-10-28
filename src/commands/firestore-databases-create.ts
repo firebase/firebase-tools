@@ -33,7 +33,7 @@ export const command = new Command("firestore:databases:create <database>")
   .option(
     "--realtime-updates <enablement>",
     experiments.isEnabled("firestorewatchmutability")
-      ? "Whether realtime updates are enabled for this database, for example 'ENABLED' or 'DISABLED'. Defaults to 'ENABLED' for Standard edition databases and for Enterprise edition databases when firestore-data-access is enabled, otherwise the server default is used."
+      ? "Whether realtime updates are enabled for this database, for example 'ENABLED' or 'DISABLED'. Defaults to 'ENABLED' for 'enterprise' edition databases when firestore-data-access is enabled, otherwise the server default is used."
       : "Whether realtime updates are enabled for this database, for example 'ENABLED' or 'DISABLED'. Can only be specified for 'enterprise' edition databases. Defaults to 'ENABLED' when firestore-data-access is enabled, otherwise the server default is used.",
   )
   .option(
@@ -148,15 +148,12 @@ export const command = new Command("firestore:databases:create <database>")
     } else if (options.realtimeUpdates === types.EnablementOption.DISABLED) {
       realtimeUpdatesMode = types.RealtimeUpdatesMode.DISABLED;
     }
-    // If not specified by the user, default realtimeUpdatesMode to ENABLED for
-    // Enterprise edition when firestoreDataAccessMode == ENABLED, and for Standard
-    // edition when the firestorewatchmutability experiment is enabled.
+    // If not specified by the user, default realtimeUpdatesMode to ENABLED when
+    // firestoreDataAccessMode == ENABLED.
     if (
       realtimeUpdatesMode == null &&
-      ((databaseEdition === types.DatabaseEdition.STANDARD &&
-        experiments.isEnabled("firestorewatchmutability")) ||
-        (databaseEdition === types.DatabaseEdition.ENTERPRISE &&
-          firestoreDataAccessMode === types.DataAccessMode.ENABLED))
+      databaseEdition === types.DatabaseEdition.ENTERPRISE &&
+      firestoreDataAccessMode === types.DataAccessMode.ENABLED
     ) {
       realtimeUpdatesMode = types.RealtimeUpdatesMode.ENABLED;
     }

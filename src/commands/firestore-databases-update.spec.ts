@@ -1,26 +1,29 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
 import { Command } from "../command";
-import * as experiments from "../experiments";
 import { command as firestoreDatabasesUpdate } from "./firestore-databases-update";
 import * as fsi from "../firestore/api";
 import * as types from "../firestore/api-types";
 import { FirebaseError } from "../error";
+import { logger } from "../logger";
 import * as requireAuthModule from "../requireAuth";
 
 describe("firestore:databases:update", () => {
   const PROJECT = "test-project";
   const DATABASE = "test-database";
   const LOCATION = "nam5";
+  const OPERATION_NAME = `projects/${PROJECT}/databases/${DATABASE}/operations/op-123`;
 
   let command: Command;
   let firestoreApiStub: sinon.SinonStubbedInstance<fsi.FirestoreApi>;
   let requireAuthStub: sinon.SinonStub;
+  let loggerInfoStub: sinon.SinonStub;
 
   beforeEach(() => {
     command = firestoreDatabasesUpdate;
     firestoreApiStub = sinon.createStubInstance(fsi.FirestoreApi);
     requireAuthStub = sinon.stub(requireAuthModule, "requireAuth");
+    loggerInfoStub = sinon.stub(logger, "info");
     sinon.stub(fsi, "FirestoreApi").returns(firestoreApiStub);
     requireAuthStub.resolves("a@b.com");
   });
@@ -53,6 +56,15 @@ describe("firestore:databases:update", () => {
     };
   };
 
+  const mockOperation = (overrides: Partial<types.Operation>): types.Operation => {
+    return {
+      name: OPERATION_NAME,
+      done: true,
+      metadata: {},
+      ...overrides,
+    };
+  };
+
   it("should throw an error if no properties to update are provided", async () => {
     const options = {
       project: PROJECT,
@@ -73,19 +85,16 @@ describe("firestore:databases:update", () => {
     const expectedDatabase = mockDatabaseResp({
       deleteProtectionState: types.DatabaseDeleteProtectionState.ENABLED,
     });
-    firestoreApiStub.updateDatabase.resolves(expectedDatabase);
+    firestoreApiStub.updateDatabase.resolves(mockOperation({ response: expectedDatabase }));
 
     const result = (await command.runner()(DATABASE, options)) as types.DatabaseResp;
 
     expect(result).to.deep.equal(expectedDatabase);
-    sinon.assert.calledOnceWithExactly(
-      firestoreApiStub.updateDatabase,
-      PROJECT,
-      DATABASE,
-      types.DatabaseDeleteProtectionState.ENABLED,
-      undefined,
-      undefined,
-    );
+    sinon.assert.calledOnceWithExactly(firestoreApiStub.updateDatabase, PROJECT, DATABASE, {
+      deleteProtectionState: types.DatabaseDeleteProtectionState.ENABLED,
+      pointInTimeRecoveryEnablement: undefined,
+      realtimeUpdatesMode: undefined,
+    });
   });
 
   it("should update point-in-time recovery enablement", async () => {
@@ -97,59 +106,87 @@ describe("firestore:databases:update", () => {
     const expectedDatabase = mockDatabaseResp({
       pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement.ENABLED,
     });
-    firestoreApiStub.updateDatabase.resolves(expectedDatabase);
+    firestoreApiStub.updateDatabase.resolves(mockOperation({ response: expectedDatabase }));
 
     const result = (await command.runner()(DATABASE, options)) as types.DatabaseResp;
 
     expect(result).to.deep.equal(expectedDatabase);
-    sinon.assert.calledOnceWithExactly(
-      firestoreApiStub.updateDatabase,
-      PROJECT,
-      DATABASE,
-      undefined,
-      types.PointInTimeRecoveryEnablement.ENABLED,
-      undefined,
+    sinon.assert.calledOnceWithExactly(firestoreApiStub.updateDatabase, PROJECT, DATABASE, {
+      deleteProtectionState: undefined,
+      pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement.ENABLED,
+      realtimeUpdatesMode: undefined,
+    });
+  });
+
+  it("should return the operation when the update is still in progress", async () => {
+    const options = {
+      project: PROJECT,
+      pointInTimeRecovery: "ENABLED",
+      json: true,
+    };
+    const inProgressOperation = mockOperation({ done: false });
+    firestoreApiStub.updateDatabase.resolves(inProgressOperation);
+
+    const result = (await command.runner()(DATABASE, options)) as types.Operation;
+
+    expect(result).to.deep.equal(inProgressOperation);
+    sinon.assert.calledWith(
+      loggerInfoStub,
+      `firebase firestore:operations:describe --database="${DATABASE}" ${OPERATION_NAME}`,
     );
   });
 
-  describe("with firestorewatchmutability experiment", () => {
-    let wasEnabled: boolean;
+  it("should throw the operation error when the update failed", async () => {
+    const options = {
+      project: PROJECT,
+      deleteProtection: "ENABLED",
+    };
+    firestoreApiStub.updateDatabase.resolves(
+      mockOperation({
+        error: { name: "INTERNAL", code: 13, message: "Something went wrong" },
+      }),
+    );
 
-    beforeEach(() => {
-      wasEnabled = experiments.isEnabled("firestorewatchmutability");
-    });
+    await expect(command.runner()(DATABASE, options)).to.be.rejectedWith(
+      FirebaseError,
+      `Failed to update database ${DATABASE}: Something went wrong`,
+    );
+  });
 
-    afterEach(() => {
-      experiments.setEnabled("firestorewatchmutability", wasEnabled);
-    });
+  it("should throw when a completed operation has no database in its response", async () => {
+    const options = {
+      project: PROJECT,
+      deleteProtection: "ENABLED",
+    };
+    firestoreApiStub.updateDatabase.resolves(mockOperation({}));
 
-    it("should update realtimeUpdates to ENABLED when experiment is enabled", async () => {
-      experiments.setEnabled("firestorewatchmutability", true);
+    await expect(command.runner()(DATABASE, options)).to.be.rejectedWith(
+      FirebaseError,
+      "Not found",
+    );
+  });
+
+  describe("with --realtime-updates", () => {
+    it("should update realtimeUpdates to ENABLED", async () => {
       const options = {
         project: PROJECT,
         realtimeUpdates: "ENABLED",
         json: true,
       };
-      const expectedDatabase = mockDatabaseResp({
+      const inProgressOperation = mockOperation({ done: false });
+      firestoreApiStub.updateDatabase.resolves(inProgressOperation);
+
+      const result = (await command.runner()(DATABASE, options)) as types.Operation;
+
+      expect(result).to.deep.equal(inProgressOperation);
+      sinon.assert.calledOnceWithExactly(firestoreApiStub.updateDatabase, PROJECT, DATABASE, {
+        deleteProtectionState: undefined,
+        pointInTimeRecoveryEnablement: undefined,
         realtimeUpdatesMode: types.RealtimeUpdatesMode.ENABLED,
       });
-      firestoreApiStub.updateDatabase.resolves(expectedDatabase);
-
-      const result = (await command.runner()(DATABASE, options)) as types.DatabaseResp;
-
-      expect(result).to.deep.equal(expectedDatabase);
-      sinon.assert.calledOnceWithExactly(
-        firestoreApiStub.updateDatabase,
-        PROJECT,
-        DATABASE,
-        undefined,
-        undefined,
-        types.RealtimeUpdatesMode.ENABLED,
-      );
     });
 
-    it("should update realtimeUpdates to DISABLED when experiment is enabled", async () => {
-      experiments.setEnabled("firestorewatchmutability", true);
+    it("should update realtimeUpdates to DISABLED", async () => {
       const options = {
         project: PROJECT,
         realtimeUpdates: "DISABLED",
@@ -158,23 +195,19 @@ describe("firestore:databases:update", () => {
       const expectedDatabase = mockDatabaseResp({
         realtimeUpdatesMode: types.RealtimeUpdatesMode.DISABLED,
       });
-      firestoreApiStub.updateDatabase.resolves(expectedDatabase);
+      firestoreApiStub.updateDatabase.resolves(mockOperation({ response: expectedDatabase }));
 
       const result = (await command.runner()(DATABASE, options)) as types.DatabaseResp;
 
       expect(result).to.deep.equal(expectedDatabase);
-      sinon.assert.calledOnceWithExactly(
-        firestoreApiStub.updateDatabase,
-        PROJECT,
-        DATABASE,
-        undefined,
-        undefined,
-        types.RealtimeUpdatesMode.DISABLED,
-      );
+      sinon.assert.calledOnceWithExactly(firestoreApiStub.updateDatabase, PROJECT, DATABASE, {
+        deleteProtectionState: undefined,
+        pointInTimeRecoveryEnablement: undefined,
+        realtimeUpdatesMode: types.RealtimeUpdatesMode.DISABLED,
+      });
     });
 
-    it("should update multiple properties including realtimeUpdates when experiment is enabled", async () => {
-      experiments.setEnabled("firestorewatchmutability", true);
+    it("should update multiple properties including realtimeUpdates", async () => {
       const options = {
         project: PROJECT,
         deleteProtection: "ENABLED",
@@ -187,23 +220,19 @@ describe("firestore:databases:update", () => {
         pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement.DISABLED,
         realtimeUpdatesMode: types.RealtimeUpdatesMode.DISABLED,
       });
-      firestoreApiStub.updateDatabase.resolves(expectedDatabase);
+      firestoreApiStub.updateDatabase.resolves(mockOperation({ response: expectedDatabase }));
 
       const result = (await command.runner()(DATABASE, options)) as types.DatabaseResp;
 
       expect(result).to.deep.equal(expectedDatabase);
-      sinon.assert.calledOnceWithExactly(
-        firestoreApiStub.updateDatabase,
-        PROJECT,
-        DATABASE,
-        types.DatabaseDeleteProtectionState.ENABLED,
-        types.PointInTimeRecoveryEnablement.DISABLED,
-        types.RealtimeUpdatesMode.DISABLED,
-      );
+      sinon.assert.calledOnceWithExactly(firestoreApiStub.updateDatabase, PROJECT, DATABASE, {
+        deleteProtectionState: types.DatabaseDeleteProtectionState.ENABLED,
+        pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement.DISABLED,
+        realtimeUpdatesMode: types.RealtimeUpdatesMode.DISABLED,
+      });
     });
 
-    it("should throw an error for invalid realtimeUpdates option when experiment is enabled", async () => {
-      experiments.setEnabled("firestorewatchmutability", true);
+    it("should throw an error for invalid realtimeUpdates option", async () => {
       const options = {
         project: PROJECT,
         realtimeUpdates: "INVALID",
@@ -212,19 +241,6 @@ describe("firestore:databases:update", () => {
       await expect(command.runner()(DATABASE, options)).to.be.rejectedWith(
         FirebaseError,
         "Invalid value for flag --realtime-updates",
-      );
-    });
-
-    it("should throw an error when realtimeUpdates is set while experiment is disabled", async () => {
-      experiments.setEnabled("firestorewatchmutability", false);
-      const options = {
-        project: PROJECT,
-        realtimeUpdates: "DISABLED",
-      };
-
-      await expect(command.runner()(DATABASE, options)).to.be.rejectedWith(
-        FirebaseError,
-        "The --realtime-updates flag is only available when the 'firestorewatchmutability' experiment is enabled.",
       );
     });
   });

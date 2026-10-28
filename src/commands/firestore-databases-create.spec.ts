@@ -16,8 +16,11 @@ describe("firestore:databases:create", () => {
   let command: Command;
   let firestoreApiStub: sinon.SinonStubbedInstance<fsi.FirestoreApi>;
   let requireAuthStub: sinon.SinonStub;
+  let wasWatchMutabilityEnabled: boolean;
 
   beforeEach(() => {
+    wasWatchMutabilityEnabled = experiments.isEnabled("firestorewatchmutability");
+    experiments.setEnabled("firestorewatchmutability", false);
     command = firestoreDatabasesCreate;
     firestoreApiStub = sinon.createStubInstance(fsi.FirestoreApi);
     requireAuthStub = sinon.stub(requireAuthModule, "requireAuth");
@@ -27,6 +30,7 @@ describe("firestore:databases:create", () => {
 
   afterEach(() => {
     sinon.restore();
+    experiments.setEnabled("firestorewatchmutability", wasWatchMutabilityEnabled);
   });
 
   const mockDatabaseResp = (overrides: Partial<types.DatabaseResp>): types.DatabaseResp => {
@@ -444,17 +448,7 @@ describe("firestore:databases:create", () => {
   });
 
   describe("with firestorewatchmutability experiment", () => {
-    let wasEnabled: boolean;
-
-    beforeEach(() => {
-      wasEnabled = experiments.isEnabled("firestorewatchmutability");
-    });
-
-    afterEach(() => {
-      experiments.setEnabled("firestorewatchmutability", wasEnabled);
-    });
-
-    it("should default realtimeUpdatesMode to ENABLED for standard database when enabled", async () => {
+    it("should leave realtimeUpdatesMode unset for standard database by default when enabled", async () => {
       experiments.setEnabled("firestorewatchmutability", true);
       const options = {
         project: PROJECT,
@@ -475,7 +469,7 @@ describe("firestore:databases:create", () => {
         databaseEdition: types.DatabaseEdition.STANDARD,
         deleteProtectionState: types.DatabaseDeleteProtectionState.DISABLED,
         pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement.DISABLED,
-        realtimeUpdatesMode: types.RealtimeUpdatesMode.ENABLED,
+        realtimeUpdatesMode: undefined,
         firestoreDataAccessMode: types.DataAccessMode.UNSPECIFIED,
         mongodbCompatibleDataAccessMode: types.DataAccessMode.UNSPECIFIED,
         cmekConfig: undefined,
@@ -543,7 +537,6 @@ describe("firestore:databases:create", () => {
     });
 
     it("should throw an error when realtimeUpdates is set on standard database when disabled", async () => {
-      experiments.setEnabled("firestorewatchmutability", false);
       const options = {
         project: PROJECT,
         location: LOCATION,
@@ -558,7 +551,6 @@ describe("firestore:databases:create", () => {
     });
 
     it("should still allow creating an enterprise database with realtimeUpdates when disabled", async () => {
-      experiments.setEnabled("firestorewatchmutability", false);
       const options = {
         project: PROJECT,
         location: LOCATION,

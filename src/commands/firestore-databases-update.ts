@@ -41,13 +41,6 @@ command
     const printer = new PrettyPrint();
     const helpCommandText = "See firebase firestore:databases:update --help for more info.";
 
-    if (!experiments.isEnabled("firestorewatchmutability") && options.realtimeUpdates) {
-      throw new FirebaseError(
-        "The --realtime-updates flag is only available when the 'firestorewatchmutability' experiment is enabled. To enable it, run 'firebase experiments:enable firestorewatchmutability'.",
-        { exit: 1 },
-      );
-    }
-
     if (!options.deleteProtection && !options.pointInTimeRecovery && !options.realtimeUpdates) {
       throw new FirebaseError(`Missing properties to update. ${helpCommandText}`);
     }
@@ -80,15 +73,33 @@ command
       realtimeUpdatesMode = types.RealtimeUpdatesMode.DISABLED;
     }
 
-    const databaseResp: types.DatabaseResp = await api.updateDatabase(
-      options.project,
-      database,
+    const operation: types.Operation = await api.updateDatabase(options.project, database, {
       deleteProtectionState,
       pointInTimeRecoveryEnablement,
       realtimeUpdatesMode,
-    );
+    });
+
+    if (operation.error) {
+      throw new FirebaseError(`Failed to update database ${database}: ${operation.error.message}`);
+    }
+    if (!operation.done) {
+      logUpdateInProgress(database, operation);
+      return operation;
+    }
+    const databaseResp = operation.response as types.DatabaseResp | undefined;
+    if (!databaseResp) {
+      throw new FirebaseError("Not found");
+    }
 
     logger.info(clc.bold(`Successfully updated ${printer.prettyDatabaseString(databaseResp)}`));
 
     return databaseResp;
   });
+
+function logUpdateInProgress(database: string, operation: types.Operation): void {
+  logger.info(clc.bold(`Successfully initiated update of database ${database}.`));
+  logger.info();
+  logger.info("You can monitor the progress of this update by executing this command:");
+  logger.info();
+  logger.info(`firebase firestore:operations:describe --database="${database}" ${operation.name}`);
+}
