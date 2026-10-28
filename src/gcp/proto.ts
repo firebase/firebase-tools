@@ -223,7 +223,7 @@ export function getInvokerMembers(invoker: string[], projectId: string): string[
 export function formatServiceAccount(
   serviceAccount: string,
   projectId: string,
-  removeTypePrefix: boolean = false,
+  removeTypePrefix = false,
 ): string {
   if (serviceAccount.length === 0) {
     throw new FirebaseError("Service account cannot be an empty string");
