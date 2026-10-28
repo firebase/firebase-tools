@@ -1,0 +1,40 @@
+name: numeric-select-test
+version: 0.1.0
+specVersion: v1beta
+
+resources:
+  - name: testFunction
+    type: firebaseextensions.v1beta.function
+    properties:
+      runtime: nodejs18
+      availableMemoryMb: ${param:FUNCTION_MEMORY}
+      httpsTrigger: {}
+
+params:
+  - param: FUNCTION_MEMORY
+    label: Cloud Function memory
+    description: Memory allocation for the function
+    type: select
+    options:
+      - label: 512 MB
+        value: 512
+      - label: 1 GB
+        value: 1024
+      - label: 2 GB
+        value: 2048
+    default: 1024
+    required: true
+
+  - param: ENVIRONMENT
+    label: Environment
+    description: Deployment environment (string select)
+    type: select
+    options:
+      - label: Development
+        value: dev
+      - label: Staging
+        value: staging
+      - label: Production
+        value: prod
+    default: dev
+    required: true
