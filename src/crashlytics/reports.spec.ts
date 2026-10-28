@@ -2,7 +2,7 @@ import * as chai from "chai";
 import nock from "../test/helpers/nock";
 import * as chaiAsPromised from "chai-as-promised";
 
-import { CrashlyticsReport, getReport, simplifyReport } from "./reports";
+import { CrashlyticsReport, getReport, listReports, simplifyReport } from "./reports";
 import { FirebaseError } from "../error";
 import { crashlyticsApiOrigin } from "../api";
 import { Report } from "./types";
@@ -164,24 +164,102 @@ describe("getReport", () => {
     expect(nock.isDone()).to.be.true;
   });
 
-  it("should resolve with webMetrics report on success", async () => {
-    const mockResponse = { groups: [{ webMetricsGroup: { id: "metrics-1" } }] };
+  it("should throw a FirebaseError if the appId is invalid", async () => {
+    const invalidAppId = "invalid-app-id";
+
+    await expect(getReport(CrashlyticsReport.TOP_ISSUES, invalidAppId, {})).to.be.rejectedWith(
+      FirebaseError,
+      "Unable to get the projectId from the AppId.",
+    );
+  });
+
+  it("should resolve with appSummary report on success", async () => {
+    const mockResponse = { groups: [{ metrics: [{ eventsCount: 10 }] }] };
 
     nock(crashlyticsApiOrigin())
-      .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports/webMetrics`)
+      .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports/appSummary`)
       .query({ page_size: "10" })
       .reply(200, mockResponse);
 
-    const result = await getReport(CrashlyticsReport.WEB_METRICS, appId, {});
+    const result = await getReport(CrashlyticsReport.APP_SUMMARY, appId, {});
 
     expect(result).to.deep.equal(mockResponse);
     expect(nock.isDone()).to.be.true;
   });
 
-  it("should throw a FirebaseError if the appId is invalid", async () => {
-    const invalidAppId = "invalid-app-id";
+  it("should resolve with releaseVersions report on success", async () => {
+    const mockResponse = { groups: [{ version: { displayName: "1.0.0 (1)" } }] };
 
-    await expect(getReport(CrashlyticsReport.TOP_ISSUES, invalidAppId, {})).to.be.rejectedWith(
+    nock(crashlyticsApiOrigin())
+      .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports/releaseVersions`)
+      .query({ page_size: "10" })
+      .reply(200, mockResponse);
+
+    const result = await getReport(CrashlyticsReport.RELEASE_VERSIONS, appId, {});
+
+    expect(result).to.deep.equal(mockResponse);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should resolve with topCustomKeys report on success", async () => {
+    const mockResponse = {
+      groups: [{ customAttribute: { key: "env", value: "prod" }, metrics: [] }],
+    };
+
+    nock(crashlyticsApiOrigin())
+      .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports/topCustomKeys`)
+      .query({ page_size: "10", "filter.issue.id": "issue-1" })
+      .reply(200, mockResponse);
+
+    const result = await getReport(CrashlyticsReport.TOP_CUSTOM_KEYS, appId, {
+      issueId: "issue-1",
+    });
+
+    expect(result).to.deep.equal(mockResponse);
+    expect(nock.isDone()).to.be.true;
+  });
+});
+
+describe("listReports", () => {
+  const appId = "1:1234567890:android:abcdef1234567890";
+  const requestProjectNumber = "1234567890";
+
+  afterEach(() => {
+    nock.cleanAll();
+  });
+
+  it("should resolve with available reports on success", async () => {
+    const mockResponse = {
+      reports: [
+        {
+          name: `projects/${requestProjectNumber}/apps/${appId}/reports/appSummary`,
+          displayName: "App Summary",
+          usage: "High-level health summary.",
+        },
+      ],
+    };
+
+    nock(crashlyticsApiOrigin())
+      .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports`)
+      .reply(200, mockResponse);
+
+    const result = await listReports(appId);
+    expect(result).to.deep.equal(mockResponse);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should default reports to an empty array when omitted in API response", async () => {
+    nock(crashlyticsApiOrigin())
+      .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports`)
+      .reply(200, {});
+
+    const result = await listReports(appId);
+    expect(result).to.deep.equal({ reports: [] });
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should throw a FirebaseError if the appId is invalid", async () => {
+    await expect(listReports("invalid-app-id")).to.be.rejectedWith(
       FirebaseError,
       "Unable to get the projectId from the AppId.",
     );
