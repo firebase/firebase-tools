@@ -1,6 +1,0 @@
-- Updated chokidar dependency to ^4.0.3 to remove vulnerable braces dependency (#11308).
-- Fixed an issue where the Firebase MCP server referred to `update_firebase_environment` instead of `firebase_update_environment`.
-- Updated the Firebase SQL Connect local toolkit to v3.4.25, which includes the following changes:
-  - Internal improvements and bug fixes.
-- Fixed CVE-2026-111181 by updating `body-parser` dependency.
-- Fixed the Firestore emulator exiting when it could not watch the rules file for changes. It now logs a warning instead. (#4298)
