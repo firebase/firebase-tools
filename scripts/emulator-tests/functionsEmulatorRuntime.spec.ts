@@ -661,6 +661,13 @@ describe("FunctionsEmulator-Runtime", function () {
       const ESM_DIR = `${FUNCTIONS_DIR}/esm`;
 
       afterEach(async () => {
+        // Windows cannot remove a directory that is a live process's cwd.
+        const proc = runtime?.proc;
+        if (proc && proc.exitCode === null && proc.signalCode === null) {
+          const exited = new Promise((resolve) => proc.once("exit", resolve));
+          proc.kill(9);
+          await exited;
+        }
         await fs.rm(ESM_DIR, { recursive: true, force: true });
       });
 
