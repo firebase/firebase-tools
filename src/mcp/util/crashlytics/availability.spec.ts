@@ -150,6 +150,82 @@ describe("isCrashlyticsAvailable", () => {
     expect(result).to.be.false;
   });
 
+  it("should return true for an Android project with Crashlytics library in gradle/libs.versions.toml", async () => {
+    mockfs({
+      "/test-dir": {
+        gradle: {
+          "libs.versions.toml":
+            '[libraries]\ncrashlytics = { module = "com.google.firebase:firebase-crashlytics", version = "21.0.0" }',
+        },
+        android: {
+          "build.gradle.kts": "dependencies { implementation(libs.crashlytics) }",
+          src: { main: {} },
+        },
+      },
+    });
+
+    const result = await isCrashlyticsAvailable(mockContext("/test-dir"));
+
+    expect(result).to.be.true;
+  });
+
+  it("should return true for an Android project with Crashlytics plugin in gradle/libs.versions.toml", async () => {
+    mockfs({
+      "/test-dir": {
+        gradle: {
+          "libs.versions.toml":
+            '[plugins]\ncrashlytics = { id = "com.google.firebase.crashlytics", version = "3.0.0" }',
+        },
+        android: {
+          "build.gradle.kts": "plugins { alias(libs.plugins.crashlytics) }",
+          src: { main: {} },
+        },
+      },
+    });
+
+    const result = await isCrashlyticsAvailable(mockContext("/test-dir"));
+
+    expect(result).to.be.true;
+  });
+
+  it("should return true for an Android project with Crashlytics in custom .versions.toml", async () => {
+    mockfs({
+      "/test-dir": {
+        gradle: {
+          "deps.versions.toml":
+            '[libraries]\nfirebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics", version = "21.0.0" }',
+        },
+        android: {
+          "build.gradle": "dependencies { implementation libs.firebase.crashlytics }",
+          src: { main: {} },
+        },
+      },
+    });
+
+    const result = await isCrashlyticsAvailable(mockContext("/test-dir"));
+
+    expect(result).to.be.true;
+  });
+
+  it("should return false for an Android project with version catalog without Crashlytics", async () => {
+    mockfs({
+      "/test-dir": {
+        gradle: {
+          "libs.versions.toml":
+            '[libraries]\nanalytics = { group = "com.google.firebase", name = "firebase-analytics" }',
+        },
+        android: {
+          "build.gradle.kts": "dependencies { implementation(libs.analytics) }",
+          src: { main: {} },
+        },
+      },
+    });
+
+    const result = await isCrashlyticsAvailable(mockContext("/test-dir"));
+
+    expect(result).to.be.false;
+  });
+
   it("should return true for an iOS project with Firebase/Crashlytics in Podfile", async () => {
     mockfs({
       "/test-dir": {
