@@ -2,7 +2,7 @@ import { z } from "zod";
 import { cloneDeep } from "lodash";
 import { logger } from "../logger";
 import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
-import { Report } from "./types";
+import { ListReportsResponse, Report } from "./types";
 import {
   ApplicationIdSchema,
   EventFilter,
@@ -14,6 +14,8 @@ import { FirebaseError } from "../error";
 const DEFAULT_PAGE_SIZE = 10;
 
 export enum CrashlyticsReport {
+  APP_SUMMARY = "appSummary",
+  RELEASE_VERSIONS = "releaseVersions",
   TOP_ISSUES = "topIssues",
   TOP_VARIANTS = "topVariants",
   TOP_VERSIONS = "topVersions",
@@ -21,7 +23,7 @@ export enum CrashlyticsReport {
   TOP_APPLE_DEVICES = "topAppleDevices",
   TOP_ANDROID_DEVICES = "topAndroidDevices",
   TOP_BROWSERS = "topBrowsers",
-  WEB_METRICS = "webMetrics",
+  TOP_CUSTOM_KEYS = "topCustomKeys",
 }
 
 export const CrashlyticsReportSchema = z.nativeEnum(CrashlyticsReport);
@@ -35,14 +37,6 @@ export const ReportInputSchema = z.object({
 
 export type ReportInput = z.infer<typeof ReportInputSchema>;
 
-/**
- * Returns a report for Crashlytics events.
- * @param report One of the supported reports in the CrashlyticsReport enum
- * @param appId Firebase app_id
- * @param filter The report will count only events matching the given filters
- * @param pageSize Number of rows to return, generally defaulting to 10
- * @return A Report object, grouped appropriately with metrics for eventCount and impactedUsers
- */
 /**
  * Removes fields from the report which confuse the model
  */
@@ -67,6 +61,34 @@ export function simplifyReport(report: Report): Report {
   return simplifiedReport;
 }
 
+/**
+ * Lists all Crashlytics reports available for the given Firebase app.
+ * @param appId Firebase app_id
+ * @return A ListReportsResponse containing report names and usage descriptions
+ */
+export async function listReports(appId: string): Promise<ListReportsResponse> {
+  const requestProjectNumber = parseProjectNumber(appId);
+  logger.debug(`[crashlytics] listReports called with appId: ${appId}`);
+  const response = await CRASHLYTICS_API_CLIENT.request<void, ListReportsResponse>({
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    path: `/projects/${requestProjectNumber}/apps/${appId}/reports`,
+    timeout: TIMEOUT,
+  });
+  response.body.reports ??= [];
+  return response.body;
+}
+
+/**
+ * Returns a report for Crashlytics events.
+ * @param reportName One of the supported reports in the CrashlyticsReport enum
+ * @param appId Firebase app_id
+ * @param filter The report will count only events matching the given filters
+ * @param pageSize Number of rows to return, generally defaulting to 10
+ * @return A Report object, grouped appropriately with metrics for eventCount and impactedUsers
+ */
 export async function getReport(
   reportName: CrashlyticsReport,
   appId: string,
