@@ -8,6 +8,8 @@ import { FirebaseMcpServer } from "../..";
 import { RC } from "../../../rc";
 
 describe("isCrashlyticsAvailable", () => {
+  const host = new FirebaseMcpServer({});
+
   afterEach(() => {
     mockfs.restore();
     nock.cleanAll();
@@ -19,7 +21,7 @@ describe("isCrashlyticsAvailable", () => {
     config: {
       projectDir: projectDir,
     } as Config,
-    host: new FirebaseMcpServer({}),
+    host,
     rc: {} as RC,
     firebaseCliCommand: "firebase",
     isBillingEnabled: false,

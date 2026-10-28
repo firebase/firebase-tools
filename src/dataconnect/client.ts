@@ -125,8 +125,8 @@ export async function listSchemas(
 
 export async function upsertSchema(
   schema: types.Schema,
-  validateOnly: boolean = false,
-  async: boolean = false,
+  validateOnly = false,
+  async = false,
 ): Promise<types.Schema | undefined> {
   const op = await dataconnectClient().patch<types.Schema, types.Schema>(`${schema.name}`, schema, {
     queryParams: {

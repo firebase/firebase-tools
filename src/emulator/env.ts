@@ -66,7 +66,7 @@ export async function getCredentialsEnvironment(
   account: Account | undefined,
   logger: EmulatorLogger,
   logLabel: string,
-  silent: boolean = false,
+  silent = false,
 ): Promise<Record<string, string>> {
   // Provide default application credentials when appropriate
   const credentialEnv: Record<string, string> = {};
