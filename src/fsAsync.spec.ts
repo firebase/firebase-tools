@@ -88,6 +88,20 @@ describe("fsAsync", () => {
       return expect(gotFileNames).to.deep.equal(expectFiles);
     });
 
+    it("matches path rules relative to the base directory", async () => {
+      const results = await fsAsync.readdirRecursive({
+        path: baseDir,
+        ignoreStrings: ["node_modules/*"],
+      });
+
+      const gotFileNames = results.map((r) => r.name).sort();
+      const expectFiles = files
+        .filter((file) => file !== "node_modules/subfile")
+        .map((file) => path.join(baseDir, file))
+        .sort();
+      return expect(gotFileNames).to.deep.equal(expectFiles);
+    });
+
     it("should support negation rules", async () => {
       const results = await fsAsync.readdirRecursive({
         path: baseDir,

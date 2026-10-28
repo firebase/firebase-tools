@@ -132,8 +132,9 @@ export async function readdirRecursive(
       }
       return ignored;
     }
+    const relPath = relative(options.path, targetPath);
     return ignoreRules.some((rule) => {
-      return rule(targetPath);
+      return rule(relPath);
     });
   };
 
