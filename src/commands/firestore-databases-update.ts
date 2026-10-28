@@ -16,7 +16,7 @@ export const command = new Command("firestore:databases:update <database>")
   .description(
     "update a database in your Firebase project. Must specify at least one property to update",
   )
-  .option("--json", "prints raw json response of the create API call if specified")
+  .option("--json", "prints raw json response of the update API call if specified")
   .option(
     "--delete-protection <deleteProtectionState>",
     "whether or not to prevent deletion of database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'",
