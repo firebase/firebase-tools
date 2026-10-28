@@ -1,29 +1,31 @@
-Project: /docs/hosting/_project.yaml
-Book: /docs/_book.yaml
-page_type: guide
-
-{% include "_shared/apis/console/_local_variables.html" %}
-{% include "_local_variables.html" %}
-{% include "docs/hosting/_local_variables.html" %}
-
-<link rel="stylesheet" type="text/css" href="/styles/docs.css" />
-
 # Integrate other frameworks with Express.js
 
 With some additional configuration, you can build on the basic
-framework-aware {{cli}} functionality
+framework-aware CLI functionality
 to extend integration support to frameworks other than Angular and Next.js.
 
-<<_includes/_preview-disclaimer.md>>
+Note: Framework-aware Hosting is an early public preview. This means
+that the functionality might change in backward-incompatible ways. A preview
+release is not subject to any SLA or deprecation policy and may receive limited
+or no support.
 
-Caution: For Express.js developers, new participation in the {{hosting}}
+Caution: For Express.js developers, new participation in the Hosting
 frameworks experiment has been closed permanently. If you're already using the
 frameworks experiment in the Firebase CLI, we recommend "graduating" to
-{{app_hosting}}. With {{app_hosting}}, you'll have a unified solution to manage
+App Hosting. With App Hosting, you'll have a unified solution to manage
 everything from CDN to server-side rendering, along with improved GitHub
 integration.
 
-<<_includes/_before-you-begin.md>>
+## Before you begin
+
+Before you get started deploying your app to Firebase,
+review the following requirements and options:
+
+- Firebase CLI version 12.1.0 or later. Make sure to
+  [install the CLI](https://firebase.google.com/docs/cli#setup_update_cli)
+  using your preferred method.
+- Optional: Billing enabled on your Firebase project
+  (required if you plan to use SSR)
 
 ### Initialize an existing project
 
@@ -44,9 +46,9 @@ Before deploying static content, you'll need to configure your application.
 
 ### Configure
 
-In order to know how to deploy your application, the {{firebase_cli}} needs to be
+In order to know how to deploy your application, the Firebase CLI needs to be
 able to both build your app and know where your tooling places the assets
-destined for {{hosting}}. This is accomplished with the npm build script and CJS
+destined for Hosting. This is accomplished with the npm build script and CJS
 directories directive in `package.json`.
 
 Given the following package.json:
@@ -64,7 +66,7 @@ Given the following package.json:
 }
 ```
 
-The {{firebase_cli}} only calls your build script, so you’ll need to ensure that
+The Firebase CLI only calls your build script, so you’ll need to ensure that
 your build script is exhaustive.
 
 Tip: you can add additional steps using` &&`. If you have a lot of steps,
@@ -87,10 +89,10 @@ or [wireit](https://www.npmjs.com/package/wireit).
 If your framework doesn’t support pre-rendering out of the box, consider using a
 tool like [Rendertron](https://github.com/GoogleChrome/rendertron). Rendertron
 will allow you to make headless Chrome requests against a local instance of your
-app, so you can save the resulting HTML to be served on {{hosting}}.
+app, so you can save the resulting HTML to be served on Hosting.
 
 Finally, different frameworks and build tools store their artifacts in different
-places. Use `directories.serve` to tell the {{cli}} where your build script is
+places. Use `directories.serve` to tell the CLI where your build script is
 outputting the resulting artifacts:
 
 ```json
@@ -120,7 +122,7 @@ firebase deploy
 
 ## Serve Dynamic Content
 
-To serve your Express app on {{cloud_functions_full}}, ensure that your Express app (or
+To serve your Express app on Cloud Functions for Firebase, ensure that your Express app (or
 express-style URL handler) is exported in such a way that Firebase can find it
 after your library has been npm packed.
 
@@ -171,8 +173,8 @@ export function handle(req, res) {
 firebase deploy
 ```
 
-This deploys your static content to {{firebase_hosting}} and allows Firebase to
-fall back to your Express app hosted on {{cloud_functions_full}}.
+This deploys your static content to Firebase Hosting and allows Firebase to
+fall back to your Express app hosted on Cloud Functions for Firebase.
 
 ## Optional: integrate with Firebase Authentication
 
