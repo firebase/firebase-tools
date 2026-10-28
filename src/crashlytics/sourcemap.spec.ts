@@ -1222,7 +1222,7 @@ describe("crashlytics:sourcemap helpers", () => {
       expect(
         clientDeleteStub
           .getCalls()
-          .map((call) => call.args[0] as string)
+          .map((call) => call.args[0])
           .sort(),
       ).to.deep.equal([
         "projects/test-project/locations/global/mappingFiles/legacy-uid-1",

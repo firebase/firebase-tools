@@ -46,7 +46,7 @@ export class PostgresServer {
   public db: PGlite | undefined = undefined;
   private server: net.Server | undefined = undefined;
 
-  public async createPGServer(host: string = "127.0.0.1", port: number): Promise<net.Server> {
+  public async createPGServer(host = "127.0.0.1", port: number): Promise<net.Server> {
     const getDb = this.getDb.bind(this);
 
     const server = net.createServer(async (socket) => {
@@ -235,7 +235,7 @@ export class PostgresServer {
       await db.waitReady;
       return db;
     } catch (err: unknown) {
-      if (pg17Dir && hasMessage(err) && /Database already exists/.test(err.message)) {
+      if (pg17Dir && hasMessage(err) && err.message.includes("Database already exists")) {
         // Clear out the current pglite data
         fs.rmSync(pg17Dir, { force: true, recursive: true });
         const db = new PGlite({ ...baseArgs, dataDir: pg17Dir });
