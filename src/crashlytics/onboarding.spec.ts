@@ -6,7 +6,6 @@ import * as onboarding from "./onboarding";
 import * as alerts from "./alerts";
 import * as ensureApiEnabled from "../ensureApiEnabled";
 import * as experiments from "../experiments";
-import * as cloudlogging from "../gcp/cloudlogging";
 import * as cloudbilling from "../gcp/cloudbilling";
 import * as firebasetelemetry from "./firebasetelemetry";
 import * as apps from "../management/apps";
@@ -20,8 +19,6 @@ import { AlertType } from "./types";
 
 describe("onboarding", () => {
   let ensureStub: sinon.SinonStub;
-  let bucketStub: sinon.SinonStub;
-  let sinkStub: sinon.SinonStub;
   let provisionTraceStub: sinon.SinonStub;
   let configStub: sinon.SinonStub;
   let checkBillingStub: sinon.SinonStub;
@@ -45,15 +42,6 @@ describe("onboarding", () => {
   beforeEach(() => {
     checkBillingStub = sinon.stub(cloudbilling, "checkBillingEnabled").resolves(true);
     ensureStub = sinon.stub(ensureApiEnabled, "ensure").resolves();
-    bucketStub = sinon.stub(cloudlogging, "createOrUpdateLogBucket").resolves({
-      name: "projects/test-project/locations/global/buckets/firebase-telemetry",
-      analyticsEnabled: true,
-    });
-    sinkStub = sinon.stub(cloudlogging, "createOrUpdateLogSink").resolves({
-      name: "firebase-telemetry-routing",
-      destination: "dest",
-      filter: "filter",
-    });
     provisionTraceStub = sinon.stub(cloudtrace, "provisionTraceStorage").resolves();
     configStub = sinon.stub(firebasetelemetry, "createOrUpdateTelemetryConfig").resolves({
       name: "projects/test-project/locations/global/configs/1-123-web-456",
@@ -119,13 +107,6 @@ describe("onboarding", () => {
       "crashlytics",
       false,
     );
-    expect(bucketStub).to.have.been.calledWith(
-      "test-project",
-      "firebase-telemetry",
-      "global",
-      true,
-    );
-    expect(sinkStub).to.have.been.calledOnce;
     expect(provisionTraceStub).to.have.been.calledWith("test-project");
     expect(configStub).to.have.been.calledWith(
       "test-project",
@@ -135,7 +116,7 @@ describe("onboarding", () => {
     );
     expect(updateAppApiKeyRestrictionStub).to.have.been.calledWith({
       apiKey: "fake-api-key-123",
-      service: onboarding.CRASHLYTICS_TELEMETRY_SERVICE,
+      service: onboarding.CLIENT_TELEMETRY_SERVICE,
     });
     expect(checkboxStub).to.have.been.calledOnce;
     expect(enableAlertsStub).to.have.been.calledOnceWith(
@@ -306,13 +287,6 @@ describe("onboarding", () => {
       "crashlytics",
       false,
     );
-    expect(bucketStub).to.have.been.calledWith(
-      "test-project",
-      "firebase-telemetry",
-      "global",
-      true,
-    );
-    expect(sinkStub).to.have.been.calledOnce;
     expect(provisionTraceStub).to.have.been.calledWith("test-project");
     expect(configStub).to.have.been.calledWith(
       "test-project",
@@ -324,7 +298,7 @@ describe("onboarding", () => {
     expect(logLabeledWarningStub).to.have.been.calledWith(
       "crashlytics",
       `No API key found for this app. If you configure an API key later, ` +
-        `please rerun this command or manually add '${onboarding.CRASHLYTICS_TELEMETRY_SERVICE}' to its allowed APIs in the Google Cloud Console if the key is restricted.`,
+        `please rerun this command or manually add '${onboarding.CLIENT_TELEMETRY_SERVICE}' to its allowed APIs in the Google Cloud Console if the key is restricted.`,
     );
     expect(res.config.enablementState).to.equal("ENABLED");
   });
