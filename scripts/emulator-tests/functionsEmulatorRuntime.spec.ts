@@ -80,6 +80,17 @@ async function startRuntime(
   triggerSource: () => unknown,
   runtimeEnvs?: Record<string, string>,
 ): Promise<Runtime> {
+  const sourceCode = `module.exports = (${triggerSource.toString()})();\n`;
+  await fs.writeFile(`${FUNCTIONS_DIR}/index.js`, sourceCode);
+  return spawnRuntime(FUNCTIONS_DIR, triggerName, signatureType, runtimeEnvs);
+}
+
+async function spawnRuntime(
+  functionsDir: string,
+  triggerName: string,
+  signatureType: SignatureType,
+  runtimeEnvs?: Record<string, string>,
+): Promise<Runtime> {
   const env: Record<string, string> = { ...runtimeEnvs };
   env.GCLOUD_PROJECT = ADMIN_SDK_CONFIG.projectId;
   env.FUNCTION_TARGET = triggerName;
@@ -94,13 +105,10 @@ async function startRuntime(
     enableCors: true,
   });
 
-  const sourceCode = `module.exports = (${triggerSource.toString()})();\n`;
-  await fs.writeFile(`${FUNCTIONS_DIR}/index.js`, sourceCode);
-
   const args = [path.join(MODULE_ROOT, "src", "emulator", "functionsEmulatorRuntime")];
   const proc = spawn(process.execPath, args, {
     env: { ...process.env, ...env },
-    cwd: FUNCTIONS_DIR,
+    cwd: functionsDir,
     stdio: ["pipe", "pipe", "pipe", "ipc"],
   });
 
@@ -646,6 +654,37 @@ describe("FunctionsEmulator-Runtime", function () {
 
         await sendEvent(runtime, FunctionRuntimeBundles.onUpdate.proto);
         expect(runtime.stdout.join(" ")).to.match(/{"snap_exists":true}/);
+      });
+    });
+
+    describe("ES modules", () => {
+      const ESM_DIR = `${FUNCTIONS_DIR}/esm`;
+
+      afterEach(async () => {
+        await fs.rm(ESM_DIR, { recursive: true, force: true });
+      });
+
+      it("should load an ES module that uses top-level await", async () => {
+        await fs.mkdir(ESM_DIR, { recursive: true });
+        await fs.writeFile(
+          `${ESM_DIR}/package.json`,
+          JSON.stringify({ type: "module", main: "index.js" }),
+        );
+        await fs.writeFile(
+          `${ESM_DIR}/index.js`,
+          [
+            `import { https } from "firebase-functions";`,
+            `const message = await Promise.resolve("loaded with top-level await");`,
+            `export const functionId = https.onRequest((req, res) => {`,
+            `  res.send(message);`,
+            `});`,
+          ].join("\n"),
+        );
+
+        runtime = await spawnRuntime(ESM_DIR, "functionId", "http");
+        const data = await sendReq(runtime);
+
+        expect(data).to.equal("loaded with top-level await");
       });
     });
 
