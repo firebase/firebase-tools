@@ -209,16 +209,17 @@ async function resolveWebConfig(
 
   const finalAppId = resolvedAppId || PLACEHOLDER_APP_ID;
 
-  if (projectId && resolvedAppId && resolvedAppId !== PLACEHOLDER_APP_ID) {
+  if (resolvedAppId && resolvedAppId !== PLACEHOLDER_APP_ID) {
     try {
       const sdkConfig = await getAppConfig(resolvedAppId, AppPlatform.WEB);
       if ("apiKey" in sdkConfig) {
+        const resolvedProjectId = sdkConfig.projectId || projectId || PLACEHOLDER_PROJECT_ID;
         return {
           config: {
             apiKey: sdkConfig.apiKey || PLACEHOLDER_API_KEY,
-            authDomain: sdkConfig.authDomain || `${projectId}.firebaseapp.com`,
-            projectId: sdkConfig.projectId || projectId,
-            storageBucket: sdkConfig.storageBucket || `${projectId}.firebasestorage.app`,
+            authDomain: sdkConfig.authDomain || (resolvedProjectId !== PLACEHOLDER_PROJECT_ID ? `${resolvedProjectId}.firebaseapp.com` : PLACEHOLDER_AUTH_DOMAIN),
+            projectId: resolvedProjectId,
+            storageBucket: sdkConfig.storageBucket || (resolvedProjectId !== PLACEHOLDER_PROJECT_ID ? `${resolvedProjectId}.firebasestorage.app` : PLACEHOLDER_STORAGE_BUCKET),
             messagingSenderId: sdkConfig.messagingSenderId || PLACEHOLDER_MESSAGING_SENDER_ID,
             appId: sdkConfig.appId || resolvedAppId,
           },
