@@ -54,11 +54,23 @@ async function isCrashlyticsInstalled(ctx: McpContext): Promise<boolean> {
   return false;
 }
 
+const ANDROID_FILE_PATTERNS_TO_SCAN = ["build.gradle*", "*.versions.toml"] as const;
+const IOS_FILE_PATTERNS_TO_SCAN = [
+  "Podfile",
+  "Package.swift",
+  "Cartfile*",
+  "project.pbxproj",
+] as const;
+
 async function androidAppUsesCrashlytics(appPath: string): Promise<boolean> {
-  const buildGradleFiles = await detectFiles(appPath, "build.gradle*");
   const crashlyticsPattern =
     /(firebase-crashlytics|firebase\.crashlytics|com\.google\.firebase\.crashlytics)/;
-  for (const file of buildGradleFiles) {
+  const fileArrays = await Promise.all(
+    ANDROID_FILE_PATTERNS_TO_SCAN.map((term) => detectFiles(appPath, term)),
+  );
+
+  const files = fileArrays.flat();
+  for (const file of files) {
     const content = await fs.readFile(path.join(appPath, file), "utf8");
     if (crashlyticsPattern.test(content)) {
       return true;
@@ -68,9 +80,8 @@ async function androidAppUsesCrashlytics(appPath: string): Promise<boolean> {
 }
 
 async function iosAppUsesCrashlytics(appPath: string): Promise<boolean> {
-  const filePatternsToDetect = ["Podfile", "Package.swift", "Cartfile*", "project.pbxproj"];
   const fileArrays = await Promise.all(
-    filePatternsToDetect.map((term) => detectFiles(appPath, term)),
+    IOS_FILE_PATTERNS_TO_SCAN.map((term) => detectFiles(appPath, term)),
   );
 
   const files = fileArrays.flat();
