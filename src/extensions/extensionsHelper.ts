@@ -17,11 +17,10 @@ import { getFirebaseConfig } from "../functionsConfig";
 import { getProjectAdminSdkConfigOrCached } from "../emulator/adminSdkConfig";
 import { FirebaseError } from "../error";
 import { diagnose } from "./diagnose";
-import { checkResponse } from "./askUserForParam";
 import { ensure, check } from "../ensureApiEnabled";
 import { deleteObject, uploadObject } from "../gcp/storage";
 import { getProjectId } from "../projectUtils";
-import { createSource, getInstance } from "./extensionsApi";
+import { createSource } from "./extensionsApi";
 import {
   createExtensionVersionFromGitHubSource,
   createExtensionVersionFromLocalSource,
@@ -78,13 +77,6 @@ export const EXTENSIONS_BUCKET_NAME = envOverride(
   "FIREBASE_EXTENSIONS_UPLOAD_BUCKET",
   "firebase-ext-eap-uploads",
 );
-const AUTOPOPULATED_PARAM_NAMES = [
-  "PROJECT_ID",
-  "STORAGE_BUCKET",
-  "EXT_INSTANCE_ID",
-  "DATABASE_INSTANCE",
-  "DATABASE_URL",
-];
 // Placeholders that can be used whever param substitution is needed, but are not available.
 export const AUTOPOPULATED_PARAM_PLACEHOLDERS = {
   PROJECT_ID: "project-id",
@@ -236,37 +228,6 @@ export function populateDefaultParams(
   }
 
   return newParams;
-}
-
-/**
- * Validates command-line params supplied by developer.
- * @param envVars JSON object of params to values parsed from .env file
- * @param paramSpec information on params parsed from extension.yaml
- */
-export function validateCommandLineParams(
-  envVars: Record<string, string>,
-  paramSpec: Param[],
-): void {
-  const paramNames = paramSpec.map((p) => p.param);
-  const misnamedParams = Object.keys(envVars).filter((key: string) => {
-    return !paramNames.includes(key) && !AUTOPOPULATED_PARAM_NAMES.includes(key);
-  });
-  if (misnamedParams.length) {
-    logger.warn(
-      "Warning: The following params were specified in your env file but do not exist in the extension spec: " +
-        `${misnamedParams.join(", ")}.`,
-    );
-  }
-  let allParamsValid = true;
-  for (const param of paramSpec) {
-    // Warns if invalid response was found in environment file.
-    if (!checkResponse(envVars[param.param], param)) {
-      allParamsValid = false;
-    }
-  }
-  if (!allParamsValid) {
-    throw new FirebaseError(`Some param values are not valid. Please check your params file.`);
-  }
 }
 
 /**
@@ -1161,30 +1122,6 @@ export async function promptForRepeatInstance(
       { name: "Cancel extension installation", value: "cancel" },
     ],
   });
-}
-
-/**
- * Checks to see if an extension instance exists.
- * @param projectId ID of the project in use
- * @param instanceId ID of the extension instance
- */
-export async function instanceIdExists(projectId: string, instanceId: string): Promise<boolean> {
-  try {
-    await getInstance(projectId, instanceId);
-  } catch (err: unknown) {
-    if (err instanceof FirebaseError) {
-      if (err.status === 404) {
-        return false;
-      }
-      const msg = `Unexpected error when checking if instance ID exists: ${err.message}`;
-      throw new FirebaseError(msg, {
-        original: err,
-      });
-    } else {
-      throw err;
-    }
-  }
-  return true;
 }
 
 export function isUrlPath(extInstallPath: string): boolean {
