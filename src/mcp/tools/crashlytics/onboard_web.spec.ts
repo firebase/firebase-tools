@@ -56,17 +56,12 @@ describe("onboard_web tool", () => {
     const text = getText(result);
 
     expect(text).to.include("Firebase Crashlytics for Web Apps - Onboarding Guide");
-    expect(text).to.include("Private Preview");
-    expect(text).to.include("https://forms.gle/FYADWGcA2k924Nqt7");
+    expect(text).to.include("Crashlytics for Web Apps supports client-side error reporting");
     expect(text).to.include("Step 1: Configure Firebase / Cloud Project");
     expect(text).to.include("Option 1: Using Firebase Console");
     expect(text).to.include("Option 2: Using Firebase CLI");
-    expect(text).to.not.include("Google Cloud CLI");
-    expect(text).to.not.include("gcloud");
     expect(text).to.include("Step 2: Core SDK Installation & Initialization");
-    expect(text).to.include(
-      "npm install @firebase/app@eap-crashlytics @firebase/crashlytics@eap-crashlytics",
-    );
+    expect(text).to.include("npm install firebase");
     expect(text).to.include("Next.js Setup Guide");
     expect(text).to.include("React Setup Guide");
     expect(text).to.include("React Router (v6+) Setup Guide");
@@ -182,5 +177,60 @@ describe("onboard_web tool", () => {
     expect(text).to.include('apiKey: "AIzaSyFakeApiKey12345"');
     expect(text).to.include('authDomain: "my-proj.firebaseapp.com"');
     expect(text).to.include('storageBucket: "my-proj.firebasestorage.app"');
+  });
+
+  it("should have correct metadata and humanReadableDescription", () => {
+    expect(onboard_web.mcp.name).to.equal("onboard_web");
+    expect(onboard_web.mcp.humanReadableDescription).to.be.a("string").and.not.be.empty;
+    expect(onboard_web.mcp.annotations?.readOnlyHint).to.be.true;
+    expect(onboard_web.mcp.annotations?.idempotentHint).to.be.true;
+  });
+
+  it("should note when multiple web apps are detected and default to the first", async () => {
+    listFirebaseAppsStub.resolves([
+      {
+        name: "projects/my-proj/webApps/1:111:web:aaa",
+        appId: "1:111:web:aaa",
+        displayName: "Web App 1",
+        projectId: "my-proj",
+        platform: apps.AppPlatform.WEB,
+      },
+      {
+        name: "projects/my-proj/webApps/1:222:web:bbb",
+        appId: "1:222:web:bbb",
+        displayName: "Web App 2",
+        projectId: "my-proj",
+        platform: apps.AppPlatform.WEB,
+      },
+    ]);
+
+    const result = await onboard_web.fn({}, { ...baseMockContext, projectId: "my-proj" });
+    const text = getText(result);
+
+    expect(text).to.include(
+      "Multiple web apps found in project 'my-proj'. Defaulting to 1:111:web:aaa",
+    );
+    expect(text).to.include("1:222:web:bbb");
+  });
+
+  it("should fall back gracefully when listing apps fails", async () => {
+    listFirebaseAppsStub.rejects(new Error("API network error"));
+
+    const result = await onboard_web.fn({}, { ...baseMockContext, projectId: "my-proj" });
+    const text = getText(result);
+
+    expect(text).to.include("<YOUR_FIREBASE_APP_ID>");
+  });
+
+  it("should fall back gracefully when getAppConfig fails", async () => {
+    getAppConfigStub.rejects(new Error("App config fetch failed"));
+
+    const result = await onboard_web.fn(
+      { appId: "1:111:web:aaa" },
+      { ...baseMockContext, projectId: "my-proj" },
+    );
+    const text = getText(result);
+
+    expect(text).to.include("<YOUR_FIREBASE_API_KEY>");
   });
 });

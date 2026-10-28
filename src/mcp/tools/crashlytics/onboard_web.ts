@@ -4,10 +4,24 @@ import { logger } from "../../../logger";
 import { tool } from "../../tool";
 import { toContent } from "../../util";
 
-export type SupportedFramework = "nextjs" | "react" | "react-router" | "tanstack" | "angular";
+const PLACEHOLDER_PROJECT_ID = "<YOUR_FIREBASE_PROJECT_ID>";
+const PLACEHOLDER_APP_ID = "<YOUR_FIREBASE_APP_ID>";
+const PLACEHOLDER_API_KEY = "<YOUR_FIREBASE_API_KEY>";
+const PLACEHOLDER_AUTH_DOMAIN = "<YOUR_AUTH_DOMAIN>";
+const PLACEHOLDER_STORAGE_BUCKET = "<YOUR_STORAGE_BUCKET>";
+const PLACEHOLDER_MESSAGING_SENDER_ID = "<YOUR_MESSAGING_SENDER_ID>";
+
+export const SUPPORTED_FRAMEWORKS = [
+  "nextjs",
+  "react",
+  "react-router",
+  "tanstack",
+  "angular",
+] as const;
+export type SupportedFramework = (typeof SUPPORTED_FRAMEWORKS)[number];
 
 const FrameworkSchema = z
-  .enum(["nextjs", "react", "react-router", "tanstack", "angular"])
+  .enum(SUPPORTED_FRAMEWORKS)
   .optional()
   .describe(
     "The web framework used ('nextjs', 'react', 'react-router', 'tanstack', or 'angular'). If provided, framework-specific code snippets and instructions are returned.",
@@ -22,8 +36,8 @@ interface FirebaseConfigTemplate {
   appId: string;
 }
 
-function getNextjsGuide(): string {
-  return `### Next.js Setup Guide
+const FRAMEWORK_GUIDES: Readonly<Record<SupportedFramework, string>> = {
+  nextjs: `### Next.js Setup Guide
 
 #### Option A: Next.js 15.3+ (Recommended: Client Instrumentation)
 Next.js 15.3+ supports client instrumentation via \`instrumentation-client.ts\` (or \`.js\`). This runs in the browser before React hydration begins and automatically registers global error listeners.
@@ -69,11 +83,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
-\`\`\``;
-}
+\`\`\``,
 
-function getReactGuide(): string {
-  return `### React Setup Guide (without React Router)
+  react: `### React Setup Guide (without React Router)
 
 Wrap your root application component (typically \`src/App.tsx\` or \`src/main.tsx\`) with \`<FirebaseCrashlytics>\`. It acts as the global window receiver, handling unhandled rejections and browser exceptions:
 
@@ -91,11 +103,9 @@ export default function App() {
 }
 \`\`\`
 
-> **Note**: If you use custom error boundaries in your application, you can also record caught errors manually via \`recordError(getCrashlytics(app), error)\`.`;
-}
+> **Note**: If you use custom error boundaries in your application, you can also record caught errors manually via \`recordError(getCrashlytics(app), error)\`.`,
 
-function getReactRouterGuide(): string {
-  return `### React Router (v6+) Setup Guide
+  "react-router": `### React Router (v6+) Setup Guide
 
 If your application uses React Router (v6+), replace React Router's \`<Routes>\` component with \`<CrashlyticsRoutes>\`. This handles uncaught errors across routes and tracks errors using parameterized templates (e.g., \`/profile/:userId\`):
 
@@ -117,11 +127,9 @@ export default function App() {
     </BrowserRouter>
   );
 }
-\`\`\``;
-}
+\`\`\``,
 
-function getTanStackGuide(): string {
-  return `### TanStack Router Setup Guide
+  tanstack: `### TanStack Router Setup Guide
 
 Initialize Crashlytics with \`getCrashlytics(app)\` and pass errors from \`defaultOnCatch\` to \`recordError\`:
 
@@ -141,11 +149,9 @@ const router = createRouter({
 });
 \`\`\`
 
-> **Tip**: Calling \`getCrashlytics(app)\` automatically registers global listeners for uncaught window errors and unhandled promise rejections, while \`defaultOnCatch\` captures errors caught during routing and rendering.`;
-}
+> **Tip**: Calling \`getCrashlytics(app)\` automatically registers global listeners for uncaught window errors and unhandled promise rejections, while \`defaultOnCatch\` captures errors caught during routing and rendering.`,
 
-function getAngularGuide(): string {
-  return `### Angular Setup Guide
+  angular: `### Angular Setup Guide
 
 Integrate with Angular's global error-catching runtime and route tracking by adding \`provideCrashlytics(() => app)\` to your application's providers in \`src/app/app.config.ts\`:
 
@@ -164,23 +170,15 @@ export const appConfig: ApplicationConfig = {
 };
 \`\`\`
 
-> \`provideCrashlytics()\` registers a custom \`ErrorHandler\` to track uncaught zone crashes and uses internal \`Router\` instances to build dynamic routes rather than logging literal URLs.`;
-}
+> \`provideCrashlytics()\` registers a custom \`ErrorHandler\` to track uncaught zone crashes and uses internal \`Router\` instances to build dynamic routes rather than logging literal URLs.`,
+};
 
 function getFrameworkSection(framework?: SupportedFramework): string {
-  if (framework === "nextjs") return getNextjsGuide();
-  if (framework === "react") return getReactGuide();
-  if (framework === "react-router") return getReactRouterGuide();
-  if (framework === "tanstack") return getTanStackGuide();
-  if (framework === "angular") return getAngularGuide();
+  if (framework && framework in FRAMEWORK_GUIDES) {
+    return FRAMEWORK_GUIDES[framework];
+  }
 
-  return [
-    getNextjsGuide(),
-    getReactGuide(),
-    getReactRouterGuide(),
-    getTanStackGuide(),
-    getAngularGuide(),
-  ].join("\n\n---\n\n");
+  return SUPPORTED_FRAMEWORKS.map((fw) => FRAMEWORK_GUIDES[fw]).join("\n\n---\n\n");
 }
 
 async function resolveWebConfig(
@@ -190,7 +188,7 @@ async function resolveWebConfig(
   let resolvedAppId = appIdInput;
   let detectedAppsNote: string | undefined;
 
-  const effectiveProjectId = projectId || "<YOUR_FIREBASE_PROJECT_ID>";
+  const effectiveProjectId = projectId || PLACEHOLDER_PROJECT_ID;
 
   if (!resolvedAppId && projectId) {
     try {
@@ -209,19 +207,19 @@ async function resolveWebConfig(
     }
   }
 
-  const finalAppId = resolvedAppId || "<YOUR_FIREBASE_APP_ID>";
+  const finalAppId = resolvedAppId || PLACEHOLDER_APP_ID;
 
-  if (projectId && resolvedAppId && resolvedAppId !== "<YOUR_FIREBASE_APP_ID>") {
+  if (projectId && resolvedAppId && resolvedAppId !== PLACEHOLDER_APP_ID) {
     try {
       const sdkConfig = await getAppConfig(resolvedAppId, AppPlatform.WEB);
       if ("apiKey" in sdkConfig) {
         return {
           config: {
-            apiKey: sdkConfig.apiKey || "<YOUR_FIREBASE_API_KEY>",
+            apiKey: sdkConfig.apiKey || PLACEHOLDER_API_KEY,
             authDomain: sdkConfig.authDomain || `${projectId}.firebaseapp.com`,
             projectId: sdkConfig.projectId || projectId,
             storageBucket: sdkConfig.storageBucket || `${projectId}.firebasestorage.app`,
-            messagingSenderId: sdkConfig.messagingSenderId || "<YOUR_MESSAGING_SENDER_ID>",
+            messagingSenderId: sdkConfig.messagingSenderId || PLACEHOLDER_MESSAGING_SENDER_ID,
             appId: sdkConfig.appId || resolvedAppId,
           },
           detectedAppId: finalAppId,
@@ -235,17 +233,17 @@ async function resolveWebConfig(
 
   return {
     config: {
-      apiKey: "<YOUR_FIREBASE_API_KEY>",
+      apiKey: PLACEHOLDER_API_KEY,
       authDomain:
-        effectiveProjectId !== "<YOUR_FIREBASE_PROJECT_ID>"
+        effectiveProjectId !== PLACEHOLDER_PROJECT_ID
           ? `${effectiveProjectId}.firebaseapp.com`
-          : "<YOUR_AUTH_DOMAIN>",
+          : PLACEHOLDER_AUTH_DOMAIN,
       projectId: effectiveProjectId,
       storageBucket:
-        effectiveProjectId !== "<YOUR_FIREBASE_PROJECT_ID>"
+        effectiveProjectId !== PLACEHOLDER_PROJECT_ID
           ? `${effectiveProjectId}.firebasestorage.app`
-          : "<YOUR_STORAGE_BUCKET>",
-      messagingSenderId: "<YOUR_MESSAGING_SENDER_ID>",
+          : PLACEHOLDER_STORAGE_BUCKET,
+      messagingSenderId: PLACEHOLDER_MESSAGING_SENDER_ID,
       appId: finalAppId,
     },
     detectedAppId: finalAppId,
@@ -259,6 +257,8 @@ export const onboard_web = tool(
     name: "onboard_web",
     description:
       "Provides onboarding instructions and setup guides for integrating Firebase Crashlytics into web applications (Next.js, React, React Router, TanStack Router, Angular). Includes Cloud project setup, API enablement, logging buckets and sinks, SDK initialization, framework-specific code snippets, sourcemap uploads, and test crash verification.",
+    humanReadableDescription:
+      "Provide onboarding instructions and setup guides for integrating Firebase Crashlytics into web applications.",
     inputSchema: z.object({
       appId: z
         .string()
@@ -271,6 +271,7 @@ export const onboard_web = tool(
     annotations: {
       title: "Onboard Crashlytics for Web",
       readOnlyHint: true,
+      idempotentHint: true,
     },
     _meta: {
       requiresProject: false,
@@ -283,7 +284,7 @@ export const onboard_web = tool(
       appIdInput,
       ctx.projectId,
     );
-    const effectiveProjectId = ctx.projectId || "<YOUR_FIREBASE_PROJECT_ID>";
+    const effectiveProjectId = ctx.projectId || PLACEHOLDER_PROJECT_ID;
     const frameworkSection = getFrameworkSection(framework);
 
     const noteSection = detectedAppsNote ? `\n> **Note**: ${detectedAppsNote}\n` : "";
@@ -316,9 +317,9 @@ firebase crashlytics:onboard:web ${detectedAppId} --project ${effectiveProjectId
 ## Step 2: Core SDK Installation & Initialization
 
 ### 1. Install Packages
-Install the core Firebase App package and the Crashlytics preview module:
+Install the core Firebase package:
 \`\`\`bash
-npm install firebase/app@eap-crashlytics firebase/crashlytics@eap-crashlytics
+npm install firebase
 \`\`\`
 
 ### 2. Initialize Firebase App Singleton
