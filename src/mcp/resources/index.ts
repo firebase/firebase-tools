@@ -40,7 +40,7 @@ export const resourceTemplates = [docs];
 export async function resolveResource(
   uri: string,
   ctx: McpContext,
-  track: boolean = true,
+  track = true,
 ): Promise<
   | ({
       result: ReadResourceResult;

@@ -50,7 +50,7 @@ async function tlsReady(url: string): Promise<boolean> {
     // SSL.
     const maybeNodeError = err as { cause: { code: string }; code: string };
     if (
-      /HANDSHAKE_FAILURE/.test(maybeNodeError?.cause?.code) ||
+      maybeNodeError?.cause?.code?.includes("HANDSHAKE_FAILURE") ||
       "EPROTO" === maybeNodeError?.code
     ) {
       return false;
@@ -213,7 +213,7 @@ export async function doSetupSourceDeploy(
   projectId: string,
   backendId: string,
   nonInteractive: boolean,
-  rootDir: string = "/",
+  rootDir = "/",
 ): Promise<{ backend: Backend; location: string }> {
   const location = await promptLocation(
     projectId,
