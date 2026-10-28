@@ -67,9 +67,7 @@ function signUp(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SignUpRequest"],
   ctx: ExegesisContext,
 ): Schemas["GoogleCloudIdentitytoolkitV1SignUpResponse"] {
-  return {
-    /* response JSON body */
-  };
+  return {/* response JSON body */};
 }
 ```
 
