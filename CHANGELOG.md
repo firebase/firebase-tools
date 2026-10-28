@@ -1,4 +1,5 @@
 - Updated chokidar dependency to ^4.0.3 to remove vulnerable braces dependency (#11308).
 - Fixed an issue where the Firebase MCP server referred to `update_firebase_environment` instead of `firebase_update_environment`.
+- Fixed the Firestore emulator exiting when it could not watch the rules file for changes. It now logs a warning instead. (#4298)
 - Fixed `database:import` failing with an unhandled promise rejection when a batch write fails.
 - Fixed emulator crashes when a Firestore rules reload or emulator HTTP handler throws.
