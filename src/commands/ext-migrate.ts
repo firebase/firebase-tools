@@ -23,7 +23,6 @@ import { Options } from "../options";
 import { logLabeledBullet, logLabeledWarning } from "../utils";
 import { FirebaseError } from "../error";
 import { deploy, TARGET_PERMISSIONS } from "../deploy";
-import { checkServiceAccountIam } from "../deploy/functions/checkIam";
 import { confirm } from "../prompt";
 
 export interface ExtMigrateOptions extends Options {
@@ -54,10 +53,6 @@ export const command = new Command("ext:migrate")
   ])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
-  .before((options: Options) => {
-    const projectId = needProjectId(options);
-    return checkServiceAccountIam(projectId);
-  })
   .action(async (options: ExtMigrateOptions) => {
     const projectId = needProjectId(options);
     if (options.package) {
