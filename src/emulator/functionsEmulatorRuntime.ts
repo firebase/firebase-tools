@@ -761,7 +761,7 @@ async function loadTriggers(): Promise<any> {
   } catch (err: unknown) {
     if (typeof err === "object" && err !== null && "code" in err) {
       const code = (err as { code: unknown }).code;
-      if (code !== "ERR_REQUIRE_ESM") {
+      if (code !== "ERR_REQUIRE_ESM" && code !== "ERR_REQUIRE_ASYNC_MODULE") {
         // Try to run diagnostics to see what could've gone wrong before rethrowing the error.
         await moduleResolutionDetective(err as unknown as Error);
         throw err;
