@@ -26,6 +26,7 @@ import { deepCopy } from "@angular-devkit/core";
 import * as gce from "../../../gcp/computeEngine";
 import * as iam from "../../../gcp/iam";
 import * as resourcemanager from "../../../gcp/resourceManager";
+import * as utils from "../../../utils";
 
 describe("Fabricator", () => {
   // Stub all GCP APIs to make sure this test is hermetic
@@ -1001,6 +1002,26 @@ describe("Fabricator", () => {
       expect(fn.buildConfig.serviceAccount).to.equal(
         "projects/-/serviceAccounts/sa@project.iam.gserviceaccount.com",
       );
+    });
+
+    it("logs when the build switches to the runtime service account", async () => {
+      getServiceAccount.rejects(notFound());
+      const logLabeledBullet = sinon.stub(utils, "logLabeledBullet");
+
+      await createWith("sa@");
+
+      expect(logLabeledBullet).to.have.been.calledOnceWithExactly(
+        "functions",
+        "Default compute service account is missing or disabled. Building id(us-central1) as sa@project.iam.gserviceaccount.com.",
+      );
+    });
+
+    it("does not log when the default compute account exists", async () => {
+      const logLabeledBullet = sinon.stub(utils, "logLabeledBullet");
+
+      await createWith("sa@");
+
+      expect(logLabeledBullet).to.not.have.been.called;
     });
 
     it("uses the runtime service account for the build when the default compute account is disabled", async () => {

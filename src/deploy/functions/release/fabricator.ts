@@ -598,7 +598,10 @@ export class Fabricator {
    * is set. The runtime service account may lack build permissions, so it is only used for the
    * build when the default account is missing or disabled.
    */
-  private async setBuildServiceAccount(apiFunction: gcfV2.InputCloudFunction): Promise<void> {
+  private async setBuildServiceAccount(
+    endpoint: backend.Endpoint,
+    apiFunction: gcfV2.InputCloudFunction,
+  ): Promise<void> {
     const email = apiFunction.serviceConfig.serviceAccountEmail;
     if (!email) {
       return;
@@ -608,6 +611,10 @@ export class Fabricator {
       return;
     }
     apiFunction.buildConfig.serviceAccount = `projects/-/serviceAccounts/${email}`;
+    utils.logLabeledBullet(
+      "functions",
+      `Default compute service account is missing or disabled. Building ${helper.getFunctionLabel(endpoint)} as ${email}.`,
+    );
   }
 
   private async isDefaultComputeServiceAccountUsable(): Promise<boolean> {
@@ -631,7 +638,7 @@ export class Fabricator {
       throw new Error("Precondition failed");
     }
     const apiFunction = gcfV2.functionFromEndpoint({ ...endpoint, source: { storageSource } });
-    await this.setBuildServiceAccount(apiFunction);
+    await this.setBuildServiceAccount(endpoint, apiFunction);
 
     // N.B. As of GCFv2 private preview GCF no longer creates Pub/Sub topics
     // for Pub/Sub event handlers. This may change, at which point this code
@@ -855,7 +862,7 @@ export class Fabricator {
       throw new Error("Precondition failed");
     }
     const apiFunction = gcfV2.functionFromEndpoint({ ...endpoint, source: { storageSource } });
-    await this.setBuildServiceAccount(apiFunction);
+    await this.setBuildServiceAccount(endpoint, apiFunction);
 
     // N.B. As of GCFv2 private preview the API chokes on any update call that
     // includes the pub/sub topic even if that topic is unchanged.
