@@ -139,8 +139,12 @@ describe("commandUtils", () => {
       sandbox.restore();
     });
 
-    it("should parse Java major version and resolve java binary from java.home", async () => {
+    it("should parse Java major version and resolve java binary from PATH java.home on Windows even if JAVA_HOME differs", async () => {
       sandbox.stub(utils, "IS_WINDOWS").value(true);
+      sandbox.stub(process, "env").value({
+        ...process.env,
+        JAVA_HOME: "C:\\Program Files\\Java\\jdk-17",
+      });
       const expectedJavaBin = path.join("C:\\Program Files\\Java\\jdk-21", "bin", "java.exe");
       sandbox.stub(fsutils, "fileExistsSync").callsFake((p: string) => p === expectedJavaBin);
 
@@ -170,6 +174,8 @@ describe("commandUtils", () => {
       expect(version).to.equal(21);
       expect(commandUtils.getJavaBinary()).to.equal(expectedJavaBin);
       expect(spawnStub.calledOnce).to.be.true;
+      expect(spawnStub.firstCall.args[0]).to.equal("java");
+      expect(spawnStub.firstCall.args[1]).to.include("-Dstderr.encoding=UTF-8");
       expect(spawnStub.firstCall.args[1]).to.include("-XshowSettings:properties");
       expect(spawnStub.firstCall.args[2]).to.deep.include({
         stdio: ["ignore", "pipe", "pipe"],
@@ -177,13 +183,41 @@ describe("commandUtils", () => {
       });
     });
 
-    it("should fall back to JAVA_HOME/bin/java when resolvedJavaBinary is not cached", () => {
+    it("should keep getJavaBinary() as 'java' on POSIX and not pass -XshowSettings:properties", async () => {
       sandbox.stub(utils, "IS_WINDOWS").value(false);
       sandbox.stub(process, "env").value({
         ...process.env,
-        JAVA_HOME: "/opt/jdk-21",
+        JAVA_HOME: "/opt/jdk-17",
       });
-      const expectedJavaBin = path.join("/opt/jdk-21", "bin", "java");
+      sandbox.stub(fsutils, "fileExistsSync").returns(true);
+
+      const fakeChild = new EventEmitter() as childProcess.ChildProcess;
+      fakeChild.stdout = new PassThrough();
+      fakeChild.stderr = new PassThrough();
+
+      const spawnStub = sandbox.stub(childProcess, "spawn").callsFake(() => {
+        process.nextTick(() => {
+          fakeChild.stderr?.emit("data", Buffer.from('openjdk version "21.0.2" 2024-01-16\n'));
+          fakeChild.emit("exit", 0, null);
+        });
+        return fakeChild;
+      });
+
+      const version = await commandUtils.checkJavaMajorVersion();
+
+      expect(version).to.equal(21);
+      expect(commandUtils.getJavaBinary()).to.equal("java");
+      expect(spawnStub.firstCall.args[0]).to.equal("java");
+      expect(spawnStub.firstCall.args[1]).to.not.include("-XshowSettings:properties");
+    });
+
+    it("should strip quotes and fall back to JAVA_HOME/bin/java.exe on Windows when resolvedJavaBinary is not cached", () => {
+      sandbox.stub(utils, "IS_WINDOWS").value(true);
+      sandbox.stub(process, "env").value({
+        ...process.env,
+        JAVA_HOME: '"C:\\Program Files\\Java\\jdk-21"',
+      });
+      const expectedJavaBin = path.join("C:\\Program Files\\Java\\jdk-21", "bin", "java.exe");
       sandbox.stub(fsutils, "fileExistsSync").callsFake((p: string) => p === expectedJavaBin);
 
       expect(commandUtils.getJavaBinary()).to.equal(expectedJavaBin);

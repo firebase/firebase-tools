@@ -20,7 +20,7 @@ import * as path from "path";
 import * as os from "os";
 import { EmulatorRegistry } from "./registry";
 import { downloadEmulator } from "../emulator/download";
-import { getJavaBinary } from "./commandUtils";
+import { checkJavaMajorVersion, getJavaBinary, hasResolvedJavaBinary } from "./commandUtils";
 import * as experiments from "../experiments";
 import * as process from "process";
 import * as emulatorUpdateDetails from "./downloadableEmulatorInfo.json";
@@ -319,6 +319,11 @@ function getPubsubJarPath(): string {
   );
 }
 
+function splitEnvOpts(value: string | undefined): string[] {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed.split(/\s+/) : [];
+}
+
 /**
  * @param name
  */
@@ -345,7 +350,13 @@ export function _getCommand(
     emulator === Emulators.PUBSUB && utils.IS_WINDOWS && !process.env.PUBSUB_EMULATOR_BINARY_PATH;
 
   const cmdLineArgs = useDirectPubsubJarOnWindows
-    ? ["-Duser.language=en", "-jar", getPubsubJarPath()]
+    ? [
+        "-Duser.language=en",
+        ...splitEnvOpts(process.env.JAVA_OPTS),
+        ...splitEnvOpts(process.env.CLOUD_PUBSUB_EMULATOR_OPTS),
+        "-jar",
+        getPubsubJarPath(),
+      ]
     : baseCmd.args.slice();
 
   if (
@@ -385,9 +396,15 @@ export function _getCommand(
     }
   });
 
+  let binary = baseCmd.binary;
+  if (baseCmd.binary === "java" || useDirectPubsubJarOnWindows) {
+    binary = getJavaBinary();
+  } else if (emulator === Emulators.PUBSUB && process.env.PUBSUB_EMULATOR_BINARY_PATH) {
+    binary = getExecPath(Emulators.PUBSUB);
+  }
+
   return {
-    binary:
-      baseCmd.binary === "java" || useDirectPubsubJarOnWindows ? getJavaBinary() : baseCmd.binary,
+    binary,
     args: cmdLineArgs,
     optionalArgs: baseCmd.optionalArgs,
     joinArgs: baseCmd.joinArgs,
@@ -450,12 +467,6 @@ export async function handleEmulatorProcessError(
  * Do the selected list of emulators depend on the JRE.
  */
 export function requiresJava(emulator: Emulators): boolean {
-  // Commands.pubsub.binary is the `cloud-pubsub-emulator` launch script path rather than
-  // `"java"`, so the `binary === "java"` check below would miss it even though Pub/Sub runs
-  // on the JRE (and launches the fat jar via `getJavaBinary()` directly on Windows).
-  if (emulator === Emulators.PUBSUB) {
-    return true;
-  }
   if (emulator in Commands) {
     return Commands[emulator as keyof typeof Commands].binary === "java";
   }
@@ -478,7 +489,6 @@ async function _runBinary(
         // Note that it seems to be a problem with gRPC processes for which a fix may be found on the Java side
         // related to this issue: https://github.com/grpc/grpc-java/pull/6512
         detached: true,
-        windowsHide: true,
         stdio: ["ignore", "pipe", "pipe"],
       };
       if (command.shell && utils.IS_WINDOWS) {
@@ -672,6 +682,20 @@ export async function start(
       utils.logWarning("Setup required, please run: firebase setup:emulators:" + targetName);
       throw new FirebaseError("emulator not found");
     }
+  }
+
+  if (
+    targetName === Emulators.PUBSUB &&
+    utils.IS_WINDOWS &&
+    !process.env.PUBSUB_EMULATOR_BINARY_PATH &&
+    !hasResolvedJavaBinary()
+  ) {
+    // Pub/Sub is compiled for Java 11+, so it does not enforce MIN_SUPPORTED_JAVA_MAJOR_VERSION (21)
+    // via `requiresJava()`, but we still resolve `<java.home>\bin\java.exe` on Windows when starting
+    // Pub/Sub standalone so `_getCommand` bypasses any `PATH` wrapper shim.
+    await checkJavaMajorVersion().catch((err: unknown) => {
+      logger.log("DEBUG", `Failed to resolve Java binary for Pub/Sub emulator: ${String(err)}`);
+    });
   }
 
   const command = _getCommand(targetName, args);
