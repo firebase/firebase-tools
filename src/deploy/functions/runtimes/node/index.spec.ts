@@ -1,5 +1,7 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
 
 import * as node from ".";
@@ -134,6 +136,93 @@ describe("NodeDelegate", () => {
       );
       await delegate.discoverBuild({}, {});
       expect(detectFromYamlMock).to.have.been.called;
+    });
+  });
+  describe("findFunctionsBinary", () => {
+    let projectDir: string;
+    let sourceDir: string;
+
+    function installSdk(storeDir: string, binShims: string[], bin: unknown): string {
+      const nodeModules = path.join(sourceDir, "node_modules");
+      const sdkDir = path.join(nodeModules, storeDir, "firebase-functions");
+      fs.mkdirSync(path.join(sdkDir, "lib", "v2"), { recursive: true });
+      fs.writeFileSync(path.join(sdkDir, "lib", "v2", "index.js"), "");
+      fs.writeFileSync(
+        path.join(sdkDir, "package.json"),
+        JSON.stringify({ name: "firebase-functions", main: "lib/v2/index.js", bin }),
+      );
+      if (storeDir) {
+        fs.symlinkSync(sdkDir, path.join(nodeModules, "firebase-functions"), "junction");
+      }
+      fs.mkdirSync(path.join(nodeModules, ".bin"), { recursive: true });
+      for (const shim of binShims) {
+        fs.writeFileSync(path.join(nodeModules, ".bin", shim), "");
+      }
+      return fs.realpathSync(sdkDir);
+    }
+
+    function findFunctionsBinary(): string[] {
+      const delegate = new node.Delegate(PROJECT_ID, projectDir, sourceDir, "nodejs24");
+      return delegate["findFunctionsBinary"]();
+    }
+
+    beforeEach(() => {
+      projectDir = fs.mkdtempSync(path.join(os.tmpdir(), "functions-binary-"));
+      sourceDir = path.join(projectDir, "functions");
+      fs.mkdirSync(sourceDir);
+    });
+
+    afterEach(() => {
+      fs.rmSync(projectDir, { recursive: true, force: true });
+    });
+
+    it("prefers the node_modules/.bin shim when it exists", () => {
+      installSdk("", ["firebase-functions"], {
+        "firebase-functions": "lib/bin/firebase-functions.js",
+      });
+      expect(findFunctionsBinary()).to.deep.equal([
+        path.join(sourceDir, "node_modules", ".bin", "firebase-functions"),
+      ]);
+    });
+
+    it("runs the SDK bin entry with node when Bun on Windows only creates .exe shims", () => {
+      const sdkDir = installSdk(
+        path.join(".bun", "firebase-functions@7.4.0+abc", "node_modules"),
+        ["firebase-functions.exe", "firebase-functions.bunx"],
+        { "firebase-functions": "lib/bin/firebase-functions.js" },
+      );
+      expect(findFunctionsBinary()).to.deep.equal([
+        "node",
+        path.join(sdkDir, "lib", "bin", "firebase-functions.js"),
+      ]);
+    });
+
+    it("runs the SDK bin entry with node when a .pnpm store only has .cmd shims", () => {
+      const sdkDir = installSdk(
+        path.join(".pnpm", "firebase-functions@7.4.0", "node_modules"),
+        ["firebase-functions.cmd", "firebase-functions.ps1"],
+        { "firebase-functions": "lib/bin/firebase-functions.js" },
+      );
+      expect(findFunctionsBinary()).to.deep.equal([
+        "node",
+        path.join(sdkDir, "lib", "bin", "firebase-functions.js"),
+      ]);
+    });
+
+    it("accepts a bin entry declared as a single path", () => {
+      const sdkDir = installSdk("", [], "lib/bin/firebase-functions.js");
+      expect(findFunctionsBinary()).to.deep.equal([
+        "node",
+        path.join(sdkDir, "lib", "bin", "firebase-functions.js"),
+      ]);
+    });
+
+    it("throws when the SDK declares no bin entry and no shim exists", () => {
+      installSdk("", [], undefined);
+      expect(() => findFunctionsBinary()).to.throw(
+        FirebaseError,
+        "Failed to find location of Firebase Functions SDK",
+      );
     });
   });
 });

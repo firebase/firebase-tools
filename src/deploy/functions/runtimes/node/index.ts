@@ -53,6 +53,29 @@ export async function tryCreateDelegate(context: DelegateContext): Promise<Deleg
   return new Delegate(context.projectId, context.projectDir, context.sourceDir, runtime);
 }
 
+function findSdkBinEntry(sdkPath: string): string | undefined {
+  for (
+    let dir = path.dirname(sdkPath);
+    path.basename(dir) !== "node_modules" && path.dirname(dir) !== dir;
+    dir = path.dirname(dir)
+  ) {
+    const packageJsonPath = path.join(dir, "package.json");
+    if (!fileExistsSync(packageJsonPath)) {
+      continue;
+    }
+    const { name, bin } = JSON.parse(fs.readFileSync(packageJsonPath, "utf8")) as {
+      name?: string;
+      bin?: string | Record<string, string>;
+    };
+    if (name !== "firebase-functions") {
+      continue;
+    }
+    const entry = typeof bin === "string" ? bin : bin?.["firebase-functions"];
+    return entry ? path.join(dir, entry) : undefined;
+  }
+  return undefined;
+}
+
 // TODO(inlined): Consider moving contents in parseRuntimeAndValidateSDK and validate around.
 // Those two files are currently pretty coupled (e.g. they borrow error messages from each other)
 // and both files load package.json. Maybe the delegate should be constructed with a package.json and
@@ -158,7 +181,7 @@ export class Delegate {
     return Promise.resolve(() => Promise.resolve());
   }
 
-  private findFunctionsBinary(): string {
+  private findFunctionsBinary(): string[] {
     // Location of the binary included in the Firebase Functions SDK
     // differs depending on the developer's setup and choice of package manager.
     //
@@ -188,8 +211,14 @@ export class Delegate {
       const binPath = path.join(nodeModulesPath, ".bin", "firebase-functions");
       if (fileExistsSync(binPath)) {
         logger.debug(`Found firebase-functions binary at '${binPath}'`);
-        return binPath;
+        return [binPath];
       }
+    }
+
+    const binEntry = findSdkBinEntry(sdkPath);
+    if (binEntry) {
+      logger.debug(`Found firebase-functions bin entry at '${binEntry}'`);
+      return ["node", binEntry];
     }
 
     throw new FirebaseError(
@@ -217,8 +246,8 @@ export class Delegate {
       env.CLOUD_RUNTIME_CONFIG = JSON.stringify(config);
     }
 
-    const binPath = this.findFunctionsBinary();
-    const childProcess = spawn(binPath, [this.sourceDir], {
+    const [command, ...args] = this.findFunctionsBinary();
+    const childProcess = spawn(command, [...args, this.sourceDir], {
       env,
       cwd: this.sourceDir,
       stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "pipe"],
