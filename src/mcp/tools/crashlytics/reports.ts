@@ -9,18 +9,6 @@ import { RESOURCE_CONTENT as forceAppIdGuide } from "../../resources/guides/app_
 
 const DUMP_OPTIONS: DumpOptions = { lineWidth: 200 };
 
-const REPORT_ERROR_CONTENT = `
-Must specify the desired report:
-  * TOP_ISSUES - metrics grouped by *issue*.
-  * TOP_VARIANTS - metrics grouped by issue *variant*
-  * TOP_VERSIONS - metrics grouped by *version*
-  * TOP_OPERATING_SYSTEMS - metrics grouped by *operating system*
-  * TOP_ANDROID_DEVICES - metrics grouped by *device*
-  * TOP_APPLE_DEVICES - metrics grouped by *device*
-  * TOP_BROWSERS - metrics grouped by *browser*
-  * WEB_METRICS - metrics by *error type*
-`.trim();
-
 function toText(response: Report, filters: EventFilter): Record<string, string> {
   const result: Record<string, string> = {
     name: response.name || "", // So name is first in the output
@@ -55,13 +43,9 @@ export const get_report = tool(
       requiresAuth: true,
     },
   },
-  async ({ appId, report, pageSize, filter }) => {
+  async ({ appId, report, pageSize, filter, granularity }) => {
     const result: CallToolResult = { content: [] };
 
-    if (!report) {
-      result.isError = true;
-      result.content.push({ type: "text", text: `Error: ${REPORT_ERROR_CONTENT}` });
-    }
     if (!appId) {
       result.isError = true;
       result.content.push({ type: "text", text: "Must specify 'appId' parameter" });
@@ -69,28 +53,39 @@ export const get_report = tool(
     }
     try {
       filter = validateEventFilters(filter || {});
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
       result.isError = true;
-      result.content.push({ type: "text", text: `Error: ${error.message}` });
+      result.content.push({ type: "text", text: `Error: ${message}` });
     }
     if (result.content.length > 0) {
       // There are errors or guides the agent needs to read first.
       return result;
     }
     // Everything is OK so fetch report
-    const reportResponse = simplifyReport(await getReport(report, appId, filter, pageSize));
-    reportResponse.usage =
-      reportResponse.groups && reportResponse.groups.length
-        ? reportResponse.usage || ""
-        : "This report response contains no results."; // Helps to make empty state more obvious
+    try {
+      const reportResponse = simplifyReport(
+        await getReport(report, appId, filter, pageSize, granularity),
+      );
+      reportResponse.usage =
+        reportResponse.groups && reportResponse.groups.length
+          ? reportResponse.usage || ""
+          : "This report response contains no results."; // Helps to make empty state more obvious
 
-    return {
-      content: [
-        {
-          type: "text",
-          text: dump(toText(reportResponse, filter), DUMP_OPTIONS),
-        },
-      ],
-    };
+      return {
+        content: [
+          {
+            type: "text",
+            text: dump(toText(reportResponse, filter), DUMP_OPTIONS),
+          },
+        ],
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        isError: true,
+        content: [{ type: "text", text: `Error: ${message}` }],
+      };
+    }
   },
 );

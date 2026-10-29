@@ -2,10 +2,10 @@ import * as chai from "chai";
 import nock from "../test/helpers/nock";
 import * as chaiAsPromised from "chai-as-promised";
 
-import { CrashlyticsReport, getReport, listReports, simplifyReport } from "./reports";
+import { getReport, listReports, reportsCache, simplifyReport } from "./reports";
 import { FirebaseError } from "../error";
 import { crashlyticsApiOrigin } from "../api";
-import { Report } from "./types";
+import { Report, TimeGranularity } from "./types";
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;
@@ -121,9 +121,71 @@ describe("simplifyReport", () => {
 describe("getReport", () => {
   const appId = "1:1234567890:android:abcdef1234567890";
   const requestProjectNumber = "1234567890";
+  const mockListReportsResponse = {
+    reports: [
+      {
+        name: `projects/${requestProjectNumber}/apps/${appId}/reports/appSummary`,
+        displayName: "App Summary",
+        usage: "High-level health summary.",
+      },
+      {
+        name: `projects/${requestProjectNumber}/apps/${appId}/reports/releaseVersions`,
+        displayName: "Release Versions",
+        usage: "Metrics grouped by release version.",
+      },
+      {
+        name: `projects/${requestProjectNumber}/apps/${appId}/reports/topIssues`,
+        displayName: "Top Issues",
+        usage: "Metrics grouped by issue.",
+      },
+      {
+        name: `projects/${requestProjectNumber}/apps/${appId}/reports/topBrowsers`,
+        displayName: "Top Browsers",
+        usage: "Metrics grouped by browser.",
+      },
+      {
+        name: `projects/${requestProjectNumber}/apps/${appId}/reports/topCustomKeys`,
+        displayName: "Top Custom Keys",
+        usage: "Metrics grouped by custom keys.",
+      },
+    ],
+  };
+
+  function mockListReports(targetAppId = appId, projectNumber = requestProjectNumber): void {
+    nock(crashlyticsApiOrigin())
+      .get(`/v1alpha/projects/${projectNumber}/apps/${targetAppId}/reports`)
+      .reply(200, mockListReportsResponse);
+  }
 
   afterEach(() => {
+    reportsCache.clear();
     nock.cleanAll();
+  });
+
+  it("should call listReports before the first getReport call and cache the response", async () => {
+    const mockTopIssues = { groups: [{ issue: { id: "1" }, metrics: [], subgroups: [] }] };
+    const mockAppSummary = { groups: [{ metrics: [{ eventsCount: 10 }], subgroups: [] }] };
+
+    mockListReports();
+    nock(crashlyticsApiOrigin())
+      .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports/topIssues`)
+      .query({ page_size: "10" })
+      .reply(200, mockTopIssues);
+    nock(crashlyticsApiOrigin())
+      .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports/appSummary`)
+      .query({ page_size: "10" })
+      .reply(200, mockAppSummary);
+
+    expect(reportsCache.get(appId)).to.be.undefined;
+
+    const firstResult = await getReport("topIssues", appId, {});
+    expect(firstResult).to.deep.equal(mockTopIssues);
+    expect(reportsCache.get(appId)).to.deep.equal(mockListReportsResponse);
+
+    // Second call for the same appId should reuse the cached listReports response
+    const secondResult = await getReport("appSummary", appId, {});
+    expect(secondResult).to.deep.equal(mockAppSummary);
+    expect(nock.isDone()).to.be.true;
   });
 
   it("should resolve with the response body on success", async () => {
@@ -131,6 +193,7 @@ describe("getReport", () => {
     const pageSize = 5;
     const mockResponse = { issues: [{ id: "1" }] };
 
+    mockListReports();
     nock(crashlyticsApiOrigin())
       .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports/topIssues`)
       .query({
@@ -139,12 +202,7 @@ describe("getReport", () => {
       })
       .reply(200, mockResponse);
 
-    const result = await getReport(
-      CrashlyticsReport.TOP_ISSUES,
-      appId,
-      { issueErrorTypes: [issueType] },
-      pageSize,
-    );
+    const result = await getReport("topIssues", appId, { issueErrorTypes: [issueType] }, pageSize);
 
     expect(result).to.deep.equal(mockResponse);
     expect(nock.isDone()).to.be.true;
@@ -153,12 +211,13 @@ describe("getReport", () => {
   it("should resolve with topBrowsers report on success", async () => {
     const mockResponse = { groups: [{ browser: { displayName: "Chrome (123)" } }] };
 
+    mockListReports();
     nock(crashlyticsApiOrigin())
       .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports/topBrowsers`)
       .query({ page_size: "10" })
       .reply(200, mockResponse);
 
-    const result = await getReport(CrashlyticsReport.TOP_BROWSERS, appId, {});
+    const result = await getReport("topBrowsers", appId, {});
 
     expect(result).to.deep.equal(mockResponse);
     expect(nock.isDone()).to.be.true;
@@ -167,21 +226,49 @@ describe("getReport", () => {
   it("should throw a FirebaseError if the appId is invalid", async () => {
     const invalidAppId = "invalid-app-id";
 
-    await expect(getReport(CrashlyticsReport.TOP_ISSUES, invalidAppId, {})).to.be.rejectedWith(
+    await expect(getReport("topIssues", invalidAppId, {})).to.be.rejectedWith(
       FirebaseError,
       "Unable to get the projectId from the AppId.",
     );
   });
 
+  it("should throw a FirebaseError listing valid reports when reportName is invalid", async () => {
+    mockListReports();
+
+    await expect(getReport("nonExistentReport", appId, {})).to.be.rejectedWith(
+      FirebaseError,
+      /Invalid Crashlytics report: nonExistentReport\. Valid reports are:[\s\S]*appSummary - High-level health summary\.[\s\S]*topIssues - Metrics grouped by issue\./,
+    );
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should throw a FirebaseError listing all available reports when reportName is empty", async () => {
+    mockListReports();
+
+    await expect(getReport("", appId, {})).to.be.rejectedWith(
+      FirebaseError,
+      [
+        "Invalid Crashlytics report: . Valid reports are:",
+        "  * appSummary - High-level health summary.",
+        "  * releaseVersions - Metrics grouped by release version.",
+        "  * topIssues - Metrics grouped by issue.",
+        "  * topBrowsers - Metrics grouped by browser.",
+        "  * topCustomKeys - Metrics grouped by custom keys.",
+      ].join("\n"),
+    );
+    expect(nock.isDone()).to.be.true;
+  });
+
   it("should resolve with appSummary report on success", async () => {
     const mockResponse = { groups: [{ metrics: [{ eventsCount: 10 }] }] };
 
+    mockListReports();
     nock(crashlyticsApiOrigin())
       .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports/appSummary`)
       .query({ page_size: "10" })
       .reply(200, mockResponse);
 
-    const result = await getReport(CrashlyticsReport.APP_SUMMARY, appId, {});
+    const result = await getReport("appSummary", appId, {});
 
     expect(result).to.deep.equal(mockResponse);
     expect(nock.isDone()).to.be.true;
@@ -190,12 +277,13 @@ describe("getReport", () => {
   it("should resolve with releaseVersions report on success", async () => {
     const mockResponse = { groups: [{ version: { displayName: "1.0.0 (1)" } }] };
 
+    mockListReports();
     nock(crashlyticsApiOrigin())
       .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports/releaseVersions`)
       .query({ page_size: "10" })
       .reply(200, mockResponse);
 
-    const result = await getReport(CrashlyticsReport.RELEASE_VERSIONS, appId, {});
+    const result = await getReport("releaseVersions", appId, {});
 
     expect(result).to.deep.equal(mockResponse);
     expect(nock.isDone()).to.be.true;
@@ -206,14 +294,36 @@ describe("getReport", () => {
       groups: [{ customAttribute: { key: "env", value: "prod" }, metrics: [] }],
     };
 
+    mockListReports();
     nock(crashlyticsApiOrigin())
       .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports/topCustomKeys`)
       .query({ page_size: "10", "filter.issue.id": "issue-1" })
       .reply(200, mockResponse);
 
-    const result = await getReport(CrashlyticsReport.TOP_CUSTOM_KEYS, appId, {
+    const result = await getReport("topCustomKeys", appId, {
       issueId: "issue-1",
     });
+
+    expect(result).to.deep.equal(mockResponse);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should include granularity in query params when provided", async () => {
+    const mockResponse = { groups: [{ metrics: [{ eventsCount: 10 }] }] };
+
+    mockListReports();
+    nock(crashlyticsApiOrigin())
+      .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports/appSummary`)
+      .query({ page_size: "10", granularity: TimeGranularity.TIME_GRANULARITY_DAY })
+      .reply(200, mockResponse);
+
+    const result = await getReport(
+      "appSummary",
+      appId,
+      {},
+      10,
+      TimeGranularity.TIME_GRANULARITY_DAY,
+    );
 
     expect(result).to.deep.equal(mockResponse);
     expect(nock.isDone()).to.be.true;
