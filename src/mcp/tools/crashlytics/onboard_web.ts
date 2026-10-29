@@ -311,7 +311,7 @@ Run the onboarding commands to enable experiments and onboard:
 \`\`\`bash
 firebase crashlytics:onboard:web ${detectedAppId} --project ${effectiveProjectId}
 \`\`\`
-> **Prerequisites**: Requires Firebase CLI v15.19.1+, Owner/Editor project permissions, and Blaze billing enabled.
+> **Prerequisites**: Requires Firebase CLI v15.34.2+, Owner/Editor project permissions, and Blaze billing enabled.
 
 ---
 
