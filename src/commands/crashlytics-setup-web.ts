@@ -16,7 +16,7 @@ export interface CrashlyticsSetupOptions extends Options {
   app?: string;
 }
 
-export const command = new Command("crashlytics:setup:web [appId]")
+export const command = new Command("crashlytics:setup [appId]")
   .description("set up a Firebase web app for Crashlytics")
   .option("--app <appID>", "the app id of your Firebase app")
   .before(requireAuth)
