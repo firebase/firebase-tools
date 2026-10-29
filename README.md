@@ -2,6 +2,13 @@
 
 The Firebase Command Line Interface (CLI) Tools can be used to test, manage, and deploy your Firebase project from the command line. This repository is also the home of the official Firebase MCP Server. For more information, please see the [Firebase MCP Server documentation](./src/mcp).
 
+- Deploy code and assets to your Firebase projects
+- Run a local web server for your Firebase Hosting site
+- Interact with data in your Firebase database
+- Import/Export users into/from Firebase Auth
+
+To get started with the Firebase CLI, read the full list of commands below or check out the [documentation](https://firebase.google.com/docs/cli).
+
 > [!TIP]
 > Using an AI assistant? Install [Firebase agent skills](https://github.com/firebase/agent-skills) to give it Firebase-specific knowledge, best practices, and workflows, including how to use the Firebase CLI and MCP server effectively:
 >
@@ -10,13 +17,6 @@ The Firebase Command Line Interface (CLI) Tools can be used to test, manage, and
 > ```
 >
 > See the [Firebase agent skills documentation](https://firebase.google.com/docs/ai-assistance/agent-skills) for more information.
-
-- Deploy code and assets to your Firebase projects
-- Run a local web server for your Firebase Hosting site
-- Interact with data in your Firebase database
-- Import/Export users into/from Firebase Auth
-
-To get started with the Firebase CLI, read the full list of commands below or check out the [documentation](https://firebase.google.com/docs/cli).
 
 ## Installation
 

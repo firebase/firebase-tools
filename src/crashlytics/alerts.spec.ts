@@ -57,6 +57,7 @@ describe("crashlytics alerts", () => {
         .post(`/v1alpha/projects/${projectId}/apps/${appId}:generateAlertPolicy`, {
           alertType: AlertType.ALERT_TYPE_NEW_ISSUE,
         })
+        .matchHeader("x-goog-user-project", projectId)
         .reply(200, { alertPolicy: newIssuePolicyName });
 
       const res = await generateAlertPolicy(projectId, appId, AlertType.ALERT_TYPE_NEW_ISSUE);
@@ -67,6 +68,7 @@ describe("crashlytics alerts", () => {
     it("should throw a FirebaseError when API fails", async () => {
       nock(crashlyticsApiOrigin())
         .post(`/v1alpha/projects/${projectId}/apps/${appId}:generateAlertPolicy`)
+        .matchHeader("x-goog-user-project", projectId)
         .reply(500, { error: "Internal Server Error" });
 
       await expect(
@@ -323,9 +325,41 @@ describe("crashlytics alerts", () => {
       expect(nock.isDone()).to.be.true;
     });
 
-    it("should preserve fulfilled policies when one alert type fails", async () => {
+    it("should throw a FirebaseError when generating an alert policy fails (e.g. 403)", async () => {
+      nock(cloudMonitoringOrigin())
+        .get(`/v3/projects/${projectId}/notificationChannels`)
+        .query({ filter: expectedFilter })
+        .reply(200, { notificationChannels: [emailChannel] });
+
+      nock(crashlyticsApiOrigin())
+        .post(`/v1alpha/projects/${projectId}/apps/${appId}:generateAlertPolicy`, {
+          alertType: AlertType.ALERT_TYPE_NEW_ISSUE,
+        })
+        .reply(403, { error: "Permission Denied" });
+      nock(crashlyticsApiOrigin())
+        .post(`/v1alpha/projects/${projectId}/apps/${appId}:generateAlertPolicy`, {
+          alertType: AlertType.ALERT_TYPE_REGRESSED_ISSUE,
+        })
+        .reply(403, { error: "Permission Denied" });
+
+      await expect(
+        enableAlerts(
+          projectId,
+          appId,
+          [AlertType.ALERT_TYPE_NEW_ISSUE, AlertType.ALERT_TYPE_REGRESSED_ISSUE],
+          userEmail,
+        ),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        `Failed to generate Crashlytics alert policy for ${AlertType.ALERT_TYPE_NEW_ISSUE} on app ${appId} (status 403)`,
+      );
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should throw a FirebaseError when one alert type succeeds and another fails", async () => {
       const initialNewPolicy = { name: newIssuePolicyName, notificationChannels: [] };
       const updatedNewPolicy = { name: newIssuePolicyName, notificationChannels: [channelName] };
+      const initialRegressedPolicy = { name: regressedIssuePolicyName, notificationChannels: [] };
 
       nock(cloudMonitoringOrigin())
         .get(`/v3/projects/${projectId}/notificationChannels`)
@@ -347,16 +381,26 @@ describe("crashlytics alerts", () => {
         .post(`/v1alpha/projects/${projectId}/apps/${appId}:generateAlertPolicy`, {
           alertType: AlertType.ALERT_TYPE_REGRESSED_ISSUE,
         })
+        .reply(200, { alertPolicy: regressedIssuePolicyName });
+      nock(cloudMonitoringOrigin())
+        .get(`/v3/${regressedIssuePolicyName}`)
+        .reply(200, initialRegressedPolicy);
+      nock(cloudMonitoringOrigin())
+        .patch(`/v3/${regressedIssuePolicyName}`)
+        .query({ updateMask: NOTIFICATION_CHANNELS_MASK_PATH })
         .reply(500, { error: "Internal Server Error" });
 
-      const res = await enableAlerts(
-        projectId,
-        appId,
-        [AlertType.ALERT_TYPE_NEW_ISSUE, AlertType.ALERT_TYPE_REGRESSED_ISSUE],
-        userEmail,
+      await expect(
+        enableAlerts(
+          projectId,
+          appId,
+          [AlertType.ALERT_TYPE_NEW_ISSUE, AlertType.ALERT_TYPE_REGRESSED_ISSUE],
+          userEmail,
+        ),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        `Failed to update Cloud Monitoring alert policy ${regressedIssuePolicyName}`,
       );
-
-      expect(res).to.deep.equal([updatedNewPolicy]);
       expect(nock.isDone()).to.be.true;
     });
   });

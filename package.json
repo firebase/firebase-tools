@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "15.33.0",
+  "version": "15.34.2",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "mcpName": "io.github.firebase/firebase-mcp",
@@ -27,7 +27,8 @@
     "lint:ts": "eslint --cache --config .eslintrc.js --ext .ts,.js .",
     "mocha:fast": "mocha 'src/**/*.spec.{ts,js}'",
     "mocha": "nyc mocha 'src/**/*.spec.{ts,js}'",
-    "prepare": "npm run clean && npm run build:publish",
+    "sanitize:lockfile": "node scripts/sanitize-lockfile.js",
+    "prepare": "npm run sanitize:lockfile && npm run clean && npm run build:publish",
     "test": "npm run lint:quiet && npm run test:compile && npm run mocha",
     "test:appdistribution": "npm run lint:quiet && npm run test:compile && nyc mocha 'src/appdistribution/*.spec.{ts,js}'",
     "test:apptesting": "npm run lint:quiet && npm run test:compile && nyc mocha 'src/apptesting/*.spec.{ts,js}'",
@@ -118,8 +119,8 @@
     "ajv-formats": "3.0.1",
     "archiver": "^7.0.0",
     "async-lock": "1.4.1",
-    "body-parser": "^1.19.0",
-    "chokidar": "^3.6.0",
+    "body-parser": "^1.20.9",
+    "chokidar": "^4.0.3",
     "cjson": "^0.3.1",
     "cli-table3": "0.6.5",
     "colorette": "^2.0.19",
@@ -259,9 +260,14 @@
     "vite-plugin-singlefile": "^0.13.5"
   },
   "overrides": {
+    "body-parser": "^1.20.9",
+    "@modelcontextprotocol/sdk": {
+      "body-parser": "^2.4.0"
+    },
     "@angular-devkit/core": {
       "ajv-formats": "3.0.1",
-      "ajv": "^8.17.1"
+      "ajv": "^8.17.1",
+      "chokidar": "$chokidar"
     },
     "hono": "^4.13.5",
     "@tootallnate/once": "^3.0.1",
@@ -276,7 +282,6 @@
     "qs": "^6.16.0",
     "tar": "^7.5.21",
     "@opentelemetry/core": "^2.8.0",
-    "basic-ftp": "^6.2.1",
     "re2": "1.24.0",
     "@babel/traverse": "^7.23.2",
     "gaxios": {
@@ -291,5 +296,11 @@
     "@google-cloud/cloud-sql-connector": {
       "uuid": "^11.1.1"
     }
+  },
+  "allowScripts": {
+    "esbuild": true,
+    "protobufjs": false,
+    "puppeteer": false,
+    "re2": true
   }
 }

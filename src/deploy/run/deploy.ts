@@ -17,7 +17,7 @@ import { prepareLocalBuildScratchDirectory } from "../apphosting/prepare";
 import { createLocalBuildTarArchive, createSourceDeployArchive } from "../apphosting/util";
 import { Context, Payload, ServiceDeploy } from "./args";
 import { nonSecretValues, secretNames, toLocalBuildEnv } from "./buildEnv";
-import { mainContainer } from "./util";
+import { FIREBASE_APP_ANNOTATION, mainContainer } from "./util";
 
 const DEPLOY_MESSAGE_ANNOTATION = "firebase.google.com/deploy-message";
 /** Rolling out a revision can take longer than the operation poller's default timeout. */
@@ -265,6 +265,21 @@ export function revisionTemplate(
   } else {
     delete container.baseImageUri;
   }
+  // FIREBASE_CONFIG is how the Admin SDK auto-initializes at runtime. The client SDK's
+  // FIREBASE_WEBAPP_CONFIG is only needed at build time, so it isn't set on the container.
+  // TODO: Stop setting FIREBASE_CONFIG once Cloud Run injects it from the app-id annotation.
+  const wasLinked = svc.existing?.annotations?.[FIREBASE_APP_ANNOTATION] !== undefined;
+  const otherEnv = (container.env || []).filter((e) => e.name !== "FIREBASE_CONFIG");
+  if (svc.autoInit) {
+    // An app is linked. Always rewrite FIREBASE_CONFIG from the app's current config, so that
+    // changes like enabling Storage reach the service.
+    container.env = [...otherEnv, { name: "FIREBASE_CONFIG", value: svc.autoInit.firebaseConfig }];
+  } else if (wasLinked) {
+    // This deploy unlinks the app (--clear-app): the service had an app, and the deploy has none.
+    // Remove the FIREBASE_CONFIG that was set for the app.
+    container.env = otherEnv;
+  }
+  // Otherwise the service was never linked, so a FIREBASE_CONFIG on it is the user's. It stays.
   // The message describes this deploy only, so don't carry over the last one.
   if (message) {
     template.annotations = { ...template.annotations, [DEPLOY_MESSAGE_ANNOTATION]: message };
@@ -309,16 +324,31 @@ export function localBuildTemplate(
   return template;
 }
 
+/**
+ * Returns the service's annotations after this deploy: its current ones, with the linked Firebase
+ * Web App's ID set, or removed if no app is linked. Later deploys read the ID back to reuse the app.
+ */
+function serviceAnnotationsToDeploy(svc: ServiceDeploy): Record<string, string> {
+  const annotations = { ...svc.existing?.annotations };
+  if (svc.autoInit) {
+    annotations[FIREBASE_APP_ANNOTATION] = svc.autoInit.appId;
+  } else {
+    delete annotations[FIREBASE_APP_ANNOTATION];
+  }
+  return annotations;
+}
+
 /** Rolls out the new revision: creates the service if it's new, or updates it. */
 function rollOut(
   projectId: string,
   svc: ServiceDeploy,
   template: runv2.RevisionTemplate,
 ): Promise<runv2.Service> {
+  const annotations = serviceAnnotationsToDeploy(svc);
   if (svc.existing) {
-    return deployRevision(svc.existing, template);
+    return deployRevision(svc.existing, template, annotations);
   }
-  return createNewService(projectId, svc.config, template);
+  return createNewService(projectId, svc.config, template, annotations);
 }
 
 /** Creates a new service with its first revision. */
@@ -326,41 +356,43 @@ function createNewService(
   projectId: string,
   config: RunSingle,
   template: runv2.RevisionTemplate,
+  annotations: Record<string, string>,
 ): Promise<runv2.Service> {
   const { serviceId, region } = config;
-  return runv2.createService(
-    projectId,
-    region,
-    serviceId,
-    {
-      name: `projects/${projectId}/locations/${region}/services/${serviceId}`,
-      template,
-      client: "cli-firebase",
-      // Like an App Hosting backend, the service is public.
-      invokerIamDisabled: true,
-      ingress: "INGRESS_TRAFFIC_ALL",
-    },
-    { pollTimeoutMs: ROLLOUT_TIMEOUT_MS },
-  );
+  const service: Omit<runv2.Service, runv2.ServiceOutputFields> = {
+    name: `projects/${projectId}/locations/${region}/services/${serviceId}`,
+    annotations,
+    template,
+    client: "cli-firebase",
+    // Like an App Hosting backend, the service is public.
+    invokerIamDisabled: true,
+    ingress: "INGRESS_TRAFFIC_ALL",
+  };
+  return runv2.createService(projectId, region, serviceId, service, {
+    pollTimeoutMs: ROLLOUT_TIMEOUT_MS,
+  });
 }
 
 /** Rolls out a new revision of an existing service and sends it all traffic. */
 function deployRevision(
   service: runv2.Service,
   template: runv2.RevisionTemplate,
+  annotations: Record<string, string>,
 ): Promise<runv2.Service> {
   // Tagged revisions keep their tags (Hosting's pinned rewrites use them), but no traffic.
   const tags = (service.traffic || [])
     .filter((t) => t.tag)
     .map((t) => ({ type: t.type, revision: t.revision, tag: t.tag }));
-  return runv2.updateService(
-    {
-      name: service.name,
-      template,
-      traffic: [{ type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 }, ...tags],
-    },
-    { updateMask: ["template", "traffic"], pollTimeoutMs: ROLLOUT_TIMEOUT_MS },
-  );
+  const update: Omit<runv2.Service, runv2.ServiceOutputFields> = {
+    name: service.name,
+    annotations,
+    template,
+    traffic: [{ type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 }, ...tags],
+  };
+  return runv2.updateService(update, {
+    updateMask: ["template", "traffic", "annotations"],
+    pollTimeoutMs: ROLLOUT_TIMEOUT_MS,
+  });
 }
 
 /** Adapts a Cloud Run config so that it can reuse App Hosting's local build and archive helpers. */

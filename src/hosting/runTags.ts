@@ -104,7 +104,7 @@ export async function setRewriteTags(
         );
       })
       // filter does not drop the null annotation
-      .filter((s) => s !== null) as Array<Promise<run.Service>>,
+      .filter((s): s is Promise<run.Service> => s !== null),
   );
   // Unnecessary due to functional programming, but creates an observable side effect for tests
   if (!services.length) {

@@ -231,17 +231,7 @@ export const ALL_EXPERIMENTS = experiments({
     default: true,
     public: false,
   },
-  crashlyticsWeb: {
-    shortDescription: "Enable the ability to upload source maps for web apps to Crashlytics.",
-    default: false,
-    public: true,
-  },
-  crashlyticsWebAlerts: {
-    shortDescription: "Enable configuring Crashlytics email alerts during web app onboarding.",
-    default: false,
-    public: false,
-  },
-  crashlyticsWebTrace: {
+  crashlyticsWebBreadcrumbs: {
     shortDescription: "Enable provisioning Cloud Trace storage during web app onboarding.",
     default: false,
     public: false,
