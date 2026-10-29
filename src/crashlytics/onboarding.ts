@@ -28,20 +28,20 @@ export const CRASHLYTICS_TELEMETRY_ADMIN_SERVICE = "firebasetelemetryadmin.googl
 export const CRASHLYTICS_SERVICE = "firebasecrashlytics.googleapis.com";
 export const CLIENT_TELEMETRY_SERVICE = "clienttelemetry.googleapis.com";
 
-export interface OnboardWebResult {
+export interface SetupWebResult {
   bucket: LogBucket;
   sink: LogSink;
   config: TelemetryConfig;
   alertPolicies?: AlertPolicy[];
 }
 
-export interface OnboardWebOptions {
+export interface SetupWebOptions {
   nonInteractive?: boolean;
   user?: { email?: string };
 }
 
 async function resolveAuthenticatedUserEmail(
-  options: OnboardWebOptions,
+  options: SetupWebOptions,
 ): Promise<string | undefined> {
   if (options.user?.email) {
     return options.user.email;
@@ -58,11 +58,11 @@ async function resolveAuthenticatedUserEmail(
  * Onboards a Firebase Web App to Crashlytics by enabling required APIs,
  * setting up Cloud Logging bucket and sink routing, provisioning Cloud Trace storage, creating a Telemetry Config, and optionally configuring Crashlytics email alerts.
  */
-export async function onboardCrashlyticsWeb(
+export async function setupCrashlyticsWeb(
   projectId: string,
   appId: string,
-  options: OnboardWebOptions = {},
-): Promise<OnboardWebResult> {
+  options: SetupWebOptions = {},
+): Promise<SetupWebResult> {
   const billingEnabled = await checkBillingEnabled(projectId);
   if (!billingEnabled && options.nonInteractive) {
     throw new FirebaseError(

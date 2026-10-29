@@ -87,7 +87,7 @@ describe("onboarding", () => {
   });
 
   it("should successfully onboard web app and enable selected alerts", async () => {
-    const res = await onboarding.onboardCrashlyticsWeb("test-project", "1:123:web:456");
+    const res = await onboarding.setupCrashlyticsWeb("test-project", "1:123:web:456");
 
     expect(ensureStub).to.have.been.calledWith(
       "test-project",
@@ -153,7 +153,7 @@ describe("onboarding", () => {
   });
 
   it("should use options.user.email directly when present without calling requireAuth", async () => {
-    const res = await onboarding.onboardCrashlyticsWeb("test-project", "1:123:web:456", {
+    const res = await onboarding.setupCrashlyticsWeb("test-project", "1:123:web:456", {
       user: { email: "cli-user@example.com" },
     });
 
@@ -170,7 +170,7 @@ describe("onboarding", () => {
   it("should skip enabling alerts if user deselects all alert options", async () => {
     checkboxStub.resolves([]);
 
-    const res = await onboarding.onboardCrashlyticsWeb("test-project", "1:123:web:456");
+    const res = await onboarding.setupCrashlyticsWeb("test-project", "1:123:web:456");
 
     expect(checkboxStub).to.have.been.calledOnce;
     expect(enableAlertsStub).to.not.have.been.called;
@@ -180,7 +180,7 @@ describe("onboarding", () => {
   it("should skip only the Cloud Trace API enablement and storage provisioning when crashlyticsWebBreadcrumbs experiment is disabled", async () => {
     isEnabledStub.withArgs("crashlyticsWebBreadcrumbs").returns(false);
 
-    await onboarding.onboardCrashlyticsWeb("test-project", "1:123:web:456");
+    await onboarding.setupCrashlyticsWeb("test-project", "1:123:web:456");
 
     expect(ensureStub).to.have.been.calledWith(
       "test-project",
@@ -216,7 +216,7 @@ describe("onboarding", () => {
   });
 
   it("should skip alerting prompt and setup in non-interactive mode", async () => {
-    const res = await onboarding.onboardCrashlyticsWeb("test-project", "1:123:web:456", {
+    const res = await onboarding.setupCrashlyticsWeb("test-project", "1:123:web:456", {
       nonInteractive: true,
     });
 
@@ -228,7 +228,7 @@ describe("onboarding", () => {
   it("should log a warning and skip prompt if authenticated user email cannot be determined for alerts", async () => {
     requireAuthStub.resolves(null);
 
-    const res = await onboarding.onboardCrashlyticsWeb("test-project", "1:123:web:456");
+    const res = await onboarding.setupCrashlyticsWeb("test-project", "1:123:web:456");
 
     expect(checkboxStub).to.not.have.been.called;
     expect(enableAlertsStub).to.not.have.been.called;
@@ -242,7 +242,7 @@ describe("onboarding", () => {
   it("should log a warning and skip prompt if requireAuth throws an error", async () => {
     requireAuthStub.rejects(new FirebaseError("Auth failed"));
 
-    const res = await onboarding.onboardCrashlyticsWeb("test-project", "1:123:web:456");
+    const res = await onboarding.setupCrashlyticsWeb("test-project", "1:123:web:456");
 
     expect(checkboxStub).to.not.have.been.called;
     expect(enableAlertsStub).to.not.have.been.called;
@@ -257,7 +257,7 @@ describe("onboarding", () => {
     const alertError = new FirebaseError("Failed to generate alert policy");
     enableAlertsStub.rejects(alertError);
 
-    const res = await onboarding.onboardCrashlyticsWeb("test-project", "1:123:web:456");
+    const res = await onboarding.setupCrashlyticsWeb("test-project", "1:123:web:456");
 
     expect(enableAlertsStub).to.have.been.calledOnce;
     expect(logLabeledWarningStub).to.have.been.calledWith("crashlytics", alertError.message);
@@ -274,7 +274,7 @@ describe("onboarding", () => {
       projectId: "test-project",
     });
 
-    const res = await onboarding.onboardCrashlyticsWeb("test-project", "1:123:web:456");
+    const res = await onboarding.setupCrashlyticsWeb("test-project", "1:123:web:456");
 
     expect(ensureStub).to.have.been.calledWith(
       "test-project",
@@ -333,7 +333,7 @@ describe("onboarding", () => {
     const fakeError = new FirebaseError("Failed to update API key restriction");
     updateAppApiKeyRestrictionStub.rejects(fakeError);
 
-    const res = await onboarding.onboardCrashlyticsWeb("test-project", "1:123:web:456");
+    const res = await onboarding.setupCrashlyticsWeb("test-project", "1:123:web:456");
 
     expect(updateAppApiKeyRestrictionStub).to.have.been.calledOnce;
     expect(logLabeledWarningStub).to.have.been.calledWith("crashlytics", fakeError.message);
@@ -346,7 +346,7 @@ describe("onboarding", () => {
     );
     provisionTraceStub.rejects(fakeError);
 
-    const res = await onboarding.onboardCrashlyticsWeb("test-project", "1:123:web:456");
+    const res = await onboarding.setupCrashlyticsWeb("test-project", "1:123:web:456");
 
     expect(provisionTraceStub).to.have.been.calledOnce;
     expect(logLabeledWarningStub).to.have.been.calledWith("crashlytics", fakeError.message);
@@ -357,7 +357,7 @@ describe("onboarding", () => {
     checkBillingStub.resolves(false);
 
     await expect(
-      onboarding.onboardCrashlyticsWeb("test-project", "1:123:web:456", { nonInteractive: true }),
+      onboarding.setupCrashlyticsWeb("test-project", "1:123:web:456", { nonInteractive: true }),
     ).to.be.rejectedWith(
       FirebaseError,
       "Crashlytics requires the Blaze plan, but project test-project is not on the Blaze plan.",
@@ -368,7 +368,7 @@ describe("onboarding", () => {
     checkBillingStub.resolves(false);
     const enableBillingStub = sinon.stub(cloudbilling, "enableBilling").resolves();
 
-    await onboarding.onboardCrashlyticsWeb("test-project", "1:123:web:456");
+    await onboarding.setupCrashlyticsWeb("test-project", "1:123:web:456");
 
     expect(enableBillingStub).to.have.been.calledOnceWith("test-project", "Crashlytics");
   });
