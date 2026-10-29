@@ -21,6 +21,8 @@ export const CRASHLYTICS_TELEMETRY_SERVICE = "firebasetelemetry.googleapis.com";
 export const CRASHLYTICS_TELEMETRY_ADMIN_SERVICE = "firebasetelemetryadmin.googleapis.com";
 export const CRASHLYTICS_SERVICE = "firebasecrashlytics.googleapis.com";
 export const CLIENT_TELEMETRY_SERVICE = "clienttelemetry.googleapis.com";
+export const API_KEYS_SERVICE = "apikeys.googleapis.com";
+export const CLOUD_MONITORING_SERVICE = "monitoring.googleapis.com";
 
 export interface OnboardWebResult {
   config: TelemetryConfig;
@@ -85,6 +87,7 @@ export async function onboardCrashlyticsWeb(
       "Ensuring Crashlytics Telemetry API is permitted in API key restrictions...",
     );
     try {
+      await ensure(projectId, API_KEYS_SERVICE, "crashlytics", false);
       await updateAppApiKeyRestriction({
         apiKey: appConfig.apiKey,
         service: CLIENT_TELEMETRY_SERVICE,
@@ -155,6 +158,7 @@ export async function onboardCrashlyticsWeb(
 
   logLabeledBullet("crashlytics", `Setting up Crashlytics email alerts for ${userEmail}...`);
   try {
+    await ensure(projectId, CLOUD_MONITORING_SERVICE, "crashlytics", false);
     const alertPolicies = await enableAlerts(projectId, appId, selectedAlerts, userEmail);
     logLabeledSuccess("crashlytics", "Crashlytics email alerts configured successfully.");
     return { config, alertPolicies };
