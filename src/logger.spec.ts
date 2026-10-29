@@ -6,7 +6,13 @@ import * as path from "path";
 
 import * as Transport from "winston-transport";
 
-import { logger, findAvailableLogFile, resolveLogTarget, useFileLogger } from "./logger";
+import {
+  logger,
+  findAvailableLogFile,
+  resolveLogTarget,
+  useConsoleLoggers,
+  useFileLogger,
+} from "./logger";
 
 interface FileTransport extends Transport {
   dirname?: string;
@@ -309,6 +315,63 @@ describe("logger", () => {
           fileTransport.close();
         }
       }
+    });
+  });
+
+  describe("useConsoleLoggers", () => {
+    const originalDebug = process.env.DEBUG;
+    const originalIsCli = process.env.IS_FIREBASE_CLI;
+    let before: Transport[];
+
+    beforeEach(() => {
+      delete process.env.DEBUG;
+      delete process.env.IS_FIREBASE_CLI;
+      before = [...getLoggerTransports(logger)];
+    });
+
+    afterEach(() => {
+      getLoggerTransports(logger)
+        .filter((t) => !before.includes(t))
+        .forEach((t) => logger.remove(t));
+      restoreEnv("DEBUG", originalDebug);
+      restoreEnv("IS_FIREBASE_CLI", originalIsCli);
+    });
+
+    function restoreEnv(name: string, value: string | undefined): void {
+      if (value === undefined) {
+        delete process.env[name];
+      } else {
+        process.env[name] = value;
+      }
+    }
+
+    function addedLevels(): (string | undefined)[] {
+      return getLoggerTransports(logger)
+        .filter((t) => !before.includes(t))
+        .map((t) => t.level);
+    }
+
+    it("should add a debug console logger when asked, without reading or setting DEBUG", () => {
+      useConsoleLoggers(true);
+
+      expect(addedLevels()).to.deep.equal(["debug"]);
+      expect(process.env.DEBUG).to.be.undefined;
+    });
+
+    it("should add nothing when debug is off and the process is not the CLI", () => {
+      process.env.DEBUG = "true";
+
+      useConsoleLoggers(false);
+
+      expect(addedLevels()).to.deep.equal([]);
+    });
+
+    it("should default to the DEBUG environment variable", () => {
+      process.env.DEBUG = "true";
+
+      useConsoleLoggers();
+
+      expect(addedLevels()).to.deep.equal(["debug"]);
     });
   });
 });
