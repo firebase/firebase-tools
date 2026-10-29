@@ -180,18 +180,8 @@ export async function resolveRuntimeServiceAccounts(
 ): Promise<string[]> {
   const serviceAccounts = endpoints.map(explicitServiceAccount);
   const needsDefault = serviceAccounts.includes("");
-  let defaultSa: string | null = null;
-  if (needsDefault) {
-    defaultSa = await gce.getDefaultServiceAccount(projectNumber);
-    if (!defaultSa) {
-      throw new FirebaseError(
-        "Could not determine the default compute service account for project " +
-          `${projectNumber}. Ensure the Compute Engine API is enabled.`,
-      );
-    }
-  }
-
-  const resolved = serviceAccounts.map((sa) => (sa === "" ? (defaultSa as string) : sa));
+  const defaultSa = needsDefault ? await gce.getDefaultServiceAccount(projectNumber) : "";
+  const resolved = serviceAccounts.map((sa) => (sa === "" ? defaultSa : sa));
 
   return [...new Set(resolved)];
 }
