@@ -1,4 +1,1 @@
-- Updated chokidar dependency to ^4.0.3 to remove vulnerable braces dependency (#11308).
-- Fixed an issue where the Firebase MCP server referred to `update_firebase_environment` instead of `firebase_update_environment`.
-- Fixed the Firestore emulator exiting when it could not watch the rules file for changes. It now logs a warning instead. (#4298)
 - Fixed v2 function deploys with a custom `serviceAccount` failing when the default compute service account is deleted or disabled. The build now runs as the custom service account in that case. (#8841)
