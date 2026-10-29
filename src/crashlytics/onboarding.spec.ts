@@ -166,6 +166,12 @@ describe("onboarding", () => {
     const res = await onboarding.onboardCrashlyticsWeb("test-project", "1:123:web:456");
 
     expect(checkboxStub).to.have.been.calledOnce;
+    expect(ensureStub).to.not.have.been.calledWith(
+      "test-project",
+      onboarding.CLOUD_MONITORING_SERVICE,
+      "crashlytics",
+      false,
+    );
     expect(enableAlertsStub).to.not.have.been.called;
     expect(res.alertPolicies).to.be.undefined;
   });
@@ -226,6 +232,12 @@ describe("onboarding", () => {
     });
 
     expect(checkboxStub).to.not.have.been.called;
+    expect(ensureStub).to.not.have.been.calledWith(
+      "test-project",
+      onboarding.CLOUD_MONITORING_SERVICE,
+      "crashlytics",
+      false,
+    );
     expect(enableAlertsStub).to.not.have.been.called;
     expect(res.alertPolicies).to.be.undefined;
   });
@@ -236,6 +248,12 @@ describe("onboarding", () => {
     const res = await onboarding.onboardCrashlyticsWeb("test-project", "1:123:web:456");
 
     expect(checkboxStub).to.not.have.been.called;
+    expect(ensureStub).to.not.have.been.calledWith(
+      "test-project",
+      onboarding.CLOUD_MONITORING_SERVICE,
+      "crashlytics",
+      false,
+    );
     expect(enableAlertsStub).to.not.have.been.called;
     expect(logLabeledWarningStub).to.have.been.calledWith(
       "crashlytics",
@@ -305,7 +323,7 @@ describe("onboarding", () => {
       "crashlytics",
       false,
     );
-    expect(ensureStub).to.have.been.calledWith(
+    expect(ensureStub).to.not.have.been.calledWith(
       "test-project",
       onboarding.API_KEYS_SERVICE,
       "crashlytics",
