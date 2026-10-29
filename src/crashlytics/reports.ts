@@ -2,7 +2,7 @@ import { z } from "zod";
 import { cloneDeep } from "lodash";
 import { logger } from "../logger";
 import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
-import { ListReportsResponse, Report } from "./types";
+import { ListReportsResponse, Report, TimeGranularity } from "./types";
 import {
   ApplicationIdSchema,
   EventFilter,
@@ -13,29 +13,26 @@ import { FirebaseError } from "../error";
 
 const DEFAULT_PAGE_SIZE = 10;
 
-export enum CrashlyticsReport {
-  APP_SUMMARY = "appSummary",
-  RELEASE_VERSIONS = "releaseVersions",
-  TOP_ISSUES = "topIssues",
-  TOP_VARIANTS = "topVariants",
-  TOP_VERSIONS = "topVersions",
-  TOP_OPERATING_SYSTEMS = "topOperatingSystems",
-  TOP_APPLE_DEVICES = "topAppleDevices",
-  TOP_ANDROID_DEVICES = "topAndroidDevices",
-  TOP_BROWSERS = "topBrowsers",
-  TOP_CUSTOM_KEYS = "topCustomKeys",
-}
+export const CrashlyticsReportSchema = z.string().describe("The name of the Crashlytics report");
 
-export const CrashlyticsReportSchema = z.nativeEnum(CrashlyticsReport);
+export const TimeGranularitySchema = z
+  .nativeEnum(TimeGranularity)
+  .optional()
+  .describe(
+    "The granularity of time intervals for the report. Returns one data point per time grain, or a single data point for the entire interval if omitted.",
+  );
 
 export const ReportInputSchema = z.object({
   appId: ApplicationIdSchema,
   report: CrashlyticsReportSchema,
   filter: EventFilterSchema,
   pageSize: z.number().optional().describe("Number of rows to return").default(DEFAULT_PAGE_SIZE),
+  granularity: TimeGranularitySchema,
 });
 
 export type ReportInput = z.infer<typeof ReportInputSchema>;
+
+export const reportsCache = new Map<string, ListReportsResponse>();
 
 /**
  * Removes fields from the report which confuse the model
@@ -83,24 +80,48 @@ export async function listReports(appId: string): Promise<ListReportsResponse> {
 
 /**
  * Returns a report for Crashlytics events.
- * @param reportName One of the supported reports in the CrashlyticsReport enum
+ * @param reportName Name of the report to retrieve
  * @param appId Firebase app_id
  * @param filter The report will count only events matching the given filters
  * @param pageSize Number of rows to return, generally defaulting to 10
+ * @param granularity Optional time granularity for report metrics
  * @return A Report object, grouped appropriately with metrics for eventCount and impactedUsers
  */
 export async function getReport(
-  reportName: CrashlyticsReport,
+  reportName: string,
   appId: string,
   filter: EventFilter,
   pageSize = DEFAULT_PAGE_SIZE,
+  granularity?: TimeGranularity,
 ): Promise<Report> {
-  if (!reportName) {
-    throw new FirebaseError("Invalid Crashlytics report " + reportName);
-  }
   const requestProjectNumber = parseProjectNumber(appId);
+  let availableReports = reportsCache.get(appId);
+  if (!availableReports) {
+    availableReports = await listReports(appId);
+    reportsCache.set(appId, availableReports);
+  }
+
+  const validReports = (availableReports.reports ?? [])
+    .map((r) => ({
+      name: r.name?.split("/").pop(),
+      usage: r.usage,
+    }))
+    .filter((r): r is { name: string; usage: string | undefined } => Boolean(r.name));
+
+  if (!reportName || !validReports.some((r) => r.name === reportName)) {
+    const validReportsList = validReports
+      .map((r) => (r.usage ? `  * ${r.name} - ${r.usage}` : `  * ${r.name}`))
+      .join("\n");
+    throw new FirebaseError(
+      `Invalid Crashlytics report: ${reportName}. Valid reports are:\n${validReportsList}`,
+    );
+  }
+
   const queryParams = filterToUrlSearchParams(filter);
   queryParams.set("page_size", `${pageSize}`);
+  if (granularity) {
+    queryParams.set("granularity", granularity);
+  }
   logger.debug(
     `[crashlytics] report ${reportName} called with appId: ${appId} filter: ${queryParams.toString()}, page_size: ${pageSize}`,
   );
