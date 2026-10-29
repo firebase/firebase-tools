@@ -60,7 +60,7 @@ export const command = new Command("crashlytics:setup [appId]")
 
       if (appPlatform !== AppPlatform.WEB && !appId.includes(":web:")) {
         logger.info(
-          `Crashlytics set up via the CLI is currently only supported for Web apps. No setup steps needed for non-Web app: ${appId}`,
+          `Crashlytics setup via the CLI is currently only supported for Web apps. No setup steps needed for non-Web app: ${appId}`,
         );
         return undefined;
       }

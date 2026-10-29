@@ -106,7 +106,7 @@ describe("crashlytics:setup command", () => {
       expect(listAppsStub).to.have.been.calledOnceWith(projectId, apps.AppPlatform.ANY);
       expect(setupCrashlyticsWebStub).to.not.have.been.called;
       expect(loggerInfoStub).to.have.been.calledWith(
-        sinon.match("Crashlytics set up via the CLI is currently only supported for Web apps."),
+        sinon.match("Crashlytics setup via the CLI is currently only supported for Web apps."),
       );
       expect(result).to.be.undefined;
     });
@@ -132,7 +132,7 @@ describe("crashlytics:setup command", () => {
 
       expect(setupCrashlyticsWebStub).to.not.have.been.called;
       expect(loggerInfoStub).to.have.been.calledWith(
-        sinon.match("Crashlytics set up via the CLI is currently only supported for Web apps."),
+        sinon.match("Crashlytics setup via the CLI is currently only supported for Web apps."),
       );
       expect(result).to.be.undefined;
     });
@@ -144,7 +144,7 @@ describe("crashlytics:setup command", () => {
 
       expect(setupCrashlyticsWebStub).to.not.have.been.called;
       expect(loggerInfoStub).to.have.been.calledWith(
-        sinon.match("Crashlytics set up via the CLI is currently only supported for Web apps."),
+        sinon.match("Crashlytics setup via the CLI is currently only supported for Web apps."),
       );
       expect(result).to.be.undefined;
     });
@@ -226,7 +226,7 @@ describe("crashlytics:setup command", () => {
       expect(selectAppStub).to.not.have.been.called;
       expect(setupCrashlyticsWebStub).to.not.have.been.called;
       expect(loggerInfoStub).to.have.been.calledWith(
-        sinon.match("Crashlytics set up via the CLI is currently only supported for Web apps."),
+        sinon.match("Crashlytics setup via the CLI is currently only supported for Web apps."),
       );
       expect(result).to.be.undefined;
     });
@@ -278,7 +278,7 @@ describe("crashlytics:setup command", () => {
       expect(selectAppStub).to.have.been.calledOnceWith([webApp, androidApp], apps.AppPlatform.ANY);
       expect(setupCrashlyticsWebStub).to.not.have.been.called;
       expect(loggerInfoStub).to.have.been.calledWith(
-        sinon.match("Crashlytics set up via the CLI is currently only supported for Web apps."),
+        sinon.match("Crashlytics setup via the CLI is currently only supported for Web apps."),
       );
       expect(result).to.be.undefined;
     });
