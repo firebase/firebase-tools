@@ -2,7 +2,7 @@ import { z } from "zod";
 import { AppPlatform, getAppConfig, listFirebaseApps } from "../../../management/apps";
 import { logger } from "../../../logger";
 import { tool } from "../../tool";
-import { toContent } from "../../util";
+import { mcpError, toContent } from "../../util";
 
 const PLACEHOLDER_PROJECT_ID = "<YOUR_FIREBASE_PROJECT_ID>";
 const PLACEHOLDER_APP_ID = "<YOUR_FIREBASE_APP_ID>";
@@ -181,32 +181,80 @@ function getFrameworkSection(framework?: SupportedFramework): string {
   return SUPPORTED_FRAMEWORKS.map((fw) => FRAMEWORK_GUIDES[fw]).join("\n\n---\n\n");
 }
 
+interface WebConfigSuccess {
+  config: FirebaseConfigTemplate;
+  detectedAppId: string;
+  detectedAppsNote?: string;
+}
+
+interface WebConfigError {
+  error: string;
+}
+
+type ResolveWebConfigResult = WebConfigSuccess | WebConfigError;
+
 async function resolveWebConfig(
   appIdInput: string | undefined,
   projectId: string | undefined,
-): Promise<{ config: FirebaseConfigTemplate; detectedAppId: string; detectedAppsNote?: string }> {
+): Promise<ResolveWebConfigResult> {
   let resolvedAppId = appIdInput;
   let detectedAppsNote: string | undefined;
 
-  const effectiveProjectId = projectId || PLACEHOLDER_PROJECT_ID;
+  let appPlatform: AppPlatform | undefined;
+  if (appIdInput) {
+    if (appIdInput.includes(":web:")) {
+      appPlatform = AppPlatform.WEB;
+    } else if (appIdInput.includes(":android:")) {
+      appPlatform = AppPlatform.ANDROID;
+    } else if (appIdInput.includes(":ios:")) {
+      appPlatform = AppPlatform.IOS;
+    }
+  }
 
-  if (!resolvedAppId && projectId) {
+  if (projectId) {
     try {
-      const apps = await listFirebaseApps(projectId, AppPlatform.WEB);
-      if (apps.length === 1) {
-        resolvedAppId = apps[0].appId;
-      } else if (apps.length > 1) {
-        resolvedAppId = apps[0].appId;
-        detectedAppsNote = `Multiple web apps found in project '${projectId}'. Defaulting to ${resolvedAppId} (${apps[0].displayName || "unnamed"}). Other detected web apps: ${apps
-          .slice(1)
-          .map((a) => `${a.appId} (${a.displayName || "unnamed"})`)
-          .join(", ")}.`;
+      const apps = await listFirebaseApps(projectId, AppPlatform.ANY);
+      if (appIdInput) {
+        const matchedApp = apps.find((a) => a.appId === appIdInput);
+        if (matchedApp) {
+          appPlatform = matchedApp.platform;
+        }
+      } else {
+        const webApps = apps.filter(
+          (a) => a.platform === AppPlatform.WEB || a.appId.includes(":web:"),
+        );
+        if (apps.length > 0 && webApps.length === 0) {
+          return {
+            error: `Crashlytics setup is currently only supported for Web apps. No Web apps found in project '${projectId}'. For Android and iOS, Crashlytics is configured directly in your app's build configuration (Gradle or CocoaPods/SPM).`,
+          };
+        }
+        if (webApps.length === 1) {
+          resolvedAppId = webApps[0].appId;
+        } else if (webApps.length > 1) {
+          resolvedAppId = webApps[0].appId;
+          detectedAppsNote = `Multiple web apps found in project '${projectId}'. Defaulting to ${resolvedAppId} (${apps[0].displayName || "unnamed"}). Other detected web apps: ${apps
+            .slice(1)
+            .map((a) => `${a.appId} (${a.displayName || "unnamed"})`)
+            .join(", ")}.`;
+        }
       }
     } catch (err) {
       logger.debug("Failed to list web apps for project:", err);
     }
   }
 
+  if (
+    appIdInput &&
+    appPlatform &&
+    appPlatform !== AppPlatform.WEB &&
+    !appIdInput.includes(":web:")
+  ) {
+    return {
+      error: `Crashlytics setup is currently only supported for Web apps. No setup steps needed for non-Web app: ${appIdInput}. For Android and iOS, Crashlytics is configured directly in your app's build configuration (Gradle or CocoaPods/SPM).`,
+    };
+  }
+
+  const effectiveProjectId = projectId || PLACEHOLDER_PROJECT_ID;
   const finalAppId = resolvedAppId || PLACEHOLDER_APP_ID;
 
   if (resolvedAppId && resolvedAppId !== PLACEHOLDER_APP_ID) {
@@ -260,25 +308,25 @@ async function resolveWebConfig(
   };
 }
 
-export const onboard_web = tool(
+export const setup = tool(
   "crashlytics",
   {
-    name: "onboard_web",
+    name: "setup",
     description:
-      "Provides onboarding instructions and setup guides for integrating Firebase Crashlytics into web applications (Next.js, React, React Router, TanStack Router, Angular). Includes Cloud project setup, API enablement, logging buckets and sinks, SDK initialization, framework-specific code snippets, sourcemap uploads, and test crash verification.",
+      "Provides setup guides and onboarding instructions for integrating Firebase Crashlytics into web applications (Next.js, React, React Router, TanStack Router, Angular). Note: This tool only applies to Web apps; Crashlytics for iOS and Android is configured via native build tools (Gradle/CocoaPods/SPM). Includes Cloud project setup, API enablement, logging buckets and sinks, SDK initialization, framework-specific code snippets, sourcemap uploads, and test crash verification.",
     humanReadableDescription:
-      "Provide onboarding instructions and setup guides for integrating Firebase Crashlytics into web applications.",
+      "Provide setup instructions and configuration guides for integrating Firebase Crashlytics into web applications. Note: Only applies to Web apps.",
     inputSchema: z.object({
       appId: z
         .string()
         .optional()
         .describe(
-          "Firebase Web App ID (e.g. '1:1234567890:web:abcdef1234567890'). If omitted, the tool will attempt to detect it from the active project.",
+          "Firebase Web App ID (e.g. '1:1234567890:web:abcdef1234567890'). This tool only applies to Web apps. If omitted, the tool will attempt to detect a Web app from the active project.",
         ),
       framework: FrameworkSchema,
     }),
     annotations: {
-      title: "Onboard Crashlytics for Web",
+      title: "Set up Crashlytics for Web",
       readOnlyHint: true,
       idempotentHint: true,
     },
@@ -289,19 +337,20 @@ export const onboard_web = tool(
     isAvailable: async () => true,
   },
   async ({ appId: appIdInput, framework }, ctx) => {
-    const { config, detectedAppId, detectedAppsNote } = await resolveWebConfig(
-      appIdInput,
-      ctx.projectId,
-    );
+    const resolved = await resolveWebConfig(appIdInput, ctx.projectId);
+    if ("error" in resolved) {
+      return mcpError(resolved.error);
+    }
+    const { config, detectedAppId, detectedAppsNote } = resolved;
     const effectiveProjectId = ctx.projectId || PLACEHOLDER_PROJECT_ID;
     const frameworkSection = getFrameworkSection(framework);
 
     const noteSection = detectedAppsNote ? `\n> **Note**: ${detectedAppsNote}\n` : "";
 
-    const content = `# Firebase Crashlytics for Web Apps - Onboarding Guide
+    const content = `# Firebase Crashlytics for Web Apps - Setup Guide
 
 > [!IMPORTANT]
-Crashlytics for Web Apps supports client-side error reporting, de-minified stack traces, and a dedicated dashboard in the Firebase Crashlytics Console for **Next.js, React, Angular, React Router, and TanStack Router**.
+Crashlytics setup via this tool only applies to **Web apps** (Next.js, React, Angular, React Router, and TanStack Router). Crashlytics for Android and iOS is configured directly via native build tools (Gradle, CocoaPods, Swift Package Manager).
 
 Crashlytics for web apps uses Cloud Logging for telemetry storage and Cloud Storage for sourcemap storage under the hood.
 ${noteSection}
