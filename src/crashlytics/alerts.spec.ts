@@ -57,6 +57,7 @@ describe("crashlytics alerts", () => {
         .post(`/v1alpha/projects/${projectId}/apps/${appId}:generateAlertPolicy`, {
           alertType: AlertType.ALERT_TYPE_NEW_ISSUE,
         })
+        .matchHeader("x-goog-user-project", projectId)
         .reply(200, { alertPolicy: newIssuePolicyName });
 
       const res = await generateAlertPolicy(projectId, appId, AlertType.ALERT_TYPE_NEW_ISSUE);
@@ -67,6 +68,7 @@ describe("crashlytics alerts", () => {
     it("should throw a FirebaseError when API fails", async () => {
       nock(crashlyticsApiOrigin())
         .post(`/v1alpha/projects/${projectId}/apps/${appId}:generateAlertPolicy`)
+        .matchHeader("x-goog-user-project", projectId)
         .reply(500, { error: "Internal Server Error" });
 
       await expect(
