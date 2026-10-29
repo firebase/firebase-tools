@@ -22,11 +22,11 @@ export const command = new Command("crashlytics:setup [appId]")
   .before(requireAuth)
   .action(
     async (
-      appIdInput = "",
+      appIdInput: string | undefined = "",
       options: CrashlyticsSetupOptions,
     ): Promise<SetupWebResult | undefined> => {
       const projectId = needProjectId(options);
-      let appId: string = appIdInput ?? options.app ?? "";
+      let appId = appIdInput || options.app || "";
 
       let appPlatform: AppPlatform = AppPlatform.ANY;
       if (!appId) {
