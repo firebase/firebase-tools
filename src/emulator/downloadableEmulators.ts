@@ -20,6 +20,7 @@ import * as path from "path";
 import * as os from "os";
 import { EmulatorRegistry } from "./registry";
 import { downloadEmulator } from "../emulator/download";
+import { getJavaBinary } from "./commandUtils";
 import * as experiments from "../experiments";
 import * as process from "process";
 import * as emulatorUpdateDetails from "./downloadableEmulatorInfo.json";
@@ -308,6 +309,16 @@ function getExecPath(name: DownloadableEmulators): string {
   return details.binaryPath || details.downloadPath;
 }
 
+function getPubsubJarPath(): string {
+  const details = getDownloadDetails(Emulators.PUBSUB);
+  return path.join(
+    details.unzipDir || "",
+    "pubsub-emulator",
+    "lib",
+    `cloud-pubsub-emulator-${details.version}-all.jar`,
+  );
+}
+
 /**
  * @param name
  */
@@ -330,7 +341,12 @@ export function _getCommand(
     args.port = defaultPort;
   }
 
-  const cmdLineArgs = baseCmd.args.slice();
+  const useDirectPubsubJarOnWindows =
+    emulator === Emulators.PUBSUB && utils.IS_WINDOWS && !process.env.PUBSUB_EMULATOR_BINARY_PATH;
+
+  const cmdLineArgs = useDirectPubsubJarOnWindows
+    ? ["-Duser.language=en", "-jar", getPubsubJarPath()]
+    : baseCmd.args.slice();
 
   if (
     baseCmd.binary === "java" &&
@@ -370,11 +386,12 @@ export function _getCommand(
   });
 
   return {
-    binary: baseCmd.binary,
+    binary:
+      baseCmd.binary === "java" || useDirectPubsubJarOnWindows ? getJavaBinary() : baseCmd.binary,
     args: cmdLineArgs,
     optionalArgs: baseCmd.optionalArgs,
     joinArgs: baseCmd.joinArgs,
-    shell: baseCmd.shell,
+    shell: useDirectPubsubJarOnWindows ? false : baseCmd.shell,
     port: args.port,
   };
 }
@@ -405,7 +422,13 @@ export async function handleEmulatorProcessError(
   port?: number,
 ): Promise<void> {
   const description = Constants.description(emulator);
-  if (err.path === "java" && err.code === "ENOENT") {
+  const isJavaBinaryError =
+    err.path === "java" ||
+    path
+      .basename(String(err.path || ""))
+      .replace(/\.exe$/i, "")
+      .toLowerCase() === "java";
+  if (isJavaBinaryError && err.code === "ENOENT") {
     await _fatal(
       emulator,
       `${description} has exited because java is not installed, you can install it from https://openjdk.java.net/install/`,
@@ -427,6 +450,9 @@ export async function handleEmulatorProcessError(
  * Do the selected list of emulators depend on the JRE.
  */
 export function requiresJava(emulator: Emulators): boolean {
+  if (emulator === Emulators.PUBSUB) {
+    return true;
+  }
   if (emulator in Commands) {
     return Commands[emulator as keyof typeof Commands].binary === "java";
   }
@@ -449,7 +475,8 @@ async function _runBinary(
         // Note that it seems to be a problem with gRPC processes for which a fix may be found on the Java side
         // related to this issue: https://github.com/grpc/grpc-java/pull/6512
         detached: true,
-        stdio: ["inherit", "pipe", "pipe"],
+        windowsHide: true,
+        stdio: ["ignore", "pipe", "pipe"],
       };
       if (command.shell && utils.IS_WINDOWS) {
         opts.shell = true;

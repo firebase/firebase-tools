@@ -502,7 +502,39 @@ export async function emulatorExec(script: string, options: any): Promise<void> 
 // Regex to extract Java major version. Only works with Java >= 9.
 // See: http://openjdk.java.net/jeps/223
 const JAVA_VERSION_REGEX = /version "([1-9][0-9]*)/;
+const JAVA_HOME_REGEX = /^\s*java\.home\s*=\s*(.+)$/m;
 const JAVA_HINT = "Please make sure Java is installed and on your system PATH.";
+
+let resolvedJavaBinary: string | undefined;
+
+/**
+ * Reset the cached Java binary path (for unit testing).
+ */
+export function resetJavaBinaryForTesting(): void {
+  resolvedJavaBinary = undefined;
+}
+
+/**
+ * Returns the resolved path to the real `java` binary inside `java.home` (if discovered by
+ * `checkJavaMajorVersion()` or `JAVA_HOME`), falling back to `"java"` on `PATH`.
+ *
+ * On Windows, invoking the real `<java.home>\bin\java.exe` directly instead of a `PATH` wrapper
+ * shim (such as `C:\Program Files\Common Files\Oracle\Java\javapath\java.exe`) prevents the shim
+ * from spawning a grandchild `java.exe` in a new visible console window and breaking PID tracking.
+ */
+export function getJavaBinary(): string {
+  if (resolvedJavaBinary) {
+    return resolvedJavaBinary;
+  }
+  if (process.env.JAVA_HOME) {
+    const javaBinName = utils.IS_WINDOWS ? "java.exe" : "java";
+    const candidate = path.join(process.env.JAVA_HOME, "bin", javaBinName);
+    if (fsutils.fileExistsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return "java";
+}
 
 /**
  * Return whether Java major verion is supported. Throws if Java not available.
@@ -513,10 +545,11 @@ export async function checkJavaMajorVersion(): Promise<number> {
     let child;
     try {
       child = childProcess.spawn(
-        "java",
-        ["-Duser.language=en", "-Dfile.encoding=UTF-8", "-version"],
+        getJavaBinary(),
+        ["-Duser.language=en", "-Dfile.encoding=UTF-8", "-XshowSettings:properties", "-version"],
         {
-          stdio: ["inherit", "pipe", "pipe"],
+          stdio: ["ignore", "pipe", "pipe"],
+          windowsHide: true,
         },
       );
     } catch (err: unknown) {
@@ -569,6 +602,17 @@ export async function checkJavaMajorVersion(): Promise<number> {
       }
     });
   }).then((output) => {
+    const javaHomeMatch = JAVA_HOME_REGEX.exec(output);
+    if (javaHomeMatch) {
+      const javaHome = javaHomeMatch[1].trim();
+      const javaBinName = utils.IS_WINDOWS ? "java.exe" : "java";
+      const candidate = path.join(javaHome, "bin", javaBinName);
+      if (fsutils.fileExistsSync(candidate)) {
+        resolvedJavaBinary = candidate;
+        logger.debug(`Resolved Java binary from java.home: ${resolvedJavaBinary}`);
+      }
+    }
+
     let versionInt = -1;
     const match = JAVA_VERSION_REGEX.exec(output);
     if (match) {

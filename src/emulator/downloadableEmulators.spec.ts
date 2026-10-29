@@ -4,8 +4,10 @@ import * as sinon from "sinon";
 import * as fs from "fs-extra";
 
 import * as downloadableEmulators from "./downloadableEmulators";
+import * as commandUtils from "./commandUtils";
 import { Emulators } from "./types";
 import * as emulatorUpdateDetails from "./downloadableEmulatorInfo.json";
+import * as utils from "../utils";
 
 type DownloadableEmulator = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.PUBSUB;
 
@@ -100,5 +102,63 @@ describe("downloadDetails", () => {
     expect(downloadableEmulators.emulatorVersionOverride(Emulators.FIRESTORE)).to.be.undefined;
     expect(downloadableEmulators.emulatorVersionOverride(Emulators.DATABASE)).to.be.undefined;
     expect(downloadableEmulators.emulatorVersionOverride(Emulators.PUBSUB)).to.equal(fakeVersion);
+  });
+
+  describe("_getCommand", () => {
+    it("should run the Pub/Sub fat jar directly with shell: false on Windows", () => {
+      sandbox.stub(utils, "IS_WINDOWS").value(true);
+      const envCopy = { ...process.env };
+      delete envCopy.PUBSUB_EMULATOR_BINARY_PATH;
+      sandbox.stub(process, "env").value(envCopy);
+
+      const details = downloadableEmulators.getDownloadDetails(Emulators.PUBSUB);
+      const expectedJarSuffix = path.join(
+        "pubsub-emulator",
+        "lib",
+        `cloud-pubsub-emulator-${details.version}-all.jar`,
+      );
+
+      const cmd = downloadableEmulators._getCommand(Emulators.PUBSUB, {
+        host: "127.0.0.1",
+        port: 8085,
+      });
+
+      expect(cmd.shell).to.be.false;
+      expect(cmd.binary).to.equal(commandUtils.getJavaBinary());
+      expect(cmd.args[0]).to.equal("-Duser.language=en");
+      expect(cmd.args[1]).to.equal("-jar");
+      expect(cmd.args[2].endsWith(expectedJarSuffix)).to.be.true;
+      expect(cmd.args).to.include("--port=8085");
+      expect(cmd.args).to.include("--host=127.0.0.1");
+    });
+
+    it("should respect PUBSUB_EMULATOR_BINARY_PATH and keep shell: true on Windows", () => {
+      sandbox.stub(utils, "IS_WINDOWS").value(true);
+      sandbox.stub(process, "env").value({
+        ...process.env,
+        PUBSUB_EMULATOR_BINARY_PATH: "my/custom/pubsub.bat",
+      });
+
+      const cmd = downloadableEmulators._getCommand(Emulators.PUBSUB, {});
+
+      expect(cmd.shell).to.be.true;
+      expect(cmd.binary).to.not.equal("java");
+    });
+
+    it("should use bin/cloud-pubsub-emulator and shell: true on POSIX", () => {
+      sandbox.stub(utils, "IS_WINDOWS").value(false);
+      const envCopy = { ...process.env };
+      delete envCopy.PUBSUB_EMULATOR_BINARY_PATH;
+      sandbox.stub(process, "env").value(envCopy);
+
+      const cmd = downloadableEmulators._getCommand(Emulators.PUBSUB, {});
+
+      expect(cmd.shell).to.be.true;
+      expect(cmd.binary).to.contain("cloud-pubsub-emulator");
+    });
+
+    it("should report that Pub/Sub requires Java", () => {
+      expect(downloadableEmulators.requiresJava(Emulators.PUBSUB)).to.be.true;
+    });
   });
 });

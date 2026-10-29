@@ -1,9 +1,14 @@
 import * as commandUtils from "./commandUtils";
 import { expect } from "chai";
+import * as childProcess from "child_process";
+import { EventEmitter } from "events";
+import { PassThrough } from "stream";
 import { FirebaseError } from "../error";
 import { EXPORT_ON_EXIT_USAGE_ERROR, EXPORT_ON_EXIT_CWD_DANGER } from "./commandUtils";
+import * as fsutils from "../fsutils";
 import * as path from "path";
 import * as sinon from "sinon";
+import * as utils from "../utils";
 
 describe("commandUtils", () => {
   const testSetExportOnExitOptions = (options: any): any => {
@@ -119,5 +124,69 @@ describe("commandUtils", () => {
         someUnrelatedOption: "isHere",
       }).someUnrelatedOption,
     ).to.eql("isHere");
+  });
+
+  describe("checkJavaMajorVersion and getJavaBinary", () => {
+    let sandbox: sinon.SinonSandbox;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      commandUtils.resetJavaBinaryForTesting();
+    });
+
+    afterEach(() => {
+      commandUtils.resetJavaBinaryForTesting();
+      sandbox.restore();
+    });
+
+    it("should parse Java major version and resolve java binary from java.home", async () => {
+      sandbox.stub(utils, "IS_WINDOWS").value(true);
+      const expectedJavaBin = path.join("C:\\Program Files\\Java\\jdk-21", "bin", "java.exe");
+      sandbox.stub(fsutils, "fileExistsSync").callsFake((p: string) => p === expectedJavaBin);
+
+      const fakeChild = new EventEmitter() as childProcess.ChildProcess;
+      fakeChild.stdout = new PassThrough();
+      fakeChild.stderr = new PassThrough();
+
+      const spawnStub = sandbox.stub(childProcess, "spawn").callsFake(() => {
+        process.nextTick(() => {
+          fakeChild.stderr?.emit(
+            "data",
+            Buffer.from(
+              [
+                "Property settings:",
+                "    java.home = C:\\Program Files\\Java\\jdk-21",
+                'openjdk version "21.0.2" 2024-01-16',
+              ].join("\n"),
+            ),
+          );
+          fakeChild.emit("exit", 0, null);
+        });
+        return fakeChild;
+      });
+
+      const version = await commandUtils.checkJavaMajorVersion();
+
+      expect(version).to.equal(21);
+      expect(commandUtils.getJavaBinary()).to.equal(expectedJavaBin);
+      expect(spawnStub.calledOnce).to.be.true;
+      expect(spawnStub.firstCall.args[1]).to.include("-XshowSettings:properties");
+      expect(spawnStub.firstCall.args[2]).to.deep.include({
+        stdio: ["ignore", "pipe", "pipe"],
+        windowsHide: true,
+      });
+    });
+
+    it("should fall back to JAVA_HOME/bin/java when resolvedJavaBinary is not cached", () => {
+      sandbox.stub(utils, "IS_WINDOWS").value(false);
+      sandbox.stub(process, "env").value({
+        ...process.env,
+        JAVA_HOME: "/opt/jdk-21",
+      });
+      const expectedJavaBin = path.join("/opt/jdk-21", "bin", "java");
+      sandbox.stub(fsutils, "fileExistsSync").callsFake((p: string) => p === expectedJavaBin);
+
+      expect(commandUtils.getJavaBinary()).to.equal(expectedJavaBin);
+    });
   });
 });

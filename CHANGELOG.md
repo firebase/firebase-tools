@@ -1,0 +1,1 @@
+- Fixed an issue on Windows where starting Java-based emulators (Firestore, Database, Pub/Sub, Storage) could open extra console windows or leave orphaned `java.exe` processes running after exit (#3871, #11261).
