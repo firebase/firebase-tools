@@ -450,6 +450,9 @@ export async function handleEmulatorProcessError(
  * Do the selected list of emulators depend on the JRE.
  */
 export function requiresJava(emulator: Emulators): boolean {
+  // Commands.pubsub.binary is the `cloud-pubsub-emulator` launch script path rather than
+  // `"java"`, so the `binary === "java"` check below would miss it even though Pub/Sub runs
+  // on the JRE (and launches the fat jar via `getJavaBinary()` directly on Windows).
   if (emulator === Emulators.PUBSUB) {
     return true;
   }
