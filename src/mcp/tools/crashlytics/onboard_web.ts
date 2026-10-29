@@ -315,9 +315,9 @@ ${noteSection}
 3. Click **Set up** and follow the steps in the console.
 
 ### Option 2: Using Firebase CLI
-Run the onboarding commands to enable experiments and onboard:
+Run the setup commands to enable Crashlytics:
 \`\`\`bash
-firebase crashlytics:onboard:web ${detectedAppId} --project ${effectiveProjectId}
+firebase crashlytics:setup ${detectedAppId} --project ${effectiveProjectId}
 \`\`\`
 > **Prerequisites**: Requires Firebase CLI v15.34.2+, Owner/Editor project permissions, and Blaze billing enabled.
 
