@@ -9,22 +9,22 @@ import {
 } from "../management/apps";
 import { needProjectId } from "../projectUtils";
 import { requireAuth } from "../requireAuth";
-import { onboardCrashlyticsWeb, OnboardWebResult } from "../crashlytics/onboarding";
+import { setupCrashlyticsWeb, SetupWebResult } from "../crashlytics/onboarding";
 import { Options } from "../options";
 
-export interface CrashlyticsOnboardOptions extends Options {
+export interface CrashlyticsSetupOptions extends Options {
   app?: string;
 }
 
-export const command = new Command("crashlytics:onboard:web [appId]")
-  .description("onboard a Firebase web app to Crashlytics")
+export const command = new Command("crashlytics:setup:web [appId]")
+  .description("set up a Firebase web app for Crashlytics")
   .option("--app <appID>", "the app id of your Firebase app")
   .before(requireAuth)
   .action(
     async (
       appIdInput = "",
-      options: CrashlyticsOnboardOptions,
-    ): Promise<OnboardWebResult | undefined> => {
+      options: CrashlyticsSetupOptions,
+    ): Promise<SetupWebResult | undefined> => {
       const projectId = needProjectId(options);
       let appId: string = appIdInput ?? options.app ?? "";
 
@@ -60,11 +60,11 @@ export const command = new Command("crashlytics:onboard:web [appId]")
 
       if (appPlatform !== AppPlatform.WEB && !appId.includes(":web:")) {
         logger.info(
-          `Crashlytics onboarding via the CLI is currently only supported for Web apps. No onboarding steps needed for non-Web app: ${appId}`,
+          `Crashlytics set up via the CLI is currently only supported for Web apps. No setup steps needed for non-Web app: ${appId}`,
         );
         return undefined;
       }
 
-      return await onboardCrashlyticsWeb(projectId, appId, options);
+      return await setupCrashlyticsWeb(projectId, appId, options);
     },
   );
