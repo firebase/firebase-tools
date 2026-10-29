@@ -16,6 +16,10 @@ describe("FirestoreApi", () => {
     api = new FirestoreApi();
   });
 
+  afterEach(() => {
+    nock.cleanAll();
+  });
+
   describe("updateDatabase", () => {
     it("should send only the requested field with a matching update mask", async () => {
       const inProgressOperation = {
