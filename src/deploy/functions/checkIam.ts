@@ -202,39 +202,20 @@ export function obtainComputeServiceAgentBindings(serviceAccountEmails: string[]
 }
 
 /**
- * Finds the GCF v2 event-triggered endpoints that are new or whose runtime service account changed,
- * since their Eventarc triggers run as that account.
- * @param projectNumber project number
- * @param want backend that we want to deploy
- * @param have backend that we have currently deployed
+ * Finds the endpoints whose runtime service accounts need the Eventarc roles: v2 event functions,
+ * plus any function on the default compute account.
  */
-export async function eventarcEndpointsNeedingRoles(
-  projectNumber: string,
-  want: backend.Backend,
-  have: backend.Backend,
-): Promise<backend.Endpoint[]> {
-  const needsRoles: backend.Endpoint[] = [];
-  for (const endpoint of backend.allEndpoints(want)) {
-    if (endpoint.platform !== "gcfv2" || !backend.isEventTriggered(endpoint)) {
-      continue;
-    }
-    // Declarative security grants the managed account its roles at release, after creating it.
+function eventarcRuntimeEndpoints(want: backend.Backend): backend.Endpoint[] {
+  return backend.allEndpoints(want).filter((endpoint) => {
+    // Managed accounts may not exist yet; their roles come from requiredRoles at release.
     if (endpoint.serviceAccount?.startsWith("firebase-fn-")) {
-      continue;
+      return false;
     }
-    const existing = have.endpoints[endpoint.region]?.[endpoint.id];
-    if (existing && explicitServiceAccount(existing) === explicitServiceAccount(endpoint)) {
-      continue;
-    }
-    if (existing) {
-      const resolved = await resolveRuntimeServiceAccounts(projectNumber, [existing, endpoint]);
-      if (resolved.length === 1) {
-        continue;
-      }
-    }
-    needsRoles.push(endpoint);
-  }
-  return needsRoles;
+    return (
+      !endpoint.serviceAccount ||
+      (endpoint.platform === "gcfv2" && backend.isEventTriggered(endpoint))
+    );
+  });
 }
 
 /**
@@ -297,21 +278,25 @@ export async function ensureServiceAgentRoles(
   const newServices = wantServices.filter(
     (wantS) => !haveServices.find((haveS) => wantS.name === haveS.name),
   );
+  if (newServices.length === 0) {
+    return;
+  }
 
   // obtain all the bindings we need to have active in the project
-  const nestedRequiredBindings = await Promise.all(
-    newServices.map((service) => service.requiredProjectBindings!(projectNumber)),
-  );
-  const requiredBindings = [...flattenArray(nestedRequiredBindings)];
-  if (newServices.length > 0 && haveServices.length === 0) {
-    requiredBindings.push(...obtainPubSubServiceAgentBindings(projectNumber));
+  const requiredBindingsPromises: Array<Promise<Array<iam.Binding>>> = [];
+  for (const service of newServices) {
+    requiredBindingsPromises.push(service.requiredProjectBindings!(projectNumber));
   }
-  const eventarcEndpoints = await eventarcEndpointsNeedingRoles(projectNumber, want, have);
-  const runtimeServiceAccounts = await resolveRuntimeServiceAccounts(
-    projectNumber,
-    eventarcEndpoints,
-  );
-  requiredBindings.push(...obtainComputeServiceAgentBindings(runtimeServiceAccounts));
+  const nestedRequiredBindings = await Promise.all(requiredBindingsPromises);
+  const requiredBindings = [...flattenArray(nestedRequiredBindings)];
+  if (haveServices.length === 0) {
+    requiredBindings.push(...obtainPubSubServiceAgentBindings(projectNumber));
+    const runtimeServiceAccounts = await resolveRuntimeServiceAccounts(
+      projectNumber,
+      eventarcRuntimeEndpoints(want),
+    );
+    requiredBindings.push(...obtainComputeServiceAgentBindings(runtimeServiceAccounts));
+  }
   if (requiredBindings.length === 0) {
     return;
   }
@@ -319,10 +304,7 @@ export async function ensureServiceAgentRoles(
     projectId,
     projectNumber,
     requiredBindings,
-    [
-      ...newServices.map((service) => service.api),
-      ...eventarcEndpoints.map((endpoint) => endpoint.id),
-    ],
+    newServices.map((service) => service.api),
     dryRun,
   );
 }

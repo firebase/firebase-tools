@@ -568,7 +568,7 @@ describe("checkIam", () => {
       assertRunAndEventarcMembersExclude(policy, DEFAULT_COMPUTE_SA);
     });
 
-    it("should grant run and eventarc roles to a custom SA added in a subsequent deploy", async () => {
+    it("should not grant run and eventarc roles to a custom SA added after the first Eventarc deploy", async () => {
       getIamStub.resolves({
         etag: "etag",
         version: 3,
@@ -609,7 +609,7 @@ describe("checkIam", () => {
 
       expect(setIamStub).to.have.been.calledOnce;
       const policy = setIamStub.firstCall.args[1];
-      assertRunAndEventarcMembers(policy, [CUSTOM_SA]);
+      assertRunAndEventarcMembersExclude(policy, CUSTOM_SA);
       assertRunAndEventarcMembersExclude(policy, DEFAULT_COMPUTE_SA);
     });
 
@@ -653,7 +653,7 @@ describe("checkIam", () => {
       assertRunAndEventarcMembersExclude(policy, CUSTOM_SA);
     });
 
-    describe("runtime service account changes", () => {
+    describe("runtime service accounts", () => {
       const storageFn = (id: string, serviceAccount?: string): backend.Endpoint => ({
         id,
         entryPoint: id,
@@ -686,46 +686,6 @@ describe("checkIam", () => {
         const policy = setIamStub.firstCall.args[1];
         assertRunAndEventarcMembers(policy, [CUSTOM_SA]);
         assertRunAndEventarcMembersExclude(policy, "functions-runner@");
-      });
-
-      it("should grant roles to a custom SA on a new function when no service is new", async () => {
-        await checkIam.ensureServiceAgentRoles(
-          projectId,
-          projectNumber,
-          backend.of(storageFn("existing"), storageFn("added", CUSTOM_SA)),
-          backend.of(storageFn("existing", DEFAULT_COMPUTE_SA)),
-        );
-
-        expect(storageStub).to.not.have.been.called;
-        expect(setIamStub).to.have.been.calledOnce;
-        const policy = setIamStub.firstCall.args[1];
-        assertRunAndEventarcMembers(policy, [CUSTOM_SA]);
-        assertRunAndEventarcMembersExclude(policy, DEFAULT_COMPUTE_SA);
-      });
-
-      it("should grant roles when an existing function switches service account", async () => {
-        await checkIam.ensureServiceAgentRoles(
-          projectId,
-          projectNumber,
-          backend.of(storageFn("fn", "functions-runner@")),
-          backend.of(storageFn("fn", DEFAULT_COMPUTE_SA)),
-        );
-
-        expect(setIamStub).to.have.been.calledOnce;
-        assertRunAndEventarcMembers(setIamStub.firstCall.args[1], [CUSTOM_SA]);
-      });
-
-      it("should not touch IAM when an existing function keeps its short-form service account", async () => {
-        await checkIam.ensureServiceAgentRoles(
-          projectId,
-          projectNumber,
-          backend.of(storageFn("fn", "functions-runner@")),
-          backend.of(storageFn("fn", CUSTOM_SA)),
-        );
-
-        expect(gceStub).to.not.have.been.called;
-        expect(getIamStub).to.not.have.been.called;
-        expect(setIamStub).to.not.have.been.called;
       });
 
       it("should not grant roles to a declarative security managed service account", async () => {
@@ -1129,7 +1089,7 @@ describe("checkIam", () => {
     });
   });
 
-  it("should add the pubsub publisher role and SA roles for a new v2 storage function with v2 deployed functions", async () => {
+  it("should add the pubsub publisher role for a new v2 storage function with v2 deployed functions", async () => {
     const newIamPolicy = {
       etag: "etag",
       version: 3,
@@ -1138,14 +1098,6 @@ describe("checkIam", () => {
         {
           role: "roles/pubsub.publisher",
           members: [`serviceAccount:${STORAGE_RES.email_address}`],
-        },
-        {
-          role: checkIam.RUN_INVOKER_ROLE,
-          members: [`serviceAccount:${DEFAULT_COMPUTE_SA}`],
-        },
-        {
-          role: checkIam.EVENTARC_EVENT_RECEIVER_ROLE,
-          members: [`serviceAccount:${DEFAULT_COMPUTE_SA}`],
         },
       ],
     };
@@ -1244,13 +1196,7 @@ describe("checkIam", () => {
     expect(setIamStub).to.have.been.calledWith(projectNumber, newIamPolicy, "bindings");
   });
 
-  it("should grant run and eventarc roles to default SA for new alerts function with v2 deployed functions", async () => {
-    getIamStub.resolves({
-      etag: "etag",
-      version: 3,
-      bindings: [BINDING],
-    });
-    setIamStub.resolves({});
+  it("should not add bindings for a new v2 alerts function with v2 deployed functions", async () => {
     const wantFn: backend.Endpoint = {
       id: "wantFn",
       entryPoint: "wantFn",
@@ -1281,8 +1227,8 @@ describe("checkIam", () => {
       backend.of(haveFn),
     );
 
-    expect(setIamStub).to.have.been.calledOnce;
-    assertRunAndEventarcMembers(setIamStub.firstCall.args[1], [DEFAULT_COMPUTE_SA]);
+    expect(getIamStub).to.not.have.been.called;
+    expect(setIamStub).to.not.have.been.called;
   });
 
   it("should add the default bindings for a new v2 remote config function without v2 deployed functions", async () => {
@@ -1337,13 +1283,7 @@ describe("checkIam", () => {
     expect(setIamStub).to.have.been.calledWith(projectNumber, newIamPolicy, "bindings");
   });
 
-  it("should grant run and eventarc roles to default SA for new remote config function with v2 deployed functions", async () => {
-    getIamStub.resolves({
-      etag: "etag",
-      version: 3,
-      bindings: [BINDING],
-    });
-    setIamStub.resolves({});
+  it("should not add bindings for a new v2 remote config function with v2 deployed functions", async () => {
     const wantFn: backend.Endpoint = {
       id: "wantFn",
       entryPoint: "wantFn",
@@ -1374,8 +1314,8 @@ describe("checkIam", () => {
       backend.of(haveFn),
     );
 
-    expect(setIamStub).to.have.been.calledOnce;
-    assertRunAndEventarcMembers(setIamStub.firstCall.args[1], [DEFAULT_COMPUTE_SA]);
+    expect(getIamStub).to.not.have.been.called;
+    expect(setIamStub).to.not.have.been.called;
   });
 
   it("should add the default bindings for a new v2 test lab function without v2 deployed functions", async () => {
@@ -1430,13 +1370,7 @@ describe("checkIam", () => {
     expect(setIamStub).to.have.been.calledWith(projectNumber, newIamPolicy, "bindings");
   });
 
-  it("should grant run and eventarc roles to default SA for new test lab function with v2 deployed functions", async () => {
-    getIamStub.resolves({
-      etag: "etag",
-      version: 3,
-      bindings: [BINDING],
-    });
-    setIamStub.resolves({});
+  it("should not add bindings for a new v2 test lab function with v2 deployed functions", async () => {
     const wantFn: backend.Endpoint = {
       id: "wantFn",
       entryPoint: "wantFn",
@@ -1467,7 +1401,7 @@ describe("checkIam", () => {
       backend.of(haveFn),
     );
 
-    expect(setIamStub).to.have.been.calledOnce;
-    assertRunAndEventarcMembers(setIamStub.firstCall.args[1], [DEFAULT_COMPUTE_SA]);
+    expect(getIamStub).to.not.have.been.called;
+    expect(setIamStub).to.not.have.been.called;
   });
 });
