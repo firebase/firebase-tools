@@ -103,6 +103,18 @@ describe("onboarding", () => {
     );
     expect(ensureStub).to.have.been.calledWith(
       "test-project",
+      onboarding.API_KEYS_SERVICE,
+      "crashlytics",
+      false,
+    );
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      onboarding.CLOUD_MONITORING_SERVICE,
+      "crashlytics",
+      false,
+    );
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
       "cloudtrace.googleapis.com",
       "crashlytics",
       false,
@@ -184,6 +196,18 @@ describe("onboarding", () => {
     expect(ensureStub).to.have.been.calledWith(
       "test-project",
       onboarding.CLIENT_TELEMETRY_SERVICE,
+      "crashlytics",
+      false,
+    );
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      onboarding.API_KEYS_SERVICE,
+      "crashlytics",
+      false,
+    );
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      onboarding.CLOUD_MONITORING_SERVICE,
       "crashlytics",
       false,
     );
@@ -278,6 +302,18 @@ describe("onboarding", () => {
     expect(ensureStub).to.have.been.calledWith(
       "test-project",
       onboarding.CLIENT_TELEMETRY_SERVICE,
+      "crashlytics",
+      false,
+    );
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      onboarding.API_KEYS_SERVICE,
+      "crashlytics",
+      false,
+    );
+    expect(ensureStub).to.have.been.calledWith(
+      "test-project",
+      onboarding.CLOUD_MONITORING_SERVICE,
       "crashlytics",
       false,
     );

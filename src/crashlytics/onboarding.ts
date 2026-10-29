@@ -21,6 +21,8 @@ export const CRASHLYTICS_TELEMETRY_SERVICE = "firebasetelemetry.googleapis.com";
 export const CRASHLYTICS_TELEMETRY_ADMIN_SERVICE = "firebasetelemetryadmin.googleapis.com";
 export const CRASHLYTICS_SERVICE = "firebasecrashlytics.googleapis.com";
 export const CLIENT_TELEMETRY_SERVICE = "clienttelemetry.googleapis.com";
+export const API_KEYS_SERVICE = "apikeys.googleapis.com";
+export const CLOUD_MONITORING_SERVICE = "monitoring.googleapis.com";
 
 export interface OnboardWebResult {
   config: TelemetryConfig;
@@ -71,6 +73,8 @@ export async function onboardCrashlyticsWeb(
     ensure(projectId, CRASHLYTICS_TELEMETRY_ADMIN_SERVICE, "crashlytics", false),
     ensure(projectId, CRASHLYTICS_SERVICE, "crashlytics", false),
     ensure(projectId, CLIENT_TELEMETRY_SERVICE, "crashlytics", false),
+    ensure(projectId, API_KEYS_SERVICE, "crashlytics", false),
+    ensure(projectId, CLOUD_MONITORING_SERVICE, "crashlytics", false),
   ];
   if (experiments.isEnabled("crashlyticsWebBreadcrumbs")) {
     requiredApis.push(ensure(projectId, "cloudtrace.googleapis.com", "crashlytics", false));
