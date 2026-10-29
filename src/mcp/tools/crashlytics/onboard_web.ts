@@ -217,9 +217,17 @@ async function resolveWebConfig(
         return {
           config: {
             apiKey: sdkConfig.apiKey || PLACEHOLDER_API_KEY,
-            authDomain: sdkConfig.authDomain || (resolvedProjectId !== PLACEHOLDER_PROJECT_ID ? `${resolvedProjectId}.firebaseapp.com` : PLACEHOLDER_AUTH_DOMAIN),
+            authDomain:
+              sdkConfig.authDomain ||
+              (resolvedProjectId !== PLACEHOLDER_PROJECT_ID
+                ? `${resolvedProjectId}.firebaseapp.com`
+                : PLACEHOLDER_AUTH_DOMAIN),
             projectId: resolvedProjectId,
-            storageBucket: sdkConfig.storageBucket || (resolvedProjectId !== PLACEHOLDER_PROJECT_ID ? `${resolvedProjectId}.firebasestorage.app` : PLACEHOLDER_STORAGE_BUCKET),
+            storageBucket:
+              sdkConfig.storageBucket ||
+              (resolvedProjectId !== PLACEHOLDER_PROJECT_ID
+                ? `${resolvedProjectId}.firebasestorage.app`
+                : PLACEHOLDER_STORAGE_BUCKET),
             messagingSenderId: sdkConfig.messagingSenderId || PLACEHOLDER_MESSAGING_SENDER_ID,
             appId: sdkConfig.appId || resolvedAppId,
           },
