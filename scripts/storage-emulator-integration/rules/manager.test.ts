@@ -14,6 +14,7 @@ import { waitForCondition } from "../../../src/test/helpers/waitForCondition";
 import * as path from "path";
 
 const SETUP_TIMEOUT = 60000;
+const RELOAD_TIMEOUT_MS = 30000;
 const PROJECT_ID = "demo-project-id";
 
 describe("Storage Rules Manager", () => {
@@ -115,6 +116,7 @@ describe("Storage Rules Manager", () => {
           ruleset: rulesManager.getRuleset("bucket"),
           projectId: PROJECT_ID,
         })),
+      RELOAD_TIMEOUT_MS,
     );
   });
 });
