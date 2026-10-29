@@ -103,6 +103,15 @@ export function validatePrefix(prefix: string): void {
 }
 
 function validateSingle(config: FunctionConfig): ValidatedSingle {
+  if (
+    config.runtimeUpdatePolicy !== undefined &&
+    config.runtimeUpdatePolicy !== "automatic" &&
+    config.runtimeUpdatePolicy !== "on-deploy"
+  ) {
+    throw new FirebaseError(
+      'functions.runtimeUpdatePolicy must be either "automatic" or "on-deploy".',
+    );
+  }
   if ("kit" in config) {
     experiments.assertEnabled("kits", "use functions kits");
     if (!config.kit) {

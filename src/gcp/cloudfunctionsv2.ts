@@ -53,6 +53,9 @@ export interface BuildConfig {
   entryPoint: string;
   source: Source;
   sourceToken?: string;
+  // oneof runtime_update_policy
+  automaticUpdatePolicy?: Record<string, never>;
+  onDeployUpdatePolicy?: { runtimeVersion?: string }; // runtimeVersion is output only.
   environmentVariables: Record<string, string>;
 
   // Output only
@@ -468,6 +471,11 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
   };
 
   proto.copyIfPresent(gcfFunction, endpoint, "labels");
+  if (endpoint.runtimeUpdatePolicy === "automatic") {
+    gcfFunction.buildConfig.automaticUpdatePolicy = {};
+  } else if (endpoint.runtimeUpdatePolicy === "on-deploy") {
+    gcfFunction.buildConfig.onDeployUpdatePolicy = {};
+  }
   proto.copyIfPresent(
     gcfFunction.serviceConfig,
     endpoint,
@@ -734,6 +742,11 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
     runtime: gcfFunction.buildConfig?.runtime || undefined,
     source: gcfFunction.buildConfig?.source,
   };
+  if (gcfFunction.buildConfig?.automaticUpdatePolicy) {
+    endpoint.runtimeUpdatePolicy = "automatic";
+  } else if (gcfFunction.buildConfig?.onDeployUpdatePolicy) {
+    endpoint.runtimeUpdatePolicy = "on-deploy";
+  }
   if (gcfFunction.serviceConfig) {
     proto.copyIfPresent(
       endpoint,

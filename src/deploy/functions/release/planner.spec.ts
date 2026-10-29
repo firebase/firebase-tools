@@ -139,6 +139,34 @@ describe("planner", () => {
   });
 
   describe("toSkipPredicate", () => {
+    for (const policy of ["automatic", "on-deploy"] as const) {
+      for (const deployed of ["automatic", "on-deploy", undefined] as const) {
+        it(`compares requested policy ${policy} with deployed policy ${deployed ?? "unspecified"} even with matching hashes`, () => {
+          const want: backend.Endpoint = {
+            ...func("fn", "region"),
+            platform: "gcfv2",
+            hash: "same-hash",
+            runtimeUpdatePolicy: policy,
+          };
+          const have = { ...want, runtimeUpdatePolicy: deployed };
+          const result = planner.calculateChangesets({ fn: want }, { fn: have }, (e) => e.region);
+          expect(result.region.endpointsToSkip).to.have.lengthOf(policy === deployed ? 1 : 0);
+          expect(result.region.endpointsToUpdate).to.have.lengthOf(policy === deployed ? 0 : 1);
+        });
+      }
+    }
+
+    it("can skip an unchanged function whose deployed policy is unmanaged", () => {
+      const want: backend.Endpoint = {
+        ...func("fn", "region"),
+        platform: "gcfv2",
+        hash: "same-hash",
+      };
+      const have: backend.Endpoint = { ...want, runtimeUpdatePolicy: "on-deploy" };
+      const result = planner.calculateChangesets({ fn: want }, { fn: have }, (e) => e.region);
+      expect(result.region.endpointsToSkip).to.have.lengthOf(1);
+    });
+
     it("should skip functions with matching hashes", () => {
       const wantFn = func("skip", "region");
       const haveFn = func("skip", "region");

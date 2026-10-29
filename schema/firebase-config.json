@@ -1009,6 +1009,13 @@
                     ],
                     "type": "string"
                 },
+                "runtimeUpdatePolicy": {
+                    "enum": [
+                        "automatic",
+                        "on-deploy"
+                    ],
+                    "type": "string"
+                },
                 "source": {
                     "description": "Local directory containing the kit source code.",
                     "type": "string"
@@ -1094,6 +1101,13 @@
                         "python312",
                         "python313",
                         "python314"
+                    ],
+                    "type": "string"
+                },
+                "runtimeUpdatePolicy": {
+                    "enum": [
+                        "automatic",
+                        "on-deploy"
                     ],
                     "type": "string"
                 },
@@ -1213,6 +1227,13 @@
                 },
                 "runtime": {
                     "$ref": "#/definitions/ActiveRuntime"
+                },
+                "runtimeUpdatePolicy": {
+                    "enum": [
+                        "automatic",
+                        "on-deploy"
+                    ],
+                    "type": "string"
                 }
             },
             "required": [

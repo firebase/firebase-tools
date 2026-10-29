@@ -1,0 +1,1 @@
+- Added a `functions.runtimeUpdatePolicy` setting to explicitly select `automatic` or `on-deploy` runtime security updates for 2nd gen functions.
