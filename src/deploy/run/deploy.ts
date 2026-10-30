@@ -13,7 +13,7 @@ import { getProjectNumber } from "../../getProjectNumber";
 import { Options } from "../../options";
 import { cloneDeep, logLabeledBullet } from "../../utils";
 import { buildLocally } from "../apphosting/localBuild";
-import { createSourceDeployArchive } from "../apphosting/util";
+import { buildDirectory, createSourceDeployArchive } from "../apphosting/util";
 import { Context, Payload, ServiceDeploy } from "./args";
 import { nonSecretValues, secretNames, toLocalBuildEnv } from "./buildEnv";
 import { FIREBASE_APP_ANNOTATION, mainContainer } from "./util";
@@ -28,9 +28,6 @@ const ROLLOUT_TIMEOUT_MS = 10 * 60 * 1000;
  */
 const NO_IMAGE = "scratch";
 
-/** Files that mark the root of an Nx or Turborepo monorepo, the monorepos App Hosting supports. */
-const MONOREPO_CONFIG_FILES = ["nx.json", "turbo.json"] as const;
-
 /** What a local build produced. */
 export interface LocalBuildOutput {
   /** The built app, as a .tar.gz tmp file. */
@@ -39,14 +36,6 @@ export interface LocalBuildOutput {
   runCommand?: string;
   /** The env vars the app needs at runtime. */
   env: NonNullable<runv2.Container["env"]>;
-}
-
-/** Where a build on Cloud Build runs. */
-export interface BuildDirectory {
-  /** The directory to upload and build from. */
-  dir: string;
-  /** The app's folder in `dir`, with forward slashes. Empty if the app is `dir` itself. */
-  app: string;
 }
 
 /** Builds each service, locally or on Cloud Build, then rolls it out. */
@@ -72,30 +61,6 @@ async function deployRemoteBuild(
   const image = await buildImage(projectId, svc, source, app);
   const template = revisionTemplate(svc, image, options.message as string | undefined);
   svc.deployed = await rollOut(projectId, svc, template);
-}
-
-/**
- * Returns where to build the service on Cloud Build, the way App Hosting decides it. An app in an
- * Nx or Turborepo monorepo builds from the monorepo's root, so that it has the root's lockfile and
- * shared packages. Any other app builds from its own folder. Only folders in the project count.
- * Exported for testing.
- */
-export function buildDirectory(projectDir: string, rootDir = ""): BuildDirectory {
-  const appDir = path.join(projectDir, rootDir);
-  const appPath = path.relative(projectDir, appDir);
-  if (appPath === ".." || appPath.startsWith(`..${path.sep}`)) {
-    // The app is outside the project, so don't look for a monorepo above it.
-    return { dir: appDir, app: "" };
-  }
-  // Check the app's folder, then each folder above it, up to the project's root.
-  const folders = appPath ? appPath.split(path.sep) : [];
-  for (let depth = folders.length; depth >= 0; depth--) {
-    const dir = path.join(projectDir, ...folders.slice(0, depth));
-    if (MONOREPO_CONFIG_FILES.some((file) => fs.existsSync(path.join(dir, file)))) {
-      return { dir, app: folders.slice(depth).join("/") };
-    }
-  }
-  return { dir: appDir, app: "" };
 }
 
 /**

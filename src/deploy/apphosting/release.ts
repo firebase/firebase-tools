@@ -51,7 +51,8 @@ export default async function (context: Context, options: Options): Promise<void
       ? {
           locallyBuilt: {
             userStorageUri,
-            rootDirectory,
+            // The upload is the folder the build ran in, so the app's folder is relative to that.
+            rootDirectory: localBuild.rootDirectory,
             runCommand: localBuild.buildConfig?.runCommand,
             env: localBuild.buildConfig?.env,
             ...(localBuild.buildConfig?.runConfig
