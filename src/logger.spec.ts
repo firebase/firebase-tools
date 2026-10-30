@@ -330,9 +330,11 @@ describe("logger", () => {
     });
 
     afterEach(() => {
-      getLoggerTransports(logger)
-        .filter((t) => !before.includes(t))
-        .forEach((t) => logger.remove(t));
+      for (const t of [...getLoggerTransports(logger)]) {
+        if (!before.includes(t)) {
+          logger.remove(t);
+        }
+      }
       restoreEnv("DEBUG", originalDebug);
       restoreEnv("IS_FIREBASE_CLI", originalIsCli);
     });

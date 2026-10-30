@@ -1,7 +1,8 @@
 import * as assert from "assert";
+import * as Transport from "winston-transport";
 import { parseVersionOutput } from "../../../extension";
 import { logSetup } from "../../../logger-wrapper";
-import { logger } from "../../../../../src/logger";
+import { logger, Logger } from "../../../../../src/logger";
 import { firebaseSuite, firebaseTest } from "../../utils/test_hooks";
 
 const debugBanner = [
@@ -49,10 +50,7 @@ firebaseSuite("logSetup", () => {
   firebaseTest(
     "keeps DEBUG out of the environment children inherit",
     async () => {
-      const cliLogger = logger as unknown as {
-        transports: object[];
-        remove(transport: object): void;
-      };
+      const cliLogger = logger as Logger & { transports: Transport[] };
       const originalDebug = process.env.DEBUG;
       const before = [...cliLogger.transports];
       delete process.env.DEBUG;
@@ -61,9 +59,11 @@ firebaseSuite("logSetup", () => {
         logSetup();
         assert.strictEqual(process.env.DEBUG, undefined);
       } finally {
-        cliLogger.transports
-          .filter((t) => !before.includes(t))
-          .forEach((t) => cliLogger.remove(t));
+        for (const t of [...cliLogger.transports]) {
+          if (!before.includes(t)) {
+            cliLogger.remove(t);
+          }
+        }
         if (originalDebug !== undefined) {
           process.env.DEBUG = originalDebug;
         }
