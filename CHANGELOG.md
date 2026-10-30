@@ -1,0 +1,1 @@
+- Fixed v2 function deploys with a custom `serviceAccount` failing when the default compute service account is deleted or disabled. The build now runs as the custom service account in that case. (#8841)
