@@ -8,7 +8,7 @@ import * as runv2 from "../../gcp/runv2";
 import * as gcs from "../../gcp/storage";
 import * as getProjectNumber from "../../getProjectNumber";
 import { Options } from "../../options";
-import * as apphostingPrepare from "../apphosting/prepare";
+import * as apphostingLocalBuild from "../apphosting/localBuild";
 import * as apphostingUtil from "../apphosting/util";
 import { ServiceDeploy } from "./args";
 import { buildDirectory, deploy, localBuildTemplate, revisionTemplate } from "./deploy";
@@ -200,23 +200,16 @@ describe("run deploy", () => {
 
   describe("local builds", () => {
     const localWeb = { ...web, localBuild: true };
-    let rmSyncStub: sinon.SinonStub;
     let validateNodeStub: sinon.SinonStub;
-    let localBuildStub: sinon.SinonStub;
-    let tarArchiveStub: sinon.SinonStub;
+    let buildLocallyStub: sinon.SinonStub;
 
     beforeEach(() => {
       sinon.stub(fs, "mkdtempSync").returns(scratchDir);
-      rmSyncStub = sinon.stub(fs, "rmSync");
       validateNodeStub = sinon.stub(localbuilds, "validateLocalBuildNodeVersion");
-      sinon.stub(apphostingPrepare, "prepareLocalBuildScratchDirectory").resolves();
-      localBuildStub = sinon.stub(localbuilds, "localBuild").resolves({
-        outputFiles: [".next"],
+      buildLocallyStub = sinon.stub(apphostingLocalBuild, "buildLocally").resolves({
+        archive: "/tmp/web.tar.gz",
         buildConfig: { runCommand: "npm run start" },
       });
-      tarArchiveStub = sinon
-        .stub(apphostingUtil, "createLocalBuildTarArchive")
-        .resolves("/tmp/web.tar.gz");
       (gcs.uploadObject as sinon.SinonStub)
         .withArgs(sinon.match({ file: "/tmp/web.tar.gz" }))
         .resolves(builtApp);
@@ -228,26 +221,30 @@ describe("run deploy", () => {
       return createServiceStub.firstCall.args[3].template.containers[0];
     }
 
-    it("builds on this machine, in a scratch folder that it deletes afterwards", async () => {
+    it("builds on this machine with App Hosting's local build, in a scratch folder", async () => {
       await deployLocalBuild();
 
       expect(validateNodeStub).to.have.been.calledWith(
         { runtime: { value: "nodejs22" } },
         "/project/apps/web",
       );
-      expect(localBuildStub).to.have.been.calledWithMatch(
+      expect(buildLocallyStub).to.have.been.calledWithMatch(
         "my-project",
-        scratchDir,
+        "/project",
+        { backendId: "web", rootDir: "apps/web", localBuild: true },
         {},
-        { rootDir: "apps/web" },
+        { scratchDir },
       );
-      expect(rmSyncStub).to.have.been.calledWith(scratchDir);
     });
 
     it("uploads the build's output and runs it as is, without Cloud Build", async () => {
       const container = await deployLocalBuild();
 
-      expect(tarArchiveStub).to.have.been.calledWithMatch(sinon.match.any, scratchDir, [".next"]);
+      expect(gcs.uploadObject).to.have.been.calledWithMatch(
+        { file: "/tmp/web.tar.gz" },
+        "source-bucket",
+        gcs.ContentType.TAR,
+      );
       expect(submitBuildStub).not.to.have.been.called;
       expect(container).to.deep.include({
         image: "scratch",
@@ -257,8 +254,8 @@ describe("run deploy", () => {
     });
 
     it("keeps the env vars the app needs at runtime", async () => {
-      localBuildStub.resolves({
-        outputFiles: [".next"],
+      buildLocallyStub.resolves({
+        archive: "/tmp/web.tar.gz",
         buildConfig: {
           env: [
             { variable: "NODE_ENV", value: "production", availability: ["RUNTIME"] },
@@ -280,28 +277,21 @@ describe("run deploy", () => {
 
       await deployOne({ config: localWeb, baseImage: NODEJS22, buildEnv });
 
-      expect(localBuildStub).to.have.been.calledWithMatch(
+      expect(buildLocallyStub).to.have.been.calledWithMatch(
         "my-project",
-        scratchDir,
+        "/project",
+        sinon.match.any,
         { API_URL: { value: "https://api.example.com" }, NPM_TOKEN: { secret: "npm-token@2" } },
         { allowLocalBuildSecrets: true },
       );
     });
 
-    it("cleans up and deploys nothing if the local build fails", async () => {
-      localBuildStub.rejects(new Error("next build failed"));
+    it("deploys nothing if the local build fails", async () => {
+      buildLocallyStub.rejects(new Error("next build failed"));
 
       await expect(deployLocalBuild()).to.be.rejectedWith("next build failed");
 
-      expect(rmSyncStub).to.have.been.calledWith(scratchDir);
       expect(createServiceStub).not.to.have.been.called;
-    });
-
-    it("reports the local build error, not the cleanup error, when both fail", async () => {
-      localBuildStub.rejects(new Error("next build failed"));
-      rmSyncStub.throws(new Error("EBUSY: resource busy or locked"));
-
-      await expect(deployLocalBuild()).to.be.rejectedWith("next build failed");
     });
   });
 
@@ -501,7 +491,7 @@ describe("run deploy", () => {
     describe("localBuildTemplate", () => {
       it("runs a local build's output with the build's start command", () => {
         // The command is split on whitespace, so stray spaces don't become empty arguments.
-        const build = { outputFiles: [".next"], runCommand: " npm  run start ", env: [] };
+        const build = { archive: "/tmp/web.tar.gz", runCommand: " npm  run start ", env: [] };
 
         const template = localBuildTemplate({ config: web, existing }, build, builtApp);
 
@@ -520,7 +510,7 @@ describe("run deploy", () => {
           ],
         });
         const build = {
-          outputFiles: [".next"],
+          archive: "/tmp/web.tar.gz",
           env: [
             { name: "MODE", value: "development" },
             { name: "NODE_ENV", value: "production" },
