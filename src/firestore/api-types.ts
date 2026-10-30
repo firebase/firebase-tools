@@ -236,6 +236,12 @@ export type BulkDeleteDocumentsResponse = {
   name?: string;
 };
 
+export interface DatabaseUpdates {
+  deleteProtectionState?: DatabaseDeleteProtectionState;
+  pointInTimeRecoveryEnablement?: PointInTimeRecoveryEnablement;
+  realtimeUpdatesMode?: RealtimeUpdatesMode;
+}
+
 export interface Operation {
   name: string;
   done: boolean;

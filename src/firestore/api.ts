@@ -856,30 +856,34 @@ export class FirestoreApi {
    * Update a named Firestore Database
    * @param project the Firebase project id.
    * @param databaseId the name of the Firestore Database
-   * @param deleteProtectionState DELETE_PROTECTION_ENABLED or DELETE_PROTECTION_DISABLED
-   * @param pointInTimeRecoveryEnablement POINT_IN_TIME_RECOVERY_ENABLED or POINT_IN_TIME_RECOVERY_DISABLED
+   * @param updates the database fields to update; only the fields that are set are sent and
+   *   included in the update mask
+   * @return the long-running operation returned by the API, which may still be in progress
    */
   async updateDatabase(
     project: string,
     databaseId: string,
-    deleteProtectionState?: types.DatabaseDeleteProtectionState,
-    pointInTimeRecoveryEnablement?: types.PointInTimeRecoveryEnablement,
-  ): Promise<types.DatabaseResp> {
+    updates: types.DatabaseUpdates,
+  ): Promise<types.Operation> {
     const url = `/projects/${project}/databases/${databaseId}`;
-    const payload: types.DatabaseReq = {
-      deleteProtectionState,
-      pointInTimeRecoveryEnablement,
-    };
-    const res = await this.apiClient.patch<types.DatabaseReq, { response?: types.DatabaseResp }>(
-      url,
-      payload,
-    );
-    const database = res.body.response;
-    if (!database) {
-      throw new FirebaseError("Not found");
+    const payload: types.DatabaseReq = {};
+    const updateMask: string[] = [];
+    if (updates.deleteProtectionState !== undefined) {
+      payload.deleteProtectionState = updates.deleteProtectionState;
+      updateMask.push("delete_protection_state");
     }
-
-    return database;
+    if (updates.pointInTimeRecoveryEnablement !== undefined) {
+      payload.pointInTimeRecoveryEnablement = updates.pointInTimeRecoveryEnablement;
+      updateMask.push("point_in_time_recovery_enablement");
+    }
+    if (updates.realtimeUpdatesMode !== undefined) {
+      payload.realtimeUpdatesMode = updates.realtimeUpdatesMode;
+      updateMask.push("realtime_updates_mode");
+    }
+    const res = await this.apiClient.patch<types.DatabaseReq, types.Operation>(url, payload, {
+      queryParams: { updateMask: updateMask.join(",") },
+    });
+    return res.body;
   }
 
   /**
