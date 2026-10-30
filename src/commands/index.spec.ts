@@ -33,11 +33,11 @@ describe("commands/index", () => {
     sinon.stub(experiments, "isEnabled").returns(true);
     const program = new Program();
     const client = load({
-      cli: program as unknown as CLIClient["cli"],
+      cli: program as CLIClient["cli"],
       errorOut: sinon.stub(),
     });
 
-    expect(() => loadRegisteredCommands(client as Record<string, unknown>)).not.to.throw();
+    expect(() => loadRegisteredCommands(client)).not.to.throw();
 
     const registeredNames = program.commands.map((cmd: { name: () => string }) => cmd.name());
     expect(registeredNames).to.include("crashlytics:setup");
@@ -47,11 +47,11 @@ describe("commands/index", () => {
   it("registers crashlytics:setup under client.crashlytics.setup", () => {
     const program = new Program();
     const client = load({
-      cli: program as unknown as CLIClient["cli"],
+      cli: program as CLIClient["cli"],
       errorOut: sinon.stub(),
     });
 
-    const crashlytics = client.crashlytics as Record<string, unknown>;
+    const crashlytics = client.crashlytics as { setup?: unknown; onboard?: unknown };
     expect(isCommandModule(crashlytics.setup)).to.be.true;
     expect(crashlytics.onboard).to.be.undefined;
 

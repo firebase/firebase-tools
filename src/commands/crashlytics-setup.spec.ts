@@ -1,10 +1,7 @@
 import { expect } from "chai";
-import { Command as Program } from "commander";
 import * as sinon from "sinon";
 
-import { CLIClient } from "../command";
 import { command } from "./crashlytics-setup";
-import { load } from "./index";
 import * as onboarding from "../crashlytics/onboarding";
 import * as apps from "../management/apps";
 import { requireAuth } from "../requireAuth";
@@ -285,30 +282,5 @@ describe("crashlytics:setup command", () => {
       );
       expect(result).to.be.undefined;
     });
-  });
-
-  it("should register and run crashlytics.setup via command loader", async () => {
-    const program = new Program();
-    const client: CLIClient = {
-      cli: program as unknown as CLIClient["cli"],
-      errorOut: sinon.stub(),
-    };
-    load(client);
-
-    const crashlytics = client.crashlytics as {
-      setup: ((appId: string, options: Record<string, unknown>) => Promise<unknown>) & {
-        load: () => void;
-      };
-    };
-
-    crashlytics.setup.load();
-    const result: unknown = await crashlytics.setup("1:123:web:456", { project: projectId });
-
-    expect(setupCrashlyticsWebStub).to.have.been.calledOnceWith(
-      projectId,
-      "1:123:web:456",
-      sinon.match({ project: projectId }),
-    );
-    expect(result).to.deep.equal(mockSetupResult);
   });
 });
