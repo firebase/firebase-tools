@@ -1,0 +1,1 @@
+- Added support for the Node.js 26 runtime (Preview) for Cloud Functions. (#11393)
