@@ -26,6 +26,11 @@ export const command = new Command("firestore:databases:update <database>")
     "whether to enable the PITR feature on this database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'",
   );
 
+// --realtime-updates is gated by the private (public: false) firestorewatchmutability
+// experiment. The option is only registered when the module loads with the experiment on,
+// which keeps it out of public --help (Commander 5 can't hide individual options). With the
+// experiment off, Commander rejects the flag as an unknown option, so the action doesn't need
+// its own experiment check.
 if (experiments.isEnabled("firestorewatchmutability")) {
   command.option(
     "--realtime-updates <enablement>",
