@@ -3,8 +3,10 @@ import * as crypto from "crypto";
 import * as fs from "fs-extra";
 import * as os from "os";
 import * as path from "path";
+import * as sinon from "sinon";
 import { rmSync } from "node:fs";
 
+import { FirebaseError } from "./error";
 import * as fsAsync from "./fsAsync";
 
 // These tests work on the following directory structure:
@@ -211,6 +213,83 @@ describe("fsAsync", () => {
       } finally {
         rmSync(testDir, { recursive: true, force: true });
       }
+    });
+
+    describe("with gitIgnoreRoot", () => {
+      // Like a Firebase project with a self-contained app in web/:
+      // <testDir>
+      //   .gitignore       *.pem, build/
+      //   web/
+      //     .gitignore     !keep.pem
+      //     app/page.tsx
+      //     app/secrets/build/page.tsx
+      //     public/key.pem
+      //     public/keep.pem
+      let testDir = "";
+      let webDir = "";
+
+      before(() => {
+        testDir = path.join(os.tmpdir(), crypto.randomBytes(10).toString("hex"));
+        webDir = path.join(testDir, "web");
+        fs.mkdirsSync(path.join(webDir, "app", "secrets", "build"));
+        fs.mkdirsSync(path.join(webDir, "public"));
+        fs.writeFileSync(path.join(testDir, ".gitignore"), ["*.pem", "build/"].join("\n"));
+        fs.writeFileSync(path.join(webDir, ".gitignore"), "!keep.pem");
+        fs.writeFileSync(path.join(webDir, "app", "page.tsx"), "page");
+        fs.writeFileSync(path.join(webDir, "app", "secrets", "build", "page.tsx"), "page");
+        fs.writeFileSync(path.join(webDir, "public", "key.pem"), "key");
+        fs.writeFileSync(path.join(webDir, "public", "keep.pem"), "keep");
+      });
+
+      after(() => {
+        rmSync(testDir, { recursive: true, force: true });
+      });
+
+      /** Walks web/ and returns the files found, relative to it, with forward slashes. */
+      async function walkWeb(gitIgnoreRoot?: string): Promise<string[]> {
+        const results = await fsAsync.readdirRecursive({
+          path: webDir,
+          supportGitIgnore: true,
+          gitIgnoreRoot,
+        });
+        return results.map((r) => path.relative(webDir, r.name).split(path.sep).join("/")).sort();
+      }
+
+      it("applies the .gitignore files above the directory, like git", async () => {
+        // Without gitIgnoreRoot, only web/.gitignore applies.
+        expect(await walkWeb()).to.deep.equal([
+          ".gitignore",
+          "app/page.tsx",
+          "app/secrets/build/page.tsx",
+          "public/keep.pem",
+          "public/key.pem",
+        ]);
+        // With it, the top-level .gitignore applies too, and web/.gitignore still overrides it.
+        expect(await walkWeb(testDir)).to.deep.equal([
+          ".gitignore",
+          "app/page.tsx",
+          "public/keep.pem",
+        ]);
+      });
+
+      it("applies nothing extra if the directory isn't inside gitIgnoreRoot", async () => {
+        expect(await walkWeb(path.join(testDir, "other"))).to.deep.equal(await walkWeb());
+        expect(await walkWeb(webDir)).to.deep.equal(await walkWeb());
+      });
+
+      it("fails, instead of skipping it, if a .gitignore can't be read", async () => {
+        const readFileSync = sinon.stub(fs, "readFileSync").callThrough();
+        const denied = new Error("EACCES: permission denied");
+        try {
+          readFileSync.withArgs(path.join(testDir, ".gitignore")).throws(denied);
+          await expect(walkWeb(testDir)).to.be.rejectedWith(FirebaseError, "Could not read");
+
+          readFileSync.withArgs(path.join(webDir, ".gitignore")).throws(denied);
+          await expect(walkWeb()).to.be.rejectedWith(FirebaseError, "Could not read");
+        } finally {
+          readFileSync.restore();
+        }
+      });
     });
 
     it("should support maximum recursion depth", async () => {
