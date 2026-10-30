@@ -80,7 +80,8 @@ command
     });
 
     if (operation.error) {
-      throw new FirebaseError(`Failed to update database ${database}: ${operation.error.message}`);
+      const errorMessage = operation.error.message || "Unknown error";
+      throw new FirebaseError(`Failed to update database ${database}: ${errorMessage}`);
     }
     if (!operation.done) {
       logUpdateInProgress(database, operation);

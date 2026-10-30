@@ -153,6 +153,23 @@ describe("firestore:databases:update", () => {
     );
   });
 
+  it("should fall back to a generic message when the operation error has no message", async () => {
+    const options = {
+      project: PROJECT,
+      deleteProtection: "ENABLED",
+    };
+    firestoreApiStub.updateDatabase.resolves(
+      mockOperation({
+        error: { name: "INTERNAL", code: 13, message: "" },
+      }),
+    );
+
+    await expect(command.runner()(DATABASE, options)).to.be.rejectedWith(
+      FirebaseError,
+      `Failed to update database ${DATABASE}: Unknown error`,
+    );
+  });
+
   it("should throw when a completed operation has no database in its response", async () => {
     const options = {
       project: PROJECT,
@@ -166,6 +183,9 @@ describe("firestore:databases:update", () => {
     );
   });
 
+  // The firestorewatchmutability experiment only controls whether --realtime-updates is
+  // registered when the module loads (Commander rejects the flag when the experiment is off).
+  // The action never reads the experiment, so these tests don't toggle it.
   describe("with --realtime-updates", () => {
     it("should update realtimeUpdates to ENABLED", async () => {
       const options = {
