@@ -21,19 +21,21 @@ export const CRASHLYTICS_TELEMETRY_SERVICE = "firebasetelemetry.googleapis.com";
 export const CRASHLYTICS_TELEMETRY_ADMIN_SERVICE = "firebasetelemetryadmin.googleapis.com";
 export const CRASHLYTICS_SERVICE = "firebasecrashlytics.googleapis.com";
 export const CLIENT_TELEMETRY_SERVICE = "clienttelemetry.googleapis.com";
+export const API_KEYS_SERVICE = "apikeys.googleapis.com";
+export const CLOUD_MONITORING_SERVICE = "monitoring.googleapis.com";
 
-export interface OnboardWebResult {
+export interface SetupWebResult {
   config: TelemetryConfig;
   alertPolicies?: AlertPolicy[];
 }
 
-export interface OnboardWebOptions {
+export interface SetupWebOptions {
   nonInteractive?: boolean;
   user?: { email?: string };
 }
 
 async function resolveAuthenticatedUserEmail(
-  options: OnboardWebOptions,
+  options: SetupWebOptions,
 ): Promise<string | undefined> {
   if (options.user?.email) {
     return options.user.email;
@@ -50,11 +52,11 @@ async function resolveAuthenticatedUserEmail(
  * Onboards a Firebase Web App to Crashlytics by enabling required APIs,
  * provisioning Cloud Trace storage, creating a Telemetry Config, and optionally configuring Crashlytics email alerts.
  */
-export async function onboardCrashlyticsWeb(
+export async function setupCrashlyticsWeb(
   projectId: string,
   appId: string,
-  options: OnboardWebOptions = {},
-): Promise<OnboardWebResult> {
+  options: SetupWebOptions = {},
+): Promise<SetupWebResult> {
   const billingEnabled = await checkBillingEnabled(projectId);
   if (!billingEnabled && options.nonInteractive) {
     throw new FirebaseError(
@@ -85,6 +87,7 @@ export async function onboardCrashlyticsWeb(
       "Ensuring Crashlytics Telemetry API is permitted in API key restrictions...",
     );
     try {
+      await ensure(projectId, API_KEYS_SERVICE, "crashlytics", false);
       await updateAppApiKeyRestriction({
         apiKey: appConfig.apiKey,
         service: CLIENT_TELEMETRY_SERVICE,
@@ -155,6 +158,7 @@ export async function onboardCrashlyticsWeb(
 
   logLabeledBullet("crashlytics", `Setting up Crashlytics email alerts for ${userEmail}...`);
   try {
+    await ensure(projectId, CLOUD_MONITORING_SERVICE, "crashlytics", false);
     const alertPolicies = await enableAlerts(projectId, appId, selectedAlerts, userEmail);
     logLabeledSuccess("crashlytics", "Crashlytics email alerts configured successfully.");
     return { config, alertPolicies };

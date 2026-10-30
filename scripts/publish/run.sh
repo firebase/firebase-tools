@@ -39,3 +39,12 @@ gcloud --project fir-tools-builds \
   --machine-type=e2-highcpu-32 \
   --substitutions=$SUBSTITUTIONS \
   .
+
+if [[ $VERSION != "preview" ]]; then
+  gcloud --project fir-tools-builds \
+    builds \
+    submit \
+    --config=./firebase-docker-image/cloudbuild-promote.yaml \
+    --substitutions=_TARGET_PROJECT_ID=firebase-cli \
+    ./firebase-docker-image
+fi
