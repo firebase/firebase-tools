@@ -136,8 +136,13 @@ async function uploadSource(
 ): Promise<runv2.StorageSource> {
   const { serviceId, region } = config;
   const bucketName = await sourceBucket(projectId, options, region);
-  // The zip is a tmp file, so it's deleted when the CLI exits.
-  const archive = await createSourceDeployArchive(toAppHostingConfig(config), dir);
+  // The zip is a tmp file, so it's deleted when the CLI exits. The project's .gitignore files above
+  // `dir` apply too, like they do for App Hosting's source deploys and local builds.
+  const archive = await createSourceDeployArchive(
+    toAppHostingConfig(config),
+    dir,
+    options.config.projectDir,
+  );
   logLabeledBullet("run", `Uploading source for service ${serviceId} in ${region}...`);
   const { bucket, object } = await gcs.uploadObject(
     { file: archive, stream: fs.createReadStream(archive) },
