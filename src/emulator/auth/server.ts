@@ -386,7 +386,7 @@ export async function createApp(
         `Multiple projectIds are not recommended in single project mode. ` +
         `Requested project ID ${projectId}, but the emulator is configured for ` +
         `${defaultProjectId}. To opt-out of single project mode add/set the ` +
-        `\'"singleProjectMode"\' false' property in the firebase.json emulators config.`;
+        `'"singleProjectMode"' false' property in the firebase.json emulators config.`;
       EmulatorLogger.forEmulator(Emulators.AUTH).log("WARN", errorString);
       if (singleProjectMode === SingleProjectMode.ERROR) {
         throw new BadRequestError(errorString);

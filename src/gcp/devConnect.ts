@@ -408,8 +408,8 @@ export function extractGitRepositoryLinkComponents(path: string): {
   connection: string | null;
   gitRepoLink: string | null;
 } {
-  const connectionMatch = /connections\/([^\/]+)/.exec(path);
-  const repositoryMatch = /gitRepositoryLinks\/([^\/]+)/.exec(path);
+  const connectionMatch = /connections\/([^/]+)/.exec(path);
+  const repositoryMatch = /gitRepositoryLinks\/([^/]+)/.exec(path);
 
   const connection = connectionMatch ? connectionMatch[1] : null;
   const gitRepoLink = repositoryMatch ? repositoryMatch[1] : null;
