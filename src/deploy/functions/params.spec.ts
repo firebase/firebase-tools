@@ -37,6 +37,11 @@ const expectedInternalParams = {
     boolean: false,
     number: false,
   }),
+  FUNCTION_REGION: new params.ParamValue("", true, {
+    string: true,
+    boolean: false,
+    number: false,
+  }),
 };
 
 describe("CEL resolution", () => {
@@ -207,6 +212,11 @@ describe("resolveParams", () => {
         boolean: false,
         number: false,
       }),
+      FUNCTION_REGION: new params.ParamValue("", true, {
+        string: true,
+        boolean: false,
+        number: false,
+      }),
     });
   });
 
@@ -225,6 +235,7 @@ describe("resolveParams", () => {
     ).to.deep.equal({
       GCLOUD_PROJECT: expectedInternalParams.GCLOUD_PROJECT,
       PROJECT_ID: expectedInternalParams.PROJECT_ID,
+      FUNCTION_REGION: expectedInternalParams.FUNCTION_REGION,
     });
   });
 
