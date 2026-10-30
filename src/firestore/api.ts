@@ -868,15 +868,15 @@ export class FirestoreApi {
     const url = `/projects/${project}/databases/${databaseId}`;
     const payload: types.DatabaseReq = {};
     const updateMask: string[] = [];
-    if (updates.deleteProtectionState) {
+    if (updates.deleteProtectionState !== undefined) {
       payload.deleteProtectionState = updates.deleteProtectionState;
       updateMask.push("delete_protection_state");
     }
-    if (updates.pointInTimeRecoveryEnablement) {
+    if (updates.pointInTimeRecoveryEnablement !== undefined) {
       payload.pointInTimeRecoveryEnablement = updates.pointInTimeRecoveryEnablement;
       updateMask.push("point_in_time_recovery_enablement");
     }
-    if (updates.realtimeUpdatesMode) {
+    if (updates.realtimeUpdatesMode !== undefined) {
       payload.realtimeUpdatesMode = updates.realtimeUpdatesMode;
       updateMask.push("realtime_updates_mode");
     }
