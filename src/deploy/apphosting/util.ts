@@ -94,11 +94,13 @@ export async function createLocalBuildTarArchive(
 /**
  * Locates the source code for a backend and creates an archive to eventually upload to GCS.
  * Based heavily on functions upload logic in src/deploy/functions/prepareFunctionsUpload.ts.
+ * The archive holds `rootDir`'s files. If `rootDir` is a folder in `projectDir`, the .gitignore
+ * files above it, up to `projectDir`, apply too, like git applies them to a subfolder.
  */
 export async function createSourceDeployArchive(
   config: AppHostingSingle,
   rootDir: string,
-  targetSubDir?: string,
+  projectDir = rootDir,
 ): Promise<string> {
   const tmpFile = tmp.fileSync({ prefix: `${config.backendId}-`, postfix: ".zip" }).name;
   const fileStream = fs.createWriteStream(tmpFile, {
@@ -107,14 +109,14 @@ export async function createSourceDeployArchive(
   });
   const archive = archiver("zip");
 
-  const targetDir = targetSubDir ? path.join(rootDir, targetSubDir) : rootDir;
   // We must ignore firebase-debug.log or weird things happen if you're in the public dir when you deploy.
   const ignore = resolveIgnorePatterns(config);
   try {
     const files = await fsAsync.readdirRecursive({
-      path: targetDir,
+      path: rootDir,
       ignoreStrings: ignore,
       supportGitIgnore: true,
+      gitIgnoreRoot: projectDir,
     });
     for (const file of files) {
       const name = path.relative(rootDir, file.name);

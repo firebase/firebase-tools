@@ -57,9 +57,11 @@ describe("run deploy", () => {
   it("uploads the source, builds it, and creates a public service", async () => {
     const svc = await deployOne({ config: web, baseImage: NODEJS22 });
 
+    // The project's .gitignore files above apps/web apply too.
     expect(createArchiveStub).to.have.been.calledWithMatch(
       { backendId: "web" },
       path.join("/project", "apps/web"),
+      "/project",
     );
     expect(submitBuildStub).to.have.been.calledWithMatch("my-project", "us-central1", {
       storageSource: { bucket: "source-bucket", object: "web.zip" },
