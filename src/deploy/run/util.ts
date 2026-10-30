@@ -113,3 +113,17 @@ export function mainContainer(
 ): runv2.Container | undefined {
   return template?.containers?.[0];
 }
+
+/**
+ * Extracts the region and service ID from a Cloud Run service resource name
+ * (projects/{project}/locations/{region}/services/{serviceId}).
+ */
+export function parseServiceName(name: string): { region: string; serviceId: string } {
+  const parts = name.split("/");
+  return { region: parts[3], serviceId: parts[5] };
+}
+
+/** Returns whether another product, like Cloud Functions or App Hosting, manages the service. */
+export function isManagedByAnotherProduct(service: runv2.Service): boolean {
+  return !!service.labels?.[runv2.CLIENT_NAME_LABEL];
+}
