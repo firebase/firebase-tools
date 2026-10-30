@@ -30,7 +30,7 @@ describe("crashlytics:setup command", () => {
     config: {
       name: `projects/${projectId}/locations/global/configs/1-123-web-456`,
       appId: "1:123:web:456",
-      logBucket: `projects/${projectId}/locations/global/buckets/firebase-telemetry`,
+      logBucket: `projects/${projectId}/locations/global/buckets/_Default`,
       samplingRate: 1,
       enablementState: "ENABLED",
     },
