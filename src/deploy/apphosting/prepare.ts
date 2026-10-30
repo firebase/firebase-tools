@@ -232,7 +232,7 @@ export default async function (context: Context, options: Options): Promise<void
     );
 
     try {
-      const { archive, buildConfig } = await buildLocally(
+      const { archive, rootDirectory, buildConfig } = await buildLocally(
         projectId,
         rootDir,
         cfg,
@@ -245,6 +245,7 @@ export default async function (context: Context, options: Options): Promise<void
       );
       context.backendLocalBuilds[cfg.backendId] = {
         archive,
+        rootDirectory,
         buildConfig: {
           ...buildConfig,
           env: mergeEnvVars(buildConfig.env || [], runtimeEnv[cfg.backendId] || {}),

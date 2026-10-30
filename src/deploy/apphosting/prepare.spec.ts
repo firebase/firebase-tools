@@ -162,6 +162,7 @@ describe("apphosting", () => {
       });
       expect(context.backendLocalBuilds["foo"]).to.deep.equal({
         archive: "/tmp/foo.tar.gz",
+        rootDirectory: "",
         buildConfig,
       });
       // The tarball holds the build's output, from the scratch copy that the build ran in.
@@ -757,6 +758,7 @@ describe("apphosting", () => {
       );
       expect(context.backendLocalBuilds["newly-created-backend"]).to.deep.equal({
         archive: "/tmp/newly-created-backend.tar.gz",
+        rootDirectory: "",
         buildConfig,
       });
     });
