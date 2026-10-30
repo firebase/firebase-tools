@@ -165,8 +165,14 @@ describe("getReport", () => {
   it("should call listReports before the first getReport call and cache the response", async () => {
     const mockTopIssues = { groups: [{ issue: { id: "1" }, metrics: [], subgroups: [] }] };
     const mockAppSummary = { groups: [{ metrics: [{ eventsCount: 10 }], subgroups: [] }] };
+    let listReportsCallCount = 0;
 
-    mockListReports();
+    nock(crashlyticsApiOrigin())
+      .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports`)
+      .reply(200, () => {
+        listReportsCallCount++;
+        return mockListReportsResponse;
+      });
     nock(crashlyticsApiOrigin())
       .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports/topIssues`)
       .query({ page_size: "10" })
@@ -180,11 +186,13 @@ describe("getReport", () => {
 
     const firstResult = await getReport("topIssues", appId, {});
     expect(firstResult).to.deep.equal(mockTopIssues);
+    expect(listReportsCallCount).to.equal(1);
     expect(reportsCache.get(appId)).to.deep.equal(mockListReportsResponse);
 
     // Second call for the same appId should reuse the cached listReports response
     const secondResult = await getReport("appSummary", appId, {});
     expect(secondResult).to.deep.equal(mockAppSummary);
+    expect(listReportsCallCount).to.equal(1);
     expect(nock.isDone()).to.be.true;
   });
 
