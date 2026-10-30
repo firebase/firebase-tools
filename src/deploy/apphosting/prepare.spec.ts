@@ -31,6 +31,7 @@ import { AppHostingSingle } from "../../firebaseConfig";
 import * as fs from "fs";
 import * as fsAsync from "../../fsAsync";
 import * as utils from "../../utils";
+import * as util from "./util";
 
 const BASE_OPTS = {
   cwd: "/",
@@ -79,6 +80,7 @@ describe("apphosting", () => {
   let getGitRepositoryLinkStub: sinon.SinonStub;
   let assertEnabledStub: sinon.SinonStub;
   let addServiceAccountToRolesStub: sinon.SinonStub;
+  let tarArchiveStub: sinon.SinonStub;
 
   beforeEach(() => {
     sinon.stub(opts.config, "writeProjectFile").returns();
@@ -108,6 +110,9 @@ describe("apphosting", () => {
     sinon.stub(fs, "rmSync").returns(undefined);
     sinon.stub(fs, "copyFileSync").returns(undefined);
     sinon.stub(fsAsync, "readdirRecursive").resolves([]);
+    tarArchiveStub = sinon
+      .stub(util, "createLocalBuildTarArchive")
+      .callsFake((cfg: AppHostingSingle) => Promise.resolve(`/tmp/${cfg.backendId}.tar.gz`));
   });
 
   afterEach(() => {
@@ -156,13 +161,15 @@ describe("apphosting", () => {
         localBuild: true,
       });
       expect(context.backendLocalBuilds["foo"]).to.deep.equal({
-        outputFiles: ["./next/standalone"],
-        localBuildScratchDir: path.join(
-          os.tmpdir(),
-          `apphosting-local-build-foo-${expectedPathHash}`,
-        ),
+        archive: "/tmp/foo.tar.gz",
         buildConfig,
       });
+      // The tarball holds the build's output, from the scratch copy that the build ran in.
+      expect(tarArchiveStub).to.have.been.calledWith(
+        sinon.match({ backendId: "foo" }),
+        path.join(os.tmpdir(), `apphosting-local-build-foo-${expectedPathHash}`),
+        ["./next/standalone"],
+      );
       expect(addServiceAccountToRolesStub).to.have.been.calledWith(
         "my-project",
         apphosting.serviceAgentEmail("123456789"),
@@ -312,19 +319,24 @@ describe("apphosting", () => {
 
       await prepare(context, optsWithMultipleLocalBuilds);
 
-      expect(context.backendLocalBuilds["backend-prod"].localBuildScratchDir).to.equal(
+      // Each backend is built and tarred in its own scratch folder.
+      expect(tarArchiveStub).to.have.been.calledWith(
+        sinon.match({ backendId: "backend-prod" }),
         path.join(os.tmpdir(), `apphosting-local-build-backend-prod-${expectedPathHash}`),
+        ["./next/standalone-prod"],
       );
-      expect(context.backendLocalBuilds["backend-staging"].localBuildScratchDir).to.equal(
+      expect(tarArchiveStub).to.have.been.calledWith(
+        sinon.match({ backendId: "backend-staging" }),
         path.join(os.tmpdir(), `apphosting-local-build-backend-staging-${expectedPathHash}`),
+        ["./next/standalone-staging"],
       );
 
-      expect(context.backendLocalBuilds["backend-prod"].outputFiles).to.deep.equal([
-        "./next/standalone-prod",
-      ]);
-      expect(context.backendLocalBuilds["backend-staging"].outputFiles).to.deep.equal([
-        "./next/standalone-staging",
-      ]);
+      expect(context.backendLocalBuilds["backend-prod"].archive).to.equal(
+        "/tmp/backend-prod.tar.gz",
+      );
+      expect(context.backendLocalBuilds["backend-staging"].archive).to.equal(
+        "/tmp/backend-staging.tar.gz",
+      );
     });
 
     it("injects Firebase configuration when appId is present", async () => {
@@ -506,7 +518,7 @@ describe("apphosting", () => {
 
       await prepare(context, optsWithLocalBuild);
 
-      expect(context.backendLocalBuilds["foo"].outputFiles).to.deep.equal([
+      expect(tarArchiveStub.firstCall.args[2]).to.deep.equal([
         "./next/standalone",
         "./another/path",
       ]);
@@ -541,7 +553,7 @@ describe("apphosting", () => {
 
       await prepare(context, optsWithLocalBuild);
 
-      expect(context.backendLocalBuilds["foo"].outputFiles).to.deep.equal([]);
+      expect(tarArchiveStub.firstCall.args[2]).to.deep.equal([]);
     });
 
     it("links to existing backend if it already exists", async () => {
@@ -744,11 +756,7 @@ describe("apphosting", () => {
         "newly-created-backend",
       );
       expect(context.backendLocalBuilds["newly-created-backend"]).to.deep.equal({
-        outputFiles: ["./next/standalone"],
-        localBuildScratchDir: path.join(
-          os.tmpdir(),
-          `apphosting-local-build-newly-created-backend-${expectedPathHash}`,
-        ),
+        archive: "/tmp/newly-created-backend.tar.gz",
         buildConfig,
       });
     });

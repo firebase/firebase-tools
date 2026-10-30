@@ -98,8 +98,7 @@ describe("apphosting", () => {
         },
         backendLocalBuilds: {
           fooLocalBuild: {
-            outputFiles: ["./dist"],
-            localBuildScratchDir: "/root/.local_build_fooLocalBuild",
+            archive: "/tmp/fooLocalBuild.tar.gz",
             buildConfig: {
               runCommand: "npm run build",
               env: [{ variable: "VAR1", value: "VALUE1" }],
@@ -157,8 +156,7 @@ describe("apphosting", () => {
         },
         backendLocalBuilds: {
           fooLocalBuild: {
-            outputFiles: ["./dist"],
-            localBuildScratchDir: "/root/.local_build_fooLocalBuild",
+            archive: "/tmp/fooLocalBuild.tar.gz",
             buildConfig: {
               runCommand: "npm run build",
               env: [{ variable: "VAR1", value: "VALUE1" }],

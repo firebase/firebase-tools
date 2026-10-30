@@ -2,19 +2,18 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import { CLOUD_RUN_SIZE_LIMIT_BYTES } from "../../apphosting/constants";
-import { localBuild, validateLocalBuildNodeVersion } from "../../apphosting/localbuilds";
-import { FirebaseError, getErrMsg } from "../../error";
+import { validateLocalBuildNodeVersion } from "../../apphosting/localbuilds";
+import { FirebaseError } from "../../error";
 import { AppHostingSingle, RunSingle } from "../../firebaseConfig";
 import { Backend } from "../../gcp/apphosting";
 import * as artifactregistry from "../../gcp/artifactregistry";
 import * as runv2 from "../../gcp/runv2";
 import * as gcs from "../../gcp/storage";
 import { getProjectNumber } from "../../getProjectNumber";
-import { logger } from "../../logger";
 import { Options } from "../../options";
 import { cloneDeep, logLabeledBullet } from "../../utils";
-import { prepareLocalBuildScratchDirectory } from "../apphosting/prepare";
-import { createLocalBuildTarArchive, createSourceDeployArchive } from "../apphosting/util";
+import { buildLocally } from "../apphosting/localBuild";
+import { createSourceDeployArchive } from "../apphosting/util";
 import { Context, Payload, ServiceDeploy } from "./args";
 import { nonSecretValues, secretNames, toLocalBuildEnv } from "./buildEnv";
 import { FIREBASE_APP_ANNOTATION, mainContainer } from "./util";
@@ -34,8 +33,8 @@ const MONOREPO_CONFIG_FILES = ["nx.json", "turbo.json"] as const;
 
 /** What a local build produced. */
 export interface LocalBuildOutput {
-  /** The built files to upload, relative to the scratch directory the build ran in. */
-  outputFiles: string[];
+  /** The built app, as a .tar.gz tmp file. */
+  archive: string;
   /** The command that starts the app, e.g. "npm run start". */
   runCommand?: string;
   /** The env vars the app needs at runtime. */
@@ -109,27 +108,18 @@ async function deployLocalBuild(
   svc: ServiceDeploy,
 ): Promise<void> {
   const { projectId } = context;
-  // The build runs in a scratch copy of the source, which is deleted afterwards.
-  const scratchDir = fs.mkdtempSync(
-    path.join(os.tmpdir(), `run-local-build-${svc.config.serviceId}-`),
-  );
-  try {
-    const build = await buildLocally(context, options, svc, scratchDir);
-    const builtApp = await uploadBuiltApp(projectId, options, svc.config, scratchDir, build);
-    const message = options.message as string | undefined;
-    const template = localBuildTemplate(svc, build, builtApp, message);
-    svc.deployed = await rollOut(projectId, svc, template);
-  } finally {
-    removeTempPath(scratchDir);
-  }
+  const build = await buildServiceLocally(context, options, svc);
+  const builtApp = await uploadBuiltApp(projectId, options, svc.config, build.archive);
+  const message = options.message as string | undefined;
+  const template = localBuildTemplate(svc, build, builtApp, message);
+  svc.deployed = await rollOut(projectId, svc, template);
 }
 
 /** Builds the service on this machine, in a scratch copy of its source. */
-async function buildLocally(
+async function buildServiceLocally(
   context: Context,
   options: Options,
   svc: ServiceDeploy,
-  scratchDir: string,
 ): Promise<LocalBuildOutput> {
   const { config } = svc;
   const { serviceId, region } = config;
@@ -148,13 +138,17 @@ async function buildLocally(
         `included in the build output.`,
     );
   }
-  await prepareLocalBuildScratchDirectory(options.config.projectDir, scratchDir, cfg);
-  const { outputFiles, buildConfig } = await localBuild(
+  const { archive, buildConfig } = await buildLocally(
     context.projectId,
-    scratchDir,
+    options.config.projectDir,
+    cfg,
     toLocalBuildEnv(svc.buildEnv || {}),
-    // Unlike App Hosting, Cloud Run doesn't ask users to confirm build secrets in local builds.
-    { rootDir: config.rootDir, allowLocalBuildSecrets: true },
+    {
+      // The build runs in a scratch copy of the source, which is deleted afterwards.
+      scratchDir: fs.mkdtempSync(path.join(os.tmpdir(), `run-local-build-${serviceId}-`)),
+      // Unlike App Hosting, Cloud Run doesn't ask users to confirm build secrets in local builds.
+      allowLocalBuildSecrets: true,
+    },
   );
   // Keep the env vars that the app needs at runtime, not just during the build.
   const env = (buildConfig.env || [])
@@ -165,7 +159,7 @@ async function buildLocally(
         (!e.availability || e.availability.includes("RUNTIME")),
     )
     .map((e) => ({ name: e.variable, value: e.value! }));
-  return { outputFiles, runCommand: buildConfig.runCommand, env };
+  return { archive, runCommand: buildConfig.runCommand, env };
 }
 
 /** Zips `dir`, the directory to build from, and uploads it to the region's source bucket. */
@@ -188,22 +182,15 @@ async function uploadSource(
   return { bucket, object };
 }
 
-/** Tars a local build's output and uploads it to the region's source bucket. */
+/** Uploads a local build's output, a tarball, to the region's source bucket. */
 async function uploadBuiltApp(
   projectId: string,
   options: Options,
   config: RunSingle,
-  scratchDir: string,
-  build: LocalBuildOutput,
+  archive: string,
 ): Promise<runv2.StorageSource> {
   const { serviceId, region } = config;
   const bucketName = await sourceBucket(projectId, options, region);
-  // The tarball is a tmp file, so it's deleted when the CLI exits.
-  const archive = await createLocalBuildTarArchive(
-    toAppHostingConfig(config),
-    scratchDir,
-    build.outputFiles,
-  );
   logLabeledBullet("run", `Uploading built app for service ${serviceId} in ${region}...`);
   const { bucket, object } = await gcs.uploadObject(
     { file: archive, stream: fs.createReadStream(archive) },
@@ -443,16 +430,4 @@ function toAppHostingConfig(config: RunSingle): AppHostingSingle {
     ignore: config.ignore as string[],
     localBuild: config.localBuild,
   };
-}
-
-/**
- * Deletes a temporary directory. Failures are only logged: a leftover temp directory shouldn't
- * fail a deploy that succeeded or hide the error from one that didn't.
- */
-function removeTempPath(tempPath: string): void {
-  try {
-    fs.rmSync(tempPath, { recursive: true, force: true });
-  } catch (err: unknown) {
-    logger.debug(`Failed to clean up ${tempPath}: ${getErrMsg(err)}`);
-  }
 }
