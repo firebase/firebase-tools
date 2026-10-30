@@ -8,6 +8,7 @@ import { RulesConfig, StorageEmulator } from "./index";
 import { createFirebaseEndpoints } from "./apis/firebase";
 import { InvalidArgumentError } from "../auth/errors";
 import { SourceFile } from "./rules/types";
+import { asyncHandler } from "../shared/express";
 
 /**
  * @param defaultProjectId
@@ -61,17 +62,21 @@ export function createApp(
   app.use(bodyParser.raw({ limit: "130mb", type: "application/x-www-form-urlencoded" }));
   app.use(bodyParser.raw({ limit: "130mb", type: "multipart/related" }));
 
-  app.post("/internal/export", express.json({ limit: "130mb" }), async (req, res) => {
-    const initiatedBy: string = req.body.initiatedBy || "unknown";
-    const path: string = req.body.path;
-    if (!path) {
-      res.status(400).send("Export request body must include 'path'.");
-      return;
-    }
+  app.post(
+    "/internal/export",
+    express.json({ limit: "130mb" }),
+    asyncHandler(async (req, res) => {
+      const initiatedBy: string = req.body.initiatedBy || "unknown";
+      const path: string = req.body.path;
+      if (!path) {
+        res.status(400).send("Export request body must include 'path'.");
+        return;
+      }
 
-    await storageLayer.export(path, { initiatedBy });
-    res.sendStatus(200);
-  });
+      await storageLayer.export(path, { initiatedBy });
+      res.sendStatus(200);
+    }),
+  );
 
   /**
    * Internal endpoint to overwrite current rules. Callers provide either a single set of rules to
@@ -100,63 +105,70 @@ export function createApp(
    * }
    * ```
    */
-  app.put("/internal/setRules", express.json({ limit: "130mb" }), async (req, res) => {
-    const rulesRaw = req.body.rules;
-    if (!(rulesRaw && Array.isArray(rulesRaw.files) && rulesRaw.files.length > 0)) {
-      res.status(400).json({
-        message: "Request body must include 'rules.files' array",
-      });
-      return;
-    }
-
-    const { files } = rulesRaw;
-
-    function parseRulesFromFiles(files: Array<unknown>): SourceFile | RulesConfig[] {
-      if (files.length === 1) {
-        const file = files[0];
-        if (!isRulesFile(file)) {
-          throw new InvalidArgumentError(
-            "Each member of 'rules.files' array must contain 'name' and 'content'",
-          );
-        }
-        return { name: file.name, content: file.content };
-      }
-
-      const rules: RulesConfig[] = [];
-      for (const file of files) {
-        if (!isRulesFile(file) || !file.resource) {
-          throw new InvalidArgumentError(
-            "Each member of 'rules.files' array must contain 'name', 'content', and 'resource'",
-          );
-        }
-        rules.push({ resource: file.resource, rules: { name: file.name, content: file.content } });
-      }
-      return rules;
-    }
-
-    let rules: SourceFile | RulesConfig[];
-    try {
-      rules = parseRulesFromFiles(files);
-    } catch (err) {
-      if (err instanceof InvalidArgumentError) {
-        res.status(400).json({ message: err.message });
+  app.put(
+    "/internal/setRules",
+    express.json({ limit: "130mb" }),
+    asyncHandler(async (req, res) => {
+      const rulesRaw = req.body.rules;
+      if (!(rulesRaw && Array.isArray(rulesRaw.files) && rulesRaw.files.length > 0)) {
+        res.status(400).json({
+          message: "Request body must include 'rules.files' array",
+        });
         return;
       }
-      throw err;
-    }
 
-    const issues = await emulator.replaceRules(rules);
-    if (issues.errors.length > 0) {
-      res.status(400).json({
-        message: "There was an error updating rules, see logs for more details",
+      const { files } = rulesRaw;
+
+      function parseRulesFromFiles(files: Array<unknown>): SourceFile | RulesConfig[] {
+        if (files.length === 1) {
+          const file = files[0];
+          if (!isRulesFile(file)) {
+            throw new InvalidArgumentError(
+              "Each member of 'rules.files' array must contain 'name' and 'content'",
+            );
+          }
+          return { name: file.name, content: file.content };
+        }
+
+        const rules: RulesConfig[] = [];
+        for (const file of files) {
+          if (!isRulesFile(file) || !file.resource) {
+            throw new InvalidArgumentError(
+              "Each member of 'rules.files' array must contain 'name', 'content', and 'resource'",
+            );
+          }
+          rules.push({
+            resource: file.resource,
+            rules: { name: file.name, content: file.content },
+          });
+        }
+        return rules;
+      }
+
+      let rules: SourceFile | RulesConfig[];
+      try {
+        rules = parseRulesFromFiles(files);
+      } catch (err) {
+        if (err instanceof InvalidArgumentError) {
+          res.status(400).json({ message: err.message });
+          return;
+        }
+        throw err;
+      }
+
+      const issues = await emulator.replaceRules(rules);
+      if (issues.errors.length > 0) {
+        res.status(400).json({
+          message: "There was an error updating rules, see logs for more details",
+        });
+        return;
+      }
+
+      res.status(200).json({
+        message: "Rules updated successfully",
       });
-      return;
-    }
-
-    res.status(200).json({
-      message: "Rules updated successfully",
-    });
-  });
+    }),
+  );
 
   app.post("/internal/reset", (req, res) => {
     emulator.reset();

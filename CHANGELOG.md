@@ -1,0 +1,2 @@
+- Fixed `database:import` failing with an unhandled promise rejection when a batch write fails.
+- Fixed emulator crashes when a Firestore rules reload or emulator HTTP handler throws.

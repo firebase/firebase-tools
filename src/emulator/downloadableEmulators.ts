@@ -518,11 +518,12 @@ async function _runBinary(
       void handleEmulatorProcessError(emulator.name, err, command.port);
     });
 
-    emulator.instance.once("exit", async (code, signal) => {
+    emulator.instance.once("exit", (code, signal) => {
       if (signal) {
         utils.logWarning(`${description} has exited upon receiving signal: ${signal}`);
       } else if (code && code !== 0 && code !== /* SIGINT */ 130) {
-        await _fatal(emulator.name, `${description} has exited with code: ${code}`);
+        // _fatal never rejects because its finally block calls process.exit(1)
+        void _fatal(emulator.name, `${description} has exited with code: ${code}`);
       }
     });
     resolve();
