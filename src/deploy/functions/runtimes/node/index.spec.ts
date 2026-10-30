@@ -161,9 +161,9 @@ describe("NodeDelegate", () => {
       return fs.realpathSync(sdkDir);
     }
 
-    function findFunctionsBinary(): string[] {
+    function findFunctionsBinary(): { binary: string[]; bin: string } {
       const delegate = new node.Delegate(PROJECT_ID, projectDir, sourceDir, "nodejs24");
-      return delegate["findFunctionsBinary"]();
+      return { binary: delegate["findFunctionsBinary"](), bin: delegate.bin };
     }
 
     beforeEach(() => {
@@ -180,7 +180,8 @@ describe("NodeDelegate", () => {
       installSdk("", ["firebase-functions"], {
         "firebase-functions": "lib/bin/firebase-functions.js",
       });
-      expect(findFunctionsBinary()).to.deep.equal([
+      const { binary } = findFunctionsBinary();
+      expect(binary).to.deep.equal([
         path.join(sourceDir, "node_modules", ".bin", "firebase-functions"),
       ]);
     });
@@ -191,10 +192,8 @@ describe("NodeDelegate", () => {
         ["firebase-functions.exe", "firebase-functions.bunx"],
         { "firebase-functions": "lib/bin/firebase-functions.js" },
       );
-      expect(findFunctionsBinary()).to.deep.equal([
-        "node",
-        path.join(sdkDir, "lib", "bin", "firebase-functions.js"),
-      ]);
+      const { binary, bin } = findFunctionsBinary();
+      expect(binary).to.deep.equal([bin, path.join(sdkDir, "lib", "bin", "firebase-functions.js")]);
     });
 
     it("runs the SDK bin entry with node when a .pnpm store only has .cmd shims", () => {
@@ -203,18 +202,14 @@ describe("NodeDelegate", () => {
         ["firebase-functions.cmd", "firebase-functions.ps1"],
         { "firebase-functions": "lib/bin/firebase-functions.js" },
       );
-      expect(findFunctionsBinary()).to.deep.equal([
-        "node",
-        path.join(sdkDir, "lib", "bin", "firebase-functions.js"),
-      ]);
+      const { binary, bin } = findFunctionsBinary();
+      expect(binary).to.deep.equal([bin, path.join(sdkDir, "lib", "bin", "firebase-functions.js")]);
     });
 
     it("accepts a bin entry declared as a single path", () => {
       const sdkDir = installSdk("", [], "lib/bin/firebase-functions.js");
-      expect(findFunctionsBinary()).to.deep.equal([
-        "node",
-        path.join(sdkDir, "lib", "bin", "firebase-functions.js"),
-      ]);
+      const { binary, bin } = findFunctionsBinary();
+      expect(binary).to.deep.equal([bin, path.join(sdkDir, "lib", "bin", "firebase-functions.js")]);
     });
 
     it("throws when the SDK declares no bin entry and no shim exists", () => {

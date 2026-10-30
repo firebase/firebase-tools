@@ -71,7 +71,7 @@ function findSdkBinEntry(sdkPath: string): string | undefined {
       continue;
     }
     const entry = typeof bin === "string" ? bin : bin?.["firebase-functions"];
-    return entry ? path.join(dir, entry) : undefined;
+    return typeof entry === "string" && entry ? path.join(dir, entry) : undefined;
   }
   return undefined;
 }
@@ -218,7 +218,7 @@ export class Delegate {
     const binEntry = findSdkBinEntry(sdkPath);
     if (binEntry) {
       logger.debug(`Found firebase-functions bin entry at '${binEntry}'`);
-      return ["node", binEntry];
+      return [this.bin, binEntry];
     }
 
     throw new FirebaseError(
