@@ -1,8 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as os from "os";
-import * as path from "path";
-import * as crypto from "crypto";
 import { Config } from "../../config";
 import * as gcs from "../../gcp/storage";
 import { RC } from "../../rc";
@@ -27,11 +25,6 @@ const BASE_OPTS = {
 };
 
 function initializeContext(): Context {
-  const expectedPathHash = crypto
-    .createHash("md5")
-    .update(process.cwd())
-    .digest("hex")
-    .substring(0, 8);
   return {
     backendConfigs: {
       foo: {
@@ -50,11 +43,7 @@ function initializeContext(): Context {
     backendStorageUris: {},
     backendLocalBuilds: {
       fooLocalBuild: {
-        outputFiles: ["./nextjs/standalone"],
-        localBuildScratchDir: path.join(
-          os.tmpdir(),
-          `apphosting-local-build-fooLocalBuild-${expectedPathHash}`,
-        ),
+        archive: "path/to/foo-local-build-1234.tar.gz",
         buildConfig: {},
       },
     },
@@ -62,11 +51,6 @@ function initializeContext(): Context {
 }
 
 describe("apphosting", () => {
-  const expectedPathHash = crypto
-    .createHash("md5")
-    .update(process.cwd())
-    .digest("hex")
-    .substring(0, 8);
   let upsertBucketStub: sinon.SinonStub;
   let uploadObjectStub: sinon.SinonStub;
   let createArchiveStub: sinon.SinonStub;
@@ -128,7 +112,6 @@ describe("apphosting", () => {
       getProjectNumberStub.resolves(projectNumber);
       upsertBucketStub.resolves(bucketName);
       createArchiveStub.onFirstCall().resolves("path/to/foo-1234.zip");
-      createTarArchiveStub.onFirstCall().resolves("path/to/foo-local-build-1234.tar.gz");
 
       uploadObjectStub.onFirstCall().resolves({
         bucket: bucketName,
@@ -188,18 +171,15 @@ describe("apphosting", () => {
         context.backendConfigs["foo"],
         process.cwd(),
       );
-      expect(createTarArchiveStub).to.be.calledWithExactly(
-        context.backendConfigs["fooLocalBuild"],
-        path.join(os.tmpdir(), `apphosting-local-build-fooLocalBuild-${expectedPathHash}`),
-        ["./nextjs/standalone"],
-      );
+      // The prepare step already tarred the local build, so it's uploaded as is.
+      expect(createTarArchiveStub).not.to.have.been.called;
       expect(uploadObjectStub).to.be.calledWithMatch(
         sinon.match.any,
         "firebaseapphosting-sources-000000000000-us-central1",
         gcs.ContentType.ZIP,
       );
       expect(uploadObjectStub).to.be.calledWithMatch(
-        sinon.match.any,
+        { file: "path/to/foo-local-build-1234.tar.gz" },
         "firebaseapphosting-sources-000000000000-us-central1",
         gcs.ContentType.TAR,
         CLOUD_RUN_SIZE_LIMIT_BYTES,
@@ -214,7 +194,6 @@ describe("apphosting", () => {
       getProjectNumberStub.resolves(projectNumber);
       upsertBucketStub.resolves(bucketName);
       createArchiveStub.onFirstCall().resolves("path/to/foo-1234.zip");
-      createTarArchiveStub.onFirstCall().resolves("path/to/foo-local-build-1234.tar.gz");
 
       uploadObjectStub.onFirstCall().resolves({
         bucket: bucketName,
@@ -232,18 +211,14 @@ describe("apphosting", () => {
         context.backendConfigs["foo"],
         process.cwd(),
       );
-      expect(createTarArchiveStub).to.be.calledWithExactly(
-        context.backendConfigs["fooLocalBuild"],
-        path.join(os.tmpdir(), `apphosting-local-build-fooLocalBuild-${expectedPathHash}`),
-        ["./nextjs/standalone"],
-      );
+      expect(createTarArchiveStub).not.to.have.been.called;
       expect(uploadObjectStub).to.be.calledWithMatch(
         sinon.match.any,
         "firebaseapphosting-sources-000000000000-us-central1",
         gcs.ContentType.ZIP,
       );
       expect(uploadObjectStub).to.be.calledWithMatch(
-        sinon.match.any,
+        { file: "path/to/foo-local-build-1234.tar.gz" },
         "firebaseapphosting-sources-000000000000-us-central1",
         gcs.ContentType.TAR,
         CLOUD_RUN_SIZE_LIMIT_BYTES,
