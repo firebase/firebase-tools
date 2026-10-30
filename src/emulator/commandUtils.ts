@@ -502,23 +502,73 @@ export async function emulatorExec(script: string, options: any): Promise<void> 
 // Regex to extract Java major version. Only works with Java >= 9.
 // See: http://openjdk.java.net/jeps/223
 const JAVA_VERSION_REGEX = /version "([1-9][0-9]*)/;
+const JAVA_HOME_REGEX = /^\s*java\.home\s*=\s*(.+)$/m;
 const JAVA_HINT = "Please make sure Java is installed and on your system PATH.";
 
+let resolvedJavaBinary: string | undefined;
+
 /**
- * Return whether Java major verion is supported. Throws if Java not available.
- * @return Java major version (for Java >= 9) or -1 otherwise
+ * Reset the cached Java binary path (for unit testing).
  */
-export async function checkJavaMajorVersion(): Promise<number> {
+export function resetJavaBinaryForTesting(): void {
+  resolvedJavaBinary = undefined;
+}
+
+/**
+ * Whether `checkJavaMajorVersion()` has already resolved a Java binary path in this session.
+ */
+export function hasResolvedJavaBinary(): boolean {
+  return Boolean(resolvedJavaBinary);
+}
+
+function getJavaFromJavaHome(): string | undefined {
+  const rawJavaHome = process.env.JAVA_HOME?.replace(/"/g, "").trim();
+  if (!rawJavaHome) {
+    return undefined;
+  }
+  const javaBinName = utils.IS_WINDOWS ? "java.exe" : "java";
+  const candidate = path.join(rawJavaHome, "bin", javaBinName);
+  return fsutils.fileExistsSync(candidate) ? candidate : undefined;
+}
+
+/**
+ * On Windows, returns the resolved path to the real `java.exe` binary inside `java.home`
+ * (discovered from `PATH` by `checkJavaMajorVersion()`, or from `JAVA_HOME` if `PATH` lookup
+ * did not resolve one), falling back to `"java"`. On POSIX platforms, always returns `"java"`.
+ *
+ * On Windows, invoking the real `<java.home>\bin\java.exe` directly instead of a `PATH` wrapper
+ * shim (such as `C:\Program Files\Common Files\Oracle\Java\javapath\java.exe`) prevents the shim
+ * from spawning a grandchild `java.exe` in a new visible console window and breaking PID tracking.
+ */
+export function getJavaBinary(): string {
+  if (!utils.IS_WINDOWS) {
+    return "java";
+  }
+  if (resolvedJavaBinary) {
+    return resolvedJavaBinary;
+  }
+  return getJavaFromJavaHome() || "java";
+}
+
+function spawnJavaVersionProcess(binary: string): Promise<string> {
+  const args = utils.IS_WINDOWS
+    ? [
+        "-Duser.language=en",
+        "-Dfile.encoding=UTF-8",
+        "-Dstdout.encoding=UTF-8",
+        "-Dstderr.encoding=UTF-8",
+        "-XshowSettings:properties",
+        "-version",
+      ]
+    : ["-Duser.language=en", "-Dfile.encoding=UTF-8", "-version"];
+
   return new Promise<string>((resolve, reject) => {
     let child;
     try {
-      child = childProcess.spawn(
-        "java",
-        ["-Duser.language=en", "-Dfile.encoding=UTF-8", "-version"],
-        {
-          stdio: ["inherit", "pipe", "pipe"],
-        },
-      );
+      child = childProcess.spawn(binary, args, {
+        stdio: ["ignore", "pipe", "pipe"],
+        windowsHide: true,
+      });
     } catch (err: unknown) {
       return reject(
         new FirebaseError(`Could not spawn \`java -version\`. ${JAVA_HINT}`, {
@@ -531,12 +581,16 @@ export async function checkJavaMajorVersion(): Promise<number> {
     let error = "";
     child.stdout?.on("data", (data) => {
       const str = data.toString("utf8");
-      logger.debug(str);
+      if (!utils.IS_WINDOWS) {
+        logger.debug(str);
+      }
       output += str;
     });
     child.stderr?.on("data", (data) => {
       const str = data.toString("utf8");
-      logger.debug(str);
+      if (!utils.IS_WINDOWS) {
+        logger.debug(str);
+      }
       error += str;
     });
 
@@ -568,32 +622,66 @@ export async function checkJavaMajorVersion(): Promise<number> {
         resolve(`${output}\n${error}`);
       }
     });
-  }).then((output) => {
-    let versionInt = -1;
-    const match = JAVA_VERSION_REGEX.exec(output);
-    if (match) {
-      const version = match[1];
-      versionInt = parseInt(version, 10);
-      if (!versionInt) {
-        utils.logLabeledWarning(
-          "emulators",
-          `Failed to parse Java version. Got "${match[0]}".`,
-          "warn",
-        );
-      } else {
-        logger.debug(`Parsed Java major version: ${versionInt}`);
+  });
+}
+
+/**
+ * Return whether Java major verion is supported. Throws if Java not available.
+ * @return Java major version (for Java >= 9) or -1 otherwise
+ */
+export async function checkJavaMajorVersion(): Promise<number> {
+  let output: string;
+  try {
+    output = await spawnJavaVersionProcess("java");
+  } catch (err: unknown) {
+    const javaHomeBin = utils.IS_WINDOWS ? getJavaFromJavaHome() : undefined;
+    if (!javaHomeBin) {
+      throw err;
+    }
+    output = await spawnJavaVersionProcess(javaHomeBin);
+  }
+
+  if (utils.IS_WINDOWS) {
+    const javaHomeMatch = JAVA_HOME_REGEX.exec(output);
+    if (javaHomeMatch) {
+      const javaHome = javaHomeMatch[1].trim();
+      const candidate = path.join(javaHome, "bin", "java.exe");
+      if (fsutils.fileExistsSync(candidate)) {
+        resolvedJavaBinary = candidate;
+        logger.debug(`Resolved Java binary from java.home: ${resolvedJavaBinary}`);
       }
     } else {
-      // probably Java <= 8 (different version scheme) or unknown
-      logger.debug("java -version outputs:", output);
-      logger.warn(`Failed to parse Java version.`);
+      const fallback = getJavaFromJavaHome();
+      if (fallback) {
+        resolvedJavaBinary = fallback;
+      }
     }
-    const session = emulatorSession();
-    if (session) {
-      session.javaMajorVersion = versionInt;
+  }
+
+  let versionInt = -1;
+  const match = JAVA_VERSION_REGEX.exec(output);
+  if (match) {
+    const version = match[1];
+    versionInt = parseInt(version, 10);
+    if (!versionInt) {
+      utils.logLabeledWarning(
+        "emulators",
+        `Failed to parse Java version. Got "${match[0]}".`,
+        "warn",
+      );
+    } else {
+      logger.debug(`Parsed Java major version: ${versionInt}`);
     }
-    return versionInt;
-  });
+  } else {
+    // probably Java <= 8 (different version scheme) or unknown
+    logger.debug("java -version outputs:", output);
+    logger.warn(`Failed to parse Java version.`);
+  }
+  const session = emulatorSession();
+  if (session) {
+    session.javaMajorVersion = versionInt;
+  }
+  return versionInt;
 }
 
 export const MIN_SUPPORTED_JAVA_MAJOR_VERSION = 21;
