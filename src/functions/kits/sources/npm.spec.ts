@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+import * as path from "path";
 import * as fs from "fs-extra";
 
 import {
@@ -10,13 +11,18 @@ import {
   isThirdPartyPackage,
   checkPackageHasShrinkwrap,
   promptSecurityConfirmation,
+  scaffoldKitFiles,
   resolveSdkSpecifierToSave,
   getKitPackagesToSave,
   buildAndInstallKit,
+  createNpmPackageAdapter,
+  TemplateType,
 } from "./npm";
 import * as initSpawn from "../../../init/spawn";
 import * as prompt from "../../../prompt";
+import { Config } from "../../../config";
 import { FirebaseError } from "../../../error";
+import { ValidatedKitSingle } from "../../projectConfig";
 import { logger } from "../../../logger";
 
 describe("functions/kits/sources/npm", () => {
@@ -523,6 +529,63 @@ describe("functions/kits/sources/npm", () => {
     });
   });
 
+  describe("scaffoldKitFiles", () => {
+    it("should scaffold kit source directory files without creating instance config directories", async () => {
+      const writtenFiles: Record<string, unknown> = {};
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: {},
+        path: (rel: string) => path.join("/mock/project", rel),
+        askWriteProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+          return Promise.resolve();
+        },
+      } as unknown as Config;
+
+      const paths = await scaffoldKitFiles({
+        config: mockConfig,
+        kitId: "my-kit",
+        packageName: "@scope/pkg",
+      });
+
+      expect(paths.sourcePath).to.equal("function-kits/my-kit/source");
+      expect(paths.absSourcePath).to.equal("/mock/project/function-kits/my-kit/source");
+      expect(writtenFiles["function-kits/my-kit/source/package.json"]).to.deep.include({
+        name: "my-kit-wrapper",
+        dependencies: {},
+      });
+      expect(writtenFiles["function-kits/my-kit/source/tsconfig.json"]).to.be.a("string");
+      expect(writtenFiles["function-kits/my-kit/source/.gitignore"]).to.be.a("string");
+      expect(writtenFiles["function-kits/my-kit/source/src/index.ts"]).to.include("@scope/pkg");
+    });
+
+    it("should handle existing package.json containing null", async () => {
+      mockFs({
+        "/mock/project/function-kits/my-kit/source/package.json": null,
+      });
+      const writtenFiles: Record<string, unknown> = {};
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: {},
+        path: (rel: string) => path.join("/mock/project", rel),
+        askWriteProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+          return Promise.resolve();
+        },
+      } as unknown as Config;
+
+      await scaffoldKitFiles({
+        config: mockConfig,
+        kitId: "my-kit",
+        packageName: "@scope/pkg",
+      });
+
+      expect(writtenFiles["function-kits/my-kit/source/package.json"]).to.deep.equal({
+        name: "my-kit-wrapper",
+      });
+    });
+  });
+
   describe("buildAndInstallKit", () => {
     beforeEach(() => {
       mockFs({
@@ -844,6 +907,75 @@ describe("functions/kits/sources/npm", () => {
       const packagesToSave = await getKitPackagesToSave("/mock/src", "@scope/my-kit");
 
       expect(packagesToSave).to.deep.equal(["firebase-functions@~7.1.3"]);
+    });
+  });
+
+  describe("createNpmPackageAdapter", () => {
+    it("should reject invalid template when creating adapter", () => {
+      expect(() =>
+        createNpmPackageAdapter({
+          config: { projectDir: "/mock/project" } as Config,
+          package: "my-pkg",
+          template: "invalid" as TemplateType,
+        }),
+      ).to.throw(FirebaseError, /Invalid template 'invalid'/);
+    });
+
+    it("should find existing kit by package name", () => {
+      const existingKits: ValidatedKitSingle[] = [
+        {
+          kit: "pkg-kit",
+          sourcePackage: { name: "@scope/my-pkg" },
+          source: "function-kits/pkg-kit/source",
+          instances: { inst1: "function-kits/pkg-kit/config-inst1" },
+        },
+      ];
+      const adapter = createNpmPackageAdapter({
+        config: { projectDir: "/mock/project" } as Config,
+        package: "@scope/my-pkg@1.0.0",
+      });
+
+      expect(adapter.defaultKitId).to.equal("my-pkg");
+      expect(adapter.findExistingKit(existingKits)).to.equal(existingKits[0]);
+    });
+
+    it("should pass --ignore-scripts for third-party packages in prepareSource without calling validateAndConfirm first", async () => {
+      mockFs({
+        "/mock/project/function-kits/my-pkg/source/package-lock.json": {
+          packages: {
+            "node_modules/@third-party/my-pkg": {
+              peerDependencies: { "firebase-functions": "^7.0.0" },
+            },
+            "node_modules/firebase-functions": { version: "7.3.2" },
+          },
+        },
+      });
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: {},
+        path: (rel: string) => path.join("/mock/project", rel),
+        askWriteProjectFile: () => Promise.resolve(),
+      } as unknown as Config;
+
+      const adapter = createNpmPackageAdapter({
+        config: mockConfig,
+        package: "@third-party/my-pkg@1.0.0",
+      });
+
+      const createdPaths: string[] = [];
+      const prepared = await adapter.prepareSource("my-pkg", createdPaths);
+
+      expect(createdPaths).to.deep.equal(["/mock/project/function-kits/my-pkg"]);
+      expect(prepared).to.deep.equal({
+        sourcePath: "function-kits/my-pkg/source",
+        sourcePackage: { name: "@third-party/my-pkg" },
+        predeploy: ['npm --prefix "$RESOURCE_DIR" run build'],
+      });
+      expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
+        "npm",
+        ["install", "@third-party/my-pkg@1.0.0", "--save-prefix=^", "--ignore-scripts"],
+        "/mock/project/function-kits/my-pkg/source",
+      );
     });
   });
 });
