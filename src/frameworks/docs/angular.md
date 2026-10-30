@@ -44,7 +44,7 @@ to Hosting and Cloud Functions for Firebase.
 The Firebase CLI assumes that you have a single application defined in your
 `angular.json` with a production build configuration.
 
-If need to tailor the CLI's assumptions, you can either use the
+If you need to tailor the CLI's assumptions, you can either use the
 `FIREBASE_FRAMEWORKS_BUILD_TARGET` environment variable or add
 [AngularFire](https://github.com/angular/angularfire#readme) and modify your
 `angular.json`:
