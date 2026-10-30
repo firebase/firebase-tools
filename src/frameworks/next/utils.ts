@@ -1,4 +1,3 @@
-import { existsSync } from "fs";
 import { pathExists } from "fs-extra";
 import { basename, extname, join, posix, sep, resolve, dirname } from "path";
 import { readFile } from "fs/promises";
@@ -167,16 +166,6 @@ export function getNextjsRewritesToUse(
 }
 
 /**
- * Check if `/app` directory is used in the Next.js project.
- * @param sourceDir location of the source directory
- * @return true if app directory is used in the Next.js project
- */
-export function usesAppDirRouter(sourceDir: string): boolean {
-  const appPathRoutesManifestPath = join(sourceDir, APP_PATH_ROUTES_MANIFEST);
-  return existsSync(appPathRoutesManifestPath);
-}
-
-/**
  * Check if the project is using the next/image component based on the export-marker.json file.
  * @param sourceDir location of the source directory
  * @return true if the Next.js project uses the next/image component
@@ -184,20 +173,6 @@ export function usesAppDirRouter(sourceDir: string): boolean {
 export async function usesNextImage(sourceDir: string, distDir: string): Promise<boolean> {
   const exportMarker = await readJSON<ExportMarker>(join(sourceDir, distDir, EXPORT_MARKER));
   return exportMarker.isNextImageImported;
-}
-
-/**
- * Check if Next.js is forced to serve the source image as-is instead of being oprimized
- * by setting `unoptimized: true` in next.config.js.
- * https://nextjs.org/docs/api-reference/next/image#unoptimized
- *
- * @param sourceDir location of the source directory
- * @param distDir location of the dist directory
- * @return true if image optimization is disabled
- */
-export async function hasUnoptimizedImage(sourceDir: string, distDir: string): Promise<boolean> {
-  const imagesManifest = await readJSON<ImagesManifest>(join(sourceDir, distDir, IMAGES_MANIFEST));
-  return imagesManifest.images.unoptimized;
 }
 
 /**
