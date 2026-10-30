@@ -25,7 +25,6 @@ describe("firebasetelemetry", () => {
     };
     const resConfig = {
       ...reqConfig,
-      logBucket: "projects/test-project/locations/global/buckets/_Default",
       enablementState: "ENABLED",
     };
 

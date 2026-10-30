@@ -7,7 +7,6 @@ const API_VERSION = "v1alpha";
 export interface TelemetryConfig {
   name: string;
   appId: string;
-  logBucket?: string;
   samplingRate: number;
   enablementState?: string;
 }
