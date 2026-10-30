@@ -44,6 +44,7 @@ function initializeContext(): Context {
     backendLocalBuilds: {
       fooLocalBuild: {
         archive: "path/to/foo-local-build-1234.tar.gz",
+        rootDirectory: "",
         buildConfig: {},
       },
     },

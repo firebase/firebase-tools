@@ -77,23 +77,50 @@ describe("buildLocally", () => {
     });
   }
 
-  it("builds a copy of the project without ignored files, and tars the output", async () => {
-    const { archive, buildConfig } = await build("web");
+  it("builds an app in its own folder, in a copy of the whole project, and tars the output", async () => {
+    const { archive, rootDirectory, buildConfig } = await build("web");
 
-    expect(localBuildStub).to.have.been.calledOnceWith("my-project", scratchDir, env, {
-      nonInteractive: undefined,
-      allowLocalBuildSecrets: true,
-      rootDir: "web",
-    });
-    // node_modules is ignored by the config, and key.pem by .gitignore.
+    expect(localBuildStub).to.have.been.calledOnceWith(
+      "my-project",
+      path.join(scratchDir, "web"),
+      env,
+      { nonInteractive: undefined, allowLocalBuildSecrets: true, rootDir: "" },
+    );
+    // node_modules is ignored by the config, and key.pem by the .gitignore above the app's folder.
     expect(copiedFiles).to.have.members([
       ".gitignore",
       "firebase.json",
       "web/package.json",
       "web/app/page.tsx",
     ]);
+    // The archive is the folder the build ran in, so the app is its root.
+    expect(tarEntries(archive)).to.deep.equal([".next/standalone/server.js"]);
+    expect(rootDirectory).to.equal("");
+    expect(buildConfig).to.deep.equal({ runCommand: "node .next/standalone/server.js" });
+  });
+
+  it("builds an app in an Nx or Turborepo monorepo from the monorepo's root", async () => {
+    writeFile(projectDir, "turbo.json", "{}");
+
+    const { archive, rootDirectory } = await build("web");
+
+    expect(localBuildStub).to.have.been.calledOnceWith("my-project", scratchDir, env, {
+      nonInteractive: undefined,
+      allowLocalBuildSecrets: true,
+      rootDir: "web",
+    });
     expect(tarEntries(archive)).to.deep.equal(["web/.next/standalone/server.js"]);
-    expect(buildConfig).to.deep.equal({ runCommand: "node web/.next/standalone/server.js" });
+    expect(rootDirectory).to.equal("web");
+  });
+
+  it("copies an app outside the project on its own", async () => {
+    writeFile(tmpDir.name, "other/package.json", "{}");
+
+    const { rootDirectory } = await build("../other");
+
+    expect(localBuildStub).to.have.been.calledOnceWith("my-project", scratchDir);
+    expect(copiedFiles).to.have.members(["package.json"]);
+    expect(rootDirectory).to.equal("");
   });
 
   it("deletes the copy afterwards", async () => {
