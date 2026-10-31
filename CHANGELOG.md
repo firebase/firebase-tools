@@ -1,3 +1,1 @@
 - Fixed the Storage emulator storing objects whose names contain `.` or `..` segments under the normalized name, so they could read, overwrite or delete a different object. (#11301)
-- Updated chokidar dependency to ^4.0.3 to remove vulnerable braces dependency (#11308).
-- Fixed an issue where the Firebase MCP server referred to `update_firebase_environment` instead of `firebase_update_environment`.
