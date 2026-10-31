@@ -1,0 +1,1 @@
+- Fixed Hosting shutdown leaving earlier sites running when serving multiple sites.
