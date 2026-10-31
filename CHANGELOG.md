@@ -1,0 +1,1 @@
+- Fixed the Storage emulator storing objects whose names contain `.` or `..` segments under the normalized name, so they could read, overwrite or delete a different object. (#11301)
