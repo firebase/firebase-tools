@@ -26,6 +26,7 @@ import { deepCopy } from "@angular-devkit/core";
 import * as gce from "../../../gcp/computeEngine";
 import * as iam from "../../../gcp/iam";
 import * as resourcemanager from "../../../gcp/resourceManager";
+import * as utils from "../../../utils";
 
 describe("Fabricator", () => {
   // Stub all GCP APIs to make sure this test is hermetic
@@ -40,6 +41,7 @@ describe("Fabricator", () => {
   let tasks: sinon.SinonStubbedInstance<typeof cloudtasksNS>;
   let services: sinon.SinonStubbedInstance<typeof servicesNS>;
   let identityPlatform: sinon.SinonStubbedInstance<typeof identityPlatformNS>;
+  let getServiceAccount: sinon.SinonStub;
 
   beforeEach(() => {
     gcf = sinon.stub(gcfNS);
@@ -53,6 +55,10 @@ describe("Fabricator", () => {
     tasks = sinon.stub(cloudtasksNS);
     services = sinon.stub(servicesNS);
     identityPlatform = sinon.stub(identityPlatformNS);
+    sinon
+      .stub(gce, "getDefaultServiceAccount")
+      .resolves("1234567-compute@developer.gserviceaccount.com");
+    getServiceAccount = sinon.stub(iam, "getServiceAccount").resolves({ disabled: false } as any);
 
     gcf.functionFromEndpoint.restore();
     gcfv2.functionFromEndpoint.restore();
@@ -950,6 +956,128 @@ describe("Fabricator", () => {
 
       await fab.createV2Function(ep, new scraper.SourceTokenScraper());
       expect(run.setInvokerCreate).to.not.have.been.called;
+    });
+  });
+
+  describe("build service account", () => {
+    const notFound = (): FirebaseError => new FirebaseError("Not found", { status: 404 });
+
+    beforeEach(() => {
+      gcfv2.createFunction.resolves({ name: "op", done: false });
+      gcfv2.updateFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+    });
+
+    const createWith = async (
+      serviceAccount?: string | null,
+    ): Promise<gcfNSV2.InputCloudFunction> => {
+      const ep = endpoint(
+        { eventTrigger: { eventType: "event", eventFilters: {}, retry: false } },
+        {
+          platform: "gcfv2",
+          project: "project",
+          ...(serviceAccount !== undefined ? { serviceAccount } : {}),
+        },
+      );
+      await fab.createV2Function(ep, new scraper.SourceTokenScraper());
+      return gcfv2.createFunction.lastCall.args[0];
+    };
+
+    it("leaves the build service account unset when the default compute account exists", async () => {
+      const fn = await createWith("sa@");
+
+      expect(fn.serviceConfig.serviceAccountEmail).to.equal("sa@project.iam.gserviceaccount.com");
+      expect(fn.buildConfig).to.not.have.property("serviceAccount");
+      expect(getServiceAccount).to.have.been.calledOnceWithExactly(
+        "test-project",
+        "1234567-compute@developer.gserviceaccount.com",
+      );
+    });
+
+    it("uses the runtime service account for the build when the default compute account is missing", async () => {
+      getServiceAccount.rejects(notFound());
+
+      const fn = await createWith("sa@");
+
+      expect(fn.buildConfig.serviceAccount).to.equal(
+        "projects/-/serviceAccounts/sa@project.iam.gserviceaccount.com",
+      );
+    });
+
+    it("logs when the build switches to the runtime service account", async () => {
+      getServiceAccount.rejects(notFound());
+      const logLabeledBullet = sinon.stub(utils, "logLabeledBullet");
+
+      await createWith("sa@");
+
+      expect(logLabeledBullet).to.have.been.calledOnceWithExactly(
+        "functions",
+        "Default compute service account is missing or disabled. Building id(us-central1) as sa@project.iam.gserviceaccount.com.",
+      );
+    });
+
+    it("does not log when the default compute account exists", async () => {
+      const logLabeledBullet = sinon.stub(utils, "logLabeledBullet");
+
+      await createWith("sa@");
+
+      expect(logLabeledBullet).to.not.have.been.called;
+    });
+
+    it("uses the runtime service account for the build when the default compute account is disabled", async () => {
+      getServiceAccount.resolves({ disabled: true } as any);
+
+      const fn = await createWith("sa@other-project.iam.gserviceaccount.com");
+
+      expect(fn.buildConfig.serviceAccount).to.equal(
+        "projects/-/serviceAccounts/sa@other-project.iam.gserviceaccount.com",
+      );
+    });
+
+    it("leaves the build service account unset when the default compute account cannot be read", async () => {
+      getServiceAccount.rejects(new FirebaseError("Forbidden", { status: 403 }));
+
+      const fn = await createWith("sa@");
+
+      expect(fn.buildConfig).to.not.have.property("serviceAccount");
+    });
+
+    it("does not look up the default compute account without a custom service account", async () => {
+      getServiceAccount.rejects(notFound());
+
+      const unset = await createWith();
+      const cleared = await createWith(null);
+
+      expect(unset.buildConfig).to.not.have.property("serviceAccount");
+      expect(cleared.buildConfig).to.not.have.property("serviceAccount");
+      expect(getServiceAccount).to.not.have.been.called;
+    });
+
+    it("looks up the default compute account once per deploy", async () => {
+      getServiceAccount.rejects(notFound());
+
+      await createWith("sa@");
+      await createWith("other@");
+
+      expect(getServiceAccount).to.have.been.calledOnce;
+    });
+
+    it("uses the runtime service account for the build on update when the default compute account is missing", async () => {
+      getServiceAccount.rejects(notFound());
+      const ep = endpoint(
+        { httpsTrigger: {} },
+        {
+          platform: "gcfv2",
+          project: "project",
+          serviceAccount: "sa@",
+        },
+      );
+
+      await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
+
+      expect(gcfv2.updateFunction.lastCall.args[0].buildConfig.serviceAccount).to.equal(
+        "projects/-/serviceAccounts/sa@project.iam.gserviceaccount.com",
+      );
     });
   });
 
