@@ -95,7 +95,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   });
 
   gcloudStorageAPI.get(
-    ["/b/:bucketId", "/storage/v1/b/:bucketId"],
+    ["/b/:bucketId", "/v1/b/:bucketId", "/storage/v1/b/:bucketId"],
     async (req, res) => {
       const buckets = await adminStorageLayer.listBuckets();
       const bucket = buckets.find((b) => b.id === req.params.bucketId);
