@@ -55,6 +55,19 @@ describe("run:services:get", () => {
     );
   });
 
+  it("ignores another product's service with the same ID in another region", async () => {
+    // run:services:list doesn't show the function, so it shouldn't make the ID ambiguous.
+    const fn = service("europe-west1", "api");
+    fn.labels = { [runv2.CLIENT_NAME_LABEL]: "cloud-functions" };
+    listServices.resolves([service("us-central1", "api"), fn]);
+
+    expect(await getServiceSpec("p", "api")).to.equal(SPEC);
+
+    expect(getService).to.have.been.calledOnceWithExactly(
+      "projects/p/locations/us-central1/services/api",
+    );
+  });
+
   it("throws if there's no service with the ID, in the region if one is given", async () => {
     await expect(getServiceSpec("p", "nope")).to.be.rejectedWith(
       FirebaseError,
