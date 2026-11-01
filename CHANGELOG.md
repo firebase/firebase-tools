@@ -1,0 +1,1 @@
+- Added endpoint to check if bucket in Storage Emulator exists.
