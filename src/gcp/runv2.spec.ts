@@ -598,36 +598,6 @@ describe("runv2", () => {
     });
   });
 
-  describe("listRevisions", () => {
-    let sandbox: sinon.SinonSandbox;
-    let getStub: sinon.SinonStub;
-
-    beforeEach(() => {
-      sandbox = sinon.createSandbox();
-      getStub = sandbox.stub(Client.prototype, "get");
-    });
-
-    afterEach(() => {
-      sandbox.restore();
-    });
-
-    it("returns the service's revisions from every page", async () => {
-      const revisionsPath = `/projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}/revisions`;
-      getStub
-        .onFirstCall()
-        .resolves({ body: { revisions: [{ name: "r2" }], nextPageToken: "p2" } });
-      getStub.onSecondCall().resolves({ body: { revisions: [{ name: "r1" }] } });
-
-      const revisions = await runv2.listRevisions(PROJECT_ID, LOCATION, SERVICE_ID);
-
-      expect(revisions).to.deep.equal([{ name: "r2" }, { name: "r1" }]);
-      expect(getStub.firstCall).to.have.been.calledWithExactly(revisionsPath, { queryParams: {} });
-      expect(getStub.secondCall).to.have.been.calledWithExactly(revisionsPath, {
-        queryParams: { pageToken: "p2" },
-      });
-    });
-  });
-
   describe("updateService and createService", () => {
     let sandbox: sinon.SinonSandbox;
     let postStub: sinon.SinonStub;
@@ -645,7 +615,7 @@ describe("runv2", () => {
       sandbox.restore();
     });
 
-    it("updateService uses explicit updateMask and polling options when provided", async () => {
+    it("updateService uses explicit updateMask and pollTimeoutMs when provided", async () => {
       patchStub.resolves({ body: { name: "operations/op1" } });
       pollStub.resolves(BASE_RUN_SERVICE);
 
@@ -688,6 +658,23 @@ describe("runv2", () => {
         masterTimeout: 60000,
         maxBackoff: 10000,
       });
+    });
+  });
+
+  describe("listRevisions", () => {
+    afterEach(() => sinon.restore());
+
+    it("lists the service's newest revisions", async () => {
+      const getStub: sinon.SinonStub = sinon.stub(Client.prototype, "get");
+      getStub.resolves({ body: { revisions: [{ name: "r2" }] } });
+
+      const revisions = await runv2.listRevisions(PROJECT_ID, LOCATION, SERVICE_ID, 1);
+
+      expect(revisions).to.deep.equal([{ name: "r2" }]);
+      expect(getStub).to.have.been.calledOnceWithExactly(
+        `/projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}/revisions`,
+        { queryParams: { pageSize: "1" } },
+      );
     });
   });
 });

@@ -62,10 +62,7 @@ export interface ContainerBuildConfig {
   /** Where to push the image, without a tag, e.g. us-central1-docker.pkg.dev/my-project/repo/web. */
   imageRepositoryUri: string;
   buildpacksBuild?: {
-    /**
-     * The base image to build on. Required if the container has a base image (baseImageUri), which
-     * turns on automatic base image updates.
-     */
+    /** The base image to build on. Required if the container has a baseImageUri. */
     buildBaseImageUri?: string;
     environmentVariables?: Record<string, string>;
   };
@@ -271,9 +268,7 @@ export async function getService(
 /** A revision's status. Like Service, it only has the fields that the CLI uses. */
 export interface Revision {
   name: string;
-  createTime?: string;
   containerStatuses?: Array<{
-    name: string;
     /** How building the container's image went, if Cloud Run built it (see Container.buildConfig). */
     buildStatus?: { status?: "SUCCESS" | "FAILURE" | "PENDING"; cloudBuildLogUrl?: string };
   }>;
@@ -285,24 +280,18 @@ export async function getRevision(name: string): Promise<Revision> {
   return res.body;
 }
 
-/** Lists a service's revisions. */
+/** Lists a service's newest `pageSize` revisions, newest first. */
 export async function listRevisions(
   projectId: string,
   location: string,
   serviceId: string,
+  pageSize: number,
 ): Promise<Revision[]> {
-  const revisions: Revision[] = [];
-  let pageToken: string | undefined = undefined;
-  do {
-    const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
-    const res = await client.get<{ revisions?: Revision[]; nextPageToken?: string }>(
-      `/projects/${projectId}/locations/${location}/services/${serviceId}/revisions`,
-      { queryParams },
-    );
-    revisions.push(...(res.body.revisions || []));
-    pageToken = res.body.nextPageToken;
-  } while (pageToken);
-  return revisions;
+  const res = await client.get<{ revisions?: Revision[] }>(
+    `/projects/${projectId}/locations/${location}/services/${serviceId}/revisions`,
+    { queryParams: { pageSize: String(pageSize) } },
+  );
+  return res.body.revisions || [];
 }
 
 /**

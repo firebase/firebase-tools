@@ -12,7 +12,7 @@ import * as utils from "../../utils";
 import * as apphostingPrepare from "../apphosting/prepare";
 import * as apphostingUtil from "../apphosting/util";
 import { ServiceDeploy } from "./args";
-import { deploy, localBuildTemplate, remoteBuildTemplate, revisionTemplate } from "./deploy";
+import { deploy, localBuildTemplate, revisionTemplate } from "./deploy";
 
 const NODEJS22 = "us-central1-docker.pkg.dev/serverless-runtimes/google-22/runtimes/nodejs22";
 const DEPLOY_MESSAGE = "firebase.google.com/deploy-message";
@@ -38,8 +38,6 @@ describe("run deploy", () => {
   const builtApp = { bucket: "source-bucket", object: "web.tar.gz" };
   const deployed = { uri: "https://web.run.app" } as runv2.Service;
   let upsertBucketStub: sinon.SinonStub;
-  let getBucketStub: sinon.SinonStub;
-  let patchBucketStub: sinon.SinonStub;
   let createArchiveStub: sinon.SinonStub;
   let ensureRepoStub: sinon.SinonStub;
   let createServiceStub: sinon.SinonStub;
@@ -49,8 +47,6 @@ describe("run deploy", () => {
   beforeEach(() => {
     sinon.stub(getProjectNumber, "getProjectNumber").resolves("123");
     upsertBucketStub = sinon.stub(gcs, "upsertBucket").resolves("source-bucket");
-    getBucketStub = sinon.stub(gcs, "getBucket").resolves({} as gcs.BucketResponse);
-    patchBucketStub = sinon.stub(gcs, "patchBucket").resolves({} as gcs.BucketResponse);
     createArchiveStub = sinon
       .stub(apphostingUtil, "createSourceDeployArchive")
       .resolves("/tmp/web.zip");
@@ -71,7 +67,7 @@ describe("run deploy", () => {
     return svc;
   }
 
-  it("uploads the source and creates a public service that Cloud Run builds from it", async () => {
+  it("uploads the source, builds it, and creates a public service", async () => {
     const svc = await deployOne({ config: web, baseImage: NODEJS22 });
 
     expect(createArchiveStub).to.have.been.calledWithMatch(
@@ -83,35 +79,26 @@ describe("run deploy", () => {
       "us-central1",
       "cloud-run-source-deploy",
     );
-    expect(createServiceStub).to.have.been.calledOnceWithExactly(
-      "my-project",
-      "us-central1",
-      "web",
-      {
-        name: "projects/my-project/locations/us-central1/services/web",
-        annotations: {},
-        template: {
-          containers: [
-            {
-              name: "web",
-              baseImageUri: NODEJS22,
-              sourceCode: { cloudStorageSource: source },
-              // The build runs on the service's base image.
-              buildConfig: {
-                ...buildConfig,
-                buildpacksBuild: { ...buildConfig.buildpacksBuild, buildBaseImageUri: NODEJS22 },
-              },
+    expect(createServiceStub).to.have.been.calledWithMatch("my-project", "us-central1", "web", {
+      template: {
+        containers: [
+          {
+            name: "web",
+            baseImageUri: NODEJS22,
+            sourceCode: { cloudStorageSource: source },
+            // The build runs on the service's base image.
+            buildConfig: {
+              ...buildConfig,
+              buildpacksBuild: { ...buildConfig.buildpacksBuild, buildBaseImageUri: NODEJS22 },
             },
-          ],
-        },
-        client: "cli-firebase",
-        invokerIamDisabled: true,
-        ingress: "INGRESS_TRAFFIC_ALL",
-        // Cloud Run's build API is in alpha.
-        launchStage: "ALPHA",
+          },
+        ],
       },
-      ROLLOUT_POLLING,
-    );
+      invokerIamDisabled: true,
+      ingress: "INGRESS_TRAFFIC_ALL",
+      launchStage: "ALPHA",
+    });
+    expect(createServiceStub.firstCall.args[4]).to.deep.equal(ROLLOUT_POLLING);
     expect(svc.deployed).to.deep.equal({ uri: "https://web.run.app" });
   });
 
@@ -124,7 +111,7 @@ describe("run deploy", () => {
     expect(container.buildConfig).to.deep.equal(buildConfig);
   });
 
-  it("passes the service's plain build env vars to the build, but never secrets", async () => {
+  it("passes the service's plain build env vars to Cloud Build, but never secrets", async () => {
     const buildEnv = { API_URL: "https://api.example.com", NPM_TOKEN: { secret: "npm-token" } };
 
     await deployOne({ config: web, buildEnv });
@@ -171,50 +158,11 @@ describe("run deploy", () => {
     );
   });
 
-  describe("source bucket", () => {
-    const uploadExpiry = { action: { type: "Delete" }, condition: { age: 30 } };
-    const userRule = { action: { type: "Delete" }, condition: { age: 365 } };
+  it("creates the source bucket without a rule that deletes uploads", async () => {
+    await deployOne({ config: web });
 
-    it("is created without a rule that deletes uploads", async () => {
-      await deployOne({ config: web });
-
-      expect(upsertBucketStub).to.have.been.calledOnce;
-      expect(upsertBucketStub.firstCall.args[0].req).to.deep.equal({
-        baseName: "firebase-run-src-123-us-central1",
-        purposeLabel: "run-source-us-central1",
-        location: "us-central1",
-      });
-    });
-
-    it("loses the 30-day rule that earlier CLIs set, and keeps the user's rules", async () => {
-      // Cloud Run reads a service's upload again whenever the service is edited.
-      getBucketStub.resolves({ lifecycle: { rule: [uploadExpiry, userRule] } });
-
-      await deployOne({ config: web });
-
-      expect(getBucketStub).to.have.been.calledWith("source-bucket");
-      expect(patchBucketStub).to.have.been.calledOnceWithExactly("source-bucket", {
-        lifecycle: { rule: [userRule] },
-      });
-    });
-
-    it("isn't changed if it doesn't have that rule", async () => {
-      getBucketStub.resolves({ lifecycle: { rule: [userRule] } });
-
-      await deployOne({ config: web });
-
-      expect(patchBucketStub).not.to.have.been.called;
-    });
-
-    it("doesn't stop the deploy if it can't be checked", async () => {
-      getBucketStub.rejects(new Error("HTTP Error: 403"));
-      const warnStub = sinon.stub(utils, "logLabeledWarning");
-
-      await deployOne({ config: web });
-
-      expect(warnStub).to.have.been.calledWithMatch("run", "source-bucket");
-      expect(createServiceStub).to.have.been.calledOnce;
-    });
+    // Cloud Run reads a service's upload again whenever the service is edited.
+    expect(upsertBucketStub.firstCall.args[0].req).not.to.have.property("lifecycle");
   });
 
   describe("build logs", () => {
@@ -230,12 +178,11 @@ describe("run deploy", () => {
 
     afterEach(() => clock.restore());
 
-    /** A revision that Cloud Run started building at `createTime`. */
-    function building(createTime: string, cloudBuildLogUrl: string): runv2.Revision {
+    /** A revision that Cloud Run is building, with a link to the build's logs. */
+    function building(revisionId: string, cloudBuildLogUrl: string): runv2.Revision {
       return {
-        name: `projects/my-project/locations/us-central1/services/web/revisions/${createTime}`,
-        createTime,
-        containerStatuses: [{ name: "web", buildStatus: { cloudBuildLogUrl } }],
+        name: `projects/my-project/locations/us-central1/services/web/revisions/${revisionId}`,
+        containerStatuses: [{ buildStatus: { cloudBuildLogUrl } }],
       };
     }
 
@@ -254,26 +201,26 @@ describe("run deploy", () => {
     it("are linked as soon as Cloud Run starts the build, not after it", async () => {
       // At first, the new service doesn't exist yet.
       listRevisionsStub.onFirstCall().rejects(new Error("HTTP Error: 404"));
-      listRevisionsStub.onSecondCall().resolves([building("2026-11-02T17:37:57Z", logUrl)]);
+      listRevisionsStub.onSecondCall().resolves([building("web-00001", logUrl)]);
 
       expect(await deployForAMinute({ config: web })).to.deep.equal([link]);
       // It stops looking once it has the link.
       expect(listRevisionsStub).to.have.been.calledTwice;
     });
 
-    it("are linked for the new build, not an earlier one", async () => {
+    it("are linked for the new build, not the service's last one", async () => {
+      const last = building("web-00001", "https://last-build");
       const existing = {
         name: "projects/my-project/locations/us-central1/services/web",
-        updateTime: "2026-11-02T17:00:00Z",
+        latestCreatedRevision: last.name,
         template: { containers: [{ name: "web" }] },
       } as unknown as runv2.Service;
-      const earlier = building("2026-11-01T09:00:00Z", "https://earlier-build");
-      listRevisionsStub.onFirstCall().resolves([earlier]);
-      listRevisionsStub
-        .onSecondCall()
-        .resolves([building("2026-11-02T17:00:03Z", logUrl), earlier]);
+      // Until Cloud Run creates the new revision, the newest one is the service's last one.
+      listRevisionsStub.onFirstCall().resolves([last]);
+      listRevisionsStub.onSecondCall().resolves([building("web-00002", logUrl)]);
 
       expect(await deployForAMinute({ config: web, existing })).to.deep.equal([link]);
+      expect(listRevisionsStub).to.have.been.calledWith("my-project", "us-central1", "web", 1);
     });
 
     it("aren't looked up once the rollout is done", async () => {
@@ -291,7 +238,7 @@ describe("run deploy", () => {
 
     function revisionBuilt(status: "SUCCESS" | "FAILURE"): runv2.Revision {
       const buildStatus = { status, cloudBuildLogUrl: logUrl };
-      return { name: "web-1", containerStatuses: [{ name: "web", buildStatus }] };
+      return { name: "web-1", containerStatuses: [{ buildStatus }] };
     }
 
     beforeEach(() => {
@@ -424,30 +371,11 @@ describe("run deploy", () => {
 
       expect(tarArchiveStub).to.have.been.calledWithMatch(sinon.match.any, scratchDir, [".next"]);
       expect(ensureRepoStub).not.to.have.been.called;
-      expect(container).not.to.have.property("buildConfig");
       expect(container).to.deep.include({
         image: "scratch",
         sourceCode: { cloudStorageSource: builtApp },
         command: ["npm", "run", "start"],
       });
-    });
-
-    it("leaves the service's launch stage alone", async () => {
-      // Only Cloud Run's build API is in alpha.
-      await deployLocalBuild();
-      const existing = {
-        name: "projects/my-project/locations/us-central1/services/web",
-        template: { containers: [{ name: "web" }] },
-      } as unknown as runv2.Service;
-      await deployOne({ config: localWeb, baseImage: NODEJS22, existing });
-
-      expect(createServiceStub.firstCall.args[3]).not.to.have.property("launchStage");
-      expect(updateServiceStub.firstCall.args[0]).not.to.have.property("launchStage");
-      expect(updateServiceStub.firstCall.args[1].updateMask).to.deep.equal([
-        "template",
-        "traffic",
-        "annotations",
-      ]);
     });
 
     it("keeps the env vars the app needs at runtime", async () => {
@@ -587,19 +515,6 @@ describe("run deploy", () => {
       });
     });
 
-    describe("remoteBuildTemplate", () => {
-      it("has Cloud Run build the uploaded source with App Hosting's buildpacks", () => {
-        const template = remoteBuildTemplate({ config: web, existing }, source, imageRepository);
-
-        expect(template.containers?.[0]).to.deep.equal({
-          name: "web",
-          env: [{ name: "MODE", value: "prod" }],
-          sourceCode: { cloudStorageSource: source },
-          buildConfig,
-        });
-      });
-    });
-
     describe("FIREBASE_CONFIG", () => {
       /** The live web service, with FIREBASE_CONFIG set to `value`. */
       function withConfig(value: string): runv2.Service {
@@ -649,28 +564,6 @@ describe("run deploy", () => {
     });
 
     describe("localBuildTemplate", () => {
-      it("switches a service from a remote build to a local build", () => {
-        const fromRemoteBuild = webRunning({
-          sourceCode: { cloudStorageSource: source },
-          buildConfig,
-        });
-        const build = { outputFiles: [".next"], runCommand: "npm run start", env: [] };
-
-        const template = localBuildTemplate(
-          { config: web, existing: fromRemoteBuild },
-          build,
-          builtApp,
-        );
-
-        // A container can't have both an image and a build config.
-        expect(template.containers?.[0]).to.deep.equal({
-          name: "web",
-          image: "scratch",
-          sourceCode: { cloudStorageSource: builtApp },
-          command: ["npm", "run", "start"],
-        });
-      });
-
       it("runs a local build's output with the build's start command", () => {
         // The command is split on whitespace, so stray spaces don't become empty arguments.
         const build = { outputFiles: [".next"], runCommand: " npm  run start ", env: [] };
