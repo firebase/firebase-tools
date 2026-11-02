@@ -24,19 +24,21 @@ export function latest<T extends Language>(
   language: T,
   runtimes: Runtime[] = Object.keys(RUNTIMES) as Runtime[],
 ): RuntimeOf<T> & Runtime {
-  const sorted = runtimes
-    .filter((s) => runtimeIsLanguage(s, language))
-    // node8 is less than node20
-    .sort((left, right) => {
-      const leftVersion = +left.substring(language.length);
-      const rightVersion = +right.substring(language.length);
-      if (isNaN(leftVersion) || isNaN(rightVersion)) {
-        throw new FirebaseError("Internal error. Runtime or language names are malformed", {
-          exit: 1,
-        });
-      }
-      return leftVersion - rightVersion;
-    });
+  const filtered = runtimes.filter((s) => runtimeIsLanguage(s, language));
+  // Prefer GA runtimes over preview/experimental runtimes so preview runtimes
+  // are not chosen as the default. If no GA runtimes exist (e.g. Dart), fall back.
+  const gaOnly = filtered.filter((s) => RUNTIMES[s]?.status === "GA");
+  const candidates = gaOnly.length > 0 ? gaOnly : filtered;
+  const sorted = candidates.sort((left, right) => {
+    const leftVersion = +left.substring(language.length);
+    const rightVersion = +right.substring(language.length);
+    if (isNaN(leftVersion) || isNaN(rightVersion)) {
+      throw new FirebaseError("Internal error. Runtime or language names are malformed", {
+        exit: 1,
+      });
+    }
+    return leftVersion - rightVersion;
+  });
   const latest = utils.last(sorted);
   if (!latest) {
     throw new FirebaseError(
@@ -62,7 +64,19 @@ export function isDecommissioned(runtime: Runtime, now: Date = new Date()): bool
  * increase testability.
  */
 export function guardVersionSupport(runtime: Runtime, now: Date = new Date()): void {
-  const { deprecationDate, decommissionDate } = RUNTIMES[runtime];
+  const { deprecationDate, decommissionDate, status } = RUNTIMES[runtime];
+
+  if (status === "beta") {
+    utils.logLabeledWarning(
+      "functions",
+      `Runtime ${RUNTIMES[runtime].friendly} is in Preview. Pre-release runtimes may not be suitable for production workloads.`,
+    );
+  } else if (status === "experimental") {
+    utils.logLabeledWarning(
+      "functions",
+      `Runtime ${RUNTIMES[runtime].friendly} is experimental. Pre-release runtimes may not be suitable for production workloads.`,
+    );
+  }
 
   const decommission = new Date(decommissionDate);
   if (now >= decommission) {

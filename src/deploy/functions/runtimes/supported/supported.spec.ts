@@ -9,6 +9,14 @@ describe("supported runtimes", () => {
     expect(supported.latest("nodejs")).to.not.equal("nodejs8");
   });
 
+  it("does not choose a preview runtime as latest when GA runtimes exist", () => {
+    expect(supported.latest("nodejs")).to.equal("nodejs24");
+  });
+
+  it("falls back to experimental/beta runtime when no GA runtime exists", () => {
+    expect(supported.latest("dart")).to.equal("dart3");
+  });
+
   it("identifies decommissioned runtimes", () => {
     expect(supported.isDecommissioned("nodejs8")).to.be.true;
   });
@@ -31,6 +39,22 @@ describe("supported runtimes", () => {
 
     afterEach(() => {
       logLabeledWarning.restore();
+    });
+
+    it("warns for a preview runtime", () => {
+      supported.guardVersionSupport("nodejs26");
+      expect(logLabeledWarning).to.have.been.calledWith(
+        "functions",
+        "Runtime Node.js 26 is in Preview. Pre-release runtimes may not be suitable for production workloads.",
+      );
+    });
+
+    it("warns for an experimental runtime", () => {
+      supported.guardVersionSupport("dart3");
+      expect(logLabeledWarning).to.have.been.calledWith(
+        "functions",
+        "Runtime Dart 3 is experimental. Pre-release runtimes may not be suitable for production workloads.",
+      );
     });
 
     it("throws an error for decommissioned runtimes", () => {

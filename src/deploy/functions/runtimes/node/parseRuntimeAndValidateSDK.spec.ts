@@ -36,6 +36,10 @@ describe("getRuntimeChoice", () => {
     it("should return node 16 if runtime field is set to node 16", () => {
       expect(runtime.getRuntimeChoice("path/to/source", "nodejs16")).to.equal("nodejs16");
     });
+
+    it("should return node 26 if runtime field is set to node 26", () => {
+      expect(runtime.getRuntimeChoice("path/to/source", "nodejs26")).to.equal("nodejs26");
+    });
   });
 
   context("when the runtime is not set in firebase.json", () => {
@@ -61,6 +65,12 @@ describe("getRuntimeChoice", () => {
       cjsonStub.returns({ engines: { node: "16" } });
 
       expect(runtime.getRuntimeChoice("path/to/source")).to.equal("nodejs16");
+    });
+
+    it("should return node 26 if engines field is set to node 26", () => {
+      cjsonStub.returns({ engines: { node: "26" } });
+
+      expect(runtime.getRuntimeChoice("path/to/source")).to.equal("nodejs26");
     });
 
     it("should print warning when firebase-functions version is below 2.0.0", () => {
