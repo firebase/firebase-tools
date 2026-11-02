@@ -714,6 +714,52 @@ describe("resolveParams", () => {
     }
   });
 
+  it("validates that secret prompt input is not empty", async () => {
+    const passwordStub = sinon.stub(prompt, "password").resolves("secret-val");
+    const getSecretMetadataStub = sinon.stub(secretManager, "getSecretMetadata").resolves({
+      secret: undefined,
+    });
+    const createSecretStub = sinon.stub(secretManager, "createSecret").resolves();
+    const addVersionStub = sinon.stub(secretManager, "addVersion").resolves();
+
+    const paramsToResolve: params.Param[] = [
+      {
+        name: "API_KEY",
+        label: "API Key",
+        description: "Key used to authenticate with 3rd party API.",
+        type: "secret",
+        resourceId: "API_KEY",
+      },
+    ];
+
+    try {
+      await params.resolveParams({
+        params: paramsToResolve,
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "my-codebase",
+      });
+
+      // 1. Verify password prompt was called once
+      expect(passwordStub).to.have.been.calledOnce;
+
+      // 2. Verify the validate contract directly (both empty and valid cases)
+      const opts = passwordStub.firstCall.args[0];
+      expect(opts.validate).to.be.a("function");
+      expect(opts.validate!("")).to.equal("Secrets cannot have an empty value.");
+      expect(opts.validate!("secret-val")).to.be.true;
+
+      // 3. Verify downstream Secret Manager propagation
+      expect(createSecretStub).to.have.been.calledOnceWith("foo", "API_KEY", sinon.match.any);
+      expect(addVersionStub).to.have.been.calledOnceWith("foo", "API_KEY", "secret-val");
+    } finally {
+      passwordStub.restore();
+      getSecretMetadataStub.restore();
+      createSecretStub.restore();
+      addVersionStub.restore();
+    }
+  });
+
   it("logs Onetime existing secret reference message only when both secretEnvParams and writeDefaultSecretBindings are enabled", async () => {
     const paramsToResolve: params.Param[] = [{ name: "MY_SECRET", type: "secret" }];
     const mockSecret = { name: "MY_SECRET", projectId: "foo", labels: {}, replication: {} };

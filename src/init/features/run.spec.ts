@@ -1,11 +1,13 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import { Setup } from "..";
+import { webApps } from "../../apphosting/app";
 import { Config } from "../../config";
 import * as deploy from "../../deploy";
 import * as prereqs from "../../deploy/run/prereqs";
 import * as run from "../../gcp/run";
 import * as runv2 from "../../gcp/runv2";
+import * as managementApps from "../../management/apps";
 import { Options } from "../../options";
 import * as prompt from "../../prompt";
 import * as requirePermissions from "../../requirePermissions";
@@ -18,6 +20,8 @@ describe("init run", () => {
   let config: Config;
   let selectStub: sinon.SinonStub;
   let inputStub: sinon.SinonStub;
+  let getOrCreateWebAppStub: sinon.SinonStub;
+  let listAppsStub: sinon.SinonStub;
 
   function setup(): Setup {
     return {
@@ -34,6 +38,10 @@ describe("init run", () => {
     sinon.stub(prereqs, "prereqs").resolves();
     sinon.stub(run, "listLocations").resolves(["us-central1", "us-east1"]);
     sinon.stub(runv2, "getService").rejects({ status: 404 });
+    getOrCreateWebAppStub = sinon
+      .stub(webApps, "getOrCreateWebApp")
+      .resolves({ name: "my-service", id: "1:123:web:abc" });
+    listAppsStub = sinon.stub(managementApps, "listFirebaseApps").resolves([]);
     selectStub = sinon.stub(prompt, "select");
     inputStub = sinon.stub(prompt, "input");
   });
@@ -66,6 +74,9 @@ describe("init run", () => {
         choices: ["us-central1", "us-east1"],
         default: "us-central1",
       });
+      // The project has no web apps, so init doesn't ask which one to link. Actuate creates one.
+      expect(selectStub).to.have.been.calledThrice;
+      expect(getOrCreateWebAppStub).not.to.have.been.called;
       expect(inputStub.secondCall.args[0].default).to.be.undefined;
       expect(inputStub.thirdCall.args[0].default).to.equal("/");
       const validateDir = inputStub.thirdCall.args[0].validate;
@@ -77,6 +88,7 @@ describe("init run", () => {
         region: "us-east1",
         baseImage: "",
         rootDir: "/",
+        createWebApp: true,
       });
     });
 
@@ -94,9 +106,10 @@ describe("init run", () => {
       );
     });
 
-    it("updates an existing service", async () => {
+    it("updates an existing service, keeping the Firebase Web App it's linked to", async () => {
       const existing = {
         name: "projects/p/locations/europe-west1/services/web",
+        annotations: { "firebase.google.com/app-id": "1:123:web:def" },
         template: { containers: [{ name: "web", image: "i", baseImageUri: "nodejs20" }] },
       };
       const managed = {
@@ -114,12 +127,47 @@ describe("init run", () => {
       expect(selectStub.secondCall.args[0].choices).to.deep.equal([
         { name: "web (europe-west1)", value: existing },
       ]);
+      expect(getOrCreateWebAppStub).not.to.have.been.called;
+      expect(listAppsStub).not.to.have.been.called;
       expect(s.featureInfo?.run).to.deep.equal({
         serviceId: "web",
         region: "europe-west1",
         baseImage: "nodejs20",
         rootDir: "/",
+        appId: "1:123:web:def",
       });
+    });
+
+    it("asks which web app to link, with creating a new one as the default", async () => {
+      listAppsStub.resolves([
+        { appId: "1:123:web:abc", displayName: "web", platform: managementApps.AppPlatform.WEB },
+        { appId: "1:123:web:def", platform: managementApps.AppPlatform.WEB },
+      ]);
+      answerPrompts("create", "us-central1", "my-service", "1:123:web:def", false, "", "/");
+      const s = setup();
+
+      await askQuestions(s, config, options);
+
+      const appPrompt = selectStub.thirdCall.args[0];
+      expect(appPrompt.default).to.equal(webApps.CREATE_NEW_FIREBASE_WEB_APP);
+      expect(appPrompt.choices).to.deep.equal([
+        { name: "Create a new web app", value: webApps.CREATE_NEW_FIREBASE_WEB_APP },
+        { name: "web (1:123:web:abc)", value: "1:123:web:abc" },
+        { name: "1:123:web:def", value: "1:123:web:def" },
+      ]);
+      expect(s.featureInfo?.run).to.include({ appId: "1:123:web:def" });
+      expect(s.featureInfo?.run).not.to.have.property("createWebApp");
+    });
+
+    it("doesn't create a web app while asking, so quitting init leaves none behind", async () => {
+      listAppsStub.resolves([{ appId: "1:123:web:abc", platform: managementApps.AppPlatform.WEB }]);
+      const createNew = webApps.CREATE_NEW_FIREBASE_WEB_APP;
+      answerPrompts("create", "us-central1", "my-service", createNew, false, "");
+      inputStub.onThirdCall().rejects(new Error("User force closed the prompt"));
+
+      await expect(askQuestions(setup(), config, options)).to.be.rejectedWith("force closed");
+
+      expect(getOrCreateWebAppStub).not.to.have.been.called;
     });
 
     it("defaults the root directory to the one saved for the same service and region", async () => {
@@ -241,6 +289,35 @@ describe("init run", () => {
         { projectId: "p", config, only: "run:web:us-central1" },
         { baseImage: "nodejs22" },
       );
+    });
+
+    it("deploys with the Firebase Web App that init linked", async () => {
+      await actuate(webSetup({ appId: "1:123:web:abc" }), config, options);
+
+      expect(getOrCreateWebAppStub).not.to.have.been.called;
+      expect(deployStub).to.have.been.calledWithMatch(["run"], sinon.match.any, {
+        appId: "1:123:web:abc",
+      });
+    });
+
+    it("creates the new Firebase Web App, then deploys with it", async () => {
+      await actuate(webSetup({ createWebApp: true }), config, options);
+
+      expect(getOrCreateWebAppStub).to.have.been.calledOnceWith("p", null, "web");
+      expect(deployStub).to.have.been.calledWithMatch(["run"], sinon.match.any, {
+        appId: "1:123:web:abc",
+      });
+    });
+
+    it("fails without deploying if it can't create the web app", async () => {
+      // getOrCreateWebApp returns nothing, after a warning, when the project is out of web apps.
+      getOrCreateWebAppStub.resolves(undefined);
+
+      await expect(actuate(webSetup({ createWebApp: true }), config, options)).to.be.rejectedWith(
+        "Couldn't create a Firebase web app for service web",
+      );
+
+      expect(deployStub).to.not.have.been.called;
     });
 
     it("doesn't write firebase.json if the deploy fails", async () => {

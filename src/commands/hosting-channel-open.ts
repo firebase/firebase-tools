@@ -11,6 +11,8 @@ import { requireConfig } from "../requireConfig";
 import { logLabeledBullet } from "../utils";
 import { requireHostingSite } from "../requireHostingSite";
 import { select } from "../prompt";
+import { ensure } from "../ensureApiEnabled";
+import { hostingApiOrigin } from "../api";
 
 export const command = new Command("hosting:channel:open [channelId]")
   .description("opens the URL for a Firebase Hosting channel")
@@ -18,6 +20,7 @@ export const command = new Command("hosting:channel:open [channelId]")
   .option("--site <siteId>", "the site to which the channel belongs")
   .before(requireConfig)
   .before(requirePermissions, ["firebasehosting.sites.get"])
+  .before((options) => ensure(needProjectId(options), hostingApiOrigin(), "hosting", true))
   .before(requireHostingSite)
   .action(
     async (

@@ -318,6 +318,8 @@ export async function injectAutoInitEnvVars(
       )) as WebConfig;
 
       // We inject autoinit env vars into the build and runtime env vars.
+      // TODO: Match FAH remote builds by only injecting FIREBASE_CONFIG (and not
+      // FIREBASE_WEBAPP_CONFIG) into runtimeEnv.
       const autoinitVars = getAutoinitEnvVars(webappConfig);
       for (const [envVarName, envVarValue] of Object.entries(autoinitVars)) {
         buildEnv[cfg.backendId][envVarName] ??= { value: envVarValue };

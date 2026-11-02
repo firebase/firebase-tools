@@ -17,21 +17,19 @@ function getCertHashType(shaHash: string): string {
 export const command = new Command("apps:android:sha:create <appId> <shaHash>")
   .description("add a SHA certificate hash for a given app id")
   .before(requireAuth)
-  .action(
-    async (appId: string = "", shaHash: string = "", options: any): Promise<AppAndroidShaData> => {
-      const projectId = needProjectId(options);
+  .action(async (appId: string, shaHash: string, options: any): Promise<AppAndroidShaData> => {
+    const projectId = needProjectId(options);
 
-      const shaCertificate = await promiseWithSpinner<AppAndroidShaData>(
-        async () =>
-          await createAppAndroidSha(projectId, appId, {
-            shaHash: shaHash,
-            certType: getCertHashType(shaHash),
-          }),
-        `Creating Android SHA certificate ${clc.bold(
-          options.shaHash,
-        )}with Android app Id ${clc.bold(appId)}`,
-      );
+    const shaCertificate = await promiseWithSpinner<AppAndroidShaData>(
+      async () =>
+        await createAppAndroidSha(projectId, appId, {
+          shaHash: shaHash,
+          certType: getCertHashType(shaHash),
+        }),
+      `Creating Android SHA certificate ${clc.bold(
+        options.shaHash,
+      )}with Android app Id ${clc.bold(appId)}`,
+    );
 
-      return shaCertificate;
-    },
-  );
+    return shaCertificate;
+  });
