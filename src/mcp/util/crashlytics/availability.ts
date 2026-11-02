@@ -1,4 +1,5 @@
 import { McpContext } from "../../types";
+import { getProjectDir } from "../../util";
 import { getPlatformsFromFolder, Platform, detectFiles } from "../../../appUtils";
 import * as fs from "fs-extra";
 import * as path from "path";
@@ -17,8 +18,7 @@ const CRASHLYTICS_GRADLE_PATTERN =
 
 async function isCrashlyticsInstalled(ctx: McpContext): Promise<boolean> {
   const host = ctx.host;
-  const projectDir =
-    ctx.config.projectDir || host.cachedProjectDir || host.startupRoot || process.cwd();
+  const projectDir = getProjectDir(ctx);
   const platforms = await getPlatformsFromFolder(projectDir);
 
   // If this is not a supported platform, then Crashlytics will not be present
