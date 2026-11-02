@@ -114,8 +114,8 @@ async function buildServiceLocally(
     // Unlike App Hosting, Cloud Run doesn't ask users to confirm build secrets in local builds.
     allowLocalBuildSecrets: true,
   });
-  // Cloud Run only gets the env vars that the app needs at runtime, set on its container. App
-  // Hosting doesn't filter: its API takes all of them, with their availability, and applies them.
+  // Set the env vars that Universal Maker says the built app needs at runtime, which localBuild
+  // marks RUNTIME (most apps have none). The build's own env vars and secrets aren't in this list.
   const env = (buildConfig.env || [])
     .filter(
       (e) =>
