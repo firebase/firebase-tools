@@ -20,6 +20,7 @@ export interface CommandOptions extends Options {
   bucketLocation?: string;
   appVersion?: string;
   retryDelay?: number;
+  clean?: boolean;
 }
 
 export interface SourceMap {
@@ -416,11 +417,23 @@ export async function uploadSourceMaps(
 
   let successCount = 0;
   const failedFiles: string[] = [];
+  const rootDir = options.projectRoot ?? process.cwd();
   for (const [i, success] of results.entries()) {
-    if (success) {
-      successCount++;
-    } else {
+    if (!success) {
       failedFiles.push(mappings[i].mapFilePath);
+      continue;
+    }
+
+    successCount++;
+    if (options.clean) {
+      const resolvedPath = path.resolve(rootDir, mappings[i].mapFilePath);
+      try {
+        fs.rmSync(resolvedPath, { force: true });
+      } catch (err) {
+        logger.debug(
+          `Failed to delete source map file ${resolvedPath}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
     }
   }
 
