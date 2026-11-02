@@ -227,31 +227,31 @@ describe("util", () => {
     it("builds an app from its own folder if it isn't in a monorepo", () => {
       withFiles(path.join("/project", "web", "package.json"));
       expect(util.buildDirectory("/project", "web")).to.deep.equal({
-        dir: path.join("/project", "web"),
-        app: "",
+        buildFolder: path.join("/project", "web"),
+        appFolder: "",
       });
       expect(util.buildDirectory("/project")).to.deep.equal({
-        dir: path.join("/project"),
-        app: "",
+        buildFolder: path.join("/project"),
+        appFolder: "",
       });
       expect(util.buildDirectory("/project", ".")).to.deep.equal({
-        dir: path.join("/project"),
-        app: "",
+        buildFolder: path.join("/project"),
+        appFolder: "",
       });
     });
 
     it("builds an app in a Turborepo or Nx monorepo from the monorepo's root", () => {
       withFiles(path.join("/project", "turbo.json"));
       expect(util.buildDirectory("/project", "apps/web")).to.deep.equal({
-        dir: path.join("/project"),
-        app: "apps/web",
+        buildFolder: path.join("/project"),
+        appFolder: "apps/web",
       });
 
       sinon.restore();
       withFiles(path.join("/project", "nx.json"));
       expect(util.buildDirectory("/project", "apps/web")).to.deep.equal({
-        dir: path.join("/project"),
-        app: "apps/web",
+        buildFolder: path.join("/project"),
+        appFolder: "apps/web",
       });
     });
 
@@ -261,28 +261,28 @@ describe("util", () => {
         path.join("/project", "monorepo", "turbo.json"),
       );
       expect(util.buildDirectory("/project", "monorepo/apps/web")).to.deep.equal({
-        dir: path.join("/project", "monorepo"),
-        app: "apps/web",
+        buildFolder: path.join("/project", "monorepo"),
+        appFolder: "apps/web",
       });
     });
 
     it("builds from the app's folder if the app is the monorepo's root", () => {
       withFiles(path.join("/project", "apps/web", "nx.json"));
       expect(util.buildDirectory("/project", "apps/web")).to.deep.equal({
-        dir: path.join("/project", "apps/web"),
-        app: "",
+        buildFolder: path.join("/project", "apps/web"),
+        appFolder: "",
       });
     });
 
     it("doesn't look for a monorepo outside the project", () => {
       withFiles(path.join("/", "turbo.json"));
       expect(util.buildDirectory("/project", "apps/web")).to.deep.equal({
-        dir: path.join("/project", "apps/web"),
-        app: "",
+        buildFolder: path.join("/project", "apps/web"),
+        appFolder: "",
       });
       expect(util.buildDirectory("/project", "../other")).to.deep.equal({
-        dir: path.join("/project", "../other"),
-        app: "",
+        buildFolder: path.join("/project", "../other"),
+        appFolder: "",
       });
     });
   });

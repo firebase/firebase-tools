@@ -56,9 +56,9 @@ async function deployRemoteBuild(
   svc: ServiceDeploy,
 ): Promise<void> {
   const { projectId } = context;
-  const { dir, app } = buildDirectory(options.config.projectDir, svc.config.rootDir);
-  const source = await uploadSource(projectId, options, svc.config, dir);
-  const image = await buildImage(projectId, svc, source, app);
+  const { buildFolder, appFolder } = buildDirectory(options.config.projectDir, svc.config.rootDir);
+  const source = await uploadSource(projectId, options, svc.config, buildFolder);
+  const image = await buildImage(projectId, svc, source, appFolder);
   const template = revisionTemplate(svc, image, options.message as string | undefined);
   svc.deployed = await rollOut(projectId, svc, template);
 }
@@ -125,20 +125,23 @@ async function buildServiceLocally(
   return { archive, runCommand: buildConfig.runCommand, env };
 }
 
-/** Zips `dir`, the directory to build from, and uploads it to the region's source bucket. */
+/**
+ * Zips the build folder (see BuildDirectory in apphosting/util.ts) and uploads it to the region's
+ * source bucket.
+ */
 async function uploadSource(
   projectId: string,
   options: Options,
   config: RunSingle,
-  dir: string,
+  buildFolder: string,
 ): Promise<runv2.StorageSource> {
   const { serviceId, region } = config;
   const bucketName = await sourceBucket(projectId, options, region);
   // The zip is a tmp file, so it's deleted when the CLI exits. The project's .gitignore files above
-  // `dir` apply too, like they do for App Hosting's source deploys and local builds.
+  // the build folder apply too, like they do for App Hosting's source deploys and local builds.
   const archive = await createSourceDeployArchive(
     toAppHostingConfig(config),
-    dir,
+    buildFolder,
     options.config.projectDir,
   );
   logLabeledBullet("run", `Uploading source for service ${serviceId} in ${region}...`);
@@ -190,14 +193,15 @@ async function sourceBucket(projectId: string, options: Options, region: string)
 }
 
 /**
- * Builds the uploaded source into an image on Cloud Build and returns the image's URI. `app` is the
- * app's folder in the upload, or empty if the upload is just the app (see buildDirectory).
+ * Builds the uploaded build folder into an image on Cloud Build and returns the image's URI.
+ * `appFolder` is the app folder's path in the build folder, or empty if they're the same folder
+ * (see BuildDirectory in apphosting/util.ts).
  */
 async function buildImage(
   projectId: string,
   svc: ServiceDeploy,
   source: runv2.StorageSource,
-  app: string,
+  appFolder: string,
 ): Promise<string> {
   const { serviceId, region } = svc.config;
   await artifactregistry.ensureDockerRepository(projectId, region, "cloud-run-source-deploy");
@@ -205,8 +209,8 @@ async function buildImage(
   logLabeledBullet("run", `Building service ${serviceId} in ${region}...`);
   const buildpackBuild: runv2.BuildpacksBuild = {
     environmentVariables: {
-      // If the upload is a monorepo, tell the buildpacks which folder is the app.
-      ...(app ? { GOOGLE_BUILDABLE: app } : {}),
+      // In a monorepo, tell the buildpacks which folder in the build folder is the app.
+      ...(appFolder ? { GOOGLE_BUILDABLE: appFolder } : {}),
       // Cloud Build only takes plain values, so pass only the non-secret env vars. Prepare already
       // rejects secrets for builds on Cloud Build.
       ...nonSecretValues(svc.buildEnv || {}),
