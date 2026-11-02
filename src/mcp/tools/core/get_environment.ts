@@ -117,7 +117,7 @@ export const get_environment = tool(
     const aliases = projectId ? getAliases({ rc }, projectId) : [];
     const geminiTosAccepted = !!configstore.get("gemini");
     const projectFileExists = config.projectFileExists("firebase.json");
-    const detectedApps = await detectApps(process.cwd());
+    const detectedApps = await detectApps(host.cachedProjectDir || process.cwd());
     const allAccounts = getAllAccounts().map((account) => account.user.email);
 
     const detectedAppsMap: { [appId: string]: string } = {};

@@ -282,6 +282,14 @@ describe("appUtils", () => {
       expect(platforms).to.have.deep.members([Platform.FLUTTER]);
     });
 
+    it("should return UNITY if ProjectSettings/ProjectVersion.txt exists", async () => {
+      mockfs({
+        [testDir]: { ProjectSettings: { "ProjectVersion.txt": "m_EditorVersion: 2022.3.10f1" } },
+      });
+      const platforms = await getPlatformsFromFolder(testDir);
+      expect(platforms).to.have.deep.members([Platform.UNITY]);
+    });
+
     it("should return FLUTTER and WEB if both identifiers exist", async () => {
       mockfs({ [testDir]: { "package.json": "{}", "pubspec.yaml": "name: test" } });
       const platforms = await getPlatformsFromFolder(testDir);
@@ -571,6 +579,112 @@ describe("appUtils", () => {
           directory: ".",
           appId: "1:123456789012:ios:abcdef1234567890abcdef",
           bundleId: "com.example.fakeTestsFlutter",
+        },
+      ]);
+    });
+
+    it("should detect a flutter app with native config files and flavor options", async () => {
+      mockfs({
+        [testDir]: {
+          "pubspec.yaml": "name: test",
+          lib: { "firebase_options_prod.dart": FLUTTER_CONFIG },
+          android: {
+            app: {
+              "google-services.json": ANDROID_CONFIG_1,
+            },
+          },
+          ios: {
+            Runner: {
+              "GoogleService-Info.plist": IOS_CONFIG_2,
+            },
+          },
+        },
+      });
+      const apps = cleanUndefinedFields(await detectApps(testDir));
+      expect(apps).to.have.deep.members([
+        {
+          platform: Platform.FLUTTER,
+          directory: ".",
+          appId: "1:123456789012:web:abcdef1234567890abcdef",
+        },
+        {
+          platform: Platform.FLUTTER,
+          directory: ".",
+          appId: "1:123456789012:android:abcdef1234567890abcdef",
+        },
+        {
+          platform: Platform.FLUTTER,
+          directory: ".",
+          appId: "1:123456789012:ios:abcdef1234567890abcdef",
+          bundleId: "com.example.fakeTestsFlutter",
+        },
+        {
+          platform: Platform.FLUTTER,
+          directory: ".",
+          appId: "1:123456789012:android:fakeapp1id",
+          bundleId: "com.fake.app1",
+        },
+        {
+          platform: Platform.FLUTTER,
+          directory: ".",
+          appId: "1:123456789012:ios:abcdef0987654321abcdef",
+          bundleId: "com.fake.ios.app.debug",
+        },
+      ]);
+    });
+
+    it("should detect a unity app without Firebase configs", async () => {
+      mockfs({
+        [testDir]: {
+          ProjectSettings: { "ProjectVersion.txt": "m_EditorVersion: 2022.3.10f1" },
+          Assets: {},
+          Packages: {
+            "com.some.pkg": { "package.json": "{}" },
+          },
+          Library: {
+            PackageCache: {
+              "com.unity.ugui": { "package.json": "{}" },
+            },
+          },
+        },
+      });
+      const apps = cleanUndefinedFields(await detectApps(testDir));
+      expect(apps).to.have.deep.members([
+        {
+          platform: Platform.UNITY,
+          directory: ".",
+        },
+      ]);
+    });
+
+    it("should detect a unity app with Firebase configs and deduplicate desktop config", async () => {
+      mockfs({
+        [testDir]: {
+          ProjectSettings: { "ProjectVersion.txt": "m_EditorVersion: 2022.3.10f1" },
+          Assets: {
+            "google-services.json": ANDROID_CONFIG_1,
+            "google-services.json.meta": "fileFormatVersion: 2",
+            "GoogleService-Info.plist": IOS_CONFIG_1,
+            "GoogleService-Info.plist.meta": "fileFormatVersion: 2",
+            StreamingAssets: {
+              "google-services-desktop.json": ANDROID_CONFIG_1,
+            },
+          },
+        },
+      });
+      const apps = cleanUndefinedFields(await detectApps(testDir));
+      expect(apps).to.have.deep.members([
+        {
+          platform: Platform.UNITY,
+          directory: ".",
+          appId: "1:123456789012:android:fakeapp1id",
+          bundleId: "com.fake.app1",
+        },
+        {
+          platform: Platform.UNITY,
+          directory: ".",
+          appId: "1:123456789012:ios:abcdef1234567890abcdef",
+          bundleId: "com.fake.ios.app",
         },
       ]);
     });

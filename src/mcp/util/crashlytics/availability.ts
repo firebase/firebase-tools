@@ -12,9 +12,13 @@ export async function isCrashlyticsAvailable(ctx: McpContext): Promise<boolean> 
   return await isCrashlyticsInstalled(ctx);
 }
 
+const CRASHLYTICS_GRADLE_PATTERN =
+  /(firebase-crashlytics|firebase\.crashlytics|com\.google\.firebase\.crashlytics)/;
+
 async function isCrashlyticsInstalled(ctx: McpContext): Promise<boolean> {
   const host = ctx.host;
-  const projectDir = ctx.config.projectDir;
+  const projectDir =
+    ctx.config.projectDir || host.cachedProjectDir || host.startupRoot || process.cwd();
   const platforms = await getPlatformsFromFolder(projectDir);
 
   // If this is not a supported platform, then Crashlytics will not be present
@@ -22,6 +26,7 @@ async function isCrashlyticsInstalled(ctx: McpContext): Promise<boolean> {
     !platforms.includes(Platform.FLUTTER) &&
     !platforms.includes(Platform.ANDROID) &&
     !platforms.includes(Platform.IOS) &&
+    !platforms.includes(Platform.UNITY) &&
     !platforms.includes(Platform.WEB)
   ) {
     host.logger.debug("Found no supported Crashlytics platforms.");
@@ -30,6 +35,10 @@ async function isCrashlyticsInstalled(ctx: McpContext): Promise<boolean> {
 
   if (platforms.includes(Platform.FLUTTER) && (await flutterAppUsesCrashlytics(projectDir))) {
     host.logger.debug("Found Flutter app using Crashlytics");
+    return true;
+  }
+  if (platforms.includes(Platform.UNITY) && (await unityAppUsesCrashlytics(projectDir))) {
+    host.logger.debug("Found Unity app using Crashlytics");
     return true;
   }
   if (platforms.includes(Platform.ANDROID) && (await androidAppUsesCrashlytics(projectDir))) {
@@ -56,11 +65,9 @@ async function isCrashlyticsInstalled(ctx: McpContext): Promise<boolean> {
 
 async function androidAppUsesCrashlytics(appPath: string): Promise<boolean> {
   const buildGradleFiles = await detectFiles(appPath, "build.gradle*");
-  const crashlyticsPattern =
-    /(firebase-crashlytics|firebase\.crashlytics|com\.google\.firebase\.crashlytics)/;
   for (const file of buildGradleFiles) {
     const content = await fs.readFile(path.join(appPath, file), "utf8");
-    if (crashlyticsPattern.test(content)) {
+    if (CRASHLYTICS_GRADLE_PATTERN.test(content)) {
       return true;
     }
   }
@@ -84,13 +91,61 @@ async function iosAppUsesCrashlytics(appPath: string): Promise<boolean> {
 }
 
 async function flutterAppUsesCrashlytics(appPath: string): Promise<boolean> {
-  const pubspecFiles = await detectFiles(appPath, "pubspec.yaml");
+  const pubspecFiles = (
+    await Promise.all([detectFiles(appPath, "pubspec.yaml"), detectFiles(appPath, "pubspec.lock")])
+  ).flat();
   for (const file of pubspecFiles) {
     const content = await fs.readFile(path.join(appPath, file), "utf8");
     if (content.includes("firebase_crashlytics")) {
       return true;
     }
   }
+  return false;
+}
+
+async function unityAppUsesCrashlytics(appPath: string): Promise<boolean> {
+  const upmFiles = (
+    await Promise.all([
+      detectFiles(appPath, "Packages/manifest.json"),
+      detectFiles(appPath, "Packages/packages-lock.json"),
+    ])
+  ).flat();
+  for (const file of upmFiles) {
+    const content = await fs.readFile(path.join(appPath, file), "utf8");
+    if (content.includes("com.google.firebase.crashlytics")) {
+      return true;
+    }
+  }
+
+  const sdkFilePatterns = [
+    "*CrashlyticsDependencies.xml",
+    "GoogleDependency*Crashlytics*.xml",
+    "Firebase.Crashlytics.dll",
+    "com.google.firebase.crashlytics*.tgz",
+  ];
+  const sdkFiles = (
+    await Promise.all(sdkFilePatterns.map((pattern) => detectFiles(appPath, pattern)))
+  ).flat();
+  if (sdkFiles.length > 0) {
+    return true;
+  }
+
+  const gradleFiles = await detectFiles(appPath, "*.gradle");
+  for (const file of gradleFiles) {
+    const content = await fs.readFile(path.join(appPath, file), "utf8");
+    if (CRASHLYTICS_GRADLE_PATTERN.test(content)) {
+      return true;
+    }
+  }
+
+  const csFiles = await detectFiles(appPath, "*.cs");
+  for (const file of csFiles) {
+    const content = await fs.readFile(path.join(appPath, file), "utf8");
+    if (content.includes("Firebase.Crashlytics")) {
+      return true;
+    }
+  }
+
   return false;
 }
 

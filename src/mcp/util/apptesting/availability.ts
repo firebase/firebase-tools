@@ -9,10 +9,11 @@ import { McpContext } from "../../types";
  */
 export async function isAppTestingAvailable(ctx: McpContext): Promise<boolean> {
   const host = ctx.host;
-  const projectDir = ctx.config.projectDir;
+  const projectDir =
+    ctx.config.projectDir || host.cachedProjectDir || host.startupRoot || process.cwd();
   const platforms = await getPlatformsFromFolder(projectDir);
 
-  const supportedPlatforms = [Platform.FLUTTER, Platform.ANDROID, Platform.IOS];
+  const supportedPlatforms = [Platform.FLUTTER, Platform.ANDROID, Platform.IOS, Platform.UNITY];
 
   if (!platforms.some((p) => supportedPlatforms.includes(p))) {
     host.logger.debug("Found no supported App Testing platforms.");
