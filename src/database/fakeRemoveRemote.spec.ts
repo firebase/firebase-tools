@@ -14,7 +14,7 @@ export class FakeRemoveRemote implements RemoveRemote {
    *                       If the sum of all leaves to delete is larger than largeThreshold,
    *                       the delete will return false.
    */
-  constructor(data: any, largeThreshold: number = 10) {
+  constructor(data: any, largeThreshold = 10) {
     this.data = data;
     this.largeThreshold = largeThreshold;
   }
