@@ -277,6 +277,43 @@ describe("fsAsync", () => {
         expect(await walkWeb(webDir)).to.deep.equal(await walkWeb());
       });
 
+      it("matches each .gitignore's rules against paths from its own folder, like git", async () => {
+        // Walks apps/web/ in this tree. Each comment says whether git ignores the file and why.
+        const root = path.join(os.tmpdir(), crypto.randomBytes(10).toString("hex"));
+        const web = path.join(root, "apps", "web");
+        const files = {
+          "example.txt": "ignored: a rule without a slash matches at any depth",
+          "anchored.txt": "kept: /anchored.txt is only the one next to the root .gitignore",
+          "rooted.txt": "ignored: apps/web/rooted.txt is relative to the root .gitignore",
+          "build/out.js": "kept: /build/ is only the build folder next to the root .gitignore",
+          "gen.txt": "ignored: /web/gen.txt is relative to apps/.gitignore",
+          "other/gen.txt": "kept: /web/gen.txt doesn't match deeper folders",
+        };
+        try {
+          fs.mkdirsSync(path.join(web, "build"));
+          fs.mkdirsSync(path.join(web, "other"));
+          fs.writeFileSync(
+            path.join(root, ".gitignore"),
+            ["example.txt", "/anchored.txt", "apps/web/rooted.txt", "/build/"].join("\n"),
+          );
+          fs.writeFileSync(path.join(root, "apps", ".gitignore"), "/web/gen.txt");
+          for (const [file, why] of Object.entries(files)) {
+            fs.writeFileSync(path.join(web, file), why);
+          }
+
+          const results = await fsAsync.readdirRecursive({
+            path: web,
+            supportGitIgnore: true,
+            gitIgnoreRoot: root,
+          });
+
+          const found = results.map((r) => path.relative(web, r.name).split(path.sep).join("/"));
+          expect(found.sort()).to.deep.equal(["anchored.txt", "build/out.js", "other/gen.txt"]);
+        } finally {
+          rmSync(root, { recursive: true, force: true });
+        }
+      });
+
       it("fails, instead of skipping it, if a .gitignore can't be read", async () => {
         const readFileSync = sinon.stub(fs, "readFileSync").callThrough();
         const denied = new Error("EACCES: permission denied");
