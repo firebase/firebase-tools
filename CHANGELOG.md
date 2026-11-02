@@ -1,2 +1,0 @@
-- Ensured the Firebase Hosting API is enabled before deploying and running other Hosting commands.
-- Fixed an issue where the Firebase MCP server always suggested `npx firebase-tools@latest` even when the `firebase` CLI was installed.

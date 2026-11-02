@@ -40,8 +40,7 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
       case "nuxt":
       case "nuxt2":
       case "express":
-      // "svelekit" should not be removed unless it's confirmed to not cause breakages.
-      case "svelekit":
+      case "svelekit": // "svelekit" should not be removed unless it's confirmed to not cause breakages.
       case "sveltekit": {
         logger.info();
         const useAppHosting = await confirm({
