@@ -1,21 +1,14 @@
-Project: /docs/hosting/_project.yaml
-Book: /docs/_book.yaml
-page_type: guide
-
-{% include "_shared/apis/console/_local_variables.html" %}
-{% include "_local_variables.html" %}
-{% include "docs/hosting/_local_variables.html" %}
-
-<link rel="stylesheet" type="text/css" href="/styles/docs.css" />
-
 # Integrate Angular
 
-<<_includes/_preview-disclaimer.md>>
+Note: Framework-aware Hosting is an early public preview. This means
+that the functionality might change in backward-incompatible ways. A preview
+release is not subject to any SLA or deprecation policy and may receive limited
+or no support.
 
-Caution: For Angular developers, new participation in the {{hosting}}
+Caution: For Angular developers, new participation in the Hosting
 frameworks experiment has been closed permanently. If you're already using the
 frameworks experiment in the Firebase CLI, we recommend "graduating" to
-{{app_hosting}}. With {{app_hosting}}, you'll have a unified solution to manage
+App Hosting. With App Hosting, you'll have a unified solution to manage
 everything from CDN to server-side rendering, along with improved GitHub
 integration.
 
@@ -44,14 +37,14 @@ for more information.
 
 When you deploy with `firebase deploy`, Firebase builds your browser bundle,
 your server bundle, and prerenders the application. These elements are deployed
-to {{hosting}} and {{cloud_functions_full}}.
+to Hosting and Cloud Functions for Firebase.
 
 #### Custom deploy
 
-The {{firebase_cli}} assumes that you have a single application defined in your
+The Firebase CLI assumes that you have a single application defined in your
 `angular.json` with a production build configuration.
 
-If need to tailor the {{cli}}'s assumptions, you can either use the
+If you need to tailor the CLI's assumptions, you can either use the
 `FIREBASE_FRAMEWORKS_BUILD_TARGET` environment variable or add
 [AngularFire](https://github.com/angular/angularfire#readme) and modify your
 `angular.json`:
@@ -72,7 +65,7 @@ If need to tailor the {{cli}}'s assumptions, you can either use the
 
 When including Firebase JS SDK methods in both server and client bundles, guard
 against runtime errors by checking `isSupported()` before using the product.
-Not all products are [supported in all environments](/docs/web/environments-js-sdk#other_environments).
+Not all products are [supported in all environments](https://firebase.google.com/docs/web/environments-js-sdk#other_environments).
 
 Tip: consider using [AngularFire](https://github.com/angular/angularfire#readme),
 which does this for you automatically.
