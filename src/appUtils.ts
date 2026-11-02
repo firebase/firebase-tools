@@ -69,16 +69,17 @@ export async function detectApps(dirPath: string): Promise<App[]> {
       detectFiles(dirPath, "ProjectSettings/ProjectVersion.txt"),
     ]);
 
-  const [adminAndWebAppsRaw, flutterApps, androidAppsRaw, iosAppsRaw, unityApps] =
-    await Promise.all([
-      Promise.all(packageJsonFiles.map((p) => packageJsonToAdminOrWebApp(dirPath, p))).then((r) =>
-        r.flat(),
-      ),
-      Promise.all(pubSpecYamlFiles.map((f) => processFlutterDir(dirPath, f))).then((r) => r.flat()),
-      Promise.all(srcMainFolders.map((f) => processAndroidDir(dirPath, f))).then((r) => r.flat()),
-      Promise.all(xCodeProjects.map((f) => processIosDir(dirPath, f))).then((r) => r.flat()),
-      Promise.all(unityVersionFiles.map((f) => processUnityDir(dirPath, f))).then((r) => r.flat()),
-    ]);
+  const unityDirs = unityVersionFiles.map((f) => path.dirname(path.dirname(f)));
+
+  const [adminAndWebApps, flutterApps, androidAppsRaw, iosAppsRaw, unityApps] = await Promise.all([
+    Promise.all(
+      packageJsonFiles.map((p) => packageJsonToAdminOrWebApp(dirPath, p, unityDirs)),
+    ).then((r) => r.flat()),
+    Promise.all(pubSpecYamlFiles.map((f) => processFlutterDir(dirPath, f))).then((r) => r.flat()),
+    Promise.all(srcMainFolders.map((f) => processAndroidDir(dirPath, f))).then((r) => r.flat()),
+    Promise.all(xCodeProjects.map((f) => processIosDir(dirPath, f))).then((r) => r.flat()),
+    Promise.all(unityVersionFiles.map((f) => processUnityDir(dirPath, f))).then((r) => r.flat()),
+  ]);
 
   const androidApps = androidAppsRaw.filter(
     (a) =>
@@ -90,10 +91,6 @@ export async function detectApps(dirPath: string): Promise<App[]> {
     (a) =>
       !flutterApps.some((f) => isPathInside(f.directory, a.directory)) &&
       !unityApps.some((u) => isPathInside(u.directory, a.directory)),
-  );
-
-  const adminAndWebApps = adminAndWebAppsRaw.filter(
-    (a) => !unityApps.some((u) => isPathInside(u.directory, a.directory)),
   );
 
   return [...flutterApps, ...unityApps, ...androidApps, ...iosApps, ...adminAndWebApps];
@@ -149,7 +146,10 @@ async function processAndroidDir(dirPath: string, filePath: string): Promise<App
 
 async function processFlutterDir(dirPath: string, filePath: string): Promise<App[]> {
   const flutterDir = path.dirname(filePath);
-  const flutterAppIds = await detectAppIdsForPlatform(dirPath, Platform.FLUTTER);
+  const flutterAppIds = await detectAppIdsForPlatform(
+    path.join(dirPath, flutterDir),
+    Platform.FLUTTER,
+  );
 
   if (flutterAppIds.length === 0) {
     return [
@@ -160,19 +160,12 @@ async function processFlutterDir(dirPath: string, filePath: string): Promise<App
     ];
   }
 
-  const flutterApps = await Promise.all(
-    flutterAppIds.map((app) => {
-      const flutterApp: App = {
-        platform: Platform.FLUTTER,
-        directory: flutterDir,
-        appId: app.appId,
-        bundleId: app.bundleId,
-      };
-      return flutterApp;
-    }),
-  );
-
-  return flutterApps.flat();
+  return flutterAppIds.map((app) => ({
+    platform: Platform.FLUTTER,
+    directory: flutterDir,
+    appId: app.appId,
+    bundleId: app.bundleId,
+  }));
 }
 
 async function processUnityDir(dirPath: string, filePath: string): Promise<App[]> {
@@ -198,7 +191,11 @@ async function processUnityDir(dirPath: string, filePath: string): Promise<App[]
 
 function isPathInside(parent: string, child: string): boolean {
   const relativePath = path.relative(parent, child);
-  return !relativePath.startsWith(`..`);
+  return (
+    !relativePath.startsWith(`..${path.sep}`) &&
+    relativePath !== ".." &&
+    !path.isAbsolute(relativePath)
+  );
 }
 
 export function getAllDepsFromPackageJson(packageJson: PackageJSON) {
@@ -211,23 +208,37 @@ export function getAllDepsFromPackageJson(packageJson: PackageJSON) {
 async function packageJsonToAdminOrWebApp(
   dirPath: string,
   packageJsonFile: string,
+  unityDirs: string[] = [],
 ): Promise<App[]> {
   try {
+    const appDir = path.dirname(packageJsonFile);
+    const isUnityPackage = unityDirs.some((uDir) =>
+      isPathInside(path.join(uDir, "Packages"), appDir),
+    );
+    if (isUnityPackage) {
+      return [];
+    }
+    const isInsideUnity = unityDirs.some((uDir) => isPathInside(uDir, appDir));
     const fullPath = path.join(dirPath, packageJsonFile);
     const packageJson = JSON.parse((await fs.readFile(fullPath)).toString()) as PackageJSON;
     const allDeps = getAllDepsFromPackageJson(packageJson);
-    const detectedApps = [];
+    const detectedApps: App[] = [];
     if (allDeps.includes("firebase-admin") || allDeps.includes("firebase-functions")) {
       detectedApps.push({
         platform: Platform.ADMIN_NODE,
-        directory: path.dirname(packageJsonFile),
+        directory: appDir,
       });
     }
-    if (allDeps.includes("firebase") || detectedApps.length === 0) {
+    const frameworks = getFrameworksFromPackageJson(packageJson);
+    if (
+      allDeps.includes("firebase") ||
+      (!isInsideUnity && detectedApps.length === 0) ||
+      (isInsideUnity && frameworks.length > 0)
+    ) {
       detectedApps.push({
         platform: Platform.WEB,
-        directory: path.dirname(packageJsonFile),
-        frameworks: getFrameworksFromPackageJson(packageJson),
+        directory: appDir,
+        frameworks,
       });
     }
     return detectedApps;

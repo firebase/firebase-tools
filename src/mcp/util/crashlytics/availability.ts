@@ -66,9 +66,13 @@ async function isCrashlyticsInstalled(ctx: McpContext): Promise<boolean> {
 async function androidAppUsesCrashlytics(appPath: string): Promise<boolean> {
   const buildGradleFiles = await detectFiles(appPath, "build.gradle*");
   for (const file of buildGradleFiles) {
-    const content = await fs.readFile(path.join(appPath, file), "utf8");
-    if (CRASHLYTICS_GRADLE_PATTERN.test(content)) {
-      return true;
+    try {
+      const content = await fs.readFile(path.join(appPath, file), "utf8");
+      if (CRASHLYTICS_GRADLE_PATTERN.test(content)) {
+        return true;
+      }
+    } catch {
+      // Ignore unreadable files
     }
   }
   return false;
@@ -82,9 +86,13 @@ async function iosAppUsesCrashlytics(appPath: string): Promise<boolean> {
 
   const files = fileArrays.flat();
   for (const file of files) {
-    const content = await fs.readFile(path.join(appPath, file), "utf8");
-    if (content.includes("Crashlytics")) {
-      return true;
+    try {
+      const content = await fs.readFile(path.join(appPath, file), "utf8");
+      if (content.includes("Crashlytics")) {
+        return true;
+      }
+    } catch {
+      // Ignore unreadable files
     }
   }
   return false;
@@ -126,7 +134,7 @@ async function unityAppUsesCrashlytics(appPath: string): Promise<boolean> {
     return true;
   }
 
-  const gradleFiles = await detectFiles(appPath, "*.gradle");
+  const gradleFiles = await detectFiles(appPath, "*.gradle*");
   for (const file of gradleFiles) {
     try {
       const content = await fs.readFile(path.join(appPath, file), "utf8");

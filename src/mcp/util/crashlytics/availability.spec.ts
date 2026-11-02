@@ -381,6 +381,26 @@ describe("isCrashlyticsAvailable", () => {
     expect(result).to.be.true;
   });
 
+  it("should return true for a Unity project with Crashlytics in mainTemplate.gradle.kts", async () => {
+    mockfs({
+      "/test-dir": {
+        ProjectSettings: { "ProjectVersion.txt": "m_EditorVersion: 2022.3.10f1" },
+        Assets: {
+          Plugins: {
+            Android: {
+              "mainTemplate.gradle.kts":
+                'dependencies { implementation("com.google.firebase:firebase-crashlytics:18.6.0") }',
+            },
+          },
+        },
+      },
+    });
+
+    const result = await isCrashlyticsAvailable(mockContext("/test-dir"));
+
+    expect(result).to.be.true;
+  });
+
   it("should return false for a Unity project without Crashlytics", async () => {
     mockfs({
       "/test-dir": {

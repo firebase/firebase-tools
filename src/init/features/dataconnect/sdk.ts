@@ -45,6 +45,14 @@ export const FDC_APP_FOLDER = "FDC_APP_FOLDER";
 export const FDC_SDK_FRAMEWORKS_ENV = "FDC_SDK_FRAMEWORKS";
 export const FDC_SDK_PLATFORM_ENV = "FDC_SDK_PLATFORM";
 
+const SUPPORTED_SQL_CONNECT_PLATFORMS: Platform[] = [
+  Platform.ANDROID,
+  Platform.IOS,
+  Platform.WEB,
+  Platform.FLUTTER,
+  Platform.ADMIN_NODE,
+];
+
 export interface SdkRequiredInfo {
   apps: App[];
 }
@@ -245,16 +253,16 @@ async function actuateWithInfo(setup: Setup, config: Config, info: SdkRequiredIn
     // In `firebase init dataconnect:sdk`, customer may create the app while the command is running.
     // The `firebase_init` MCP tool always pass an empty `apps` list, it should setup all apps detected.
     info.apps = await detectApps(cwd);
-    if (!info.apps.length) {
-      logLabeledBullet("dataconnect", "No apps to setup SQL Connect Generated SDKs");
-      return;
-    }
   }
 
   // detectApps creates unique apps by appId and bundleId, but this method operates
   // on platform, directory, and frameworks alone. Deduping here to retain the
   // same behavior
   const apps = dedupeAppsByPlatformAndDirectory(info.apps);
+  if (!apps.length) {
+    logLabeledBullet("dataconnect", "No apps to setup SQL Connect Generated SDKs");
+    return;
+  }
   const connectorInfo = await chooseExistingConnector(setup, config);
   const connectorYaml = JSON.parse(JSON.stringify(connectorInfo.connectorYaml)) as ConnectorYaml;
   for (const app of apps) {
@@ -472,9 +480,9 @@ export function addSdkGenerateToConnectorYaml(
     }
     default:
       throw new FirebaseError(
-        `Unsupported platform ${app.platform} for SQL Connect SDK generation. Supported platforms are: ${Object.values(
-          Platform,
-        ).join(", ")}\n${JSON.stringify(app)}`,
+        `Unsupported platform ${app.platform} for SQL Connect SDK generation. Supported platforms are: ${SUPPORTED_SQL_CONNECT_PLATFORMS.join(
+          ", ",
+        )}\n${JSON.stringify(app)}`,
       );
   }
 }
@@ -485,6 +493,9 @@ function dedupeAppsByPlatformAndDirectory(apps: App[]): App[] {
   // same behavior
   const uniqueApps = new Map<string, App>();
   for (const app of apps) {
+    if (!SUPPORTED_SQL_CONNECT_PLATFORMS.includes(app.platform)) {
+      continue;
+    }
     // Sorting frameworks for consistent key generation
     const frameworkKey = app.frameworks ? [...app.frameworks].sort().join(",") : "";
     const key = `${app.platform}:${app.directory}:${frameworkKey}`;

@@ -584,18 +584,43 @@ describe("appUtils", () => {
     });
 
     it("should detect a flutter app with native config files and flavor options", async () => {
+      const flutterAndroidConfig = JSON.stringify({
+        project_info: {
+          project_number: "FAKE_PROJECT_NUMBER",
+          project_id: "fake-project-android",
+        },
+        client: [
+          {
+            client_info: {
+              mobilesdk_app_id: "1:123456789012:android:abcdef1234567890abcdef",
+              android_client_info: {
+                package_name: "com.example.fakeTestsFlutter",
+              },
+            },
+          },
+          {
+            client_info: {
+              mobilesdk_app_id: "1:123456789012:android:fakeapp1id",
+              android_client_info: {
+                package_name: "com.fake.app1",
+              },
+            },
+          },
+        ],
+      });
       mockfs({
         [testDir]: {
           "pubspec.yaml": "name: test",
           lib: { "firebase_options_prod.dart": FLUTTER_CONFIG },
           android: {
             app: {
-              "google-services.json": ANDROID_CONFIG_1,
+              "google-services.json": flutterAndroidConfig,
             },
           },
           ios: {
             Runner: {
-              "GoogleService-Info.plist": IOS_CONFIG_2,
+              "GoogleService-Info.plist": IOS_CONFIG_1,
+              "GoogleService-Debug.plist": IOS_CONFIG_2,
             },
           },
         },
@@ -611,6 +636,7 @@ describe("appUtils", () => {
           platform: Platform.FLUTTER,
           directory: ".",
           appId: "1:123456789012:android:abcdef1234567890abcdef",
+          bundleId: "com.example.fakeTestsFlutter",
         },
         {
           platform: Platform.FLUTTER,
@@ -719,6 +745,87 @@ describe("appUtils", () => {
           directory: "game-two",
           appId: "1:123456789012:ios:abcdef1234567890abcdef",
           bundleId: "com.fake.ios.app",
+        },
+      ]);
+    });
+
+    it("should scope flutter app ID detection to each flutter project directory in a monorepo", async () => {
+      mockfs({
+        [testDir]: {
+          "app-one": {
+            "pubspec.yaml": "name: app_one",
+            android: {
+              app: {
+                "google-services.json": ANDROID_CONFIG_1,
+              },
+            },
+          },
+          "app-two": {
+            "pubspec.yaml": "name: app_two",
+            ios: {
+              Runner: {
+                "GoogleService-Info.plist": IOS_CONFIG_1,
+              },
+            },
+          },
+        },
+      });
+      const apps = cleanUndefinedFields(await detectApps(testDir));
+      expect(apps).to.have.deep.members([
+        {
+          platform: Platform.FLUTTER,
+          directory: "app-one",
+          appId: "1:123456789012:android:fakeapp1id",
+          bundleId: "com.fake.app1",
+        },
+        {
+          platform: Platform.FLUTTER,
+          directory: "app-two",
+          appId: "1:123456789012:ios:abcdef1234567890abcdef",
+          bundleId: "com.fake.ios.app",
+        },
+      ]);
+    });
+
+    it("should detect ADMIN_NODE and explicit Firebase WEB apps inside a Unity repo while ignoring UPM packages", async () => {
+      mockfs({
+        [testDir]: {
+          ProjectSettings: { "ProjectVersion.txt": "m_EditorVersion: 2022.3.10f1" },
+          Assets: {},
+          Packages: {
+            "com.some.pkg": { "package.json": "{}" },
+          },
+          functions: {
+            "package.json": JSON.stringify({
+              dependencies: {
+                "firebase-functions": "^5.0.0",
+                "firebase-admin": "^12.0.0",
+              },
+            }),
+          },
+          web: {
+            "package.json": JSON.stringify({
+              dependencies: {
+                firebase: "^10.0.0",
+              },
+            }),
+          },
+        },
+      });
+      const apps = cleanUndefinedFields(await detectApps(testDir));
+      expect(apps).to.have.deep.members([
+        {
+          platform: Platform.UNITY,
+          directory: ".",
+        },
+        {
+          platform: Platform.ADMIN_NODE,
+          directory: "functions",
+        },
+        {
+          platform: Platform.WEB,
+          directory: "web",
+          frameworks: [],
         },
       ]);
     });
