@@ -36,8 +36,7 @@ export interface BuildLocallyOptions {
 /**
  * Builds an app on this machine, for App Hosting or Cloud Run: copies the project into
  * `scratchDir`, builds the copy with Universal Maker, and tars the output. `scratchDir` is deleted
- * afterwards, even if the build fails. The build runs in the copy of the app's build folder (see
- * BuildDirectory), and the archive is made from that folder.
+ * afterwards, even if the build fails.
  */
 export async function buildLocally(options: BuildLocallyOptions): Promise<PackagedLocalBuild> {
   const { projectId, projectDir, config, env, scratchDir } = options;
