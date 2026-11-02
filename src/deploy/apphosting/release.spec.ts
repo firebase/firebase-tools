@@ -99,7 +99,6 @@ describe("apphosting", () => {
         backendLocalBuilds: {
           fooLocalBuild: {
             archive: "/tmp/fooLocalBuild.tar.gz",
-            // The build ran in the monorepo's root, so the upload is that folder.
             rootDirectory: "apps/web",
             buildConfig: {
               runCommand: "npm run build",
@@ -133,7 +132,7 @@ describe("apphosting", () => {
           source: {
             locallyBuilt: {
               userStorageUri: "gs://bucket/foo-local-build.tar.gz",
-              // The app's folder in the upload, not in the project.
+              // The local build's rootDirectory, not the backend's rootDir.
               rootDirectory: "apps/web",
               runCommand: "npm run build",
               env: [{ variable: "VAR1", value: "VALUE1" }],

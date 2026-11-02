@@ -90,14 +90,13 @@ describe("buildLocally", () => {
       env,
       { nonInteractive: undefined, allowLocalBuildSecrets: true, rootDir: "" },
     );
-    // node_modules is ignored by the config, and key.pem by the .gitignore above the app's folder.
+    // node_modules is ignored by the config, and key.pem by .gitignore.
     expect(copiedFiles).to.have.members([
       ".gitignore",
       "firebase.json",
       "web/package.json",
       "web/app/page.tsx",
     ]);
-    // The archive is the folder the build ran in, so the app is its root.
     expect(tarEntries(archive)).to.deep.equal([".next/standalone/server.js"]);
     expect(rootDirectory).to.equal("");
     expect(buildConfig).to.deep.equal({ runCommand: "node .next/standalone/server.js" });
