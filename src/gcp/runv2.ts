@@ -62,6 +62,11 @@ export interface ContainerBuildConfig {
   /** Where to push the image, without a tag, e.g. us-central1-docker.pkg.dev/my-project/repo/web. */
   imageRepositoryUri: string;
   buildpacksBuild?: {
+    /**
+     * The base image to build on. Required if the container has a base image (baseImageUri), which
+     * turns on automatic base image updates.
+     */
+    buildBaseImageUri?: string;
     environmentVariables?: Record<string, string>;
   };
 }
@@ -266,6 +271,7 @@ export async function getService(
 /** A revision's status. Like Service, it only has the fields that the CLI uses. */
 export interface Revision {
   name: string;
+  createTime?: string;
   containerStatuses?: Array<{
     name: string;
     /** How building the container's image went, if Cloud Run built it (see Container.buildConfig). */
@@ -277,6 +283,26 @@ export interface Revision {
 export async function getRevision(name: string): Promise<Revision> {
   const res = await client.get<Revision>(name);
   return res.body;
+}
+
+/** Lists a service's revisions. */
+export async function listRevisions(
+  projectId: string,
+  location: string,
+  serviceId: string,
+): Promise<Revision[]> {
+  const revisions: Revision[] = [];
+  let pageToken: string | undefined = undefined;
+  do {
+    const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
+    const res = await client.get<{ revisions?: Revision[]; nextPageToken?: string }>(
+      `/projects/${projectId}/locations/${location}/services/${serviceId}/revisions`,
+      { queryParams },
+    );
+    revisions.push(...(res.body.revisions || []));
+    pageToken = res.body.nextPageToken;
+  } while (pageToken);
+  return revisions;
 }
 
 /**

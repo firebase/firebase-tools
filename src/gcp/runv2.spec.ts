@@ -598,6 +598,36 @@ describe("runv2", () => {
     });
   });
 
+  describe("listRevisions", () => {
+    let sandbox: sinon.SinonSandbox;
+    let getStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      getStub = sandbox.stub(Client.prototype, "get");
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("returns the service's revisions from every page", async () => {
+      const revisionsPath = `/projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}/revisions`;
+      getStub
+        .onFirstCall()
+        .resolves({ body: { revisions: [{ name: "r2" }], nextPageToken: "p2" } });
+      getStub.onSecondCall().resolves({ body: { revisions: [{ name: "r1" }] } });
+
+      const revisions = await runv2.listRevisions(PROJECT_ID, LOCATION, SERVICE_ID);
+
+      expect(revisions).to.deep.equal([{ name: "r2" }, { name: "r1" }]);
+      expect(getStub.firstCall).to.have.been.calledWithExactly(revisionsPath, { queryParams: {} });
+      expect(getStub.secondCall).to.have.been.calledWithExactly(revisionsPath, {
+        queryParams: { pageToken: "p2" },
+      });
+    });
+  });
+
   describe("updateService and createService", () => {
     let sandbox: sinon.SinonSandbox;
     let postStub: sinon.SinonStub;

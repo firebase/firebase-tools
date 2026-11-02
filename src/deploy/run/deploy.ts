@@ -1,4 +1,5 @@
 import * as fs from "fs";
+import { isEqual } from "lodash";
 import * as os from "os";
 import * as path from "path";
 import { CLOUD_RUN_SIZE_LIMIT_BYTES } from "../../apphosting/constants";
@@ -12,7 +13,7 @@ import * as gcs from "../../gcp/storage";
 import { getProjectNumber } from "../../getProjectNumber";
 import { logger } from "../../logger";
 import { Options } from "../../options";
-import { cloneDeep, logLabeledBullet } from "../../utils";
+import { cloneDeep, logLabeledBullet, logLabeledWarning } from "../../utils";
 import { prepareLocalBuildScratchDirectory } from "../apphosting/prepare";
 import { createLocalBuildTarArchive, createSourceDeployArchive } from "../apphosting/util";
 import { Context, Payload, ServiceDeploy } from "./args";
@@ -21,13 +22,27 @@ import { FIREBASE_APP_ANNOTATION, mainContainer } from "./util";
 
 const DEPLOY_MESSAGE_ANNOTATION = "firebase.google.com/deploy-message";
 /**
- * How to wait for a rollout. Cloud Run builds the image first, which can take longer than the
- * operation poller's default timeout. Check at least every 10 seconds, so that the deploy ends soon
- * after the rollout does; by default, the poller backs off to a minute between checks.
+ * How to wait for a rollout. Cloud Run builds the image first: Cloud Build can queue the build for
+ * up to 6 minutes, and Cloud Run gives it up to 30 minutes to run. Then the new revision has to
+ * start, which Cloud Run waits up to 4 minutes for by default. So wait up to 45 minutes. Check at
+ * least every 10 seconds, so that the deploy ends soon after the rollout does; by default, the
+ * poller backs off to a minute between checks.
  */
-const ROLLOUT_POLLING = { pollTimeoutMs: 30 * 60 * 1000, pollMaxBackoffMs: 10 * 1000 } as const;
+const ROLLOUT_POLLING = { pollTimeoutMs: 45 * 60 * 1000, pollMaxBackoffMs: 10 * 1000 } as const;
+/**
+ * The launch stage of a service that Cloud Run builds. Cloud Run's build API is in alpha, so Cloud
+ * Run rejects a service that uses it unless the service declares at least ALPHA.
+ */
+const REMOTE_BUILD_LAUNCH_STAGE = "ALPHA";
+/** How often to check whether Cloud Run has started the build, to link to its logs. */
+const BUILD_LOG_POLL_MS = 5 * 1000;
 /** The Artifact Registry repository that Cloud Run pushes the images it builds to. */
 const IMAGE_REPOSITORY = "cloud-run-source-deploy";
+/**
+ * The rule that earlier versions of the CLI put on source buckets, which deletes uploads after 30
+ * days.
+ */
+const UPLOAD_EXPIRY: gcs.LifecycleRule = { action: { type: "Delete" }, condition: { age: 30 } };
 
 /**
  * The image of a container that runs a local build's output. Cloud Run runs the output from Cloud
@@ -74,10 +89,14 @@ async function deployRemoteBuild(
   const message = options.message as string | undefined;
   const template = remoteBuildTemplate(svc, source, imageRepository, message);
   logLabeledBullet("run", `Building and deploying service ${serviceId} in ${region}...`);
+  const rollout = rollOut(projectId, svc, template, REMOTE_BUILD_LAUNCH_STAGE);
+  const linked = linkBuildLogs(projectId, svc, rollout);
   try {
-    svc.deployed = await rollOut(projectId, svc, template);
+    svc.deployed = await rollout;
   } catch (err: unknown) {
     throw (await buildFailure(projectId, svc.config, err)) ?? err;
+  } finally {
+    await linked;
   }
 }
 
@@ -110,6 +129,68 @@ async function buildFailure(
     // Without the build's status, the rollout's own error is the best one to show.
     logger.debug(`Couldn't look up the build of service ${serviceId}: ${getErrMsg(lookupErr)}`);
     return undefined;
+  }
+}
+
+/**
+ * Prints a link to the build's logs as soon as Cloud Run starts the build, a few seconds into the
+ * rollout, so that the build can be followed while it runs. Cloud Run lists the new revision with
+ * the link right away, but only points the service's latestCreatedRevision at it after the build.
+ * The new revision is the only one created after the service's last update. Stops when the rollout
+ * ends. The link is a convenience, so failures are only logged.
+ */
+async function linkBuildLogs(
+  projectId: string,
+  svc: ServiceDeploy,
+  rollout: Promise<unknown>,
+): Promise<void> {
+  const { serviceId, region } = svc.config;
+  const lastUpdate = svc.existing ? Date.parse(svc.existing.updateTime) : 0;
+  let ended = false;
+  const end = rollout.then(
+    () => {
+      ended = true;
+    },
+    () => {
+      ended = true;
+    },
+  );
+  while (!ended) {
+    await sleepUnlessEnded(BUILD_LOG_POLL_MS, end);
+    if (ended) {
+      return;
+    }
+    try {
+      const revisions = await runv2.listRevisions(projectId, region, serviceId);
+      const logUrl = revisions
+        .filter((r) => Date.parse(r.createTime ?? "") > lastUpdate)
+        .flatMap((r) => r.containerStatuses ?? [])
+        .map((c) => c.buildStatus?.cloudBuildLogUrl)
+        .find((url) => url);
+      if (logUrl) {
+        logLabeledBullet(
+          "run",
+          `View the build logs for service ${serviceId} in ${region} at ${logUrl}`,
+        );
+        return;
+      }
+    } catch (err: unknown) {
+      // E.g. the new service doesn't exist yet. Check again later.
+      logger.debug(`Couldn't look up the build of service ${serviceId}: ${getErrMsg(err)}`);
+    }
+  }
+}
+
+/** Waits for `ms` milliseconds, or less if `end` settles first. */
+async function sleepUnlessEnded(ms: number, end: Promise<void>): Promise<void> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, ms);
+  });
+  try {
+    await Promise.race([timeout, end]);
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -234,21 +315,39 @@ async function uploadBuiltApp(
 
 /**
  * Returns the region's source bucket, creating it if needed. Like App Hosting, each region has one
- * source bucket, which deletes uploads after 30 days.
+ * source bucket. Unlike App Hosting's, it keeps uploads: a service points at its upload, and Cloud
+ * Run reads the upload again whenever the service is edited, e.g. in the console.
  */
 async function sourceBucket(projectId: string, options: Options, region: string): Promise<string> {
   const baseName = `firebase-run-src-${await getProjectNumber(options)}-${region.toLowerCase()}`;
-  return gcs.upsertBucket({
+  const bucket = await gcs.upsertBucket({
     product: "run",
     createMessage: `Creating Cloud Storage bucket in ${region} to store Cloud Run source code uploads at ${baseName}...`,
     projectId,
-    req: {
-      baseName,
-      purposeLabel: `run-source-${region.toLowerCase()}`,
-      location: region,
-      lifecycle: { rule: [{ action: { type: "Delete" }, condition: { age: 30 } }] },
-    },
+    req: { baseName, purposeLabel: `run-source-${region.toLowerCase()}`, location: region },
   });
+  await keepUploads(bucket);
+  return bucket;
+}
+
+/**
+ * Removes the rule that deletes uploads after 30 days, which earlier versions of the CLI put on
+ * source buckets. A failure doesn't stop the deploy: it only breaks edits made after the upload is
+ * deleted.
+ */
+async function keepUploads(bucketName: string): Promise<void> {
+  try {
+    const rules = (await gcs.getBucket(bucketName)).lifecycle?.rule ?? [];
+    const kept = rules.filter((rule) => !isEqual(rule, UPLOAD_EXPIRY));
+    if (kept.length < rules.length) {
+      await gcs.patchBucket(bucketName, { lifecycle: { rule: kept } });
+    }
+  } catch (err: unknown) {
+    logLabeledWarning(
+      "run",
+      `Couldn't check that bucket ${bucketName} keeps uploads: ${getErrMsg(err)}`,
+    );
+  }
 }
 
 /**
@@ -328,6 +427,9 @@ export function remoteBuildTemplate(
   container.buildConfig = {
     imageRepositoryUri: imageRepository,
     buildpacksBuild: {
+      // Cloud Run requires a build base image for a container with automatic base image updates.
+      // Build on the base image that the container runs on, like Cloud Functions does.
+      ...(container.baseImageUri ? { buildBaseImageUri: container.baseImageUri } : {}),
       environmentVariables: {
         // Builds only take plain values, so pass only the non-secret env vars. Prepare already
         // rejects secrets for remote builds.
@@ -391,17 +493,21 @@ function serviceAnnotationsToDeploy(svc: ServiceDeploy): Record<string, string> 
   return annotations;
 }
 
-/** Rolls out the new revision: creates the service if it's new, or updates it. */
+/**
+ * Rolls out the new revision: creates the service if it's new, or updates it. A launch stage, if
+ * given, is set on the service; otherwise the service keeps its own.
+ */
 function rollOut(
   projectId: string,
   svc: ServiceDeploy,
   template: runv2.RevisionTemplate,
+  launchStage?: string,
 ): Promise<runv2.Service> {
   const annotations = serviceAnnotationsToDeploy(svc);
   if (svc.existing) {
-    return deployRevision(svc.existing, template, annotations);
+    return deployRevision(svc.existing, template, annotations, launchStage);
   }
-  return createNewService(projectId, svc.config, template, annotations);
+  return createNewService(projectId, svc.config, template, annotations, launchStage);
 }
 
 /** Creates a new service with its first revision. */
@@ -410,6 +516,7 @@ function createNewService(
   config: RunSingle,
   template: runv2.RevisionTemplate,
   annotations: Record<string, string>,
+  launchStage?: string,
 ): Promise<runv2.Service> {
   const { serviceId, region } = config;
   const service: Omit<runv2.Service, runv2.ServiceOutputFields> = {
@@ -420,6 +527,7 @@ function createNewService(
     // Like an App Hosting backend, the service is public.
     invokerIamDisabled: true,
     ingress: "INGRESS_TRAFFIC_ALL",
+    ...(launchStage ? { launchStage } : {}),
   };
   return runv2.createService(projectId, region, serviceId, service, ROLLOUT_POLLING);
 }
@@ -429,6 +537,7 @@ function deployRevision(
   service: runv2.Service,
   template: runv2.RevisionTemplate,
   annotations: Record<string, string>,
+  launchStage?: string,
 ): Promise<runv2.Service> {
   // Tagged revisions keep their tags (Hosting's pinned rewrites use them), but no traffic.
   const tags = (service.traffic || [])
@@ -440,10 +549,12 @@ function deployRevision(
     template,
     traffic: [{ type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 }, ...tags],
   };
-  return runv2.updateService(update, {
-    updateMask: ["template", "traffic", "annotations"],
-    ...ROLLOUT_POLLING,
-  });
+  const updateMask = ["template", "traffic", "annotations"];
+  if (launchStage) {
+    update.launchStage = launchStage;
+    updateMask.push("launchStage");
+  }
+  return runv2.updateService(update, { updateMask, ...ROLLOUT_POLLING });
 }
 
 /** Adapts a Cloud Run config so that it can reuse App Hosting's local build and archive helpers. */
