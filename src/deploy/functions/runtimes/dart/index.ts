@@ -62,7 +62,8 @@ export const DART_BUNDLE_EXECUTABLE_PATH = "build/cli/linux_x64/bundle/bin/serve
  * they are readable via `String.fromEnvironment` in compiled Dart code.
  * Secret references are skipped since they must never be baked into the
  * binary. Values containing a comma are skipped because `dart compile exe`
- * splits define values on commas; they remain available via
+ * splits define values on commas, and values containing a line break are
+ * skipped because the Dart CLI rejects them; both remain available via
  * `Platform.environment` at runtime.
  */
 export function dartDefineArgs(envs: Record<string, string>): string[] {
@@ -71,9 +72,9 @@ export function dartDefineArgs(envs: Record<string, string>): string[] {
     if (key.startsWith(SECRET_REF_PREFIX)) {
       continue;
     }
-    if (value.includes(",")) {
+    if (/[,\r\n]/.test(value)) {
       logger.debug(
-        `Not passing ${key} as a Dart define because its value contains a comma. ` +
+        `Not passing ${key} as a Dart define because its value contains a comma or line break. ` +
           `It is still available at runtime via Platform.environment.`,
       );
       continue;
@@ -302,7 +303,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
 
     // TODO: Pass dartDefineArgs once `dart build cli` supports --define in a
     // stable SDK (https://dart-review.googlesource.com/c/sdk/+/570263).
-    if (dartDefineArgs(this.userEnvs).length > 0) {
+    if (Object.keys(this.userEnvs).some((key) => !key.startsWith(SECRET_REF_PREFIX))) {
       logLabeledWarning(
         "functions",
         "Values from .env are not available via String.fromEnvironment for projects " +

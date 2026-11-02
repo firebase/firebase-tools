@@ -57,6 +57,12 @@ describe("Dart Runtime Delegate", () => {
       expect(dartDefineArgs({ FOO: "bar", LIST: "a,b" })).to.deep.equal(["--define=FOO=bar"]);
     });
 
+    it("should skip values containing a line break", () => {
+      expect(dartDefineArgs({ FOO: "bar", PEM: "a\nb", CR: "a\rb" })).to.deep.equal([
+        "--define=FOO=bar",
+      ]);
+    });
+
     it("should return no args for no envs", () => {
       expect(dartDefineArgs({})).to.deep.equal([]);
     });
