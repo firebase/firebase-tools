@@ -1,0 +1,1 @@
+- Fixed Hosting commands failing when unable to ensure the Firebase Hosting API is enabled, logging a warning instead. (#11335)

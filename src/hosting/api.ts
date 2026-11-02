@@ -1,10 +1,15 @@
-import { FirebaseError } from "../error";
+import * as clc from "colorette";
+
+import { FirebaseError, getErrMsg } from "../error";
 import { hostingApiOrigin } from "../api";
 import { Client } from "../apiv2";
+import * as ensureApiEnabledModule from "../ensureApiEnabled";
+import { logger } from "../logger";
 import * as operationPoller from "../operation-poller";
 import { DEFAULT_DURATION } from "../hosting/expireUtils";
 import { getAuthDomains, updateAuthDomains } from "../gcp/auth";
 import * as proto from "../gcp/proto";
+import * as utils from "../utils";
 import { getHostnameFromUrl } from "../utils";
 import { Constants } from "../emulator/constants";
 
@@ -799,4 +804,56 @@ export async function getDeploymentDomain(
   });
 
   return site && getHostnameFromUrl(site?.defaultUrl);
+}
+
+const failedApiChecks = new Set<string>();
+const inFlightApiChecks = new Map<string, Promise<void>>();
+
+/**
+ * Resets cached Hosting API enablement state. Intended for unit tests only.
+ */
+export function resetEnsureApiEnabledCacheForTests(): void {
+  failedApiChecks.clear();
+  inFlightApiChecks.clear();
+}
+
+/**
+ * Best-effort check to ensure the Firebase Hosting API is enabled on a project.
+ * Logs a bold warning if verification or enablement fails (e.g., due to missing
+ * Service Usage permissions on a service account) so callers with direct Hosting
+ * permissions can still proceed.
+ */
+export async function ensureApiEnabled(projectId: string): Promise<void> {
+  const apiUri = hostingApiOrigin();
+  const apiName = getHostnameFromUrl(apiUri) || apiUri;
+  const cacheKey = `${projectId}:${apiName}`;
+
+  if (failedApiChecks.has(cacheKey)) {
+    return;
+  }
+
+  const inFlight = inFlightApiChecks.get(cacheKey);
+  if (inFlight) {
+    return inFlight;
+  }
+
+  const checkPromise = (async () => {
+    try {
+      await ensureApiEnabledModule.ensure(projectId, apiUri, "hosting", true);
+    } catch (err: unknown) {
+      failedApiChecks.add(cacheKey);
+      logger.debug(`[hosting] failed to ensure Hosting API is enabled: ${getErrMsg(err)}`);
+      utils.logLabeledWarning(
+        "hosting",
+        clc.bold(
+          `Unable to ensure that ${apiName} is enabled on project ${projectId}. Ensure it is enabled at ${ensureApiEnabledModule.enableApiURI(projectId, apiName)} if subsequent requests fail.`,
+        ),
+      );
+    } finally {
+      inFlightApiChecks.delete(cacheKey);
+    }
+  })();
+
+  inFlightApiChecks.set(cacheKey, checkPromise);
+  return checkPromise;
 }
