@@ -5,7 +5,9 @@ import * as tmp from "tmp";
 import * as tar from "tar";
 import * as util from "./util";
 import * as sinon from "sinon";
+import { CLOUD_RUN_SIZE_LIMIT_BYTES } from "../../apphosting/constants";
 import { AppHostingSingle } from "../../firebaseConfig";
+import * as gcs from "../../gcp/storage";
 import { logger } from "../../logger";
 
 describe("util", () => {
@@ -273,6 +275,44 @@ describe("util", () => {
       expect(util.isInDirectory(path.join("/other"), path.join("/project"))).to.be.false;
       // A sibling whose name starts with the directory's name isn't in it.
       expect(util.isInDirectory(path.join("/project-other"), path.join("/project"))).to.be.false;
+    });
+  });
+
+  describe("uploadArchive", () => {
+    let uploadStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      uploadStub = sinon.stub(gcs, "uploadObject").resolves({
+        bucket: "sources",
+        object: "web.zip",
+        generation: "1",
+      });
+      sinon.stub(fs, "createReadStream").returns("stream" as unknown as fs.ReadStream);
+    });
+
+    afterEach(() => sinon.restore());
+
+    it("uploads a source deploy's zip", async () => {
+      const uploaded = await util.uploadArchive("/tmp/web.zip", "sources", /* localBuild= */ false);
+
+      expect(uploaded).to.deep.equal({ bucket: "sources", object: "web.zip" });
+      expect(uploadStub).to.have.been.calledOnceWithExactly(
+        { file: "/tmp/web.zip", stream: "stream" },
+        "sources",
+        gcs.ContentType.ZIP,
+        undefined,
+      );
+    });
+
+    it("uploads a local build's tarball, which has to fit Cloud Run's size limit", async () => {
+      await util.uploadArchive("/tmp/web.tar.gz", "sources", /* localBuild= */ true);
+
+      expect(uploadStub).to.have.been.calledOnceWithExactly(
+        { file: "/tmp/web.tar.gz", stream: "stream" },
+        "sources",
+        gcs.ContentType.TAR,
+        CLOUD_RUN_SIZE_LIMIT_BYTES,
+      );
     });
   });
 });

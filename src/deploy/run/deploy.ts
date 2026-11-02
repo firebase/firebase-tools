@@ -1,7 +1,6 @@
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
-import { CLOUD_RUN_SIZE_LIMIT_BYTES } from "../../apphosting/constants";
 import { validateLocalBuildNodeVersion } from "../../apphosting/localbuilds";
 import { FirebaseError } from "../../error";
 import { AppHostingSingle, RunSingle } from "../../firebaseConfig";
@@ -13,7 +12,7 @@ import { getProjectNumber } from "../../getProjectNumber";
 import { Options } from "../../options";
 import { cloneDeep, logLabeledBullet } from "../../utils";
 import { buildLocally } from "../apphosting/localBuild";
-import { buildDirectory, createSourceDeployArchive } from "../apphosting/util";
+import { buildDirectory, createSourceDeployArchive, uploadArchive } from "../apphosting/util";
 import { Context, Payload, ServiceDeploy } from "./args";
 import { nonSecretValues, secretNames, toLocalBuildEnv } from "./buildEnv";
 import { FIREBASE_APP_ANNOTATION, mainContainer } from "./util";
@@ -57,7 +56,9 @@ async function deployRemoteBuild(
 ): Promise<void> {
   const { projectId } = context;
   const { buildFolder, appFolder } = buildDirectory(options.config.projectDir, svc.config.rootDir);
-  const source = await uploadSource(projectId, options, svc.config, buildFolder);
+  // The zip is a tmp file, so it's deleted when the CLI exits.
+  const archive = await createSourceDeployArchive(toAppHostingConfig(svc.config), buildFolder);
+  const source = await upload(projectId, options, svc.config, archive);
   const image = await buildImage(projectId, svc, source, appFolder);
   const template = revisionTemplate(svc, image, options.message as string | undefined);
   svc.deployed = await rollOut(projectId, svc, template);
@@ -74,7 +75,7 @@ async function deployLocalBuild(
 ): Promise<void> {
   const { projectId } = context;
   const build = await buildServiceLocally(context, options, svc);
-  const builtApp = await uploadBuiltApp(projectId, options, svc.config, build.archive);
+  const builtApp = await upload(projectId, options, svc.config, build.archive);
   const message = options.message as string | undefined;
   const template = localBuildTemplate(svc, build, builtApp, message);
   svc.deployed = await rollOut(projectId, svc, template);
@@ -113,7 +114,8 @@ async function buildServiceLocally(
     // Unlike App Hosting, Cloud Run doesn't ask users to confirm build secrets in local builds.
     allowLocalBuildSecrets: true,
   });
-  // Keep the env vars that the app needs at runtime, not just during the build.
+  // Cloud Run only gets the env vars that the app needs at runtime, set on its container. App
+  // Hosting doesn't filter: its API takes all of them, with their availability, and applies them.
   const env = (buildConfig.env || [])
     .filter(
       (e) =>
@@ -126,30 +128,10 @@ async function buildServiceLocally(
 }
 
 /**
- * Zips the build folder (see BuildDirectory in apphosting/util.ts) and uploads it to the region's
- * source bucket.
+ * Uploads the service's source zip, or its local build's tarball, to the region's source bucket,
+ * the same way App Hosting uploads to its own bucket.
  */
-async function uploadSource(
-  projectId: string,
-  options: Options,
-  config: RunSingle,
-  buildFolder: string,
-): Promise<runv2.StorageSource> {
-  const { serviceId, region } = config;
-  const bucketName = await sourceBucket(projectId, options, region);
-  // The zip is a tmp file, so it's deleted when the CLI exits.
-  const archive = await createSourceDeployArchive(toAppHostingConfig(config), buildFolder);
-  logLabeledBullet("run", `Uploading source for service ${serviceId} in ${region}...`);
-  const { bucket, object } = await gcs.uploadObject(
-    { file: archive, stream: fs.createReadStream(archive) },
-    bucketName,
-    gcs.ContentType.ZIP,
-  );
-  return { bucket, object };
-}
-
-/** Uploads a local build's output, a tarball, to the region's source bucket. */
-async function uploadBuiltApp(
+async function upload(
   projectId: string,
   options: Options,
   config: RunSingle,
@@ -157,15 +139,9 @@ async function uploadBuiltApp(
 ): Promise<runv2.StorageSource> {
   const { serviceId, region } = config;
   const bucketName = await sourceBucket(projectId, options, region);
-  logLabeledBullet("run", `Uploading built app for service ${serviceId} in ${region}...`);
-  const { bucket, object } = await gcs.uploadObject(
-    { file: archive, stream: fs.createReadStream(archive) },
-    bucketName,
-    gcs.ContentType.TAR,
-    // Cloud Run runs the tarball as is, so it has to fit Cloud Run's size limit.
-    CLOUD_RUN_SIZE_LIMIT_BYTES,
-  );
-  return { bucket, object };
+  const what = config.localBuild ? "built app" : "source";
+  logLabeledBullet("run", `Uploading ${what} for service ${serviceId} in ${region}...`);
+  return uploadArchive(archive, bucketName, !!config.localBuild);
 }
 
 /**
