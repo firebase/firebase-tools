@@ -63,7 +63,7 @@ import { resolveBackend } from "../deploy/functions/build";
 import { getCredentialsEnvironment, setEnvVarsForEmulators } from "./env";
 import { runWithVirtualEnv } from "../functions/python";
 import { runtimeIsLanguage, Runtime } from "../deploy/functions/runtimes/supported";
-import { DART_ENTRY_POINT } from "../deploy/functions/runtimes/dart";
+import { DART_ENTRY_POINT, dartDefineArgs } from "../deploy/functions/runtimes/dart";
 import {
   isDartEndpoint,
   classifyNonProductionEndpoints,
@@ -602,11 +602,21 @@ export class FunctionsEmulator implements EmulatorInstance {
       );
     } else {
       const runtimeConfig = this.getRuntimeConfig(emulatableBackend);
+      const userEnvOpt: functionsEnv.UserEnvsOpts = {
+        functionsSource: emulatableBackend.functionsDir,
+        projectId: this.args.projectId,
+        projectAlias: this.args.projectAlias,
+        isEmulator: true,
+        configDir: emulatableBackend.configDir,
+        projectDir: this.args.projectDir,
+      };
+      const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
       const runtimeDelegateContext: runtimes.DelegateContext = {
         projectId: this.args.projectId,
         projectDir: this.args.projectDir,
         sourceDir: emulatableBackend.functionsDir,
         runtime: emulatableBackend.runtime,
+        userEnvs,
       };
       const runtimeDelegate = await runtimes.getRuntimeDelegate(runtimeDelegateContext);
       logger.debug(`Validating ${runtimeDelegate.language} source`);
@@ -625,15 +635,6 @@ export class FunctionsEmulator implements EmulatorInstance {
         FIREBASE_CONFIG: firebaseConfig,
         ...emulatableBackend.env,
       };
-      const userEnvOpt: functionsEnv.UserEnvsOpts = {
-        functionsSource: emulatableBackend.functionsDir,
-        projectId: this.args.projectId,
-        projectAlias: this.args.projectAlias,
-        isEmulator: true,
-        configDir: emulatableBackend.configDir,
-        projectDir: this.args.projectDir,
-      };
-      const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
       const discoveredBuild = await runtimeDelegate.discoverBuild(runtimeConfig, {
         ...userEnvs,
         ...environment,
@@ -1798,7 +1799,12 @@ export class FunctionsEmulator implements EmulatorInstance {
       port: 8081 + randomInt(0, 1000), // Add a small jitter to avoid race condition.
     });
 
-    const args = ["run", "--no-serve-devtools", DART_ENTRY_POINT];
+    const args = [
+      "run",
+      "--no-serve-devtools",
+      ...dartDefineArgs(this.getUserEnvs(backend)),
+      DART_ENTRY_POINT,
+    ];
 
     // For Dart, don't set FUNCTION_TARGET in environment - the server loads all functions
     // and routes based on the request path (similar to Python's functions-framework)
@@ -1807,7 +1813,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     delete dartEnvs.FUNCTION_SIGNATURE_TYPE;
 
     const bin = backend.bin || "dart";
-    logger.debug(`Starting Dart runtime with args: ${args.join(" ")} on port ${port}`);
+    const loggedArgs = args.map((a) => a.replace(/^(--define=[^=]*=).*$/, "$1..."));
+    logger.debug(`Starting Dart runtime with args: ${loggedArgs.join(" ")} on port ${port}`);
     const childProcess = spawn(bin, args, {
       cwd: backend.functionsDir,
       env: {

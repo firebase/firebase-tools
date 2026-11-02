@@ -10,8 +10,8 @@ import * as discovery from "../discovery";
 import * as supported from "../supported";
 import { logger } from "../../../../logger";
 import { FirebaseError } from "../../../../error";
-import { logLabeledBullet } from "../../../../utils";
-import { Build } from "../../build";
+import { logLabeledBullet, logLabeledWarning } from "../../../../utils";
+import { Build, SECRET_REF_PREFIX } from "../../build";
 import { EmulatorRegistry } from "../../../../emulator/registry";
 import { Emulators } from "../../../../emulator/types";
 import * as experiments from "../../../../experiments";
@@ -43,7 +43,9 @@ export async function tryCreateDelegate(
       { exit: 1 },
     );
   }
-  return Promise.resolve(new Delegate(context.projectId, context.sourceDir, runtime));
+  return Promise.resolve(
+    new Delegate(context.projectId, context.sourceDir, runtime, context.userEnvs),
+  );
 }
 
 /** Default entry point for Dart functions projects. */
@@ -54,6 +56,32 @@ export const DART_COMPILE_EXE_PATH = "bin/server";
 
 /** Path to the bundle (executable, shared libraries, and metadata) produced by `dart build cli` for native-build-hook projects. */
 export const DART_BUNDLE_EXECUTABLE_PATH = "build/cli/linux_x64/bundle/bin/server";
+
+/**
+ * Converts user environment variables into `--define=KEY=VALUE` arguments so
+ * they are readable via `String.fromEnvironment` in compiled Dart code.
+ * Secret references are skipped since they must never be baked into the
+ * binary. Values containing a comma are skipped because `dart compile exe`
+ * splits define values on commas; they remain available via
+ * `Platform.environment` at runtime.
+ */
+export function dartDefineArgs(envs: Record<string, string>): string[] {
+  const args: string[] = [];
+  for (const [key, value] of Object.entries(envs)) {
+    if (key.startsWith(SECRET_REF_PREFIX)) {
+      continue;
+    }
+    if (value.includes(",")) {
+      logger.debug(
+        `Not passing ${key} as a Dart define because its value contains a comma. ` +
+          `It is still available at runtime via Platform.environment.`,
+      );
+      continue;
+    }
+    args.push(`--define=${key}=${value}`);
+  }
+  return args;
+}
 
 export class Delegate implements runtimes.RuntimeDelegate {
   public readonly language = "dart";
@@ -67,6 +95,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
     private readonly projectId: string,
     private readonly sourceDir: string,
     public readonly runtime: supported.Runtime & supported.RuntimeOf<"dart">,
+    private readonly userEnvs: Record<string, string> = {},
   ) {}
 
   async validate(): Promise<void> {
@@ -229,6 +258,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
         DART_COMPILE_EXE_PATH,
         "--target-os=linux",
         "--target-arch=x64",
+        ...dartDefineArgs(this.userEnvs),
       ],
       {
         cwd: this.sourceDir,
@@ -269,6 +299,17 @@ export class Delegate implements runtimes.RuntimeDelegate {
   /** Cross-compiles the entry point to a linux-x64 bundle via `dart build cli`. */
   private async buildCli(): Promise<void> {
     logLabeledBullet("functions", "building Dart linux-x64 bundle...");
+
+    // TODO: Pass dartDefineArgs once `dart build cli` supports --define in a
+    // stable SDK (https://dart-review.googlesource.com/c/sdk/+/570263).
+    if (dartDefineArgs(this.userEnvs).length > 0) {
+      logLabeledWarning(
+        "functions",
+        "Values from .env are not available via String.fromEnvironment for projects " +
+          "built with dart build cli, which does not support --define yet. They are " +
+          "still available at runtime via Platform.environment.",
+      );
+    }
 
     const buildProcess = spawn(
       this.bin,

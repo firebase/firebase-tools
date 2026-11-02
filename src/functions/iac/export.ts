@@ -28,21 +28,6 @@ export async function getInternalIac(
   const firebaseConfig = await functionsConfig.getFirebaseConfig(options);
   const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
 
-  const delegateContext: runtimes.DelegateContext = {
-    projectId,
-    sourceDir: options.config.path(codebase.source),
-    projectDir: options.config.projectDir,
-    runtime: codebase.runtime,
-  };
-
-  const runtimeDelegate = await runtimes.getRuntimeDelegate(delegateContext);
-  logger.debug(`Validating ${runtimeDelegate.language} source`);
-  supported.guardVersionSupport(runtimeDelegate.runtime);
-  await runtimeDelegate.validate();
-
-  logger.debug(`Building ${runtimeDelegate.language} source`);
-  await runtimeDelegate.build();
-
   const userEnvOpt: functionsEnv.UserEnvsOpts = {
     functionsSource: options.config.path(codebase.source),
     projectId,
@@ -54,6 +39,22 @@ export async function getInternalIac(
     userEnvOpt.configDir = options.config.path(configDir);
   }
   const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
+
+  const delegateContext: runtimes.DelegateContext = {
+    projectId,
+    sourceDir: options.config.path(codebase.source),
+    projectDir: options.config.projectDir,
+    runtime: codebase.runtime,
+    userEnvs,
+  };
+
+  const runtimeDelegate = await runtimes.getRuntimeDelegate(delegateContext);
+  logger.debug(`Validating ${runtimeDelegate.language} source`);
+  supported.guardVersionSupport(runtimeDelegate.runtime);
+  await runtimeDelegate.validate();
+
+  logger.debug(`Building ${runtimeDelegate.language} source`);
+  await runtimeDelegate.build();
 
   logger.debug(`Discovering ${runtimeDelegate.language} source`);
   const build = await runtimeDelegate.discoverBuild(

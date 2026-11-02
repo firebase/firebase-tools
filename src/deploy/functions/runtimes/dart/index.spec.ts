@@ -6,13 +6,14 @@ import * as os from "os";
 import * as path from "path";
 import { EventEmitter } from "events";
 import { ChildProcess } from "child_process";
-import { Delegate, DART_ENTRY_POINT } from "./index";
+import { Delegate, DART_ENTRY_POINT, dartDefineArgs } from "./index";
 import * as discovery from "../discovery";
 import * as build from "../../build";
 import * as supported from "../supported";
 import { FirebaseError } from "../../../../error";
 import { EmulatorRegistry } from "../../../../emulator/registry";
 import { Emulators } from "../../../../emulator/types";
+import * as utils from "../../../../utils";
 
 function createFakeChildProcess(exitCode: number | null): ChildProcess {
   const proc = new EventEmitter() as ChildProcess;
@@ -34,6 +35,33 @@ function writePackageConfig(sourceDir: string, languageVersion: string): void {
 }
 
 describe("Dart Runtime Delegate", () => {
+  describe("dartDefineArgs", () => {
+    it("should return a --define arg per env", () => {
+      expect(dartDefineArgs({ FOO: "bar", EMPTY: "", URL: "https://a.b/c?d=e" })).to.deep.equal([
+        "--define=FOO=bar",
+        "--define=EMPTY=",
+        "--define=URL=https://a.b/c?d=e",
+      ]);
+    });
+
+    it("should skip secret references", () => {
+      expect(
+        dartDefineArgs({
+          FOO: "bar",
+          [`${build.SECRET_REF_PREFIX}API_KEY`]: "projects/p/secrets/s",
+        }),
+      ).to.deep.equal(["--define=FOO=bar"]);
+    });
+
+    it("should skip values containing a comma", () => {
+      expect(dartDefineArgs({ FOO: "bar", LIST: "a,b" })).to.deep.equal(["--define=FOO=bar"]);
+    });
+
+    it("should return no args for no envs", () => {
+      expect(dartDefineArgs({})).to.deep.equal([]);
+    });
+  });
+
   describe("validate", () => {
     let tmpDir: string;
 
@@ -122,6 +150,20 @@ describe("Dart Runtime Delegate", () => {
       ]);
     });
 
+    it("should pass user envs to `dart compile exe` as defines", async () => {
+      spawnStub.callsFake(() => createFakeChildProcess(0));
+
+      const delegate = new Delegate("project", tmpDir, supported.latest("dart"), {
+        FOO: "bar",
+        LIST: "a,b",
+      });
+      await delegate.build();
+
+      const [, args] = spawnStub.secondCall.args as [string, string[]];
+      expect(args).to.include("--define=FOO=bar");
+      expect(args.filter((a) => a.startsWith("--define"))).to.have.length(1);
+    });
+
     it("should throw a FirebaseError with the dart compile exe remediation command on failure", async () => {
       spawnStub.onFirstCall().callsFake(() => createFakeChildProcess(0));
       spawnStub.onSecondCall().callsFake(() => createFakeChildProcess(1));
@@ -169,6 +211,28 @@ describe("Dart Runtime Delegate", () => {
           "--target-arch",
           "x64",
         ]);
+      });
+
+      it("should warn and not pass defines to `dart build cli` when user envs are set", async () => {
+        spawnStub.callsFake(() => createFakeChildProcess(0));
+        const warnStub = sinon.stub(utils, "logLabeledWarning");
+
+        const delegate = new Delegate("project", tmpDir, supported.latest("dart"), { FOO: "bar" });
+        await delegate.build();
+
+        const [, args] = spawnStub.secondCall.args as [string, string[]];
+        expect(args.some((a) => a.startsWith("--define"))).to.be.false;
+        expect(warnStub).to.have.been.calledOnceWith("functions", sinon.match(/--define/));
+      });
+
+      it("should not warn when there are no user envs to define", async () => {
+        spawnStub.callsFake(() => createFakeChildProcess(0));
+        const warnStub = sinon.stub(utils, "logLabeledWarning");
+
+        const delegate = new Delegate("project", tmpDir, supported.latest("dart"));
+        await delegate.build();
+
+        expect(warnStub).to.not.have.been.called;
       });
 
       it("should throw a FirebaseError with the dart build cli remediation command on failure", async () => {
