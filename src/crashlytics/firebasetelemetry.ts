@@ -7,7 +7,6 @@ const API_VERSION = "v1alpha";
 export interface TelemetryConfig {
   name: string;
   appId: string;
-  logBucket: string;
   samplingRate: number;
   enablementState?: string;
 }
@@ -19,7 +18,6 @@ export interface TelemetryConfig {
 export async function createOrUpdateTelemetryConfig(
   projectId: string,
   appId: string,
-  logBucket: string,
   samplingRate = 1,
 ): Promise<TelemetryConfig> {
   const client = new Client({ urlPrefix: firebaseTelemetryAdminOrigin(), apiVersion: API_VERSION });
@@ -28,7 +26,6 @@ export async function createOrUpdateTelemetryConfig(
   const configBody: TelemetryConfig = {
     name: configName,
     appId,
-    logBucket,
     samplingRate,
   };
 
@@ -42,7 +39,7 @@ export async function createOrUpdateTelemetryConfig(
     if (err.status === 409) {
       try {
         const patchRes = await client.patch<TelemetryConfig, TelemetryConfig>(
-          `/projects/${projectId}/locations/global/configs/${configId}?updateMask=logBucket,samplingRate`,
+          `/projects/${projectId}/locations/global/configs/${configId}?updateMask=samplingRate`,
           configBody,
         );
         return patchRes.body;
