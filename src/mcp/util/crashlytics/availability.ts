@@ -91,50 +91,50 @@ async function iosAppUsesCrashlytics(appPath: string): Promise<boolean> {
 }
 
 async function flutterAppUsesCrashlytics(appPath: string): Promise<boolean> {
-  const pubspecFiles = (
-    await Promise.all([detectFiles(appPath, "pubspec.yaml"), detectFiles(appPath, "pubspec.lock")])
-  ).flat();
+  const pubspecFiles = await detectFiles(appPath, "pubspec.{yaml,lock}");
   for (const file of pubspecFiles) {
-    const content = await fs.readFile(path.join(appPath, file), "utf8");
-    if (content.includes("firebase_crashlytics")) {
-      return true;
+    try {
+      const content = await fs.readFile(path.join(appPath, file), "utf8");
+      if (content.includes("firebase_crashlytics")) {
+        return true;
+      }
+    } catch {
+      // Ignore unreadable files
     }
   }
   return false;
 }
 
 async function unityAppUsesCrashlytics(appPath: string): Promise<boolean> {
-  const upmFiles = (
-    await Promise.all([
-      detectFiles(appPath, "Packages/manifest.json"),
-      detectFiles(appPath, "Packages/packages-lock.json"),
-    ])
-  ).flat();
+  const upmFiles = await detectFiles(appPath, "Packages/{manifest.json,packages-lock.json}");
   for (const file of upmFiles) {
-    const content = await fs.readFile(path.join(appPath, file), "utf8");
-    if (content.includes("com.google.firebase.crashlytics")) {
-      return true;
+    try {
+      const content = await fs.readFile(path.join(appPath, file), "utf8");
+      if (content.includes("com.google.firebase.crashlytics")) {
+        return true;
+      }
+    } catch {
+      // Ignore unreadable files
     }
   }
 
-  const sdkFilePatterns = [
-    "*CrashlyticsDependencies.xml",
-    "GoogleDependency*Crashlytics*.xml",
-    "Firebase.Crashlytics.dll",
-    "com.google.firebase.crashlytics*.tgz",
-  ];
-  const sdkFiles = (
-    await Promise.all(sdkFilePatterns.map((pattern) => detectFiles(appPath, pattern)))
-  ).flat();
+  const sdkFiles = await detectFiles(
+    appPath,
+    "{*CrashlyticsDependencies.xml,GoogleDependency*Crashlytics*.xml,Firebase.Crashlytics.dll,com.google.firebase.crashlytics*.tgz}",
+  );
   if (sdkFiles.length > 0) {
     return true;
   }
 
   const gradleFiles = await detectFiles(appPath, "*.gradle");
   for (const file of gradleFiles) {
-    const content = await fs.readFile(path.join(appPath, file), "utf8");
-    if (CRASHLYTICS_GRADLE_PATTERN.test(content)) {
-      return true;
+    try {
+      const content = await fs.readFile(path.join(appPath, file), "utf8");
+      if (CRASHLYTICS_GRADLE_PATTERN.test(content)) {
+        return true;
+      }
+    } catch {
+      // Ignore unreadable files
     }
   }
 
