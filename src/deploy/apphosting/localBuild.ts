@@ -49,13 +49,13 @@ export async function buildLocally(options: BuildLocallyOptions): Promise<Packag
   const { projectId, projectDir, config, env, scratchDir } = options;
   try {
     const build = await prepareLocalBuildScratchDirectory(projectDir, scratchDir, config);
-    const { outputFiles, buildConfig } = await localBuild(projectId, build.dir, env, {
+    const { outputFiles, buildConfig } = await localBuild(projectId, build.buildFolder, env, {
       nonInteractive: options.nonInteractive,
       allowLocalBuildSecrets: options.allowLocalBuildSecrets,
-      rootDir: build.app,
+      rootDir: build.appFolder,
     });
-    const archive = await createLocalBuildTarArchive(config, build.dir, outputFiles);
-    return { archive, rootDirectory: build.app, buildConfig };
+    const archive = await createLocalBuildTarArchive(config, build.buildFolder, outputFiles);
+    return { archive, rootDirectory: build.appFolder, buildConfig };
   } finally {
     try {
       fs.rmSync(scratchDir, { recursive: true, force: true });
@@ -67,12 +67,11 @@ export async function buildLocally(options: BuildLocallyOptions): Promise<Packag
 }
 
 /**
- * Prepares the scratch directory for local builds by copying non-ignored files, and returns where in
- * it to build.
+ * Prepares the scratch directory for local builds by copying non-ignored files, and returns the
+ * build folder and app folder in it (see BuildDirectory).
  *
- * The whole project is copied, like source deploys upload it. The build runs where App Hosting's
- * builds do (see buildDirectory): in the monorepo's root for an app in an Nx or Turborepo monorepo,
- * or else in the app's own folder. An app outside the project is copied on its own.
+ * The whole project is copied, like App Hosting source deploys upload it, and the build runs in the
+ * copy's build folder. An app outside the project is copied on its own.
  *
  * NOTE ON FILE FILTERING:
  * For local builds, we apply all ignore filtering (user firebase.json ignores and .gitignore)
@@ -85,9 +84,9 @@ async function prepareLocalBuildScratchDirectory(
   localBuildScratchDir: string,
   cfg: AppHostingSingle,
 ): Promise<BuildDirectory> {
-  const { dir, app } = buildDirectory(projectDir, cfg.rootDir);
-  // Copying the whole project, not just `dir`, keeps applying .gitignore files above `dir`.
-  const copyDir = isInDirectory(dir, projectDir) ? projectDir : dir;
+  const { buildFolder, appFolder } = buildDirectory(projectDir, cfg.rootDir);
+  // Copying the whole project, not just the build folder, keeps applying .gitignore files above it.
+  const folderToCopy = isInDirectory(buildFolder, projectDir) ? projectDir : buildFolder;
 
   // Resolve ignores for local builds, including default node_modules ignore
   const ignore = resolveIgnorePatterns(cfg);
@@ -99,16 +98,19 @@ async function prepareLocalBuildScratchDirectory(
 
   // Copy files respecting ignores
   const filesToCopy = await fsAsync.readdirRecursive({
-    path: copyDir,
+    path: folderToCopy,
     ignoreStrings: ignore,
     supportGitIgnore: true,
   });
 
   for (const file of filesToCopy) {
-    const relativePath = path.relative(copyDir, file.name);
+    const relativePath = path.relative(folderToCopy, file.name);
     const destPath = path.join(localBuildScratchDir, relativePath);
     fs.mkdirSync(path.dirname(destPath), { recursive: true });
     fs.copyFileSync(file.name, destPath);
   }
-  return { dir: path.join(localBuildScratchDir, path.relative(copyDir, dir)), app };
+  return {
+    buildFolder: path.join(localBuildScratchDir, path.relative(folderToCopy, buildFolder)),
+    appFolder,
+  };
 }
