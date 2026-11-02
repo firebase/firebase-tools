@@ -1,7 +1,7 @@
 import { Throttler, ThrottlerOptions } from "./throttler";
 
 export class Queue<T, R> extends Throttler<T, R> {
-  cursor: number = 0;
+  cursor = 0;
 
   constructor(options: ThrottlerOptions<T, R>) {
     super(options);

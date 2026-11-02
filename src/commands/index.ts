@@ -82,17 +82,14 @@ export function load(client: CLIClient): CLIClient {
   client.auth.export = loadCommand("auth-export");
   client.auth.import = loadCommand("auth-import");
   client.crashlytics = {};
-  client.crashlytics.onboard = {};
-  client.crashlytics.onboard.web = loadCommand("crashlytics-onboard-web");
+  client.crashlytics.setup = loadCommand("crashlytics-setup");
   client.crashlytics.symbols = {};
   client.crashlytics.symbols.upload = loadCommand("crashlytics-symbols-upload");
   client.crashlytics.mappingfile = {};
   client.crashlytics.mappingfile.generateid = loadCommand("crashlytics-mappingfile-generateid");
   client.crashlytics.mappingfile.upload = loadCommand("crashlytics-mappingfile-upload");
-  if (experiments.isEnabled("crashlyticsWeb")) {
-    client.crashlytics.sourcemap = {};
-    client.crashlytics.sourcemap.upload = loadCommand("crashlytics-sourcemap-upload");
-  }
+  client.crashlytics.sourcemap = {};
+  client.crashlytics.sourcemap.upload = loadCommand("crashlytics-sourcemap-upload");
   client.crashlytics.heapdumps = {};
   client.crashlytics.heapdumps.enable = loadCommand("crashlytics-heapdumps-enable");
   client.crashlytics.heapdumps.disable = loadCommand("crashlytics-heapdumps-disable");
