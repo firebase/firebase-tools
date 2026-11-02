@@ -2,7 +2,7 @@ import { existsSync, readdirSync, statSync, readFileSync } from "fs-extra";
 import ignorePkg from "ignore";
 import * as _ from "lodash";
 import * as minimatch from "minimatch";
-import { isAbsolute, join, relative, sep } from "path";
+import { join, relative, sep } from "path";
 import { FirebaseError, getErrMsg, getError } from "./error";
 
 export interface ReaddirRecursiveOpts {
@@ -17,7 +17,7 @@ export interface ReaddirRecursiveOpts {
   supportGitIgnore?: boolean;
   // With supportGitIgnore, also apply the .gitignore files in this directory and in each directory
   // between it and `path`, the way git applies a repository's .gitignore files to its subdirectories.
-  // Has no effect if `path` isn't inside it.
+  // It must be `path` or a directory above it.
   gitIgnoreRoot?: string;
   // Files in the ignore array to include.
   include?: string[];
@@ -62,13 +62,7 @@ function readGitIgnore(dirPath: string): GitIgnoreState {
  * first. `dir`'s own .gitignore isn't included, since readdirRecursiveHelper reads it.
  */
 function parentGitIgnores(root: string, dir: string): GitIgnoreState[] {
-  const relativeDir = relative(root, dir);
-  const outside =
-    relativeDir === ".." || relativeDir.startsWith(`..${sep}`) || isAbsolute(relativeDir);
-  if (!relativeDir || outside) {
-    return [];
-  }
-  const folders = relativeDir.split(sep);
+  const folders = relative(root, dir).split(sep).filter(Boolean);
   const states: GitIgnoreState[] = [];
   for (let depth = 0; depth < folders.length; depth++) {
     const ancestor = join(root, ...folders.slice(0, depth));

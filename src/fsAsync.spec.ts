@@ -272,11 +272,6 @@ describe("fsAsync", () => {
         ]);
       });
 
-      it("applies nothing extra if the directory isn't inside gitIgnoreRoot", async () => {
-        expect(await walkWeb(path.join(testDir, "other"))).to.deep.equal(await walkWeb());
-        expect(await walkWeb(webDir)).to.deep.equal(await walkWeb());
-      });
-
       it("matches each .gitignore's rules against paths from its own folder, like git", async () => {
         // Walks apps/web/ in this tree. Each comment says whether git ignores the file and why.
         const root = path.join(os.tmpdir(), crypto.randomBytes(10).toString("hex"));
