@@ -195,16 +195,11 @@ export interface BuildDirectory {
 /**
  * Finds an app's build folder and app folder (see the examples on BuildDirectory), with the same
  * detection logic as Firebase App Hosting: the build folder is the closest folder at or above the
- * app folder that has nx.json or turbo.json, like my-turborepo/. If there's none, like in my-app/
- * and my-project/, the app folder is the build folder. Only folders in the project count, so an
- * app outside the project builds from its own folder.
+ * app folder, up to the project's folder, that has nx.json or turbo.json, like my-turborepo/. If
+ * there's none, like in my-app/ and my-project/, the app folder is the build folder.
  */
 export function buildDirectory(projectDir: string, rootDir = ""): BuildDirectory {
   const appFolderPath = path.join(projectDir, rootDir);
-  if (!isInDirectory(appFolderPath, projectDir)) {
-    // The app is outside the project, so don't look for a monorepo above it.
-    return { buildFolder: appFolderPath, appFolder: "" };
-  }
   // Check the app folder, then each folder above it, up to the project's folder.
   const appFolderInProject = path.relative(projectDir, appFolderPath);
   const segments = appFolderInProject ? appFolderInProject.split(path.sep) : [];
@@ -215,13 +210,6 @@ export function buildDirectory(projectDir: string, rootDir = ""): BuildDirectory
     }
   }
   return { buildFolder: appFolderPath, appFolder: "" };
-}
-
-/** Returns whether `child` is `parent` or a directory in it. */
-export function isInDirectory(child: string, parent: string): boolean {
-  const relative = path.relative(parent, child);
-  // path.relative returns an absolute path if there's no relative one, e.g. on another drive.
-  return relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
 }
 
 async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream): Promise<void> {
