@@ -177,7 +177,7 @@ async function processFlutterDir(dirPath: string, filePath: string): Promise<App
 
 async function processUnityDir(dirPath: string, filePath: string): Promise<App[]> {
   const unityDir = path.dirname(path.dirname(filePath));
-  const unityAppIds = await detectAppIdsForPlatform(dirPath, Platform.UNITY);
+  const unityAppIds = await detectAppIdsForPlatform(path.join(dirPath, unityDir), Platform.UNITY);
 
   if (unityAppIds.length === 0) {
     return [
@@ -188,16 +188,12 @@ async function processUnityDir(dirPath: string, filePath: string): Promise<App[]
     ];
   }
 
-  const unityApps = await Promise.all(
-    unityAppIds.map((app) => ({
-      platform: Platform.UNITY,
-      directory: unityDir,
-      appId: app.appId,
-      bundleId: app.bundleId,
-    })),
-  );
-
-  return unityApps.flat();
+  return unityAppIds.map((app) => ({
+    platform: Platform.UNITY,
+    directory: unityDir,
+    appId: app.appId,
+    bundleId: app.bundleId,
+  }));
 }
 
 function isPathInside(parent: string, child: string): boolean {
@@ -266,8 +262,12 @@ async function extractFromFiles(
   const files = await detectFiles(dirPath, filePattern);
   const allAppIds = await Promise.all(
     files.map(async (file) => {
-      const fileContent = (await fs.readFile(path.join(dirPath, file))).toString();
-      return extractFunc(fileContent);
+      try {
+        const fileContent = (await fs.readFile(path.join(dirPath, file))).toString();
+        return extractFunc(fileContent);
+      } catch {
+        return [];
+      }
     }),
   );
   return allAppIds.flat();
@@ -407,6 +407,9 @@ export async function detectFiles(dirPath: string, filePattern: string): Promise
       "**/Logs/**", // Unity logs directory
       "**/UserSettings/**", // Unity user settings directory
       "**/*.meta", // Unity asset metadata files
+      "**/.dart_tool/**", // Flutter/Dart build cache
+      "**/Pods/**", // CocoaPods dependencies
+      "**/.symlinks/**", // Flutter iOS symlinks
     ],
     absolute: false,
     maxDepth: 8,

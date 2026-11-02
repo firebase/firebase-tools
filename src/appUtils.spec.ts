@@ -688,6 +688,61 @@ describe("appUtils", () => {
         },
       ]);
     });
+
+    it("should scope unity app ID detection to each unity project directory in a monorepo", async () => {
+      mockfs({
+        [testDir]: {
+          "game-one": {
+            ProjectSettings: { "ProjectVersion.txt": "m_EditorVersion: 2022.3.10f1" },
+            Assets: {
+              "google-services.json": ANDROID_CONFIG_1,
+            },
+          },
+          "game-two": {
+            ProjectSettings: { "ProjectVersion.txt": "m_EditorVersion: 2022.3.10f1" },
+            Assets: {
+              "GoogleService-Info.plist": IOS_CONFIG_1,
+            },
+          },
+        },
+      });
+      const apps = cleanUndefinedFields(await detectApps(testDir));
+      expect(apps).to.have.deep.members([
+        {
+          platform: Platform.UNITY,
+          directory: "game-one",
+          appId: "1:123456789012:android:fakeapp1id",
+          bundleId: "com.fake.app1",
+        },
+        {
+          platform: Platform.UNITY,
+          directory: "game-two",
+          appId: "1:123456789012:ios:abcdef1234567890abcdef",
+          bundleId: "com.fake.ios.app",
+        },
+      ]);
+    });
+
+    it("should gracefully ignore unreadable or directory matches when extracting config files", async () => {
+      mockfs({
+        [testDir]: {
+          ProjectSettings: { "ProjectVersion.txt": "m_EditorVersion: 2022.3.10f1" },
+          Assets: {
+            "google-services.json": ANDROID_CONFIG_1,
+            "google-services-dir.json": {}, // Directory matching pattern causes fs.readFile to throw EISDIR
+          },
+        },
+      });
+      const apps = cleanUndefinedFields(await detectApps(testDir));
+      expect(apps).to.have.deep.members([
+        {
+          platform: Platform.UNITY,
+          directory: ".",
+          appId: "1:123456789012:android:fakeapp1id",
+          bundleId: "com.fake.app1",
+        },
+      ]);
+    });
     it("should detect multiple apps", async () => {
       mockfs({
         [testDir]: {

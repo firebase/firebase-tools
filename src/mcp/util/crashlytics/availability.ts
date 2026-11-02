@@ -138,14 +138,6 @@ async function unityAppUsesCrashlytics(appPath: string): Promise<boolean> {
     }
   }
 
-  const csFiles = await detectFiles(appPath, "*.cs");
-  for (const file of csFiles) {
-    const content = await fs.readFile(path.join(appPath, file), "utf8");
-    if (content.includes("Firebase.Crashlytics")) {
-      return true;
-    }
-  }
-
   return false;
 }
 
