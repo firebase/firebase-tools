@@ -42,12 +42,42 @@ export interface LocalBuildOutput {
   env: NonNullable<runv2.Container["env"]>;
 }
 
-/** Where a build on Cloud Build runs. */
+/**
+ * Where a build on Cloud Build runs:
+ * - The app folder is the service's rootDir, the folder with the app's package.json.
+ * - The build folder is the folder that's uploaded and built. For an app in an Nx or Turborepo
+ *   monorepo, it's the monorepo's root, so the build gets the root's lockfile and shared packages.
+ *   For any other app, it's the app folder.
+ *
+ * For example:
+ *
+ *   my-app/              <- build folder and app folder
+ *     firebase.json
+ *     package.json
+ *     app/
+ *
+ *   my-project/
+ *     firebase.json
+ *     functions/
+ *     web/               <- build folder and app folder
+ *       package.json
+ *
+ *   my-turborepo/        <- build folder
+ *     firebase.json
+ *     turbo.json
+ *     package.json
+ *     apps/
+ *       web/             <- app folder
+ *         package.json
+ */
 export interface BuildDirectory {
-  /** The directory to upload and build from. */
-  dir: string;
-  /** The app's folder in `dir`, with forward slashes. Empty if the app is `dir` itself. */
-  app: string;
+  /** The build folder's path. */
+  buildFolder: string;
+  /**
+   * The app folder's path in the build folder, with forward slashes, like "apps/web". Empty if the
+   * app folder is the build folder.
+   */
+  appFolder: string;
 }
 
 /** Builds each service, locally or on Cloud Build, then rolls it out. */
@@ -68,35 +98,36 @@ async function deployRemoteBuild(
   svc: ServiceDeploy,
 ): Promise<void> {
   const { projectId } = context;
-  const { dir, app } = buildDirectory(options.config.projectDir, svc.config.rootDir);
-  const source = await uploadSource(projectId, options, svc.config, dir);
-  const image = await buildImage(projectId, svc, source, app);
+  const { buildFolder, appFolder } = buildDirectory(options.config.projectDir, svc.config.rootDir);
+  const source = await uploadSource(projectId, options, svc.config, buildFolder);
+  const image = await buildImage(projectId, svc, source, appFolder);
   const template = revisionTemplate(svc, image, options.message as string | undefined);
   svc.deployed = await rollOut(projectId, svc, template);
 }
 
 /**
- * Returns where to build the service on Cloud Build, the way App Hosting decides it. An app in an
- * Nx or Turborepo monorepo builds from the monorepo's root, so that it has the root's lockfile and
- * shared packages. Any other app builds from its own folder. Only folders in the project count.
- * Exported for testing.
+ * Finds the service's build folder and app folder (see the examples on BuildDirectory), with the
+ * same detection logic as Firebase App Hosting: the build folder is the closest folder at or above
+ * the app folder that has nx.json or turbo.json, like my-turborepo/. If there's none, like in
+ * my-app/ and my-project/, the app folder is the build folder. Only folders in the project count,
+ * so an app outside the project builds from its own folder. Exported for testing.
  */
 export function buildDirectory(projectDir: string, rootDir = ""): BuildDirectory {
-  const appDir = path.join(projectDir, rootDir);
-  const appPath = path.relative(projectDir, appDir);
-  if (appPath === ".." || appPath.startsWith(`..${path.sep}`)) {
+  const appFolderPath = path.join(projectDir, rootDir);
+  const appFolderInProject = path.relative(projectDir, appFolderPath);
+  if (appFolderInProject === ".." || appFolderInProject.startsWith(`..${path.sep}`)) {
     // The app is outside the project, so don't look for a monorepo above it.
-    return { dir: appDir, app: "" };
+    return { buildFolder: appFolderPath, appFolder: "" };
   }
-  // Check the app's folder, then each folder above it, up to the project's root.
-  const folders = appPath ? appPath.split(path.sep) : [];
-  for (let depth = folders.length; depth >= 0; depth--) {
-    const dir = path.join(projectDir, ...folders.slice(0, depth));
-    if (MONOREPO_CONFIG_FILES.some((file) => fs.existsSync(path.join(dir, file)))) {
-      return { dir, app: folders.slice(depth).join("/") };
+  // Check the app folder, then each folder above it, up to the project's folder.
+  const segments = appFolderInProject ? appFolderInProject.split(path.sep) : [];
+  for (let depth = segments.length; depth >= 0; depth--) {
+    const folder = path.join(projectDir, ...segments.slice(0, depth));
+    if (MONOREPO_CONFIG_FILES.some((file) => fs.existsSync(path.join(folder, file)))) {
+      return { buildFolder: folder, appFolder: segments.slice(depth).join("/") };
     }
   }
-  return { dir: appDir, app: "" };
+  return { buildFolder: appFolderPath, appFolder: "" };
 }
 
 /**
@@ -168,17 +199,17 @@ async function buildLocally(
   return { outputFiles, runCommand: buildConfig.runCommand, env };
 }
 
-/** Zips `dir`, the directory to build from, and uploads it to the region's source bucket. */
+/** Zips the build folder (see BuildDirectory) and uploads it to the region's source bucket. */
 async function uploadSource(
   projectId: string,
   options: Options,
   config: RunSingle,
-  dir: string,
+  buildFolder: string,
 ): Promise<runv2.StorageSource> {
   const { serviceId, region } = config;
   const bucketName = await sourceBucket(projectId, options, region);
   // The zip is a tmp file, so it's deleted when the CLI exits.
-  const archive = await createSourceDeployArchive(toAppHostingConfig(config), dir);
+  const archive = await createSourceDeployArchive(toAppHostingConfig(config), buildFolder);
   logLabeledBullet("run", `Uploading source for service ${serviceId} in ${region}...`);
   const { bucket, object } = await gcs.uploadObject(
     { file: archive, stream: fs.createReadStream(archive) },
@@ -235,14 +266,15 @@ async function sourceBucket(projectId: string, options: Options, region: string)
 }
 
 /**
- * Builds the uploaded source into an image on Cloud Build and returns the image's URI. `app` is the
- * app's folder in the upload, or empty if the upload is just the app (see buildDirectory).
+ * Builds the uploaded build folder into an image on Cloud Build and returns the image's URI.
+ * `appFolder` is the app folder's path in the build folder, or empty if they're the same folder
+ * (see BuildDirectory).
  */
 async function buildImage(
   projectId: string,
   svc: ServiceDeploy,
   source: runv2.StorageSource,
-  app: string,
+  appFolder: string,
 ): Promise<string> {
   const { serviceId, region } = svc.config;
   await artifactregistry.ensureDockerRepository(projectId, region, "cloud-run-source-deploy");
@@ -250,8 +282,8 @@ async function buildImage(
   logLabeledBullet("run", `Building service ${serviceId} in ${region}...`);
   const buildpackBuild: runv2.BuildpacksBuild = {
     environmentVariables: {
-      // If the upload is a monorepo, tell the buildpacks which folder is the app.
-      ...(app ? { GOOGLE_BUILDABLE: app } : {}),
+      // In a monorepo, tell the buildpacks which folder in the build folder is the app.
+      ...(appFolder ? { GOOGLE_BUILDABLE: appFolder } : {}),
       // Cloud Build only takes plain values, so pass only the non-secret env vars. Prepare already
       // rejects secrets for builds on Cloud Build.
       ...nonSecretValues(svc.buildEnv || {}),
