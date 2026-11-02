@@ -10,6 +10,11 @@ source scripts/set-default-credentials.sh
 # Prepare the storage emulator rules runtime
 firebase setup:emulators:storage
 
+# Ensure Puppeteer browser is installed for conformance tests
+if [ -z "$PUPPETEER_EXECUTABLE_PATH" ]; then
+  node node_modules/puppeteer/install.js
+fi
+
 # Determine port check method once globally.
 if command -v nc >/dev/null 2>&1; then
   is_port_in_use() {
@@ -45,20 +50,20 @@ wait_for_emulators_shutdown() {
   done
 }
 
-mocha scripts/storage-emulator-integration/internal/tests.ts
+mocha --exit scripts/storage-emulator-integration/internal/tests.ts
 
 wait_for_emulators_shutdown
 
-mocha scripts/storage-emulator-integration/rules/*.test.ts
+mocha --exit scripts/storage-emulator-integration/rules/*.test.ts
 
 wait_for_emulators_shutdown
 
-mocha scripts/storage-emulator-integration/import/tests.ts
+mocha --exit scripts/storage-emulator-integration/import/tests.ts
 
 wait_for_emulators_shutdown
 
-mocha scripts/storage-emulator-integration/multiple-targets/tests.ts
+mocha --exit scripts/storage-emulator-integration/multiple-targets/tests.ts
 
 wait_for_emulators_shutdown
 
-mocha scripts/storage-emulator-integration/conformance/*.test.ts
+mocha --exit scripts/storage-emulator-integration/conformance/*.test.ts

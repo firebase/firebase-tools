@@ -21,10 +21,11 @@ export async function updateService(
   // the service's current value.
   const settings = {
     baseImage: readFlagPair(options.baseImage, options.clearBaseImage, "base-image"),
+    appId: readFlagPair(options.app, options.clearApp, "app"),
   };
   if (Object.values(settings).every((value) => value === undefined)) {
     throw new FirebaseError(
-      "Specify a setting to update: --base-image <baseImage> or --clear-base-image.",
+      "Specify a setting to update: --base-image <baseImage>, --clear-base-image, --app <appId>, or --clear-app.",
     );
   }
 

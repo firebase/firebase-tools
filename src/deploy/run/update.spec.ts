@@ -43,12 +43,15 @@ describe("updateService", () => {
     );
   }
 
-  it("requires --base-image or --clear-base-image, but not both", async () => {
+  it("requires a setting, but not both --<flag> and --clear-<flag>", async () => {
     await expect(update("web", {})).to.be.rejectedWith(
-      "--base-image <baseImage> or --clear-base-image",
+      "--base-image <baseImage>, --clear-base-image, --app <appId>, or --clear-app",
     );
     await expect(update("web", { baseImage: "nodejs22", clearBaseImage: true })).to.be.rejectedWith(
       "Use either --base-image or --clear-base-image, not both.",
+    );
+    await expect(update("web", { app: "1:123:web:abc", clearApp: true })).to.be.rejectedWith(
+      "Use either --app or --clear-app, not both.",
     );
   });
 
@@ -80,6 +83,24 @@ describe("updateService", () => {
     await update("web", { clearBaseImage: true });
 
     expectDeployed("run:web:us-central1", { baseImage: null });
+  });
+
+  it("links a Firebase Web App", async () => {
+    await update("web", { app: "1:123:web:abc" });
+
+    expectDeployed("run:web:us-central1", { appId: "1:123:web:abc", baseImage: undefined });
+  });
+
+  it("unlinks the Firebase Web App", async () => {
+    await update("web", { clearApp: true });
+
+    expectDeployed("run:web:us-central1", { appId: null, baseImage: undefined });
+  });
+
+  it("updates the base image and the app together", async () => {
+    await update("web", { baseImage: "nodejs22", clearApp: true });
+
+    expectDeployed("run:web:us-central1", { baseImage: "nodejs22", appId: null });
   });
 
   describe("for a locally built service", () => {

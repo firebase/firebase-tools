@@ -17,6 +17,12 @@ export interface ServiceDeploy {
    */
   baseImage?: string;
   /**
+   * Set by prepare: the linked Firebase Web App, if any. Deploy saves `appId` on the service so
+   * later deploys reuse it, and sets `firebaseConfig` as the FIREBASE_CONFIG env var, which the
+   * Admin SDK reads at runtime.
+   */
+  autoInit?: { appId: string; firebaseConfig: string };
+  /**
    * Set by prepare: the build-time env vars from the service's annotation, each a plain value or
    * a secret. Only local builds can use secrets: builds on Cloud Build only take plain values.
    */
@@ -33,4 +39,6 @@ export interface Context {
   projectId: string;
   /** Overrides the service's base image. null clears it; undefined keeps the current one. */
   baseImage?: string | null;
+  /** Overrides the service's Firebase Web App ID. null clears it; undefined keeps the current one. */
+  appId?: string | null;
 }

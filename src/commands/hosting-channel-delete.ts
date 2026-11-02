@@ -10,6 +10,8 @@ import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
 import { requireConfig } from "../requireConfig";
 import { logger } from "../logger";
+import { ensure } from "../ensureApiEnabled";
+import { hostingApiOrigin } from "../api";
 
 export const command = new Command("hosting:channel:delete <channelId>")
   .description("delete a Firebase Hosting channel")
@@ -17,6 +19,7 @@ export const command = new Command("hosting:channel:delete <channelId>")
   .option("--site <siteId>", "site in which the channel exists")
   .before(requireConfig)
   .before(requirePermissions, ["firebasehosting.sites.update"])
+  .before((options) => ensure(needProjectId(options), hostingApiOrigin(), "hosting", true))
   .before(requireHostingSite)
   .action(
     async (
