@@ -117,16 +117,6 @@ describe("buildLocally", () => {
     expect(rootDirectory).to.equal("web");
   });
 
-  it("copies an app outside the project on its own", async () => {
-    writeFile(tmpDir.name, "other/package.json", "{}");
-
-    const { rootDirectory } = await build("../other");
-
-    expect(localBuildStub).to.have.been.calledOnceWith("my-project", scratchDir);
-    expect(copiedFiles).to.have.members(["package.json"]);
-    expect(rootDirectory).to.equal("");
-  });
-
   it("deletes the copy afterwards", async () => {
     await build("web");
 

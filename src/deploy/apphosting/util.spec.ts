@@ -276,33 +276,12 @@ describe("util", () => {
       });
     });
 
-    it("doesn't look for a monorepo outside the project", () => {
+    it("doesn't look for a monorepo above the project", () => {
       withFiles(path.join("/", "turbo.json"));
       expect(util.buildDirectory("/project", "apps/web")).to.deep.equal({
         buildFolder: path.join("/project", "apps/web"),
         appFolder: "",
       });
-      expect(util.buildDirectory("/project", "../other")).to.deep.equal({
-        buildFolder: path.join("/project", "../other"),
-        appFolder: "",
-      });
-    });
-  });
-
-  describe("isInDirectory", () => {
-    it("is true for the directory itself and anything in it", () => {
-      expect(util.isInDirectory(path.join("/project"), path.join("/project"))).to.be.true;
-      expect(util.isInDirectory(path.join("/project", "apps/web"), path.join("/project"))).to.be
-        .true;
-      // A folder named "..foo" is in the project, even though its name starts with "..".
-      expect(util.isInDirectory(path.join("/project", "..foo"), path.join("/project"))).to.be.true;
-    });
-
-    it("is false for anything outside the directory", () => {
-      expect(util.isInDirectory(path.join("/"), path.join("/project"))).to.be.false;
-      expect(util.isInDirectory(path.join("/other"), path.join("/project"))).to.be.false;
-      // A sibling whose name starts with the directory's name isn't in it.
-      expect(util.isInDirectory(path.join("/project-other"), path.join("/project"))).to.be.false;
     });
   });
 

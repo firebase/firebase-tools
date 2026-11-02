@@ -7,13 +7,7 @@ import { AppHostingSingle } from "../../firebaseConfig";
 import * as fsAsync from "../../fsAsync";
 import { BuildConfig } from "../../gcp/apphosting";
 import { logger } from "../../logger";
-import {
-  BuildDirectory,
-  buildDirectory,
-  createLocalBuildTarArchive,
-  isInDirectory,
-  resolveIgnorePatterns,
-} from "./util";
+import { buildDirectory, createLocalBuildTarArchive, resolveIgnorePatterns } from "./util";
 
 /** A local build's output, packaged for upload. */
 export interface PackagedLocalBuild {
@@ -42,20 +36,22 @@ export interface BuildLocallyOptions {
 /**
  * Builds an app on this machine, for App Hosting or Cloud Run: copies the project into
  * `scratchDir`, builds the copy with Universal Maker, and tars the output. `scratchDir` is deleted
- * afterwards, even if the build fails. The archive is made from the folder the build ran in, since
- * the build's output paths and run command are relative to it.
+ * afterwards, even if the build fails. The build runs in the copy of the app's build folder (see
+ * BuildDirectory), and the archive is made from that folder.
  */
 export async function buildLocally(options: BuildLocallyOptions): Promise<PackagedLocalBuild> {
   const { projectId, projectDir, config, env, scratchDir } = options;
+  const { buildFolder, appFolder } = buildDirectory(projectDir, config.rootDir);
+  const scratchBuildFolder = path.join(scratchDir, path.relative(projectDir, buildFolder));
   try {
-    const build = await prepareLocalBuildScratchDirectory(projectDir, scratchDir, config);
-    const { outputFiles, buildConfig } = await localBuild(projectId, build.buildFolder, env, {
+    await prepareLocalBuildScratchDirectory(projectDir, scratchDir, config);
+    const { outputFiles, buildConfig } = await localBuild(projectId, scratchBuildFolder, env, {
       nonInteractive: options.nonInteractive,
       allowLocalBuildSecrets: options.allowLocalBuildSecrets,
-      rootDir: build.appFolder,
+      rootDir: appFolder,
     });
-    const archive = await createLocalBuildTarArchive(config, build.buildFolder, outputFiles);
-    return { archive, rootDirectory: build.appFolder, buildConfig };
+    const archive = await createLocalBuildTarArchive(config, scratchBuildFolder, outputFiles);
+    return { archive, rootDirectory: appFolder, buildConfig };
   } finally {
     try {
       fs.rmSync(scratchDir, { recursive: true, force: true });
@@ -67,11 +63,7 @@ export async function buildLocally(options: BuildLocallyOptions): Promise<Packag
 }
 
 /**
- * Prepares the scratch directory for local builds by copying non-ignored files, and returns the
- * build folder and app folder in it (see BuildDirectory).
- *
- * The whole project is copied, like App Hosting source deploys upload it, and the build runs in the
- * copy's build folder. An app outside the project is copied on its own.
+ * Prepares the scratch directory for local builds by copying non-ignored files.
  *
  * NOTE ON FILE FILTERING:
  * For local builds, we apply all ignore filtering (user firebase.json ignores and .gitignore)
@@ -80,14 +72,10 @@ export async function buildLocally(options: BuildLocallyOptions): Promise<Packag
  * source files that would be uploaded to Cloud Build.
  */
 async function prepareLocalBuildScratchDirectory(
-  projectDir: string,
+  rootDir: string,
   localBuildScratchDir: string,
   cfg: AppHostingSingle,
-): Promise<BuildDirectory> {
-  const { buildFolder, appFolder } = buildDirectory(projectDir, cfg.rootDir);
-  // Copying the whole project, not just the build folder, keeps applying .gitignore files above it.
-  const folderToCopy = isInDirectory(buildFolder, projectDir) ? projectDir : buildFolder;
-
+): Promise<void> {
   // Resolve ignores for local builds, including default node_modules ignore
   const ignore = resolveIgnorePatterns(cfg);
 
@@ -98,19 +86,15 @@ async function prepareLocalBuildScratchDirectory(
 
   // Copy files respecting ignores
   const filesToCopy = await fsAsync.readdirRecursive({
-    path: folderToCopy,
+    path: rootDir,
     ignoreStrings: ignore,
     supportGitIgnore: true,
   });
 
   for (const file of filesToCopy) {
-    const relativePath = path.relative(folderToCopy, file.name);
+    const relativePath = path.relative(rootDir, file.name);
     const destPath = path.join(localBuildScratchDir, relativePath);
     fs.mkdirSync(path.dirname(destPath), { recursive: true });
     fs.copyFileSync(file.name, destPath);
   }
-  return {
-    buildFolder: path.join(localBuildScratchDir, path.relative(folderToCopy, buildFolder)),
-    appFolder,
-  };
 }
