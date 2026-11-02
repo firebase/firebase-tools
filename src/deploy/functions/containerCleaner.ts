@@ -20,7 +20,6 @@ async function retry<Return>(func: () => Promise<Return>): Promise<Return> {
   const INITIAL_BACKOFF = 100;
   const TIMEOUT_MS = 10_000;
   let retry = 0;
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
       const timeout = new Promise<Return>((resolve, reject) => {
