@@ -1,4 +1,3 @@
-import * as fs from "fs";
 import * as path from "path";
 import { FirebaseError } from "../../error";
 import * as gcs from "../../gcp/storage";
@@ -9,7 +8,6 @@ import { logLabeledBullet } from "../../utils";
 import { Context } from "./args";
 import * as util from "./util";
 import * as experiments from "../../experiments";
-import { CLOUD_RUN_SIZE_LIMIT_BYTES } from "../../apphosting/constants";
 
 /**
  * Uploads App Hosting source code or local build output to Google Cloud Storage.
@@ -102,14 +100,10 @@ export default async function (context: Context, options: Options): Promise<void
         `Uploading ${isLocalBuild ? "built app" : "source"} for backend ${cfg.backendId}...`,
       );
       const bucketName = bucketsPerLocation[backendLocation]!;
-      const { bucket, object } = await gcs.uploadObject(
-        {
-          file: zippedSourcePath,
-          stream: fs.createReadStream(zippedSourcePath),
-        },
+      const { bucket, object } = await util.uploadArchive(
+        zippedSourcePath,
         bucketName,
-        isLocalBuild ? gcs.ContentType.TAR : gcs.ContentType.ZIP,
-        isLocalBuild ? CLOUD_RUN_SIZE_LIMIT_BYTES : undefined,
+        !!isLocalBuild,
       );
       logLabeledBullet("apphosting", `Uploaded at gs://${bucket}/${object}`);
       context.backendStorageUris[cfg.backendId] =
