@@ -54,11 +54,7 @@ const EMULATORS = CONFIG.emulators;
 /**
  * Polls until the specified port is closed and released.
  */
-async function waitForPortClosed(
-  port: number,
-  host?: string,
-  timeoutMs: number = 10000,
-): Promise<void> {
+async function waitForPortClosed(port: number, host?: string, timeoutMs = 10000): Promise<void> {
   const targetHost = host ?? (await localhost());
   try {
     await tcpport.waitUntilFreeOnHost(port, targetHost, 50, timeoutMs);
@@ -1063,7 +1059,7 @@ describe("import/export end to end", () => {
     );
 
     const config = readConfig();
-    const hubPort = config.emulators!.hub!.port;
+    const hubPort = config.emulators!.hub.port;
     const host = await localhost();
 
     // Ask for export using HTTP POST to hub

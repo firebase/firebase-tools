@@ -128,7 +128,7 @@ const MAX_RULESET_PAGE_SIZE = 100;
  */
 export async function listRulesets(
   projectId: string,
-  pageToken: string = "",
+  pageToken = "",
 ): Promise<ListRulesetsResponse> {
   const response = await apiClient.get<ListRulesetsResponse>(`/projects/${projectId}/rulesets`, {
     queryParams: {

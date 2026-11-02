@@ -30,7 +30,24 @@ describe("cloudFunctions", () => {
           },
           params: {},
           timestamp: /.*/,
-          data: { uid: "foobar", metadata: {}, customClaims: {} },
+          data: {
+            uid: "foobar",
+            metadata: {
+              creationTime: "2026-01-01T00:00:00.000Z",
+              lastSignInTime: "2026-01-02T00:00:00.000Z",
+            },
+            providerData: [
+              {
+                rawId: "google-uid-123",
+                providerId: "google.com",
+                email: "user@example.com",
+                displayName: "Test User",
+                photoURL: "https://example.com/photo.png",
+                federatedId: "fed-123",
+              },
+            ],
+            customClaims: {},
+          },
         })
         .reply(200, {});
 
@@ -44,13 +61,43 @@ describe("cloudFunctions", () => {
           source: "//identitytoolkit.googleapis.com/projects/project-foo",
           subject: "users/foobar",
           data: {
-            value: { uid: "foobar", metadata: {}, customClaims: {} },
+            value: {
+              uid: "foobar",
+              metadata: {
+                createTime: "2026-01-01T00:00:00.000Z",
+                lastSignInTime: "2026-01-02T00:00:00.000Z",
+              },
+              providerData: [
+                {
+                  uid: "google-uid-123",
+                  providerId: "google.com",
+                  email: "user@example.com",
+                  displayName: "Test User",
+                  photoURL: "https://example.com/photo.png",
+                },
+              ],
+              customClaims: {},
+            },
           },
         })
         .reply(200, {});
 
       const cf = new AuthCloudFunction("project-foo");
-      await cf.dispatch("create", { localId: "foobar" });
+      await cf.dispatch("create", {
+        localId: "foobar",
+        createdAt: String(Date.parse("2026-01-01T00:00:00.000Z")),
+        lastLoginAt: String(Date.parse("2026-01-02T00:00:00.000Z")),
+        providerUserInfo: [
+          {
+            rawId: "google-uid-123",
+            providerId: "google.com",
+            email: "user@example.com",
+            displayName: "Test User",
+            photoUrl: "https://example.com/photo.png",
+            federatedId: "fed-123",
+          },
+        ],
+      });
       expect(nock.isDone()).to.be.true;
     });
 
@@ -66,7 +113,20 @@ describe("cloudFunctions", () => {
           },
           params: {},
           timestamp: /.*/,
-          data: { uid: "tenant-user", tenantId: "tenant-a", metadata: {}, customClaims: {} },
+          data: {
+            uid: "tenant-user",
+            tenantId: "tenant-a",
+            metadata: {
+              creationTime: "2026-01-01T00:00:00.000Z",
+            },
+            providerData: [
+              {
+                rawId: "github-uid-456",
+                providerId: "github.com",
+              },
+            ],
+            customClaims: {},
+          },
         })
         .reply(200, {});
 
@@ -81,13 +141,36 @@ describe("cloudFunctions", () => {
           subject: "users/tenant-user",
           tenantid: "tenant-a",
           data: {
-            oldValue: { uid: "tenant-user", tenantId: "tenant-a", metadata: {}, customClaims: {} },
+            oldValue: {
+              uid: "tenant-user",
+              metadata: {
+                createTime: "2026-01-01T00:00:00.000Z",
+              },
+              providerData: [
+                {
+                  uid: "github-uid-456",
+                  providerId: "github.com",
+                },
+              ],
+              customClaims: {},
+            },
           },
         })
         .reply(200, {});
 
       const cf = new AuthCloudFunction("project-foo");
-      await cf.dispatch("delete", { localId: "tenant-user", tenantId: "tenant-a" });
+      await cf.dispatch("delete", {
+        localId: "tenant-user",
+        tenantId: "tenant-a",
+        createdAt: String(Date.parse("2026-01-01T00:00:00.000Z")),
+        lastLoginAt: "not-a-valid-timestamp",
+        providerUserInfo: [
+          {
+            rawId: "github-uid-456",
+            providerId: "github.com",
+          },
+        ],
+      });
       expect(nock.isDone()).to.be.true;
     });
 
@@ -120,7 +203,11 @@ describe("cloudFunctions", () => {
         .reply(200, {});
 
       const cf = new AuthCloudFunction("project-foo");
-      await cf.dispatch("create", { localId: "foobar" });
+      await cf.dispatch("create", {
+        localId: "foobar",
+        createdAt: "not-a-valid-timestamp",
+        lastLoginAt: "99999999999999999",
+      });
       expect(nock.isDone()).to.be.true;
     });
   });

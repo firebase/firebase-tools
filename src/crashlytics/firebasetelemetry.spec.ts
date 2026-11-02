@@ -21,7 +21,6 @@ describe("firebasetelemetry", () => {
     const reqConfig = {
       name: "projects/test-project/locations/global/configs/1-123-web-456",
       appId: "1:123:web:456",
-      logBucket: "projects/test-project/locations/global/buckets/firebase-telemetry",
       samplingRate: 1,
     };
     const resConfig = {
@@ -40,7 +39,6 @@ describe("firebasetelemetry", () => {
       const res = await firebasetelemetry.createOrUpdateTelemetryConfig(
         "test-project",
         "1:123:web:456",
-        "projects/test-project/locations/global/buckets/firebase-telemetry",
         1,
       );
 
@@ -56,7 +54,7 @@ describe("firebasetelemetry", () => {
         .reply(409, { error: { status: "ALREADY_EXISTS" } });
       nock(firebaseTelemetryAdminOrigin())
         .patch(
-          "/v1alpha/projects/test-project/locations/global/configs/1-123-web-456?updateMask=logBucket,samplingRate",
+          "/v1alpha/projects/test-project/locations/global/configs/1-123-web-456?updateMask=samplingRate",
           reqConfig,
         )
         .reply(200, resConfig);
@@ -64,7 +62,6 @@ describe("firebasetelemetry", () => {
       const res = await firebasetelemetry.createOrUpdateTelemetryConfig(
         "test-project",
         "1:123:web:456",
-        "projects/test-project/locations/global/buckets/firebase-telemetry",
         1,
       );
 
@@ -77,12 +74,7 @@ describe("firebasetelemetry", () => {
         .reply(500, { error: "internal" });
 
       await expect(
-        firebasetelemetry.createOrUpdateTelemetryConfig(
-          "test-project",
-          "1:123:web:456",
-          "projects/test-project/locations/global/buckets/firebase-telemetry",
-          1,
-        ),
+        firebasetelemetry.createOrUpdateTelemetryConfig("test-project", "1:123:web:456", 1),
       ).to.be.rejectedWith(
         FirebaseError,
         "Failed to configure telemetry for web app 1:123:web:456 (status 500):",
