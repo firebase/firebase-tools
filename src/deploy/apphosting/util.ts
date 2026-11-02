@@ -7,6 +7,7 @@ import { FirebaseError } from "../../error";
 import { logger } from "../../logger";
 import { AppHostingSingle } from "../../firebaseConfig";
 import * as fsAsync from "../../fsAsync";
+import * as gcs from "../../gcp/storage";
 import { logLabeledWarning } from "../../utils";
 import { CLOUD_RUN_SIZE_LIMIT_BYTES } from "../../apphosting/constants";
 
@@ -131,6 +132,24 @@ export async function createSourceDeployArchive(
     );
   }
   return tmpFile;
+}
+
+/**
+ * Uploads an app to a source bucket, for App Hosting or Cloud Run: a source deploy's zip, or a local
+ * build's tarball. Both products run the tarball as is, so it has to fit Cloud Run's size limit.
+ */
+export async function uploadArchive(
+  archive: string,
+  bucketName: string,
+  localBuild: boolean,
+): Promise<{ bucket: string; object: string }> {
+  const { bucket, object } = await gcs.uploadObject(
+    { file: archive, stream: fs.createReadStream(archive) },
+    bucketName,
+    localBuild ? gcs.ContentType.TAR : gcs.ContentType.ZIP,
+    localBuild ? CLOUD_RUN_SIZE_LIMIT_BYTES : undefined,
+  );
+  return { bucket, object };
 }
 
 /**
