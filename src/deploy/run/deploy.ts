@@ -12,7 +12,7 @@ import { getProjectNumber } from "../../getProjectNumber";
 import { Options } from "../../options";
 import { cloneDeep, logLabeledBullet } from "../../utils";
 import { buildLocally } from "../apphosting/localBuild";
-import { createSourceDeployArchive, uploadArchive } from "../apphosting/util";
+import { buildDirectory, createSourceDeployArchive, uploadArchive } from "../apphosting/util";
 import { Context, Payload, ServiceDeploy } from "./args";
 import { nonSecretValues, secretNames, toLocalBuildEnv } from "./buildEnv";
 import { FIREBASE_APP_ANNOTATION, mainContainer } from "./util";
@@ -27,9 +27,6 @@ const ROLLOUT_TIMEOUT_MS = 10 * 60 * 1000;
  */
 const NO_IMAGE = "scratch";
 
-/** Files that mark the root of an Nx or Turborepo monorepo, the monorepos App Hosting supports. */
-const MONOREPO_CONFIG_FILES = ["nx.json", "turbo.json"] as const;
-
 /** What a local build produced. */
 export interface LocalBuildOutput {
   /** The built app, as a .tar.gz tmp file. */
@@ -38,44 +35,6 @@ export interface LocalBuildOutput {
   runCommand?: string;
   /** The env vars the app needs at runtime. */
   env: NonNullable<runv2.Container["env"]>;
-}
-
-/**
- * Where a build on Cloud Build runs:
- * - The app folder is the service's rootDir, the folder with the app's package.json.
- * - The build folder is the folder that's uploaded and built. For an app in an Nx or Turborepo
- *   monorepo, it's the monorepo's root, so the build gets the root's lockfile and shared packages.
- *   For any other app, it's the app folder.
- *
- * For example:
- *
- *   my-app/              <- build folder and app folder
- *     firebase.json
- *     package.json
- *     app/
- *
- *   my-project/
- *     firebase.json
- *     functions/
- *     web/               <- build folder and app folder
- *       package.json
- *
- *   my-turborepo/        <- build folder
- *     firebase.json
- *     turbo.json
- *     package.json
- *     apps/
- *       web/             <- app folder
- *         package.json
- */
-export interface BuildDirectory {
-  /** The build folder's path. */
-  buildFolder: string;
-  /**
-   * The app folder's path in the build folder, with forward slashes, like "apps/web". Empty if the
-   * app folder is the build folder.
-   */
-  appFolder: string;
 }
 
 /** Builds each service, locally or on Cloud Build, then rolls it out. */
@@ -103,31 +62,6 @@ async function deployRemoteBuild(
   const image = await buildImage(projectId, svc, source, appFolder);
   const template = revisionTemplate(svc, image, options.message as string | undefined);
   svc.deployed = await rollOut(projectId, svc, template);
-}
-
-/**
- * Finds the service's build folder and app folder (see the examples on BuildDirectory), with the
- * same detection logic as Firebase App Hosting: the build folder is the closest folder at or above
- * the app folder that has nx.json or turbo.json, like my-turborepo/. If there's none, like in
- * my-app/ and my-project/, the app folder is the build folder. Only folders in the project count,
- * so an app outside the project builds from its own folder. Exported for testing.
- */
-export function buildDirectory(projectDir: string, rootDir = ""): BuildDirectory {
-  const appFolderPath = path.join(projectDir, rootDir);
-  const appFolderInProject = path.relative(projectDir, appFolderPath);
-  if (appFolderInProject === ".." || appFolderInProject.startsWith(`..${path.sep}`)) {
-    // The app is outside the project, so don't look for a monorepo above it.
-    return { buildFolder: appFolderPath, appFolder: "" };
-  }
-  // Check the app folder, then each folder above it, up to the project's folder.
-  const segments = appFolderInProject ? appFolderInProject.split(path.sep) : [];
-  for (let depth = segments.length; depth >= 0; depth--) {
-    const folder = path.join(projectDir, ...segments.slice(0, depth));
-    if (MONOREPO_CONFIG_FILES.some((file) => fs.existsSync(path.join(folder, file)))) {
-      return { buildFolder: folder, appFolder: segments.slice(depth).join("/") };
-    }
-  }
-  return { buildFolder: appFolderPath, appFolder: "" };
 }
 
 /**
@@ -232,7 +166,7 @@ async function sourceBucket(projectId: string, options: Options, region: string)
 /**
  * Builds the uploaded build folder into an image on Cloud Build and returns the image's URI.
  * `appFolder` is the app folder's path in the build folder, or empty if they're the same folder
- * (see BuildDirectory).
+ * (see BuildDirectory in apphosting/util.ts).
  */
 async function buildImage(
   projectId: string,
