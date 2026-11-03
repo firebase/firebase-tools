@@ -6,6 +6,7 @@ import * as tar from "tar";
 import * as util from "./util";
 import * as sinon from "sinon";
 import { AppHostingSingle } from "../../firebaseConfig";
+import { FirebaseError } from "../../error";
 import { logger } from "../../logger";
 
 describe("util", () => {
@@ -252,6 +253,10 @@ describe("util", () => {
         buildFolder: path.join("/project", "apps/web"),
         appFolder: "",
       });
+    });
+
+    it("throws if rootDir points outside the project", () => {
+      expect(() => util.buildDirectory("/project", "../web")).to.throw(FirebaseError, /rootDir/);
     });
   });
 });
