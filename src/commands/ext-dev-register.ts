@@ -20,7 +20,10 @@ import { input } from "../prompt";
  * Register a publisher ID; run this before publishing any extensions.
  */
 export const command = new Command("ext:dev:register")
-  .description("register a publisher ID; run this before publishing your first extension")
+  .description(
+    "[DISABLED] register a publisher ID; registering new publisher IDs is no longer supported " +
+      "and this command always exits with an error (Firebase Extensions shuts down March 31, 2027)",
+  )
   // temporary until registry-specific permissions are available
   .before(requirePermissions, ["firebaseextensions.sources.create"])
   .before(ensureExtensionsPublisherApiEnabled)
