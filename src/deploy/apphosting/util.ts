@@ -222,8 +222,11 @@ export interface BuildDirectory {
  */
 export function buildDirectory(projectDir: string, rootDir = ""): BuildDirectory {
   const appFolderPath = path.join(projectDir, rootDir);
-  // Check the app folder, then each folder above it, up to the project's folder.
   const appFolderInProject = path.relative(projectDir, appFolderPath);
+  if (appFolderInProject.startsWith("..")) {
+    throw new FirebaseError(`rootDir "${rootDir}" must be inside the project directory.`);
+  }
+  // Check the app folder, then each folder above it, up to the project's folder.
   const segments = appFolderInProject ? appFolderInProject.split(path.sep) : [];
   for (let depth = segments.length; depth >= 0; depth--) {
     const folder = path.join(projectDir, ...segments.slice(0, depth));
