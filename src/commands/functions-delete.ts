@@ -11,18 +11,24 @@ import * as projectConfig from "../functions/projectConfig";
 import { deleteFunctionsByEndpointFilters } from "../deploy/functions/delete";
 import { FirebaseError } from "../error";
 
-export const command = new Command("functions:delete [filters...]")
-  .description("delete one or more Cloud Functions by name, group name, or codebase.")
+export const command = new Command("functions:delete <filters...>")
+  .description(
+    "delete one or more Cloud Functions by name, group name, or codebase " +
+      "(at least one filter is required, e.g. myFunction, myGroup, myCodebase, or myCodebase:myFunction).",
+  )
   .option(
     "--region <region>",
     "Specify region of the function to be deleted. " +
-      "If omitted, functions from all regions whose names match the filters will be deleted. ",
+      "If omitted, functions from all regions whose names match the filters will be deleted.",
   )
   .withForce()
   .before(requirePermissions, ["cloudfunctions.functions.list", "cloudfunctions.functions.delete"])
   .action(async (filters: string[], options: { force: boolean; region?: string } & Options) => {
     if (!filters.length) {
-      return utils.reject("Must supply at least function or group name.");
+      return utils.reject(
+        "Must supply at least one function name, group name, or codebase to delete " +
+          "(e.g. firebase functions:delete myFunction).",
+      );
     }
 
     const context: args.Context = {
