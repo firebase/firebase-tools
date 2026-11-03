@@ -12,11 +12,13 @@ const PROJECT_ID = "test-project";
 const SECRET = { projectId: PROJECT_ID, name: "MY_SECRET", labels: {}, replication: {} };
 
 describe("functions:secrets:destroy", () => {
+  let originalBefores: unknown[];
   let inUseStub: sinon.SinonStub;
   let destroyStub: sinon.SinonStub;
   let logWarningStub: sinon.SinonStub;
 
   beforeEach(() => {
+    originalBefores = (command as unknown as { befores: unknown[] }).befores;
     (command as unknown as { befores: unknown[] }).befores = [];
     sinon.stub(projectUtils, "needProjectId").returns(PROJECT_ID);
     sinon.stub(projectUtils, "needProjectNumber").resolves("123");
@@ -35,7 +37,10 @@ describe("functions:secrets:destroy", () => {
     logWarningStub = sinon.stub(utils, "logWarning");
   });
 
-  afterEach(() => sinon.restore());
+  afterEach(() => {
+    (command as unknown as { befores: unknown[] }).befores = originalBefores;
+    sinon.restore();
+  });
 
   it("documents --force and --non-interactive behavior in the description", () => {
     const cmd = command as unknown as { name: string; descriptionText: string };
