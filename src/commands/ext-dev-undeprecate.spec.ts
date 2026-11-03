@@ -11,11 +11,13 @@ import { ExtensionVersion } from "../extensions/types";
 const EXT_REF = "test-pub/test-ext";
 
 describe("ext:dev:undeprecate", () => {
+  let originalBefores: unknown[];
   let listStub: sinon.SinonStub;
   let undeprecateStub: sinon.SinonStub;
   let confirmStub: sinon.SinonStub;
 
   beforeEach(() => {
+    originalBefores = (command as unknown as { befores: unknown[] }).befores;
     (command as unknown as { befores: unknown[] }).befores = [];
     sinon.stub(utils, "logLabeledBullet");
     sinon.stub(utils, "logLabeledSuccess");
@@ -30,7 +32,10 @@ describe("ext:dev:undeprecate", () => {
     confirmStub = sinon.stub(prompt, "confirm").resolves(true);
   });
 
-  afterEach(() => sinon.restore());
+  afterEach(() => {
+    (command as unknown as { befores: unknown[] }).befores = originalBefores;
+    sinon.restore();
+  });
 
   it("registers a -f, --force flag", () => {
     const options = (command as unknown as { options: string[][] }).options;
