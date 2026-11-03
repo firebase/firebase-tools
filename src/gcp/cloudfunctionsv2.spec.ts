@@ -66,6 +66,20 @@ describe("cloudfunctionsv2", () => {
   };
 
   describe("functionFromEndpoint", () => {
+    for (const policy of ["automatic", "on-deploy"] as const) {
+      it(`maps ${policy} to exactly one runtime update policy field`, () => {
+        const fn = cloudfunctionsv2.functionFromEndpoint({
+          ...ENDPOINT,
+          httpsTrigger: {},
+          runtimeUpdatePolicy: policy,
+        });
+        const selected = policy === "automatic" ? "automaticUpdatePolicy" : "onDeployUpdatePolicy";
+        const other = policy === "automatic" ? "onDeployUpdatePolicy" : "automaticUpdatePolicy";
+        expect(fn.buildConfig).to.have.deep.property(selected, {});
+        expect(fn.buildConfig).not.to.have.property(other);
+      });
+    }
+
     it("should guard against version mixing", () => {
       expect(() => {
         cloudfunctionsv2.functionFromEndpoint({ ...ENDPOINT, httpsTrigger: {}, platform: "gcfv1" });
@@ -515,6 +529,25 @@ describe("cloudfunctionsv2", () => {
   });
 
   describe("endpointFromFunction", () => {
+    for (const policy of ["automatic", "on-deploy"] as const) {
+      it(`reads the deployed ${policy} policy without copying output-only runtimeVersion`, () => {
+        const fn: cloudfunctionsv2.OutputCloudFunction = {
+          ...HAVE_CLOUD_FUNCTION_V2,
+          buildConfig: {
+            ...CLOUD_FUNCTION_V2.buildConfig,
+            ...(policy === "automatic"
+              ? { automaticUpdatePolicy: {} }
+              : { onDeployUpdatePolicy: { runtimeVersion: "output-only-version" } }),
+          },
+        };
+        const endpoint = cloudfunctionsv2.endpointFromFunction(fn);
+        expect(endpoint.runtimeUpdatePolicy).to.equal(policy);
+        const converted = cloudfunctionsv2.functionFromEndpoint(endpoint);
+        const selected = policy === "automatic" ? "automaticUpdatePolicy" : "onDeployUpdatePolicy";
+        expect(converted.buildConfig).to.have.deep.property(selected, {});
+      });
+    }
+
     it("should copy a minimal version", () => {
       expect(cloudfunctionsv2.endpointFromFunction(HAVE_CLOUD_FUNCTION_V2)).to.deep.equal({
         ...ENDPOINT,
@@ -904,6 +937,35 @@ describe("cloudfunctionsv2", () => {
   });
 
   describe("createFunction", () => {
+    for (const policy of ["automatic", "on-deploy", undefined] as const) {
+      it(`creates a function with runtime update policy ${policy ?? "unspecified"}`, async () => {
+        const fn = cloudfunctionsv2.functionFromEndpoint({
+          ...ENDPOINT,
+          httpsTrigger: {},
+          ...(policy ? { runtimeUpdatePolicy: policy } : {}),
+        });
+        const selected = policy === "automatic" ? "automaticUpdatePolicy" : "onDeployUpdatePolicy";
+        const other = policy === "automatic" ? "onDeployUpdatePolicy" : "automaticUpdatePolicy";
+        const scope = nock(functionsV2Origin())
+          .post(
+            "/v2/projects/project/locations/region/functions",
+            (body: cloudfunctionsv2.InputCloudFunction) => {
+              if (policy) {
+                expect(body.buildConfig).to.have.deep.property(selected, {});
+              } else {
+                expect(body.buildConfig).not.to.have.property(selected);
+              }
+              expect(body.buildConfig).not.to.have.property(other);
+              return true;
+            },
+          )
+          .query({ functionId: "id" })
+          .reply(200, { name: "operations/123", done: true });
+        await cloudfunctionsv2.createFunction(fn);
+        expect(scope.isDone()).to.be.true;
+      });
+    }
+
     it("should set default environment variables", async () => {
       const testFunction = {
         ...CLOUD_FUNCTION_V2,
@@ -943,6 +1005,42 @@ describe("cloudfunctionsv2", () => {
   });
 
   describe("updateFunction", () => {
+    for (const policy of ["automatic", "on-deploy", undefined] as const) {
+      it(`sends the correct policy body and update mask for ${policy ?? "unspecified"}`, async () => {
+        const fn = cloudfunctionsv2.functionFromEndpoint({
+          ...ENDPOINT,
+          httpsTrigger: {},
+          ...(policy ? { runtimeUpdatePolicy: policy } : {}),
+        });
+        const selected = policy === "automatic" ? "automaticUpdatePolicy" : "onDeployUpdatePolicy";
+        const other = policy === "automatic" ? "onDeployUpdatePolicy" : "automaticUpdatePolicy";
+        const scope = nock(functionsV2Origin())
+          .patch(`/v2/${fn.name}`, (body: cloudfunctionsv2.InputCloudFunction) => {
+            if (policy) {
+              expect(body.buildConfig).to.have.deep.property(selected, {});
+            } else {
+              expect(body.buildConfig).not.to.have.property(selected);
+            }
+            expect(body.buildConfig).not.to.have.property(other);
+            return true;
+          })
+          .query((query: { updateMask?: string }) => {
+            const masks = String(query.updateMask).split(",");
+            if (policy) {
+              expect(masks).to.include(`buildConfig.${selected}`);
+            } else {
+              expect(masks).not.to.include(`buildConfig.${selected}`);
+            }
+            expect(masks).not.to.include(`buildConfig.${other}`);
+            expect(masks).not.to.include("buildConfig.onDeployUpdatePolicy.runtimeVersion");
+            return true;
+          })
+          .reply(200, { name: "operations/123", done: true });
+        await cloudfunctionsv2.updateFunction(fn);
+        expect(scope.isDone()).to.be.true;
+      });
+    }
+
     it("should set default environment variables", async () => {
       const scope = nock(functionsV2Origin())
         .patch("/v2/projects/project/locations/region/functions/id", (body) => {

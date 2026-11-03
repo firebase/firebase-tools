@@ -179,6 +179,9 @@ type FunctionConfigBase = {
   // Optional: The Node.js/Python runtime version to use for Cloud Functions.
   // Example: "nodejs20", "python312". Must be a supported runtime version.
   runtime?: ActiveRuntime;
+  // Optional: Runtime security update policy for 2nd gen functions in this codebase.
+  // When omitted, updates preserve the deployed policy and creates use the API default.
+  runtimeUpdatePolicy?: "automatic" | "on-deploy";
 } & Deployable;
 
 /**

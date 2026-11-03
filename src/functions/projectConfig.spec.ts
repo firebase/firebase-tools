@@ -25,6 +25,24 @@ describe("projectConfig", () => {
   });
 
   describe("validate", () => {
+    for (const policy of ["automatic", "on-deploy"] as const) {
+      it(`accepts the ${policy} runtime update policy`, () => {
+        const config = { ...TEST_CONFIG_0, runtimeUpdatePolicy: policy };
+        expect(projectConfig.validate([config])[0]).to.include(config);
+      });
+    }
+
+    for (const policy of ["invalid", "", null, false, {}]) {
+      it(`rejects invalid runtime update policy ${JSON.stringify(policy)}`, () => {
+        expect(() =>
+          projectConfig.validate([
+            // @ts-expect-error invalid runtime update policy for test
+            { ...TEST_CONFIG_0, runtimeUpdatePolicy: policy },
+          ]),
+        ).to.throw(FirebaseError, /functions.runtimeUpdatePolicy/);
+      });
+    }
+
     it("passes validation for simple config", () => {
       expect(projectConfig.validate([TEST_CONFIG_0])).to.deep.equal([
         { ...TEST_CONFIG_0, codebase: "default" },

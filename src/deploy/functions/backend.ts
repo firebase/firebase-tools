@@ -383,6 +383,8 @@ export type Endpoint = TargetIds &
     entryPoint: string;
     platform: FunctionsPlatform;
     runtime?: Runtime;
+    // Only applies to 2nd gen functions. Omission leaves the policy unmanaged.
+    runtimeUpdatePolicy?: "automatic" | "on-deploy";
 
     // Output only
     // "Codebase" is not part of the container contract. Instead, it's value is provided by firebase.json or derived
