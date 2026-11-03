@@ -1,0 +1,1 @@
+- Fixed high query latency on Linux in Data Connect PGlite emulator by enabling TCP_NODELAY on sockets. (#11402)
