@@ -1,1 +1,2 @@
 - Fixed Hosting commands failing when unable to ensure the Firebase Hosting API is enabled, logging a warning instead. (#11335)
+- Updated `firebase init hosting` and `firebase init hosting:github` to ensure the Firebase Hosting API is enabled during setup.
