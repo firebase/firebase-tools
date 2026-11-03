@@ -9,7 +9,10 @@ import { ensure } from "../ensureApiEnabled";
 import { hostingApiOrigin } from "../api";
 
 export const command = new Command("hosting:sites:get <siteId>")
-  .description("print info about a Firebase Hosting site")
+  .description(
+    "print a Firebase Hosting site's ID, default URL, and linked web app ID " +
+      "(use --json for the full site resource, including type and labels)",
+  )
   .before(requirePermissions, ["firebasehosting.sites.get"])
   .before((options) => ensure(needProjectId(options), hostingApiOrigin(), "hosting", true))
   .action(async (siteId: string, options): Promise<Site> => {
