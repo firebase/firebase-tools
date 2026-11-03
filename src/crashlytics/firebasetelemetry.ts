@@ -50,6 +50,10 @@ export async function createOrUpdateTelemetryConfig(
           { original: patchErr },
         );
       }
+    } else if (err.status === 503) {
+      throw new FirebaseError(
+        "Sorry, Crashlytics is busy right now and can't finish setup. Please try again in a little while.",
+      );
     }
     const msg = err.message || JSON.stringify(err.body) || err;
     throw new FirebaseError(
