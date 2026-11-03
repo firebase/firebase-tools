@@ -7,11 +7,16 @@ import { getEmails, getProjectName } from "../appdistribution/options-parser-uti
 import { logger } from "../logger";
 
 export const command = new Command("appdistribution:testers:remove [emails...]")
-  .description("remove testers from a project (or App Distribution group, if specified via flag)")
-  .option("--file <file>", "a path to a file containing a list of tester emails to be removed")
+  .description(
+    "delete testers from a project, or only remove them from an App Distribution group with --group-alias; requires either [emails...] or --file",
+  )
+  .option(
+    "--file <file>",
+    "path to a comma- or newline-separated file of tester emails to remove (ignored if [emails...] are passed)",
+  )
   .option(
     "--group-alias <group-alias>",
-    "if specified, the testers are only removed from the group identified by this alias, but not the project",
+    "only remove the testers from the App Distribution group with this alias; testers are not deleted from the project",
   )
   .before(requireAuth)
   .action(async (emails: string[], options?: any) => {

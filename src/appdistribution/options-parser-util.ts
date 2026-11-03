@@ -26,8 +26,13 @@ export function parseIntoStringArray(value: string, file = ""): string[] {
  * Takes in a string[] or a path to a comma- or newline-separated file of
  * testers emails and returns a string[] of emails.
  */
-export function getEmails(emails: string[], file: string): string[] {
+export function getEmails(emails: string[], file?: string): string[] {
   if (emails.length === 0) {
+    if (!file) {
+      throw new FirebaseError(
+        "No tester emails provided. Pass one or more emails as arguments (e.g. `user1@example.com user2@example.com`) or use --file <file> to provide a comma- or newline-separated list of emails.",
+      );
+    }
     ensureFileExists(file);
     const readFile = fs.readFileSync(file, "utf8");
     return splitter(readFile);
