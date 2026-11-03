@@ -1,1 +1,2 @@
 - Fixed the emulators startup message showing 127.0.0.1 for the Emulator UI and Hub when they listen on 0.0.0.0; it now also prints the address they listen on. (#6222)
+- Updated the official Firebase CLI Docker image to `node:24-alpine` and OpenJDK 25 (`openjdk25-jre-headless`).

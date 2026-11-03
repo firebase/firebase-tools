@@ -1,11 +1,11 @@
-FROM node:24.16-alpine AS app-env
+FROM node:24-alpine AS app-env
 
 # Make sure to get the latest version of npm before doing anything else, to avoid vulnerabilities in npm's bundled dependencies.
 RUN npm install -g npm@latest
 
 # Install Python (for Cloud Functions) and Java (for emulators) and pre-cache emulator dependencies.
 RUN apk update && \
-    apk add --no-cache python3 openjdk21-jre-headless bash && \
+    apk add --no-cache python3 openjdk25-jre-headless bash && \
     apk upgrade && \
     wget https://bootstrap.pypa.io/get-pip.py && \
     python3 get-pip.py --no-cache-dir --break-system-packages && \
