@@ -1,0 +1,1 @@
+- Fixed an issue where `appdistribution:testers:add` and `appdistribution:testers:remove` threw an internal file error when invoked without tester emails or `--file`.
