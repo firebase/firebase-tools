@@ -4,6 +4,8 @@ import { FirebaseError } from "../error";
 import { EXPORT_ON_EXIT_USAGE_ERROR, EXPORT_ON_EXIT_CWD_DANGER } from "./commandUtils";
 import * as path from "path";
 import * as sinon from "sinon";
+import { EmulatorRegistry } from "./registry";
+import { Emulators } from "./types";
 
 describe("commandUtils", () => {
   const testSetExportOnExitOptions = (options: any): any => {
@@ -119,5 +121,43 @@ describe("commandUtils", () => {
         someUnrelatedOption: "isHere",
       }).someUnrelatedOption,
     ).to.eql("isHere");
+  });
+
+  describe("getListenSuffix", () => {
+    let getStub: sinon.SinonStub;
+
+    const listeningOn = (host: string, port: number): void => {
+      getStub.returns({ getInfo: () => ({ name: Emulators.UI, host, port }) });
+    };
+
+    beforeEach(() => {
+      getStub = sinon.stub(EmulatorRegistry, "get");
+    });
+
+    afterEach(() => {
+      getStub.restore();
+    });
+
+    it("should show the listen address when the emulator listens on 0.0.0.0", () => {
+      listeningOn("0.0.0.0", 4000);
+      expect(commandUtils.getListenSuffix(Emulators.UI)).to.eql(" (listening on 0.0.0.0:4000)");
+    });
+
+    it("should show the IPv6 wildcard in brackets", () => {
+      listeningOn("::", 4000);
+      expect(commandUtils.getListenSuffix(Emulators.UI)).to.eql(" (listening on [::]:4000)");
+    });
+
+    it("should add nothing when the link already uses the listen host", () => {
+      listeningOn("127.0.0.1", 4000);
+      expect(commandUtils.getListenSuffix(Emulators.UI)).to.eql("");
+      listeningOn("192.168.1.20", 4000);
+      expect(commandUtils.getListenSuffix(Emulators.UI)).to.eql("");
+    });
+
+    it("should add nothing when the emulator is not running", () => {
+      getStub.returns(undefined);
+      expect(commandUtils.getListenSuffix(Emulators.UI)).to.eql("");
+    });
   });
 });
