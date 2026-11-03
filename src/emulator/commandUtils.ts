@@ -460,6 +460,23 @@ export function getListenOverview(emulator: Emulators): string | undefined {
 }
 
 /**
+ * Returns the listen address to print after a link to the emulator, when the link cannot use it.
+ *
+ * A wildcard host such as 0.0.0.0 is what the emulator listens on, but not something every
+ * browser can open, so links built with `EmulatorRegistry.url()` point at the loopback address
+ * instead. Printing the listen address next to such a link shows the configured host was used.
+ * Returns an empty string when the link already uses the listen host.
+ */
+export function getListenSuffix(emulator: Emulators): string {
+  const info = EmulatorRegistry.get(emulator)?.getInfo();
+  const listen = getListenOverview(emulator);
+  if (!info || !listen || utils.connectableHostname(info.host) === info.host) {
+    return "";
+  }
+  return ` (listening on ${listen})`;
+}
+
+/**
  * The action function for emulators:exec.
  * Starts the appropriate emulators, executes the provided script,
  * and then exits.

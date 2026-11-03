@@ -1,2 +1,3 @@
+- Fixed the emulators startup message showing 127.0.0.1 for the Emulator UI and Hub when they listen on 0.0.0.0; it now also prints the address they listen on. (#6222)
 - Fixed `database:import` failing with an unhandled promise rejection when a batch write fails.
 - Fixed emulator crashes when a Firestore rules reload or emulator HTTP handler throws.
