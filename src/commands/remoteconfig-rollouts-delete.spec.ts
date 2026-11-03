@@ -13,10 +13,12 @@ const PROJECT_NUMBER = "123456789";
 const ID = "1";
 
 describe("remoteconfig:rollouts:delete", () => {
+  let originalBefores: unknown[];
   let deleteStub: sinon.SinonStub;
   let confirmStub: sinon.SinonStub;
 
   beforeEach(() => {
+    originalBefores = (command as unknown as { befores: unknown[] }).befores;
     (command as unknown as { befores: unknown[] }).befores = [];
     sinon.stub(projectUtils, "needProjectNumber").resolves(PROJECT_NUMBER);
     sinon.stub(getMod, "getRollout").resolves({} as Awaited<ReturnType<typeof getMod.getRollout>>);
@@ -26,7 +28,10 @@ describe("remoteconfig:rollouts:delete", () => {
     confirmStub = sinon.stub(prompt, "confirm").resolves(true);
   });
 
-  afterEach(() => sinon.restore());
+  afterEach(() => {
+    (command as unknown as { befores: unknown[] }).befores = originalBefores;
+    sinon.restore();
+  });
 
   it("registers a -f, --force option", () => {
     const flags = (command as unknown as { options: string[][] }).options.map((o) => o[0]);
