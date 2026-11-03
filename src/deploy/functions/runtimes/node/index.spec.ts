@@ -211,6 +211,20 @@ describe("NodeDelegate", () => {
       );
     });
 
+    it("passes the source directory to the SDK bin entry", async () => {
+      const sdkDir = installSdk("", [], "lib/bin/firebase-functions.js");
+      fs.writeFileSync(
+        path.join(sdkDir, BIN_ENTRY),
+        "process.stdout.write(JSON.stringify(process.argv.slice(2)));",
+      );
+      const delegate = new node.Delegate(PROJECT_ID, projectDir, sourceDir, "nodejs24");
+      const child = delegate["spawnFunctionsProcess"]({}, {});
+      let stdout = "";
+      child.stdout?.on("data", (chunk: Buffer) => (stdout += chunk.toString("utf8")));
+      await new Promise((resolve) => child.on("close", resolve));
+      expect(stdout).to.equal(JSON.stringify([sourceDir]));
+    });
+
     describe("findSdkBinEntry", () => {
       it("finds the bin entry in a Bun store", () => {
         const sdkDir = installSdk(
