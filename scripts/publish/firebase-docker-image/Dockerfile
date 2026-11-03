@@ -1,4 +1,4 @@
-FROM node:lts-alpine AS app-env
+FROM node:24.16-alpine AS app-env
 
 # Make sure to get the latest version of npm before doing anything else, to avoid vulnerabilities in npm's bundled dependencies.
 RUN npm install -g npm@latest

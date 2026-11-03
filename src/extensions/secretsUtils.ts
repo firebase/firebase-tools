@@ -33,6 +33,9 @@ export async function grantFirexServiceAgentSecretAdminRole(
 }
 
 export async function getManagedSecrets(instance: ExtensionInstance): Promise<string[]> {
+  if (!instance.config?.source?.spec) {
+    return [];
+  }
   return (
     await Promise.all(
       getActiveSecrets(instance.config.source.spec, instance.config.params).map(

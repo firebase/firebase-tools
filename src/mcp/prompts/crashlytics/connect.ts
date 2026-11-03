@@ -27,7 +27,7 @@ export const connect = prompt(
         content: {
           type: "text",
           text: `
-You will assist developers in investigating and resolving mobile application issues by leveraging Firebase Crashlytics data. 
+You will assist developers in investigating and resolving mobile and web application issues by leveraging Firebase Crashlytics data. 
 
 ### Required First Steps
 

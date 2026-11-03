@@ -189,6 +189,30 @@ describe("secrets", () => {
         undefined,
       );
     });
+
+    it("surfaces the underlying message for unexpected errors", async () => {
+      // A billing-disabled project 403s here; the API's own message explains why,
+      // so it must not be swallowed.
+      const original = new FirebaseError(
+        "HTTP Error: 403, This API method requires billing to be enabled.",
+        { status: 403 },
+      );
+      gcsm.getSecret.withArgs("project", "secret").rejects(original);
+
+      let err;
+      try {
+        await secrets.upsertSecret("project", "secret");
+      } catch (e: any) {
+        err = e;
+      }
+
+      expect(err.message).to.equal(
+        "Unexpected error loading secret: HTTP Error: 403, This API method requires billing to be enabled.",
+      );
+      expect(err.status).to.equal(403);
+      expect(err.original).to.equal(original);
+      expect(gcsm.createSecret).to.not.have.been.called;
+    });
   });
 
   describe("toMulti", () => {
@@ -259,6 +283,97 @@ describe("secrets", () => {
 
       expect(gcsm.getIamPolicy).to.be.calledWithMatch(secret);
       expect(gcsm.setIamPolicy).to.be.calledWithMatch(secret, newBindings);
+    });
+  });
+
+  describe("revokeSecretAccess", () => {
+    const secret = {
+      name: "secret",
+      projectId: "projectId",
+    };
+
+    it("should revoke access from the appropriate service accounts", async () => {
+      gcsm.getIamPolicy.resolves({
+        version: 1,
+        etag: "tag",
+        bindings: [
+          {
+            role: "roles/viewer",
+            members: ["serviceAccount:existingSA"],
+          },
+          {
+            role: "roles/secretmanager.secretAccessor",
+            members: [
+              "serviceAccount:buildSA",
+              "serviceAccount:computeSA",
+              "serviceAccount:otherSA",
+            ],
+          },
+          {
+            role: "roles/secretmanager.secretAccessor",
+            members: ["serviceAccount:buildSA"],
+          },
+          {
+            role: "roles/secretmanager.viewer",
+            members: ["serviceAccount:buildSA", "serviceAccount:otherBuildSA"],
+          },
+          {
+            role: "roles/secretmanager.secretVersionManager",
+            members: [
+              "serviceAccount:service-12345@gcp-sa-firebaseapphosting.iam.gserviceaccount.com",
+            ],
+          },
+        ],
+      });
+      gcsm.setIamPolicy.resolves();
+
+      await secrets.revokeSecretAccess(secret.projectId, secret.name, {
+        buildServiceAccounts: ["buildSA"],
+        runServiceAccounts: ["computeSA"],
+      });
+
+      expect(gcsm.getIamPolicy).to.be.calledWithMatch(secret);
+      expect(gcsm.setIamPolicy).to.be.calledWithMatch(secret, [
+        {
+          role: "roles/viewer",
+          members: ["serviceAccount:existingSA"],
+        },
+        {
+          role: "roles/secretmanager.secretAccessor",
+          members: ["serviceAccount:otherSA"],
+        },
+        {
+          role: "roles/secretmanager.viewer",
+          members: ["serviceAccount:otherBuildSA"],
+        },
+        {
+          role: "roles/secretmanager.secretVersionManager",
+          members: [
+            "serviceAccount:service-12345@gcp-sa-firebaseapphosting.iam.gserviceaccount.com",
+          ],
+        },
+      ]);
+    });
+
+    it("should not set IAM policy if no matching bindings exist", async () => {
+      gcsm.getIamPolicy.resolves({
+        version: 1,
+        etag: "tag",
+        bindings: [
+          {
+            role: "roles/secretmanager.secretAccessor",
+            members: ["serviceAccount:otherSA"],
+          },
+        ],
+      });
+
+      await secrets.revokeSecretAccess(secret.projectId, secret.name, {
+        buildServiceAccounts: ["buildSA"],
+        runServiceAccounts: ["computeSA"],
+      });
+
+      expect(gcsm.getIamPolicy).to.be.calledWithMatch(secret);
+      expect(gcsm.setIamPolicy).to.not.have.been.called;
     });
   });
 
@@ -381,6 +496,53 @@ describe("secrets", () => {
       await expect(
         secrets.grantEmailsSecretAccess(secret.projectId, [secret.name], ["user@mydomain.com"]),
       ).to.eventually.be.rejectedWith(/Failed to set IAM bindings/);
+    });
+  });
+
+  describe("revokeEmailsSecretAccess", () => {
+    const secret = {
+      projectId: "projectId",
+      name: "secret",
+    };
+
+    it("should revoke user and group access to secrets", async () => {
+      gcsm.getIamPolicy.resolves({
+        version: 1,
+        etag: "tag",
+        bindings: [
+          {
+            role: "roles/viewer",
+            members: ["serviceAccount:existingSA"],
+          },
+          {
+            role: "roles/secretmanager.secretAccessor",
+            members: [
+              "user:user@mydomain.com",
+              "group:mygroup@mydomain.com",
+              "serviceAccount:buildSA",
+            ],
+          },
+        ],
+      });
+      gcsm.setIamPolicy.resolves();
+
+      await secrets.revokeEmailsSecretAccess(
+        secret.projectId,
+        [secret.name],
+        ["user@mydomain.com", "mygroup@mydomain.com"],
+      );
+
+      expect(gcsm.getIamPolicy).to.be.calledWithMatch(secret);
+      expect(gcsm.setIamPolicy).to.be.calledWithMatch(secret, [
+        {
+          role: "roles/viewer",
+          members: ["serviceAccount:existingSA"],
+        },
+        {
+          role: "roles/secretmanager.secretAccessor",
+          members: ["serviceAccount:buildSA"],
+        },
+      ]);
     });
   });
 

@@ -87,12 +87,32 @@ export type WireExtension = {
   events: string[];
 };
 
+export type WireLifecycleHook = {
+  task?: {
+    function?: string;
+    body?: unknown;
+  };
+  call?: {
+    function?: string;
+    params?: unknown;
+  };
+  http?: {
+    url?: string;
+    function?: string;
+    method?: string;
+    headers?: Record<string, string>;
+    body?: unknown;
+  };
+};
+
 export interface WireManifest {
   specVersion: string;
   params?: params.Param[];
   requiredAPIs?: build.RequiredApi[];
+  requiredRoles?: string[];
   endpoints: Record<string, WireEndpoint>;
   extensions?: Record<string, WireExtension>;
+  lifecycleHooks?: Record<string, WireLifecycleHook>;
 }
 
 /** Returns a Build from a v1alpha1 Manifest. */
@@ -108,12 +128,17 @@ export function buildFromV1Alpha1(
     specVersion: "string",
     params: "array",
     requiredAPIs: "array",
+    requiredRoles: "array",
     endpoints: "object",
     extensions: "object",
+    lifecycleHooks: "object",
   });
   const bd: build.Build = build.empty();
   bd.params = manifest.params || [];
   bd.requiredAPIs = parseRequiredAPIs(manifest);
+  if (manifest.requiredRoles) {
+    bd.requiredRoles = parseRequiredRoles(manifest);
+  }
   for (const id of Object.keys(manifest.endpoints)) {
     const me: WireEndpoint = manifest.endpoints[id];
     assertBuildEndpoint(me, id);
@@ -129,11 +154,64 @@ export function buildFromV1Alpha1(
       bd.extensions[id] = be;
     }
   }
+  if (manifest.lifecycleHooks) {
+    bd.lifecycleHooks = {};
+    for (const id of Object.keys(manifest.lifecycleHooks)) {
+      if (id !== "afterFirstDeploy" && id !== "afterRedeploy") {
+        throw new FirebaseError(`Invalid eventType "${id}" for lifecycle hook.`);
+      }
+      const hook: WireLifecycleHook = manifest.lifecycleHooks[id];
+      if (!hook || typeof hook !== "object") {
+        throw new FirebaseError(`Invalid lifecycle hook configuration for "${id}".`);
+      }
+      if (hook.task) {
+        if (typeof hook.task.function !== "string" || !hook.task.function) {
+          throw new FirebaseError(
+            `Invalid target "${hook.task.function || ""}" for lifecycle hook "${id}"`,
+          );
+        }
+      } else if (hook.call) {
+        if (typeof hook.call.function !== "string" || !hook.call.function) {
+          throw new FirebaseError(
+            `Invalid target "${hook.call.function || ""}" for lifecycle hook "${id}"`,
+          );
+        }
+      } else if (hook.http) {
+        const target = hook.http.url || hook.http.function;
+        if (typeof target !== "string" || !target) {
+          throw new FirebaseError(`Invalid target "${target || ""}" for lifecycle hook "${id}"`);
+        }
+      } else {
+        throw new FirebaseError(
+          `No action (task, call, or http) specified for lifecycle hook "${id}"`,
+        );
+      }
+
+      bd.lifecycleHooks[id] = hook as backend.LifecycleHook;
+    }
+  }
   return bd;
+}
+
+const ROLE_REGEX =
+  /^(roles\/[a-zA-Z0-9_\.\-]+|projects\/[a-zA-Z0-9\-]+\/roles\/[a-zA-Z0-9_\.\-]+|organizations\/[0-9]+\/roles\/[a-zA-Z0-9_\.\-]+)$/;
+
+function parseRequiredRoles(manifest: WireManifest): string[] {
+  const roles: string[] = manifest.requiredRoles || [];
+  for (const role of roles) {
+    if (typeof role !== "string") {
+      throw new FirebaseError(`Invalid role "${JSON.stringify(role)}". Expected string`);
+    }
+    if (!ROLE_REGEX.test(role)) {
+      throw new FirebaseError(`Invalid IAM role format "${role}".`);
+    }
+  }
+  return Array.from(new Set(roles)); // Deduplicate as requested
 }
 
 function parseRequiredAPIs(manifest: WireManifest): build.RequiredApi[] {
   const requiredAPIs: build.RequiredApi[] = manifest.requiredAPIs || [];
+
   for (const { api, reason } of requiredAPIs) {
     if (typeof api !== "string") {
       throw new FirebaseError(`Invalid api "${JSON.stringify(api)}. Expected string`);

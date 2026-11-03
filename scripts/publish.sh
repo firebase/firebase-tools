@@ -95,8 +95,22 @@ echo "Ran tests."
 if [[ $VERSION == "preview" ]]; then
   echo "Making a preview version..."
   sanitized_branch=$(echo "$BRANCH" | sed 's/[^a-zA-Z0-9]/-/g')
-  npm version prerelease --preid=${sanitized_branch}
-  NEW_VERSION=$(jq -r ".version" package.json)
+  npm version prerelease --preid=${sanitized_branch} --no-git-tag-version
+  INITIAL_VERSION=$(jq -r ".version" package.json)
+  PREFIX=${INITIAL_VERSION%.*}
+  echo "Checking registry for existing preview versions with prefix ${PREFIX}..."
+  MATCHING_VERSIONS=$(npm view firebase-tools versions --registry https://wombat-dressing-room.appspot.com --json | jq -r --arg prefix "$PREFIX" 'if type == "array" then .[] else . end | select(startswith($prefix + "."))' || true)
+  if [[ -n "$MATCHING_VERSIONS" ]]; then
+    MAX_SUFFIX=$(echo "$MATCHING_VERSIONS" | sed 's/^.*\.//' | grep -E '^[0-9]+$' | sort -n | tail -n 1)
+    MAX_SUFFIX=${MAX_SUFFIX:-0}
+    NEXT_SUFFIX=$((MAX_SUFFIX + 1))
+    NEW_VERSION="${PREFIX}.${NEXT_SUFFIX}"
+    echo "Found existing preview versions. Bumping to ${NEW_VERSION}..."
+    npm version "${NEW_VERSION}" --no-git-tag-version --allow-same-version
+  else
+    NEW_VERSION=$INITIAL_VERSION
+    echo "No existing preview versions found. Using ${NEW_VERSION}."
+  fi
   echo "Made a preview version."
 else
   echo "Making a $VERSION version..."

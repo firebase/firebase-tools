@@ -48,14 +48,14 @@ function toYamlTestCases(testCases: TestCase[]): YamlTestCase[] {
 
 /** Converts a list of test cases to YAML format. */
 export function toYaml(testCases: TestCase[]): string {
-  return jsYaml.safeDump({ tests: toYamlTestCases(testCases) });
+  return jsYaml.dump({ tests: toYamlTestCases(testCases) });
 }
 
 function castExists<T>(it: T | null | undefined, thing: string): T {
   if (it == null) {
     throw new FirebaseError(`"${thing}" is required`);
   }
-  return it!;
+  return it;
 }
 
 function checkAllowedKeys(allowedKeys: Set<string>, o: object) {
@@ -100,7 +100,7 @@ function fromYamlTestCases(appName: string, yamlTestCases: YamlTestCase[]): Test
 export function fromYaml(appName: string, yaml: string): TestCase[] {
   let parsedYaml: unknown;
   try {
-    parsedYaml = jsYaml.safeLoad(yaml);
+    parsedYaml = jsYaml.load(yaml);
   } catch (err: unknown) {
     throw new FirebaseError(`Failed to parse YAML: ${getErrMsg(err)}`);
   }

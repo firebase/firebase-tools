@@ -1,4 +1,4 @@
-import { VALID_DEPLOY_TARGETS } from "./commands/deploy";
+import { VALID_DEPLOY_TARGETS } from "./deploy";
 import { FirebaseError } from "./error";
 import { Options } from "./options";
 
@@ -23,6 +23,8 @@ function targetsHaveNoFilters(...targets: string[]): boolean {
   return targets.some((t) => !t.includes(":"));
 }
 
+const VALID_DEPLOY_TARGET_SET: ReadonlySet<string> = new Set(VALID_DEPLOY_TARGETS);
+
 const FILTERABLE_TARGETS = new Set([
   "hosting",
   "functions",
@@ -31,6 +33,8 @@ const FILTERABLE_TARGETS = new Set([
   "database",
   "dataconnect",
   "apphosting",
+  "ailogic",
+  "run",
 ]);
 
 /**
@@ -71,7 +75,7 @@ export async function checkValidTargetFilters(options: Options): Promise<void> {
 
     for (const target of only) {
       const baseTarget = target.split(":")[0];
-      if (!VALID_DEPLOY_TARGETS.includes(baseTarget)) {
+      if (!VALID_DEPLOY_TARGET_SET.has(baseTarget)) {
         return reject(
           new FirebaseError(
             `"${baseTarget}" is not a valid deploy target. Valid target prefixes are: ${VALID_DEPLOY_TARGETS.join(

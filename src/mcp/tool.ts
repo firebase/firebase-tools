@@ -1,6 +1,5 @@
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z, ZodTypeAny } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 import { McpContext, ServerFeature } from "./types";
 import { cleanSchema } from "./util";
 import { getDefaultFeatureAvailabilityCheck } from "./util/availability";
@@ -20,11 +19,13 @@ export type ServerToolMeta = {
   };
 };
 
-export interface ServerTool<InputSchema extends ZodTypeAny = ZodTypeAny> {
+export interface ServerTool<InputSchema extends ZodTypeAny = z.ZodAny> {
   mcp: {
     name: string;
     description?: string;
+    humanReadableDescription?: string;
     inputSchema: any;
+    outputSchema?: any;
     annotations?: {
       title?: string;
 
@@ -48,10 +49,11 @@ export interface ServerTool<InputSchema extends ZodTypeAny = ZodTypeAny> {
   isAvailable: (ctx: McpContext) => Promise<boolean>;
 }
 
-export function tool<InputSchema extends ZodTypeAny>(
+export function tool<InputSchema extends ZodTypeAny, OutputSchema extends ZodTypeAny = z.ZodAny>(
   feature: ServerFeature,
-  options: Omit<ServerTool<InputSchema>["mcp"], "inputSchema"> & {
+  options: Omit<ServerTool<InputSchema>["mcp"], "inputSchema" | "outputSchema"> & {
     inputSchema: InputSchema;
+    outputSchema?: OutputSchema;
     isAvailable?: (ctx: McpContext) => Promise<boolean>;
   },
   fn: ServerTool<InputSchema>["fn"],
@@ -59,7 +61,19 @@ export function tool<InputSchema extends ZodTypeAny>(
   const { isAvailable, ...mcpOptions } = options;
 
   return {
-    mcp: { ...mcpOptions, inputSchema: cleanSchema(zodToJsonSchema(options.inputSchema)) },
+    mcp: {
+      ...mcpOptions,
+      inputSchema: cleanSchema(
+        z.toJSONSchema(options.inputSchema, { target: "draft-7", io: "input" }),
+      ),
+      ...(options.outputSchema
+        ? {
+            outputSchema: cleanSchema(
+              z.toJSONSchema(options.outputSchema, { target: "draft-7", io: "output" }),
+            ),
+          }
+        : {}),
+    },
     fn,
     isAvailable: (ctx: McpContext) => {
       // default to the feature level availability check, but allow override

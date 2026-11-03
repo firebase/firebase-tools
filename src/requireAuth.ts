@@ -28,7 +28,18 @@ function getAuthClient(config: GoogleAuthOptions): GoogleAuth {
     return authClient;
   }
 
-  authClient = new GoogleAuth(config);
+  const authConfig: GoogleAuthOptions = {
+    ...config,
+    clientOptions: {
+      ...config.clientOptions,
+      transporterOptions: {
+        ...config.clientOptions?.transporterOptions,
+        agent: apiv2.noKeepAliveAgent,
+      },
+    },
+  };
+
+  authClient = new GoogleAuth(authConfig);
   return authClient;
 }
 
@@ -91,10 +102,7 @@ export async function refreshAuth(): Promise<Tokens> {
  * if the user is not authenticated
  * @param options CLI options.
  */
-export async function requireAuth(
-  options: any,
-  skipAutoAuth: boolean = false,
-): Promise<string | null> {
+export async function requireAuth(options: any, skipAutoAuth = false): Promise<string | null> {
   lastOptions = options;
   const requiredScopes = [scopes.CLOUD_PLATFORM];
   if (isFirebaseStudio()) {

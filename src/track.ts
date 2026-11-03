@@ -1,5 +1,4 @@
-import fetch from "node-fetch";
-import { v4 as uuidV4 } from "uuid";
+import { randomUUID } from "crypto";
 import { getGlobalDefaultAccount } from "./auth";
 
 import { configstore } from "./configstore";
@@ -127,7 +126,7 @@ export interface AnalyticsParams {
 export async function trackGA4(
   eventName: cliEventNames,
   params: AnalyticsParams,
-  duration: number = 1, // Default to 1ms duration so that events show up in realtime view.
+  duration = 1, // Default to 1ms duration so that events show up in realtime view.
 ): Promise<void> {
   const session = cliSession();
   if (!session) {
@@ -346,7 +345,7 @@ function session(propertyName: GA4Property): AnalyticsSession | undefined {
   if (!property.currentSession) {
     let clientId: string | undefined = configstore.get(property.clientIdKey);
     if (!clientId) {
-      clientId = uuidV4();
+      clientId = randomUUID();
       configstore.set(property.clientIdKey, clientId);
     }
     property.currentSession = {

@@ -13,6 +13,8 @@ export const set_data = tool(
     name: "set_data",
     description:
       "Use this to write data to the specified location in a Firebase Realtime Database.",
+    humanReadableDescription:
+      "Write JSON data to a specified path in the Firebase Realtime Database.",
     inputSchema: z.object({
       databaseUrl: z
         .string()

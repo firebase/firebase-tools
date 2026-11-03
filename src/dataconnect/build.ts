@@ -8,6 +8,13 @@ import { DeployOptions } from "../deploy";
 import { DeployStats } from "../deploy/dataconnect/context";
 import { DeploymentMetadata, GraphqlError } from "./types";
 
+/**
+ * Builds the SQL Connect service (Validate Schema/Connectors + Generate metadata).
+ * @param options the CLI options.
+ * @param configDir the config directory of the SQL Connect service.
+ * @param deployStats stats tracker for the deployment.
+ * @return the deployment metadata.
+ */
 export async function build(
   options: DeployOptions,
   configDir: string,
@@ -55,10 +62,10 @@ export async function handleBuildErrors(
   if (fatalDeploys.length) {
     utils.logLabeledError(
       "dataconnect",
-      `There are deployment requirements that are always required and cannot be bypassed:\n` +
+      `There are requirements that are always required and cannot be bypassed:\n` +
         prettifyTable(fatalDeploys),
     );
-    throw new FirebaseError("Deployment failed due to unbypassable requirements.");
+    throw new FirebaseError("Failed due to unbypassable requirements.");
   }
 
   if (errors.filter((w) => !w.extensions?.warningLevel).length) {
@@ -76,7 +83,7 @@ export async function handleBuildErrors(
       `There are changes in your schema or connectors that will result in broken behavior:\n` +
         prettifyTable(requiredForces),
     );
-    throw new FirebaseError("Rerun this command with --force to deploy these changes.");
+    throw new FirebaseError("Rerun this command with --force to proceed with these changes.");
   }
 
   const interactiveAcks = errors.filter((w) => w.extensions?.warningLevel === "INTERACTIVE_ACK");
@@ -94,7 +101,7 @@ export async function handleBuildErrors(
     );
     if (nonInteractive && !force) {
       throw new FirebaseError(
-        "Explicit acknowledgement required for breaking schema or connector changes and new insecure operations. Rerun this command with --force to deploy these changes.",
+        "Explicit acknowledgement required for breaking schema or connector changes and new insecure operations. Rerun this command with --force to proceed with these changes.",
       );
     } else if (!nonInteractive && !force && !dryRun) {
       const result = await select({
@@ -103,7 +110,7 @@ export async function handleBuildErrors(
         default: "abort",
       });
       if (result === "abort") {
-        throw new FirebaseError(`Deployment aborted.`);
+        throw new FirebaseError("Aborted.");
       }
     }
   }
@@ -121,7 +128,7 @@ export async function handleBuildErrors(
         default: "proceed",
       });
       if (result === "abort") {
-        throw new FirebaseError(`Deployment aborted.`);
+        throw new FirebaseError("Aborted.");
       }
     }
   }

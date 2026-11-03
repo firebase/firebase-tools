@@ -1,13 +1,26 @@
 import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
 
-import { validateEventFilters, EventFilter } from "./filters";
+import { validateEventFilters, filterToUrlSearchParams, EventFilter } from "./filters";
 import { FirebaseError } from "../error";
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;
 
 describe("filters", () => {
+  describe("filterToUrlSearchParams", () => {
+    it("should map browserFilterDisplayNames to filter.browser.display_names", () => {
+      const filter: EventFilter = {
+        browserFilterDisplayNames: ["Chrome (123)", "Safari"],
+      };
+      const params = filterToUrlSearchParams(filter);
+      expect(params.getAll("filter.browser.display_names")).to.deep.equal([
+        "Chrome (123)",
+        "Safari",
+      ]);
+    });
+  });
+
   describe("validateEventFilters", () => {
     it("should not throw for undefined filter", () => {
       expect(() => validateEventFilters(undefined)).to.not.throw();

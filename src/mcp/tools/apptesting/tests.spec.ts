@@ -5,7 +5,7 @@ import * as distribution from "../../../appdistribution/distribution";
 import { AppDistributionClient } from "../../../appdistribution/client";
 import * as appTesting from "../../../gcp/apptesting";
 import { McpContext } from "../../types";
-import { safeLoad } from "js-yaml";
+import { load as safeLoad } from "js-yaml";
 import * as fs from "fs-extra";
 import * as path from "path";
 

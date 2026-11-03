@@ -20,6 +20,7 @@ describe("handleBuildErrors", () => {
     dryRun: boolean;
     promptAnswer?: string;
     expectErr: boolean;
+    expectedErrorMessage?: string;
   }[] = [
     {
       desc: "Only build error",
@@ -28,6 +29,7 @@ describe("handleBuildErrors", () => {
       force: true,
       dryRun: false,
       expectErr: true,
+      expectedErrorMessage: "There are errors in your schema and connector files",
     },
     {
       desc: "Build error with evolution error",
@@ -39,6 +41,7 @@ describe("handleBuildErrors", () => {
       force: true,
       dryRun: false,
       expectErr: true,
+      expectedErrorMessage: "There are errors in your schema and connector files",
     },
     {
       desc: "Interactive ack evolution error, prompt and accept",
@@ -57,6 +60,7 @@ describe("handleBuildErrors", () => {
       dryRun: false,
       promptAnswer: "abort",
       expectErr: true,
+      expectedErrorMessage: "Aborted.",
     },
     {
       desc: "Interactive ack evolution error, nonInteractive=true",
@@ -99,6 +103,7 @@ describe("handleBuildErrors", () => {
       dryRun: false,
       promptAnswer: "abort",
       expectErr: true,
+      expectedErrorMessage: "Aborted.",
     },
     {
       desc: "Required ack evolution error, nonInteractive=true, force=false",
@@ -107,6 +112,7 @@ describe("handleBuildErrors", () => {
       force: false,
       dryRun: false,
       expectErr: true,
+      expectedErrorMessage: "Rerun this command with --force to proceed with these changes.",
     },
     {
       desc: "Required ack evolution error, nonInteractive=true, force=true",
@@ -133,6 +139,7 @@ describe("handleBuildErrors", () => {
       force: false,
       dryRun: false,
       expectErr: true,
+      expectedErrorMessage: "Rerun this command with --force to proceed with these changes.",
     },
     {
       desc: "Required force evolution error, force=true",
@@ -151,6 +158,7 @@ describe("handleBuildErrors", () => {
       force: false,
       dryRun: false,
       expectErr: true,
+      expectedErrorMessage: "Failed due to unbypassable requirements.",
     },
     {
       desc: "ALWAYS_REQUIRED error, force=true",
@@ -159,17 +167,28 @@ describe("handleBuildErrors", () => {
       force: true,
       dryRun: false,
       expectErr: true,
+      expectedErrorMessage: "Failed due to unbypassable requirements.",
     },
   ];
   for (const c of cases) {
     it(c.desc, async () => {
-      try {
-        if (c.promptAnswer) {
-          selectStub.resolves(c.promptAnswer);
+      if (c.promptAnswer) {
+        selectStub.resolves(c.promptAnswer);
+      }
+      if (c.expectErr) {
+        let threw = false;
+        try {
+          await handleBuildErrors(c.graphqlErr, c.nonInteractive, c.force, c.dryRun);
+        } catch (err: unknown) {
+          threw = true;
+          if (c.expectedErrorMessage) {
+            expect(err).to.be.an.instanceOf(Error);
+            expect((err as Error).message).to.include(c.expectedErrorMessage);
+          }
         }
+        expect(threw, "Expected handleBuildErrors to throw an error").to.be.true;
+      } else {
         await handleBuildErrors(c.graphqlErr, c.nonInteractive, c.force, c.dryRun);
-      } catch (err) {
-        expect(c.expectErr).to.be.true;
       }
     });
   }

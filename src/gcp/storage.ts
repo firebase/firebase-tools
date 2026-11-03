@@ -5,7 +5,7 @@ import { randomInt } from "crypto";
 
 import { firebaseStorageOrigin, storageOrigin } from "../api";
 import { Client } from "../apiv2";
-import { FirebaseError, getErrStatus } from "../error";
+import { FirebaseError, getError, getErrStatus } from "../error";
 import { logger } from "../logger";
 import { ensure } from "../ensureApiEnabled";
 import * as utils from "../utils";
@@ -18,7 +18,7 @@ export enum ContentType {
 }
 
 /** Bucket Interface */
-interface BucketResponse {
+export interface BucketResponse {
   kind: string;
   id: string;
   selfLink: string;
@@ -94,41 +94,21 @@ interface BucketResponse {
   versioning: {
     enabled: boolean;
   };
-  cors: [
-    {
-      origin: [string];
-      method: [string];
-      responseHeader: [string];
-      maxAgeSeconds: number;
-    },
-  ];
-  lifecycle: {
-    rule: [
-      {
-        action: {
-          type: string;
-          storageClass: string;
-        };
-        condition: {
-          age: number;
-          createdBefore: string;
-          customTimeBefore: string;
-          daysSinceCustomTime: number;
-          daysSinceNoncurrentTime: number;
-          isLive: boolean;
-          matchesStorageClass: [string];
-          noncurrentTimeBefore: string;
-          numNewerVersions: number;
-        };
-      },
-    ];
+  cors?: CorsRule[];
+  lifecycle?: {
+    rule: LifecycleRule[];
   };
+  autoclass?: Autoclass;
   labels: Record<string, string>;
   storageClass: string;
   billing: {
     requesterPays: boolean;
   };
   etag: string;
+}
+
+export interface Autoclass {
+  enabled: boolean;
 }
 
 interface ListBucketsResponse {
@@ -145,6 +125,13 @@ interface GetDefaultBucketResponse {
   };
 }
 
+export interface CorsRule {
+  origin?: string[];
+  method?: string[];
+  responseHeader?: string[];
+  maxAgeSeconds?: number;
+}
+
 export interface UpsertBucketRequest {
   baseName: string;
   location: string;
@@ -152,23 +139,35 @@ export interface UpsertBucketRequest {
   lifecycle: {
     rule: LifecycleRule[];
   };
+  autoclass?: Autoclass;
 }
 
 export interface CreateBucketRequest {
   name: string;
   location: string;
   labels?: Record<string, string>;
-  lifecycle: {
+  lifecycle?: {
     rule: LifecycleRule[];
   };
+  cors?: CorsRule[];
+  autoclass?: Autoclass;
 }
 
 export interface LifecycleRule {
   action: {
     type: string;
+    storageClass?: string;
   };
   condition: {
-    age: number;
+    age?: number;
+    createdBefore?: string;
+    customTimeBefore?: string;
+    daysSinceCustomTime?: number;
+    daysSinceNoncurrentTime?: number;
+    isLive?: boolean;
+    matchesStorageClass?: string[];
+    noncurrentTimeBefore?: string;
+    numNewerVersions?: number;
   };
 }
 
@@ -267,6 +266,7 @@ export async function uploadObject(
   /** Bucket to upload to. */
   bucketName: string,
   contentType?: ContentType,
+  maxSizeBytes?: number,
 ): Promise<{
   bucket: string;
   object: string;
@@ -286,13 +286,14 @@ export async function uploadObject(
 
   const localAPIClient = new Client({ urlPrefix: storageOrigin() });
   const location = `/${bucketName}/${path.basename(source.file)}`;
+  const rangeHeader = maxSizeBytes !== undefined ? `0,${maxSizeBytes}` : "0,123289600";
   const res = await localAPIClient.request({
     method: "PUT",
     path: location,
     headers: {
       "Content-Type":
         contentType === ContentType.TAR ? "application/octet-stream" : "application/zip",
-      "x-goog-content-length-range": "0,123289600",
+      "x-goog-content-length-range": rangeHeader,
     },
     body: source.stream,
   });
@@ -337,10 +338,12 @@ export async function getBucket(bucketName: string): Promise<BucketResponse> {
     const localAPIClient = new Client({ urlPrefix: storageOrigin() });
     const result = await localAPIClient.get<BucketResponse>(`/storage/v1/b/${bucketName}`);
     return result.body;
-  } catch (err: any) {
-    logger.debug(err);
+  } catch (err: unknown) {
+    const error = getError(err);
+    logger.debug(error);
     throw new FirebaseError("Failed to obtain the storage bucket", {
-      original: err,
+      original: error,
+      status: getErrStatus(err),
     });
   }
 }
@@ -401,6 +404,8 @@ export async function patchBucket(
       "acl",
       "defaultObjectAcl",
       "lifecycle",
+      "cors",
+      "autoclass",
     );
     const result = await localAPIClient.patch<Partial<BucketResponse>, BucketResponse>(
       `/storage/v1/b/${bucketName}`,
@@ -408,10 +413,12 @@ export async function patchBucket(
       { queryParams: { updateMask: mask.join(",") } },
     );
     return result.body;
-  } catch (err: any) {
-    logger.debug(err);
+  } catch (err: unknown) {
+    const error = getError(err);
+    logger.debug(error);
     throw new FirebaseError("Failed to patch the storage bucket", {
-      original: err,
+      original: error,
+      status: getErrStatus(err),
     });
   }
 }
@@ -488,6 +495,7 @@ export async function upsertBucket(opts: {
           labels: {
             [opts.req.purposeLabel]: "true",
           },
+          ...(opts.req.autoclass ? { autoclass: opts.req.autoclass } : {}),
         },
         true /* projectPrivate */,
       );

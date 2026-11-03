@@ -3,7 +3,7 @@ import { FirebaseError } from "../error";
 import { runOrigin } from "../api";
 import * as proto from "./proto";
 import * as iam from "./iam";
-import { backoff } from "../throttler/throttler";
+import { backoff } from "../utils";
 import { logger } from "../logger";
 import { listEntries, LogEntry } from "./cloudlogging";
 
@@ -363,7 +363,17 @@ export async function fetchServiceLogs(projectId: string, serviceId: string): Pr
   } catch (err: any) {
     throw new FirebaseError(`Failed to fetch logs for Cloud Run service ${serviceId}`, {
       original: err,
-      status: (err as any)?.context?.response?.statusCode,
+      status: err?.context?.response?.statusCode,
     });
   }
+}
+
+/**
+ * Lists the IDs of the regions that Cloud Run supports (e.g. "us-central1").
+ */
+export async function listLocations(projectId: string): Promise<string[]> {
+  const res = await client.get<{ locations?: Array<{ locationId: string }> }>(
+    `/projects/${projectId}/locations`,
+  );
+  return res.body?.locations?.map((l) => l.locationId) ?? [];
 }

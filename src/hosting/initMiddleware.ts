@@ -41,7 +41,7 @@ export function initMiddleware(
           if (sdkRes.status === 404) {
             return next();
           }
-          for (const [key, value] of Object.entries(sdkRes.response.headers.raw())) {
+          for (const [key, value] of (sdkRes.response.headers as any).entries()) {
             res.setHeader(key, value);
           }
           sdkRes.body.pipe(res);

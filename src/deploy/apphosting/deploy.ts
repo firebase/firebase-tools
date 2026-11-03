@@ -10,6 +10,7 @@ import { Context } from "./args";
 import * as util from "./util";
 import * as experiments from "../../experiments";
 import { logger } from "../../logger";
+import { CLOUD_RUN_SIZE_LIMIT_BYTES } from "../../apphosting/constants";
 
 /**
  * Uploads App Hosting source code or local build output to Google Cloud Storage.
@@ -114,6 +115,7 @@ export default async function (context: Context, options: Options): Promise<void
           },
           bucketName,
           isLocalBuild ? gcs.ContentType.TAR : gcs.ContentType.ZIP,
+          isLocalBuild ? CLOUD_RUN_SIZE_LIMIT_BYTES : undefined,
         );
         logLabeledBullet("apphosting", `Uploaded at gs://${bucket}/${object}`);
         context.backendStorageUris[cfg.backendId] =
