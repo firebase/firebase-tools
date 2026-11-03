@@ -9,15 +9,20 @@ const PROJECT_ID = "test-project";
 const BACKEND_ID = "test-backend";
 
 describe("apphosting:rollouts:create", () => {
+  let originalBefores: unknown[];
   let createRolloutStub: sinon.SinonStub;
 
   beforeEach(() => {
+    originalBefores = (command as unknown as { befores: unknown[] }).befores;
     (command as unknown as { befores: unknown[] }).befores = []; // bypass pre-action hooks
     sinon.stub(projectUtils, "needProjectId").returns(PROJECT_ID);
     createRolloutStub = sinon.stub(rollout, "createRollout").resolves();
   });
 
-  afterEach(() => sinon.restore());
+  afterEach(() => {
+    (command as unknown as { befores: unknown[] }).befores = originalBefores;
+    sinon.restore();
+  });
 
   it("throws if both --git-branch and --git-commit are specified", async () => {
     await expect(

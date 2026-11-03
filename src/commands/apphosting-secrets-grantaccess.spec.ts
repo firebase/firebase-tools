@@ -19,6 +19,7 @@ function backend(location: string, id: string): apphosting.Backend {
 }
 
 describe("apphosting:secrets:grantaccess", () => {
+  let originalBefores: unknown[];
   let needProjectNumberStub: sinon.SinonStub;
   let secretExistsStub: sinon.SinonStub;
   let grantEmailsStub: sinon.SinonStub;
@@ -26,6 +27,7 @@ describe("apphosting:secrets:grantaccess", () => {
   let selectStub: sinon.SinonStub;
 
   beforeEach(() => {
+    originalBefores = (command as unknown as { befores: unknown[] }).befores;
     (command as unknown as { befores: unknown[] }).befores = [];
     sinon.stub(projectUtils, "needProjectId").returns(PROJECT_ID);
     needProjectNumberStub = sinon.stub(projectUtils, "needProjectNumber").resolves(PROJECT_NUMBER);
@@ -35,7 +37,10 @@ describe("apphosting:secrets:grantaccess", () => {
     selectStub = sinon.stub(prompt, "select");
   });
 
-  afterEach(() => sinon.restore());
+  afterEach(() => {
+    (command as unknown as { befores: unknown[] }).befores = originalBefores;
+    sinon.restore();
+  });
 
   it("requires one of --backend or --emails", async () => {
     await expect(command.runner()("my-secret", { project: PROJECT_ID })).to.be.rejectedWith(

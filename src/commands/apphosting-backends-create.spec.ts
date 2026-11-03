@@ -9,17 +9,20 @@ import { FirebaseError } from "../error";
 describe("apphosting:backends:create", () => {
   const PROJECT_ID = "test-project";
   let command: Command;
+  let originalBefores: unknown[];
   let isEnabledStub: sinon.SinonStub;
   let doSetupStub: sinon.SinonStub;
 
   beforeEach(() => {
     command = apphostingBackendsCreate;
+    originalBefores = (command as unknown as { befores: unknown[] }).befores;
     (command as unknown as { befores: unknown[] }).befores = []; // Bypass pre-action hooks for unit testing action
     isEnabledStub = sinon.stub(experiments, "isEnabled");
     doSetupStub = sinon.stub(backend, "doSetup").resolves();
   });
 
   afterEach(() => {
+    (command as unknown as { befores: unknown[] }).befores = originalBefores;
     sinon.restore();
   });
 
