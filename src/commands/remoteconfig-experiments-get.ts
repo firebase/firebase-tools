@@ -8,7 +8,11 @@ import * as rcExperiment from "../remoteconfig/getExperiment";
 import { RemoteConfigOptions } from "../remoteconfig/options"; // 👈 Import the new interface
 
 export const command = new Command("remoteconfig:experiments:get <experimentId>")
-  .description("get a Remote Config experiment.")
+  .description(
+    "get a Remote Config experiment by ID and print its display name, service, objectives, " +
+      "variants (name and weight), state (PENDING, RUNNING, DONE, or EXPIRED), timestamps, and etag " +
+      "(use --json for the full experiment, including its description)",
+  )
   .before(requireAuth)
   .before(requirePermissions, ["firebaseabt.experiments.get"])
   .action(async (experimentId: string, options: RemoteConfigOptions) => {
