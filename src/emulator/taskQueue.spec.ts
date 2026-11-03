@@ -276,6 +276,78 @@ describe("Task Queue", () => {
     });
   });
 
+  describe("maxAttempts", () => {
+    const CALL_CAP = 20;
+
+    afterEach(() => {
+      nock.cleanAll();
+    });
+
+    async function countCalls(retryConfig: Partial<RetryConfig>): Promise<number> {
+      const config = _.cloneDeep(TEST_TASK_QUEUE_CONFIG);
+      // Zero backoff lets every retry run immediately while Date.now is stubbed.
+      config.retryConfig = { ...config.retryConfig, minBackoffSeconds: 0, ...retryConfig };
+      const taskQueue = new TaskQueue(TEST_TASK_QUEUE_NAME, config);
+      let calls = 0;
+      nock("http://website.com")
+        .post("/")
+        .times(CALL_CAP)
+        .reply(() => {
+          calls++;
+          return [500];
+        });
+      taskQueue.setDispatch([TEST_TASK]);
+      while (TEST_TASK.metadata.status !== TaskStatus.FAILED && calls < CALL_CAP) {
+        await taskQueue.runTask(0);
+        taskQueue.handleRetry(0);
+      }
+      return calls;
+    }
+
+    it("should make exactly one call when maxAttempts is 1", async () => {
+      expect(await countCalls({ maxAttempts: 1, maxRetrySeconds: null })).to.eq(1);
+      expect(TEST_TASK.metadata.status).to.eq(TaskStatus.FAILED);
+    });
+
+    it("should make exactly two calls when maxAttempts is 2", async () => {
+      expect(await countCalls({ maxAttempts: 2, maxRetrySeconds: null })).to.eq(2);
+      expect(TEST_TASK.metadata.status).to.eq(TaskStatus.FAILED);
+    });
+
+    it("should make exactly three calls when maxAttempts is 3", async () => {
+      expect(await countCalls({ maxAttempts: 3, maxRetrySeconds: null })).to.eq(3);
+      expect(TEST_TASK.metadata.status).to.eq(TaskStatus.FAILED);
+    });
+
+    it("should make one call when maxAttempts is 0", async () => {
+      expect(await countCalls({ maxAttempts: 0, maxRetrySeconds: null })).to.eq(1);
+      expect(TEST_TASK.metadata.status).to.eq(TaskStatus.FAILED);
+    });
+
+    it("should keep retrying when maxAttempts is -1", async () => {
+      expect(await countCalls({ maxAttempts: -1, maxRetrySeconds: null })).to.eq(CALL_CAP);
+      expect(TEST_TASK.metadata.status).to.not.eq(TaskStatus.FAILED);
+    });
+
+    it("should keep retrying when maxAttempts is -1 and maxRetrySeconds has elapsed", async () => {
+      TEST_TASK.metadata.startTime = NOW - 1000 * 60;
+      expect(await countCalls({ maxAttempts: -1, maxRetrySeconds: 30 })).to.eq(CALL_CAP);
+      expect(TEST_TASK.metadata.status).to.not.eq(TaskStatus.FAILED);
+    });
+
+    it("should keep retrying past maxAttempts until maxRetrySeconds has elapsed", async () => {
+      TEST_TASK.metadata.startTime = NOW - 1000 * 10;
+      expect(await countCalls({ maxAttempts: 2, maxRetrySeconds: 30 })).to.eq(CALL_CAP);
+      expect(TEST_TASK.metadata.status).to.not.eq(TaskStatus.FAILED);
+    });
+
+    it("should stop at maxAttempts once maxRetrySeconds has elapsed", async () => {
+      TEST_TASK.metadata.startTime = NOW - 1000 * 60;
+      expect(await countCalls({ maxAttempts: 2, maxRetrySeconds: 30 })).to.eq(2);
+      expect(TEST_TASK.metadata.status).to.eq(TaskStatus.FAILED);
+    });
+  });
+
   describe("Run Task", () => {
     afterEach(() => {
       nock.cleanAll();

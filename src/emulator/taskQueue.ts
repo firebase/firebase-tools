@@ -347,7 +347,10 @@ export class TaskQueue {
   }
 
   shouldStopRetrying(metadata: EmulatedTaskMetadata, retryOptions: RetryConfig): boolean {
-    if (metadata.currentAttempt > retryOptions.maxAttempts) {
+    // maxAttempts counts the first attempt, and -1 means unlimited attempts.
+    const attemptsExhausted =
+      retryOptions.maxAttempts !== -1 && metadata.currentAttempt >= retryOptions.maxAttempts;
+    if (attemptsExhausted) {
       if (retryOptions.maxRetrySeconds === null || retryOptions.maxRetrySeconds === 0) {
         return true;
       }
