@@ -134,11 +134,15 @@ export class FirestoreDelete {
    */
   private validateOptions(): void {
     if (this.recursive && this.shallow) {
-      throw new FirebaseError("Cannot pass recursive and shallow options together.");
+      throw new FirebaseError(
+        "Cannot pass recursive (-r, --recursive) and shallow (--shallow) options together.",
+      );
     }
 
     if (this.isCollectionPath && !this.recursive && !this.shallow) {
-      throw new FirebaseError("Must pass recursive or shallow option when deleting a collection.");
+      throw new FirebaseError(
+        "Must pass recursive (-r, --recursive) or shallow (--shallow) option when deleting a collection.",
+      );
     }
 
     const pieces = this.path.split("/");
@@ -574,7 +578,10 @@ export class FirestoreDelete {
     if (this.isDocumentPath && !this.recursive && !this.shallow) {
       verifyRecurseSafe = this.checkHasChildren().then((multiple: boolean) => {
         if (multiple) {
-          return utils.reject("Document has children, must specify -r or --shallow.", { exit: 1 });
+          return utils.reject(
+            "Document has subcollections, must specify -r, --recursive (delete them too) or --shallow (delete only the document).",
+            { exit: 1 },
+          );
         }
       });
     } else {
