@@ -155,7 +155,7 @@ export async function upsertBucket(
               type: "Delete",
             },
             condition: {
-              age: 30,
+              age: 180,
             },
           },
         ],
