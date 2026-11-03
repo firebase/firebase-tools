@@ -18,7 +18,6 @@ import {
   uploadSourceMaps,
   UploadRequest,
   SourceMap,
-  upsertBucket,
 } from "./sourcemap";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
