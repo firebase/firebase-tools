@@ -1,1 +1,0 @@
-- Fixed formatting errors in the `firebase:deploy` MCP prompt that merged the App Hosting and Hosting setup steps.
