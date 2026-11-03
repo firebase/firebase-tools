@@ -1,0 +1,1 @@
+- Updated Firestore emulator to v1.23.0, which adds support for Datastore mode merge joins and multiple inequality indexes, Pipelines API window functions, and Enterprise data types for all database editions. The minimum required Java JRE version for the emulator is now 25.
