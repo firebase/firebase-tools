@@ -305,6 +305,8 @@ export function load(client: CLIClient): CLIClient {
   if (experiments.isEnabled("directcloudrun")) {
     client.run = {};
     client.run.services = {};
+    client.run.services.get = loadCommand("run-services-get");
+    client.run.services.list = loadCommand("run-services-list");
     client.run.services.update = loadCommand("run-services-update");
   }
   client.serve = loadCommand("serve");
