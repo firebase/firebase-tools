@@ -19,13 +19,19 @@ import { ExtensionInstance } from "../extensions/types";
 import { confirm } from "../prompt";
 
 export const command = new Command("ext:uninstall <extensionInstanceId>")
-  .description("uninstall an extension that is installed in your Firebase project by instance ID")
+  .description(
+    "uninstall an extension by instance ID. By default, removes the instance from firebase.json " +
+      "(without prompting); its resources are deleted on your next `firebase deploy`. " +
+      "Use --immediate to delete the deployed instance now",
+  )
   .option("--local", "deprecated")
   .option(
     "--immediate",
     "immediately destroy GCP resources instead of waiting on next deploy. Can be run outside a firebase project directory if --project is specified.",
   )
-  .withForce()
+  .withForce(
+    "with --immediate, skip confirmation prompts, including permanent deletion of extension-managed secrets (required in --non-interactive mode when such secrets exist)",
+  )
   .before(requirePermissions, ["firebaseextensions.instances.delete"])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
