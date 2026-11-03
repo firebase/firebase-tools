@@ -1,5 +1,10 @@
 import { expect } from "chai";
-import { getLoginCredential, parseTestDevices, getResultsBucket } from "./options-parser-util";
+import {
+  getEmails,
+  getLoginCredential,
+  parseTestDevices,
+  getResultsBucket,
+} from "./options-parser-util";
 import { FirebaseError } from "../error";
 import * as fs from "fs-extra";
 import { rmSync } from "node:fs";
@@ -15,6 +20,40 @@ describe("options-parser-util", () => {
 
   after(() => {
     rmSync(tempdir.name, { recursive: true });
+  });
+
+  describe("getEmails", () => {
+    it("returns emails passed as arguments", () => {
+      expect(getEmails(["a@example.com", "b@example.com"], undefined)).to.deep.equal([
+        "a@example.com",
+        "b@example.com",
+      ]);
+    });
+
+    it("reads emails from a file when no emails are passed", () => {
+      const emailsFile = join(tempdir.name, "emails.txt");
+      fs.outputFileSync(emailsFile, "a@example.com, b@example.com\nc@example.com\n");
+
+      expect(getEmails([], emailsFile)).to.deep.equal([
+        "a@example.com",
+        "b@example.com",
+        "c@example.com",
+      ]);
+    });
+
+    it("throws an actionable error when neither emails nor a file is passed", () => {
+      expect(() => getEmails([], undefined)).to.throw(
+        FirebaseError,
+        /No tester emails provided.*--file <file>/,
+      );
+    });
+
+    it("throws when the file does not exist", () => {
+      expect(() => getEmails([], join(tempdir.name, "missing.txt"))).to.throw(
+        FirebaseError,
+        /does not exist/,
+      );
+    });
   });
 
   describe("getTestDevices", () => {
