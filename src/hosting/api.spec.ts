@@ -963,10 +963,10 @@ describe("ensureApiEnabled", () => {
     expect(logLabeledWarningStub).to.not.have.been.called;
   });
 
-  it("should log a bold warning and resolve when ensure fails (e.g., 403 on serviceusage)", async () => {
+  it("should suggest serviceUsageConsumer role when checking API enablement returns 403", async () => {
     ensureStub.rejects(
       new FirebaseError(
-        `Request to https://serviceusage.googleapis.com/v1/projects/${PROJECT_ID}/services/firebasehosting.googleapis.com had HTTP Error: 403, Permission denied`,
+        `Request to https://serviceusage.googleapis.com/v1/projects/${PROJECT_ID}/services/firebasehosting.googleapis.com had HTTP Error: 403, Caller does not have required permission to use project ${PROJECT_ID}.`,
         { status: 403 },
       ),
     );
@@ -979,13 +979,43 @@ describe("ensureApiEnabled", () => {
       "hosting",
       sinon.match(
         new RegExp(
-          `Unable to ensure that firebasehosting\\.googleapis\\.com is enabled on project ${PROJECT_ID}\\..*https://console\\.cloud\\.google\\.com/apis/library/firebasehosting\\.googleapis\\.com\\?project=${PROJECT_ID}`,
+          `Unable to check whether firebasehosting\\.googleapis\\.com is enabled on project ${PROJECT_ID}\\..*roles/serviceusage\\.serviceUsageConsumer.*https://console\\.cloud\\.google\\.com/apis/library/firebasehosting\\.googleapis\\.com\\?project=${PROJECT_ID}`,
         ),
       ),
     );
   });
 
-  it("should handle non-Error rejections when ensure fails", async () => {
+  it("should suggest enablement link or serviceUsageAdmin role when enabling API returns 403", async () => {
+    ensureStub.rejects(
+      new FirebaseError(
+        `Permissions denied enabling firebasehosting.googleapis.com.\nPlease ask a project owner to visit the following URL to enable this service:\nhttps://console.cloud.google.com/apis/library/firebasehosting.googleapis.com?project=${PROJECT_ID}`,
+        {
+          status: 403,
+          context: {
+            body: { error: { code: 403, status: "PERMISSION_DENIED" } },
+            response: {
+              url: `https://serviceusage.googleapis.com/v1/projects/${PROJECT_ID}/services/firebasehosting.googleapis.com:enable`,
+            },
+          },
+        },
+      ),
+    );
+
+    await hostingApi.ensureApiEnabled(PROJECT_ID);
+
+    expect(ensureStub).to.have.been.calledOnceWith(PROJECT_ID, hostingApiOrigin(), "hosting", true);
+    expect(boldSpy).to.have.been.calledOnce;
+    expect(logLabeledWarningStub).to.have.been.calledOnceWith(
+      "hosting",
+      sinon.match(
+        new RegExp(
+          `Unable to enable firebasehosting\\.googleapis\\.com on project ${PROJECT_ID}\\..*https://console\\.cloud\\.google\\.com/apis/library/firebasehosting\\.googleapis\\.com\\?project=${PROJECT_ID}.*roles/serviceusage\\.serviceUsageAdmin`,
+        ),
+      ),
+    );
+  });
+
+  it("should log a fallback warning for non-permission or non-Error rejections", async () => {
     // eslint-disable-next-line prefer-promise-reject-errors -- exercise non-Error rejection handling
     ensureStub.returns(Promise.reject("raw serviceusage failure"));
 
@@ -996,7 +1026,7 @@ describe("ensureApiEnabled", () => {
       "hosting",
       sinon.match(
         new RegExp(
-          `https://console\\.cloud\\.google\\.com/apis/library/firebasehosting\\.googleapis\\.com\\?project=${PROJECT_ID}`,
+          `Unable to ensure that firebasehosting\\.googleapis\\.com is enabled on project ${PROJECT_ID}\\..*https://console\\.cloud\\.google\\.com/apis/library/firebasehosting\\.googleapis\\.com\\?project=${PROJECT_ID}`,
         ),
       ),
     );
