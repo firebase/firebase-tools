@@ -653,8 +653,11 @@ export async function chooseBackends(
   }
 
   if (force) {
+    const locations = backends.map((b) => apphosting.parseBackendName(b.name).location);
     throw new FirebaseError(
-      `Force cannot be used because multiple backends were found with ID ${backendId}.`,
+      `Force cannot be used because multiple backends were found with ID ${backendId} ` +
+        `(in ${locations.join(", ")}). Re-run this command without --force or --non-interactive ` +
+        "to choose which backend(s) to delete.",
     );
   }
   const backendsByDisplay = new Map<string, apphosting.Backend>();

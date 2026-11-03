@@ -498,7 +498,9 @@ describe("apphosting setup functions", () => {
       await expect(
         chooseBackends(projectId, "chicken", /* prompt= */ "", /* force= */ true),
       ).to.be.rejectedWith(
-        "Force cannot be used because multiple backends were found with ID chicken.",
+        "Force cannot be used because multiple backends were found with ID chicken " +
+          "(in asia-east1, europe-west4, us-central1). Re-run this command without --force or " +
+          "--non-interactive to choose which backend(s) to delete.",
       );
     });
 
