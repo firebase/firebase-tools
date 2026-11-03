@@ -1,0 +1,1 @@
+- Inject FUNCTION_REGION environment variable for gcfv2 and run platforms, and resolve it per-region
