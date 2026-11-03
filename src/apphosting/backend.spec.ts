@@ -584,6 +584,16 @@ describe("apphosting setup functions", () => {
         choices: [location, "otherRegion"],
       });
     });
+    it("throws instead of prompting if backend is ambiguous and force is set", async () => {
+      listBackendsStub.resolves({ backends: [backendFoo, backendFooOtherRegion, backendBar] });
+
+      await expect(
+        getBackendForAmbiguousLocation(projectId, "foo", /* prompt= */ "", /* force= */ true),
+      ).to.be.rejectedWith(
+        `Multiple backends found with ID foo (in locations: ${location}, otherRegion). Please specify the location of your target backend with --location.`,
+      );
+      expect(promptStub.select).to.not.have.been.called;
+    });
   });
 
   describe("getBackend", () => {

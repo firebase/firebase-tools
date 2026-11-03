@@ -11,11 +11,24 @@ import { getBackendForAmbiguousLocation } from "../apphosting/backend";
 
 export const command = new Command("apphosting:secrets:grantaccess <secretNames>")
   .description(
-    "Grant service accounts, users, or groups permissions to the provided secret(s). Can pass one or more secrets, separated by a comma",
+    "Grant access to one or more App Hosting secrets (comma-separated). " +
+      "Specify exactly one of --backend (grants the backend's service accounts access) " +
+      "or --emails (grants the listed users or groups access); the two flags cannot be combined",
   )
-  .option("-l, --location <location>", "backend location", "-")
-  .option("-b, --backend <backend>", "backend name")
-  .option("-e, --emails <emails>", "comma delimited list of user or group emails")
+  .option(
+    "-l, --location <location>",
+    'location of the --backend; "-" searches all locations. ' +
+      "Required with --non-interactive if the backend ID exists in multiple locations",
+    "-",
+  )
+  .option(
+    "-b, --backend <backend>",
+    "ID of the backend whose service accounts should be granted access (cannot be used with --emails)",
+  )
+  .option(
+    "-e, --emails <emails>",
+    "comma-separated list of user or group emails to grant access (cannot be used with --backend)",
+  )
   .before(requireAuth)
   .before(secretManager.ensureApi)
   .before(apphosting.ensureApiEnabled)
@@ -28,19 +41,22 @@ export const command = new Command("apphosting:secrets:grantaccess <secretNames>
     "secretmanager.secrets.setIamPolicy",
   ])
   .action(async (secretNames: string, options: Options) => {
-    const projectId = needProjectId(options);
-    const projectNumber = await needProjectNumber(options);
-
     if (!options.backend && !options.emails) {
       throw new FirebaseError(
-        "Missing required flag --backend or --emails. See firebase apphosting:secrets:grantaccess --help for more info",
+        "Missing required flag: specify exactly one of --backend <backendId> or --emails <emails>. " +
+          "See firebase apphosting:secrets:grantaccess --help for more info",
       );
     }
     if (options.backend && options.emails) {
       throw new FirebaseError(
-        "Cannot specify both --backend and --emails. See firebase apphosting:secrets:grantaccess --help for more info",
+        "Cannot specify both --backend and --emails. Run the command once with --backend " +
+          "and once with --emails to grant access to both. " +
+          "See firebase apphosting:secrets:grantaccess --help for more info",
       );
     }
+
+    const projectId = needProjectId(options);
+    const projectNumber = await needProjectNumber(options);
 
     const secretList = secretNames.split(",");
     for (const secretName of secretList) {
@@ -66,6 +82,7 @@ export const command = new Command("apphosting:secrets:grantaccess <secretNames>
         projectId,
         backendId,
         "Please select the location of your backend:",
+        /* force= */ !!options.nonInteractive,
       );
     } else {
       backend = await apphosting.getBackend(projectId, location, backendId);

@@ -712,16 +712,16 @@ export async function getBackendForAmbiguousLocation(
   if (backends.length === 1) {
     return backends[0];
   }
-  if (force) {
-    throw new FirebaseError(
-      `Multiple backends found with ID ${backendId}. Please specify the region of your target backend.`,
-    );
-  }
-
   const backendsByLocation = new Map<string, apphosting.Backend>();
   backends.forEach((backend) =>
     backendsByLocation.set(apphosting.parseBackendName(backend.name).location, backend),
   );
+  if (force) {
+    throw new FirebaseError(
+      `Multiple backends found with ID ${backendId} (in locations: ${[...backendsByLocation.keys()].join(", ")}). ` +
+        "Please specify the location of your target backend with --location.",
+    );
+  }
   const location = await select<string>({
     message: locationDisambugationPrompt,
     choices: [...backendsByLocation.keys()],
