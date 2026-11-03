@@ -6,14 +6,19 @@ import * as backend from "../deploy/functions/backend";
 import { FirebaseError } from "../error";
 
 describe("functions:delete", () => {
+  let originalBefores: unknown[];
   let existingBackendStub: sinon.SinonStub;
 
   beforeEach(() => {
+    originalBefores = (command as unknown as { befores: unknown[] }).befores;
     (command as unknown as { befores: unknown[] }).befores = [];
     existingBackendStub = sinon.stub(backend, "existingBackend").resolves(backend.empty());
   });
 
-  afterEach(() => sinon.restore());
+  afterEach(() => {
+    (command as unknown as { befores: unknown[] }).befores = originalBefores;
+    sinon.restore();
+  });
 
   it("declares filters as a required variadic argument in --help usage", () => {
     expect((command as unknown as { cmd: string }).cmd).to.equal("functions:delete <filters...>");
