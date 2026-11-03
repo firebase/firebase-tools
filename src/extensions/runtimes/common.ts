@@ -128,7 +128,7 @@ export async function writeFile(filePath: string, data: string, options: Options
   if (fsutils.fileExistsSync(filePath)) {
     if (
       await confirm({
-        message: `${shortFilePath} already exists. Overwite it?`,
+        message: `${shortFilePath} already exists. Overwrite it?`,
         nonInteractive: options.nonInteractive,
         force: options.force,
         default: false,

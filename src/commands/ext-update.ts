@@ -30,7 +30,11 @@ import { displayDeveloperTOSWarning } from "../extensions/tos";
  */
 export const command = new Command("ext:update <extensionInstanceId> [updateSource]")
   .description(
-    "update an existing extension instance to the latest version, or to a specific version if provided",
+    "update an existing extension instance in your local extensions manifest to the latest version, " +
+      "or to [updateSource] if provided (a published version such as <publisher-id>/<extension-id>@<version>, " +
+      "<extension-id>@<version>, or <version>; local paths and URLs are not supported). " +
+      "Interactive only: not supported with --non-interactive (use an extensions manifest and " +
+      '"firebase deploy --only extensions" instead)',
   )
   .before(requirePermissions, [
     "firebaseextensions.instances.update",
@@ -39,7 +43,9 @@ export const command = new Command("ext:update <extensionInstanceId> [updateSour
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
   .before(diagnoseAndFixProject)
-  .withForce()
+  .withForce(
+    "skip the update confirmation prompt (interactive sessions only; does not enable --non-interactive)",
+  )
   .action(async (instanceId: string, updateSource: string, options: Options) => {
     const projectId = getProjectId(options);
     const config = manifest.loadConfig(options);

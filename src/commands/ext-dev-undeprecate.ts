@@ -10,15 +10,21 @@ import { undeprecateExtensionVersion, listExtensionVersions } from "../extension
 import { parseVersionPredicate } from "../extensions/versionHelper";
 import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
+import { Options } from "../options";
 
 /**
  * Undeprecate all extension versions that match the version predicate.
  */
 export const command = new Command("ext:dev:undeprecate <extensionRef> <versionPredicate>")
-  .description("undeprecate extension versions that match the version predicate")
+  .description(
+    "undeprecate extension versions that match a version predicate; " +
+      "<extensionRef> must be <publisherId>/<extensionId> (no @version), and " +
+      "<versionPredicate> is a required exact version or comparison (e.g. 1.0.0, >=1.2.0, <2.0.0)",
+  )
+  .withForce("undeprecate matching versions without prompting for confirmation")
   .before(requireAuth)
   .before(ensureExtensionsPublisherApiEnabled)
-  .action(async (extensionRef: string, versionPredicate: string, options: any) => {
+  .action(async (extensionRef: string, versionPredicate: string, options: Options) => {
     const { publisherId, extensionId, version } = refs.parse(extensionRef);
     if (version) {
       throw new FirebaseError(
@@ -51,13 +57,21 @@ export const command = new Command("ext:dev:undeprecate <extensionRef> <versionP
         const consent = await confirm({
           message: confirmMessage,
           default: false,
+          force: options.force,
+          nonInteractive: options.nonInteractive,
         });
         if (!consent) {
-          throw new FirebaseError("Undeprecation canceled.");
+          throw new FirebaseError(
+            "Undeprecation canceled. To skip this confirmation (e.g. in non-interactive mode), pass --force.",
+          );
         }
       }
     } else {
-      throw new FirebaseError("No extension versions matched the version predicate.");
+      throw new FirebaseError(
+        `No versions of ${clc.bold(extensionRef)} matched the version predicate '${clc.bold(
+          versionPredicate,
+        )}'.`,
+      );
     }
     await utils.allSettled(
       extensionVersions.map(async (extensionVersion) => {
