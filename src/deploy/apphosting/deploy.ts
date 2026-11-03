@@ -83,11 +83,9 @@ export default async function (context: Context, options: Options): Promise<void
       }
 
       const zippedSourcePath = archive ?? (await util.createSourceDeployArchive(cfg, rootDir));
-
-      logLabeledBullet(
-        "apphosting",
-        `Zipped ${isLocalBuild ? "built app" : "source"} for backend ${cfg.backendId}`,
-      );
+      if (!archive) {
+        logLabeledBullet("apphosting", `Zipped source for backend ${cfg.backendId}`);
+      }
 
       const backendLocation = context.backendLocations[cfg.backendId];
       if (!backendLocation) {

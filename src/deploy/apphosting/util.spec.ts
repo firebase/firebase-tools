@@ -8,6 +8,7 @@ import * as sinon from "sinon";
 import { CLOUD_RUN_SIZE_LIMIT_BYTES } from "../../apphosting/constants";
 import { AppHostingSingle } from "../../firebaseConfig";
 import * as gcs from "../../gcp/storage";
+import { FirebaseError } from "../../error";
 import { logger } from "../../logger";
 
 describe("util", () => {
@@ -254,6 +255,10 @@ describe("util", () => {
         buildFolder: path.join("/project", "apps/web"),
         appFolder: "",
       });
+    });
+
+    it("throws if rootDir points outside the project", () => {
+      expect(() => util.buildDirectory("/project", "../web")).to.throw(FirebaseError, /rootDir/);
     });
   });
 
