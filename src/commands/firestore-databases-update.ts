@@ -13,16 +13,15 @@ import { FirebaseError } from "../error";
 
 export const command = new Command("firestore:databases:update <database>")
   .description(
-    "update a database in your Firebase project. Must specify at least one property to update",
+    "update the delete protection or point-in-time recovery (PITR) setting of a Cloud Firestore database. Specify at least one of --delete-protection or --point-in-time-recovery; omitted settings are left unchanged",
   )
-  .option("--json", "prints raw json response of the create API call if specified")
   .option(
     "--delete-protection <deleteProtectionState>",
-    "whether or not to prevent deletion of database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'",
+    "whether to prevent deletion of the database: 'ENABLED' or 'DISABLED'. If omitted, the current setting is unchanged",
   )
   .option(
     "--point-in-time-recovery <enablement>",
-    "whether to enable the PITR feature on this database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'",
+    "whether to enable point-in-time recovery (PITR) on the database: 'ENABLED' or 'DISABLED'. If omitted, the current setting is unchanged",
   )
   .before(requirePermissions, ["datastore.databases.update"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
@@ -32,7 +31,9 @@ export const command = new Command("firestore:databases:update <database>")
     const helpCommandText = "See firebase firestore:databases:update --help for more info.";
 
     if (!options.deleteProtection && !options.pointInTimeRecovery) {
-      throw new FirebaseError(`Missing properties to update. ${helpCommandText}`);
+      throw new FirebaseError(
+        `Missing properties to update. Specify at least one of --delete-protection or --point-in-time-recovery. ${helpCommandText}`,
+      );
     }
 
     types.validateEnablementOption(options.deleteProtection, "delete-protection", helpCommandText);
