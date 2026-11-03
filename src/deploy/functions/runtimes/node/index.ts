@@ -6,7 +6,7 @@ import * as semver from "semver";
 import * as spawn from "cross-spawn";
 import { ChildProcess } from "child_process";
 
-import { FirebaseError } from "../../../../error";
+import { FirebaseError, getErrMsg } from "../../../../error";
 import { getRuntimeChoice } from "./parseRuntimeAndValidateSDK";
 import { logger } from "../../../../logger";
 import {
@@ -53,7 +53,10 @@ export async function tryCreateDelegate(context: DelegateContext): Promise<Deleg
   return new Delegate(context.projectId, context.projectDir, context.sourceDir, runtime);
 }
 
-function findSdkBinEntry(sdkPath: string): string | undefined {
+type SdkPackageJson = { name?: string; bin?: string | Record<string, string> };
+
+/** @internal */
+export function findSdkBinEntry(sdkPath: string): string | undefined {
   for (
     let dir = path.dirname(sdkPath);
     path.basename(dir) !== "node_modules" && path.dirname(dir) !== dir;
@@ -63,15 +66,22 @@ function findSdkBinEntry(sdkPath: string): string | undefined {
     if (!fileExistsSync(packageJsonPath)) {
       continue;
     }
-    const { name, bin } = JSON.parse(fs.readFileSync(packageJsonPath, "utf8")) as {
-      name?: string;
-      bin?: string | Record<string, string>;
-    };
-    if (name !== "firebase-functions") {
+    let pkg: SdkPackageJson | null;
+    try {
+      pkg = JSON.parse(fs.readFileSync(packageJsonPath, "utf8")) as SdkPackageJson | null;
+    } catch (err: unknown) {
+      logger.debug(`Failed to read ${packageJsonPath}: ${getErrMsg(err)}`);
       continue;
     }
-    const entry = typeof bin === "string" ? bin : bin?.["firebase-functions"];
-    return typeof entry === "string" && entry ? path.join(dir, entry) : undefined;
+    if (pkg?.name !== "firebase-functions") {
+      continue;
+    }
+    const entry = typeof pkg.bin === "string" ? pkg.bin : pkg.bin?.["firebase-functions"];
+    if (typeof entry !== "string" || !entry) {
+      return undefined;
+    }
+    const binEntry = path.join(dir, entry);
+    return fileExistsSync(binEntry) ? binEntry : undefined;
   }
   return undefined;
 }
