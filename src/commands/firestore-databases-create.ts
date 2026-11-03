@@ -31,11 +31,11 @@ export const command = new Command("firestore:databases:create <database>")
   )
   .option(
     "--realtime-updates <enablement>",
-    "Whether realtime updates are enabled for this database, for example 'ENABLED' or 'DISABLED'. Can only be specified for 'enterprise' edition databases. Defaults to 'ENABLED' when firestore-data-access is enabled, otherwise the server default is used.",
+    "Whether realtime updates are enabled for this database, for example 'ENABLED' or 'DISABLED'. Can only be specified for 'enterprise' edition databases. Defaults to 'ENABLED' when Firestore data access is enabled (explicitly or by default); otherwise (e.g. with '--mongodb-compatible-data-access ENABLED') it is omitted and the server default is used.",
   )
   .option(
     "--firestore-data-access <enablement>",
-    "Whether the Firestore API can be used for this database, for example 'ENABLED' or 'DISABLED'. Can only be specified for 'enterprise' edition databases. Default is 'ENABLED'.",
+    "Whether the Firestore API can be used for this database, for example 'ENABLED' or 'DISABLED'. Can only be specified for 'enterprise' edition databases. Default is 'ENABLED', or 'DISABLED' if '--mongodb-compatible-data-access ENABLED' is passed.",
   )
   .option(
     "--mongodb-compatible-data-access <enablement>",
