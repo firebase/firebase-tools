@@ -155,7 +155,7 @@ export async function upsertBucket(
               type: "Delete",
             },
             condition: {
-              age: 180,
+              age: SOURCEMAP_RETENTION_DAYS,
             },
           },
         ],
