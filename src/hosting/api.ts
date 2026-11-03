@@ -806,7 +806,8 @@ export async function getDeploymentDomain(
   return site && getHostnameFromUrl(site?.defaultUrl);
 }
 
-const failedApiChecks = new Set<string>();
+const FAILED_API_CHECK_TTL_MS = 5 * 60 * 1000;
+const failedApiChecks = new Map<string, number>();
 const inFlightApiChecks = new Map<string, Promise<void>>();
 
 /**
@@ -852,8 +853,12 @@ export async function ensureApiEnabled(projectId: string): Promise<void> {
   const apiName = getHostnameFromUrl(apiUri) || apiUri;
   const cacheKey = `${projectId}:${apiName}`;
 
-  if (failedApiChecks.has(cacheKey)) {
-    return;
+  const failedUntil = failedApiChecks.get(cacheKey);
+  if (failedUntil !== undefined) {
+    if (Date.now() < failedUntil) {
+      return;
+    }
+    failedApiChecks.delete(cacheKey);
   }
 
   const inFlight = inFlightApiChecks.get(cacheKey);
@@ -864,12 +869,13 @@ export async function ensureApiEnabled(projectId: string): Promise<void> {
   const checkPromise = (async () => {
     try {
       await ensureApiEnabledModule.ensure(projectId, apiUri, "hosting", true);
+      failedApiChecks.delete(cacheKey);
     } catch (err: unknown) {
-      failedApiChecks.add(cacheKey);
       const errMsg = getErrMsg(err);
       logger.debug(`[hosting] failed to ensure Hosting API is enabled: ${errMsg}`);
       const enableUrl = ensureApiEnabledModule.enableApiURI(projectId, apiName);
       if (isServiceUsagePermissionError(err)) {
+        failedApiChecks.set(cacheKey, Date.now() + FAILED_API_CHECK_TTL_MS);
         if (isServiceUsageEnableError(err, errMsg)) {
           utils.logLabeledWarning(
             "hosting",

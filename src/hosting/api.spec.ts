@@ -1032,14 +1032,49 @@ describe("ensureApiEnabled", () => {
     );
   });
 
-  it("should deduplicate sequential checks for the same project after a failure", async () => {
-    ensureStub.rejects(new FirebaseError("Permission denied", { status: 403 }));
+  it("should deduplicate sequential permission failures within the cache TTL", async () => {
+    const clock = sinon.useFakeTimers();
+    try {
+      ensureStub.rejects(new FirebaseError("Permission denied", { status: 403 }));
+
+      await hostingApi.ensureApiEnabled(PROJECT_ID);
+      clock.tick(4 * 60 * 1000);
+      await hostingApi.ensureApiEnabled(PROJECT_ID);
+
+      expect(ensureStub).to.have.been.calledOnceWith(
+        PROJECT_ID,
+        hostingApiOrigin(),
+        "hosting",
+        true,
+      );
+      expect(logLabeledWarningStub).to.have.been.calledOnce;
+
+      clock.tick(60 * 1000);
+      ensureStub.resolves();
+      await hostingApi.ensureApiEnabled(PROJECT_ID);
+
+      expect(ensureStub).to.have.been.calledTwice;
+      expect(logLabeledWarningStub).to.have.been.calledOnce;
+    } finally {
+      clock.restore();
+    }
+  });
+
+  it("should not cache transient non-permission failures across calls", async () => {
+    ensureStub
+      .onFirstCall()
+      .rejects(new FirebaseError("Internal Server Error", { status: 500 }))
+      .onSecondCall()
+      .rejects(new FirebaseError("Internal Server Error", { status: 500 }))
+      .onThirdCall()
+      .resolves();
 
     await hostingApi.ensureApiEnabled(PROJECT_ID);
     await hostingApi.ensureApiEnabled(PROJECT_ID);
+    await hostingApi.ensureApiEnabled(PROJECT_ID);
 
-    expect(ensureStub).to.have.been.calledOnceWith(PROJECT_ID, hostingApiOrigin(), "hosting", true);
-    expect(logLabeledWarningStub).to.have.been.calledOnce;
+    expect(ensureStub).to.have.been.calledThrice;
+    expect(logLabeledWarningStub).to.have.been.calledTwice;
   });
 
   it("should deduplicate concurrent checks for the same project", async () => {
