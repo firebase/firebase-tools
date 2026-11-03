@@ -36,13 +36,18 @@ interface ChannelInfo {
   expireTime: string;
 }
 
-export const command = new Command("hosting:channel:deploy [channelId]")
-  .description("deploy to a specific Firebase Hosting channel")
+export const command = new Command("hosting:channel:deploy <channelId>")
+  .description(
+    "deploy to a Firebase Hosting preview channel (channelId is required; the channel is created if it does not exist)",
+  )
   .option(
     "-e, --expires <duration>",
     "duration string (e.g. 12h, 30d) for channel expiration, max 30d; defaults to 7d",
   )
-  .option("--only <target1,target2...>", "only create previews for specified targets")
+  .option(
+    "--only <target1,target2...>",
+    'only deploy the specified Hosting targets or site IDs from firebase.json, without the "hosting:" prefix (this command has no --site flag)',
+  )
   .option("--open", "open a browser to the channel after deploying")
   .option("--no-authorized-domains", "do not sync channel domains with Firebase Auth")
   .before(requireConfig)
@@ -76,7 +81,10 @@ export async function hostingChannelDeployAction(
 
   // TODO: interactive prompt if channel doesn't exist
   if (!channelId) {
-    throw new FirebaseError("channelID is currently required");
+    throw new FirebaseError(
+      "A channel ID is required. Run firebase hosting:channel:deploy <channelId> (e.g. firebase hosting:channel:deploy preview).",
+      { exit: 1 },
+    );
   }
 
   channelId = normalizeName(channelId);
