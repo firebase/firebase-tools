@@ -1,0 +1,1 @@
+- Fixed an issue where `hosting:clone` silently ignored extra `:` or `@` segments in source and target arguments.
