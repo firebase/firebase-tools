@@ -68,7 +68,23 @@ describe("firebasetelemetry", () => {
       expect(res).to.deep.equal(resConfig);
     });
 
-    it("should reject when creation fails with non-409 error", async () => {
+    it("should reject when creation fails with 503 error", async () => {
+      nock(firebaseTelemetryAdminOrigin())
+        .post(
+          "/v1alpha/projects/test-project/locations/global/configs?configId=1-123-web-456",
+          reqConfig,
+        )
+        .reply(503, { error: { message: "Service Unavailable" } });
+
+      await expect(
+        firebasetelemetry.createOrUpdateTelemetryConfig("test-project", "1:123:web:456", 1),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        "Sorry, Crashlytics is busy right now and can't finish setup. Please try again in a little while.",
+      );
+    });
+
+    it("should reject when creation fails with generic error", async () => {
       nock(firebaseTelemetryAdminOrigin())
         .post("/v1alpha/projects/test-project/locations/global/configs?configId=1-123-web-456")
         .reply(500, { error: "internal" });
