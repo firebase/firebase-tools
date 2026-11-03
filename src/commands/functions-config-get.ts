@@ -20,7 +20,10 @@ async function materialize(projectId: string, path?: string): Promise<any> {
 }
 
 export const command = new Command("functions:config:get [path]")
-  .description("fetch environment config stored at the given path")
+  .description(
+    "[DEPRECATED] fetch legacy functions.config() environment config stored at the given path. " +
+      'Migrate with "firebase functions:config:export".',
+  )
   .before(requirePermissions, [
     "runtimeconfig.configs.list",
     "runtimeconfig.configs.get",

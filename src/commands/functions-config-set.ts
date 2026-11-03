@@ -9,7 +9,12 @@ import * as functionsConfig from "../functionsConfig";
 import * as utils from "../utils";
 
 export const command = new Command("functions:config:set [values...]")
-  .description("set environment config with key=value syntax")
+  .description(
+    "[DEPRECATED] set legacy functions.config() environment config with key=value syntax " +
+      '(e.g. app.name="My App"). ' +
+      'Disabled by default; run "firebase experiments:enable legacyRuntimeConfigCommands" to use. ' +
+      'Migrate with "firebase functions:config:export".',
+  )
   .before(functionsConfig.ensureLegacyRuntimeConfigCommandsEnabled)
   .before(requirePermissions, [
     "runtimeconfig.configs.list",
