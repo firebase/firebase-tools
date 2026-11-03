@@ -1,0 +1,2 @@
+- Updated the Firebase SQL Connect local toolkit to v3.4.26, which includes the following changes:
+  - Internal improvements and bug fixes.
