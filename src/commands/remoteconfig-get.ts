@@ -27,11 +27,17 @@ function checkValidOptionalNumber(versionNumber?: string): string | undefined {
 }
 
 export const command = new Command("remoteconfig:get")
-  .description("get a Firebase project's Remote Config template")
-  .option("-v, --version-number <versionNumber>", "grabs the specified version of the template")
+  .description(
+    "get a Firebase project's Remote Config template (prints a summary table of the latest version by default)",
+  )
+  .option(
+    "-v, --version-number <versionNumber>",
+    "get the specified version of the template (default: the latest published version)",
+  )
   .option(
     "-o, --output [filename]",
-    "write config output to a filename (if omitted, will use the default file path)",
+    "write the template as JSON to a file instead of printing a summary table " +
+      "(if no filename is given, uses remoteconfig.template from firebase.json)",
   )
   .before(requireAuth)
   .before(requirePermissions, ["cloudconfig.configs.get"])
@@ -66,7 +72,14 @@ export const command = new Command("remoteconfig:get")
 
       let filename = undefined;
       if (shouldUseDefaultFilename) {
-        filename = options.config.src.remoteconfig!.template;
+        filename = options.config?.src?.remoteconfig?.template;
+        if (!filename) {
+          throw new FirebaseError(
+            "No output filename provided and no default template path is configured. " +
+              "Pass a filename (e.g. `--output remoteconfig.template.json`) or set " +
+              '"remoteconfig": { "template": "<file>" } in firebase.json.',
+          );
+        }
       } else {
         utils.assertIsString(options.output);
         filename = options.output;
