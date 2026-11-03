@@ -25,6 +25,10 @@ export const command = new Command("emulators:start")
   .option(commandUtils.FLAG_IMPORT, commandUtils.DESC_IMPORT)
   .option(commandUtils.FLAG_EXPORT_ON_EXIT, commandUtils.DESC_EXPORT_ON_EXIT)
   .option(commandUtils.FLAG_VERBOSITY, commandUtils.DESC_VERBOSITY)
+  .option(
+    commandUtils.FLAG_SKIP_DATACONNECT_SDK_GENERATION,
+    commandUtils.DESC_SKIP_DATACONNECT_SDK_GENERATION,
+  )
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   .action((options: Options) => {
     const killSignalPromise = commandUtils.shutdownWhenKilled(options);

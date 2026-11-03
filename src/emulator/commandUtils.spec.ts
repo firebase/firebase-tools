@@ -4,8 +4,38 @@ import { FirebaseError } from "../error";
 import { EXPORT_ON_EXIT_USAGE_ERROR, EXPORT_ON_EXIT_CWD_DANGER } from "./commandUtils";
 import * as path from "path";
 import * as sinon from "sinon";
+import { Command as Program } from "commander";
+import { CLIClient } from "../command";
+import { command as startCommand } from "../commands/emulators-start";
+import { command as execCommand } from "../commands/emulators-exec";
 
 describe("commandUtils", () => {
+  describe("SDK generation command option", () => {
+    for (const [command, name, args] of [
+      [startCommand, "emulators:start", []],
+      [execCommand, "emulators:exec", ["echo done"]],
+    ] as const) {
+      for (const skip of [false, true]) {
+        it(`${name} parses the SDK generation opt-out when present: ${skip}`, () => {
+          const cli = new Program();
+          command.register({ cli } as CLIClient);
+          const registered = cli.commands.find((cmd) => cmd.name() === name)!;
+          registered.action(() => undefined);
+
+          cli.parse([
+            "node",
+            "firebase",
+            name,
+            ...args,
+            ...(skip ? ["--skip-dataconnect-sdk-generation"] : []),
+          ]);
+
+          expect(registered.opts().skipDataconnectSdkGeneration).to.equal(skip || undefined);
+        });
+      }
+    }
+  });
+
   const testSetExportOnExitOptions = (options: any): any => {
     commandUtils.setExportOnExitOptions(options);
     return options;

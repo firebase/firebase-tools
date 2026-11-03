@@ -2,8 +2,12 @@ import { Emulators } from "./types";
 import { EmulatorRegistry } from "./registry";
 import { expect } from "chai";
 import { FakeEmulator } from "./testing/fakeEmulator";
-import { shouldStart } from "./controller";
+import { shouldStart, startAll } from "./controller";
 import { Options } from "../options";
+import * as sinon from "sinon";
+import * as portUtils from "./portUtils";
+import * as dataConnect from "./dataconnectEmulator";
+import * as track from "../track";
 
 function createMockOptions(
   only: string | undefined,
@@ -103,5 +107,35 @@ describe("EmulatorController", () => {
       });
       expect(shouldStart(options, Emulators.FUNCTIONS)).to.be.false;
     });
+  });
+
+  describe("Data Connect SDK generation", () => {
+    const sandbox = sinon.createSandbox();
+
+    afterEach(() => sandbox.restore());
+
+    for (const skip of [undefined, false, true]) {
+      it(`sets SDK output correctly when skipDataconnectSdkGeneration is ${skip}`, async () => {
+        const options = createMockOptions("dataconnect", {
+          dataconnect: { source: "dataconnect" },
+        });
+        options.project = "demo-sdk-generation";
+        options.skipDataconnectSdkGeneration = skip;
+        sandbox.stub(portUtils, "resolveHostAndAssignPorts").resolves({
+          dataconnect: [{ address: "127.0.0.1", port: 9399, family: "IPv4" }],
+        } as Awaited<ReturnType<typeof portUtils.resolveHostAndAssignPorts>>);
+        sandbox.stub(EmulatorRegistry, "start").resolves();
+        sandbox.stub(track, "trackEmulator").resolves();
+        const constructor = sandbox.spy(dataConnect, "DataConnectEmulator");
+
+        await startAll(options, false);
+
+        expect(constructor.calledOnce).to.be.true;
+        expect(constructor.firstCall.args[0]).to.include({
+          enable_output_generated_sdk: !skip,
+          enable_output_schema_extensions: true,
+        });
+      });
+    }
   });
 }).timeout(2000);
