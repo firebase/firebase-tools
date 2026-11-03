@@ -1,0 +1,1 @@
+- Added the `-f` shorthand for `--force` to `firestore:databases:delete` and fixed an issue where `--non-interactive` exited with an unhandled prompt error.
