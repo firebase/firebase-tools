@@ -120,6 +120,39 @@ describe("storage", () => {
       expect(logLabeledBulletStub).to.be.calledOnce;
     });
 
+    it("should pass autoclass config to createBucket when specified", async () => {
+      listBucketsStub.resolves([
+        { name: "another-bucket", labels: {} },
+      ] as unknown as storage.BucketResponse[]);
+      createBucketStub.resolves({ name: BASE_BUCKET_NAME } as unknown as storage.BucketResponse);
+
+      const result = await storage.upsertBucket({
+        product: "test",
+        createMessage: "Creating bucket",
+        projectId: PROJECT_ID,
+        req: {
+          baseName: BASE_BUCKET_NAME,
+          location: "us-central1",
+          purposeLabel: PURPOSE_LABEL,
+          lifecycle: BUCKET_LIFECYCLE,
+          autoclass: { enabled: true },
+        },
+      });
+
+      expect(result).to.equal(BASE_BUCKET_NAME);
+      expect(createBucketStub).to.be.calledOnceWith(
+        PROJECT_ID,
+        {
+          name: BASE_BUCKET_NAME,
+          location: "us-central1",
+          lifecycle: BUCKET_LIFECYCLE,
+          labels: { [PURPOSE_LABEL]: "true" },
+          autoclass: { enabled: true },
+        },
+        true,
+      );
+    });
+
     it("should handle listBuckets failure", async () => {
       const error = new FirebaseError("Failed to list buckets");
       listBucketsStub.rejects(error);
