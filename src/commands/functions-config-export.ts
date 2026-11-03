@@ -45,9 +45,16 @@ function maskConfigValues(obj: any): any {
 }
 
 export const command = new Command("functions:config:export")
-  .description("export environment config as a JSON secret to store in Cloud Secret Manager")
-  .option("--secret <name>", `name of the secret to create (default: ${DEFAULT_SECRET_NAME})`)
-  .withForce("use default secret name without prompting")
+  .description(
+    "export legacy functions.config() values as a single JSON secret in Cloud Secret Manager (for use with defineJsonSecret)",
+  )
+  .option(
+    "--secret <name>",
+    `name of the Secret Manager secret to create or update (default: ${DEFAULT_SECRET_NAME})`,
+  )
+  .withForce(
+    "skip prompts: use the default secret name if --secret is omitted, and add a new version to an existing secret (required to update an existing secret with --non-interactive)",
+  )
   .before(requireAuth)
   .before(ensureApi)
   .before(requirePermissions, [...RUNTIME_CONFIG_PERMISSIONS, ...SECRET_MANAGER_PERMISSIONS])
