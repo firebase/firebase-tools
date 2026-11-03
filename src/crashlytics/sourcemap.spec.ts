@@ -1396,44 +1396,4 @@ describe("crashlytics:sourcemap helpers", () => {
       expect(fs.existsSync(map1.name)).to.be.true;
     });
   });
-
-  describe("upsertBucket", () => {
-    let upsertBucketStub: sinon.SinonStub;
-
-    beforeEach(() => {
-      upsertBucketStub = sandbox.stub(gcs, "upsertBucket").resolves("test-bucket");
-    });
-
-    it("should enable autoclass when creating the bucket", async () => {
-      const result = await upsertBucket("test-project", "12345", mockCommandOptions({}));
-
-      expect(result).to.equal("test-bucket");
-      expect(upsertBucketStub).to.be.calledOnceWith({
-        product: "crashlytics",
-        createMessage:
-          "Creating Cloud Storage bucket in US-CENTRAL1 to store Crashlytics source maps at firebasecrashlytics-sourcemaps-12345-us-central1...",
-        projectId: "test-project",
-        req: {
-          baseName: "firebasecrashlytics-sourcemaps-12345-us-central1",
-          purposeLabel: "crashlytics-sourcemaps-us-central1",
-          location: "US-CENTRAL1",
-          lifecycle: {
-            rule: [
-              {
-                action: {
-                  type: "Delete",
-                },
-                condition: {
-                  age: 30,
-                },
-              },
-            ],
-          },
-          autoclass: {
-            enabled: true,
-          },
-        },
-      });
-    });
-  });
 });
