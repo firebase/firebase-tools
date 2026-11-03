@@ -1,6 +1,7 @@
 import * as clc from "colorette";
 
 import { Command } from "../command";
+import * as experiments from "../experiments";
 import * as fsi from "../firestore/api";
 import * as types from "../firestore/api-types";
 import { logger } from "../logger";
@@ -15,7 +16,7 @@ export const command = new Command("firestore:databases:update <database>")
   .description(
     "update a database in your Firebase project. Must specify at least one property to update",
   )
-  .option("--json", "prints raw json response of the create API call if specified")
+  .option("--json", "prints raw json response of the update API call if specified")
   .option(
     "--delete-protection <deleteProtectionState>",
     "whether or not to prevent deletion of database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'",
@@ -23,7 +24,21 @@ export const command = new Command("firestore:databases:update <database>")
   .option(
     "--point-in-time-recovery <enablement>",
     "whether to enable the PITR feature on this database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'",
-  )
+  );
+
+// --realtime-updates is gated by the private (public: false) firestorewatchmutability
+// experiment. The option is only registered when the module loads with the experiment on,
+// which keeps it out of public --help (Commander 5 can't hide individual options). With the
+// experiment off, Commander rejects the flag as an unknown option, so the action doesn't need
+// its own experiment check.
+if (experiments.isEnabled("firestorewatchmutability")) {
+  command.option(
+    "--realtime-updates <enablement>",
+    "whether realtime updates are enabled for this database, for example 'ENABLED' or 'DISABLED'",
+  );
+}
+
+command
   .before(requirePermissions, ["datastore.databases.update"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
   .action(async (database: string, options: FirestoreOptions) => {
@@ -31,7 +46,7 @@ export const command = new Command("firestore:databases:update <database>")
     const printer = new PrettyPrint();
     const helpCommandText = "See firebase firestore:databases:update --help for more info.";
 
-    if (!options.deleteProtection && !options.pointInTimeRecovery) {
+    if (!options.deleteProtection && !options.pointInTimeRecovery && !options.realtimeUpdates) {
       throw new FirebaseError(`Missing properties to update. ${helpCommandText}`);
     }
 
@@ -55,14 +70,42 @@ export const command = new Command("firestore:databases:update <database>")
       pointInTimeRecoveryEnablement = types.PointInTimeRecoveryEnablement.DISABLED;
     }
 
-    const databaseResp: types.DatabaseResp = await api.updateDatabase(
-      options.project,
-      database,
+    types.validateEnablementOption(options.realtimeUpdates, "realtime-updates", helpCommandText);
+    let realtimeUpdatesMode: types.RealtimeUpdatesMode | undefined;
+    if (options.realtimeUpdates === types.EnablementOption.ENABLED) {
+      realtimeUpdatesMode = types.RealtimeUpdatesMode.ENABLED;
+    } else if (options.realtimeUpdates === types.EnablementOption.DISABLED) {
+      realtimeUpdatesMode = types.RealtimeUpdatesMode.DISABLED;
+    }
+
+    const operation: types.Operation = await api.updateDatabase(options.project, database, {
       deleteProtectionState,
       pointInTimeRecoveryEnablement,
-    );
+      realtimeUpdatesMode,
+    });
+
+    if (operation.error) {
+      const errorMessage = operation.error.message || "Unknown error";
+      throw new FirebaseError(`Failed to update database ${database}: ${errorMessage}`);
+    }
+    if (!operation.done) {
+      logUpdateInProgress(database, operation);
+      return operation;
+    }
+    const databaseResp = operation.response as types.DatabaseResp | undefined;
+    if (!databaseResp) {
+      throw new FirebaseError("Not found");
+    }
 
     logger.info(clc.bold(`Successfully updated ${printer.prettyDatabaseString(databaseResp)}`));
 
     return databaseResp;
   });
+
+function logUpdateInProgress(database: string, operation: types.Operation): void {
+  logger.info(clc.bold(`Successfully initiated update of database ${database}.`));
+  logger.info();
+  logger.info("You can monitor the progress of this update by executing this command:");
+  logger.info();
+  logger.info(`firebase firestore:operations:describe --database="${database}" ${operation.name}`);
+}
