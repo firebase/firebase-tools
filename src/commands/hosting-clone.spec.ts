@@ -1,9 +1,10 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import { command } from "./hosting-clone";
+import { command, parseSource, parseTargetChannel } from "./hosting-clone";
 import { hostingApiOrigin } from "../api";
 import { configstore } from "../configstore";
+import { FirebaseError } from "../error";
 import * as ensureApiEnabledModule from "../ensureApiEnabled";
 import * as hostingApi from "../hosting/api";
 
@@ -341,7 +342,6 @@ describe("hosting:clone", () => {
   });
 
   it("should throw an error if the site cannot be found", async () => {
-    const { FirebaseError } = await import("../error");
     const originalError = new FirebaseError("not found", { status: 404 });
     getSiteStub.withArgs("-", "unknown-site").rejects(originalError);
 
@@ -355,5 +355,68 @@ describe("hosting:clone", () => {
         status: 404,
         original: originalError,
       });
+  });
+
+  describe("argument parsing", () => {
+    it("should parse valid source formats", () => {
+      expect(parseSource("site:chan")).to.deep.equal({ siteId: "site", channelId: "chan" });
+      expect(parseSource("proj:site:chan")).to.deep.equal({
+        projectId: "proj",
+        siteId: "site",
+        channelId: "chan",
+      });
+      expect(parseSource("site@v1")).to.deep.equal({ siteId: "site", versionId: "v1" });
+      expect(parseSource("proj:site@v1")).to.deep.equal({
+        projectId: "proj",
+        siteId: "site",
+        versionId: "v1",
+      });
+    });
+
+    it("should parse valid target formats", () => {
+      expect(parseTargetChannel("site:live")).to.deep.equal({ siteId: "site", channelId: "live" });
+      expect(parseTargetChannel("proj:site:live")).to.deep.equal({
+        projectId: "proj",
+        siteId: "site",
+        channelId: "live",
+      });
+    });
+
+    it("should reject ':@' in the source with a hint", () => {
+      for (const src of ["site:@v1", "proj:site:@v1"]) {
+        expect(() => parseSource(src)).to.throw(
+          FirebaseError,
+          /is not a valid source\. Use "@" \(not ":@"\)/,
+        );
+      }
+    });
+
+    for (const src of ["a:b:c:d", "a:b:c@v1", "site", "site:", ":chan", "site@", "a@b@c", ""]) {
+      it(`should reject malformed source "${src}"`, () => {
+        expect(() => parseSource(src)).to.throw(
+          FirebaseError,
+          /is not a valid source\..*e\.g\. "my-site:live"/,
+        );
+      });
+    }
+
+    for (const target of ["a:b:c:d", "site", "site:", ":live", "site@v1", ""]) {
+      it(`should reject malformed target "${target}"`, () => {
+        expect(() => parseTargetChannel(target)).to.throw(
+          FirebaseError,
+          /is not a valid target channel\..*e\.g\. "my-site:live"/,
+        );
+      });
+    }
+
+    it("should reject a malformed source before making any API calls", async () => {
+      await expect(
+        command.runner()("proj:site:@v1", `${TARGET_SITE}:${TARGET_CHANNEL_ID}`, {
+          project: PROJECT_ID,
+        }),
+      ).to.be.rejectedWith(FirebaseError, /is not a valid source/);
+      expect(getSiteStub).to.not.have.been.called;
+      expect(ensureApiStub).to.not.have.been.called;
+    });
   });
 });

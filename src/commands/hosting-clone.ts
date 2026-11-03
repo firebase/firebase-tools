@@ -25,7 +25,7 @@ export const command = new Command("hosting:clone <source> <targetChannel>")
   .help(
     `<source> and <targetChannel> accept the following formats:
   - [<projectId>:]<siteId>:<channelId>
-  - [<projectId>:]<siteId>@<versionId> (source only)
+  - [<projectId>:]<siteId>@<versionId> (source only; use "@", not ":@")
 
 Site projects are automatically discovered if omitted.
 
@@ -37,55 +37,26 @@ To clone across different Firebase projects:
 
   firebase hosting:clone site-a:live site-b:live --project=project-b
   # or explicitly:
-  firebase hosting:clone project-a:site-a:live project-b:site-b:live`,
+  firebase hosting:clone project-a:site-a:live project-b:site-b:live
+
+To clone a specific version ID to a preview channel:
+
+  firebase hosting:clone my-site@abc123def456 my-site:preview`,
   )
   .before(requireAuth)
   .action(async (source: string, targetChannel: string, options: Options) => {
-    source = source || "";
-    targetChannel = targetChannel || "";
-    let sourceProjectId: string | undefined;
-    let sourceSiteId: string | undefined;
-    let sourceChannelId: string | undefined;
-    let sourceVersion: string | undefined;
-
-    if (source.includes("@")) {
-      const [sitePart, version] = source.split("@");
-      sourceVersion = version;
-      if (sitePart.includes(":")) {
-        [sourceProjectId, sourceSiteId] = sitePart.split(":");
-      } else {
-        sourceSiteId = sitePart;
-      }
-    } else {
-      const parts = source.split(":");
-      if (parts.length === 3) {
-        [sourceProjectId, sourceSiteId, sourceChannelId] = parts;
-      } else if (parts.length === 2) {
-        [sourceSiteId, sourceChannelId] = parts;
-      }
-    }
-
-    let targetProjectId: string | undefined;
-    let targetSiteId: string | undefined;
-    let targetChannelId: string | undefined;
-
-    const targetParts = targetChannel.split(":");
-    if (targetParts.length === 3) {
-      [targetProjectId, targetSiteId, targetChannelId] = targetParts;
-    } else if (targetParts.length === 2) {
-      [targetSiteId, targetChannelId] = targetParts;
-    }
-
-    if (!sourceSiteId || (!sourceChannelId && !sourceVersion)) {
-      throw new FirebaseError(
-        `"${source}" is not a valid source. Must be in the form "[<project>:]<site>:<channel>" or "[<project>:]<site>@<version>"`,
-      );
-    }
-    if (!targetSiteId || !targetChannelId) {
-      throw new FirebaseError(
-        `"${targetChannel}" is not a valid target channel. Must be in the form "[<project>:]<site>:<channel>" (to clone to the active website, use "live" as the channel).`,
-      );
-    }
+    const {
+      projectId: parsedSourceProjectId,
+      siteId: sourceSiteId,
+      channelId: parsedSourceChannelId,
+      versionId: sourceVersion,
+    } = parseSource(source || "");
+    let sourceProjectId = parsedSourceProjectId;
+    let sourceChannelId = parsedSourceChannelId;
+    const parsedTarget = parseTargetChannel(targetChannel || "");
+    let targetProjectId = parsedTarget.projectId;
+    const targetSiteId = parsedTarget.siteId;
+    let targetChannelId = parsedTarget.channelId;
 
     const defaultProjectId =
       !sourceProjectId || !targetProjectId ? getProjectId(options) : undefined;
@@ -262,4 +233,81 @@ async function resolveProjectId(
     logger.debug(`[hosting] unable to resolve project for site ${siteId} via site lookup:`, e);
   }
   return needProjectId(options);
+}
+
+interface ParsedSpec {
+  projectId?: string;
+  siteId: string;
+  channelId?: string;
+  versionId?: string;
+}
+
+const SOURCE_FORMAT_HELP =
+  'Must be in the form "[<project>:]<site>:<channel>" or "[<project>:]<site>@<version>" ' +
+  '(e.g. "my-site:live", "my-project:my-site:staging", or "my-site@abc123def456").';
+
+const TARGET_FORMAT_HELP =
+  'Must be in the form "[<project>:]<site>:<channel>" (e.g. "my-site:live" or ' +
+  '"my-project:my-site:staging"). To clone to the active website, use "live" as the channel.';
+
+/**
+ * Parses a hosting:clone source of the form `[<project>:]<site>:<channel>`
+ * or `[<project>:]<site>@<version>`, rejecting empty or extra segments.
+ */
+export function parseSource(source: string): ParsedSpec {
+  const invalid = (hint?: string): FirebaseError =>
+    new FirebaseError(
+      `"${source}" is not a valid source. ${hint ? `${hint} ` : ""}${SOURCE_FORMAT_HELP}`,
+    );
+
+  if (source.includes("@")) {
+    const atParts = source.split("@");
+    if (atParts.length !== 2) {
+      throw invalid('Only one "@" is allowed.');
+    }
+    const [sitePart, versionId] = atParts;
+    if (sitePart.endsWith(":")) {
+      throw invalid('Use "@" (not ":@") to separate the site from the version ID.');
+    }
+    const siteParts = sitePart.split(":");
+    if (!versionId || siteParts.length > 2 || siteParts.some((p) => !p)) {
+      throw invalid();
+    }
+    if (siteParts.length === 2) {
+      return { projectId: siteParts[0], siteId: siteParts[1], versionId };
+    }
+    return { siteId: siteParts[0], versionId };
+  }
+
+  const parts = source.split(":");
+  if ((parts.length !== 2 && parts.length !== 3) || parts.some((p) => !p)) {
+    throw invalid();
+  }
+  if (parts.length === 3) {
+    return { projectId: parts[0], siteId: parts[1], channelId: parts[2] };
+  }
+  return { siteId: parts[0], channelId: parts[1] };
+}
+
+/**
+ * Parses a hosting:clone target of the form `[<project>:]<site>:<channel>`,
+ * rejecting version IDs, empty segments, and extra segments.
+ */
+export function parseTargetChannel(targetChannel: string): ParsedSpec & { channelId: string } {
+  const invalid = (hint?: string): FirebaseError =>
+    new FirebaseError(
+      `"${targetChannel}" is not a valid target channel. ${hint ? `${hint} ` : ""}${TARGET_FORMAT_HELP}`,
+    );
+
+  if (targetChannel.includes("@")) {
+    throw invalid('Version IDs ("@<version>") are only supported in the source.');
+  }
+  const parts = targetChannel.split(":");
+  if ((parts.length !== 2 && parts.length !== 3) || parts.some((p) => !p)) {
+    throw invalid();
+  }
+  if (parts.length === 3) {
+    return { projectId: parts[0], siteId: parts[1], channelId: parts[2] };
+  }
+  return { siteId: parts[0], channelId: parts[1] };
 }
