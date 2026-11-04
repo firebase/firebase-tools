@@ -93,13 +93,16 @@ export async function createLocalBuildTarArchive(
 }
 
 /**
- * Locates the source code for a backend and creates an archive to eventually upload to GCS.
+ * Zips the files in `folderToZip` for a source deploy, into a tmp file. Cloud Run zips the
+ * service's build folder (see BuildDirectory), and App Hosting zips the whole project. Files that
+ * the config's ignore list or a .gitignore file ignores are left out. Like in git, that includes
+ * the .gitignore files above `folderToZip`, up to `projectFolder`, the folder with firebase.json.
  * Based heavily on functions upload logic in src/deploy/functions/prepareFunctionsUpload.ts.
  */
 export async function createSourceDeployArchive(
   config: AppHostingSingle,
-  rootDir: string,
-  targetSubDir?: string,
+  folderToZip: string,
+  projectFolder = folderToZip,
 ): Promise<string> {
   const tmpFile = tmp.fileSync({ prefix: `${config.backendId}-`, postfix: ".zip" }).name;
   const fileStream = fs.createWriteStream(tmpFile, {
@@ -108,17 +111,17 @@ export async function createSourceDeployArchive(
   });
   const archive = archiver("zip");
 
-  const targetDir = targetSubDir ? path.join(rootDir, targetSubDir) : rootDir;
   // We must ignore firebase-debug.log or weird things happen if you're in the public dir when you deploy.
   const ignore = resolveIgnorePatterns(config);
   try {
     const files = await fsAsync.readdirRecursive({
-      path: targetDir,
+      path: folderToZip,
       ignoreStrings: ignore,
       supportGitIgnore: true,
+      gitIgnoreRoot: projectFolder,
     });
     for (const file of files) {
-      const name = path.relative(rootDir, file.name);
+      const name = path.relative(folderToZip, file.name);
       archive.file(file.name, {
         name,
         mode: file.mode,

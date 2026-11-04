@@ -56,8 +56,13 @@ async function deployRemoteBuild(
 ): Promise<void> {
   const { projectId } = context;
   const { buildFolder, appFolder } = buildDirectory(options.config.projectDir, svc.config.rootDir);
-  // The zip is a tmp file, so it's deleted when the CLI exits.
-  const archive = await createSourceDeployArchive(toAppHostingConfig(svc.config), buildFolder);
+  // The zip is a tmp file, so it's deleted when the CLI exits. The project's .gitignore files above
+  // the build folder apply too, like they do for App Hosting's source deploys and local builds.
+  const archive = await createSourceDeployArchive(
+    toAppHostingConfig(svc.config),
+    buildFolder,
+    options.config.projectDir,
+  );
   const source = await upload(projectId, options, svc.config, archive);
   const image = await buildImage(projectId, svc, source, appFolder);
   const template = revisionTemplate(svc, image, options.message as string | undefined);

@@ -7,6 +7,7 @@ import * as util from "./util";
 import * as sinon from "sinon";
 import { CLOUD_RUN_SIZE_LIMIT_BYTES } from "../../apphosting/constants";
 import { AppHostingSingle } from "../../firebaseConfig";
+import * as fsAsync from "../../fsAsync";
 import * as gcs from "../../gcp/storage";
 import { FirebaseError } from "../../error";
 import { logger } from "../../logger";
@@ -188,6 +189,33 @@ describe("util", () => {
       expect(files).to.include("dist/index.js");
       expect(files).to.include("server.js");
       expect(files).to.include("apphosting.yaml");
+    });
+  });
+
+  describe("createSourceDeployArchive", () => {
+    const web: AppHostingSingle = { backendId: "web", rootDir: "web", ignore: [] };
+
+    afterEach(() => sinon.restore());
+
+    it("applies the project's .gitignore files above the folder it zips", async () => {
+      const walk = sinon.stub(fsAsync, "readdirRecursive").resolves([]);
+      const webDir = path.join(rootDir, "web");
+
+      await util.createSourceDeployArchive(web, webDir, rootDir);
+
+      expect(walk).to.have.been.calledWithMatch({
+        path: webDir,
+        supportGitIgnore: true,
+        gitIgnoreRoot: rootDir,
+      });
+    });
+
+    it("applies only the zipped folder's own .gitignore files by default", async () => {
+      const walk = sinon.stub(fsAsync, "readdirRecursive").resolves([]);
+
+      await util.createSourceDeployArchive(web, rootDir);
+
+      expect(walk).to.have.been.calledWithMatch({ path: rootDir, gitIgnoreRoot: rootDir });
     });
   });
 
