@@ -9,6 +9,7 @@ import * as runv2 from "../../gcp/runv2";
 import * as gcs from "../../gcp/storage";
 import * as getProjectNumber from "../../getProjectNumber";
 import { Options } from "../../options";
+import * as utils from "../../utils";
 import * as apphostingLocalBuild from "../apphosting/localBuild";
 import * as apphostingUtil from "../apphosting/util";
 import { ServiceDeploy } from "./args";
@@ -192,6 +193,72 @@ describe("run deploy", () => {
 
     // Cloud Run reads a service's upload again whenever the service is edited.
     expect(upsertBucketStub.firstCall.args[0].req).not.to.have.property("lifecycle");
+  });
+
+  describe("build logs", () => {
+    const logUrl = "https://console.cloud.google.com/cloud-build/builds;region=us-central1/b2";
+    const link = `View the build logs for service web in us-central1 at ${logUrl}`;
+    let clock: sinon.SinonFakeTimers;
+    let bulletStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      clock = sinon.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      bulletStub = sinon.stub(utils, "logLabeledBullet");
+    });
+
+    afterEach(() => clock.restore());
+
+    /** A revision that Cloud Run is building, with a link to the build's logs. */
+    function building(revisionId: string, cloudBuildLogUrl: string): runv2.Revision {
+      return {
+        name: `projects/my-project/locations/us-central1/services/web/revisions/${revisionId}`,
+        containerStatuses: [{ buildStatus: { cloudBuildLogUrl } }],
+      };
+    }
+
+    /** Deploys svc with a rollout that takes a minute. Returns the build log links it printed. */
+    async function deployForAMinute(svc: ServiceDeploy): Promise<string[]> {
+      const rollout = new Promise((resolve) => setTimeout(() => resolve(deployed), 60 * 1000));
+      createServiceStub.returns(rollout);
+      updateServiceStub.returns(rollout);
+      const done = deployOne(svc);
+      await clock.tickAsync(60 * 1000);
+      await done;
+      const messages = bulletStub.args.map((args) => args[1] as string);
+      return messages.filter((msg) => msg.includes("build logs"));
+    }
+
+    it("are linked as soon as Cloud Run starts the build, not after it", async () => {
+      // At first, the new service doesn't exist yet.
+      listRevisionsStub.onFirstCall().rejects(new Error("HTTP Error: 404"));
+      listRevisionsStub.onSecondCall().resolves([building("web-00001", logUrl)]);
+
+      expect(await deployForAMinute({ config: web })).to.deep.equal([link]);
+      // It stops looking once it has the link.
+      expect(listRevisionsStub).to.have.been.calledTwice;
+    });
+
+    it("are linked for the new build, not the service's last one", async () => {
+      const last = building("web-00001", "https://last-build");
+      const existing = {
+        name: "projects/my-project/locations/us-central1/services/web",
+        latestCreatedRevision: last.name,
+        template: { containers: [{ name: "web" }] },
+      } as unknown as runv2.Service;
+      // Until Cloud Run creates the new revision, the newest one is the service's last one.
+      listRevisionsStub.onFirstCall().resolves([last]);
+      listRevisionsStub.onSecondCall().resolves([building("web-00002", logUrl)]);
+
+      expect(await deployForAMinute({ config: web, existing })).to.deep.equal([link]);
+      expect(listRevisionsStub).to.have.been.calledWith("my-project", "us-central1", "web", 1);
+    });
+
+    it("aren't looked up once the rollout is done", async () => {
+      await deployOne({ config: web });
+      await clock.tickAsync(60 * 1000);
+
+      expect(listRevisionsStub).not.to.have.been.called;
+    });
   });
 
   describe("when the rollout fails", () => {
