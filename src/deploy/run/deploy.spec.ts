@@ -208,6 +208,7 @@ describe("run deploy", () => {
       validateNodeStub = sinon.stub(localbuilds, "validateLocalBuildNodeVersion");
       buildLocallyStub = sinon.stub(apphostingLocalBuild, "buildLocally").resolves({
         archive: "/tmp/web.tar.gz",
+        rootDirectory: "",
         buildConfig: { runCommand: "npm run start" },
       });
       (gcs.uploadObject as sinon.SinonStub)
@@ -255,6 +256,7 @@ describe("run deploy", () => {
     it("keeps the env vars the app needs at runtime", async () => {
       buildLocallyStub.resolves({
         archive: "/tmp/web.tar.gz",
+        rootDirectory: "",
         buildConfig: {
           env: [
             { variable: "NODE_ENV", value: "production", availability: ["RUNTIME"] },

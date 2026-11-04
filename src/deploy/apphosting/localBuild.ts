@@ -7,12 +7,14 @@ import { AppHostingSingle } from "../../firebaseConfig";
 import * as fsAsync from "../../fsAsync";
 import { BuildConfig } from "../../gcp/apphosting";
 import { logger } from "../../logger";
-import { createLocalBuildTarArchive, resolveIgnorePatterns } from "./util";
+import { buildDirectory, createLocalBuildTarArchive, resolveIgnorePatterns } from "./util";
 
 /** A local build's output, packaged for upload. */
 export interface PackagedLocalBuild {
   /** The built app, as a .tar.gz tmp file that's deleted when the CLI exits. */
   archive: string;
+  /** The app's folder in the archive, with forward slashes. Empty if the app is the archive's root. */
+  rootDirectory: string;
   /** The build's run command and env vars. */
   buildConfig: BuildConfig;
 }
@@ -38,15 +40,17 @@ export interface BuildLocallyOptions {
  */
 export async function buildLocally(options: BuildLocallyOptions): Promise<PackagedLocalBuild> {
   const { projectId, projectDir, config, env, scratchDir } = options;
+  const { buildFolder, appFolder } = buildDirectory(projectDir, config.rootDir);
+  const scratchBuildFolder = path.join(scratchDir, path.relative(projectDir, buildFolder));
   try {
     await prepareLocalBuildScratchDirectory(projectDir, scratchDir, config);
-    const { outputFiles, buildConfig } = await localBuild(projectId, scratchDir, env, {
+    const { outputFiles, buildConfig } = await localBuild(projectId, scratchBuildFolder, env, {
       nonInteractive: options.nonInteractive,
       allowLocalBuildSecrets: options.allowLocalBuildSecrets,
-      rootDir: config.rootDir,
+      rootDir: appFolder,
     });
-    const archive = await createLocalBuildTarArchive(config, scratchDir, outputFiles);
-    return { archive, buildConfig };
+    const archive = await createLocalBuildTarArchive(config, scratchBuildFolder, outputFiles);
+    return { archive, rootDirectory: appFolder, buildConfig };
   } finally {
     try {
       fs.rmSync(scratchDir, { recursive: true, force: true });

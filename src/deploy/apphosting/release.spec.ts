@@ -87,7 +87,7 @@ describe("apphosting", () => {
         backendConfigs: {
           fooLocalBuild: {
             backendId: "fooLocalBuild",
-            rootDir: "/root",
+            rootDir: "monorepo/apps/web",
             ignore: [],
             localBuild: true,
           },
@@ -99,6 +99,7 @@ describe("apphosting", () => {
         backendLocalBuilds: {
           fooLocalBuild: {
             archive: "/tmp/fooLocalBuild.tar.gz",
+            rootDirectory: "apps/web",
             buildConfig: {
               runCommand: "npm run build",
               env: [{ variable: "VAR1", value: "VALUE1" }],
@@ -131,7 +132,8 @@ describe("apphosting", () => {
           source: {
             locallyBuilt: {
               userStorageUri: "gs://bucket/foo-local-build.tar.gz",
-              rootDirectory: "/root",
+              // The local build's rootDirectory, not the backend's rootDir.
+              rootDirectory: "apps/web",
               runCommand: "npm run build",
               env: [{ variable: "VAR1", value: "VALUE1" }],
             },
@@ -157,6 +159,7 @@ describe("apphosting", () => {
         backendLocalBuilds: {
           fooLocalBuild: {
             archive: "/tmp/fooLocalBuild.tar.gz",
+            rootDirectory: "",
             buildConfig: {
               runCommand: "npm run build",
               env: [{ variable: "VAR1", value: "VALUE1" }],
@@ -203,7 +206,7 @@ describe("apphosting", () => {
           source: {
             locallyBuilt: {
               userStorageUri: "gs://bucket/foo-local-build.tar.gz",
-              rootDirectory: "/root",
+              rootDirectory: "",
               runCommand: "npm run build",
               env: [{ variable: "VAR1", value: "VALUE1" }],
               runConfig: {
