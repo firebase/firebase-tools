@@ -1,1 +1,4 @@
+- Fixed high query latency on Linux in Data Connect PGlite emulator by enabling TCP_NODELAY on sockets. (#11402)
+- Fixed the emulators startup message showing 127.0.0.1 for the Emulator UI and Hub when they listen on 0.0.0.0; it now also prints the address they listen on. (#6222)
+- Fixed an issue on Windows where starting Java-based emulators (Firestore, Database, Pub/Sub, Storage) could open extra console windows or leave orphaned `java.exe` processes running after exit (#3871, #11261).
 - Fixed `firebase deploy` failing to find the Cloud Functions SDK when the package manager does not create a `node_modules/.bin/firebase-functions` file, such as Bun on Windows. (#11386)
