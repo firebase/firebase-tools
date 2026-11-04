@@ -2,13 +2,14 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import { validateLocalBuildNodeVersion } from "../../apphosting/localbuilds";
-import { FirebaseError } from "../../error";
+import { FirebaseError, getErrMsg, getError } from "../../error";
 import { AppHostingSingle, RunSingle } from "../../firebaseConfig";
 import { Backend } from "../../gcp/apphosting";
 import * as artifactregistry from "../../gcp/artifactregistry";
 import * as runv2 from "../../gcp/runv2";
 import * as gcs from "../../gcp/storage";
 import { getProjectNumber } from "../../getProjectNumber";
+import { logger } from "../../logger";
 import { Options } from "../../options";
 import { cloneDeep, logLabeledBullet } from "../../utils";
 import { buildLocally } from "../apphosting/localBuild";
@@ -18,8 +19,16 @@ import { nonSecretValues, secretNames, toLocalBuildEnv } from "./buildEnv";
 import { FIREBASE_APP_ANNOTATION, mainContainer } from "./util";
 
 const DEPLOY_MESSAGE_ANNOTATION = "firebase.google.com/deploy-message";
-/** Rolling out a revision can take longer than the operation poller's default timeout. */
-const ROLLOUT_TIMEOUT_MS = 10 * 60 * 1000;
+/**
+ * Cloud Run can queue a build for 6 minutes, run it for 30, then take 4 to start the revision.
+ * Check at least every 10 seconds, so that the deploy ends soon after the rollout does.
+ */
+const ROLLOUT_POLLING = { pollTimeoutMs: 45 * 60 * 1000, pollMaxBackoffMs: 10 * 1000 } as const;
+/**
+ * Cloud Run's build API is in alpha, so services have to allow alpha features. This only allows
+ * them: Cloud Run reports the launch stage of the features that a service actually uses.
+ */
+const LAUNCH_STAGE = "ALPHA";
 
 /**
  * The image of a container that runs a local build's output. Cloud Run runs the output from Cloud
@@ -55,6 +64,7 @@ async function deployRemoteBuild(
   svc: ServiceDeploy,
 ): Promise<void> {
   const { projectId } = context;
+  const { serviceId, region } = svc.config;
   const { buildFolder, appFolder } = buildDirectory(options.config.projectDir, svc.config.rootDir);
   // The zip is a tmp file, so it's deleted when the CLI exits. The project's .gitignore files above
   // the build folder apply too, like they do for App Hosting's source deploys and local builds.
@@ -64,9 +74,48 @@ async function deployRemoteBuild(
     options.config.projectDir,
   );
   const source = await upload(projectId, options, svc.config, archive);
-  const image = await buildImage(projectId, svc, source, appFolder);
-  const template = revisionTemplate(svc, image, options.message as string | undefined);
-  svc.deployed = await rollOut(projectId, svc, template);
+  // Cloud Run pushes the image it builds to this repository, but doesn't create it.
+  await artifactregistry.ensureDockerRepository(projectId, region, "cloud-run-source-deploy");
+  const imageRepository = `${region}-docker.pkg.dev/${projectId}/cloud-run-source-deploy/${serviceId}`;
+  const message = options.message as string | undefined;
+  const template = remoteBuildTemplate(svc, source, imageRepository, appFolder, message);
+  logLabeledBullet("run", `Building and deploying service ${serviceId} in ${region}...`);
+  try {
+    svc.deployed = await rollOut(projectId, svc, template);
+  } catch (err: unknown) {
+    throw (await buildFailure(projectId, svc, err)) ?? err;
+  }
+}
+
+/**
+ * If the rollout failed because Cloud Run couldn't build the image, returns an error that links to
+ * the build's logs. Cloud Run's own error has the build's raw output instead.
+ */
+async function buildFailure(
+  projectId: string,
+  svc: ServiceDeploy,
+  err: unknown,
+): Promise<FirebaseError | undefined> {
+  const { serviceId, region } = svc.config;
+  try {
+    const [newest] = await runv2.listRevisions(projectId, region, serviceId, 1);
+    if (!newest || newest.name === svc.existing?.latestCreatedRevision) {
+      return undefined;
+    }
+    const failed = newest.containerStatuses?.find((c) => c.buildStatus?.status === "FAILURE");
+    const logUrl = failed?.buildStatus?.cloudBuildLogUrl;
+    if (!logUrl) {
+      return undefined;
+    }
+    return new FirebaseError(
+      `Failed to build service ${serviceId} in ${region}. View the build logs at ${logUrl}`,
+      { original: getError(err) },
+    );
+  } catch (lookupErr: unknown) {
+    // Without the build's status, the rollout's own error is the best one to show.
+    logger.debug(`Couldn't look up the build of service ${serviceId}: ${getErrMsg(lookupErr)}`);
+    return undefined;
+  }
 }
 
 /**
@@ -151,7 +200,8 @@ async function upload(
 
 /**
  * Returns the region's source bucket, creating it if needed. Like App Hosting, each region has one
- * source bucket, which deletes uploads after 30 days.
+ * source bucket. Unlike App Hosting's, it keeps uploads: Cloud Run reads a service's upload again
+ * whenever the service is edited, e.g. in the console.
  */
 async function sourceBucket(projectId: string, options: Options, region: string): Promise<string> {
   const baseName = `firebase-run-src-${await getProjectNumber(options)}-${region.toLowerCase()}`;
@@ -163,74 +213,36 @@ async function sourceBucket(projectId: string, options: Options, region: string)
       baseName,
       purposeLabel: `run-source-${region.toLowerCase()}`,
       location: region,
-      lifecycle: { rule: [{ action: { type: "Delete" }, condition: { age: 30 } }] },
     },
   });
 }
 
 /**
- * Builds the uploaded build folder into an image on Cloud Build and returns the image's URI.
- * `appFolder` is the app folder's path in the build folder, or empty if they're the same folder
- * (see BuildDirectory in apphosting/util.ts).
- */
-async function buildImage(
-  projectId: string,
-  svc: ServiceDeploy,
-  source: runv2.StorageSource,
-  appFolder: string,
-): Promise<string> {
-  const { serviceId, region } = svc.config;
-  await artifactregistry.ensureDockerRepository(projectId, region, "cloud-run-source-deploy");
-  const imageUri = `${region}-docker.pkg.dev/${projectId}/cloud-run-source-deploy/${serviceId}:${Date.now()}`;
-  logLabeledBullet("run", `Building service ${serviceId} in ${region}...`);
-  const buildpackBuild: runv2.BuildpacksBuild = {
-    environmentVariables: {
-      // In a monorepo, tell the buildpacks which folder in the build folder is the app.
-      ...(appFolder ? { GOOGLE_BUILDABLE: appFolder } : {}),
-      // Cloud Build only takes plain values, so pass only the non-secret env vars. Prepare already
-      // rejects secrets for builds on Cloud Build.
-      ...nonSecretValues(svc.buildEnv || {}),
-      // Use App Hosting's buildpacks, which need to know where to write the output bundle.
-      X_GOOGLE_TARGET_PLATFORM: "fah",
-      FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
-    },
-  };
-  // Only images built for a base image can have their base image updated automatically.
-  if (svc.baseImage) {
-    buildpackBuild.baseImage = svc.baseImage;
-    buildpackBuild.enableAutomaticUpdates = true;
-  }
-  await runv2.submitBuild(projectId, region, { storageSource: source, imageUri, buildpackBuild });
-  return imageUri;
-}
-
-/**
- * Returns the revision to roll out: the live revision's settings (env vars, service account,
- * scaling, etc.) with the new image, base image, and deploy message.
+ * Returns the revision to roll out, without what its container runs: the live revision's settings
+ * (env vars, service account, scaling, etc.) with the new base image and deploy message.
  * Exported for testing.
  */
-export function revisionTemplate(
-  svc: ServiceDeploy,
-  image: string,
-  message?: string,
-): runv2.RevisionTemplate {
+export function revisionTemplate(svc: ServiceDeploy, message?: string): runv2.RevisionTemplate {
   const { serviceId, region } = svc.config;
   const template: runv2.RevisionTemplate = svc.existing
     ? cloneDeep(svc.existing.template)
-    : { containers: [{ name: serviceId, image }] };
+    : { containers: [{ name: serviceId }] };
   // The live template names the live revision. Drop the name so Cloud Run creates a new revision.
   delete template.revision;
   const container = mainContainer(template);
   if (!container) {
     throw new FirebaseError(`Service ${serviceId} in ${region} has no containers.`);
   }
-  container.image = image;
-  if (container.sourceCode) {
+  if (container.sourceCode && !container.buildConfig) {
     // The live revision ran a local build's output, with the build's start command (see
-    // localBuildTemplate). Drop both, so that the new revision runs the new image as built.
-    delete container.sourceCode;
+    // localBuildTemplate). Drop the command too, so the new revision runs what it's built to run.
     delete container.command;
   }
+  // Each deploy sets what the container runs: an image that Cloud Run builds, or a local build's
+  // output. Drop the live revision's.
+  delete container.image;
+  delete container.sourceCode;
+  delete container.buildConfig;
   // Prepare already resolved svc.baseImage: the service's current base image, unless this deploy
   // sets or clears it. A new service has none unless init sets one, so automatic base image
   // updates are off by default.
@@ -264,6 +276,44 @@ export function revisionTemplate(
 }
 
 /**
+ * Returns the revision to roll out for a remote build: revisionTemplate's, with a container that
+ * Cloud Run builds from the uploaded build folder with App Hosting's buildpacks. `appFolder` is
+ * the app folder's path in the build folder, or empty if they're the same folder (see
+ * BuildDirectory in apphosting/util.ts).
+ */
+function remoteBuildTemplate(
+  svc: ServiceDeploy,
+  source: runv2.StorageSource,
+  imageRepository: string,
+  appFolder: string,
+  message?: string,
+): runv2.RevisionTemplate {
+  const template = revisionTemplate(svc, message);
+  // revisionTemplate has already checked that there's a container.
+  const container = mainContainer(template)!;
+  container.sourceCode = { cloudStorageSource: source };
+  container.buildConfig = {
+    imageRepositoryUri: imageRepository,
+    buildpacksBuild: {
+      // Cloud Run requires a build base image for a container with automatic base image updates.
+      // Build on the base image that the container runs on, like Cloud Functions does.
+      ...(container.baseImageUri ? { buildBaseImageUri: container.baseImageUri } : {}),
+      environmentVariables: {
+        // In a monorepo, tell the buildpacks which folder in the build folder is the app.
+        ...(appFolder ? { GOOGLE_BUILDABLE: appFolder } : {}),
+        // Cloud Build only takes plain values, so pass only the non-secret env vars. Prepare already
+        // rejects secrets for builds on Cloud Build.
+        ...nonSecretValues(svc.buildEnv || {}),
+        // Use App Hosting's buildpacks, which need to know where to write the output bundle.
+        X_GOOGLE_TARGET_PLATFORM: "fah",
+        FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
+      },
+    },
+  };
+  return template;
+}
+
+/**
  * Returns the revision to roll out for a local build: revisionTemplate's, but running the build's
  * output from Cloud Storage, on the service's base image, with the build's start command.
  * Exported for testing.
@@ -274,9 +324,10 @@ export function localBuildTemplate(
   builtApp: runv2.StorageSource,
   message?: string,
 ): runv2.RevisionTemplate {
-  const template = revisionTemplate(svc, NO_IMAGE, message);
+  const template = revisionTemplate(svc, message);
   // revisionTemplate has already checked that there's a container.
   const container = mainContainer(template)!;
+  container.image = NO_IMAGE;
   container.sourceCode = { cloudStorageSource: builtApp };
   // Split on any whitespace, so that stray spaces don't become empty arguments.
   const command = build.runCommand?.trim();
@@ -341,10 +392,9 @@ function createNewService(
     // Like an App Hosting backend, the service is public.
     invokerIamDisabled: true,
     ingress: "INGRESS_TRAFFIC_ALL",
+    launchStage: LAUNCH_STAGE,
   };
-  return runv2.createService(projectId, region, serviceId, service, {
-    pollTimeoutMs: ROLLOUT_TIMEOUT_MS,
-  });
+  return runv2.createService(projectId, region, serviceId, service, ROLLOUT_POLLING);
 }
 
 /** Rolls out a new revision of an existing service and sends it all traffic. */
@@ -362,10 +412,11 @@ function deployRevision(
     annotations,
     template,
     traffic: [{ type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 }, ...tags],
+    launchStage: LAUNCH_STAGE,
   };
   return runv2.updateService(update, {
-    updateMask: ["template", "traffic", "annotations"],
-    pollTimeoutMs: ROLLOUT_TIMEOUT_MS,
+    updateMask: ["template", "traffic", "annotations", "launchStage"],
+    ...ROLLOUT_POLLING,
   });
 }
 
