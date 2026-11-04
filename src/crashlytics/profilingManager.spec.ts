@@ -35,7 +35,9 @@ describe("profilingManager", () => {
   const hashedAppId = "abcdef123456";
   const appId = `1:${projectNumber}:android:${hashedAppId}`;
   const expectedBucketName = `firebasecrashlytics-heap-dumps-${hashedAppId}`;
+  const expectedBucketResourceName = `projects/_/buckets/${expectedBucketName}`;
   const projectId = "my-test-project";
+  const resourcePath = `/v1alpha/projects/${projectNumber}/apps/${appId}/profilingManagerConfig`;
 
   afterEach(() => {
     nock.cleanAll();
@@ -175,15 +177,12 @@ describe("profilingManager", () => {
   describe("getProfilingManagerConfig", () => {
     it("should return the configuration on successful response", async () => {
       const mockResponse = {
-        configuration: {
-          gcsBucket: expectedBucketName,
-          heapDumpCollectionEnabled: true,
-        },
+        name: `projects/${projectNumber}/apps/${appId}/profilingManagerConfig`,
+        gcsBucket: expectedBucketResourceName,
+        heapDumpCollectionEnabled: true,
       };
 
-      nock(crashlyticsApiOrigin())
-        .get(`/v1/projects/${projectNumber}/apps/${appId}/appconfig:profilingManager`)
-        .reply(200, mockResponse);
+      nock(crashlyticsApiOrigin()).get(resourcePath).reply(200, mockResponse);
 
       const result = await getProfilingManagerConfig(appId);
       expect(result).to.deep.equal({
@@ -194,9 +193,7 @@ describe("profilingManager", () => {
     });
 
     it("should return default values when configuration is empty", async () => {
-      nock(crashlyticsApiOrigin())
-        .get(`/v1/projects/${projectNumber}/apps/${appId}/appconfig:profilingManager`)
-        .reply(200, {});
+      nock(crashlyticsApiOrigin()).get(resourcePath).reply(200, {});
 
       const result = await getProfilingManagerConfig(appId);
       expect(result).to.deep.equal({
@@ -215,36 +212,61 @@ describe("profilingManager", () => {
   });
 
   describe("updateProfilingManagerConfig", () => {
-    it("should send the update request successfully", async () => {
+    it("should send the PATCH update request with field mask successfully", async () => {
       nock(crashlyticsApiOrigin())
-        .post(`/v1/projects/${projectNumber}/apps/${appId}/appconfig:profilingManager`, {
-          projectNumber,
-          gmpAppId: appId,
-          configuration: {
-            gcsBucket: expectedBucketName,
-            heapDumpCollectionEnabled: true,
-          },
+        .patch(resourcePath, {
+          gcsBucket: expectedBucketResourceName,
+          heapDumpCollectionEnabled: true,
         })
-        .reply(200, {});
+        .query({ updateMask: "gcsBucket,heapDumpCollectionEnabled" })
+        .reply(200, {
+          name: `projects/${projectNumber}/apps/${appId}/profilingManagerConfig`,
+          gcsBucket: expectedBucketResourceName,
+          heapDumpCollectionEnabled: true,
+        });
 
-      await updateProfilingManagerConfig(appId, {
+      const result = await updateProfilingManagerConfig(appId, {
         gcsBucket: expectedBucketName,
         heapDumpCollectionEnabled: true,
       });
 
+      expect(result).to.deep.equal({
+        gcsBucket: expectedBucketName,
+        heapDumpCollectionEnabled: true,
+      });
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should send partial updateMask when updating only heapDumpCollectionEnabled", async () => {
+      nock(crashlyticsApiOrigin())
+        .patch(resourcePath, {
+          heapDumpCollectionEnabled: false,
+        })
+        .query({ updateMask: "heapDumpCollectionEnabled" })
+        .reply(200, {
+          name: `projects/${projectNumber}/apps/${appId}/profilingManagerConfig`,
+          gcsBucket: expectedBucketResourceName,
+          heapDumpCollectionEnabled: false,
+        });
+
+      const result = await updateProfilingManagerConfig(appId, {
+        heapDumpCollectionEnabled: false,
+      });
+
+      expect(result).to.deep.equal({
+        gcsBucket: expectedBucketName,
+        heapDumpCollectionEnabled: false,
+      });
       expect(nock.isDone()).to.be.true;
     });
 
     it("should default empty configuration fields when omitted", async () => {
       nock(crashlyticsApiOrigin())
-        .post(`/v1/projects/${projectNumber}/apps/${appId}/appconfig:profilingManager`, {
-          projectNumber,
-          gmpAppId: appId,
-          configuration: {
-            gcsBucket: "",
-            heapDumpCollectionEnabled: false,
-          },
+        .patch(resourcePath, {
+          gcsBucket: "",
+          heapDumpCollectionEnabled: false,
         })
+        .query({ updateMask: "gcsBucket,heapDumpCollectionEnabled" })
         .reply(200, {});
 
       await updateProfilingManagerConfig(appId, {});
@@ -453,15 +475,16 @@ describe("profilingManager", () => {
       sinon.stub(serviceusage, "generateServiceIdentityAndPoll").resolves();
       sinon.stub(resourceManager, "serviceAccountHasRoles").resolves(true);
       nock(crashlyticsApiOrigin())
-        .post(`/v1/projects/${projectNumber}/apps/${appId}/appconfig:profilingManager`, {
-          projectNumber,
-          gmpAppId: appId,
-          configuration: {
-            gcsBucket: expectedBucketName,
-            heapDumpCollectionEnabled: true,
-          },
+        .patch(resourcePath, {
+          gcsBucket: expectedBucketResourceName,
+          heapDumpCollectionEnabled: true,
         })
-        .reply(200, {});
+        .query({ updateMask: "gcsBucket,heapDumpCollectionEnabled" })
+        .reply(200, {
+          name: `projects/${projectNumber}/apps/${appId}/profilingManagerConfig`,
+          gcsBucket: expectedBucketResourceName,
+          heapDumpCollectionEnabled: true,
+        });
 
       const result = await enableHeapDumpCollection(projectId, appId);
 
@@ -469,25 +492,17 @@ describe("profilingManager", () => {
       expect(nock.isDone()).to.be.true;
     });
 
-    it("should preserve existing bucket name and disable heap dump collection", async () => {
+    it("should disable heap dump collection via partial updateMask while preserving bucket", async () => {
       nock(crashlyticsApiOrigin())
-        .get(`/v1/projects/${projectNumber}/apps/${appId}/appconfig:profilingManager`)
-        .reply(200, {
-          configuration: {
-            gcsBucket: expectedBucketName,
-            heapDumpCollectionEnabled: true,
-          },
-        });
-      nock(crashlyticsApiOrigin())
-        .post(`/v1/projects/${projectNumber}/apps/${appId}/appconfig:profilingManager`, {
-          projectNumber,
-          gmpAppId: appId,
-          configuration: {
-            gcsBucket: expectedBucketName,
-            heapDumpCollectionEnabled: false,
-          },
+        .patch(resourcePath, {
+          heapDumpCollectionEnabled: false,
         })
-        .reply(200, {});
+        .query({ updateMask: "heapDumpCollectionEnabled" })
+        .reply(200, {
+          name: `projects/${projectNumber}/apps/${appId}/profilingManagerConfig`,
+          gcsBucket: expectedBucketResourceName,
+          heapDumpCollectionEnabled: false,
+        });
 
       await disableHeapDumpCollection(appId);
 
