@@ -1,3 +1,6 @@
 - Fixed high query latency on Linux in Data Connect PGlite emulator by enabling TCP_NODELAY on sockets. (#11402)
 - Fixed the emulators startup message showing 127.0.0.1 for the Emulator UI and Hub when they listen on 0.0.0.0; it now also prints the address they listen on. (#6222)
 - Fixed an issue on Windows where starting Java-based emulators (Firestore, Database, Pub/Sub, Storage) could open extra console windows or leave orphaned `java.exe` processes running after exit (#3871, #11261).
+- Fixed function discovery for Node.js reporting a timeout or `fetch failed` when the functions code crashed while loading; it now reports the crash and its error output. (#7775, #8085)
+- Fixed the function discovery timeout error to name `FUNCTIONS_DISCOVERY_TIMEOUT` and report the elapsed time in seconds, the unit the variable accepts.
+- `FUNCTIONS_DISCOVERY_TIMEOUT` now accepts an explicit `s` or `ms` suffix, warns when a bare value looks like milliseconds, and ignores values it cannot parse with a warning.
