@@ -122,7 +122,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi, getClock }) => {
 
     expectStatusCode(200, res);
     const idToken = res.body.idToken;
-    const decoded = decodeJwt(idToken, { complete: true }) as unknown as {
+    const decoded = decodeJwt(idToken, { complete: true }) as {
       header: JwtHeader;
       payload: FirebaseJwtPayload;
     } | null;
