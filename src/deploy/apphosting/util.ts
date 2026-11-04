@@ -150,6 +150,71 @@ export function resolveIgnorePatterns(
   ignore.push(".local_build_*");
   return ignore;
 }
+
+/** Files that mark the root of an Nx or Turborepo monorepo, the monorepos App Hosting supports. */
+const MONOREPO_CONFIG_FILES = ["nx.json", "turbo.json"] as const;
+
+/**
+ * Where an app builds:
+ * - The app folder is the backend's or service's rootDir, the folder with the app's package.json.
+ * - The build folder is the folder the build runs in, and what Cloud Run source deploys upload. For
+ *   an app in an Nx or Turborepo monorepo, it's the monorepo's root, so the build gets the root's
+ *   lockfile and shared packages. For any other app, it's the app folder.
+ *
+ * For example:
+ *
+ *   my-app/              <- build folder and app folder
+ *     firebase.json
+ *     package.json
+ *     app/
+ *
+ *   my-project/
+ *     firebase.json
+ *     functions/
+ *     web/               <- build folder and app folder
+ *       package.json
+ *
+ *   my-turborepo/        <- build folder
+ *     firebase.json
+ *     turbo.json
+ *     package.json
+ *     apps/
+ *       web/             <- app folder
+ *         package.json
+ */
+export interface BuildDirectory {
+  /** The build folder's path. */
+  buildFolder: string;
+  /**
+   * The app folder's path in the build folder, with forward slashes, like "apps/web". Empty if the
+   * app folder is the build folder.
+   */
+  appFolder: string;
+}
+
+/**
+ * Finds an app's build folder and app folder (see the examples on BuildDirectory), with the same
+ * detection logic as Firebase App Hosting: the build folder is the closest folder at or above the
+ * app folder, up to the project's folder, that has nx.json or turbo.json, like my-turborepo/. If
+ * there's none, like in my-app/ and my-project/, the app folder is the build folder.
+ */
+export function buildDirectory(projectDir: string, rootDir = ""): BuildDirectory {
+  const appFolderPath = path.join(projectDir, rootDir);
+  const appFolderInProject = path.relative(projectDir, appFolderPath);
+  if (appFolderInProject.startsWith("..")) {
+    throw new FirebaseError(`rootDir "${rootDir}" must be inside the project directory.`);
+  }
+  // Check the app folder, then each folder above it, up to the project's folder.
+  const segments = appFolderInProject ? appFolderInProject.split(path.sep) : [];
+  for (let depth = segments.length; depth >= 0; depth--) {
+    const folder = path.join(projectDir, ...segments.slice(0, depth));
+    if (MONOREPO_CONFIG_FILES.some((file) => fs.existsSync(path.join(folder, file)))) {
+      return { buildFolder: folder, appFolder: segments.slice(depth).join("/") };
+    }
+  }
+  return { buildFolder: appFolderPath, appFolder: "" };
+}
+
 async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream): Promise<void> {
   from.pipe(to);
   await from.finalize();

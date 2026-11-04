@@ -6,6 +6,7 @@ import * as tar from "tar";
 import * as util from "./util";
 import * as sinon from "sinon";
 import { AppHostingSingle } from "../../firebaseConfig";
+import { FirebaseError } from "../../error";
 import { logger } from "../../logger";
 
 describe("util", () => {
@@ -185,6 +186,77 @@ describe("util", () => {
       expect(files).to.include("dist/index.js");
       expect(files).to.include("server.js");
       expect(files).to.include("apphosting.yaml");
+    });
+  });
+
+  describe("buildDirectory", () => {
+    afterEach(() => sinon.restore());
+
+    /** Pretends that only these files exist. */
+    function withFiles(...files: string[]): void {
+      sinon.stub(fs, "existsSync").callsFake((file) => files.includes(file as string));
+    }
+
+    it("builds an app from its own folder if it isn't in a monorepo", () => {
+      withFiles(path.join("/project", "web", "package.json"));
+      expect(util.buildDirectory("/project", "web")).to.deep.equal({
+        buildFolder: path.join("/project", "web"),
+        appFolder: "",
+      });
+      expect(util.buildDirectory("/project")).to.deep.equal({
+        buildFolder: path.join("/project"),
+        appFolder: "",
+      });
+      expect(util.buildDirectory("/project", ".")).to.deep.equal({
+        buildFolder: path.join("/project"),
+        appFolder: "",
+      });
+    });
+
+    it("builds an app in a Turborepo or Nx monorepo from the monorepo's root", () => {
+      withFiles(path.join("/project", "turbo.json"));
+      expect(util.buildDirectory("/project", "apps/web")).to.deep.equal({
+        buildFolder: path.join("/project"),
+        appFolder: "apps/web",
+      });
+
+      sinon.restore();
+      withFiles(path.join("/project", "nx.json"));
+      expect(util.buildDirectory("/project", "apps/web")).to.deep.equal({
+        buildFolder: path.join("/project"),
+        appFolder: "apps/web",
+      });
+    });
+
+    it("uses the closest folder above the app with nx.json or turbo.json", () => {
+      withFiles(
+        path.join("/project", "turbo.json"),
+        path.join("/project", "monorepo", "turbo.json"),
+      );
+      expect(util.buildDirectory("/project", "monorepo/apps/web")).to.deep.equal({
+        buildFolder: path.join("/project", "monorepo"),
+        appFolder: "apps/web",
+      });
+    });
+
+    it("builds from the app's folder if the app is the monorepo's root", () => {
+      withFiles(path.join("/project", "apps/web", "nx.json"));
+      expect(util.buildDirectory("/project", "apps/web")).to.deep.equal({
+        buildFolder: path.join("/project", "apps/web"),
+        appFolder: "",
+      });
+    });
+
+    it("doesn't look for a monorepo above the project", () => {
+      withFiles(path.join("/", "turbo.json"));
+      expect(util.buildDirectory("/project", "apps/web")).to.deep.equal({
+        buildFolder: path.join("/project", "apps/web"),
+        appFolder: "",
+      });
+    });
+
+    it("throws if rootDir points outside the project", () => {
+      expect(() => util.buildDirectory("/project", "../web")).to.throw(FirebaseError, /rootDir/);
     });
   });
 });

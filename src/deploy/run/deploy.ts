@@ -14,7 +14,11 @@ import { logger } from "../../logger";
 import { Options } from "../../options";
 import { cloneDeep, logLabeledBullet } from "../../utils";
 import { prepareLocalBuildScratchDirectory } from "../apphosting/prepare";
-import { createLocalBuildTarArchive, createSourceDeployArchive } from "../apphosting/util";
+import {
+  buildDirectory,
+  createLocalBuildTarArchive,
+  createSourceDeployArchive,
+} from "../apphosting/util";
 import { Context, Payload, ServiceDeploy } from "./args";
 import { nonSecretValues, secretNames, toLocalBuildEnv } from "./buildEnv";
 import { FIREBASE_APP_ANNOTATION, mainContainer } from "./util";
@@ -57,8 +61,9 @@ async function deployRemoteBuild(
   svc: ServiceDeploy,
 ): Promise<void> {
   const { projectId } = context;
-  const source = await uploadSource(projectId, options, svc.config);
-  const image = await buildImage(projectId, svc, source);
+  const { buildFolder, appFolder } = buildDirectory(options.config.projectDir, svc.config.rootDir);
+  const source = await uploadSource(projectId, options, svc.config, buildFolder);
+  const image = await buildImage(projectId, svc, source, appFolder);
   const template = revisionTemplate(svc, image, options.message as string | undefined);
   svc.deployed = await rollOut(projectId, svc, template);
 }
@@ -137,15 +142,13 @@ async function uploadSource(
   projectId: string,
   options: Options,
   config: RunSingle,
+  buildFolder: string,
 ): Promise<runv2.StorageSource> {
   const { serviceId, region } = config;
   const bucketName = await sourceBucket(projectId, options, region);
   const cfg = toAppHostingConfig(config);
   // The zip is a tmp file, so it's deleted when the CLI exits.
-  const archive = await createSourceDeployArchive(
-    cfg,
-    path.join(options.config.projectDir, cfg.rootDir),
-  );
+  const archive = await createSourceDeployArchive(cfg, buildFolder);
   logLabeledBullet("run", `Uploading source for service ${serviceId} in ${region}...`);
   const { bucket, object } = await gcs.uploadObject(
     { file: archive, stream: fs.createReadStream(archive) },
@@ -201,11 +204,16 @@ async function sourceBucket(projectId: string, options: Options, region: string)
   });
 }
 
-/** Builds the uploaded source into an image on Cloud Build and returns the image's URI. */
+/**
+ * Builds the uploaded build folder into an image on Cloud Build and returns the image's URI.
+ * `appFolder` is the app folder's path in the build folder, or empty if they're the same folder
+ * (see BuildDirectory in apphosting/util.ts).
+ */
 async function buildImage(
   projectId: string,
   svc: ServiceDeploy,
   source: runv2.StorageSource,
+  appFolder: string,
 ): Promise<string> {
   const { serviceId, region } = svc.config;
   await artifactregistry.ensureDockerRepository(projectId, region, "cloud-run-source-deploy");
@@ -213,6 +221,8 @@ async function buildImage(
   logLabeledBullet("run", `Building service ${serviceId} in ${region}...`);
   const buildpackBuild: runv2.BuildpacksBuild = {
     environmentVariables: {
+      // In a monorepo, tell the buildpacks which folder in the build folder is the app.
+      ...(appFolder ? { GOOGLE_BUILDABLE: appFolder } : {}),
       // Cloud Build only takes plain values, so pass only the non-secret env vars. Prepare already
       // rejects secrets for builds on Cloud Build.
       ...nonSecretValues(svc.buildEnv || {}),

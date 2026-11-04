@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import * as fs from "fs";
+import * as path from "path";
 import * as sinon from "sinon";
 import * as localbuilds from "../../apphosting/localbuilds";
 import * as artifactregistry from "../../gcp/artifactregistry";
@@ -58,19 +59,44 @@ describe("run deploy", () => {
 
     expect(createArchiveStub).to.have.been.calledWithMatch(
       { backendId: "web" },
-      "/project/apps/web",
+      path.join("/project", "apps/web"),
     );
     expect(submitBuildStub).to.have.been.calledWithMatch("my-project", "us-central1", {
       storageSource: { bucket: "source-bucket", object: "web.zip" },
       imageUri: image,
       buildpackBuild: { baseImage: NODEJS22, enableAutomaticUpdates: true },
     });
+    const { environmentVariables } = submitBuildStub.firstCall.args[2].buildpackBuild;
+    expect(environmentVariables).not.to.have.property("GOOGLE_BUILDABLE");
     expect(createServiceStub).to.have.been.calledWithMatch("my-project", "us-central1", "web", {
       template: { containers: [{ name: "web", image, baseImageUri: NODEJS22 }] },
       invokerIamDisabled: true,
       ingress: "INGRESS_TRAFFIC_ALL",
     });
     expect(svc.deployed).to.deep.equal({ uri: "https://web.run.app" });
+  });
+
+  it("builds an app in an Nx or Turborepo monorepo from the monorepo's root", async () => {
+    sinon.stub(fs, "existsSync").callsFake((file) => file === path.join("/project", "turbo.json"));
+
+    await deployOne({ config: web });
+
+    // The upload has the monorepo's root files, like its lockfile and shared packages.
+    expect(createArchiveStub).to.have.been.calledWithMatch(
+      { backendId: "web" },
+      path.join("/project"),
+    );
+    const { environmentVariables } = submitBuildStub.firstCall.args[2].buildpackBuild;
+    expect(environmentVariables).to.include({ GOOGLE_BUILDABLE: "apps/web" });
+  });
+
+  it("keeps GOOGLE_BUILDABLE from buildEnv if the user set it", async () => {
+    sinon.stub(fs, "existsSync").callsFake((file) => file === path.join("/project", "turbo.json"));
+
+    await deployOne({ config: web, buildEnv: { GOOGLE_BUILDABLE: "custom/web" } });
+
+    const { environmentVariables } = submitBuildStub.firstCall.args[2].buildpackBuild;
+    expect(environmentVariables).to.include({ GOOGLE_BUILDABLE: "custom/web" });
   });
 
   it("builds without a base image if the service doesn't have one", async () => {
