@@ -2,9 +2,8 @@ import { getProjectNumber } from "../getProjectNumber";
 import * as utils from "../utils";
 import { ensure } from "../ensureApiEnabled";
 import { needProjectId } from "../projectUtils";
-import { ExtensionInstance, ExtensionSpec, ParamType } from "./types";
+import { ExtensionSpec, ParamType } from "./types";
 import * as secretManagerApi from "../gcp/secretManager";
-import { logger } from "../logger";
 import { secretManagerOrigin } from "../api";
 
 export const SECRET_LABEL = "firebase-extensions-managed";
@@ -32,26 +31,6 @@ export async function grantFirexServiceAgentSecretAdminRole(
   return secretManagerApi.ensureServiceAgentRole(secret, [saEmail], "roles/secretmanager.admin");
 }
 
-export async function getManagedSecrets(instance: ExtensionInstance): Promise<string[]> {
-  if (!instance.config?.source?.spec) {
-    return [];
-  }
-  return (
-    await Promise.all(
-      getActiveSecrets(instance.config.source.spec, instance.config.params).map(
-        async (secretResourceName) => {
-          const secret = secretManagerApi.parseSecretResourceName(secretResourceName);
-          const labels = (await secretManagerApi.getSecret(secret.projectId, secret.name)).labels;
-          if (labels && labels[SECRET_LABEL]) {
-            return secretResourceName;
-          }
-          return Promise.resolve("");
-        },
-      ),
-    )
-  ).filter((secretId) => !!secretId);
-}
-
 export function getActiveSecrets(spec: ExtensionSpec, params: Record<string, string>): string[] {
   return spec.params
     .map((p) => (p.type === ParamType.SECRET ? params[p.param] : ""))
@@ -62,14 +41,4 @@ export function getSecretLabels(instanceId: string): Record<string, string> {
   const labels: Record<string, string> = {};
   labels[SECRET_LABEL] = instanceId;
   return labels;
-}
-
-export function prettySecretName(secretResourceName: string): string {
-  const nameTokens = secretResourceName.split("/");
-  if (nameTokens.length !== 4 && nameTokens.length !== 6) {
-    // not a familiar format, return as is
-    logger.debug(`unable to parse secret secretResourceName: ${secretResourceName}`);
-    return secretResourceName;
-  }
-  return nameTokens.slice(0, 4).join("/");
 }
