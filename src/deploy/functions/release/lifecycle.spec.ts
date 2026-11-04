@@ -7,6 +7,7 @@ import {
   hasLifecycleHooks,
   isRecoveryDeployment,
 } from "./lifecycle";
+import * as planner from "./planner";
 import * as prompts from "../prompts";
 import * as cloudtasks from "../../../gcp/cloudtasks";
 import { logger } from "../../../logger";
@@ -356,6 +357,7 @@ describe("lifecycle", () => {
 
       const emptyPlan = {
         default: {
+          plannedBackend: wantBackend,
           regionalChangesets: {
             "default-us-east1-default": {
               endpointsToCreate: [],
@@ -375,6 +377,126 @@ describe("lifecycle", () => {
       );
       expect(executed).to.be.false;
       expect(enqueueStub).to.not.have.been.called;
+    });
+
+    it("skips hooks and warns when deployment is a partial filtered deploy (redeploy)", async () => {
+      const warningStub = sandbox.stub(utils, "logLabeledWarning");
+      const bulletStub = sandbox.stub(utils, "logLabeledBullet");
+
+      const fn1 = {
+        id: "fn1",
+        project: "myProj",
+        region: "us-east1",
+        entryPoint: "fn1",
+        platform: "gcfv2" as const,
+        httpsTrigger: {},
+      };
+      const fn2 = {
+        id: "fn2",
+        project: "myProj",
+        region: "us-east1",
+        entryPoint: "fn2",
+        platform: "gcfv2" as const,
+        httpsTrigger: {},
+      };
+
+      const wantBackend = backend.of(fn1, fn2);
+      wantBackend.lifecycleHooks = {
+        afterRedeploy: {
+          task: {
+            function: "fn1",
+          },
+        },
+      };
+
+      const haveBackend = backend.of(fn1, fn2);
+
+      // Plan only targets fn1
+      const plan: planner.DeploymentPlan = {
+        "my-codebase": {
+          plannedBackend: backend.of(fn1),
+          regionalChangesets: {
+            "my-codebase-us-east1-default": {
+              endpointsToCreate: [],
+              endpointsToUpdate: [{ endpoint: fn1 }],
+              endpointsToDelete: [],
+              endpointsToSkip: [],
+            },
+          },
+        },
+      };
+
+      const executed = await executeLifecycleHooks(wantBackend, haveBackend, plan, "my-codebase");
+
+      expect(executed).to.be.false;
+      expect(warningStub).to.have.been.calledOnceWith(
+        "functions",
+        'Lifecycle hook "afterRedeploy" for codebase "my-codebase" was configured but not executed because this was a partial deployment (filtered).',
+      );
+      expect(bulletStub).to.have.been.calledOnceWith(
+        "functions",
+        "You can run the lifecycle hook in isolation by running: firebase functions:lifecycle:run afterRedeploy my-codebase",
+      );
+    });
+
+    it("skips hooks and warns when deployment is a partial filtered deploy (first deploy)", async () => {
+      const warningStub = sandbox.stub(utils, "logLabeledWarning");
+      const bulletStub = sandbox.stub(utils, "logLabeledBullet");
+
+      const fn1 = {
+        id: "fn1",
+        project: "myProj",
+        region: "us-east1",
+        entryPoint: "fn1",
+        platform: "gcfv2" as const,
+        httpsTrigger: {},
+      };
+      const fn2 = {
+        id: "fn2",
+        project: "myProj",
+        region: "us-east1",
+        entryPoint: "fn2",
+        platform: "gcfv2" as const,
+        httpsTrigger: {},
+      };
+
+      const wantBackend = backend.of(fn1, fn2);
+      wantBackend.lifecycleHooks = {
+        afterFirstDeploy: {
+          task: {
+            function: "fn1",
+          },
+        },
+      };
+
+      const haveBackend = backend.empty();
+
+      // Plan only targets fn1
+      const plan: planner.DeploymentPlan = {
+        "my-codebase": {
+          plannedBackend: backend.of(fn1),
+          regionalChangesets: {
+            "my-codebase-us-east1-default": {
+              endpointsToCreate: [fn1],
+              endpointsToUpdate: [],
+              endpointsToDelete: [],
+              endpointsToSkip: [],
+            },
+          },
+        },
+      };
+
+      const executed = await executeLifecycleHooks(wantBackend, haveBackend, plan, "my-codebase");
+
+      expect(executed).to.be.false;
+      expect(warningStub).to.have.been.calledOnceWith(
+        "functions",
+        'Lifecycle hook "afterFirstDeploy" for codebase "my-codebase" was configured but not executed because this was a partial deployment (filtered).',
+      );
+      expect(bulletStub).to.have.been.calledOnceWith(
+        "functions",
+        "You can run the lifecycle hook in isolation by running: firebase functions:lifecycle:run afterFirstDeploy my-codebase",
+      );
     });
 
     it("logs a warning and suggest run command when task enqueue fails", async () => {

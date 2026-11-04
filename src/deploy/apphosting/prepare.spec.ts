@@ -31,6 +31,7 @@ import { AppHostingSingle } from "../../firebaseConfig";
 import * as fs from "fs";
 import * as fsAsync from "../../fsAsync";
 import * as utils from "../../utils";
+import * as util from "./util";
 
 const BASE_OPTS = {
   cwd: "/",
@@ -79,6 +80,7 @@ describe("apphosting", () => {
   let getGitRepositoryLinkStub: sinon.SinonStub;
   let assertEnabledStub: sinon.SinonStub;
   let addServiceAccountToRolesStub: sinon.SinonStub;
+  let tarArchiveStub: sinon.SinonStub;
 
   beforeEach(() => {
     sinon.stub(opts.config, "writeProjectFile").returns();
@@ -108,6 +110,9 @@ describe("apphosting", () => {
     sinon.stub(fs, "rmSync").returns(undefined);
     sinon.stub(fs, "copyFileSync").returns(undefined);
     sinon.stub(fsAsync, "readdirRecursive").resolves([]);
+    tarArchiveStub = sinon
+      .stub(util, "createLocalBuildTarArchive")
+      .callsFake((cfg: AppHostingSingle) => Promise.resolve(`/tmp/${cfg.backendId}.tar.gz`));
   });
 
   afterEach(() => {
@@ -156,19 +161,78 @@ describe("apphosting", () => {
         localBuild: true,
       });
       expect(context.backendLocalBuilds["foo"]).to.deep.equal({
-        outputFiles: ["./next/standalone"],
-        localBuildScratchDir: path.join(
-          os.tmpdir(),
-          `apphosting-local-build-foo-${expectedPathHash}`,
-        ),
+        archive: "/tmp/foo.tar.gz",
+        rootDirectory: "",
         buildConfig,
       });
+      // The tarball holds the build's output, from the scratch copy that the build ran in.
+      expect(tarArchiveStub).to.have.been.calledWith(
+        sinon.match({ backendId: "foo" }),
+        path.join(os.tmpdir(), `apphosting-local-build-foo-${expectedPathHash}`),
+        ["./next/standalone"],
+      );
       expect(addServiceAccountToRolesStub).to.have.been.calledWith(
         "my-project",
         apphosting.serviceAgentEmail("123456789"),
         ["roles/storage.objectViewer"],
         true,
       );
+    });
+
+    it("correctly includes runConfig from apphosting.yaml in localBuild buildConfig", async () => {
+      const optsWithLocalBuild = {
+        ...opts,
+        config: new Config({
+          apphosting: {
+            backendId: "foo",
+            rootDir: "/",
+            ignore: [],
+            localBuild: true,
+          },
+        }),
+      };
+      const context = initializeContext();
+
+      const yamlConfig = AppHostingYamlConfig.empty();
+      yamlConfig.runConfig = {
+        cpu: 2,
+        memoryMiB: 3072,
+        concurrency: 8,
+        minInstances: 1,
+        maxInstances: 10,
+      };
+      sinon.stub(apphostingConfig, "getAppHostingConfiguration").resolves(yamlConfig);
+
+      const buildConfig = {
+        runCommand: "npm run build:prod",
+        env: [],
+      };
+      sinon.stub(localbuilds, "localBuild").resolves({
+        outputFiles: ["./next/standalone"],
+        buildConfig,
+      });
+      listBackendsStub.onFirstCall().resolves({
+        backends: [
+          {
+            name: "projects/my-project/locations/us-central1/backends/foo",
+            runtime: { value: "nodejs22" },
+          },
+        ],
+      });
+
+      await prepare(context, optsWithLocalBuild);
+
+      expect(context.backendLocalBuilds["foo"].buildConfig).to.deep.equal({
+        runCommand: "npm run build:prod",
+        env: [],
+        runConfig: {
+          cpu: 2,
+          memoryMib: 3072,
+          concurrency: 8,
+          minInstances: 1,
+          maxInstances: 10,
+        },
+      });
     });
 
     it("supports multiple parallel local builds without directory clobbering", async () => {
@@ -256,19 +320,24 @@ describe("apphosting", () => {
 
       await prepare(context, optsWithMultipleLocalBuilds);
 
-      expect(context.backendLocalBuilds["backend-prod"].localBuildScratchDir).to.equal(
+      // Each backend is built and tarred in its own scratch folder.
+      expect(tarArchiveStub).to.have.been.calledWith(
+        sinon.match({ backendId: "backend-prod" }),
         path.join(os.tmpdir(), `apphosting-local-build-backend-prod-${expectedPathHash}`),
+        ["./next/standalone-prod"],
       );
-      expect(context.backendLocalBuilds["backend-staging"].localBuildScratchDir).to.equal(
+      expect(tarArchiveStub).to.have.been.calledWith(
+        sinon.match({ backendId: "backend-staging" }),
         path.join(os.tmpdir(), `apphosting-local-build-backend-staging-${expectedPathHash}`),
+        ["./next/standalone-staging"],
       );
 
-      expect(context.backendLocalBuilds["backend-prod"].outputFiles).to.deep.equal([
-        "./next/standalone-prod",
-      ]);
-      expect(context.backendLocalBuilds["backend-staging"].outputFiles).to.deep.equal([
-        "./next/standalone-staging",
-      ]);
+      expect(context.backendLocalBuilds["backend-prod"].archive).to.equal(
+        "/tmp/backend-prod.tar.gz",
+      );
+      expect(context.backendLocalBuilds["backend-staging"].archive).to.equal(
+        "/tmp/backend-staging.tar.gz",
+      );
     });
 
     it("injects Firebase configuration when appId is present", async () => {
@@ -450,7 +519,7 @@ describe("apphosting", () => {
 
       await prepare(context, optsWithLocalBuild);
 
-      expect(context.backendLocalBuilds["foo"].outputFiles).to.deep.equal([
+      expect(tarArchiveStub.firstCall.args[2]).to.deep.equal([
         "./next/standalone",
         "./another/path",
       ]);
@@ -485,7 +554,7 @@ describe("apphosting", () => {
 
       await prepare(context, optsWithLocalBuild);
 
-      expect(context.backendLocalBuilds["foo"].outputFiles).to.deep.equal([]);
+      expect(tarArchiveStub.firstCall.args[2]).to.deep.equal([]);
     });
 
     it("links to existing backend if it already exists", async () => {
@@ -688,11 +757,8 @@ describe("apphosting", () => {
         "newly-created-backend",
       );
       expect(context.backendLocalBuilds["newly-created-backend"]).to.deep.equal({
-        outputFiles: ["./next/standalone"],
-        localBuildScratchDir: path.join(
-          os.tmpdir(),
-          `apphosting-local-build-newly-created-backend-${expectedPathHash}`,
-        ),
+        archive: "/tmp/newly-created-backend.tar.gz",
+        rootDirectory: "",
         buildConfig,
       });
     });
@@ -830,51 +896,111 @@ describe("apphosting", () => {
         VAR2: { value: "override" },
         VAR3: { value: "val3" },
       });
+      expect(getAppHostingConfigurationStub).to.be.calledWith(sinon.match("/dir1"), false);
+      expect(getAppHostingConfigurationStub).to.be.calledWith(sinon.match("/dir2"), false);
+    });
+
+    it("extracts and merges runConfigs from multiple apphosting.yaml configs at the field level", async () => {
+      const configs = [
+        { backendId: "foo", rootDir: "/dir1", ignore: [] },
+        { backendId: "foo", rootDir: "/dir2", ignore: [] },
+      ];
+
+      const yamlConfig1 = AppHostingYamlConfig.empty();
+      yamlConfig1.runConfig = {
+        cpu: 1,
+        memoryMiB: 1024,
+        concurrency: 50,
+        minInstances: 1,
+      };
+
+      const yamlConfig2 = AppHostingYamlConfig.empty();
+      yamlConfig2.runConfig = {
+        cpu: 2,
+        maxInstances: 10,
+      };
+
+      getAppHostingConfigurationStub.withArgs(sinon.match("/dir1")).resolves(yamlConfig1);
+      getAppHostingConfigurationStub.withArgs(sinon.match("/dir2")).resolves(yamlConfig2);
+
+      const buildEnv: Record<string, EnvMap> = {};
+      const runtimeEnv: Record<string, EnvMap> = {};
+      const runConfigs: Record<string, apphosting.ApiRunConfig> = {};
+
+      await injectEnvVarsFromApphostingConfig(
+        configs as unknown as AppHostingSingle[],
+        opts as unknown as Options,
+        buildEnv,
+        runtimeEnv,
+        runConfigs,
+      );
+
+      expect(runConfigs["foo"]).to.deep.equal({
+        cpu: 2,
+        memoryMib: 1024,
+        concurrency: 50,
+        minInstances: 1,
+        maxInstances: 10,
+      });
     });
   });
 
   describe("injectAutoInitEnvVars", () => {
+    const cfg = { backendId: "foo", rootDir: "/", ignore: [] };
+    const backends = [
+      {
+        name: "projects/my-project/locations/us-central1/backends/foo",
+        appId: "my-app-id",
+      } as unknown as apphosting.Backend,
+    ];
+
     beforeEach(() => {
       sinon.stub(managementApps, "getAppConfig").resolves({
         appId: "my-app-id",
         projectId: "my-project",
       } as unknown as Awaited<ReturnType<typeof managementApps.getAppConfig>>);
       sinon.stub(apphostingUtils, "getAutoinitEnvVars").returns({
-        AUTO_VAR_1: "auto1",
-        USER_VAR_1: "auto_override",
+        FIREBASE_WEBAPP_CONFIG: "auto_webapp_config",
+        FIREBASE_CONFIG: "auto_override",
       });
     });
 
-    it("injects auto-init variables but respects existing explicitly defined variables", async () => {
-      const cfg = { backendId: "foo", rootDir: "/", ignore: [] };
-      const backends = [
-        {
-          name: "projects/my-project/locations/us-central1/backends/foo",
-          appId: "my-app-id",
-        } as unknown as apphosting.Backend,
-      ];
+    it("injects both variables into the build, but only FIREBASE_CONFIG into the runtime", async () => {
+      const buildEnv: Record<string, EnvMap> = { foo: {} };
+      const runtimeEnv: Record<string, EnvMap> = { foo: {} };
 
-      // Build and runtime envs inherently start with USER_VAR_1 already set
+      await injectAutoInitEnvVars(cfg, backends, buildEnv, runtimeEnv);
+
+      expect(buildEnv["foo"]).to.deep.equal({
+        FIREBASE_WEBAPP_CONFIG: { value: "auto_webapp_config" },
+        FIREBASE_CONFIG: { value: "auto_override" },
+      });
+      // Like remote builds, the runtime doesn't get FIREBASE_WEBAPP_CONFIG.
+      expect(runtimeEnv["foo"]).to.deep.equal({ FIREBASE_CONFIG: { value: "auto_override" } });
+    });
+
+    it("injects auto-init variables but respects existing explicitly defined variables", async () => {
+      // Build and runtime envs inherently start with FIREBASE_CONFIG already set
       const buildEnv: Record<string, EnvMap> = {
         foo: {
-          USER_VAR_1: { value: "user_defined_value" },
+          FIREBASE_CONFIG: { value: "user_defined_value" },
         },
       };
 
       const runtimeEnv: Record<string, EnvMap> = {
         foo: {
-          USER_VAR_1: { value: "user_defined_value" },
+          FIREBASE_CONFIG: { value: "user_defined_value" },
         },
       };
 
       await injectAutoInitEnvVars(cfg, backends, buildEnv, runtimeEnv);
 
-      // It should NOT overwrite USER_VAR_1, but it SHOULD add AUTO_VAR_1
-      expect(buildEnv["foo"]["USER_VAR_1"]?.value).to.equal("user_defined_value");
-      expect(buildEnv["foo"]["AUTO_VAR_1"]?.value).to.equal("auto1");
+      // It should NOT overwrite FIREBASE_CONFIG, but it SHOULD add FIREBASE_WEBAPP_CONFIG to the build
+      expect(buildEnv["foo"]["FIREBASE_CONFIG"]?.value).to.equal("user_defined_value");
+      expect(buildEnv["foo"]["FIREBASE_WEBAPP_CONFIG"]?.value).to.equal("auto_webapp_config");
 
-      expect(runtimeEnv["foo"]["USER_VAR_1"]?.value).to.equal("user_defined_value");
-      expect(runtimeEnv["foo"]["AUTO_VAR_1"]?.value).to.equal("auto1");
+      expect(runtimeEnv["foo"]["FIREBASE_CONFIG"]?.value).to.equal("user_defined_value");
+      expect(runtimeEnv["foo"]).not.to.have.property("FIREBASE_WEBAPP_CONFIG");
     });
   });
 

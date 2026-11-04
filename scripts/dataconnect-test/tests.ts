@@ -6,6 +6,7 @@ import * as cli from "../functions-deploy-tests/cli";
 import { cases, Step } from "./cases";
 import * as client from "../../src/dataconnect/client";
 import { deleteDatabase } from "../../src/gcp/cloudsql/cloudsqladmin";
+import { logger } from "../../src/logger";
 import { requireAuth } from "../../src/requireAuth";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
@@ -32,8 +33,16 @@ function expected(
 }
 
 async function cleanUpService(projectId: string, serviceId: string, databaseId: string) {
-  await client.deleteService(`projects/${projectId}/locations/us-central1/services/${serviceId}`);
-  await deleteDatabase(projectId, "dataconnect-test", databaseId);
+  try {
+    await client.deleteService(`projects/${projectId}/locations/us-central1/services/${serviceId}`);
+  } catch (err: unknown) {
+    logger.warn(`Failed to clean up Data Connect service ${serviceId}:`, err);
+  }
+  try {
+    await deleteDatabase(projectId, "dataconnect-test", databaseId);
+  } catch (err: unknown) {
+    logger.warn(`Failed to clean up Cloud SQL database ${databaseId}:`, err);
+  }
 }
 
 async function list() {
@@ -143,7 +152,7 @@ describe("firebase deploy", () => {
   });
 
   afterEach(async function (this) {
-    this.timeout(10000);
+    this.timeout(60000);
     fs.rmSync(fdcTest, { recursive: true, force: true });
     await cleanUpService(FIREBASE_PROJECT, serviceId, databaseId);
   });

@@ -99,7 +99,7 @@ export const isExtensionInstance = (value: unknown): value is ExtensionInstance 
 export interface ExtensionConfig {
   name: string;
   createTime: string;
-  source: ExtensionSource;
+  source?: ExtensionSource;
   params: Record<string, string>;
   systemParams: Record<string, string>;
   populatedPostinstallContent?: string;

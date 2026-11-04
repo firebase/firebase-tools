@@ -1,6 +1,5 @@
 import type { RouteHas } from "next/dist/lib/load-custom-routes";
 import type { ImageConfigComplete } from "next/dist/shared/lib/image-config";
-import type { MiddlewareManifest as MiddlewareManifestV2FromNext } from "next/dist/build/webpack/plugins/middleware-plugin";
 import type { HostingHeaders } from "../../firebaseConfig";
 import type { CONFIG_FILES } from "./constants";
 
@@ -83,17 +82,19 @@ export interface ExportMarker {
   isNextImageImported: boolean;
 }
 
-export type MiddlewareManifest =
-  | MiddlewareManifestV1
-  | MiddlewareManifestV2FromNext
-  | MiddlewareManifestV3;
+export type MiddlewareManifest = MiddlewareManifestV1 | MiddlewareManifestV2 | MiddlewareManifestV3;
 
 /**
  * Middleware manifest type used between Next.js 12.2.0 - 14.1.4
  *
  * @see https://github.com/vercel/next.js/blob/v14.1.4/packages/next/src/build/webpack/plugins/middleware-plugin.ts#L45-L50
  */
-export type MiddlewareManifestV2 = MiddlewareManifestV2FromNext;
+export type MiddlewareManifestV2 = {
+  version: 2;
+  sortedMiddleware: string[];
+  middleware: { [page: string]: Omit<EdgeFunctionDefinition, "env"> };
+  functions: { [page: string]: Omit<EdgeFunctionDefinition, "env"> };
+};
 
 /**
  * Middleware manifest types used since Next.js 14.2.0

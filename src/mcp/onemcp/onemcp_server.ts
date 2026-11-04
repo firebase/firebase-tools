@@ -7,12 +7,19 @@ import {
   ListToolsRequest,
   CallToolRequest,
   LATEST_PROTOCOL_VERSION,
+  Tool,
 } from "@modelcontextprotocol/sdk/types.js";
 import { Client } from "../../apiv2";
 import { ServerTool, ServerToolMeta } from "../tool";
 import { McpContext, ServerFeature } from "../types";
 import { FirebaseError } from "../../error";
 import { ensure } from "../../ensureApiEnabled";
+
+export type HeaderOverrideFn = (
+  headers: Record<string, string>,
+  toolName: string,
+  args: Record<string, unknown>,
+) => Record<string, string> | void;
 
 export interface OneMcpServerOptions {
   /**
@@ -21,6 +28,15 @@ export interface OneMcpServerOptions {
    * and permitted in callTool().
    */
   allowedTools?: string[];
+  /**
+   * Optional list of tool names (original remote tool name or prefixed name)
+   * that should opt-out of the project requirement.
+   */
+  toolsToOptOutProjectRequirement?: string[];
+  /**
+   * Optional callback to override or inject HTTP headers prior to proxying a callTool request.
+   */
+  headerOverride?: HeaderOverrideFn;
 }
 
 /**
@@ -85,20 +101,33 @@ export class OneMcpServer {
         );
       });
 
-      return tools.map((mcpTool) => ({
-        mcp: {
-          ...mcpTool,
-          name: `${this.feature}_${mcpTool.name}`,
-          _meta: { ...this.meta, feature: this.feature },
-        },
-        fn: (
-          args: {
-            [x: string]: unknown;
+      const optOutSet = new Set(this.options.toolsToOptOutProjectRequirement || []);
+      return tools.map((mcpTool) => {
+        const isOptedOut =
+          this.meta.requiresProject === false ||
+          optOutSet.has(mcpTool.name) ||
+          optOutSet.has(`${this.feature}_${mcpTool.name}`);
+        const toolRequiresProject = !isOptedOut;
+
+        return {
+          mcp: {
+            ...mcpTool,
+            name: `${this.feature}_${mcpTool.name}`,
+            _meta: {
+              ...this.meta,
+              requiresProject: toolRequiresProject,
+              feature: this.feature,
+            },
           },
-          ctx: McpContext,
-        ) => this.callTool(mcpTool.name, args, ctx),
-        isAvailable: () => Promise.resolve(true),
-      }));
+          fn: (
+            args: {
+              [x: string]: unknown;
+            },
+            ctx: McpContext,
+          ) => this.callTool(mcpTool.name, mcpTool.inputSchema, args, ctx),
+          isAvailable: () => Promise.resolve(true),
+        };
+      });
     } catch (error) {
       throw new FirebaseError(
         "Failed to fetch remote tools for " + this.serverUrl + ": " + JSON.stringify(error),
@@ -111,6 +140,7 @@ export class OneMcpServer {
    */
   private async callTool(
     toolName: string,
+    inputSchema: Tool["inputSchema"] | undefined,
     args: {
       [x: string]: unknown;
     },
@@ -126,9 +156,37 @@ export class OneMcpServer {
       );
     }
 
+    const paramHeaders: Record<string, string> = {};
+    const props = inputSchema?.properties;
+    if (props && typeof props === "object" && args) {
+      for (const [paramName, propSchema] of Object.entries(props)) {
+        if (propSchema && typeof propSchema === "object" && "x-mcp-header" in propSchema) {
+          const headerName = (propSchema as Record<string, unknown>)["x-mcp-header"];
+          const argValue = args[paramName];
+          if (argValue !== undefined && argValue !== null) {
+            paramHeaders[`Mcp-Param-${headerName}`] = String(argValue);
+          }
+        }
+      }
+    }
+
     // TODO: Optimize this to not call ensure on every tool call.
-    await ensure(ctx.projectId, this.serverUrl, this.feature, /* silent=*/ true);
+    if (ctx.projectId) {
+      await ensure(ctx.projectId, this.serverUrl, this.feature, /* silent=*/ true);
+    }
     try {
+      const baseHeaders: Record<string, string> = {
+        "MCP-Protocol-Version": LATEST_PROTOCOL_VERSION,
+        "Mcp-Method": "tools/call",
+        "Mcp-Name": toolName,
+        ...(ctx.projectId ? { "x-goog-user-project": ctx.projectId } : {}),
+        ...paramHeaders,
+      };
+      const headers: Record<string, string> = {
+        ...baseHeaders,
+        ...(this.options.headerOverride?.(baseHeaders, toolName, args) ?? {}),
+      };
+
       const res = await this.callClient.post<
         JSONRPCRequest & CallToolRequest,
         JSONRPCResultResponse
@@ -144,12 +202,7 @@ export class OneMcpServer {
           id: 1,
         },
         {
-          headers: {
-            "MCP-Protocol-Version": LATEST_PROTOCOL_VERSION,
-            "Mcp-Method": "tools/call",
-            "Mcp-Name": toolName,
-            ...(ctx.projectId ? { "x-goog-user-project": ctx.projectId } : {}),
-          },
+          headers,
         },
       );
       return CallToolResultSchema.parse(res.body.result);

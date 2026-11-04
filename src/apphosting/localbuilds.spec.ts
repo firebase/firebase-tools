@@ -258,6 +258,39 @@ describe("localBuild", () => {
       await localBuild("test-project", "./", envMap, { nonInteractive: false });
       expect(confirmStub).to.have.been.calledOnce;
     });
+
+    describe("GOOGLE_BUILDABLE injection", () => {
+      const testCases: Array<{ input: string; expected: string | undefined; desc: string }> = [
+        { input: "/", expected: undefined, desc: "root slash '/'" },
+        { input: ".", expected: undefined, desc: "current directory '.'" },
+        { input: "./", expected: undefined, desc: "current directory relative './'" },
+        { input: "", expected: undefined, desc: "empty string ''" },
+        { input: "apps/web", expected: "apps/web", desc: "standard subdirectory 'apps/web'" },
+        { input: "/apps/web", expected: "apps/web", desc: "leading slash '/apps/web'" },
+        { input: "./apps/web", expected: "apps/web", desc: "dot-slash relative './apps/web'" },
+        { input: "apps/web/", expected: "apps/web", desc: "trailing slash 'apps/web/'" },
+        { input: "apps\\web", expected: "apps/web", desc: "windows backslashes 'apps\\web'" },
+      ];
+
+      for (const { input, expected, desc } of testCases) {
+        it(`handles ${desc} -> GOOGLE_BUILDABLE: ${expected ?? "undefined"}`, async () => {
+          const spawnStub = sinon.stub(childProcess, "spawnSync").returns({
+            status: 0,
+            output: ["", "mock output", ""],
+            pid: 12345,
+            stdout: "mock stdout",
+            stderr: "mock stderr",
+            signal: null,
+          });
+
+          await localBuild("test-project", "./", {}, { rootDir: input });
+
+          expect(spawnStub).to.have.been.calledOnce;
+          const env = spawnStub.firstCall.args[2]?.env;
+          expect(env?.GOOGLE_BUILDABLE).to.equal(expected);
+        });
+      }
+    });
   });
 
   describe("runUniversalMaker", () => {

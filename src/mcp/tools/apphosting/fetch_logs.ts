@@ -13,6 +13,7 @@ export const fetch_logs = tool(
     name: "fetch_logs",
     description:
       "Use this to fetch the most recent logs for a specified App Hosting backend. If `buildLogs` is specified, the logs from the build process for the latest build are returned. The most recent logs are listed first.",
+    humanReadableDescription: "Fetch recent service or build logs for an App Hosting backend.",
     inputSchema: z.object({
       buildLogs: z
         .boolean()

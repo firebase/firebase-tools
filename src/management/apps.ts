@@ -187,14 +187,16 @@ export async function getSdkOutputPath(
   config: AppsInitOptions,
 ): Promise<string> {
   switch (platform) {
-    case AppPlatform.ANDROID:
+    case AppPlatform.ANDROID: {
       const androidPath = await findIntelligentPathForAndroid(appDir, config);
       return path.join(androidPath, "google-services.json");
+    }
     case AppPlatform.WEB:
       return path.join(appDir, "firebase-js-config.json");
-    case AppPlatform.IOS:
+    case AppPlatform.IOS: {
       const iosPath = await findIntelligentPathForIOS(appDir, config);
       return path.join(iosPath, "GoogleService-Info.plist");
+    }
   }
   throw new FirebaseError("Platform " + platform.toString() + " is not supported yet.");
 }
@@ -792,9 +794,8 @@ export async function findIntelligentPathForAndroid(appDir: string, options: App
    * android/build.gradle // if it's this, choose app
    * android/app/build.gradle // if it's this, choose current dir.
    */
-  const paths = appDir.split("/");
   // For when app/build.gradle is found
-  if (paths[0] === "app") {
+  if (path.basename(appDir) === "app") {
     return appDir;
   } else {
     const currentFiles: fs.Dirent[] = await fs.readdir(appDir, { withFileTypes: true });

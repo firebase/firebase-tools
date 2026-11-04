@@ -55,7 +55,7 @@ async function deployIndexes(context: any, options: any): Promise<void> {
         }
         // It might take a while for the database to be created.
         await sleep(1000);
-        await firestoreIndexes.deploy(options!, indexes, fieldOverrides, databaseId);
+        await firestoreIndexes.deploy(options, indexes, fieldOverrides, databaseId);
       }
 
       utils.logSuccess(

@@ -15,9 +15,11 @@ import { getProject } from "./management/projects";
 import { reconcileStudioFirebaseProject } from "./management/studio";
 import { requireAuth } from "./requireAuth";
 import { Options } from "./options";
-import { isFirebaseStudio } from "./env";
+import { isFirebaseStudio, detectAIAgent } from "./env";
 import * as experiments from "./experiments";
 import { showDeprecationWarningBefore, showDeprecationWarningAfter } from "./extensions/warnings";
+import { setNonInteractive } from "./prompt";
+import { logger } from "./logger";
 
 export interface CommandModule {
   load: () => void;
@@ -233,28 +235,28 @@ export class Command {
             });
           }
           const duration = Math.floor((process.uptime() - start) * 1000);
-          const trackSuccess = trackGA4(
-            "command_execution",
-            {
-              command_name: this.name,
-              result: "success",
-              interactive: getInheritedOption(options, "nonInteractive") ? "false" : "true",
-            },
-            duration,
-          );
-          if (!isEmulator) {
-            await withTimeout(5000, trackSuccess);
-          } else {
-            await withTimeout(
-              5000,
-              Promise.all([
-                trackSuccess,
+          try {
+            const trackSuccess = trackGA4(
+              "command_execution",
+              {
+                command_name: this.name,
+                result: "success",
+                interactive: getInheritedOption(options, "nonInteractive") ? "false" : "true",
+              },
+              duration,
+            );
+            const tracks = [trackSuccess];
+            if (isEmulator) {
+              tracks.push(
                 trackEmulator("command_success", {
                   command_name: this.name,
                   duration,
                 }),
-              ]),
-            );
+              );
+            }
+            await withTimeout(5000, Promise.all(tracks));
+          } catch (gaErr) {
+            logger.debug("Analytics tracking failed during success path:", gaErr);
           }
           process.exit();
         })
@@ -275,27 +277,30 @@ export class Command {
             });
           }
           const duration = Math.floor((process.uptime() - start) * 1000);
-          await withTimeout(
-            5000,
-            Promise.all([
-              trackGA4(
-                "command_execution",
-                {
+          try {
+            const trackError = trackGA4(
+              "command_execution",
+              {
+                command_name: this.name,
+                result: "error",
+                interactive: getInheritedOption(options, "nonInteractive") ? "false" : "true",
+              },
+              duration,
+            );
+            const tracks = [trackError];
+            if (isEmulator) {
+              tracks.push(
+                trackEmulator("command_error", {
                   command_name: this.name,
-                  result: "error",
-                  interactive: getInheritedOption(options, "nonInteractive") ? "false" : "true",
-                },
-                duration,
-              ),
-              isEmulator
-                ? trackEmulator("command_error", {
-                    command_name: this.name,
-                    duration,
-                    error_type: err.exit === 1 ? "user" : "unexpected",
-                  })
-                : Promise.resolve(),
-            ]),
-          );
+                  duration,
+                  error_type: err?.exit === 1 ? "user" : "unexpected",
+                }),
+              );
+            }
+            await withTimeout(5000, Promise.all(tracks));
+          } catch (gaErr) {
+            logger.debug("Analytics tracking failed during error path:", gaErr);
+          }
 
           client.errorOut(err);
         });
@@ -314,7 +319,8 @@ export class Command {
     if (
       !process.stdin.isTTY ||
       getInheritedOption(options, "nonInteractive") ||
-      getInheritedOption(options, "json") // --json implies --non-interactive.
+      getInheritedOption(options, "json") || // --json implies --non-interactive.
+      detectAIAgent() !== "unknown"
     ) {
       options.nonInteractive = true;
     }
@@ -323,6 +329,8 @@ export class Command {
     if (getInheritedOption(options, "interactive")) {
       options.nonInteractive = false;
     }
+
+    setNonInteractive(!!options.nonInteractive);
 
     if (getInheritedOption(options, "debug")) {
       options.debug = true;
@@ -476,7 +484,7 @@ export class Command {
       await this.prepare(options);
 
       if (this.name.startsWith("ext:") && experiments.isEnabled("extdeprecationwarnings")) {
-        showDeprecationWarningBefore(this.name, options);
+        await showDeprecationWarningBefore(this.name, options, args);
       }
 
       for (const before of this.befores) {

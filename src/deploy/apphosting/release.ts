@@ -51,9 +51,12 @@ export default async function (context: Context, options: Options): Promise<void
       ? {
           locallyBuilt: {
             userStorageUri,
-            rootDirectory,
+            rootDirectory: localBuild.rootDirectory,
             runCommand: localBuild.buildConfig?.runCommand,
             env: localBuild.buildConfig?.env,
+            ...(localBuild.buildConfig?.runConfig
+              ? { runConfig: localBuild.buildConfig.runConfig }
+              : {}),
           },
         }
       : {

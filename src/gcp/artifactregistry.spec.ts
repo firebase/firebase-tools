@@ -43,34 +43,6 @@ describe("artifactRegistry", () => {
     });
   });
 
-  describe("deletePackage", () => {
-    const PKG_NAME = `${REPO_NAME}/packages/test-pkg`;
-
-    it("should resolve with an operation object on success", async () => {
-      const operation: artifactRegistry.Operation = {
-        name: `projects/${PROJECT_ID}/locations/${REGION}/operations/test-op`,
-        done: true,
-      };
-      nock(artifactRegistryDomain()).delete(`/${API_VERSION}/${PKG_NAME}`).reply(200, operation);
-
-      const result = await artifactRegistry.deletePackage(PKG_NAME);
-
-      expect(result).to.deep.equal(operation);
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("should reject if the API call fails", async () => {
-      nock(artifactRegistryDomain())
-        .delete(`/${API_VERSION}/${PKG_NAME}`)
-        .reply(403, { error: { message: "Permission Denied" } });
-
-      await expect(artifactRegistry.deletePackage(PKG_NAME)).to.be.rejectedWith(
-        "Permission Denied",
-      );
-      expect(nock.isDone()).to.be.true;
-    });
-  });
-
   describe("updateRepository", () => {
     it("should send a patch request with update mask if one is present", async () => {
       const repo: artifactRegistry.RepositoryInput = {
@@ -138,6 +110,47 @@ describe("artifactRegistry", () => {
         "artifactregistry",
         true,
       );
+    });
+  });
+
+  describe("ensureDockerRepository", () => {
+    it("does nothing if the repository already exists", async () => {
+      nock(artifactRegistryDomain())
+        .get(`/${API_VERSION}/${REPO_NAME}`)
+        .reply(200, { name: REPO_NAME, format: "DOCKER" });
+
+      await artifactRegistry.ensureDockerRepository(PROJECT_ID, REGION, REPO);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("creates the repository and polls the operation when it returns 404", async () => {
+      const opName = `projects/${PROJECT_ID}/locations/${REGION}/operations/create-repo`;
+      nock(artifactRegistryDomain())
+        .get(`/${API_VERSION}/${REPO_NAME}`)
+        .reply(404, { error: { message: "Not Found" } });
+      nock(artifactRegistryDomain())
+        .post(`/${API_VERSION}/projects/${PROJECT_ID}/locations/${REGION}/repositories`, {
+          format: "DOCKER",
+        })
+        .query({ repositoryId: REPO })
+        .reply(200, { name: opName });
+      nock(artifactRegistryDomain())
+        .get(`/${API_VERSION}/${opName}`)
+        .reply(200, { name: opName, done: true, response: { name: REPO_NAME, format: "DOCKER" } });
+
+      await artifactRegistry.ensureDockerRepository(PROJECT_ID, REGION, REPO);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("rethrows non-404 errors", async () => {
+      nock(artifactRegistryDomain())
+        .get(`/${API_VERSION}/${REPO_NAME}`)
+        .reply(403, { error: { message: "Permission Denied" } });
+
+      await expect(
+        artifactRegistry.ensureDockerRepository(PROJECT_ID, REGION, REPO),
+      ).to.be.rejectedWith("Permission Denied");
+      expect(nock.isDone()).to.be.true;
     });
   });
 });

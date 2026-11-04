@@ -9,6 +9,7 @@ import { expect } from "chai";
 import * as ensureApiEnabled from "../../../ensureApiEnabled";
 
 describe("isAppTestingAvailable", () => {
+  const host = new FirebaseMcpServer({});
   let sandbox: sinon.SinonSandbox;
   let checkStub: sinon.SinonStub;
 
@@ -28,7 +29,7 @@ describe("isAppTestingAvailable", () => {
     config: {
       projectDir: projectDir,
     } as Config,
-    host: new FirebaseMcpServer({}),
+    host,
     rc: {} as RC,
     firebaseCliCommand: "firebase",
     isBillingEnabled: false,

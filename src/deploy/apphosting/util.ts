@@ -7,6 +7,7 @@ import { FirebaseError } from "../../error";
 import { logger } from "../../logger";
 import { AppHostingSingle } from "../../firebaseConfig";
 import * as fsAsync from "../../fsAsync";
+import * as gcs from "../../gcp/storage";
 import { logLabeledWarning } from "../../utils";
 import { CLOUD_RUN_SIZE_LIMIT_BYTES } from "../../apphosting/constants";
 
@@ -48,7 +49,9 @@ export async function createLocalBuildTarArchive(
         ignoreStrings: ["firebase-debug.log", "firebase-debug.*.log"],
         supportGitIgnore: false,
       });
-      allFiles.push(...rdrFiles.map((rdrf) => path.relative(rootDir, rdrf.name)));
+      for (const rdrf of rdrFiles) {
+        allFiles.push(path.relative(rootDir, rdrf.name));
+      }
     } else {
       allFiles.push(path.relative(rootDir, absolutePath));
     }
@@ -90,13 +93,16 @@ export async function createLocalBuildTarArchive(
 }
 
 /**
- * Locates the source code for a backend and creates an archive to eventually upload to GCS.
+ * Zips the files in `folderToZip` for a source deploy, into a tmp file. Cloud Run zips the
+ * service's build folder (see BuildDirectory), and App Hosting zips the whole project. Files that
+ * the config's ignore list or a .gitignore file ignores are left out. Like in git, that includes
+ * the .gitignore files above `folderToZip`, up to `projectFolder`, the folder with firebase.json.
  * Based heavily on functions upload logic in src/deploy/functions/prepareFunctionsUpload.ts.
  */
 export async function createSourceDeployArchive(
   config: AppHostingSingle,
-  rootDir: string,
-  targetSubDir?: string,
+  folderToZip: string,
+  projectFolder = folderToZip,
 ): Promise<string> {
   const tmpFile = tmp.fileSync({ prefix: `${config.backendId}-`, postfix: ".zip" }).name;
   const fileStream = fs.createWriteStream(tmpFile, {
@@ -105,17 +111,17 @@ export async function createSourceDeployArchive(
   });
   const archive = archiver("zip");
 
-  const targetDir = targetSubDir ? path.join(rootDir, targetSubDir) : rootDir;
   // We must ignore firebase-debug.log or weird things happen if you're in the public dir when you deploy.
   const ignore = resolveIgnorePatterns(config);
   try {
     const files = await fsAsync.readdirRecursive({
-      path: targetDir,
+      path: folderToZip,
       ignoreStrings: ignore,
       supportGitIgnore: true,
+      gitIgnoreRoot: projectFolder,
     });
     for (const file of files) {
-      const name = path.relative(rootDir, file.name);
+      const name = path.relative(folderToZip, file.name);
       archive.file(file.name, {
         name,
         mode: file.mode,
@@ -129,6 +135,24 @@ export async function createSourceDeployArchive(
     );
   }
   return tmpFile;
+}
+
+/**
+ * Uploads an app to a source bucket, for App Hosting or Cloud Run: a source deploy's zip, or a local
+ * build's tarball. Both products run the tarball as is, so it has to fit Cloud Run's size limit.
+ */
+export async function uploadArchive(
+  archive: string,
+  bucketName: string,
+  localBuild: boolean,
+): Promise<{ bucket: string; object: string }> {
+  const { bucket, object } = await gcs.uploadObject(
+    { file: archive, stream: fs.createReadStream(archive) },
+    bucketName,
+    localBuild ? gcs.ContentType.TAR : gcs.ContentType.ZIP,
+    localBuild ? CLOUD_RUN_SIZE_LIMIT_BYTES : undefined,
+  );
+  return { bucket, object };
 }
 
 /**
@@ -148,6 +172,71 @@ export function resolveIgnorePatterns(
   ignore.push(".local_build_*");
   return ignore;
 }
+
+/** Files that mark the root of an Nx or Turborepo monorepo, the monorepos App Hosting supports. */
+const MONOREPO_CONFIG_FILES = ["nx.json", "turbo.json"] as const;
+
+/**
+ * Where an app builds:
+ * - The app folder is the backend's or service's rootDir, the folder with the app's package.json.
+ * - The build folder is the folder the build runs in, and what Cloud Run source deploys upload. For
+ *   an app in an Nx or Turborepo monorepo, it's the monorepo's root, so the build gets the root's
+ *   lockfile and shared packages. For any other app, it's the app folder.
+ *
+ * For example:
+ *
+ *   my-app/              <- build folder and app folder
+ *     firebase.json
+ *     package.json
+ *     app/
+ *
+ *   my-project/
+ *     firebase.json
+ *     functions/
+ *     web/               <- build folder and app folder
+ *       package.json
+ *
+ *   my-turborepo/        <- build folder
+ *     firebase.json
+ *     turbo.json
+ *     package.json
+ *     apps/
+ *       web/             <- app folder
+ *         package.json
+ */
+export interface BuildDirectory {
+  /** The build folder's path. */
+  buildFolder: string;
+  /**
+   * The app folder's path in the build folder, with forward slashes, like "apps/web". Empty if the
+   * app folder is the build folder.
+   */
+  appFolder: string;
+}
+
+/**
+ * Finds an app's build folder and app folder (see the examples on BuildDirectory), with the same
+ * detection logic as Firebase App Hosting: the build folder is the closest folder at or above the
+ * app folder, up to the project's folder, that has nx.json or turbo.json, like my-turborepo/. If
+ * there's none, like in my-app/ and my-project/, the app folder is the build folder.
+ */
+export function buildDirectory(projectDir: string, rootDir = ""): BuildDirectory {
+  const appFolderPath = path.join(projectDir, rootDir);
+  const appFolderInProject = path.relative(projectDir, appFolderPath);
+  if (appFolderInProject.startsWith("..")) {
+    throw new FirebaseError(`rootDir "${rootDir}" must be inside the project directory.`);
+  }
+  // Check the app folder, then each folder above it, up to the project's folder.
+  const segments = appFolderInProject ? appFolderInProject.split(path.sep) : [];
+  for (let depth = segments.length; depth >= 0; depth--) {
+    const folder = path.join(projectDir, ...segments.slice(0, depth));
+    if (MONOREPO_CONFIG_FILES.some((file) => fs.existsSync(path.join(folder, file)))) {
+      return { buildFolder: folder, appFolder: segments.slice(depth).join("/") };
+    }
+  }
+  return { buildFolder: appFolderPath, appFolder: "" };
+}
+
 async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream): Promise<void> {
   from.pipe(to);
   await from.finalize();

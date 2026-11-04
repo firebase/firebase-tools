@@ -31,9 +31,18 @@ export function hasLifecycleHooks(backendSpec: backend.Backend): boolean {
 }
 
 /**
- * Detects if this deployment is a redeploy of a partially successful but identical previous deployment.
- * This will be true only if the hashes for both backends are the same but the specified endpoints are different.
- * Note: If any code or comment modification was made between deploys, the hash will change, so this check won't detect it as an identical recovery deployment.
+ * Detects if the current deployment is recovering/completing a previous partial deployment
+ * of the same version, and is in a state where we cannot automatically determine the
+ * correct lifecycle event (prompting the user is required).
+ *
+ * This occurs when:
+ * 1. Some functions already match the target version hash (indicating a previous partial success).
+ * 2. Some functions in the target state are NOT active (missing or failed), meaning the codebase
+ *    has never been fully deployed at this version (or at all).
+ *
+ * We do NOT consider it a recovery deployment if all functions are already active (even if on
+ * older versions), because in that case we can safely infer that this is a redeployment
+ * and automatically run `afterRedeploy` once successful.
  */
 export function isRecoveryDeployment(
   wantBackend: backend.Backend,
@@ -49,16 +58,16 @@ export function isRecoveryDeployment(
     return false;
   }
 
-  // 1. We know a previous deploy was a partial success if haveBackend includes the same hash
-  // but wantBackend includes different functions.
+  // 1. Verify that at least one function in production already matches the target version hash.
+  // If none match, this is either a completely new deployment or a clean update, so it's not a recovery.
   const hasSameHash = haveEndpoints.some((ep) => ep.hash && wantHashes.has(ep.hash));
   if (!hasSameHash) {
     return false;
   }
 
-  // 2. If we have existing endpoints in haveBackend with matching hashes, but wantBackend contains net new functions,
-  // we know the current deployment is re-attempting a previous deployment with the same source code specification
-  // that failed to deploy all endpoints successfully.
+  // 2. Check if there are any target functions that are NOT currently active in production.
+  // If there are inactive/failed functions, the deployment is incomplete and ambiguous (could be
+  // recovering a first-time deploy), so we must prompt the user.
   const hasNetNewFunctions = wantEndpoints.some(
     (wantEp) =>
       !backend.findEndpoint(
@@ -84,6 +93,25 @@ export async function executeLifecycleHooks(
 ): Promise<boolean> {
   if (!hasLifecycleHooks(wantBackend)) {
     return false;
+  }
+
+  const codebasePlan = plan && codebase ? plan[codebase] : undefined;
+  if (codebasePlan && codebase) {
+    const allWantEndpoints = backend.allEndpoints(wantBackend);
+    const isFiltered = allWantEndpoints.some(backend.missingEndpoint(codebasePlan.plannedBackend));
+
+    if (isFiltered) {
+      const event = determineLifecycleEvent(haveBackend);
+      logLabeledWarning(
+        "functions",
+        `Lifecycle hook "${event}" for codebase "${codebase}" was configured but not executed because this was a partial deployment (filtered).`,
+      );
+      logLabeledBullet(
+        "functions",
+        `You can run the lifecycle hook in isolation by running: firebase functions:lifecycle:run ${event} ${codebase}`,
+      );
+      return false;
+    }
   }
 
   let event: backend.LifecycleEvent | undefined;
