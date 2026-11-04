@@ -2,7 +2,14 @@ import { expect } from "chai";
 import * as fs from "fs";
 import * as path from "path";
 import * as tmp from "tmp";
-import { fileExistsSync, dirExistsSync, readFile, listFiles, moveAll } from "./fsutils";
+import {
+  fileExistsSync,
+  dirExistsSync,
+  readFile,
+  listFiles,
+  moveAll,
+  removeDirectoryIfEmpty,
+} from "./fsutils";
 
 describe("fsutils", () => {
   let tmpDir: tmp.DirResult;
@@ -122,6 +129,42 @@ describe("fsutils", () => {
 
       expect(fs.existsSync(path.join(destDir, "file1.txt"))).to.be.true;
       expect(fs.existsSync(path.join(destDir, "dest"))).to.be.false;
+    });
+  });
+
+  describe("removeDirectoryIfEmpty", () => {
+    it("should delete directory if it exists and is empty", async () => {
+      const dirPath = path.join(tmpDir.name, "empty-dir");
+      fs.mkdirSync(dirPath);
+      expect(fs.existsSync(dirPath)).to.be.true;
+
+      await removeDirectoryIfEmpty(dirPath);
+
+      expect(fs.existsSync(dirPath)).to.be.false;
+    });
+
+    it("should not delete directory if it contains files", async () => {
+      const dirPath = path.join(tmpDir.name, "non-empty-dir");
+      fs.mkdirSync(dirPath);
+      fs.writeFileSync(path.join(dirPath, "file.txt"), "content");
+
+      await removeDirectoryIfEmpty(dirPath);
+
+      expect(fs.existsSync(dirPath)).to.be.true;
+    });
+
+    it("should do nothing if path does not exist", async () => {
+      const nonExistent = path.join(tmpDir.name, "does-not-exist");
+      await expect(removeDirectoryIfEmpty(nonExistent)).to.be.fulfilled;
+    });
+
+    it("should do nothing if path is not a directory", async () => {
+      const filePath = path.join(tmpDir.name, "regular-file.txt");
+      fs.writeFileSync(filePath, "content");
+
+      await removeDirectoryIfEmpty(filePath);
+
+      expect(fs.existsSync(filePath)).to.be.true;
     });
   });
 });

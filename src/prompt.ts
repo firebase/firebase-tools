@@ -160,6 +160,7 @@ export type CheckboxOptions<Value> = BasicOptions<Value[]> & {
     | ((choices: readonly Choice<Value>[]) => boolean | string | Promise<string | boolean>)
     | undefined;
   pageSize?: number;
+  instructions?: string | boolean;
 };
 
 /**
@@ -199,6 +200,7 @@ export type SelectOptions<Value> = BasicOptions<Value> & {
     | readonly (MaybeLiteral<Value> | inquirer.Separator)[]
     | readonly (inquirer.Separator | Choice<Value>)[];
   pageSize?: number;
+  instructions?: string | { navigation: string; pager: string };
 };
 
 /**
@@ -209,8 +211,13 @@ export async function select<Value>(opts: SelectOptions<Value>): Promise<Value> 
   if (shouldReturn) {
     return value;
   }
+  const instructions =
+    typeof opts.instructions === "string"
+      ? { navigation: opts.instructions, pager: opts.instructions }
+      : opts.instructions;
   return inquirer.select({
     ...opts,
+    instructions,
     loop: false,
   });
 }

@@ -6,11 +6,6 @@ import * as clc from "colorette";
 
 import {
   generateUniqueId,
-  parseNpmPackageSpecifier,
-  validateNpmPackageName,
-  sanitizePackageNameToKitName,
-  isThirdPartyPackage,
-  checkPackageHasShrinkwrap,
   getUnconfiguredInstancesForProject,
   extractExistingFunctionsInfo,
   addKitToConfig,
@@ -20,20 +15,16 @@ import {
   addInstanceToKit,
   promptKitInstanceId,
   promptKitId,
-  promptSecurityConfirmation,
   promptExistingInstanceForProject,
-  buildAndInstallKit,
-  buildAndInstallDirectoryKit,
-  validateAndResolveDirectoryKit,
   findExistingKit,
   resolvePackageSource,
   resolveDirectorySource,
+  discoverKitBuild,
   printKitFirstDeployReport,
   addKitInstanceOrConfigureProject,
   installKitOrInstance,
   promptAndWriteKitParams,
-  getKitPackagesToSave,
-  resolveSdkSpecifierToSave,
+  revertFunctionsConfig,
   TemplateType,
 } from "./install";
 import * as env from "./env";
@@ -42,6 +33,7 @@ import * as build from "../../deploy/functions/build";
 import * as params from "../../deploy/functions/params";
 import * as functionsConfig from "../../functionsConfig";
 import * as runtimes from "../../deploy/functions/runtimes";
+import * as supported from "../../deploy/functions/runtimes/supported";
 import * as iam from "../../gcp/iam";
 import * as initSpawn from "../../init/spawn";
 import * as prompt from "../../prompt";
@@ -59,7 +51,11 @@ describe("functions/kits/install", () => {
   let seedKitInstanceEnvStub: sinon.SinonStub;
   let loggerInfoStub: sinon.SinonStub;
   let loggerWarnStub: sinon.SinonStub;
-  let statStub: sinon.SinonStub;
+  let fsRemoveStub: sinon.SinonStub;
+  let fsReaddirStub: sinon.SinonStub;
+  let getFirebaseConfigStub: sinon.SinonStub;
+  let getRuntimeDelegateStub: sinon.SinonStub;
+  let discoverBuildStub: sinon.SinonStub;
 
   beforeEach(() => {
     sinon.stub(experiments, "assertEnabled");
@@ -71,13 +67,28 @@ describe("functions/kits/install", () => {
     sinon.stub(fs, "ensureDir").resolves();
     sinon.stub(fs, "ensureFileSync");
     sinon.stub(fs, "pathExists").resolves(false);
-    statStub = sinon.stub(fs, "stat").resolves({ isDirectory: () => true } as fs.Stats);
+    sinon.stub(fs, "stat").resolves({ isDirectory: () => true } as fs.Stats);
     sinon.stub(fs, "readJson").resolves({});
     sinon.stub(fs, "writeJson").resolves();
     sinon.stub(fs, "writeFile").resolves();
+    fsRemoveStub = sinon.stub(fs, "remove").resolves();
+    fsReaddirStub = sinon.stub(fs, "readdir").resolves([]);
     seedKitInstanceEnvStub = sinon.stub(env, "seedKitInstanceEnv");
     loggerInfoStub = sinon.stub(logger, "info");
     loggerWarnStub = sinon.stub(logger, "warn");
+    getFirebaseConfigStub = sinon
+      .stub(functionsConfig, "getFirebaseConfig")
+      .resolves({ projectId: "my-project" });
+    discoverBuildStub = sinon.stub().resolves(build.empty());
+    getRuntimeDelegateStub = sinon.stub(runtimes, "getRuntimeDelegate").resolves({
+      language: "nodejs",
+      runtime: supported.latest("nodejs"),
+      bin: "node",
+      validate: sinon.stub().resolves(),
+      build: sinon.stub().resolves(),
+      watch: sinon.stub().resolves(() => Promise.resolve()),
+      discoverBuild: discoverBuildStub,
+    });
   });
 
   afterEach(() => {
@@ -94,130 +105,6 @@ describe("functions/kits/install", () => {
       return Promise.resolve(val || {});
     });
   }
-
-  describe("validateNpmPackageName", () => {
-    it("should accept valid unscoped package names", () => {
-      expect(() => validateNpmPackageName("my-kit")).to.not.throw();
-      expect(() => validateNpmPackageName("firestore-export")).to.not.throw();
-      expect(() => validateNpmPackageName("kit_123.v1")).to.not.throw();
-    });
-
-    it("should accept valid unscoped package specifiers with version or tag", () => {
-      expect(() => validateNpmPackageName("my-kit@1.2.3")).to.not.throw();
-      expect(() => validateNpmPackageName("my-kit@next")).to.not.throw();
-      expect(() => validateNpmPackageName("my-kit@^2.0.0")).to.not.throw();
-    });
-
-    it("should accept valid scoped package names with exactly one slash", () => {
-      expect(() =>
-        validateNpmPackageName("@firebase-function-kits/firestore-bigquery-export"),
-      ).to.not.throw();
-      expect(() => validateNpmPackageName("@invertase/example-kit")).to.not.throw();
-    });
-
-    it("should accept valid scoped package specifiers with version or tag", () => {
-      expect(() =>
-        validateNpmPackageName("@firebase-function-kits/firestore-bigquery-export@1.0.0"),
-      ).to.not.throw();
-      expect(() =>
-        validateNpmPackageName("@firebase-function-kits/firestore-bigquery-export@1.0.0-rc.1"),
-      ).to.not.throw();
-      expect(() =>
-        validateNpmPackageName("@firebase-function-kits/firestore-bigquery-export@latest"),
-      ).to.not.throw();
-      expect(() =>
-        validateNpmPackageName("@firebase-function-kits/firestore-bigquery-export@next"),
-      ).to.not.throw();
-    });
-
-    it("should reject package names with multiple slashes", () => {
-      expect(() => validateNpmPackageName("@scope/pkg/extra")).to.throw(
-        FirebaseError,
-        /Invalid NPM package name/,
-      );
-      expect(() => validateNpmPackageName("foo/bar/baz")).to.throw(
-        FirebaseError,
-        /Invalid NPM package name/,
-      );
-    });
-
-    it("should reject unscoped package names containing slashes", () => {
-      expect(() => validateNpmPackageName("foo/bar")).to.throw(
-        FirebaseError,
-        /Invalid NPM package name/,
-      );
-    });
-
-    it("should reject empty or malformed package names", () => {
-      expect(() => validateNpmPackageName("")).to.throw(FirebaseError, /Invalid NPM package name/);
-      expect(() => validateNpmPackageName("@scope")).to.throw(
-        FirebaseError,
-        /Invalid NPM package name/,
-      );
-      expect(() => validateNpmPackageName("my-kit@")).to.throw(
-        FirebaseError,
-        /Invalid NPM package name/,
-      );
-      expect(() => validateNpmPackageName("@scope/my-kit@")).to.throw(
-        FirebaseError,
-        /Invalid NPM package name/,
-      );
-      expect(() => validateNpmPackageName("a".repeat(215))).to.throw(
-        FirebaseError,
-        /Invalid NPM package name/,
-      );
-    });
-  });
-
-  describe("resolveSdkSpecifierToSave", () => {
-    it("should preserve exact pins with = prefix", () => {
-      expect(resolveSdkSpecifierToSave("firebase-functions", "7.1.0", "7.1.0")).to.equal(
-        "firebase-functions@=7.1.0",
-      );
-      expect(resolveSdkSpecifierToSave("firebase-functions", "=7.1.0", "7.1.0")).to.equal(
-        "firebase-functions@=7.1.0",
-      );
-      expect(resolveSdkSpecifierToSave("firebase-functions", "v7.1.0", "7.1.0")).to.equal(
-        "firebase-functions@=7.1.0",
-      );
-      expect(resolveSdkSpecifierToSave("firebase-functions", "7.1.0")).to.equal(
-        "firebase-functions@=7.1.0",
-      );
-    });
-
-    it("should preserve tilde ranges anchored to installed version", () => {
-      expect(resolveSdkSpecifierToSave("firebase-functions", "~7.1.0", "7.1.2")).to.equal(
-        "firebase-functions@~7.1.2",
-      );
-      expect(resolveSdkSpecifierToSave("firebase-functions", "~7.1.0")).to.equal(
-        "firebase-functions@~7.1.0",
-      );
-    });
-
-    it("should anchor caret ranges to installed version with ^", () => {
-      expect(resolveSdkSpecifierToSave("firebase-functions", "^7.0.0", "7.3.2")).to.equal(
-        "firebase-functions@^7.3.2",
-      );
-    });
-
-    it("should anchor wide ranges to installed version with ^", () => {
-      expect(resolveSdkSpecifierToSave("firebase-functions", ">=7.0.0", "7.3.2")).to.equal(
-        "firebase-functions@^7.3.2",
-      );
-      expect(resolveSdkSpecifierToSave("firebase-functions", ">=7.0.0 <8.0.0", "7.3.2")).to.equal(
-        "firebase-functions@^7.3.2",
-      );
-    });
-
-    it("should preserve declared range when installed version is not available", () => {
-      expect(resolveSdkSpecifierToSave("firebase-functions", "^7.0.0")).to.equal(
-        "firebase-functions@^7.0.0",
-      );
-      expect(resolveSdkSpecifierToSave("firebase-functions", ">=7.0.0")).to.equal(
-        "firebase-functions@>=7.0.0",
-      );
-    });
-  });
 
   describe("generateUniqueId", () => {
     it("should return base ID when it is not in existing IDs", () => {
@@ -238,151 +125,6 @@ describe("functions/kits/install", () => {
       const res = generateUniqueId(longBase, existing);
       expect(res.length).to.be.at.most(40);
       expect(res).to.match(/^a{35}-[a-f0-9]{4}$/);
-    });
-  });
-
-  describe("parseNpmPackageSpecifier", () => {
-    it("should parse scoped package with version", () => {
-      const res = parseNpmPackageSpecifier(
-        "@firebase-function-kits/firestore-bigquery-export@1.0.0",
-      );
-      expect(res).to.deep.equal({
-        packageName: "@firebase-function-kits/firestore-bigquery-export",
-        version: "1.0.0",
-      });
-    });
-
-    it("should parse scoped package with release candidate version", () => {
-      const res = parseNpmPackageSpecifier(
-        "@firebase-function-kits/firestore-bigquery-export@1.0.0-rc.1",
-      );
-      expect(res).to.deep.equal({
-        packageName: "@firebase-function-kits/firestore-bigquery-export",
-        version: "1.0.0-rc.1",
-      });
-    });
-
-    it("should parse scoped package with tag", () => {
-      const res = parseNpmPackageSpecifier(
-        "@firebase-function-kits/firestore-bigquery-export@latest",
-      );
-      expect(res).to.deep.equal({
-        packageName: "@firebase-function-kits/firestore-bigquery-export",
-        version: "latest",
-      });
-    });
-
-    it("should parse scoped package without version", () => {
-      const res = parseNpmPackageSpecifier("@firebase-function-kits/firestore-bigquery-export");
-      expect(res).to.deep.equal({
-        packageName: "@firebase-function-kits/firestore-bigquery-export",
-      });
-    });
-
-    it("should parse non-scoped package with version", () => {
-      const res = parseNpmPackageSpecifier("my-kit@^2.0.0");
-      expect(res).to.deep.equal({
-        packageName: "my-kit",
-        version: "^2.0.0",
-      });
-    });
-
-    it("should parse non-scoped package with tag", () => {
-      const res = parseNpmPackageSpecifier("my-kit@next");
-      expect(res).to.deep.equal({
-        packageName: "my-kit",
-        version: "next",
-      });
-    });
-
-    it("should parse non-scoped package without version", () => {
-      const res = parseNpmPackageSpecifier("my-kit");
-      expect(res).to.deep.equal({
-        packageName: "my-kit",
-      });
-    });
-  });
-
-  describe("sanitizePackageNameToKitName", () => {
-    it("should extract kit name from scoped package name", () => {
-      expect(
-        sanitizePackageNameToKitName("@firebase-function-kits/firestore-bigquery-export"),
-      ).to.equal("firestore-bigquery-export");
-      expect(sanitizePackageNameToKitName("@foo/bar")).to.equal("bar");
-    });
-
-    it("should extract kit name from scoped package specifier with version or tag", () => {
-      expect(
-        sanitizePackageNameToKitName("@firebase-function-kits/firestore-bigquery-export@1.0.0"),
-      ).to.equal("firestore-bigquery-export");
-      expect(
-        sanitizePackageNameToKitName("@firebase-function-kits/firestore-bigquery-export@next"),
-      ).to.equal("firestore-bigquery-export");
-      expect(
-        sanitizePackageNameToKitName(
-          "@firebase-function-kits/firestore-bigquery-export@1.0.0-rc.1",
-        ),
-      ).to.equal("firestore-bigquery-export");
-    });
-
-    it("should sanitize non-scoped package name", () => {
-      expect(sanitizePackageNameToKitName("my-kit")).to.equal("my-kit");
-      expect(sanitizePackageNameToKitName("My_Kit!")).to.equal("my_kit");
-    });
-
-    it("should sanitize non-scoped package specifier with version or tag", () => {
-      expect(sanitizePackageNameToKitName("my-kit@1.2.3")).to.equal("my-kit");
-      expect(sanitizePackageNameToKitName("my-kit@next")).to.equal("my-kit");
-    });
-
-    it("should truncate long names to 40 characters", () => {
-      const longName = "@scope/" + "a".repeat(50);
-      expect(sanitizePackageNameToKitName(longName)).to.equal("a".repeat(40));
-    });
-  });
-
-  describe("isThirdPartyPackage", () => {
-    it("should return false for packages under @firebase-function-kits scope", () => {
-      expect(isThirdPartyPackage("@firebase-function-kits/firestore-bigquery-export")).to.be.false;
-      expect(isThirdPartyPackage("@firebase-function-kits/firestore-bigquery-export@1.0.0")).to.be
-        .false;
-      expect(isThirdPartyPackage("@firebase-function-kits/firestore-bigquery-export@next")).to.be
-        .false;
-    });
-
-    it("should return true for packages outside @firebase-function-kits scope", () => {
-      expect(isThirdPartyPackage("firebase-functions-kits")).to.be.true;
-      expect(isThirdPartyPackage("@firebase-function-kits-fake/foo")).to.be.true;
-      expect(isThirdPartyPackage("@other-scope/my-kit")).to.be.true;
-      expect(isThirdPartyPackage("third-party-kit")).to.be.true;
-      expect(isThirdPartyPackage("third-party-kit@1.2.3")).to.be.true;
-      expect(isThirdPartyPackage("third-party-kit@next")).to.be.true;
-    });
-  });
-
-  describe("checkPackageHasShrinkwrap", () => {
-    it("should return true when npm pack output includes hasShrinkwrap", async () => {
-      spawnWithOutputStub.resolves(JSON.stringify([{ hasShrinkwrap: true }]));
-      const res = await checkPackageHasShrinkwrap("@firebase-function-kits/my-kit");
-      expect(res).to.be.true;
-    });
-
-    it("should return true when npm pack files list includes npm-shrinkwrap.json", async () => {
-      spawnWithOutputStub.resolves(JSON.stringify([{ files: [{ path: "npm-shrinkwrap.json" }] }]));
-      const res = await checkPackageHasShrinkwrap("@firebase-function-kits/my-kit");
-      expect(res).to.be.true;
-    });
-
-    it("should return false when npm-shrinkwrap.json is not in package", async () => {
-      spawnWithOutputStub.resolves(JSON.stringify([{ files: [{ path: "package.json" }] }]));
-      const res = await checkPackageHasShrinkwrap("@firebase-function-kits/my-kit");
-      expect(res).to.be.false;
-    });
-
-    it("should return false when npm pack fails", async () => {
-      spawnWithOutputStub.rejects(new Error("npm pack error"));
-      const res = await checkPackageHasShrinkwrap("@firebase-function-kits/my-kit");
-      expect(res).to.be.false;
     });
   });
 
@@ -660,177 +402,6 @@ describe("functions/kits/install", () => {
     });
   });
 
-  describe("validateAndResolveDirectoryKit", () => {
-    it("should throw if directory is outside of project directory", async () => {
-      await expect(
-        validateAndResolveDirectoryKit("/mock/project", "../outside-project"),
-      ).to.be.rejectedWith(
-        FirebaseError,
-        "Directory '../outside-project' is outside of project directory. Function kit directory must be inside the project directory.",
-      );
-
-      await expect(
-        validateAndResolveDirectoryKit("/mock/project", "/other/path/outside"),
-      ).to.be.rejectedWith(
-        FirebaseError,
-        "Directory '/other/path/outside' is outside of project directory. Function kit directory must be inside the project directory.",
-      );
-    });
-
-    it("should throw if directory does not exist", async () => {
-      (fs.pathExists as sinon.SinonStub).withArgs("/mock/project/nonexistent").resolves(false);
-
-      await expect(
-        validateAndResolveDirectoryKit("/mock/project", "nonexistent"),
-      ).to.be.rejectedWith(FirebaseError, "Directory 'nonexistent' does not exist.");
-    });
-
-    it("should throw if path is not a directory", async () => {
-      (fs.pathExists as sinon.SinonStub).withArgs("/mock/project/file.txt").resolves(true);
-      statStub
-        .withArgs("/mock/project/file.txt")
-        .resolves({ isDirectory: () => false } as fs.Stats);
-
-      await expect(validateAndResolveDirectoryKit("/mock/project", "file.txt")).to.be.rejectedWith(
-        FirebaseError,
-        "Directory 'file.txt' is not a directory.",
-      );
-    });
-
-    it("should throw if directory does not contain a package.json", async () => {
-      (fs.pathExists as sinon.SinonStub).withArgs("/mock/project/my-kit").resolves(true);
-      (fs.pathExists as sinon.SinonStub)
-        .withArgs(path.join("/mock/project/my-kit", "package.json"))
-        .resolves(false);
-
-      await expect(validateAndResolveDirectoryKit("/mock/project", "my-kit")).to.be.rejectedWith(
-        FirebaseError,
-        "Directory 'my-kit' must contain a package.json file to be installed as a function kit.",
-      );
-    });
-
-    it("should throw if package.json cannot be parsed", async () => {
-      (fs.pathExists as sinon.SinonStub).withArgs("/mock/project/my-kit").resolves(true);
-      (fs.pathExists as sinon.SinonStub)
-        .withArgs(path.join("/mock/project/my-kit", "package.json"))
-        .resolves(true);
-      (fs.readJson as sinon.SinonStub)
-        .withArgs(path.join("/mock/project/my-kit", "package.json"))
-        .rejects(new Error("Unexpected token"));
-
-      await expect(validateAndResolveDirectoryKit("/mock/project", "my-kit")).to.be.rejectedWith(
-        FirebaseError,
-        /Failed to parse package\.json in 'my-kit': Unexpected token/,
-      );
-    });
-
-    it("should return ValidatedDirectoryKit with hasBuildScript: true when build script exists", async () => {
-      (fs.pathExists as sinon.SinonStub).withArgs("/mock/project/my-kit").resolves(true);
-      (fs.pathExists as sinon.SinonStub)
-        .withArgs(path.join("/mock/project/my-kit", "package.json"))
-        .resolves(true);
-      (fs.readJson as sinon.SinonStub)
-        .withArgs(path.join("/mock/project/my-kit", "package.json"))
-        .resolves({
-          scripts: {
-            build: "tsc",
-          },
-        });
-
-      const res = await validateAndResolveDirectoryKit("/mock/project", "my-kit");
-      expect(res).to.deep.equal({
-        absDirectoryPath: "/mock/project/my-kit",
-        relSourcePath: "my-kit",
-        hasBuildScript: true,
-      });
-    });
-
-    it("should return ValidatedDirectoryKit with hasBuildScript: false when build script is absent", async () => {
-      (fs.pathExists as sinon.SinonStub).withArgs("/mock/project/my-kit").resolves(true);
-      (fs.pathExists as sinon.SinonStub)
-        .withArgs(path.join("/mock/project/my-kit", "package.json"))
-        .resolves(true);
-      (fs.readJson as sinon.SinonStub)
-        .withArgs(path.join("/mock/project/my-kit", "package.json"))
-        .resolves({
-          scripts: {
-            start: "node index.js",
-          },
-        });
-
-      const res = await validateAndResolveDirectoryKit("/mock/project", "my-kit");
-      expect(res).to.deep.equal({
-        absDirectoryPath: "/mock/project/my-kit",
-        relSourcePath: "my-kit",
-        hasBuildScript: false,
-      });
-    });
-
-    it("should handle current directory relative path", async () => {
-      (fs.pathExists as sinon.SinonStub).withArgs("/mock/project").resolves(true);
-      (fs.pathExists as sinon.SinonStub)
-        .withArgs(path.join("/mock/project", "package.json"))
-        .resolves(true);
-      (fs.readJson as sinon.SinonStub)
-        .withArgs(path.join("/mock/project", "package.json"))
-        .resolves({});
-
-      const res = await validateAndResolveDirectoryKit("/mock/project", ".");
-      expect(res).to.deep.equal({
-        absDirectoryPath: "/mock/project",
-        relSourcePath: ".",
-        hasBuildScript: false,
-      });
-    });
-  });
-
-  describe("buildAndInstallDirectoryKit", () => {
-    it("should run npm install and npm run build when hasBuildScript is true", async () => {
-      await buildAndInstallDirectoryKit("/mock/project/my-kit", true);
-
-      expect(wrapSpawnStub).to.have.been.calledTwice;
-      expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
-        "npm",
-        ["install"],
-        "/mock/project/my-kit",
-      );
-      expect(wrapSpawnStub.secondCall).to.have.been.calledWith(
-        "npm",
-        ["run", "build"],
-        "/mock/project/my-kit",
-      );
-    });
-
-    it("should run only npm install when hasBuildScript is false", async () => {
-      await buildAndInstallDirectoryKit("/mock/project/my-kit", false);
-
-      expect(wrapSpawnStub).to.have.been.calledOnce;
-      expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
-        "npm",
-        ["install"],
-        "/mock/project/my-kit",
-      );
-    });
-
-    it("should throw FirebaseError if npm install fails", async () => {
-      wrapSpawnStub.withArgs("npm", ["install"]).rejects(new Error("npm install error"));
-
-      await expect(buildAndInstallDirectoryKit("/mock/project/my-kit", true)).to.be.rejectedWith(
-        FirebaseError,
-        /NPM install failed: npm install error/,
-      );
-    });
-
-    it("should throw FirebaseError if typescript build fails", async () => {
-      wrapSpawnStub.withArgs("npm", ["run", "build"]).rejects(new Error("tsc error"));
-
-      await expect(buildAndInstallDirectoryKit("/mock/project/my-kit", true)).to.be.rejectedWith(
-        FirebaseError,
-        /TypeScript build failed: tsc error/,
-      );
-    });
-  });
-
   describe("findExistingKit", () => {
     const mockFunctions: ValidatedKitSingle[] = [
       {
@@ -905,17 +476,6 @@ describe("functions/kits/install", () => {
       expect(source.defaultKitName).to.equal("@firebase-function-kits/firestore-export");
       expect(source.sourcePackageName).to.equal("@firebase-function-kits/firestore-export");
       expect(source.hasBuildScript).to.be.true;
-    });
-
-    it("should reject malformed package specifier with trailing @", async () => {
-      await expect(
-        resolvePackageSource({
-          config: { projectDir: "/mock/project" } as Config,
-          package: "my-kit@",
-          template: "installation",
-          nonInteractive: true,
-        }),
-      ).to.be.rejectedWith(FirebaseError, /Invalid NPM package name 'my-kit@'/);
     });
   });
 
@@ -1271,76 +831,6 @@ describe("functions/kits/install", () => {
     });
   });
 
-  describe("promptSecurityConfirmation", () => {
-    it("should return false without prompting for 1P package with shrinkwrap", async () => {
-      spawnWithOutputStub.resolves(JSON.stringify([{ hasShrinkwrap: true }]));
-      const confirmStub = sinon.stub(prompt, "confirm");
-
-      const res = await promptSecurityConfirmation(
-        "@firebase-function-kits/my-kit",
-        "@firebase-function-kits/my-kit",
-      );
-
-      expect(res).to.be.false;
-      expect(confirmStub).to.not.have.been.called;
-    });
-
-    it("should prompt confirmation when a 1P kit lacks shrinkwrap", async () => {
-      spawnWithOutputStub.resolves(JSON.stringify([{ files: [{ path: "package.json" }] }]));
-      const confirmStub = sinon.stub(prompt, "confirm").resolves(true);
-
-      const res = await promptSecurityConfirmation(
-        "@firebase-function-kits/my-kit",
-        "@firebase-function-kits/my-kit",
-      );
-
-      expect(res).to.be.false;
-      expect(confirmStub).to.have.been.calledOnceWith({
-        message:
-          "Are you sure you want to install @firebase-function-kits/my-kit without locked dependencies?",
-        default: false,
-        nonInteractive: undefined,
-      });
-      expect(loggerWarnStub).to.have.been.calledWith(
-        sinon.match(/functions:/),
-        sinon.match(/does not have an npm-shrinkwrap\.json file/),
-      );
-    });
-
-    it("should prompt confirmation when a 3P kit has shrinkwrap", async () => {
-      spawnWithOutputStub.resolves(JSON.stringify([{ hasShrinkwrap: true }]));
-      const confirmStub = sinon.stub(prompt, "confirm").resolves(true);
-
-      const res = await promptSecurityConfirmation(
-        "@third-party/custom-kit",
-        "@third-party/custom-kit",
-      );
-
-      expect(res).to.be.true;
-      expect(confirmStub).to.have.been.calledOnceWith({
-        message: "Are you sure you want to install the third-party kit @third-party/custom-kit?",
-        default: false,
-        nonInteractive: undefined,
-      });
-      expect(loggerWarnStub).to.have.been.calledWith(
-        sinon.match(/functions:/),
-        sinon.match(/is a third-party kit/),
-      );
-    });
-
-    it("should cancel installation if user declines confirmation", async () => {
-      spawnWithOutputStub.resolves(JSON.stringify([{ files: [{ path: "package.json" }] }]));
-      sinon.stub(prompt, "confirm").resolves(false);
-
-      await expect(
-        promptSecurityConfirmation(
-          "@firebase-function-kits/my-kit",
-          "@firebase-function-kits/my-kit",
-        ),
-      ).to.be.rejectedWith(FirebaseError, "Installation cancelled.");
-    });
-  });
-
   describe("promptExistingInstanceForProject", () => {
     it("should throw if kit has no instances configured", async () => {
       const kit = {
@@ -1548,303 +1038,30 @@ describe("functions/kits/install", () => {
     });
   });
 
-  describe("buildAndInstallKit", () => {
-    // Function kits must declare 'firebase-functions' as a dependency or peer dependency.
-    // Provide a mock package-lock.json with valid kit entries and installed SDK versions
-    // so tests can exercise installation logic (e.g. npm flags, scripts) against a valid kit baseline.
-    beforeEach(() => {
-      mockFs({
-        "/abs/path/package-lock.json": {
-          packages: {
-            "node_modules/@firebase-function-kits/my-kit": {
-              peerDependencies: {
-                "firebase-functions": "^7.0.0",
-              },
-            },
-            "node_modules/third-party-kit": {
-              peerDependencies: {
-                "firebase-functions": "^7.0.0",
-              },
-            },
-            "node_modules/my-kit": {
-              peerDependencies: {
-                "firebase-functions": "^7.0.0",
-              },
-            },
-            "node_modules/firebase-functions": { version: "7.3.2" },
-          },
+  describe("discoverKitBuild", () => {
+    it("should pass firebase envs including FIREBASE_KIT_INSTANCE_ID to discoverBuild when instanceId is provided", async () => {
+      await discoverKitBuild({ instanceId: "my-inst", projectId: "test-proj" }, "/mock/source");
+
+      expect(discoverBuildStub).to.have.been.calledOnceWithExactly(
+        {},
+        {
+          FIREBASE_CONFIG: JSON.stringify({ projectId: "test-proj" }),
+          GCLOUD_PROJECT: "test-proj",
+          FIREBASE_KIT_INSTANCE_ID: "my-inst",
         },
-      });
-    });
-
-    it("should run npm install and npm run build without --ignore-scripts for first-party kit", async () => {
-      await buildAndInstallKit("/abs/path", "@firebase-function-kits/my-kit", false);
-
-      expect(wrapSpawnStub).to.have.been.calledThrice;
-      expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
-        "npm",
-        ["install", "@firebase-function-kits/my-kit", "--save-prefix=^"],
-        "/abs/path",
-      );
-      expect(wrapSpawnStub.secondCall).to.have.been.calledWith(
-        "npm",
-        ["install", "firebase-functions@^7.3.2", "--save-prefix=^"],
-        "/abs/path",
-      );
-      expect(wrapSpawnStub.thirdCall).to.have.been.calledWith("npm", ["run", "build"], "/abs/path");
-    });
-
-    it("should run npm install with --ignore-scripts for third-party kit", async () => {
-      await buildAndInstallKit("/abs/path", "third-party-kit", true);
-
-      expect(wrapSpawnStub).to.have.been.calledThrice;
-      expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
-        "npm",
-        ["install", "third-party-kit", "--save-prefix=^", "--ignore-scripts"],
-        "/abs/path",
-      );
-      expect(wrapSpawnStub.secondCall).to.have.been.calledWith(
-        "npm",
-        ["install", "firebase-functions@^7.3.2", "--save-prefix=^", "--ignore-scripts"],
-        "/abs/path",
-      );
-      expect(wrapSpawnStub.thirdCall).to.have.been.calledWith("npm", ["run", "build"], "/abs/path");
-    });
-
-    it("should save multiple SDK dependencies when kit declares both functions and admin", async () => {
-      mockFs({
-        "/abs/path/package-lock.json": {
-          packages: {
-            "node_modules/@firebase-function-kits/my-kit": {
-              peerDependencies: {
-                "firebase-admin": "^14.0.0",
-                "firebase-functions": "^7.0.0",
-              },
-            },
-            "node_modules/firebase-admin": { version: "14.3.0" },
-            "node_modules/firebase-functions": { version: "7.3.2" },
-          },
-        },
-      });
-
-      await buildAndInstallKit("/abs/path", "@firebase-function-kits/my-kit", false);
-
-      expect(wrapSpawnStub).to.have.been.calledThrice;
-      expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
-        "npm",
-        ["install", "@firebase-function-kits/my-kit", "--save-prefix=^"],
-        "/abs/path",
-      );
-      expect(wrapSpawnStub.secondCall).to.have.been.calledWith(
-        "npm",
-        ["install", "firebase-functions@^7.3.2", "firebase-admin@^14.3.0", "--save-prefix=^"],
-        "/abs/path",
-      );
-      expect(wrapSpawnStub.thirdCall).to.have.been.calledWith("npm", ["run", "build"], "/abs/path");
-    });
-
-    it("should throw FirebaseError if npm install fails", async () => {
-      wrapSpawnStub.onFirstCall().rejects(new Error("npm install error"));
-
-      await expect(buildAndInstallKit("/abs/path", "my-kit", false)).to.be.rejectedWith(
-        FirebaseError,
-        /NPM install failed: npm install error/,
       );
     });
 
-    it("should throw FirebaseError if saving SDK dependencies fails", async () => {
-      const origError = new Error("ERESOLVE peer dependency conflict");
-      wrapSpawnStub
-        .withArgs("npm", ["install", "firebase-functions@^7.3.2", "--save-prefix=^"], "/abs/path")
-        .rejects(origError);
+    it("should omit FIREBASE_KIT_INSTANCE_ID from discoverBuild envs when instanceId is omitted", async () => {
+      await discoverKitBuild({ projectId: "test-proj" }, "/mock/source");
 
-      let err: unknown;
-      try {
-        await buildAndInstallKit("/abs/path", "my-kit", false);
-      } catch (e: unknown) {
-        err = e;
-      }
-      expect(err).to.be.an.instanceOf(FirebaseError);
-      expect((err as FirebaseError).message).to.match(
-        /Failed to install required SDK dependencies/,
+      expect(discoverBuildStub).to.have.been.calledOnceWithExactly(
+        {},
+        {
+          FIREBASE_CONFIG: JSON.stringify({ projectId: "test-proj" }),
+          GCLOUD_PROJECT: "test-proj",
+        },
       );
-      expect((err as FirebaseError).original).to.equal(origError);
-    });
-
-    it("should throw FirebaseError if typescript build fails", async () => {
-      wrapSpawnStub
-        .withArgs("npm", ["run", "build"], "/abs/path")
-        .rejects(new Error("tsc build error"));
-
-      await expect(buildAndInstallKit("/abs/path", "my-kit", false)).to.be.rejectedWith(
-        FirebaseError,
-        /TypeScript build failed: tsc build error/,
-      );
-    });
-  });
-
-  describe("getKitPackagesToSave", () => {
-    it("should resolve installed versions from package-lock.json when hoisted", async () => {
-      mockFs({
-        "/mock/src/package-lock.json": {
-          packages: {
-            "node_modules/@scope/my-kit": {
-              peerDependencies: {
-                "firebase-admin": "^14.0.0",
-                "firebase-functions": "^7.0.0",
-              },
-            },
-            "node_modules/firebase-admin": { version: "14.3.0" },
-            "node_modules/firebase-functions": { version: "7.3.2" },
-          },
-        },
-      });
-
-      const packagesToSave = await getKitPackagesToSave("/mock/src", "@scope/my-kit");
-
-      expect(packagesToSave).to.deep.equal(["firebase-functions@^7.3.2", "firebase-admin@^14.3.0"]);
-    });
-
-    it("should resolve declared versions from package-lock.json when packages are not hoisted", async () => {
-      mockFs({
-        "/mock/src/package-lock.json": {
-          packages: {
-            "node_modules/@scope/my-kit": {
-              peerDependencies: {
-                "firebase-admin": "^14.2.0",
-                "firebase-functions": "^7.1.0",
-              },
-            },
-          },
-        },
-      });
-
-      const packagesToSave = await getKitPackagesToSave("/mock/src", "@scope/my-kit");
-
-      expect(packagesToSave).to.deep.equal(["firebase-functions@^7.1.0", "firebase-admin@^14.2.0"]);
-    });
-
-    it("should omit firebase-admin when not declared, even if firebase-admin is present in package-lock.json", async () => {
-      mockFs({
-        "/mock/src/package-lock.json": {
-          packages: {
-            "node_modules/@scope/my-kit": {
-              dependencies: {
-                "firebase-functions": "^7.2.0",
-              },
-            },
-            "node_modules/firebase-admin": { version: "14.3.0" },
-            "node_modules/firebase-functions": { version: "7.2.0" },
-          },
-        },
-      });
-
-      const packagesToSave = await getKitPackagesToSave("/mock/src", "@scope/my-kit");
-
-      expect(packagesToSave).to.deep.equal(["firebase-functions@^7.2.0"]);
-    });
-
-    it("should throw FirebaseError when functions is undeclared", async () => {
-      mockFs({
-        "/mock/src/package-lock.json": {
-          packages: {
-            "node_modules/@scope/my-kit": {
-              dependencies: {},
-            },
-          },
-        },
-      });
-
-      await expect(getKitPackagesToSave("/mock/src", "@scope/my-kit")).to.be.rejectedWith(
-        FirebaseError,
-        /Package '@scope\/my-kit' is not a valid Function Kit: it must declare 'firebase-functions'/,
-      );
-    });
-
-    it("should fall back to reading node_modules package.json when lockfile is missing", async () => {
-      mockFs({
-        "/mock/src/node_modules/@scope/my-kit/package.json": {
-          peerDependencies: {
-            "firebase-admin": "^14.1.0",
-            "firebase-functions": "^7.3.2",
-          },
-        },
-      });
-
-      const packagesToSave = await getKitPackagesToSave("/mock/src", "@scope/my-kit");
-
-      expect(packagesToSave).to.deep.equal(["firebase-functions@^7.3.2", "firebase-admin@^14.1.0"]);
-    });
-
-    it("should preserve range and >= syntax when falling back to node_modules package.json", async () => {
-      mockFs({
-        "/mock/src/node_modules/@scope/my-kit/package.json": {
-          peerDependencies: {
-            "firebase-admin": ">=13.0.0 <15.0.0",
-            "firebase-functions": ">=7.0.0",
-          },
-        },
-      });
-
-      const packagesToSave = await getKitPackagesToSave("/mock/src", "@scope/my-kit");
-
-      expect(packagesToSave).to.deep.equal([
-        "firebase-functions@>=7.0.0",
-        "firebase-admin@>=13.0.0 <15.0.0",
-      ]);
-    });
-
-    it("should fall back gracefully to node_modules when lockfile contains invalid JSON", async () => {
-      mockFs({
-        "/mock/src/package-lock.json": new Error("Invalid JSON"),
-        "/mock/src/node_modules/@scope/my-kit/package.json": {
-          dependencies: {
-            "firebase-functions": "^7.0.0",
-          },
-        },
-      });
-
-      const packagesToSave = await getKitPackagesToSave("/mock/src", "@scope/my-kit");
-
-      expect(packagesToSave).to.deep.equal(["firebase-functions@^7.0.0"]);
-    });
-
-    it("should preserve exact pins when declared in package-lock.json", async () => {
-      mockFs({
-        "/mock/src/package-lock.json": {
-          packages: {
-            "node_modules/@scope/my-kit": {
-              peerDependencies: {
-                "firebase-functions": "7.1.0",
-              },
-            },
-            "node_modules/firebase-functions": { version: "7.1.0" },
-          },
-        },
-      });
-
-      const packagesToSave = await getKitPackagesToSave("/mock/src", "@scope/my-kit");
-
-      expect(packagesToSave).to.deep.equal(["firebase-functions@=7.1.0"]);
-    });
-
-    it("should preserve tilde ranges when declared in package-lock.json", async () => {
-      mockFs({
-        "/mock/src/package-lock.json": {
-          packages: {
-            "node_modules/@scope/my-kit": {
-              peerDependencies: {
-                "firebase-functions": "~7.1.0",
-              },
-            },
-            "node_modules/firebase-functions": { version: "7.1.3" },
-          },
-        },
-      });
-
-      const packagesToSave = await getKitPackagesToSave("/mock/src", "@scope/my-kit");
-
-      expect(packagesToSave).to.deep.equal(["firebase-functions@~7.1.3"]);
     });
   });
 
@@ -1859,13 +1076,7 @@ describe("functions/kits/install", () => {
         params: [],
         requiredRoles: [],
       };
-
-      const delegate = {
-        discoverBuild: sinon.stub().resolves(mockBuild),
-      };
-      sinon
-        .stub(runtimes, "getRuntimeDelegate")
-        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      discoverBuildStub.resolves(mockBuild);
 
       await printKitFirstDeployReport({ instanceId: "my-inst", absSourcePath: "/mock/source" });
 
@@ -1891,13 +1102,7 @@ describe("functions/kits/install", () => {
         params: [],
         requiredRoles: [],
       };
-
-      const delegate = {
-        discoverBuild: sinon.stub().resolves(mockBuild),
-      };
-      sinon
-        .stub(runtimes, "getRuntimeDelegate")
-        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      discoverBuildStub.resolves(mockBuild);
 
       await printKitFirstDeployReport({ instanceId: "my-inst", absSourcePath: "/mock/source" });
 
@@ -1926,13 +1131,7 @@ describe("functions/kits/install", () => {
         params: [],
         requiredRoles: [],
       };
-
-      const delegate = {
-        discoverBuild: sinon.stub().resolves(mockBuild),
-      };
-      sinon
-        .stub(runtimes, "getRuntimeDelegate")
-        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      discoverBuildStub.resolves(mockBuild);
 
       await printKitFirstDeployReport({ instanceId: "my-inst", absSourcePath: "/mock/source" });
 
@@ -1955,13 +1154,7 @@ describe("functions/kits/install", () => {
         params: [],
         requiredRoles: [],
       };
-
-      const delegate = {
-        discoverBuild: sinon.stub().resolves(mockBuild),
-      };
-      sinon
-        .stub(runtimes, "getRuntimeDelegate")
-        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      discoverBuildStub.resolves(mockBuild);
 
       await printKitFirstDeployReport({ instanceId: "my-inst", absSourcePath: "/mock/source" });
 
@@ -1982,13 +1175,7 @@ describe("functions/kits/install", () => {
         params: [],
         requiredRoles: ["roles/datastore.user", "roles/bigquery.dataEditor"],
       };
-
-      const delegate = {
-        discoverBuild: sinon.stub().resolves(mockBuild),
-      };
-      sinon
-        .stub(runtimes, "getRuntimeDelegate")
-        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      discoverBuildStub.resolves(mockBuild);
       sinon.stub(iam, "getRoleName").callsFake((role: string) => {
         if (role === "roles/datastore.user") return Promise.resolve("Cloud Datastore User");
         if (role === "roles/bigquery.dataEditor") return Promise.resolve("BigQuery Data Editor");
@@ -2027,13 +1214,7 @@ describe("functions/kits/install", () => {
         params: [],
         requiredRoles: ["roles/bigquery.dataEditor"],
       };
-
-      const delegate = {
-        discoverBuild: sinon.stub().resolves(mockBuild),
-      };
-      sinon
-        .stub(runtimes, "getRuntimeDelegate")
-        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      discoverBuildStub.resolves(mockBuild);
       sinon.stub(iam, "getRoleName").resolves("BigQuery Data Editor");
 
       await printKitFirstDeployReport({ instanceId: "my-inst", absSourcePath: "/mock/source" });
@@ -2087,13 +1268,7 @@ describe("functions/kits/install", () => {
         params: [],
         requiredRoles: [],
       };
-
-      const delegate = {
-        discoverBuild: sinon.stub().resolves(mockBuild),
-      };
-      sinon
-        .stub(runtimes, "getRuntimeDelegate")
-        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      discoverBuildStub.resolves(mockBuild);
 
       await printKitFirstDeployReport({ instanceId: "my-inst", absSourcePath: "/mock/source" });
 
@@ -2102,7 +1277,7 @@ describe("functions/kits/install", () => {
     });
 
     it("should handle discovery errors gracefully without throwing", async () => {
-      sinon.stub(runtimes, "getRuntimeDelegate").rejects(new Error("Discovery failed"));
+      getRuntimeDelegateStub.rejects(new Error("Discovery failed"));
 
       await expect(
         printKitFirstDeployReport({ instanceId: "my-inst", absSourcePath: "/mock/source" }),
@@ -2110,8 +1285,6 @@ describe("functions/kits/install", () => {
     });
 
     it("should use preDiscoveredBuild when provided without rediscovering build", async () => {
-      const getRuntimeDelegateStub = sinon.stub(runtimes, "getRuntimeDelegate");
-
       const mockBuild: build.Build = {
         requiredAPIs: [{ api: "storage.googleapis.com" }],
         endpoints: {},
@@ -2140,7 +1313,6 @@ describe("functions/kits/install", () => {
     let writeResolvedParamsStub: sinon.SinonStub;
     let writeResolvedSecretRefsStub: sinon.SinonStub;
     let resolveParamsStub: sinon.SinonStub;
-    let getFirebaseConfigStub: sinon.SinonStub;
 
     beforeEach(() => {
       loadUserEnvsStub = sinon.stub(functionsEnv, "loadUserEnvs").returns({});
@@ -2150,9 +1322,6 @@ describe("functions/kits/install", () => {
         paramValues: {},
         secretRefs: {},
       });
-      getFirebaseConfigStub = sinon
-        .stub(functionsConfig, "getFirebaseConfig")
-        .resolves({ projectId: "my-project" });
     });
 
     it("should return early if params array is empty or undefined", async () => {
@@ -2216,7 +1385,6 @@ describe("functions/kits/install", () => {
         absSourcePath: "/mock/project/source",
         instanceId: "inst",
         nonInteractive: false,
-        force: false,
         params: paramList,
       });
 
@@ -2234,7 +1402,6 @@ describe("functions/kits/install", () => {
         userEnvs: sinon.match.object,
         codebase: "inst",
         nonInteractive: false,
-        force: false,
       });
 
       expect(writeResolvedParamsStub).to.have.been.calledWith(
@@ -2250,8 +1417,52 @@ describe("functions/kits/install", () => {
       );
     });
 
-    it("should write secret refs when secretEnvParams experiment is enabled", async () => {
+    it("should write secret refs with an instance-specific prefix when secretEnvParams and writeDefaultSecretBindings experiments are enabled", async () => {
       (experiments.isEnabled as sinon.SinonStub).withArgs("secretEnvParams").returns(true);
+      (experiments.isEnabled as sinon.SinonStub)
+        .withArgs("writeDefaultSecretBindings")
+        .returns(true);
+      const mockConfig = { projectDir: "/mock/project" } as Config;
+      const paramList: params.Param[] = [{ name: "SECRET_VAR", type: "secret" }];
+      const wantUpdatedParamList: params.Param[] = [
+        { name: "SECRET_VAR", type: "secret", resourceId: "kit-inst-SECRET_VAR" },
+      ];
+
+      resolveParamsStub.resolves({
+        paramValues: {},
+        secretRefs: { SECRET_VAR: "my-secret:latest" },
+      });
+
+      await promptAndWriteKitParams({
+        config: mockConfig,
+        projectId: "my-project",
+        absConfigDirPath: "/mock/project/config-inst",
+        absSourcePath: "/mock/project/source",
+        instanceId: "inst",
+        nonInteractive: false,
+        params: paramList,
+      });
+
+      expect(resolveParamsStub).to.have.been.calledWith({
+        params: wantUpdatedParamList,
+        firebaseConfig: { projectId: "my-project" },
+        userEnvs: sinon.match.object,
+        codebase: "inst",
+        nonInteractive: false,
+      });
+
+      expect(writeResolvedSecretRefsStub).to.have.been.calledWith(
+        { SECRET_VAR: "my-secret:latest" },
+        {},
+        sinon.match.object,
+      );
+    });
+
+    it("should not write secret refs when writeDefaultSecretBindings experiment is disabled", async () => {
+      (experiments.isEnabled as sinon.SinonStub).withArgs("secretEnvParams").returns(true);
+      (experiments.isEnabled as sinon.SinonStub)
+        .withArgs("writeDefaultSecretBindings")
+        .returns(false);
       const mockConfig = { projectDir: "/mock/project" } as Config;
       const paramList: params.Param[] = [{ name: "SECRET_VAR", type: "secret" }];
 
@@ -2266,14 +1477,60 @@ describe("functions/kits/install", () => {
         absConfigDirPath: "/mock/project/config-inst",
         absSourcePath: "/mock/project/source",
         instanceId: "inst",
+        nonInteractive: false,
         params: paramList,
       });
 
-      expect(writeResolvedSecretRefsStub).to.have.been.calledWith(
-        { SECRET_VAR: "my-secret:latest" },
-        {},
-        sinon.match.object,
-      );
+      expect(writeResolvedSecretRefsStub).to.not.have.been.called;
+    });
+
+    it("should not write secret refs when secretEnvParams experiment is disabled even if writeDefaultSecretBindings is enabled", async () => {
+      (experiments.isEnabled as sinon.SinonStub).withArgs("secretEnvParams").returns(false);
+      (experiments.isEnabled as sinon.SinonStub)
+        .withArgs("writeDefaultSecretBindings")
+        .returns(true);
+      const mockConfig = { projectDir: "/mock/project" } as Config;
+      const paramList: params.Param[] = [{ name: "SECRET_VAR", type: "secret" }];
+
+      resolveParamsStub.resolves({
+        paramValues: {},
+        secretRefs: { SECRET_VAR: "my-secret:latest" },
+      });
+
+      await promptAndWriteKitParams({
+        config: mockConfig,
+        projectId: "my-project",
+        absConfigDirPath: "/mock/project/config-inst",
+        absSourcePath: "/mock/project/source",
+        instanceId: "inst",
+        nonInteractive: false,
+        params: paramList,
+      });
+
+      expect(writeResolvedSecretRefsStub).to.not.have.been.called;
+    });
+
+    it("should apply secretRefs from loaded user envs to matching secret params", async () => {
+      const mockConfig = { projectDir: "/mock/project" } as Config;
+      const secretParam: params.Param = { name: "MY_SECRET", type: "secret" };
+      loadUserEnvsStub.returns({
+        FIREBASE_SECRET_REF_MY_SECRET: "projects/12345/secrets/my-secret-id/versions/2",
+      });
+
+      await promptAndWriteKitParams({
+        config: mockConfig,
+        projectId: "my-project",
+        absConfigDirPath: "/mock/project/config-inst",
+        absSourcePath: "/mock/project/source",
+        instanceId: "inst",
+        params: [secretParam],
+      });
+
+      if (secretParam.type === "secret") {
+        expect(secretParam.resourceId).to.equal("my-secret-id");
+        expect(secretParam.version).to.equal("2");
+        expect(secretParam.inLocalEnvironment).to.be.true;
+      }
     });
 
     it("should handle getFirebaseConfig failure gracefully and still resolve params", async () => {
@@ -2296,7 +1553,6 @@ describe("functions/kits/install", () => {
         userEnvs: sinon.match.object,
         codebase: "inst",
         nonInteractive: undefined,
-        force: undefined,
       });
     });
 
@@ -2344,19 +1600,17 @@ describe("functions/kits/install", () => {
       sinon.stub(prompt, "select").resolves("addInstance");
       sinon.stub(prompt, "input").resolves("inst2");
 
-      const res = await addKitInstanceOrConfigureProject(
-        {
-          config: mockConfig,
-          project: "my-project",
-        },
+      const res = await addKitInstanceOrConfigureProject({
+        config: mockConfig,
+        project: "my-project",
         existingKit,
-        {
+        existingFunctionsInfo: {
           existingFunctions: [existingKit],
           existingKitIds: ["firestore-bigquery-export"],
           existingCodebases: [],
           existingInstanceIds: ["inst1"],
         },
-      );
+      });
 
       expect(res).to.deep.equal({
         action: "addedInstance",
@@ -2397,12 +1651,7 @@ describe("functions/kits/install", () => {
         endpoints: {},
         params: paramList,
       };
-      const delegate = {
-        discoverBuild: sinon.stub().resolves(mockBuild),
-      };
-      sinon
-        .stub(runtimes, "getRuntimeDelegate")
-        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      discoverBuildStub.resolves(mockBuild);
 
       const resolveParamsStub = sinon.stub(params, "resolveParams").resolves({
         paramValues: { TABLE_NAME: new params.ParamValue("my_table", false, { string: true }) },
@@ -2410,21 +1659,23 @@ describe("functions/kits/install", () => {
       });
       const writeResolvedParamsStub = sinon.stub(functionsEnv, "writeResolvedParams");
 
-      const res = await addKitInstanceOrConfigureProject(
-        {
-          config: mockConfig,
-          project: "my-project",
-        },
+      const res = await addKitInstanceOrConfigureProject({
+        config: mockConfig,
+        project: "my-project",
         existingKit,
-        {
+        existingFunctionsInfo: {
           existingFunctions: [existingKit],
           existingKitIds: ["firestore-bigquery-export"],
           existingCodebases: [],
           existingInstanceIds: ["inst1"],
         },
-      );
+      });
 
       expect(res.action).to.equal("addedInstance");
+      expect(discoverBuildStub).to.have.been.calledWith(
+        {},
+        sinon.match({ FIREBASE_KIT_INSTANCE_ID: "inst2" }),
+      );
       expect(resolveParamsStub).to.have.been.calledOnce;
       expect(writeResolvedParamsStub).to.have.been.calledOnce;
     });
@@ -2446,19 +1697,17 @@ describe("functions/kits/install", () => {
 
       sinon.stub(prompt, "select").resolves("addEnv");
 
-      const res = await addKitInstanceOrConfigureProject(
-        {
-          config: mockConfig,
-          project: "my-project",
-        },
+      const res = await addKitInstanceOrConfigureProject({
+        config: mockConfig,
+        project: "my-project",
         existingKit,
-        {
+        existingFunctionsInfo: {
           existingFunctions: [existingKit],
           existingKitIds: ["firestore-bigquery-export"],
           existingCodebases: [],
           existingInstanceIds: ["inst1"],
         },
-      );
+      });
 
       expect(res).to.deep.equal({
         action: "configuredEnv",
@@ -2486,25 +1735,23 @@ describe("functions/kits/install", () => {
 
       sinon.stub(prompt, "select").resolves("addEnv");
 
-      const res = await addKitInstanceOrConfigureProject(
-        {
-          config: mockConfig,
-          project: "my-project",
-          seedEnv: {
-            projectId: "my-project",
-            envs: {
-              FOO: "bar",
-            },
+      const res = await addKitInstanceOrConfigureProject({
+        config: mockConfig,
+        project: "my-project",
+        seedEnv: {
+          projectId: "my-project",
+          envs: {
+            FOO: "bar",
           },
         },
         existingKit,
-        {
+        existingFunctionsInfo: {
           existingFunctions: [existingKit],
           existingKitIds: ["firestore-bigquery-export"],
           existingCodebases: [],
           existingInstanceIds: ["inst1"],
         },
-      );
+      });
 
       expect(seedKitInstanceEnvStub).to.have.been.calledOnceWith({
         configDir: path.join(
@@ -2548,12 +1795,7 @@ describe("functions/kits/install", () => {
         endpoints: {},
         params: paramList,
       };
-      const delegate = {
-        discoverBuild: sinon.stub().resolves(mockBuild),
-      };
-      sinon
-        .stub(runtimes, "getRuntimeDelegate")
-        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      discoverBuildStub.resolves(mockBuild);
 
       const resolveParamsStub = sinon.stub(params, "resolveParams").resolves({
         paramValues: { TABLE_NAME: new params.ParamValue("my_table", false, { string: true }) },
@@ -2561,19 +1803,17 @@ describe("functions/kits/install", () => {
       });
       const writeResolvedParamsStub = sinon.stub(functionsEnv, "writeResolvedParams");
 
-      const res = await addKitInstanceOrConfigureProject(
-        {
-          config: mockConfig,
-          project: "my-project",
-        },
+      const res = await addKitInstanceOrConfigureProject({
+        config: mockConfig,
+        project: "my-project",
         existingKit,
-        {
+        existingFunctionsInfo: {
           existingFunctions: [existingKit],
           existingKitIds: ["firestore-bigquery-export"],
           existingCodebases: [],
           existingInstanceIds: ["inst1"],
         },
-      );
+      });
 
       expect(res).to.deep.equal({
         action: "configuredEnv",
@@ -2605,21 +1845,19 @@ describe("functions/kits/install", () => {
 
       const resolveParamsStub = sinon.stub(params, "resolveParams");
 
-      const res = await addKitInstanceOrConfigureProject(
-        {
-          config: mockConfig,
-          project: "my-project",
-          projectId: "my-project",
-          configure: false,
-        },
+      const res = await addKitInstanceOrConfigureProject({
+        config: mockConfig,
+        project: "my-project",
+        projectId: "my-project",
+        configure: false,
         existingKit,
-        {
+        existingFunctionsInfo: {
           existingFunctions: [existingKit],
           existingKitIds: ["firestore-bigquery-export"],
           existingCodebases: [],
           existingInstanceIds: ["inst1"],
         },
-      );
+      });
 
       expect(res).to.deep.equal({
         action: "configuredEnv",
@@ -2672,20 +1910,18 @@ describe("functions/kits/install", () => {
 
       const selectStub = sinon.stub(prompt, "select").resolves("addEnv");
 
-      const res = await addKitInstanceOrConfigureProject(
-        {
-          config: mockConfig,
-          project: "my-project",
-          configure: false,
-        },
+      const res = await addKitInstanceOrConfigureProject({
+        config: mockConfig,
+        project: "my-project",
+        configure: false,
         existingKit,
-        {
+        existingFunctionsInfo: {
           existingFunctions: [existingKit],
           existingKitIds: ["firestore-bigquery-export"],
           existingCodebases: [],
           existingInstanceIds: ["inst1", "inst2"],
         },
-      );
+      });
 
       expect(selectStub).to.have.been.calledOnceWith({
         message:
@@ -2734,20 +1970,18 @@ describe("functions/kits/install", () => {
       const selectStub = sinon.stub(prompt, "select");
       sinon.stub(prompt, "input").resolves("inst3");
 
-      const res = await addKitInstanceOrConfigureProject(
-        {
-          config: mockConfig,
-          project: "my-project",
-          configure: false,
-        },
+      const res = await addKitInstanceOrConfigureProject({
+        config: mockConfig,
+        project: "my-project",
+        configure: false,
         existingKit,
-        {
+        existingFunctionsInfo: {
           existingFunctions: [existingKit],
           existingKitIds: ["firestore-bigquery-export"],
           existingCodebases: [],
           existingInstanceIds: ["inst1", "inst2"],
         },
-      );
+      });
 
       expect(selectStub).to.not.have.been.called;
       expect(res.action).to.equal("addedInstance");
@@ -2788,22 +2022,20 @@ describe("functions/kits/install", () => {
 
       const selectStub = sinon.stub(prompt, "select");
 
-      const res = await addKitInstanceOrConfigureProject(
-        {
-          config: mockConfig,
-          project: "my-project",
-          configure: false,
-          instanceId: "inst2",
-          nonInteractive: true,
-        },
+      const res = await addKitInstanceOrConfigureProject({
+        config: mockConfig,
+        project: "my-project",
+        configure: false,
+        instanceId: "inst2",
+        nonInteractive: true,
         existingKit,
-        {
+        existingFunctionsInfo: {
           existingFunctions: [existingKit],
           existingKitIds: ["firestore-bigquery-export"],
           existingCodebases: [],
           existingInstanceIds: ["inst1", "inst2"],
         },
-      );
+      });
 
       expect(selectStub).to.not.have.been.called;
       expect(res.action).to.equal("configuredEnv");
@@ -2835,21 +2067,19 @@ describe("functions/kits/install", () => {
       } as unknown as Config;
 
       await expect(
-        addKitInstanceOrConfigureProject(
-          {
-            config: mockConfig,
-            project: "my-project",
-            configure: false,
-            instanceId: "inst1",
-          },
+        addKitInstanceOrConfigureProject({
+          config: mockConfig,
+          project: "my-project",
+          configure: false,
+          instanceId: "inst1",
           existingKit,
-          {
+          existingFunctionsInfo: {
             existingFunctions: [existingKit],
             existingKitIds: ["firestore-bigquery-export"],
             existingCodebases: [],
             existingInstanceIds: ["inst1"],
           },
-        ),
+        }),
       ).to.be.rejectedWith(
         FirebaseError,
         "Instance 'inst1' is already configured for this project.",
@@ -2874,21 +2104,19 @@ describe("functions/kits/install", () => {
 
       const selectStub = sinon.stub(prompt, "select");
 
-      const res = await addKitInstanceOrConfigureProject(
-        {
-          config: mockConfig,
-          project: "my-project",
-          configure: false,
-          instanceId: "inst1",
-        },
+      const res = await addKitInstanceOrConfigureProject({
+        config: mockConfig,
+        project: "my-project",
+        configure: false,
+        instanceId: "inst1",
         existingKit,
-        {
+        existingFunctionsInfo: {
           existingFunctions: [existingKit],
           existingKitIds: ["firestore-bigquery-export"],
           existingCodebases: [],
           existingInstanceIds: ["inst1"],
         },
-      );
+      });
 
       expect(selectStub).to.not.have.been.called;
       expect(res.action).to.equal("configuredEnv");
@@ -2917,21 +2145,19 @@ describe("functions/kits/install", () => {
 
       const selectStub = sinon.stub(prompt, "select");
 
-      const res = await addKitInstanceOrConfigureProject(
-        {
-          config: mockConfig,
-          project: "my-project",
-          configure: false,
-          instanceId: "inst-new",
-        },
+      const res = await addKitInstanceOrConfigureProject({
+        config: mockConfig,
+        project: "my-project",
+        configure: false,
+        instanceId: "inst-new",
         existingKit,
-        {
+        existingFunctionsInfo: {
           existingFunctions: [existingKit],
           existingKitIds: ["firestore-bigquery-export"],
           existingCodebases: [],
           existingInstanceIds: ["inst1"],
         },
-      );
+      });
 
       expect(selectStub).to.not.have.been.called;
       expect(res.action).to.equal("addedInstance");
@@ -2955,21 +2181,19 @@ describe("functions/kits/install", () => {
       } as unknown as Config;
 
       await expect(
-        addKitInstanceOrConfigureProject(
-          {
-            config: mockConfig,
-            project: "my-project",
-            configure: false,
-            instanceId: "other-kit-inst",
-          },
+        addKitInstanceOrConfigureProject({
+          config: mockConfig,
+          project: "my-project",
+          configure: false,
+          instanceId: "other-kit-inst",
           existingKit,
-          {
+          existingFunctionsInfo: {
             existingFunctions: [existingKit],
             existingKitIds: ["firestore-bigquery-export", "other-kit"],
             existingCodebases: [],
             existingInstanceIds: ["inst1", "other-kit-inst"],
           },
-        ),
+        }),
       ).to.be.rejectedWith(
         FirebaseError,
         "functions kit instance ID must be unique across all kits, but 'other-kit-inst' was used more than once.",
@@ -3070,6 +2294,36 @@ describe("functions/kits/install", () => {
       ).to.be.rejectedWith(FirebaseError, /Invalid NPM package name/);
     });
 
+    it("should throw an error before prompting or scaffolding if package does not exist in npm registry", async () => {
+      const writeProjectFileStub = sinon.stub();
+      const askWriteProjectFileStub = sinon.stub().resolves();
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: writeProjectFileStub,
+        askWriteProjectFile: askWriteProjectFileStub,
+      } as unknown as Config;
+
+      spawnWithOutputStub
+        .withArgs("npm", ["view", "@firebase/my-silly-package", "version"])
+        .rejects(new Error("npm error code E404"));
+
+      await expect(
+        installKitOrInstance({
+          config: mockConfig,
+          package: "@firebase/my-silly-package",
+        }),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        /NPM package '@firebase\/my-silly-package' could not be found in the npm registry/,
+      );
+
+      expect(loggerWarnStub).to.not.have.been.called;
+      expect(askWriteProjectFileStub).to.not.have.been.called;
+      expect(writeProjectFileStub).to.not.have.been.called;
+    });
+
     it("should throw an error if template has an invalid template name", async () => {
       const mockConfig = {
         projectDir: "/mock/project",
@@ -3151,6 +2405,11 @@ describe("functions/kits/install", () => {
           },
         ],
       });
+
+      const tsconfig = JSON.parse(
+        writtenFiles["function-kits/firestore-bigquery-export/source/tsconfig.json"] as string,
+      ) as { compilerOptions?: { skipLibCheck?: boolean } };
+      expect(tsconfig.compilerOptions?.skipLibCheck).to.be.true;
     });
 
     it("should accept custom kitId and instanceId for package kit", async () => {
@@ -3573,12 +2832,7 @@ describe("functions/kits/install", () => {
         endpoints: {},
         params: paramList,
       };
-      const delegate = {
-        discoverBuild: sinon.stub().resolves(mockBuild),
-      };
-      sinon
-        .stub(runtimes, "getRuntimeDelegate")
-        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      discoverBuildStub.resolves(mockBuild);
 
       const resolveParamsStub = sinon.stub(params, "resolveParams").resolves({
         paramValues: {
@@ -3615,12 +2869,7 @@ describe("functions/kits/install", () => {
         endpoints: {},
         params: paramList,
       };
-      const delegate = {
-        discoverBuild: sinon.stub().resolves(mockBuild),
-      };
-      sinon
-        .stub(runtimes, "getRuntimeDelegate")
-        .resolves(delegate as unknown as runtimes.RuntimeDelegate);
+      discoverBuildStub.resolves(mockBuild);
 
       sinon
         .stub(params, "resolveParams")
@@ -3671,6 +2920,390 @@ describe("functions/kits/install", () => {
           ".env.target-proj",
         ),
       );
+    });
+
+    it("should cancel installation for a third-party kit in non-interactive mode when force is not set", async () => {
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+        path: (p: string) => path.join("/mock/project", p),
+      } as unknown as Config;
+
+      await expect(
+        installKitOrInstance({
+          config: mockConfig,
+          package: "@third-party/custom-kit",
+          nonInteractive: true,
+        }),
+      ).to.be.rejectedWith(FirebaseError, "Installation cancelled.");
+    });
+
+    it("should successfully install a third-party kit without shrinkwrap when force is true", async () => {
+      mockFs({
+        "/mock/project/function-kits/custom-kit/source/package-lock.json": {
+          packages: {
+            "node_modules/@third-party/custom-kit": {
+              peerDependencies: {
+                "firebase-functions": "^7.0.0",
+              },
+            },
+            "node_modules/firebase-functions": { version: "7.3.2" },
+          },
+        },
+      });
+      spawnWithOutputStub.resolves(JSON.stringify([{ files: [{ path: "package.json" }] }]));
+      const writtenFiles: Record<string, unknown> = {};
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+        },
+        askWriteProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+          return Promise.resolve();
+        },
+      } as unknown as Config;
+
+      const res = await installKitOrInstance({
+        config: mockConfig,
+        package: "@third-party/custom-kit@1.0.0",
+        nonInteractive: true,
+        force: true,
+      });
+
+      expect(res).to.deep.equal({
+        action: "installedKit",
+        kitId: "custom-kit",
+        instanceId: "custom-kit",
+        sourcePath: "function-kits/custom-kit/source",
+        configDirPath: "function-kits/custom-kit/config-custom-kit",
+      });
+
+      expect(wrapSpawnStub).to.have.been.calledThrice;
+      expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
+        "npm",
+        ["install", "@third-party/custom-kit@1.0.0", "--save-prefix=^", "--ignore-scripts"],
+        "/mock/project/function-kits/custom-kit/source",
+      );
+      expect(wrapSpawnStub.secondCall).to.have.been.calledWith(
+        "npm",
+        ["install", "firebase-functions@^7.3.2", "--save-prefix=^", "--ignore-scripts"],
+        "/mock/project/function-kits/custom-kit/source",
+      );
+      expect(wrapSpawnStub.thirdCall).to.have.been.calledWith(
+        "npm",
+        ["run", "build"],
+        "/mock/project/function-kits/custom-kit/source",
+      );
+    });
+
+    it("should clean up package kit directory and revert config if npm install fails", async () => {
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: sinon.stub(),
+        askWriteProjectFile: sinon.stub().resolves(),
+      } as unknown as Config;
+
+      wrapSpawnStub.rejects(new Error("npm ERR! code ENOTFOUND"));
+
+      await expect(
+        installKitOrInstance({
+          config: mockConfig,
+          package: "@firebase-function-kits/firestore-bigquery-export@1.0.0",
+          nonInteractive: true,
+        }),
+      ).to.be.rejectedWith(FirebaseError, /NPM install failed/);
+
+      expect(fsRemoveStub).to.have.been.calledWith(
+        path.join("/mock/project", "function-kits/firestore-bigquery-export"),
+      );
+    });
+
+    it("should clean up package kit directory and empty function-kits dir if param resolution fails", async () => {
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: sinon.stub(),
+        askWriteProjectFile: sinon.stub().resolves(),
+      } as unknown as Config;
+
+      const paramList: params.Param[] = [{ name: "DATASET_NAME", type: "string" }];
+      const mockBuild: build.Build = {
+        requiredAPIs: [],
+        endpoints: {},
+        params: paramList,
+      };
+      discoverBuildStub.resolves(mockBuild);
+      sinon.stub(params, "resolveParams").rejects(new FirebaseError("Failed to resolve param"));
+
+      (fs.pathExists as sinon.SinonStub)
+        .withArgs(path.join("/mock/project", "function-kits"))
+        .resolves(true);
+      fsReaddirStub.withArgs(path.join("/mock/project", "function-kits")).resolves([]);
+
+      await expect(
+        installKitOrInstance({
+          config: mockConfig,
+          package: "@firebase-function-kits/firestore-bigquery-export@1.0.0",
+          nonInteractive: true,
+          projectId: "target-proj",
+        }),
+      ).to.be.rejectedWith(FirebaseError, "Failed to resolve param");
+
+      expect(fsRemoveStub).to.have.been.calledWith(
+        path.join("/mock/project", "function-kits/firestore-bigquery-export"),
+      );
+      expect(fsRemoveStub).to.have.been.calledWith(path.join("/mock/project", "function-kits"));
+    });
+
+    it("should clean up directory kit config directory without deleting user source when install fails", async () => {
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: sinon.stub(),
+        askWriteProjectFile: sinon.stub().resolves(),
+      } as unknown as Config;
+
+      (fs.pathExists as sinon.SinonStub).withArgs("/mock/project/my-functions").resolves(true);
+      (fs.pathExists as sinon.SinonStub)
+        .withArgs(path.join("/mock/project/my-functions", "package.json"))
+        .resolves(true);
+      (fs.stat as sinon.SinonStub)
+        .withArgs("/mock/project/my-functions")
+        .resolves({ isDirectory: () => true } as fs.Stats);
+      (fs.readJson as sinon.SinonStub)
+        .withArgs(path.join("/mock/project/my-functions", "package.json"))
+        .resolves({ scripts: { build: "tsc" } });
+
+      wrapSpawnStub.rejects(new Error("Build compilation error"));
+
+      await expect(
+        installKitOrInstance({
+          config: mockConfig,
+          directory: "./my-functions",
+          nonInteractive: true,
+        }),
+      ).to.be.rejectedWith(FirebaseError, /NPM install failed/);
+
+      expect(fsRemoveStub).to.have.been.calledWith(
+        path.join("/mock/project", "function-kits/my-functions/config-my-functions"),
+      );
+      expect(fsRemoveStub).to.not.have.been.calledWith("/mock/project/my-functions");
+    });
+
+    it("should revert firebase.json if modified before a failure in installKitOrInstance", async () => {
+      const initialFunctions = [
+        {
+          codebase: "default",
+          source: "functions",
+        },
+      ];
+      const writtenSnapshots: string[] = [];
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [...initialFunctions] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: sinon.stub().callsFake((_file: string, content: unknown) => {
+          writtenSnapshots.push(JSON.stringify(content));
+        }),
+        askWriteProjectFile: sinon.stub().resolves(),
+      } as unknown as Config;
+
+      const mockBuild: build.Build = {
+        requiredAPIs: [],
+        endpoints: {},
+        params: [],
+        requiredRoles: ["roles/viewer"],
+      };
+      discoverBuildStub.resolves(mockBuild);
+      sinon.stub(iam, "getRoleName").rejects(new Error("Reporting error"));
+
+      await expect(
+        installKitOrInstance({
+          config: mockConfig,
+          package: "@firebase-function-kits/firestore-bigquery-export@1.0.0",
+          nonInteractive: true,
+          configure: true,
+        }),
+      ).to.be.rejectedWith("Reporting error");
+
+      expect(mockConfig.src.functions).to.deep.equal(initialFunctions);
+      // Verify the revert was actually persisted, not just applied in memory.
+      expect(writtenSnapshots).to.not.be.empty;
+      expect(JSON.parse(writtenSnapshots[writtenSnapshots.length - 1])).to.deep.equal({
+        functions: initialFunctions,
+      });
+    });
+  });
+
+  describe("existing kit cleanup on failure in installKitOrInstance", () => {
+    it("should clean up instance config dir and revert firebase.json if addInstance fails during params prompt", async () => {
+      const existingKit: ValidatedKitSingle = {
+        kit: "firestore-bigquery-export",
+        sourcePackage: { name: "@firebase-function-kits/firestore-bigquery-export" },
+        source: "function-kits/firestore-bigquery-export/source",
+        instances: {
+          inst1: "function-kits/firestore-bigquery-export/config-inst1",
+        },
+      };
+      // Snapshot what is actually serialized on each write. Asserting against a live
+      // `mockConfig.src` reference would pass trivially, since sinon records the object
+      // by reference and later mutations would be reflected in the recorded call.
+      const writtenSnapshots: string[] = [];
+      const writeProjectFileStub = sinon.stub().callsFake((_file: string, content: unknown) => {
+        writtenSnapshots.push(JSON.stringify(content));
+      });
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [existingKit] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: writeProjectFileStub,
+        askWriteProjectFile: sinon.stub().resolves(),
+      } as unknown as Config;
+
+      const paramList: params.Param[] = [{ name: "PARAM_A", type: "string" }];
+      const mockBuild: build.Build = {
+        requiredAPIs: [],
+        endpoints: {},
+        params: paramList,
+      };
+      discoverBuildStub.resolves(mockBuild);
+      sinon.stub(params, "resolveParams").rejects(new FirebaseError("Required param missing"));
+
+      await expect(
+        installKitOrInstance({
+          config: mockConfig,
+          package: "@firebase-function-kits/firestore-bigquery-export",
+          instanceId: "inst2",
+          nonInteractive: true,
+          projectId: "my-project",
+        }),
+      ).to.be.rejectedWith(FirebaseError, "Required param missing");
+
+      expect(fsRemoveStub).to.have.been.calledWith(
+        path.join("/mock/project", "function-kits/firestore-bigquery-export/config-inst2"),
+      );
+      // The in-memory config must no longer reference the failed instance.
+      expect((mockConfig.src.functions as ValidatedKitSingle[])[0].instances).to.deep.equal({
+        inst1: "function-kits/firestore-bigquery-export/config-inst1",
+      });
+      // The last thing persisted to disk must also be free of the failed instance,
+      // otherwise firebase.json is left pointing at a config dir that was deleted.
+      expect(writtenSnapshots).to.not.be.empty;
+      const lastWritten = JSON.parse(writtenSnapshots[writtenSnapshots.length - 1]) as {
+        functions: ValidatedKitSingle[];
+      };
+      expect(lastWritten.functions[0].instances).to.deep.equal({
+        inst1: "function-kits/firestore-bigquery-export/config-inst1",
+      });
+    });
+
+    it("should clean up created project env file if addEnv fails during params prompt", async () => {
+      const existingKit: ValidatedKitSingle = {
+        kit: "firestore-bigquery-export",
+        sourcePackage: { name: "@firebase-function-kits/firestore-bigquery-export" },
+        source: "function-kits/firestore-bigquery-export/source",
+        instances: {
+          inst1: "function-kits/firestore-bigquery-export/config-inst1",
+        },
+      };
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [existingKit] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: sinon.stub(),
+        askWriteProjectFile: sinon.stub().resolves(),
+      } as unknown as Config;
+
+      (fs.pathExists as sinon.SinonStub)
+        .withArgs(
+          path.join(
+            "/mock/project",
+            "function-kits/firestore-bigquery-export/config-inst1/.env.my-project",
+          ),
+        )
+        .resolves(false);
+
+      const paramList: params.Param[] = [{ name: "PARAM_A", type: "string" }];
+      const mockBuild: build.Build = {
+        requiredAPIs: [],
+        endpoints: {},
+        params: paramList,
+      };
+      discoverBuildStub.resolves(mockBuild);
+      sinon.stub(params, "resolveParams").rejects(new FirebaseError("Required param missing"));
+
+      await expect(
+        installKitOrInstance({
+          config: mockConfig,
+          package: "@firebase-function-kits/firestore-bigquery-export",
+          instanceId: "inst1",
+          nonInteractive: true,
+          projectId: "my-project",
+        }),
+      ).to.be.rejectedWith(FirebaseError, "Required param missing");
+
+      expect(fsRemoveStub).to.have.been.calledWith(
+        path.join(
+          "/mock/project",
+          "function-kits/firestore-bigquery-export/config-inst1/.env.my-project",
+        ),
+      );
+    });
+  });
+
+  describe("revertFunctionsConfig", () => {
+    it("should revert functions and save when config was modified", () => {
+      const originalFunctions = [{ codebase: "default", source: "functions" }];
+      const writeProjectFileStub = sinon.stub();
+      const mockConfig = {
+        src: {
+          functions: [{ kit: "new-kit", source: "function-kits/new-kit" }],
+        },
+        writeProjectFile: writeProjectFileStub,
+      } as unknown as Config;
+
+      revertFunctionsConfig({ config: mockConfig, originalFunctions });
+
+      expect(mockConfig.src.functions).to.deep.equal(originalFunctions);
+      expect(writeProjectFileStub).to.have.been.calledOnceWith("firebase.json", mockConfig.src);
+    });
+
+    it("should delete functions and save when originally undefined", () => {
+      const writeProjectFileStub = sinon.stub();
+      const mockConfig = {
+        src: {
+          functions: [{ kit: "new-kit", source: "function-kits/new-kit" }],
+        },
+        writeProjectFile: writeProjectFileStub,
+      } as unknown as Config;
+
+      revertFunctionsConfig({ config: mockConfig, originalFunctions: undefined });
+
+      expect(mockConfig.src.functions).to.be.undefined;
+      expect("functions" in mockConfig.src).to.be.false;
+      expect(writeProjectFileStub).to.have.been.calledOnceWith("firebase.json", mockConfig.src);
+    });
+
+    it("should do nothing when config was not modified", () => {
+      const originalFunctions = [{ codebase: "default", source: "functions" }];
+      const writeProjectFileStub = sinon.stub();
+      const mockConfig = {
+        src: {
+          functions: [{ codebase: "default", source: "functions" }],
+        },
+        writeProjectFile: writeProjectFileStub,
+      } as unknown as Config;
+
+      revertFunctionsConfig({ config: mockConfig, originalFunctions });
+
+      expect(writeProjectFileStub).to.not.have.been.called;
     });
   });
 });

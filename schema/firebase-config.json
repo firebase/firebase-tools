@@ -1221,6 +1221,34 @@
             ],
             "type": "object"
         },
+        "RunSingle": {
+            "additionalProperties": false,
+            "properties": {
+                "ignore": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "localBuild": {
+                    "type": "boolean"
+                },
+                "region": {
+                    "type": "string"
+                },
+                "rootDir": {
+                    "type": "string"
+                },
+                "serviceId": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "region",
+                "serviceId"
+            ],
+            "type": "object"
+        },
         "StorageSingle": {
             "additionalProperties": false,
             "properties": {
@@ -2007,6 +2035,19 @@
         },
         "remoteconfig": {
             "$ref": "#/definitions/RemoteConfigConfig"
+        },
+        "run": {
+            "anyOf": [
+                {
+                    "$ref": "#/definitions/RunSingle"
+                },
+                {
+                    "items": {
+                        "$ref": "#/definitions/RunSingle"
+                    },
+                    "type": "array"
+                }
+            ]
         },
         "storage": {
             "anyOf": [

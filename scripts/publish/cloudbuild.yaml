@@ -118,15 +118,15 @@ steps:
       - "-c"
       - |
         echo "Waiting for firebase-tools@$(cat /workspace/version_number.txt) to be available on npm..."
-        timeout=300
+        timeout=1800
         elapsed=0
         interval=15
         until npm install --dry-run "firebase-tools@$(cat /workspace/version_number.txt)" > /dev/null 2>&1; do
           if [ $$elapsed -ge $$timeout ]; then
-            echo "Timeout waiting for package."
+            echo "Timeout waiting for package after $${elapsed}s."
             exit 1
           fi
-          echo "Still waiting..."
+          echo "Still waiting... ($${elapsed}s/$${timeout}s)"
           sleep $$interval
           elapsed=$$((elapsed + interval))
         done
@@ -181,28 +181,45 @@ steps:
           echo "Skipping for preview version."
         fi
 
-  # Publish the Firebase docker image
-  - name: "gcr.io/cloud-builders/docker"
+  # Build and publish the Firebase docker image to staging
+  - id: "docker-build-push-staging"
+    name: "gcr.io/cloud-builders/docker"
     entrypoint: "bash"
     args:
       - "-c"
       - |
-        if [ "${_VERSION}" != "preview" ]; then
-          set -e
-          VERSION_NUM="$$(cat /workspace/version_number.txt)"
-          REPO="us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase"
-          docker build -t "$${REPO}:$${VERSION_NUM}" -t "$${REPO}:latest" -f ./firebase-docker-image/Dockerfile ./firebase-docker-image
-          docker push "$${REPO}:$${VERSION_NUM}"
+        set -e
+        VERSION_NUM="$$(cat /workspace/version_number.txt)"
+        STAGING_REPO="us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/staging/firebase"
+        if [ "${_VERSION}" = "preview" ]; then
+          RANDOM_HASH="$$(LC_ALL=C tr -dc 'a-f0-9' < /dev/urandom | head -c 16)"
+          EXTRA_TAG="no-new-use-public-image-$${RANDOM_HASH}"
         else
-          echo "Skipping docker build for preview version."
+          EXTRA_TAG="public-image-$${VERSION_NUM}"
+        fi
+        echo "Building Docker image for version $${VERSION_NUM}..."
+        docker build \
+          -t "$${STAGING_REPO}:$${VERSION_NUM}" \
+          -t "$${STAGING_REPO}:$${EXTRA_TAG}" \
+          -t "$${STAGING_REPO}:$BUILD_ID" \
+          -f ./firebase-docker-image/Dockerfile ./firebase-docker-image
+        echo "Pushing Docker image to staging repository..."
+        docker push "$${STAGING_REPO}:$${VERSION_NUM}"
+        docker push "$${STAGING_REPO}:$${EXTRA_TAG}"
+        if [ "${_VERSION}" != "preview" ]; then
+          docker tag "$${STAGING_REPO}:$${VERSION_NUM}" "$${STAGING_REPO}:latest"
+          docker push "$${STAGING_REPO}:latest"
+        else
+          echo "Preview build: leaving the staging 'latest' tag untouched."
         fi
 
 images:
-  - "us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase"
+  - "us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/staging/firebase:$BUILD_ID"
 
-timeout: 2400s # 40 minutes
+timeout: 4200s # 70 minutes
 
 options:
+  requestedVerifyOption: VERIFIED
   volumes:
     - name: "ssh"
       path: /root/.ssh

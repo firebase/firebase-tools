@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import * as fs from "fs";
 import * as fsPromises from "fs/promises";
+import * as crossSpawn from "cross-spawn";
 import * as fsExtra from "fs-extra";
 import * as sinon from "sinon";
 import * as glob from "glob";
@@ -22,15 +22,14 @@ import {
   isRedirectSupportedByHosting,
   isHeaderSupportedByHosting,
   getNextjsRewritesToUse,
-  usesAppDirRouter,
   usesNextImage,
-  hasUnoptimizedImage,
   isUsingMiddleware,
   isUsingImageOptimization,
   isUsingAppDirectory,
   cleanCustomRouteI18n,
   I18N_SOURCE,
   allDependencyNames,
+  getProductionDependencyNames,
   getMiddlewareMatcherRegexes,
   getNonStaticRoutes,
   getNonStaticServerComponents,
@@ -220,28 +219,6 @@ describe("Next.js utils", () => {
     });
   });
 
-  describe("usesAppDirRouter", () => {
-    let sandbox: sinon.SinonSandbox;
-
-    beforeEach(() => {
-      sandbox = sinon.createSandbox();
-    });
-
-    afterEach(() => {
-      sandbox.restore();
-    });
-
-    it("should return false when app dir doesn't exist", () => {
-      sandbox.stub(fs, "existsSync").returns(false);
-      expect(usesAppDirRouter("")).to.be.false;
-    });
-
-    it("should return true when app dir does exist", () => {
-      sandbox.stub(fs, "existsSync").returns(true);
-      expect(usesAppDirRouter("")).to.be.true;
-    });
-  });
-
   describe("usesNextImage", () => {
     let sandbox: sinon.SinonSandbox;
 
@@ -265,32 +242,6 @@ describe("Next.js utils", () => {
         isNextImageImported: false,
       });
       expect(await usesNextImage("", "")).to.be.false;
-    });
-  });
-
-  describe("hasUnoptimizedImage", () => {
-    let sandbox: sinon.SinonSandbox;
-
-    beforeEach(() => {
-      sandbox = sinon.createSandbox();
-    });
-
-    afterEach(() => {
-      sandbox.restore();
-    });
-
-    it("should return true when images manfiest indicates unoptimized", async () => {
-      sandbox.stub(fsExtra, "readJSON").resolves({
-        images: { unoptimized: true },
-      });
-      expect(await hasUnoptimizedImage("", "")).to.be.true;
-    });
-
-    it("should return true when images manfiest indicates !unoptimized", async () => {
-      sandbox.stub(fsExtra, "readJSON").resolves({
-        images: { unoptimized: false },
-      });
-      expect(await hasUnoptimizedImage("", "")).to.be.false;
     });
   });
 
@@ -639,6 +590,63 @@ describe("Next.js utils", () => {
         "react",
         "loose-envify",
       ]);
+    });
+  });
+
+  describe("getProductionDependencyNames", () => {
+    let sandbox: sinon.SinonSandbox;
+    let spawnStub: sinon.SinonStub;
+
+    function stubNpmLs(output: string): void {
+      const realSpawn = crossSpawn.spawn;
+      spawnStub = sandbox
+        .stub(crossSpawn, "spawn")
+        .callsFake(() =>
+          realSpawn(process.execPath, ["-e", `process.stdout.write(${JSON.stringify(output)})`]),
+        );
+    }
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should emit one unique name per dependency from npm ls output", async () => {
+      stubNpmLs(JSON.stringify(npmLsReturn));
+
+      const names = await getProductionDependencyNames("/app");
+
+      expect(spawnStub).to.have.been.calledWith("npm", [
+        "ls",
+        "--omit=dev",
+        "--all",
+        "--json=true",
+      ]);
+      expect(names).to.include.members(["next", "@next/env", "tslib", "postcss", "nanoid"]);
+      expect(names.every((name) => typeof name === "string")).to.be.true;
+      expect(new Set(names).size).to.equal(names.length);
+    });
+
+    it("should resolve empty when there are no dependencies", async () => {
+      stubNpmLs("{}");
+
+      expect(await getProductionDependencyNames("/app")).to.eql([]);
+    });
+
+    it("should reject when npm ls fails to spawn", async () => {
+      const realSpawn = crossSpawn.spawn;
+      sandbox.stub(crossSpawn, "spawn").callsFake(() => realSpawn("firebase-tools-missing-npm"));
+
+      await expect(getProductionDependencyNames("/app")).to.be.rejected;
+    });
+
+    it("should reject when npm ls output is not valid JSON", async () => {
+      stubNpmLs("not json");
+
+      await expect(getProductionDependencyNames("/app")).to.be.rejected;
     });
   });
 

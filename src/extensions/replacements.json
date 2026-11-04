@@ -1,48 +1,41 @@
 {
   "replacements": {
     "firebase/delete-user-data": {
-      "status": "REPLACEMENT_AVAILABLE",
-      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/kits/delete-user-data/README.md",
-      "npmPackage": "@firebase-function-kits/delete-user-data"
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/kits/delete-user-data/README.md"
     },
     "firebase/firestore-bigquery-export": {
       "status": "REPLACEMENT_AVAILABLE",
-      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/kits/firestore-bigquery-export/README.md",
-      "npmPackage": "@firebase-function-kits/firestore-bigquery-export"
+      "npmPackage": "@firebase-function-kits/firestore-bigquery-export",
+      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/kits/firestore-bigquery-export/README.md"
     },
     "firebase/firestore-bundle-builder": {
       "status": "PENDING_PUBLISHER",
       "extensionRepositoryUrl": "https://github.com/firebase/firestore-bundle-builder/blob/master/README.md"
     },
     "firebase/firestore-counter": {
-      "status": "REPLACEMENT_AVAILABLE",
-      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/kits/firestore-counter/README.md",
-      "npmPackage": "@firebase-function-kits/firestore-counter"
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/kits/firestore-counter/README.md"
     },
     "firebase/firestore-send-email": {
-      "status": "REPLACEMENT_AVAILABLE",
-      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/kits/firestore-send-email/README.md",
-      "npmPackage": "@firebase-function-kits/firestore-send-email"
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/kits/firestore-send-email/README.md"
     },
     "firebase/firestore-shorten-urls-bitly": {
       "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/main/firestore-shorten-urls-bitly/README.md",
-      "npmPackage": "@firebase/firestore-shorten-urls-bitly"
+      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/main/firestore-shorten-urls-bitly/README.md"
     },
     "firebase/firestore-translate-text": {
-      "status": "REPLACEMENT_AVAILABLE",
-      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/kits/firestore-translate-text/README.md",
-      "npmPackage": "@firebase-function-kits/firestore-translate-text"
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/kits/firestore-translate-text/README.md"
     },
     "firebase/rtdb-limit-child-nodes": {
-      "status": "REPLACEMENT_AVAILABLE",
-      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/kits/rtdb-limit-child-nodes/README.md",
-      "npmPackage": "@firebase-function-kits/rtdb-limit-child-nodes"
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/kits/rtdb-limit-child-nodes/README.md"
     },
     "firebase/storage-resize-images": {
-      "status": "REPLACEMENT_AVAILABLE",
-      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/kits/storage-resize-images/README.md",
-      "npmPackage": "@firebase-function-kits/storage-resize-images"
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/kits/storage-resize-images/README.md"
     },
     "googlecloud/bigquery-firestore-export": {
       "status": "PENDING_PUBLISHER",

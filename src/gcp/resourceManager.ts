@@ -125,7 +125,7 @@ export async function addServiceAccountToRoles(
       return await setIamPolicy(projectId, projectPolicy, "bindings");
     },
     {
-      retries: 6,
+      retries: 7,
       delay: 1000,
       maxDelay: 5000,
       retryPredicate: isRetryableIamError,

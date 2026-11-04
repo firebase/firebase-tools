@@ -8,31 +8,39 @@ steps:
         "-c",
         "npm view firebase-tools version > /workspace/version_number.txt && cat /workspace/version_number.txt",
       ]
-  # Publish the Firebase docker image
-  - name: "gcr.io/cloud-builders/docker"
+  # Build and push the Firebase docker image to staging
+  - id: "build-and-push-docker-image"
+    name: "gcr.io/cloud-builders/docker"
     entrypoint: "sh"
     args:
       - "-c"
       - |
         set -e
         VERSION_NUM="$$(cat /workspace/version_number.txt)"
-        REPO="us-docker.pkg.dev/${_TARGET_PROJECT_ID}/${_REPO_NAME}/firebase"
+        STAGING_REPO="us-docker.pkg.dev/${_TARGET_PROJECT_ID}/staging/firebase"
         if [ "${_REPO_NAME}" = "staging" ]; then
-          RANDOM_HASH="$$(tr -dc 'a-f0-9' < /dev/urandom | head -c 16)"
+          RANDOM_HASH="$$(LC_ALL=C tr -dc 'a-f0-9' < /dev/urandom | head -c 16)"
           EXTRA_TAG="no-new-use-public-image-$${RANDOM_HASH}"
         else
           EXTRA_TAG="public-image-$${VERSION_NUM}"
         fi
+        echo "Building Docker image for version $${VERSION_NUM}..."
         docker build \
-          -t "$${REPO}:$${VERSION_NUM}" \
-          -t "$${REPO}:latest" \
-          -t "$${REPO}:$${EXTRA_TAG}" \
+          -t "$${STAGING_REPO}:$${VERSION_NUM}" \
+          -t "$${STAGING_REPO}:latest" \
+          -t "$${STAGING_REPO}:$${EXTRA_TAG}" \
+          -t "$${STAGING_REPO}:$BUILD_ID" \
           -f ./Dockerfile .
-        docker push "$${REPO}:$${VERSION_NUM}"
-        docker push "$${REPO}:$${EXTRA_TAG}"
+        echo "Pushing image to staging repository..."
+        docker push "$${STAGING_REPO}:$${VERSION_NUM}"
+        docker push "$${STAGING_REPO}:latest"
+        docker push "$${STAGING_REPO}:$${EXTRA_TAG}"
 
 images:
-  - "us-docker.pkg.dev/${_TARGET_PROJECT_ID}/${_REPO_NAME}/firebase"
+  - "us-docker.pkg.dev/${_TARGET_PROJECT_ID}/staging/firebase:$BUILD_ID"
+
+options:
+  requestedVerifyOption: VERIFIED
 
 substitutions:
   _REPO_NAME: us
