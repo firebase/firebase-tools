@@ -107,7 +107,7 @@ describe("downloadDetails", () => {
   describe("_getCommand", () => {
     it("should run the Pub/Sub fat jar directly with shell: false on Windows and forward JVM env opts", () => {
       sandbox.stub(utils, "IS_WINDOWS").value(true);
-      const envCopy = {
+      const envCopy: Record<string, string | undefined> = {
         ...process.env,
         JAVA_OPTS: "-Xmx512m",
         CLOUD_PUBSUB_EMULATOR_OPTS: "-Dfoo=bar",
@@ -155,7 +155,7 @@ describe("downloadDetails", () => {
 
     it("should use bin/cloud-pubsub-emulator and shell: true on POSIX", () => {
       sandbox.stub(utils, "IS_WINDOWS").value(false);
-      const envCopy = { ...process.env };
+      const envCopy: Record<string, string | undefined> = { ...process.env };
       delete envCopy.PUBSUB_EMULATOR_BINARY_PATH;
       sandbox.stub(process, "env").value(envCopy);
 

@@ -98,12 +98,17 @@ export interface BucketResponse {
   lifecycle?: {
     rule: LifecycleRule[];
   };
+  autoclass?: Autoclass;
   labels: Record<string, string>;
   storageClass: string;
   billing: {
     requesterPays: boolean;
   };
   etag: string;
+}
+
+export interface Autoclass {
+  enabled: boolean;
 }
 
 interface ListBucketsResponse {
@@ -134,6 +139,7 @@ export interface UpsertBucketRequest {
   lifecycle: {
     rule: LifecycleRule[];
   };
+  autoclass?: Autoclass;
 }
 
 export interface CreateBucketRequest {
@@ -144,6 +150,7 @@ export interface CreateBucketRequest {
     rule: LifecycleRule[];
   };
   cors?: CorsRule[];
+  autoclass?: Autoclass;
 }
 
 export interface LifecycleRule {
@@ -398,6 +405,7 @@ export async function patchBucket(
       "defaultObjectAcl",
       "lifecycle",
       "cors",
+      "autoclass",
     );
     const result = await localAPIClient.patch<Partial<BucketResponse>, BucketResponse>(
       `/storage/v1/b/${bucketName}`,
@@ -487,6 +495,7 @@ export async function upsertBucket(opts: {
           labels: {
             [opts.req.purposeLabel]: "true",
           },
+          ...(opts.req.autoclass ? { autoclass: opts.req.autoclass } : {}),
         },
         true /* projectPrivate */,
       );

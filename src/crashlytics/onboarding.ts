@@ -14,9 +14,6 @@ import { logger } from "../logger";
 import { checkbox } from "../prompt";
 import { requireAuth } from "../requireAuth";
 
-export const CRASHLYTICS_TELEMETRY_BUCKET_ID = "firebase-telemetry";
-export const CRASHLYTICS_TELEMETRY_SINK_ID = "firebase-telemetry-routing";
-export const CRASHLYTICS_TELEMETRY_RESOURCE_TYPE = "firebasetelemetry.googleapis.com/App";
 export const CRASHLYTICS_TELEMETRY_SERVICE = "firebasetelemetry.googleapis.com";
 export const CRASHLYTICS_TELEMETRY_ADMIN_SERVICE = "firebasetelemetryadmin.googleapis.com";
 export const CRASHLYTICS_SERVICE = "firebasecrashlytics.googleapis.com";
@@ -24,18 +21,18 @@ export const CLIENT_TELEMETRY_SERVICE = "clienttelemetry.googleapis.com";
 export const API_KEYS_SERVICE = "apikeys.googleapis.com";
 export const CLOUD_MONITORING_SERVICE = "monitoring.googleapis.com";
 
-export interface OnboardWebResult {
+export interface SetupWebResult {
   config: TelemetryConfig;
   alertPolicies?: AlertPolicy[];
 }
 
-export interface OnboardWebOptions {
+export interface SetupWebOptions {
   nonInteractive?: boolean;
   user?: { email?: string };
 }
 
 async function resolveAuthenticatedUserEmail(
-  options: OnboardWebOptions,
+  options: SetupWebOptions,
 ): Promise<string | undefined> {
   if (options.user?.email) {
     return options.user.email;
@@ -52,11 +49,11 @@ async function resolveAuthenticatedUserEmail(
  * Onboards a Firebase Web App to Crashlytics by enabling required APIs,
  * provisioning Cloud Trace storage, creating a Telemetry Config, and optionally configuring Crashlytics email alerts.
  */
-export async function onboardCrashlyticsWeb(
+export async function setupCrashlyticsWeb(
   projectId: string,
   appId: string,
-  options: OnboardWebOptions = {},
-): Promise<OnboardWebResult> {
+  options: SetupWebOptions = {},
+): Promise<SetupWebResult> {
   const billingEnabled = await checkBillingEnabled(projectId);
   if (!billingEnabled && options.nonInteractive) {
     throw new FirebaseError(
@@ -115,12 +112,7 @@ export async function onboardCrashlyticsWeb(
   }
 
   logLabeledBullet("crashlytics", "Configuring Crashlytics telemetry for web app...");
-  const config = await createOrUpdateTelemetryConfig(
-    projectId,
-    appId,
-    `projects/${projectId}/locations/global/buckets/${CRASHLYTICS_TELEMETRY_BUCKET_ID}`,
-    1,
-  );
+  const config = await createOrUpdateTelemetryConfig(projectId, appId, 1);
   logLabeledSuccess("crashlytics", "Crashlytics telemetry configured successfully.");
 
   if (options.nonInteractive) {
