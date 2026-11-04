@@ -1,0 +1,2 @@
+- Fixed the emulators startup message showing 127.0.0.1 for the Emulator UI and Hub when they listen on 0.0.0.0; it now also prints the address they listen on. (#6222)
+- Fixed an issue on Windows where starting Java-based emulators (Firestore, Database, Pub/Sub, Storage) could open extra console windows or leave orphaned `java.exe` processes running after exit (#3871, #11261).

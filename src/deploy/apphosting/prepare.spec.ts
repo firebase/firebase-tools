@@ -936,47 +936,61 @@ describe("apphosting", () => {
   });
 
   describe("injectAutoInitEnvVars", () => {
+    const cfg = { backendId: "foo", rootDir: "/", ignore: [] };
+    const backends = [
+      {
+        name: "projects/my-project/locations/us-central1/backends/foo",
+        appId: "my-app-id",
+      } as unknown as apphosting.Backend,
+    ];
+
     beforeEach(() => {
       sinon.stub(managementApps, "getAppConfig").resolves({
         appId: "my-app-id",
         projectId: "my-project",
       } as unknown as Awaited<ReturnType<typeof managementApps.getAppConfig>>);
       sinon.stub(apphostingUtils, "getAutoinitEnvVars").returns({
-        AUTO_VAR_1: "auto1",
-        USER_VAR_1: "auto_override",
+        FIREBASE_WEBAPP_CONFIG: "auto_webapp_config",
+        FIREBASE_CONFIG: "auto_override",
       });
     });
 
-    it("injects auto-init variables but respects existing explicitly defined variables", async () => {
-      const cfg = { backendId: "foo", rootDir: "/", ignore: [] };
-      const backends = [
-        {
-          name: "projects/my-project/locations/us-central1/backends/foo",
-          appId: "my-app-id",
-        } as unknown as apphosting.Backend,
-      ];
+    it("injects both variables into the build, but only FIREBASE_CONFIG into the runtime", async () => {
+      const buildEnv: Record<string, EnvMap> = { foo: {} };
+      const runtimeEnv: Record<string, EnvMap> = { foo: {} };
 
-      // Build and runtime envs inherently start with USER_VAR_1 already set
+      await injectAutoInitEnvVars(cfg, backends, buildEnv, runtimeEnv);
+
+      expect(buildEnv["foo"]).to.deep.equal({
+        FIREBASE_WEBAPP_CONFIG: { value: "auto_webapp_config" },
+        FIREBASE_CONFIG: { value: "auto_override" },
+      });
+      // Like remote builds, the runtime doesn't get FIREBASE_WEBAPP_CONFIG.
+      expect(runtimeEnv["foo"]).to.deep.equal({ FIREBASE_CONFIG: { value: "auto_override" } });
+    });
+
+    it("injects auto-init variables but respects existing explicitly defined variables", async () => {
+      // Build and runtime envs inherently start with FIREBASE_CONFIG already set
       const buildEnv: Record<string, EnvMap> = {
         foo: {
-          USER_VAR_1: { value: "user_defined_value" },
+          FIREBASE_CONFIG: { value: "user_defined_value" },
         },
       };
 
       const runtimeEnv: Record<string, EnvMap> = {
         foo: {
-          USER_VAR_1: { value: "user_defined_value" },
+          FIREBASE_CONFIG: { value: "user_defined_value" },
         },
       };
 
       await injectAutoInitEnvVars(cfg, backends, buildEnv, runtimeEnv);
 
-      // It should NOT overwrite USER_VAR_1, but it SHOULD add AUTO_VAR_1
-      expect(buildEnv["foo"]["USER_VAR_1"]?.value).to.equal("user_defined_value");
-      expect(buildEnv["foo"]["AUTO_VAR_1"]?.value).to.equal("auto1");
+      // It should NOT overwrite FIREBASE_CONFIG, but it SHOULD add FIREBASE_WEBAPP_CONFIG to the build
+      expect(buildEnv["foo"]["FIREBASE_CONFIG"]?.value).to.equal("user_defined_value");
+      expect(buildEnv["foo"]["FIREBASE_WEBAPP_CONFIG"]?.value).to.equal("auto_webapp_config");
 
-      expect(runtimeEnv["foo"]["USER_VAR_1"]?.value).to.equal("user_defined_value");
-      expect(runtimeEnv["foo"]["AUTO_VAR_1"]?.value).to.equal("auto1");
+      expect(runtimeEnv["foo"]["FIREBASE_CONFIG"]?.value).to.equal("user_defined_value");
+      expect(runtimeEnv["foo"]).not.to.have.property("FIREBASE_WEBAPP_CONFIG");
     });
   });
 

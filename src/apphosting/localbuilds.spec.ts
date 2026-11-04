@@ -121,6 +121,7 @@ describe("localBuild", () => {
       expect(process.env.MY_BUILD_SECRET).to.be.undefined;
       expect(process.env.MY_PLAIN_VAR).to.be.undefined;
       expect(options?.env?.MY_BUILD_SECRET).to.equal("secret-value");
+      expect(options?.env?.GOOGLE_BUILD_SECRETS_TO_SCAN).to.equal("MY_BUILD_SECRET");
       expect(options?.env?.MY_RUNTIME_SECRET).to.be.undefined;
       expect(options?.env?.MY_PLAIN_VAR).to.equal("plain-value");
       return {
@@ -159,6 +160,7 @@ describe("localBuild", () => {
       expect(process.env.ANOTHER_VAR).to.be.undefined;
       expect(options?.env?.MY_PLAIN_VAR).to.equal("plain-value");
       expect(options?.env?.ANOTHER_VAR).to.equal("another-value");
+      expect(options?.env?.GOOGLE_BUILD_SECRETS_TO_SCAN).to.be.undefined;
       return {
         status: 0,
         output: ["", "mock output", ""],

@@ -17,7 +17,7 @@ import { getFirebaseConfig } from "../functionsConfig";
 import { getProjectAdminSdkConfigOrCached } from "../emulator/adminSdkConfig";
 import { FirebaseError } from "../error";
 import { diagnose } from "./diagnose";
-import { ensure, check } from "../ensureApiEnabled";
+import { ensure } from "../ensureApiEnabled";
 import { deleteObject, uploadObject } from "../gcp/storage";
 import { getProjectId } from "../projectUtils";
 import { createSource } from "./extensionsApi";
@@ -71,8 +71,6 @@ export enum SourceOrigin {
 
 export const logPrefix = "extensions";
 const VALID_LICENSES = ["apache-2.0"];
-// Extension archive URLs must be HTTPS.
-export const URL_REGEX = /^https:/;
 export const EXTENSIONS_BUCKET_NAME = envOverride(
   "FIREBASE_EXTENSIONS_UPLOAD_BUCKET",
   "firebase-ext-eap-uploads",
@@ -472,14 +470,6 @@ async function promptForReleaseStage(args: {
     }
   }
   return stage;
-}
-
-export async function checkExtensionsApiEnabled(options: any): Promise<boolean> {
-  const projectId = getProjectId(options);
-  if (!projectId) {
-    return false;
-  }
-  return await check(projectId, extensionsOrigin(), "extensions", options.markdown);
 }
 
 export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
@@ -1096,32 +1086,6 @@ export function displayReleaseNotes(args: {
     releaseNotesMessage +
     `Once an extension version is uploaded, it becomes installable by other users and cannot be changed. If you wish to make changes after uploading, you will need to upload a new version.\n`;
   logger.info(message);
-}
-
-// TODO(inlined): Fix prompt library so that a choices array doesn't assume all values
-// must be the same type as the literal of the first
-type repeateInstanceResponse = "updateExisting" | "installNew" | "cancel";
-
-/**
- * Confirm if the user wants to install another instance of an extension when they already have one.
- * @param projectName The name of the project in use.
- * @param extensionName The name of the extension being installed.
- */
-export async function promptForRepeatInstance(
-  projectName: string,
-  extensionName: string,
-): Promise<repeateInstanceResponse> {
-  const message = `An extension with the ID '${clc.bold(
-    extensionName,
-  )}' already exists in the project '${clc.bold(projectName)}'. What would you like to do?`;
-  return await select<repeateInstanceResponse>({
-    message,
-    choices: [
-      { name: "Update or reconfigure the existing instance", value: "updateExisting" },
-      { name: "Install a new instance with a different ID", value: "installNew" },
-      { name: "Cancel extension installation", value: "cancel" },
-    ],
-  });
 }
 
 export function isUrlPath(extInstallPath: string): boolean {
