@@ -274,12 +274,6 @@ export interface Revision {
   }>;
 }
 
-/** Gets a revision, e.g. a service's latestCreatedRevision. */
-export async function getRevision(name: string): Promise<Revision> {
-  const res = await client.get<Revision>(name);
-  return res.body;
-}
-
 /** Lists a service's newest `pageSize` revisions, newest first. */
 export async function listRevisions(
   projectId: string,

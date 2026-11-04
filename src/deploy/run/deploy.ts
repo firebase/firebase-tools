@@ -29,8 +29,6 @@ const ROLLOUT_POLLING = { pollTimeoutMs: 45 * 60 * 1000, pollMaxBackoffMs: 10 * 
  * them: Cloud Run reports the launch stage of the features that a service actually uses.
  */
 const LAUNCH_STAGE = "ALPHA";
-/** How often to check whether Cloud Run has started the build, to link to its logs. */
-const BUILD_LOG_POLL_MS = 5 * 1000;
 
 /**
  * The image of a container that runs a local build's output. Cloud Run runs the output from Cloud
@@ -82,14 +80,10 @@ async function deployRemoteBuild(
   const message = options.message as string | undefined;
   const template = remoteBuildTemplate(svc, source, imageRepository, appFolder, message);
   logLabeledBullet("run", `Building and deploying service ${serviceId} in ${region}...`);
-  const rollout = rollOut(projectId, svc, template);
-  const linked = linkBuildLogs(projectId, svc, rollout);
   try {
-    svc.deployed = await rollout;
+    svc.deployed = await rollOut(projectId, svc, template);
   } catch (err: unknown) {
-    throw (await buildFailure(projectId, svc.config, err)) ?? err;
-  } finally {
-    await linked;
+    throw (await buildFailure(projectId, svc, err)) ?? err;
   }
 }
 
@@ -99,17 +93,16 @@ async function deployRemoteBuild(
  */
 async function buildFailure(
   projectId: string,
-  config: RunSingle,
+  svc: ServiceDeploy,
   err: unknown,
 ): Promise<FirebaseError | undefined> {
-  const { serviceId, region } = config;
+  const { serviceId, region } = svc.config;
   try {
-    const { latestCreatedRevision } = await runv2.getService(projectId, region, serviceId);
-    if (!latestCreatedRevision) {
+    const [newest] = await runv2.listRevisions(projectId, region, serviceId, 1);
+    if (!newest || newest.name === svc.existing?.latestCreatedRevision) {
       return undefined;
     }
-    const revision = await runv2.getRevision(latestCreatedRevision);
-    const failed = revision.containerStatuses?.find((c) => c.buildStatus?.status === "FAILURE");
+    const failed = newest.containerStatuses?.find((c) => c.buildStatus?.status === "FAILURE");
     const logUrl = failed?.buildStatus?.cloudBuildLogUrl;
     if (!logUrl) {
       return undefined;
@@ -122,54 +115,6 @@ async function buildFailure(
     // Without the build's status, the rollout's own error is the best one to show.
     logger.debug(`Couldn't look up the build of service ${serviceId}: ${getErrMsg(lookupErr)}`);
     return undefined;
-  }
-}
-
-/**
- * Prints a link to the build's logs as soon as Cloud Run starts the build, a few seconds into the
- * rollout, so that the build can be followed while it runs. Cloud Run lists the new revision with
- * the link right away, but only makes it the service's latestCreatedRevision after the build.
- * Stops when the rollout ends. The link is a convenience, so failures are only logged.
- */
-async function linkBuildLogs(
-  projectId: string,
-  svc: ServiceDeploy,
-  rollout: Promise<unknown>,
-): Promise<void> {
-  const { serviceId, region } = svc.config;
-  let ended = false;
-  const end = rollout
-    .catch(() => undefined)
-    .then(() => {
-      ended = true;
-    });
-  while (!ended) {
-    // Unref'd, so that the timer doesn't keep the CLI running after the rollout ends.
-    const timer = new Promise((resolve) => setTimeout(resolve, BUILD_LOG_POLL_MS).unref());
-    await Promise.race([end, timer]);
-    if (ended) {
-      return;
-    }
-    try {
-      // Revisions are listed newest first. Until Cloud Run creates the new one, the newest is the
-      // one that the service already had.
-      const revisions = await runv2.listRevisions(projectId, region, serviceId, 1);
-      const logUrl = revisions
-        .filter((r) => r.name !== svc.existing?.latestCreatedRevision)
-        .flatMap((r) => r.containerStatuses ?? [])
-        .map((c) => c.buildStatus?.cloudBuildLogUrl)
-        .find((url) => url);
-      if (logUrl) {
-        logLabeledBullet(
-          "run",
-          `View the build logs for service ${serviceId} in ${region} at ${logUrl}`,
-        );
-        return;
-      }
-    } catch (err: unknown) {
-      // E.g. the new service doesn't exist yet. Check again later.
-      logger.debug(`Couldn't look up the build of service ${serviceId}: ${getErrMsg(err)}`);
-    }
   }
 }
 
