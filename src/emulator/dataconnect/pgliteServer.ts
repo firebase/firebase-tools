@@ -280,6 +280,9 @@ export class PostgresServer {
  * upgrades available in Node.js environments.
  */
 export async function fromNodeSocket(socket: net.Socket, options?: PostgresConnectionOptions) {
+  // Disable Nagle's algorithm to prevent delayed ACK latency (~40-100ms per query on Linux).
+  // See https://github.com/firebase/firebase-tools/issues/11402
+  socket.setNoDelay(true);
   const rs = Readable.toWeb(socket) as unknown as ReadableStream;
   const ws = Writable.toWeb(socket);
   const opts = options
