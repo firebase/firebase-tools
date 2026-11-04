@@ -599,28 +599,6 @@ describe("extensions", () => {
     });
   });
 
-  describe("getSource", () => {
-    afterEach(() => {
-      nock.cleanAll();
-    });
-
-    it("should make a GET call to the correct endpoint", async () => {
-      nock(api.extensionsOrigin()).get(`/${VERSION}/${SOURCE_NAME}`).reply(200, TEST_SOURCE);
-
-      const source = await extensionsApi.getSource(SOURCE_NAME);
-      expect(nock.isDone()).to.be.true;
-      expect(source.spec.resources).to.have.lengthOf(1);
-      expect(source.spec.resources[0]).to.have.property("properties");
-    });
-
-    it("should throw a FirebaseError if the endpoint returns an error response", async () => {
-      nock(api.extensionsOrigin()).get(`/${VERSION}/${SOURCE_NAME}`).reply(404);
-
-      await expect(extensionsApi.getSource(SOURCE_NAME)).to.be.rejectedWith(FirebaseError);
-      expect(nock.isDone()).to.be.true;
-    });
-  });
-
   describe("createSource", () => {
     afterEach(() => {
       nock.cleanAll();

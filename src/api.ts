@@ -66,8 +66,6 @@ export const eventarcOrigin = (): string =>
   utils.envOverride("EVENTARC_URL", "https://eventarc.googleapis.com");
 export const firebaseApiOrigin = (): string =>
   utils.envOverride("FIREBASE_API_URL", "https://firebase.googleapis.com");
-export const firebaseExtensionsRegistryOrigin = (): string =>
-  utils.envOverride("FIREBASE_EXT_REGISTRY_ORIGIN", "https://extensions-registry.firebaseapp.com");
 export const firedataOrigin = (): string =>
   utils.envOverride("FIREBASE_FIREDATA_URL", "https://mobilesdk-pa.googleapis.com");
 export const firestoreOriginOrEmulator = (): string =>
