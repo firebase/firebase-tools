@@ -1,2 +1,3 @@
 - Updated the Firebase SQL Connect local toolkit to v3.4.26, which includes the following changes:
   - Internal improvements and bug fixes.
+- Fixed the emulators startup message showing 127.0.0.1 for the Emulator UI and Hub when they listen on 0.0.0.0; it now also prints the address they listen on. (#6222)
