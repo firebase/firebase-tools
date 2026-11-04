@@ -1,6 +1,30 @@
 #!/bin/bash
 set -e
 
+# Locate python3 (Cloud SDK container images bundle Python without system python3 in PATH)
+if ! command -v python3 >/dev/null 2>&1; then
+  for p in \
+    "/usr/lib/google-cloud-sdk/platform/bundledpythonunix/bin/python3" \
+    "/google-cloud-sdk/platform/bundledpythonunix/bin/python3" \
+    "/google-cloud-sdk/platform/bundledpythonunixmusl/bin/python3"; do
+    if [ -x "$p" ]; then
+      export PATH="${p%/*}:$PATH"
+      break
+    fi
+  done
+  if ! command -v python3 >/dev/null 2>&1; then
+    GCLOUD_PY="$(gcloud info --format='value(basic.python_location)' 2>/dev/null || true)"
+    if [ -n "$GCLOUD_PY" ] && [ -x "$GCLOUD_PY" ]; then
+      export PATH="${GCLOUD_PY%/*}:$PATH"
+    fi
+  fi
+fi
+
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "Error: python3 could not be located in PATH or Cloud SDK bundled paths." >&2
+  exit 1
+fi
+
 # Reads version number from workspace file (populated by prior build step or caller)
 if [ -f /workspace/version_number.txt ]; then
   VERSION_NUM="$(cat /workspace/version_number.txt)"
@@ -49,7 +73,13 @@ if [ "${HTTP_CODE}" != "200" ]; then
   exit 1
 fi
 
-OP_NAME=$(python3 -c "import sys, json; print(json.loads(sys.stdin.read()).get('name', ''))" <<< "${RESP}" 2>/dev/null || echo "")
+OP_NAME=$(python3 -c "
+import sys, json
+try:
+    print(json.loads(sys.stdin.read()).get('name', ''))
+except Exception:
+    pass
+" <<< "${RESP}")
 if [ -z "${OP_NAME}" ]; then
   echo "Error: Failed to initiate promotion operation. Response: ${RESP}" >&2
   exit 1
