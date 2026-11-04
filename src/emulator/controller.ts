@@ -33,7 +33,9 @@ import { confirm } from "../prompt";
 import {
   FLAG_EXPORT_ON_EXIT_NAME,
   JAVA_DEPRECATION_WARNING,
+  JAVA_UNSUPPORTED_ERROR,
   MIN_SUPPORTED_JAVA_MAJOR_VERSION,
+  TARGET_JAVA_MAJOR_VERSION,
 } from "./commandUtils";
 import { fileExistsSync } from "../fsutils";
 import { getStorageRulesConfig } from "./storage/rules/config";
@@ -302,8 +304,13 @@ export async function startAll(
   }
   const deprecationNotices: string[] = [];
   if (targets.some(requiresJava)) {
-    if ((await commandUtils.checkJavaMajorVersion()) < MIN_SUPPORTED_JAVA_MAJOR_VERSION) {
-      throw new FirebaseError(JAVA_DEPRECATION_WARNING);
+    const javaMajorVersion = await commandUtils.checkJavaMajorVersion();
+    if (javaMajorVersion < MIN_SUPPORTED_JAVA_MAJOR_VERSION) {
+      throw new FirebaseError(JAVA_UNSUPPORTED_ERROR);
+    }
+    if (javaMajorVersion < TARGET_JAVA_MAJOR_VERSION) {
+      utils.logLabeledError("emulators", JAVA_DEPRECATION_WARNING, "warn");
+      deprecationNotices.push(JAVA_DEPRECATION_WARNING);
     }
   }
   if (options.logVerbosity) {

@@ -1,9 +1,12 @@
+import * as sinon from "sinon";
 import { Emulators } from "./types";
 import { EmulatorRegistry } from "./registry";
 import { expect } from "chai";
 import { FakeEmulator } from "./testing/fakeEmulator";
-import { shouldStart } from "./controller";
+import { shouldStart, startAll } from "./controller";
 import { Options } from "../options";
+import * as commandUtils from "./commandUtils";
+import * as utils from "../utils";
 
 function createMockOptions(
   only: string | undefined,
@@ -26,6 +29,7 @@ function createMockOptions(
 
 describe("EmulatorController", () => {
   afterEach(async () => {
+    sinon.restore();
     await EmulatorRegistry.stopAll();
   });
 
@@ -102,6 +106,31 @@ describe("EmulatorController", () => {
         functions: {}, // Config is present, but no source
       });
       expect(shouldStart(options, Emulators.FUNCTIONS)).to.be.false;
+    });
+  });
+
+  describe("startAll Java version check", () => {
+    it("should error if Java major version is below 21", async () => {
+      sinon.stub(commandUtils, "checkJavaMajorVersion").resolves(17);
+      const options = createMockOptions("firestore", { firestore: {} });
+      await expect(startAll(options)).to.be.rejectedWith(commandUtils.JAVA_UNSUPPORTED_ERROR);
+    });
+
+    it("should log a deprecation warning if Java major version is between 21 and 24", async () => {
+      sinon.stub(commandUtils, "checkJavaMajorVersion").resolves(21);
+      const logStub = sinon.stub(utils, "logLabeledError");
+      const options = createMockOptions("firestore,doesnotexist", { firestore: {} });
+      await expect(startAll(options)).to.be.rejectedWith(/doesnotexist is not a valid emulator/);
+      expect(logStub.calledWith("emulators", commandUtils.JAVA_DEPRECATION_WARNING, "warn")).to.be
+        .true;
+    });
+
+    it("should not log a deprecation warning if Java major version is 25 or above", async () => {
+      sinon.stub(commandUtils, "checkJavaMajorVersion").resolves(25);
+      const logStub = sinon.stub(utils, "logLabeledError");
+      const options = createMockOptions("firestore,doesnotexist", { firestore: {} });
+      await expect(startAll(options)).to.be.rejectedWith(/doesnotexist is not a valid emulator/);
+      expect(logStub.called).to.be.false;
     });
   });
 }).timeout(2000);
