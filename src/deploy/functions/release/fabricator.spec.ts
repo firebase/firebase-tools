@@ -1285,6 +1285,49 @@ describe("Fabricator", () => {
         "delete schedule",
       );
     });
+
+    describe("when Cloud Scheduler rejects the region", () => {
+      const northEp = { ...ep, project: "project", region: "europe-north1" };
+      const invalidLocation = new FirebaseError(
+        "Location 'europe-north1' is not a valid location. Use ListLocations to list valid locations.",
+        { status: 400 },
+      );
+
+      it("ignores the 400 when Cloud Scheduler does not support the region", async () => {
+        scheduler.deleteJob.rejects(invalidLocation);
+        scheduler.listLocations.resolves(["us-central1", "europe-west9"]);
+
+        await expect(fab.deleteScheduleV2(northEp)).to.eventually.be.fulfilled;
+        expect(scheduler.listLocations).to.have.been.calledOnceWithExactly("project");
+      });
+
+      it("wraps the 400 when Cloud Scheduler supports the region", async () => {
+        scheduler.deleteJob.rejects(invalidLocation);
+        scheduler.listLocations.resolves(["us-central1", "europe-north1"]);
+
+        await expect(fab.deleteScheduleV2(northEp)).to.eventually.be.rejectedWith(
+          reporter.DeploymentError,
+          "delete schedule",
+        );
+      });
+
+      it("wraps the 400 when the regions can't be listed", async () => {
+        scheduler.deleteJob.rejects(invalidLocation);
+        scheduler.listLocations.rejects(new FirebaseError("Permission denied.", { status: 403 }));
+
+        await expect(fab.deleteScheduleV2(northEp)).to.eventually.be.rejectedWith(
+          reporter.DeploymentError,
+          "delete schedule",
+        );
+      });
+
+      it("does not list regions for errors other than 400", async () => {
+        scheduler.deleteJob.rejects(new FirebaseError("Permission denied.", { status: 403 }));
+
+        await expect(fab.deleteScheduleV2(northEp)).to.eventually.be.rejected;
+        expect(scheduler.listLocations).to.not.have.been.called;
+      });
+    });
   });
 
   describe("upsertTaskQueue", () => {

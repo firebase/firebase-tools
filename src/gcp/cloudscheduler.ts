@@ -114,6 +114,16 @@ export function getJob(name: string): Promise<any> {
 }
 
 /**
+ * Lists the IDs of the regions that Cloud Scheduler supports (e.g. "us-central1").
+ */
+export async function listLocations(projectId: string): Promise<string[]> {
+  const res = await apiClient.get<{ locations?: Array<{ locationId: string }> }>(
+    `/projects/${projectId}/locations`,
+  );
+  return res.body?.locations?.map((l) => l.locationId) ?? [];
+}
+
+/**
  * Updates a cloudScheduler job.
  * Returns a 404 if no job with that name exists.
  * @param job A job to update.

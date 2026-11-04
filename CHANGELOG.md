@@ -1,0 +1,1 @@
+- Fixed deploying a 2nd gen scheduled function to a region without Cloud Scheduler: the deploy now fails before creating the function, and `functions:delete` can remove a function left behind by an earlier deploy. (#11453)

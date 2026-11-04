@@ -42,7 +42,7 @@ import { needProjectId, needProjectNumber } from "../../projectUtils";
 import { logger } from "../../logger";
 import { ensureTriggerRegions } from "./triggerRegionHelper";
 import { ensureServiceAgentRoles, ensureGenkitMonitoringRoles } from "./checkIam";
-import { FirebaseError, getErrStack } from "../../error";
+import { FirebaseError, getErrMsg, getErrStack } from "../../error";
 
 import {
   configForCodebase,
@@ -66,6 +66,7 @@ import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args
 import { DeployOptions } from "..";
 import * as prompt from "../../prompt";
 import * as iam from "../../gcp/iam";
+import * as scheduler from "../../gcp/cloudscheduler";
 import * as resourcemanager from "../../gcp/resourceManager";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
@@ -534,6 +535,7 @@ export async function prepare(
   // ===Phase 7. Finalize preparation by "fixing" all extraneous environment issues like IAM policies.
   // We limit the scope endpoints being deployed.
   await backend.checkAvailability(context, matchingBackend);
+  await ensureScheduleRegionsSupported(projectId, matchingBackend);
   await validate.secretsAreValid(projectId, matchingBackend);
   await ensureServiceAgentRoles(
     projectId,
@@ -903,6 +905,43 @@ export async function loadCodebases(
     wantBuilds[codebase] = discoveredBuild;
   }
   return wantBuilds;
+}
+
+/**
+ * Fails the deploy before anything is created when a 2nd gen scheduled function targets a
+ * region without Cloud Scheduler, since its job is created in the function's own region.
+ * If the regions can't be listed, or none come back, the deploy goes ahead.
+ */
+export async function ensureScheduleRegionsSupported(
+  projectId: string,
+  want: backend.Backend,
+): Promise<void> {
+  const scheduled = backend
+    .allEndpoints(want)
+    .filter((ep) => backend.isScheduleTriggered(ep) && ep.platform === "gcfv2");
+  if (scheduled.length === 0) {
+    return;
+  }
+
+  let supported: string[];
+  try {
+    supported = await scheduler.listLocations(projectId);
+  } catch (err: unknown) {
+    logger.debug(`Failed to list Cloud Scheduler locations: ${getErrMsg(err)}`);
+    return;
+  }
+  if (supported.length === 0) {
+    return;
+  }
+
+  const unsupported = scheduled.filter((ep) => !supported.includes(ep.region));
+  if (unsupported.length > 0) {
+    const fns = unsupported.map((ep) => `${ep.id}(${ep.region})`).join(", ");
+    throw new FirebaseError(
+      `Cloud Scheduler is not available in the region of these scheduled functions: ${fns}. ` +
+        `Deploy them to a region that supports Cloud Scheduler: ${[...supported].sort().join(", ")}.`,
+    );
+  }
 }
 
 /**
