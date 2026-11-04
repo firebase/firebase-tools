@@ -2,11 +2,14 @@
 set -e
 
 # Locate python3 (Cloud SDK container images bundle Python without system python3 in PATH)
+readonly BUNDLED_PYTHON_PATHS=(
+  "/usr/lib/google-cloud-sdk/platform/bundledpythonunix/bin/python3"
+  "/google-cloud-sdk/platform/bundledpythonunix/bin/python3"
+  "/google-cloud-sdk/platform/bundledpythonunixmusl/bin/python3"
+)
+
 if ! command -v python3 >/dev/null 2>&1; then
-  for p in \
-    "/usr/lib/google-cloud-sdk/platform/bundledpythonunix/bin/python3" \
-    "/google-cloud-sdk/platform/bundledpythonunix/bin/python3" \
-    "/google-cloud-sdk/platform/bundledpythonunixmusl/bin/python3"; do
+  for p in "${BUNDLED_PYTHON_PATHS[@]}"; do
     if [ -x "$p" ]; then
       export PATH="${p%/*}:$PATH"
       break
@@ -76,7 +79,7 @@ fi
 OP_NAME=$(python3 -c "
 import sys, json
 try:
-    print(json.loads(sys.stdin.read()).get('name', ''))
+    print(json.loads(sys.stdin.read()).get('name') or '')
 except Exception:
     pass
 " <<< "${RESP}")
