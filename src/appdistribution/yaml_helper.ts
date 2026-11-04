@@ -55,7 +55,7 @@ function castExists<T>(it: T | null | undefined, thing: string): T {
   if (it == null) {
     throw new FirebaseError(`"${thing}" is required`);
   }
-  return it!;
+  return it;
 }
 
 function checkAllowedKeys(allowedKeys: Set<string>, o: object) {

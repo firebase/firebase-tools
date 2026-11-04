@@ -26,7 +26,7 @@ export function getValidator(): ValidateFunction {
     _VALIDATOR = ajv.compile(schema);
   }
 
-  return _VALIDATOR!;
+  return _VALIDATOR;
 }
 
 export function getErrorMessage(e: ErrorObject) {
