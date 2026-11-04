@@ -265,11 +265,6 @@ export function isCodebaseFiltered(codebase: string, filters: EndpointFilter[]):
   });
 }
 
-/** Checks if a function should be filtered given a list of endpoints. */
-export function isEndpointFiltered(endpoint: backend.Endpoint, filters: EndpointFilter[]): boolean {
-  return filters.some((filter) => endpointMatchesFilter(endpoint, filter));
-}
-
 /** Checks if a codebase has any intra-codebase (partial) filters targeting specific function IDs. */
 export function isCodebasePartiallyFiltered(codebase: string, filters?: EndpointFilter[]): boolean {
   if (!filters) {
