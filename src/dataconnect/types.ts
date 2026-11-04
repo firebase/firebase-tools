@@ -318,11 +318,6 @@ export interface GraphqlResponse {
   errors: GraphqlError[];
 }
 
-export interface ExecuteOperationRequest {
-  operationName: string;
-  variables?: { [key: string]: string };
-}
-
 export interface GraphqlResponseError {
   // One Platform standard puts error body under `error` field.
   error?: {
