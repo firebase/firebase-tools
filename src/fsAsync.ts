@@ -1,9 +1,9 @@
-import { readdirSync, statSync, readFileSync } from "fs-extra";
+import { existsSync, readdirSync, statSync, readFileSync } from "fs-extra";
 import ignorePkg from "ignore";
 import * as _ from "lodash";
 import * as minimatch from "minimatch";
-import { join, relative } from "path";
-import { logger } from "./logger";
+import { join, relative, sep } from "path";
+import { FirebaseError, getErrMsg, getError } from "./error";
 
 export interface ReaddirRecursiveOpts {
   // The directory to recurse.
@@ -15,6 +15,10 @@ export interface ReaddirRecursiveOpts {
   // and local nested .gitignore files are discovered and stacked automatically.
   // When false or undefined, ignoreStrings are matched flatly using simple minimatch wildcard globs.
   supportGitIgnore?: boolean;
+  // With supportGitIgnore, also apply the .gitignore files in this directory and in each directory
+  // between it and `path`, the way git applies a repository's .gitignore files to its subdirectories.
+  // It must be `path` or a directory above it.
+  gitIgnoreRoot?: string;
   // Files in the ignore array to include.
   include?: string[];
   // Maximum depth to recurse.
@@ -33,6 +37,44 @@ export interface GitIgnoreState {
   ignore: ReturnType<typeof ignorePkg>;
 }
 
+/**
+ * Reads the rules in `dirPath`'s .gitignore file. Throws if it can't be read: skipping it could
+ * upload files that the user meant to leave out.
+ */
+function readGitIgnore(dirPath: string): GitIgnoreState {
+  const gitIgnorePath = join(dirPath, ".gitignore");
+  try {
+    const lines = readFileSync(gitIgnorePath)
+      .toString()
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => !line.startsWith("#") && line !== "");
+    return { dirPath, ignore: ignorePkg().add(lines) };
+  } catch (err: unknown) {
+    throw new FirebaseError(`Could not read ${gitIgnorePath}: ${getErrMsg(err)}`, {
+      original: getError(err),
+    });
+  }
+}
+
+/**
+ * Returns the .gitignore rules of `root` and of each directory between it and `dir`, outermost
+ * first. `dir`'s own .gitignore isn't included, since readdirRecursiveHelper reads it.
+ */
+function parentGitIgnores(root: string, dir: string): GitIgnoreState[] {
+  const folders = relative(root, dir).split(sep).filter(Boolean);
+  const states: GitIgnoreState[] = [];
+  for (let depth = 0; depth < folders.length; depth++) {
+    const ancestor = join(root, ...folders.slice(0, depth));
+    const gitIgnorePath = join(ancestor, ".gitignore");
+    if (!existsSync(gitIgnorePath) || !statSync(gitIgnorePath).isFile()) {
+      continue;
+    }
+    states.push(readGitIgnore(ancestor));
+  }
+  return states;
+}
+
 async function readdirRecursiveHelper(options: {
   path: string;
   filter: (p: string, gitIgnoreStack?: GitIgnoreState[]) => boolean;
@@ -47,24 +89,7 @@ async function readdirRecursiveHelper(options: {
   // Load and stack directory-specific .gitignore rules if supportGitIgnore is enabled
   if (options.supportGitIgnore) {
     if (dirContents.find((n) => n.name === ".gitignore")?.isFile()) {
-      const localGitIgnore = join(options.path, ".gitignore");
-      try {
-        const lines = readFileSync(localGitIgnore)
-          .toString()
-          .split("\n")
-          .map((line) => line.trim())
-          .filter((line) => !line.startsWith("#") && line !== "");
-        const subIgnore = ignorePkg().add(lines);
-        currentGitIgnoreStack = [
-          ...currentGitIgnoreStack,
-          {
-            dirPath: options.path,
-            ignore: subIgnore,
-          },
-        ];
-      } catch (e: unknown) {
-        logger.debug(`Error reading .gitignore file at ${localGitIgnore}:`, e);
-      }
+      currentGitIgnoreStack = [...currentGitIgnoreStack, readGitIgnore(options.path)];
     }
   }
   const fullPaths = dirContents
@@ -144,6 +169,11 @@ export async function readdirRecursive(
       dirPath: options.path,
       ignore: ignorePkg().add(options.ignoreStrings || []),
     });
+    // Rules from .gitignore files above `path` rank between ignoreStrings and `path`'s own
+    // .gitignore, as they would in a walk that started at gitIgnoreRoot.
+    if (options.gitIgnoreRoot) {
+      initialGitIgnoreStack.push(...parentGitIgnores(options.gitIgnoreRoot, options.path));
+    }
   }
 
   const maxDepth = options.maxDepth && options.maxDepth > 0 ? options.maxDepth : Infinity;

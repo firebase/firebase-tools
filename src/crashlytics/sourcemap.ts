@@ -20,6 +20,7 @@ export interface CommandOptions extends Options {
   bucketLocation?: string;
   appVersion?: string;
   retryDelay?: number;
+  clean?: boolean;
 }
 
 export interface SourceMap {
@@ -54,6 +55,9 @@ interface ListSourceMapsResponse {
 }
 
 export const CONCURRENCY = 25;
+
+const SOURCEMAP_RETENTION_DAYS = 180;
+const ENABLE_AUTOCLASS = true;
 
 // Special directory names used for Angular client-side build assets
 const ANGULAR_DIST_DIR = "dist";
@@ -154,10 +158,13 @@ export async function upsertBucket(
               type: "Delete",
             },
             condition: {
-              age: 30,
+              age: SOURCEMAP_RETENTION_DAYS,
             },
           },
         ],
+      },
+      autoclass: {
+        enabled: ENABLE_AUTOCLASS,
       },
     },
   });
@@ -416,11 +423,23 @@ export async function uploadSourceMaps(
 
   let successCount = 0;
   const failedFiles: string[] = [];
+  const rootDir = options.projectRoot ?? process.cwd();
   for (const [i, success] of results.entries()) {
-    if (success) {
-      successCount++;
-    } else {
+    if (!success) {
       failedFiles.push(mappings[i].mapFilePath);
+      continue;
+    }
+
+    successCount++;
+    if (options.clean) {
+      const resolvedPath = path.resolve(rootDir, mappings[i].mapFilePath);
+      try {
+        fs.rmSync(resolvedPath, { force: true });
+      } catch (err) {
+        logger.debug(
+          `Failed to delete source map file ${resolvedPath}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
     }
   }
 
