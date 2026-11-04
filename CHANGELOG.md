@@ -1,0 +1,2 @@
+- Added an optional `filterExpression` parameter to the Crashlytics MCP `list_events` tool to filter by custom keys.
+- Fixed Crashlytics filter validation rejecting web app version names without a build number.
