@@ -483,23 +483,30 @@ export function createNpmPackageAdapter(options: NpmPackageAdapterOptions): KitS
         force: options.force,
       });
     },
-    async prepareSource(kitId: string, createdPaths: string[]): Promise<PreparedKitSource> {
+    async prepareSource(kitId: string): Promise<PreparedKitSource> {
       const absKitDir = options.config.path(path.join(FUNCTION_KITS_DIR, kitId));
-      createdPaths.push(absKitDir);
 
-      const { sourcePath, absSourcePath } = await scaffoldKitFiles({
-        config: options.config,
-        kitId,
-        packageName,
-        templateType,
-      });
-      await buildAndInstallKit(absSourcePath, options.package, isThirdPartyPackage(packageName));
+      try {
+        const { sourcePath, absSourcePath } = await scaffoldKitFiles({
+          config: options.config,
+          kitId,
+          packageName,
+          templateType,
+        });
+        await buildAndInstallKit(absSourcePath, options.package, isThirdPartyPackage(packageName));
 
-      return {
-        sourcePath,
-        sourcePackage: { name: packageName },
-        predeploy: ['npm --prefix "$RESOURCE_DIR" run build'],
-      };
+        return {
+          sourcePath,
+          sourcePackage: { name: packageName },
+          predeploy: ['npm --prefix "$RESOURCE_DIR" run build'],
+          createdPaths: [absKitDir],
+        };
+      } catch (err: unknown) {
+        await fs.remove(absKitDir).catch((cleanupErr: unknown) => {
+          logger.debug(`Failed to clean up kit directory '${absKitDir}': ${getErrMsg(cleanupErr)}`);
+        });
+        throw err;
+      }
     },
   };
 }

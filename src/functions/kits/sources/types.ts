@@ -1,5 +1,4 @@
 import { KitSourcePackage } from "../../../firebaseConfig";
-import type { ActiveRuntime } from "../../../deploy/functions/runtimes/supported/types";
 import { ValidatedKitSingle, ValidatedSingle } from "../../projectConfig";
 
 export const FUNCTION_KITS_DIR = "function-kits";
@@ -9,7 +8,7 @@ export interface PreparedKitSource {
   sourcePath: string;
   sourcePackage?: KitSourcePackage;
   predeploy?: string[];
-  runtime?: ActiveRuntime;
+  createdPaths?: string[];
 }
 
 /**
@@ -30,5 +29,5 @@ export interface KitSourceAdapter {
   /** Validates the source and prompts for any required security/lockfile confirmations. */
   validateAndConfirm(): Promise<void>;
   /** Scaffolds (if needed), installs dependencies, and builds the kit source directory. */
-  prepareSource(kitId: string, createdPaths: string[]): Promise<PreparedKitSource>;
+  prepareSource(kitId: string): Promise<PreparedKitSource>;
 }

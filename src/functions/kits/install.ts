@@ -40,11 +40,11 @@ import { hasProjectEnv } from "../env";
 import { RC } from "../../rc";
 import { KitInstanceEnvSeed, seedKitInstanceEnv } from "./env";
 import { removeDirectoryIfEmpty } from "../../fsutils";
+import { FUNCTION_KITS_DIR } from "./sources/types";
+import { buildAndInstallDirectoryKit, validateAndResolveDirectoryKit } from "./sources/directory";
 import {
-  buildAndInstallDirectoryKit,
   buildAndInstallKit,
   DEFAULT_TEMPLATE,
-  FUNCTION_KITS_DIR,
   parseNpmPackageSpecifier,
   promptSecurityConfirmation,
   sanitizePackageNameToKitName,
@@ -52,12 +52,13 @@ import {
   scaffoldKitFiles,
   TEMPLATES,
   TemplateType,
-  validateAndResolveDirectoryKit,
   validateNpmPackageExists,
   validateNpmPackageName,
-} from "./sources";
+} from "./sources/npm";
 
-export * from "./sources";
+export * from "./sources/types";
+export * from "./sources/npm";
+export * from "./sources/directory";
 
 export interface ScaffoldedKitPaths extends ScaffoldedKitSourcePaths {
   configDirPath: string;

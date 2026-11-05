@@ -29,6 +29,7 @@ describe("functions/kits/sources/npm", () => {
   let wrapSpawnStub: sinon.SinonStub;
   let spawnWithOutputStub: sinon.SinonStub;
   let loggerWarnStub: sinon.SinonStub;
+  let fsRemoveStub: sinon.SinonStub;
 
   beforeEach(() => {
     wrapSpawnStub = sinon.stub(initSpawn, "wrapSpawn").resolves();
@@ -38,6 +39,7 @@ describe("functions/kits/sources/npm", () => {
     sinon.stub(fs, "ensureDir").resolves();
     sinon.stub(fs, "pathExists").resolves(false);
     sinon.stub(fs, "readJson").resolves({});
+    fsRemoveStub = sinon.stub(fs, "remove").resolves();
     loggerWarnStub = sinon.stub(logger, "warn");
   });
 
@@ -962,20 +964,48 @@ describe("functions/kits/sources/npm", () => {
         package: "@third-party/my-pkg@1.0.0",
       });
 
-      const createdPaths: string[] = [];
-      const prepared = await adapter.prepareSource("my-pkg", createdPaths);
+      const prepared = await adapter.prepareSource("my-pkg");
 
-      expect(createdPaths).to.deep.equal(["/mock/project/function-kits/my-pkg"]);
       expect(prepared).to.deep.equal({
         sourcePath: "function-kits/my-pkg/source",
         sourcePackage: { name: "@third-party/my-pkg" },
         predeploy: ['npm --prefix "$RESOURCE_DIR" run build'],
+        createdPaths: ["/mock/project/function-kits/my-pkg"],
       });
       expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
         "npm",
         ["install", "@third-party/my-pkg@1.0.0", "--save-prefix=^", "--ignore-scripts"],
         "/mock/project/function-kits/my-pkg/source",
       );
+    });
+
+    it("should clean up kit directory if buildAndInstallKit fails in prepareSource", async () => {
+      mockFs({
+        "/mock/project/function-kits/my-pkg/source/package-lock.json": {
+          packages: {
+            "node_modules/@third-party/my-pkg": {
+              peerDependencies: { "firebase-functions": "^7.0.0" },
+            },
+            "node_modules/firebase-functions": { version: "7.3.2" },
+          },
+        },
+      });
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: {},
+        path: (rel: string) => path.join("/mock/project", rel),
+        askWriteProjectFile: () => Promise.resolve(),
+      } as unknown as Config;
+
+      wrapSpawnStub.rejects(new Error("npm install failed"));
+
+      const adapter = createNpmPackageAdapter({
+        config: mockConfig,
+        package: "@third-party/my-pkg@1.0.0",
+      });
+
+      await expect(adapter.prepareSource("my-pkg")).to.be.rejectedWith("npm install failed");
+      expect(fsRemoveStub).to.have.been.calledWith("/mock/project/function-kits/my-pkg");
     });
   });
 });

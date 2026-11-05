@@ -249,7 +249,7 @@ describe("functions/kits/sources/directory", () => {
       });
 
       await adapter.validateAndConfirm();
-      const prepared = await adapter.prepareSource("my-kit", []);
+      const prepared = await adapter.prepareSource("my-kit");
 
       expect(prepared).to.deep.equal({
         sourcePath: "my-kit",
