@@ -113,14 +113,27 @@ export function getJob(name: string): Promise<any> {
   });
 }
 
+interface ListLocationsResponse {
+  locations?: Array<{ locationId: string }>;
+  nextPageToken?: string;
+}
+
 /**
  * Lists the IDs of the regions that Cloud Scheduler supports (e.g. "us-central1").
  */
 export async function listLocations(projectId: string): Promise<string[]> {
-  const res = await apiClient.get<{ locations?: Array<{ locationId: string }> }>(
-    `/projects/${projectId}/locations`,
-  );
-  return res.body?.locations?.map((l) => l.locationId) ?? [];
+  const locations: string[] = [];
+  let pageToken: string | undefined = undefined;
+  do {
+    const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
+    const res: { body?: ListLocationsResponse } = await apiClient.get<ListLocationsResponse>(
+      `/projects/${projectId}/locations`,
+      { queryParams },
+    );
+    locations.push(...(res.body?.locations?.map((l) => l.locationId) ?? []));
+    pageToken = res.body?.nextPageToken;
+  } while (pageToken);
+  return locations;
 }
 
 /**
