@@ -1,1 +1,2 @@
 - Fixed a race condition across a second boundary during `accounts:signUp` in the Auth emulator where `validSince` could exceed `auth_time`. (#11413)
+- Fixed `firebase deploy --only functions` requiring permission to act as the App Engine default service account. The deploy now checks the service accounts the functions will actually run as (#11227).
