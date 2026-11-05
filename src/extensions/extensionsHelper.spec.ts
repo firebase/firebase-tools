@@ -12,6 +12,7 @@ import { storage } from "../gcp";
 import * as archiveDirectory from "../archiveDirectory";
 import * as prompt from "../prompt";
 import {
+  ExtensionInstance,
   ExtensionSource,
   ExtensionSpec,
   Param,
@@ -171,255 +172,6 @@ describe("extensionsHelper", () => {
       expect(() => {
         extensionsHelper.populateDefaultParams(envFile, exampleParamSpec);
       }).to.throw(FirebaseError, /no default available/);
-    });
-  });
-
-  describe("validateCommandLineParams", () => {
-    const exampleParamSpec: Param[] = [
-      {
-        param: "ENV_VAR_ONE",
-        label: "env1",
-        required: true,
-      },
-      {
-        param: "ENV_VAR_TWO",
-        label: "env2",
-        required: true,
-        validationRegex: "^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+$",
-        validationErrorMessage: "You must provide a valid email address.\n",
-      },
-      {
-        param: "ENV_VAR_THREE",
-        label: "env3",
-        default: "https://${PROJECT_ID}.web.app/?acceptInvitation={token}",
-        validationRegex: ".*\\{token\\}.*",
-        validationErrorMessage:
-          "Your URL must include {token} so that it can be replaced with an actual invitation token.\n",
-      },
-      {
-        param: "ENV_VAR_FOUR",
-        label: "env3",
-        default: "users/{sender}.friends",
-        required: false,
-        validationRegex: ".+/.+\\..+",
-        validationErrorMessage:
-          "Values must be comma-separated document path + field, e.g. coll/doc.field,coll/doc.field\n",
-      },
-    ];
-
-    it("should throw error if param variable value is invalid", () => {
-      const envFile = {
-        ENV_VAR_ONE: "12345",
-        ENV_VAR_TWO: "invalid",
-        ENV_VAR_THREE: "https://${PROJECT_ID}.web.app/?acceptInvitation={token}",
-        ENV_VAR_FOUR: "users/{sender}.friends",
-      };
-
-      expect(() => {
-        extensionsHelper.validateCommandLineParams(envFile, exampleParamSpec);
-      }).to.throw(FirebaseError, /not valid/);
-    });
-
-    it("should throw error if # commandLineParams does not match # env vars from extension.yaml", () => {
-      const envFile = {
-        ENV_VAR_ONE: "12345",
-        ENV_VAR_TWO: "invalid",
-        ENV_VAR_THREE: "https://${PROJECT_ID}.web.app/?acceptInvitation={token}",
-      };
-
-      expect(() => {
-        extensionsHelper.validateCommandLineParams(envFile, exampleParamSpec);
-      }).to.throw(FirebaseError);
-    });
-
-    it("should throw an error if a required param is missing", () => {
-      const testParamSpec = [
-        {
-          param: "HI",
-          label: "hello",
-          required: true,
-        },
-        {
-          param: "BYE",
-          label: "goodbye",
-          required: false,
-        },
-      ];
-      const testParams = {
-        BYE: "val",
-      };
-
-      expect(() => {
-        extensionsHelper.validateCommandLineParams(testParams, testParamSpec);
-      }).to.throw(FirebaseError);
-    });
-
-    it("should not throw a error if a non-required param is missing", () => {
-      const testParamSpec = [
-        {
-          param: "HI",
-          label: "hello",
-          required: true,
-        },
-        {
-          param: "BYE",
-          label: "goodbye",
-          required: false,
-        },
-      ];
-      const testParams = {
-        HI: "val",
-      };
-
-      expect(() => {
-        extensionsHelper.validateCommandLineParams(testParams, testParamSpec);
-      }).not.to.throw();
-    });
-
-    it("should not throw a regex error if a non-required param is missing", () => {
-      const testParamSpec = [
-        {
-          param: "BYE",
-          label: "goodbye",
-          required: false,
-          validationRegex: "FAIL",
-        },
-      ];
-      const testParams = {};
-
-      expect(() => {
-        extensionsHelper.validateCommandLineParams(testParams, testParamSpec);
-      }).not.to.throw();
-    });
-
-    it("should throw a error if a param value doesn't pass the validation regex", () => {
-      const testParamSpec = [
-        {
-          param: "HI",
-          label: "hello",
-          validationRegex: "FAIL",
-          required: true,
-        },
-      ];
-      const testParams = {
-        HI: "val",
-      };
-
-      expect(() => {
-        extensionsHelper.validateCommandLineParams(testParams, testParamSpec);
-      }).to.throw(FirebaseError);
-    });
-
-    it("should throw a error if a multiselect value isn't an option", () => {
-      const testParamSpec = [
-        {
-          param: "HI",
-          label: "hello",
-          type: ParamType.MULTISELECT,
-          options: [
-            {
-              value: "val",
-            },
-          ],
-          required: true,
-        },
-      ];
-      const testParams = {
-        HI: "val,FAIL",
-      };
-
-      expect(() => {
-        extensionsHelper.validateCommandLineParams(testParams, testParamSpec);
-      }).to.throw(FirebaseError);
-    });
-
-    it("should throw a error if a multiselect param is missing options", () => {
-      const testParamSpec = [
-        {
-          param: "HI",
-          label: "hello",
-          type: ParamType.MULTISELECT,
-          options: [],
-          validationRegex: "FAIL",
-          required: true,
-        },
-      ];
-      const testParams = {
-        HI: "FAIL,val",
-      };
-
-      expect(() => {
-        extensionsHelper.validateCommandLineParams(testParams, testParamSpec);
-      }).to.throw(FirebaseError);
-    });
-
-    it("should throw a error if a select param is missing options", () => {
-      const testParamSpec = [
-        {
-          param: "HI",
-          label: "hello",
-          type: ParamType.SELECT,
-          validationRegex: "FAIL",
-          options: [],
-          required: true,
-        },
-      ];
-      const testParams = {
-        HI: "FAIL,val",
-      };
-
-      expect(() => {
-        extensionsHelper.validateCommandLineParams(testParams, testParamSpec);
-      }).to.throw(FirebaseError);
-    });
-
-    it("should not throw if a select value is an option", () => {
-      const testParamSpec = [
-        {
-          param: "HI",
-          label: "hello",
-          type: ParamType.SELECT,
-          options: [
-            {
-              value: "val",
-            },
-          ],
-          required: true,
-        },
-      ];
-      const testParams = {
-        HI: "val",
-      };
-
-      expect(() => {
-        extensionsHelper.validateCommandLineParams(testParams, testParamSpec);
-      }).not.to.throw();
-    });
-
-    it("should not throw if all multiselect values are options", () => {
-      const testParamSpec = [
-        {
-          param: "HI",
-          label: "hello",
-          type: ParamType.MULTISELECT,
-          options: [
-            {
-              value: "val",
-            },
-            {
-              value: "val2",
-            },
-          ],
-          required: true,
-        },
-      ];
-      const testParams = {
-        HI: "val,val2",
-      };
-
-      expect(() => {
-        extensionsHelper.validateCommandLineParams(testParams, testParamSpec);
-      }).not.to.throw();
     });
   });
 
@@ -805,42 +557,6 @@ describe("extensionsHelper", () => {
     });
   });
 
-  describe("checkIfInstanceIdAlreadyExists", () => {
-    const TEST_NAME = "image-resizer";
-    let getInstanceStub: sinon.SinonStub;
-
-    beforeEach(() => {
-      getInstanceStub = sinon.stub(extensionsApi, "getInstance");
-    });
-
-    afterEach(() => {
-      getInstanceStub.restore();
-    });
-
-    it("should return false if no instance with that name exists", async () => {
-      getInstanceStub.throws(new FirebaseError("Not Found", { status: 404 }));
-
-      const exists = await extensionsHelper.instanceIdExists("proj", TEST_NAME);
-      expect(exists).to.be.false;
-    });
-
-    it("should return true if an instance with that name exists", async () => {
-      getInstanceStub.resolves({ name: TEST_NAME });
-
-      const exists = await extensionsHelper.instanceIdExists("proj", TEST_NAME);
-      expect(exists).to.be.true;
-    });
-
-    it("should throw if it gets an unexpected error response from getInstance", async () => {
-      getInstanceStub.throws(new FirebaseError("Internal Error", { status: 500 }));
-
-      await expect(extensionsHelper.instanceIdExists("proj", TEST_NAME)).to.be.rejectedWith(
-        FirebaseError,
-        "Unexpected error when checking if instance ID exists: Internal Error",
-      );
-    });
-  });
-
   describe("getFirebaseProjectParams", () => {
     const sandbox = sinon.createSandbox();
     let projectNumberStub: sinon.SinonStub;
@@ -1000,6 +716,208 @@ describe("extensionsHelper", () => {
           state: "PUBLISHED",
         }),
       ).to.eql("Prerelease");
+    });
+  });
+
+  describe("ensureInstanceSpec", () => {
+    let sandbox: sinon.SinonSandbox;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should return instance as is if spec already exists", async () => {
+      const instance: ExtensionInstance = {
+        name: "projects/123/instances/ext1",
+        createTime: "",
+        updateTime: "",
+        state: "ACTIVE",
+        serviceAccountEmail: "",
+        config: {
+          name: "",
+          createTime: "",
+          params: {},
+          systemParams: {},
+          source: {
+            name: "",
+            state: "ACTIVE",
+            packageUri: "",
+            hash: "",
+            spec: {
+              name: "my-ext",
+              version: "0.1.0",
+              resources: [],
+              params: [],
+              systemParams: [],
+            },
+          },
+        },
+      };
+
+      const getExtensionVersionStub = sandbox.stub(publisherApi, "getExtensionVersion");
+      const res = await extensionsHelper.ensureInstanceSpec(instance);
+      expect(res).to.equal(instance);
+      expect(getExtensionVersionStub).to.not.have.been.called;
+    });
+
+    it("should fetch spec on demand if missing", async () => {
+      const instance: ExtensionInstance = {
+        name: "projects/123/instances/ext1",
+        createTime: "",
+        updateTime: "",
+        state: "ACTIVE",
+        serviceAccountEmail: "",
+        config: {
+          name: "",
+          createTime: "",
+          params: {},
+          systemParams: {},
+          extensionRef: "firebase/firestore-send-email",
+          extensionVersion: "0.1.35",
+        },
+      };
+
+      sandbox.stub(publisherApi, "getExtensionVersion").resolves({
+        name: "publishers/firebase/extensions/firestore-send-email/versions/0.1.35",
+        ref: "firebase/firestore-send-email@0.1.35",
+        spec: {
+          name: "firestore-send-email",
+          version: "0.1.35",
+          resources: [],
+          params: [
+            {
+              param: "LOCATION",
+              label: "Location",
+              type: ParamType.SELECT,
+            },
+          ],
+          systemParams: [],
+        },
+        state: "PUBLISHED",
+        hash: "hash123",
+        sourceDownloadUri: "https://example.com/download",
+      });
+
+      const res = await extensionsHelper.ensureInstanceSpec(instance);
+      expect(res.config?.source?.spec?.name).to.equal("firestore-send-email");
+      expect(res.config?.source?.spec?.params).to.have.length(1);
+      expect(res.config?.source?.name).to.equal(
+        "publishers/firebase/extensions/firestore-send-email/versions/0.1.35",
+      );
+      expect(res.config?.source?.packageUri).to.equal("https://example.com/download");
+      expect(res.config?.source?.hash).to.equal("hash123");
+      expect(res.config?.source?.state).to.equal("ACTIVE");
+    });
+
+    it("should fetch spec on demand if extensionRef is on instance directly", async () => {
+      const instance: ExtensionInstance = {
+        name: "projects/123/instances/ext1",
+        createTime: "",
+        updateTime: "",
+        state: "ACTIVE",
+        serviceAccountEmail: "",
+        extensionRef: "firebase/firestore-send-email",
+        extensionVersion: "0.1.35",
+        config: {
+          name: "",
+          createTime: "",
+          params: {},
+          systemParams: {},
+        },
+      };
+
+      sandbox.stub(publisherApi, "getExtensionVersion").resolves({
+        name: "publishers/firebase/extensions/firestore-send-email/versions/0.1.35",
+        ref: "firebase/firestore-send-email@0.1.35",
+        spec: {
+          name: "firestore-send-email",
+          version: "0.1.35",
+          resources: [],
+          params: [
+            {
+              param: "LOCATION",
+              label: "Location",
+              type: ParamType.SELECT,
+            },
+          ],
+          systemParams: [],
+        },
+        state: "PUBLISHED",
+        hash: "hash123",
+        sourceDownloadUri: "https://example.com/download",
+      });
+
+      const res = await extensionsHelper.ensureInstanceSpec(instance);
+      expect(res.config?.source?.spec?.name).to.equal("firestore-send-email");
+      expect(res.config?.source?.spec?.params).to.have.length(1);
+      expect(res.config?.source?.name).to.equal(
+        "publishers/firebase/extensions/firestore-send-email/versions/0.1.35",
+      );
+    });
+
+    it("should preserve version from extensionRef when extensionVersion is unset", async () => {
+      const instance: ExtensionInstance = {
+        name: "projects/123/instances/ext1",
+        createTime: "",
+        updateTime: "",
+        state: "ACTIVE",
+        serviceAccountEmail: "",
+        extensionRef: "firebase/firestore-send-email@0.1.35",
+        config: {
+          name: "",
+          createTime: "",
+          params: {},
+          systemParams: {},
+        },
+      };
+
+      const getExtensionVersionStub = sandbox.stub(publisherApi, "getExtensionVersion").resolves({
+        name: "publishers/firebase/extensions/firestore-send-email/versions/0.1.35",
+        ref: "firebase/firestore-send-email@0.1.35",
+        spec: {
+          name: "firestore-send-email",
+          version: "0.1.35",
+          resources: [],
+          params: [],
+          systemParams: [],
+        },
+        state: "PUBLISHED",
+        hash: "hash123",
+        sourceDownloadUri: "https://example.com/download",
+      });
+
+      const res = await extensionsHelper.ensureInstanceSpec(instance);
+      expect(getExtensionVersionStub).to.have.been.calledWith(
+        "firebase/firestore-send-email@0.1.35",
+      );
+      expect(res.config?.source?.spec?.name).to.equal("firestore-send-email");
+    });
+
+    it("should let getExtensionVersion errors bubble up", async () => {
+      const instance: ExtensionInstance = {
+        name: "projects/123/instances/ext1",
+        createTime: "",
+        updateTime: "",
+        state: "ACTIVE",
+        serviceAccountEmail: "",
+        extensionRef: "firebase/firestore-send-email",
+        extensionVersion: "0.1.35",
+        config: {
+          name: "",
+          createTime: "",
+          params: {},
+          systemParams: {},
+        },
+      };
+
+      const networkErr = new Error("Network failure");
+      sandbox.stub(publisherApi, "getExtensionVersion").rejects(networkErr);
+
+      await expect(extensionsHelper.ensureInstanceSpec(instance)).to.be.rejectedWith(networkErr);
     });
   });
 });

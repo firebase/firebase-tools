@@ -4,27 +4,23 @@ You can create, modify and deploy custom indexes in the Firebase console, or usi
 
 An index configuration file defines one object containing an <code>indexes</code> array and an optional <code>fieldOverrides</code> array. Here's an example:
 
-```javascript
+```json
 {
-  // Required, specify compound indexes
-  indexes: [
+  "indexes": [
     {
-      collectionGroup: "posts",
-      queryScope: "COLLECTION",
-      fields: [
-        { fieldPath: "author", arrayConfig: "CONTAINS" },
-        { fieldPath: "timestamp", order: "DESCENDING" }
+      "collectionGroup": "posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "author", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
       ]
     }
   ],
-
-  // Optional, disable indexes or enable single-field collection group indexes
-  fieldOverrides: [
+  "fieldOverrides": [
     {
-      collectionGroup: "posts",
-      fieldPath: "myBigMapField",
-      // We want to disable indexing on our big map field, and so empty the indexes array
-      indexes: []
+      "collectionGroup": "posts",
+      "fieldPath": "myBigMapField",
+      "indexes": []
     }
   ]
 }

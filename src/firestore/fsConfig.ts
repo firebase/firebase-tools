@@ -43,6 +43,16 @@ export function getFirestoreConfig(projectId: string, options: Options): ParsedF
     }
   }
 
+  // If user specifies firestore:rules or firestore:indexes make sure we don't throw an error if this doesn't match a database name
+  if (onlyDatabases.has("rules")) {
+    onlyDatabases.delete("rules");
+    allDatabases = true;
+  }
+  if (onlyDatabases.has("indexes")) {
+    onlyDatabases.delete("indexes");
+    allDatabases = true;
+  }
+
   const results: ParsedFirestoreConfig[] = [];
   for (const c of fsConfig) {
     const { database, target } = c;

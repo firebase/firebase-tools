@@ -29,6 +29,8 @@ export const create_project = tool(
   {
     name: "create_project",
     description: "Use this to create a new Firebase Project.",
+    humanReadableDescription:
+      "Create a new Firebase project or enable Firebase services on an existing Google Cloud project.",
     inputSchema: z.object({
       project_id: z.string().describe("The project ID to create or use."),
       display_name: z

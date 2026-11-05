@@ -85,7 +85,12 @@ export interface Diff {
   destructive: boolean;
 }
 
-export type WarningLevel = "LOG_ONLY" | "INTERACTIVE_ACK" | "REQUIRE_ACK" | "REQUIRE_FORCE";
+export type WarningLevel =
+  | "LOG_ONLY"
+  | "INTERACTIVE_ACK"
+  | "REQUIRE_ACK"
+  | "REQUIRE_FORCE"
+  | "ALWAYS_REQUIRED";
 
 export interface Workaround {
   description: string;
@@ -311,11 +316,6 @@ export interface ExecuteGraphqlRequest {
 export interface GraphqlResponse {
   data: Record<string, any>;
   errors: GraphqlError[];
-}
-
-export interface ExecuteOperationRequest {
-  operationName: string;
-  variables?: { [key: string]: string };
 }
 
 export interface GraphqlResponseError {

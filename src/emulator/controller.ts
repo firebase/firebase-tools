@@ -2,7 +2,6 @@ import * as clc from "colorette";
 import * as fs from "fs";
 import * as path from "path";
 import * as fsConfig from "../firestore/fsConfig";
-import * as proto from "../gcp/proto";
 
 import { logger } from "../logger";
 import { trackEmulator, trackGA4 } from "../track";
@@ -20,6 +19,7 @@ import {
 import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants";
 import { EmulatableBackend, FunctionsEmulator } from "./functionsEmulator";
 import { FirebaseError } from "../error";
+import { getErrMsg, getError } from "../error";
 import { getProjectId, getAliases, needProjectNumber } from "../projectUtils";
 import * as commandUtils from "./commandUtils";
 import { EmulatorHub } from "./hub";
@@ -42,7 +42,12 @@ import { getProjectDefaultAccount } from "../auth";
 import { Options } from "../options";
 import { ParsedTriggerDefinition } from "./functionsEmulatorShared";
 import { ExtensionsEmulator } from "./extensionsEmulator";
-import { normalizeAndValidate, requireLocal } from "../functions/projectConfig";
+import {
+  isKitConfig,
+  addKitPrefix,
+  normalizeAndValidate,
+  requireLocal,
+} from "../functions/projectConfig";
 import { requiresJava } from "./downloadableEmulators";
 import { prepareFrameworks } from "../frameworks";
 import * as experiments from "../experiments";
@@ -174,11 +179,11 @@ export function shouldStart(options: Options, name: Emulators): boolean {
     try {
       normalizeAndValidate(options.config.src.functions);
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
         "ERROR",
         "functions",
-        `Failed to start Functions emulator: ${err.message}`,
+        `Failed to start Functions emulator: ${getErrMsg(err)}`,
       );
       return false;
     }
@@ -357,7 +362,7 @@ export async function startAll(
     if (!isDemoProject) {
       try {
         projectNumber = await needProjectNumber(options);
-      } catch (err: any) {
+      } catch (err: unknown) {
         EmulatorLogger.forEmulator(Emulators.EXTENSIONS).logLabeled(
           "ERROR",
           Emulators.EXTENSIONS,
@@ -541,22 +546,41 @@ export async function startAll(
           `Cannot load functions from ${functionsDir} because it has invalid runtime ${runtime as string}`,
         );
       }
-      const backend: EmulatableBackend = {
-        functionsDir,
-        runtime,
-        codebase: localCfg.codebase,
-        prefix: localCfg.prefix,
-        env: {
-          ...options.extDevEnv,
-        },
-        secretEnv: [], // CF3 secrets are bound to specific functions, so we'll get them during trigger discovery.
-        // TODO(b/213335255): predefinedTriggers and nodeMajorVersion are here to support ext:dev:emulators:* commands.
-        // Ideally, we should handle that case via ExtensionEmulator.
-        predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
-        ignore: localCfg.ignore,
-      };
-      proto.convertIfPresent(backend, localCfg, "configDir", (cd) => path.join(projectDir, cd));
-      emulatableBackends.push(backend);
+
+      if (isKitConfig(localCfg)) {
+        for (const [instanceId, configDir] of Object.entries(localCfg.instances)) {
+          const backend: EmulatableBackend = {
+            functionsDir,
+            runtime,
+            codebase: instanceId,
+            prefix: addKitPrefix(instanceId),
+            configDir: path.join(projectDir, configDir),
+            env: {
+              ...options.extDevEnv,
+              FIREBASE_KIT_INSTANCE_ID: instanceId,
+            },
+            secretEnv: [],
+            predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
+            ignore: localCfg.ignore,
+          };
+          emulatableBackends.push(backend);
+        }
+      } else {
+        const backend: EmulatableBackend = {
+          functionsDir,
+          runtime,
+          codebase: localCfg.codebase,
+          ...(localCfg.prefix ? { prefix: localCfg.prefix } : {}),
+          ...(localCfg.configDir ? { configDir: path.join(projectDir, localCfg.configDir) } : {}),
+          env: {
+            ...options.extDevEnv,
+          },
+          secretEnv: [],
+          predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
+          ignore: localCfg.ignore,
+        };
+        emulatableBackends.push(backend);
+      }
     }
   }
 
@@ -781,11 +805,8 @@ export async function startAll(
       if (!options.instance) {
         options.instance = await getDefaultDatabaseInstance(projectId);
       }
-    } catch (e: any) {
-      databaseLogger.log(
-        "DEBUG",
-        `Failed to retrieve default database instance: ${JSON.stringify(e)}`,
-      );
+    } catch (e: unknown) {
+      databaseLogger.log("DEBUG", `Failed to retrieve default database instance: ${getErrMsg(e)}`);
     }
 
     const rc = dbRulesConfig.normalizeRulesConfig(
@@ -1117,7 +1138,7 @@ export async function exportEmulatorData(exportPath: string, options: any, initi
   let origin;
   try {
     origin = await hubClient.getStatus();
-  } catch (e: any) {
+  } catch (e: unknown) {
     const filePath = EmulatorHub.getLocatorFilePath(projectId);
     throw new FirebaseError(
       `The emulator hub for ${projectId} did not respond to a status check. If this error continues try shutting down all running emulators and deleting the file ${filePath}`,
@@ -1161,10 +1182,10 @@ export async function exportEmulatorData(exportPath: string, options: any, initi
   try {
     const targets = filterEmulatorTargets(options);
     await hubClient.postExport({ path: exportAbsPath, initiatedBy, targets });
-  } catch (e: any) {
+  } catch (e: unknown) {
     throw new FirebaseError("Export request failed, see emulator logs for more information.", {
       exit: 1,
-      original: e,
+      original: getError(e),
     });
   }
 

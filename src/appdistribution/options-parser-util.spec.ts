@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { getLoginCredential, parseTestDevices } from "./options-parser-util";
+import { getLoginCredential, parseTestDevices, getResultsBucket } from "./options-parser-util";
 import { FirebaseError } from "../error";
 import * as fs from "fs-extra";
 import { rmSync } from "node:fs";
@@ -200,6 +200,48 @@ describe("options-parser-util", () => {
           passwordResourceName: "password_resource_id",
         }),
       ).to.throw(FirebaseError, "Must specify username and password");
+    });
+  });
+
+  describe("getResultsBucket", () => {
+    const appName = "projects/123456789/apps/1:123456789:android:abcdef";
+
+    it("returns undefined if bucket is not provided", () => {
+      expect(getResultsBucket(undefined, appName)).to.be.undefined;
+    });
+
+    it("returns the formatted bucket name when simple name provided", () => {
+      expect(getResultsBucket("my-bucket", appName)).to.equal(
+        "projects/123456789/buckets/my-bucket",
+      );
+    });
+
+    it("strips gs:// prefix and formats correctly", () => {
+      expect(getResultsBucket("gs://my-bucket", appName)).to.equal(
+        "projects/123456789/buckets/my-bucket",
+      );
+    });
+
+    it("throws FirebaseError if bucket name contains invalid characters", () => {
+      expect(() => getResultsBucket("my_Bucket", appName)).to.throw(
+        FirebaseError,
+        "Invalid results bucket format: my_Bucket",
+      );
+      expect(() => getResultsBucket("gs://my-bucket/", appName)).to.throw(
+        FirebaseError,
+        "Invalid results bucket format: gs://my-bucket/",
+      );
+      expect(() => getResultsBucket("projects/123456789/buckets/my-bucket", appName)).to.throw(
+        FirebaseError,
+        "Invalid results bucket format: projects/123456789/buckets/my-bucket",
+      );
+    });
+
+    it("throws FirebaseError if appName is not valid format", () => {
+      expect(() => getResultsBucket("my-bucket", "invalid-app-name")).to.throw(
+        FirebaseError,
+        "Invalid app name: invalid-app-name",
+      );
     });
   });
 });

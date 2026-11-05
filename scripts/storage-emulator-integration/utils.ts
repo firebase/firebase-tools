@@ -1,6 +1,5 @@
 import * as fs from "fs";
 import * as path from "path";
-import fetch from "node-fetch";
 import * as crypto from "crypto";
 import * as os from "os";
 import { FrameworkOptions } from "../integration-helpers/framework";

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Firebase Deploy</title>
+    <style>
+      :root {
+        --color-bg: #0f172a;
+        --color-surface: rgba(30, 41, 59, 0.7);
+        --color-primary: #38bdf8;
+        --color-primary-hover: #7dd3fc;
+        --color-text: #f8fafc;
+        --color-text-secondary: #94a3b8;
+        --color-border: rgba(255, 255, 255, 0.1);
+        --border-radius-md: 12px;
+        --border-radius-lg: 16px;
+        --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      }
+
+      body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background-color: var(--color-bg);
+        color: var(--color-text);
+        margin: 0;
+        padding: 24px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+      }
+
+      .container {
+        background: var(--color-surface);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid var(--color-border);
+        border-radius: var(--border-radius-lg);
+        padding: 32px;
+        width: 100%;
+        max-width: 500px;
+        box-shadow: var(--shadow);
+        text-align: center;
+      }
+
+      .header {
+        margin-bottom: 32px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 700;
+        background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .subtitle {
+        color: var(--color-text-secondary);
+        font-size: 14px;
+        margin-top: 8px;
+      }
+
+      .targets-section {
+        text-align: left;
+        margin-bottom: 24px;
+      }
+
+      .targets-section h3 {
+        font-size: 14px;
+        color: var(--color-text-secondary);
+        margin-bottom: 12px;
+      }
+
+      .checkbox-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+
+      .checkbox-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--color-border);
+        border-radius: var(--border-radius-md);
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .checkbox-item:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: var(--color-primary);
+      }
+
+      .checkbox-item input {
+        cursor: pointer;
+      }
+
+      .checkbox-item label {
+        cursor: pointer;
+        font-size: 14px;
+        flex: 1;
+      }
+
+      .actions {
+        margin-top: 32px;
+      }
+
+      button {
+        width: 100%;
+        background: var(--color-primary);
+        color: #0f172a;
+        border: none;
+        padding: 12px;
+        border-radius: var(--border-radius-md);
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+      }
+
+      button:hover {
+        background: var(--color-primary-hover);
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(56, 189, 248, 0.4);
+      }
+
+      button:active {
+        transform: translateY(0);
+      }
+
+      button:disabled {
+        background: #475569;
+        color: #94a3b8;
+        cursor: not-allowed;
+        box-shadow: none;
+        transform: none;
+      }
+
+      .progress-section {
+        margin-top: 32px;
+        text-align: left;
+        display: none; /* Shown during deploy */
+      }
+
+      .progress-section h3 {
+        font-size: 14px;
+        color: var(--color-text-secondary);
+        margin-bottom: 12px;
+      }
+
+      .progress-bar-container {
+        height: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 12px;
+      }
+
+      .progress-bar {
+        height: 100%;
+        background: var(--color-primary);
+        width: 0%;
+        transition: width 0.3s ease;
+      }
+
+      .status-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        max-height: 200px;
+        overflow-y: auto;
+        font-size: 13px;
+        color: var(--color-text-secondary);
+      }
+
+      .status-item {
+        padding: 8px;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 6px;
+      }
+
+      .status-item.success {
+        color: #10b981;
+      }
+
+      .status-item.error {
+        color: #ef4444;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Deploy Firebase</h1>
+        <p class="subtitle">Select services and trigger deployment.</p>
+      </div>
+
+      <div class="targets-section">
+        <h3>Services to Deploy</h3>
+        <div class="checkbox-grid">
+          <div class="checkbox-item">
+            <input type="checkbox" id="target-hosting" value="hosting" checked />
+            <label for="target-hosting">Hosting</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="target-functions" value="functions" />
+            <label for="target-functions">Functions</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="target-firestore" value="firestore" />
+            <label for="target-firestore">Firestore</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="target-storage" value="storage" />
+            <label for="target-storage">Storage</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="target-database" value="database" />
+            <label for="target-database">Database</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="target-rules" value="remoteconfig" />
+            <label for="target-rules">Remote Config</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="target-extensions" value="extensions" />
+            <label for="target-extensions">Extensions</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="target-dataconnect" value="dataconnect" />
+            <label for="target-dataconnect">Data Connect</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="deploy-btn">Deploy</button>
+      </div>
+
+      <div id="progress-container" class="progress-section">
+        <h3>Deployment Progress</h3>
+        <progress id="progress-bar" max="100" value="0" style="width: 100%;"></progress>
+        <div id="status-list" class="status-list">
+          <!-- Logs go here -->
+        </div>
+      </div>
+    </div>
+    <script type="module" src="mcp-app.ts"></script>
+  </body>
+</html>

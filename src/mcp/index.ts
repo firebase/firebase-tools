@@ -1,5 +1,8 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import * as express from "express";
+import * as cors from "cors";
 import {
   CallToolRequest,
   CallToolRequestSchema,
@@ -25,6 +28,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import * as crossSpawn from "cross-spawn";
 import { existsSync } from "node:fs";
+import * as experiments from "../experiments";
 import { Command } from "../command";
 import { Config } from "../config";
 import { configstore } from "../configstore";
@@ -65,6 +69,11 @@ const orderedLogLevels = [
 ] as const;
 
 export class FirebaseMcpServer {
+  private static readonly CLI_VERSION_CHECK_TIMEOUT_MS = 2000;
+  private static readonly DEFAULT_FIREBASE_CLI_COMMAND = "firebase";
+  private static readonly FALLBACK_FIREBASE_CLI_COMMAND = "npx firebase-tools@latest";
+  private cliCommand?: string;
+
   private _ready = false;
   private _readyPromises: { resolve: () => void; reject: (err: unknown) => void }[] = [];
   private _pendingMessages: { level: LoggingLevel; data: unknown }[] = [];
@@ -76,7 +85,6 @@ export class FirebaseMcpServer {
   enabledTools?: string[];
   clientInfo?: { name?: string; version?: string };
   emulatorHubClient?: EmulatorHubClient;
-  private cliCommand?: string;
 
   // logging spec:
   // https://modelcontextprotocol.io/specification/2025-03-26/server/utilities/logging
@@ -132,6 +140,9 @@ export class FirebaseMcpServer {
       this.clientInfo = clientInfo;
       if (clientInfo?.name) {
         void this.trackGA4("mcp_client_connected");
+        if (!process.env.AI_AGENT?.trim()) {
+          process.env.AI_AGENT = clientInfo.name;
+        }
       }
       if (!this.clientInfo?.name) this.clientInfo = { name: "<unknown-client>" };
 
@@ -149,8 +160,6 @@ export class FirebaseMcpServer {
       this.currentLogLevel = params.level;
       return {};
     });
-
-    void this.detectProjectSetup();
   }
 
   /** Wait until initialization has finished. */
@@ -210,7 +219,7 @@ export class FirebaseMcpServer {
         return null;
       }),
     );
-    this.detectedFeatures = detected.filter((f) => !!f) as ServerFeature[];
+    this.detectedFeatures = detected.filter((f): f is ServerFeature => !!f);
     this.logger.debug(
       `detected features of Firebase MCP server:  ${this.detectedFeatures.join(", ") || "<none>"}`,
     );
@@ -294,7 +303,7 @@ export class FirebaseMcpServer {
     return getProjectId(await this.resolveOptions());
   }
 
-  async getAuthenticatedUser(skipAutoAuth: boolean = false): Promise<string | null> {
+  async getAuthenticatedUser(skipAutoAuth = false): Promise<string | null> {
     try {
       this.logger.debug("calling requireAuth");
       const email = await requireAuth(await this.resolveOptions(), skipAutoAuth);
@@ -325,8 +334,22 @@ export class FirebaseMcpServer {
 
   private _getFirebaseCliCommand(): string {
     if (!this.cliCommand) {
-      const testCommand = crossSpawn.sync("firebase --version");
-      this.cliCommand = testCommand.error ? "npx firebase-tools@latest" : "firebase";
+      try {
+        const testCommand = crossSpawn.sync(
+          FirebaseMcpServer.DEFAULT_FIREBASE_CLI_COMMAND,
+          ["--version"],
+          {
+            timeout: FirebaseMcpServer.CLI_VERSION_CHECK_TIMEOUT_MS,
+            stdio: "ignore",
+          },
+        );
+        this.cliCommand =
+          testCommand.error || testCommand.status !== 0
+            ? FirebaseMcpServer.FALLBACK_FIREBASE_CLI_COMMAND
+            : FirebaseMcpServer.DEFAULT_FIREBASE_CLI_COMMAND;
+      } catch {
+        this.cliCommand = FirebaseMcpServer.FALLBACK_FIREBASE_CLI_COMMAND;
+      }
     }
     return this.cliCommand;
   }
@@ -338,8 +361,17 @@ export class FirebaseMcpServer {
     const skipAutoAuthForStudio = isFirebaseStudio();
     this.logger.debug(`skip auto-auth in studio environment: ${skipAutoAuthForStudio}`);
     const availableTools = await this.getAvailableTools();
+    const isMcpAppsEnabled = experiments.isEnabled("mcpapps");
     return {
-      tools: availableTools.map((t) => t.mcp),
+      tools: availableTools.map((t) => {
+        if (isMcpAppsEnabled) return t.mcp;
+        if (t.mcp._meta?.ui) {
+          const restMeta = { ...t.mcp._meta };
+          delete restMeta.ui;
+          return { ...t.mcp, _meta: restMeta };
+        }
+        return t.mcp;
+      }),
       _meta: {
         projectRoot: this.cachedProjectDir,
         projectDetected: hasActiveProject,
@@ -353,7 +385,7 @@ export class FirebaseMcpServer {
   async mcpCallTool(request: CallToolRequest): Promise<CallToolResult> {
     await this.detectProjectRoot();
     const toolName = request.params.name;
-    const toolArgs = request.params.arguments;
+    const toolArgs = request.params.arguments ?? {};
     const tool = await this.getTool(toolName);
     if (!tool) throw new Error(`Tool '${toolName}' could not be found.`);
 
@@ -381,6 +413,9 @@ export class FirebaseMcpServer {
 
     const isBillingEnabled = projectId ? await this.safeCheckBillingEnabled(projectId) : false;
     const toolsCtx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
+    if (request.params._meta?.progressToken) {
+      toolsCtx.progressToken = request.params._meta.progressToken;
+    }
     try {
       const res = await tool.fn(toolArgs, toolsCtx);
       await this.trackGA4("mcp_tool_call", {
@@ -488,7 +523,76 @@ export class FirebaseMcpServer {
     return resolved.result;
   }
 
-  async start(): Promise<void> {
+  async start(options?: { useSSE?: boolean; port?: number }): Promise<void> {
+    void this.detectProjectSetup().catch((err: unknown) => {
+      this.logger.error(
+        `Failed to detect project setup: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    });
+    if (options?.useSSE) {
+      const app = express();
+
+      app.use(cors());
+
+      const port = options.port || 3000;
+      const transports: Record<string, SSEServerTransport> = {}; // session ID to transport
+
+      app.get("/sse", async (req: express.Request, res: express.Response) => {
+        this.logger.debug(`[SSE] GET /sse connection attempt from ${req.ip}`);
+        try {
+          const transport = new SSEServerTransport("/message", res);
+          // SSEServerTransport has sessionId but it might not be in the typings
+          interface SSEServerTransportWithSessionId extends SSEServerTransport {
+            sessionId: string;
+          }
+          const sessionId = (transport as SSEServerTransportWithSessionId).sessionId;
+          transports[sessionId] = transport;
+
+          this.logger.debug(`[SSE] Connected session ${sessionId}`);
+
+          await this.server.connect(transport);
+          this.logger.debug(`[SSE] Server connected to transport`);
+
+          // Keep handler alive
+          await new Promise<void>((resolve) => {
+            req.on("close", () => {
+              this.logger.debug(`[SSE] Session ${sessionId} disconnected`);
+              delete transports[sessionId];
+              resolve();
+            });
+          });
+        } catch (err) {
+          this.logger.error(`[SSE] Connection error: ${err}`);
+        }
+      });
+
+      app.post("/message", async (req: express.Request, res: express.Response) => {
+        const sessionId = req.query.sessionId as string;
+        this.logger.debug(`[SSE] POST /message attempt for session ${sessionId}`);
+
+        const transport = transports[sessionId];
+
+        if (transport) {
+          try {
+            await transport.handlePostMessage(req, res);
+            this.logger.debug(`[SSE] Handled message for session ${sessionId}`);
+          } catch (err) {
+            this.logger.error(`[SSE] Error handling message for session ${sessionId}: ${err}`);
+          }
+        } else {
+          this.logger.error(
+            `[SSE] Rejecting message: No active transport found for session ${sessionId}`,
+          );
+          res.status(400).send("No active SSE transport connection found for this session");
+        }
+      });
+
+      app.listen(port, "127.0.0.1", () => {
+        this.logger.info(`MCP Server running on HTTP/SSE mode at http://127.0.0.1:${port}`);
+      });
+      return;
+    }
+
     const transport = process.env.FIREBASE_MCP_DEBUG_LOG
       ? new LoggingStdioServerTransport(process.env.FIREBASE_MCP_DEBUG_LOG)
       : new StdioServerTransport();
@@ -498,12 +602,12 @@ export class FirebaseMcpServer {
   private async safeCheckBillingEnabled(projectId: string): Promise<boolean> {
     try {
       return await checkBillingEnabled(projectId);
-    } catch (e: any) {
+    } catch (e: unknown) {
       this.logger.debug(
         "[mcp] Error on billingInfo for " +
           projectId +
           ", failing open (assuming false): " +
-          (e.message || e),
+          (e instanceof Error ? e.message : String(e)),
       );
       return false;
     }

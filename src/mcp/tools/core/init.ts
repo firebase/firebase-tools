@@ -21,6 +21,8 @@ export const init = tool(
       "Use this to initialize selected Firebase services in the workspace (Cloud Firestore database, Firebase SQL Connect, Firebase Realtime Database, Firebase AI Logic). All services are optional; specify only the products you want to set up. " +
       "You can initialize new features into an existing project directory, but re-initializing an existing feature may overwrite configuration. " +
       "To deploy the initialized features, run the `firebase deploy` command after `firebase_init` tool.",
+    humanReadableDescription:
+      "Initialize and configure Firebase services in your local project workspace.",
     inputSchema: z.object({
       features: z.object({
         database: z
@@ -189,6 +191,9 @@ export const init = tool(
     _meta: {
       requiresProject: false, // Can start from scratch.
       requiresAuth: false, // Will throw error if the specific feature needs it.
+      ui: {
+        resourceUri: "ui://core/init/mcp-app.html",
+      },
     },
   },
   async ({ features }, { projectId, config, rc }) => {

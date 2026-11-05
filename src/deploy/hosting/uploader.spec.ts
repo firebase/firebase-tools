@@ -18,7 +18,7 @@ describe("deploy/hosting/uploader", () => {
       this.handler = options.handler;
     }
     add(item: T) {
-      const p = Promise.resolve(this.handler(item));
+      const p = this.handler(item);
       this.promises.push(p);
     }
     process() {
@@ -122,5 +122,33 @@ describe("deploy/hosting/uploader", () => {
     expect(clientPostStub.firstCall.args[1].files).to.have.property("/file1.txt");
     expect(clientPostStub.firstCall.args[1].files).to.have.property("/file2.txt");
     expect(clientRequestStub.calledTwice).to.be.true;
+  });
+
+  it("should handle error response when uploading a file fails", async () => {
+    const uploader = new Uploader({
+      version: "v1",
+      projectRoot: "root",
+      files: ["file1.txt"],
+      public: "public",
+    });
+    (uploader as any).uploadClient = new Client({ urlPrefix: "https://upload.url" });
+
+    (uploader as any).hashMap = { "/file1.txt": "file1.txt" };
+
+    (fs.createReadStream as sinon.SinonStub).returns(new PassThrough());
+    (zlib.createGzip as sinon.SinonStub).returns(new PassThrough());
+
+    const errStream = new Readable({
+      read() {
+        this.push(Buffer.from("Upload Failed Body"));
+        this.push(null);
+      },
+    });
+    clientRequestStub.resolves({ status: 500, body: errStream, response: { headers: new Map() } });
+
+    await expect((uploader as any).uploadHandler("/file1.txt")).to.be.rejectedWith(
+      Error,
+      /Upload Failed Body/,
+    );
   });
 });

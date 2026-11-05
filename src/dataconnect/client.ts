@@ -125,8 +125,8 @@ export async function listSchemas(
 
 export async function upsertSchema(
   schema: types.Schema,
-  validateOnly: boolean = false,
-  async: boolean = false,
+  validateOnly = false,
+  async = false,
 ): Promise<types.Schema | undefined> {
   const op = await dataconnectClient().patch<types.Schema, types.Schema>(`${schema.name}`, schema, {
     queryParams: {
@@ -141,7 +141,7 @@ export async function upsertSchema(
     apiOrigin: dataconnectOrigin(),
     apiVersion: DATACONNECT_API_VERSION,
     operationResourceName: op.body.name,
-    masterTimeout: 60000,
+    masterTimeout: 300000,
   });
 }
 
@@ -203,7 +203,25 @@ export async function upsertConnector(connector: types.Connector) {
     apiOrigin: dataconnectOrigin(),
     apiVersion: DATACONNECT_API_VERSION,
     operationResourceName: op.body.name,
-    masterTimeout: 60000,
+    masterTimeout: 300000,
   });
   return pollRes;
+}
+
+export async function executeSchemaMigration(
+  serviceName: string,
+  diffs: types.Diff[],
+): Promise<void> {
+  const client = dataconnectClient();
+  const op = await client.post<{ diffs: types.Diff[] }, { name: string }>(
+    `${serviceName}/schemas/main:migrate`,
+    { diffs },
+  );
+
+  await operationPoller.pollOperation<void>({
+    apiOrigin: dataconnectOrigin(),
+    apiVersion: DATACONNECT_API_VERSION,
+    operationResourceName: op.body.name,
+    masterTimeout: 300000, // Migrations might take longer than 60s
+  });
 }

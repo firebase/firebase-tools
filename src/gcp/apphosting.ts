@@ -135,16 +135,35 @@ export interface Env {
   availability?: Availability[];
 }
 
+export interface ApiRunConfig {
+  cpu?: number;
+  memoryMib?: number;
+  concurrency?: number;
+  minInstances?: number;
+  maxInstances?: number;
+}
+
 export interface BuildConfig {
   minInstances?: number;
   memory?: string;
   env?: Env[];
   runCommand?: string;
+  runConfig?: ApiRunConfig;
+}
+
+export interface LocallyBuiltSource {
+  userStorageUri?: string;
+  rootDirectory?: string;
+  description?: string;
+  runCommand?: string;
+  env?: Env[];
+  runConfig?: ApiRunConfig;
 }
 
 interface BuildSource {
   codebase?: CodebaseSource;
   archive?: ArchiveSource;
+  locallyBuilt?: LocallyBuiltSource;
 }
 
 interface CodebaseSource {

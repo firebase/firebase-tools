@@ -1,7 +1,7 @@
 import 'package:firebase_functions/firebase_functions.dart';
 
-void main(List<String> args) {
-  fireUp(args, (firebase) {
+void main() {
+  runFunctions((firebase) {
     // https://firebase.google.com/docs/functions/http-events
     firebase.https.onRequest(
       name: 'helloWorld',

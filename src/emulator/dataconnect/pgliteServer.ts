@@ -46,7 +46,7 @@ export class PostgresServer {
   public db: PGlite | undefined = undefined;
   private server: net.Server | undefined = undefined;
 
-  public async createPGServer(host: string = "127.0.0.1", port: number): Promise<net.Server> {
+  public async createPGServer(host = "127.0.0.1", port: number): Promise<net.Server> {
     const getDb = this.getDb.bind(this);
 
     const server = net.createServer(async (socket) => {
@@ -79,8 +79,14 @@ export class PostgresServer {
       socket.on("end", () => {
         logger.debug("Postgres client disconnected");
       });
+      // Log and destroy individual client socket errors instead of escalating them
+      // to server-level errors.
       socket.on("error", (err) => {
-        server.emit("error", err);
+        logger.debug(
+          "Postgres client socket error (if this happened during request cancellation, it is expected and harmless):",
+          err,
+        );
+        socket.destroy();
       });
     });
     this.server = server;
@@ -229,7 +235,7 @@ export class PostgresServer {
       await db.waitReady;
       return db;
     } catch (err: unknown) {
-      if (pg17Dir && hasMessage(err) && /Database already exists/.test(err.message)) {
+      if (pg17Dir && hasMessage(err) && err.message.includes("Database already exists")) {
         // Clear out the current pglite data
         fs.rmSync(pg17Dir, { force: true, recursive: true });
         const db = new PGlite({ ...baseArgs, dataDir: pg17Dir });
@@ -268,6 +274,9 @@ export class PostgresServer {
  * upgrades available in Node.js environments.
  */
 export async function fromNodeSocket(socket: net.Socket, options?: PostgresConnectionOptions) {
+  // Disable Nagle's algorithm to prevent delayed ACK latency (~40-100ms per query on Linux).
+  // See https://github.com/firebase/firebase-tools/issues/11402
+  socket.setNoDelay(true);
   const rs = Readable.toWeb(socket) as unknown as ReadableStream;
   const ws = Writable.toWeb(socket);
   const opts = options

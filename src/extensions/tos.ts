@@ -28,7 +28,7 @@ export async function getAppDeveloperTOSStatus(projectId: string): Promise<AppDe
 export async function acceptAppDeveloperTOS(
   projectId: string,
   tosVersion: string,
-  instanceId: string = "",
+  instanceId = "",
 ): Promise<AppDevTOS> {
   const res = await apiClient.post<
     { name: string; instanceId: string; version: string },

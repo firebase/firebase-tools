@@ -123,6 +123,7 @@ export interface ReleaseTest {
   testCase?: string;
   aiInstructions?: AiInstructions;
   displayName?: string;
+  resultsBucket?: string;
 }
 
 export interface AiStep {

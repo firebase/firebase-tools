@@ -1,39 +1,70 @@
-import { select, confirm, Choice } from "../prompt";
-import { logWarning } from "../utils";
+import { select, Choice } from "../prompt";
+import { logWarning, logBullet } from "../utils";
 import * as apphosting from "../gcp/apphosting";
+import { isEnabled } from "../experiments";
+
 export const DEFAULT_RUNTIME = "nodejs";
 
 /**
- * Asks the user for their runtime. This is required for ABIU.
+ * Asks the user for their runtime.
  */
 export async function promptRuntime(projectId: string, location: string): Promise<string> {
-  const choices: Choice<string>[] = [{ name: "Node.js (default)", value: DEFAULT_RUNTIME }];
+  const choices: Choice<string>[] = [];
+  let nodejsChoice: Choice<string> = { name: "Node.js (default)", value: DEFAULT_RUNTIME };
+
   try {
     const supportedRuntimes = await apphosting.listSupportedRuntimes(projectId, location);
     for (const r of supportedRuntimes) {
-      if (r.runtimeId !== DEFAULT_RUNTIME) {
-        choices.push({ name: r.runtimeId, value: r.runtimeId });
+      const abiuText = r.automaticBaseImageUpdatesSupported
+        ? "Enables Automatic Base Image Updates"
+        : "No Automatic Base Image Updates";
+      const choiceName = `${r.runtimeId} - ${abiuText}`;
+
+      if (r.runtimeId === DEFAULT_RUNTIME) {
+        nodejsChoice = { name: choiceName, value: r.runtimeId };
+      } else {
+        choices.push({ name: choiceName, value: r.runtimeId });
       }
     }
+    choices.unshift(nodejsChoice);
   } catch (err) {
     logWarning("Failed to list supported runtimes. Falling back to hardcoded list.");
-    // We add this hardcoded nodejs22 to unblock testing.
-    // This line will be removed when the ListSupportedRuntime API is stable.
-    choices.push({ name: "nodejs22", value: "nodejs22" });
+    choices.push({ name: "nodejs - No Automatic Base Image Updates", value: "nodejs" });
+    choices.push({ name: "nodejs22 - Enables Automatic Base Image Updates", value: "nodejs22" });
   }
-  return await select({
+
+  const selectedRuntime = await select({
     message: "Which runtime do you want to use?",
     choices: choices,
     default: DEFAULT_RUNTIME,
   });
+
+  if (selectedRuntime === DEFAULT_RUNTIME) {
+    logBullet("ABIU will not be enabled for the unversioned 'nodejs' runtime.");
+  }
+
+  return selectedRuntime;
 }
 
 /**
- * Asks the user if ABIU should be enabled. True by default.
+ * Resolves the runtime for the backend.
+ * Checks if the 'abiu' experiment is enabled and prompts the user if interactive.
+ * @param runtimeOption The runtime specified in command arguments (--runtime) if any
  */
-export async function promptAutomaticBaseImageUpdates(): Promise<boolean> {
-  return await confirm({
-    message: "Would you like to enable Automatic Base Image Updates (ABIU)?",
-    default: true,
-  });
+export async function resolveRuntime(
+  projectId: string,
+  location: string,
+  nonInteractive: boolean,
+  runtimeOption?: string,
+): Promise<string | undefined> {
+  if (runtimeOption !== undefined) {
+    return runtimeOption;
+  }
+  if (!isEnabled("abiu")) {
+    return undefined;
+  }
+  if (nonInteractive) {
+    return DEFAULT_RUNTIME;
+  }
+  return promptRuntime(projectId, location);
 }

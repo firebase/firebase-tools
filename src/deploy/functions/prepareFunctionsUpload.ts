@@ -1,6 +1,5 @@
 import * as archiver from "archiver";
 import * as clc from "colorette";
-import * as filesize from "filesize";
 import * as fs from "fs";
 import * as path from "path";
 import * as tmp from "tmp";
@@ -114,7 +113,7 @@ async function packageSource(
     CONFIG_DEST_FILE /* .runtimeconfig.json */,
   );
   try {
-    const files = await fsAsync.readdirRecursive({ path: sourceDir, ignore: ignore });
+    const files = await fsAsync.readdirRecursive({ path: sourceDir, ignoreStrings: ignore });
     hashes.push(...(await addFilesToArchive(archive, files, sourceDir, options?.executablePaths)));
     for (const name of additionalSources) {
       const absPath = utils.resolveWithin(projectDir, name);
@@ -165,7 +164,7 @@ async function packageSource(
       " packaged " +
       clc.bold(sourceDir) +
       " (" +
-      filesize(archive.pointer()) +
+      utils.formatFilesize(archive.pointer()) +
       ") for uploading",
   );
   const sourceHash = crypto.createHash("sha1").update(hashes.sort().join("")).digest("hex");

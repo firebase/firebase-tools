@@ -1,0 +1,1 @@
+- Fixed a race condition across a second boundary during `accounts:signUp` in the Auth emulator where `validSince` could exceed `auth_time`. (#11413)

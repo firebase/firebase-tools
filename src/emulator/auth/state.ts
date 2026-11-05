@@ -26,6 +26,7 @@ export abstract class ProjectState {
   private localIdForPhoneNumber: Map<string, string> = new Map();
   private localIdsForProviderEmail: Map<string, Set<string>> = new Map();
   private userIdForProviderRawId: Map<string, Map<string, string>> = new Map();
+  private localIdForPasskeyCredentialId: Map<string, string> = new Map();
   private oobs: Map<string, OobRecord> = new Map();
   private verificationCodes: Map<string, PhoneVerificationRecord> = new Map();
   private temporaryProofs: Map<string, TemporaryProofRecord> = new Map();
@@ -146,9 +147,23 @@ export abstract class ProjectState {
     }
     const oldEmail = user.email;
     const oldPhoneNumber = user.phoneNumber;
+    const oldPasskeyInfo = user.passkeyInfo;
 
     for (const field of Object.keys(fields) as (keyof typeof fields)[]) {
       mirrorFieldTo(user, field, fields);
+    }
+
+    if (fields.passkeyInfo) {
+      for (const pk of oldPasskeyInfo ?? []) {
+        if (pk.credentialId) {
+          this.localIdForPasskeyCredentialId.delete(pk.credentialId);
+        }
+      }
+      for (const pk of fields.passkeyInfo) {
+        if (pk.credentialId) {
+          this.localIdForPasskeyCredentialId.set(pk.credentialId, user.localId);
+        }
+      }
     }
 
     if (oldEmail && oldEmail !== user.email) {
@@ -201,10 +216,9 @@ export abstract class ProjectState {
   /**
    * Validates a collection of MFA Enrollments. If all data is valid, returns the data
    * unmodified to the caller.
-   *
    * @param enrollments the MFA Enrollments to validate. each enrollment must have a valid and unique phone number, a non-null enrollment ID,
    * and the enrollment ID must be unique across all other enrollments in the array.
-   * @returns the validated MFA Enrollments passed to this method
+   * @return the validated MFA Enrollments passed to this method
    * @throws BadRequestError if the phone number is absent or invalid
    * @throws BadRequestError if the MFA Enrollment ID is absent
    * @throws BadRequestError if the MFA Enrollment ID is duplicated in the provided array
@@ -382,6 +396,14 @@ export abstract class ProjectState {
     return this.users.get(localId);
   }
 
+  getUserByPasskeyCredentialId(credentialId: string): UserInfo | undefined {
+    const localId = this.localIdForPasskeyCredentialId.get(credentialId);
+    if (!localId) {
+      return undefined;
+    }
+    return this.getUserByLocalIdAssertingExists(localId);
+  }
+
   createRefreshTokenFor(
     userInfo: UserInfo,
     provider: string,
@@ -490,6 +512,7 @@ export abstract class ProjectState {
     this.localIdForPhoneNumber.clear();
     this.localIdsForProviderEmail.clear();
     this.userIdForProviderRawId.clear();
+    this.localIdForPasskeyCredentialId.clear();
 
     // We do not clear OOBs / phone verification codes since some of those may
     // still be valid (e.g. email link / phone sign-in may still create a new
@@ -571,6 +594,12 @@ export abstract class ProjectState {
       this.userIdForProviderRawId.get(info.providerId)?.delete(info.rawId);
       if (info.email) {
         this.removeProviderEmailForUser(info.email, user.localId);
+      }
+    }
+
+    for (const pk of user.passkeyInfo ?? []) {
+      if (pk.credentialId) {
+        this.localIdForPasskeyCredentialId.delete(pk.credentialId);
       }
     }
   }
@@ -660,7 +689,7 @@ export class AgentProjectState extends ProjectState {
     const triggers = this.blockingFunctionsConfig.triggers;
     if (triggers) {
       return Object.prototype.hasOwnProperty.call(triggers, event)
-        ? triggers![event].functionUri
+        ? triggers[event].functionUri
         : undefined;
     }
     return undefined;
@@ -847,12 +876,14 @@ export type ProviderUserInfo = MakeRequired<
   Schemas["GoogleCloudIdentitytoolkitV1ProviderUserInfo"],
   "rawId" | "providerId"
 >;
+export type PasskeyInfo = Schemas["GoogleCloudIdentitytoolkitV1PasskeyInfo"];
 export type UserInfo = Omit<
   Schemas["GoogleCloudIdentitytoolkitV1UserInfo"],
-  "localId" | "providerUserInfo"
+  "localId" | "providerUserInfo" | "passkeyInfo"
 > & {
   localId: string;
   providerUserInfo?: ProviderUserInfo[];
+  passkeyInfo?: PasskeyInfo[];
 };
 export type MfaConfig = MakeRequired<
   Schemas["GoogleCloudIdentitytoolkitAdminV2MultiFactorAuthConfig"],
@@ -961,11 +992,10 @@ function getProviderEmailsForUser(user: UserInfo): Set<string> {
 /**
  * Updates fields based on specified update mask. Note that this is a no-op if
  * the update mask is empty.
- *
  * @param updateMask a comma separated list of fully qualified names of fields
  * @param dest the destination to apply updates to
  * @param update the updates to apply
- * @returns the updated destination object
+ * @return the updated destination object
  */
 function applyMask<T>(updateMask: string, dest: T, update: DeepPartial<T>): T {
   const paths = updateMask.split(",");

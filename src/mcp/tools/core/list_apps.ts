@@ -9,6 +9,7 @@ export const list_apps = tool(
     name: "list_apps",
     description:
       "Use this to retrieve a list of the Firebase Apps registered in the currently active Firebase project. Firebase Apps can be iOS, Android, or Web.",
+    humanReadableDescription: "List all Firebase apps registered in the active project.",
     inputSchema: z.object({
       platform: z
         .enum(["ios", "android", "web", "all"])
@@ -27,7 +28,7 @@ export const list_apps = tool(
   async ({ platform }, { projectId }) => {
     try {
       const apps = await listFirebaseApps(
-        projectId!,
+        projectId,
         !platform || platform === "all" ? AppPlatform.ANY : (platform.toUpperCase() as AppPlatform),
       );
       return toContent(apps);

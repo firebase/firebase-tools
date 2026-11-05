@@ -1,4 +1,8 @@
+import * as crypto from "crypto";
+import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
+import { buildLocally } from "./localBuild";
 import {
   doSetupSourceDeploy,
   ensureAppHostingComputeServiceAccount,
@@ -11,8 +15,9 @@ import {
   listBackends,
   parseBackendName,
   serviceAgentEmail,
+  ApiRunConfig,
 } from "../../gcp/apphosting";
-import { AppHostingYamlConfig, EnvMap } from "../../apphosting/yaml";
+import { AppHostingYamlConfig, EnvMap, toApiRunConfig } from "../../apphosting/yaml";
 import { WebConfig } from "../../fetchWebSetup";
 import { Env, getAppHostingConfiguration, splitEnvVars } from "../../apphosting/config";
 import { getGitRepositoryLink, parseGitRepositoryLinkName } from "../../gcp/devConnect";
@@ -22,8 +27,8 @@ import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
 import { getProjectNumber } from "../../getProjectNumber";
 import { checkbox, confirm } from "../../prompt";
-import { logLabeledBullet, logLabeledWarning } from "../../utils";
-import { localBuild } from "../../apphosting/localbuilds";
+import { logLabeledBullet, logLabeledWarning, logLabeledError } from "../../utils";
+import { validateLocalBuildNodeVersion } from "../../apphosting/localbuilds";
 import { Context } from "./args";
 import { FirebaseError } from "../../error";
 import * as managementApps from "../../management/apps";
@@ -154,7 +159,12 @@ export default async function (context: Context, options: Options): Promise<void
       ) as AppHostingSingle[];
       for (const cfg of selectedBackends) {
         logLabeledBullet("apphosting", `Creating a new backend ${cfg.backendId}...`);
-        const { location } = await doSetupSourceDeploy(projectId, cfg.backendId);
+        const { location } = await doSetupSourceDeploy(
+          projectId,
+          cfg.backendId,
+          options.nonInteractive,
+          cfg.rootDir,
+        );
         context.backendConfigs[cfg.backendId] = cfg;
         context.backendLocations[cfg.backendId] = location;
       }
@@ -171,12 +181,35 @@ export default async function (context: Context, options: Options): Promise<void
 
   const buildEnv: Record<string, EnvMap> = {};
   const runtimeEnv: Record<string, EnvMap> = {};
+  const runConfigs: Record<string, ApiRunConfig> = {};
 
   for (const cfg of Object.values(context.backendConfigs)) {
     if (!cfg.localBuild) {
       continue;
     }
     experiments.assertEnabled("apphostinglocalbuilds", "locally build App Hosting backends");
+
+    let backend = backends.find((b) => parseBackendName(b.name).id === cfg.backendId);
+    if (!backend) {
+      const location = context.backendLocations[cfg.backendId];
+      if (location) {
+        const apphosting = await import("../../gcp/apphosting");
+        try {
+          backend = await apphosting.getBackend(projectId, location, cfg.backendId);
+        } catch {
+          // Fall through to error handling below
+        }
+      }
+    }
+    if (!backend) {
+      throw new FirebaseError(`Backend ${cfg.backendId} not found.`);
+    }
+
+    const rootDir = path.resolve(options.projectRoot || process.cwd());
+    const appDir = path.join(rootDir, cfg.rootDir || "");
+
+    validateLocalBuildNodeVersion(backend, appDir);
+
     logLabeledBullet("apphosting", `Starting local build for backend ${cfg.backendId}`);
 
     await injectEnvVarsFromApphostingConfig(
@@ -184,28 +217,38 @@ export default async function (context: Context, options: Options): Promise<void
       options,
       buildEnv,
       runtimeEnv,
+      runConfigs,
     );
     await injectAutoInitEnvVars(cfg, backends, buildEnv, runtimeEnv);
 
+    const location = context.backendLocations[cfg.backendId];
+    await injectAngularEnvVars(cfg, rootDir, projectId, location, buildEnv, runtimeEnv);
+    // Generate a static 8-character hash of the Workspace Root directory path to guarantee
+    // 100% sibling folder build isolation on the same machine, while preserving predictability.
+    const pathHash = crypto.createHash("md5").update(rootDir).digest("hex").substring(0, 8);
+    const localBuildScratchDir = path.join(
+      os.tmpdir(),
+      `apphosting-local-build-${cfg.backendId}-${pathHash}`,
+    );
+
     try {
-      const { outputFiles, annotations, buildConfig } = await localBuild(
-        options.projectRoot || "./",
-        "nextjs",
-        buildEnv[cfg.backendId] || {},
-      );
-      if (outputFiles.length !== 1) {
-        throw new FirebaseError(
-          `Local build for backend ${cfg.backendId} failed: No output files found.`,
-        );
-      }
+      const { archive, rootDirectory, buildConfig } = await buildLocally({
+        projectId,
+        projectDir: rootDir,
+        config: cfg,
+        env: buildEnv[cfg.backendId] || {},
+        scratchDir: localBuildScratchDir,
+        nonInteractive: options.nonInteractive,
+        allowLocalBuildSecrets: !!options.allowLocalBuildSecrets,
+      });
       context.backendLocalBuilds[cfg.backendId] = {
-        // TODO(9114): This only works for nextjs.
-        buildDir: outputFiles[0],
+        archive,
+        rootDirectory,
         buildConfig: {
           ...buildConfig,
           env: mergeEnvVars(buildConfig.env || [], runtimeEnv[cfg.backendId] || {}),
+          ...(runConfigs[cfg.backendId] ? { runConfig: runConfigs[cfg.backendId] } : {}),
         },
-        annotations,
       };
     } catch (e: unknown) {
       const errorMsg = e instanceof Error ? e.message : String(e);
@@ -223,13 +266,14 @@ export async function injectEnvVarsFromApphostingConfig(
   options: Options,
   buildEnv: Record<string, EnvMap>,
   runtimeEnv: Record<string, EnvMap>,
+  runConfigs?: Record<string, ApiRunConfig>,
 ): Promise<void> {
   for (const cfg of configs) {
     const rootDir = options.projectRoot || process.cwd();
     const appDir = path.join(rootDir, cfg.rootDir || "");
     let yamlConfig = AppHostingYamlConfig.empty();
     try {
-      yamlConfig = await getAppHostingConfiguration(appDir);
+      yamlConfig = await getAppHostingConfiguration(appDir, /* includeLocalConfigs= */ false);
     } catch (e: unknown) {
       logLabeledWarning(
         "apphosting",
@@ -241,11 +285,19 @@ export async function injectEnvVarsFromApphostingConfig(
 
     buildEnv[cfg.backendId] = { ...buildEnv[cfg.backendId], ...build };
     runtimeEnv[cfg.backendId] = { ...runtimeEnv[cfg.backendId], ...runtime };
+
+    if (runConfigs && yamlConfig.runConfig) {
+      const apiRunConfig = toApiRunConfig(yamlConfig.runConfig);
+      if (apiRunConfig) {
+        runConfigs[cfg.backendId] = { ...runConfigs[cfg.backendId], ...apiRunConfig };
+      }
+    }
   }
 }
 
 /**
- * Injects Firebase SDK auto-init environment variables into the build and runtime environment maps.
+ * Injects Firebase SDK auto-init environment variables into the build environment, and
+ * FIREBASE_CONFIG into the runtime environment, like remote builds.
  * This prefers existing values. It only auto-injects env vars if they don't already exist.
  */
 export async function injectAutoInitEnvVars(
@@ -262,11 +314,15 @@ export async function injectAutoInitEnvVars(
         managementApps.AppPlatform.WEB,
       )) as WebConfig;
 
-      // We inject autoinit env vars into the build and runtime env vars.
+      // We inject autoinit env vars into the build env vars, and FIREBASE_CONFIG, which the Admin
+      // SDK reads, into the runtime env vars. Like remote builds, the runtime doesn't get
+      // FIREBASE_WEBAPP_CONFIG: the client SDK's install script saves it into the build.
       const autoinitVars = getAutoinitEnvVars(webappConfig);
       for (const [envVarName, envVarValue] of Object.entries(autoinitVars)) {
         buildEnv[cfg.backendId][envVarName] ??= { value: envVarValue };
-        runtimeEnv[cfg.backendId][envVarName] ??= { value: envVarValue };
+        if (envVarName === "FIREBASE_CONFIG") {
+          runtimeEnv[cfg.backendId][envVarName] ??= { value: envVarValue };
+        }
       }
     } catch (e) {
       logLabeledWarning(
@@ -365,5 +421,123 @@ async function ensureAppHostingServiceAgentRoles(
       "apphosting",
       `Unable to verify App Hosting service agent permissions for ${p4saEmail}. If you encounter a PERMISSION_DENIED error during rollout, please ensure the service agent has the "Storage Object Viewer" role.`,
     );
+  }
+}
+
+/**
+ * Checks if the application in a directory is an Angular application.
+ */
+interface PackageJson {
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+}
+
+/**
+ * Returns true if the directory contains an Angular application.
+ */
+function isAngularApplication(appDir: string): boolean {
+  const packageJsonPath = path.join(appDir, "package.json");
+  if (fs.existsSync(packageJsonPath)) {
+    try {
+      const parsed: unknown = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+      if (parsed && typeof parsed === "object") {
+        const pkg = parsed as PackageJson;
+        const angularDeps = ["@angular/core", "@angular/ssr", "@angular/platform-server"];
+        if (angularDeps.some((d) => pkg.dependencies?.[d] || pkg.devDependencies?.[d])) {
+          return true;
+        }
+      }
+    } catch (e: unknown) {
+      logLabeledError(
+        "apphosting",
+        `error when checking if application is angular: ${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
+  }
+  const angularJsonPath = path.join(appDir, "angular.json");
+  if (fs.existsSync(angularJsonPath)) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Replicates the Go buildpack preparer's Angular environment variable injection and validation.
+ */
+export async function injectAngularEnvVars(
+  cfg: AppHostingSingle,
+  projectRoot: string,
+  projectId: string,
+  location: string | undefined,
+  buildEnv: Record<string, EnvMap>,
+  runtimeEnv: Record<string, EnvMap>,
+): Promise<void> {
+  const appDir = path.join(projectRoot, cfg.rootDir || "");
+  if (!isAngularApplication(appDir)) {
+    return;
+  }
+
+  if (!location) {
+    throw new FirebaseError(`Failed to find location for backend ${cfg.backendId}.`);
+  }
+
+  const backendId = cfg.backendId;
+  runtimeEnv[backendId] ??= {};
+  buildEnv[backendId] ??= {};
+
+  const allowedProxyHeaders = [
+    "x-forwarded-host",
+    "x-forwarded-port",
+    "x-forwarded-proto",
+    "x-forwarded-for",
+  ];
+  const allowedProxyHeadersValue = allowedProxyHeaders.join(",");
+
+  // 1. Inject NG_TRUST_PROXY_HEADERS
+  let shouldInjectProxyHeaders = true;
+  if (runtimeEnv[backendId]["NG_TRUST_PROXY_HEADERS"]) {
+    const userProxyHeadersStr = runtimeEnv[backendId]["NG_TRUST_PROXY_HEADERS"].value;
+    const userProxyHeaders = userProxyHeadersStr
+      ? userProxyHeadersStr
+          .split(",")
+          .map((h) => h.trim().toLowerCase())
+          .filter(Boolean)
+      : [];
+
+    const isSubset =
+      userProxyHeaders.length > 0 && userProxyHeaders.every((h) => allowedProxyHeaders.includes(h));
+
+    if (isSubset) {
+      shouldInjectProxyHeaders = false;
+    } else {
+      throw new FirebaseError(
+        `User-defined RUNTIME environment variable NG_TRUST_PROXY_HEADERS contains invalid headers. Allowed values: ${allowedProxyHeadersValue}`,
+      );
+    }
+  }
+
+  if (shouldInjectProxyHeaders) {
+    runtimeEnv[backendId]["NG_TRUST_PROXY_HEADERS"] = {
+      value: allowedProxyHeadersValue,
+      availability: ["RUNTIME"],
+    };
+  }
+
+  // 2. Inject NG_ALLOWED_HOSTS
+  if (!runtimeEnv[backendId]["NG_ALLOWED_HOSTS"]) {
+    const projectNumber = await getProjectNumber({ project: projectId });
+    const sharedDomain = "hosted.app";
+    // TODO: This is missing the custom domains retrieved dynamically by the control plane during Cloud Build creation.
+    const defaultHosts = [
+      `${backendId}-${projectNumber}.${location}.run.app`,
+      `${backendId}--${projectId}.${location}.${sharedDomain}`,
+      `${backendId}--${projectId}.web.app`,
+      `${backendId}--${projectId}.firebaseapp.com`,
+    ];
+
+    runtimeEnv[backendId]["NG_ALLOWED_HOSTS"] = {
+      value: defaultHosts.join(","),
+      availability: ["RUNTIME"],
+    };
   }
 }

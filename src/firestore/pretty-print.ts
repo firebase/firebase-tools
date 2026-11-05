@@ -26,6 +26,17 @@ export class PrettyPrint {
     });
   }
 
+  getDatabaseEdition(database: types.DatabaseResp): string {
+    return !database.databaseEdition ||
+      database.databaseEdition === types.DatabaseEdition.DATABASE_EDITION_UNSPECIFIED
+      ? types.DatabaseEdition.STANDARD
+      : database.databaseEdition;
+  }
+
+  getDatabaseApiType(database: types.DatabaseResp): string {
+    return database.type;
+  }
+
   /**
    * Print an array of databases to the console as an ASCII table.
    * @param databases the array of Firestore databases.
@@ -37,11 +48,21 @@ export class PrettyPrint {
     }
     const sortedDatabases: types.DatabaseResp[] = databases.sort(sort.compareApiDatabase);
     const table = new Table({
-      head: ["Database Name"],
-      colWidths: [Math.max(...sortedDatabases.map((database) => database.name.length + 5), 20)],
+      head: ["Database Name", "Edition", "Type"],
+      colWidths: [
+        Math.max(...sortedDatabases.map((database) => database.name.length + 5), 20),
+        20,
+        20,
+      ],
     });
 
-    table.push(...sortedDatabases.map((database) => [this.prettyDatabaseString(database)]));
+    table.push(
+      ...sortedDatabases.map((database) => {
+        const edition = this.getDatabaseEdition(database);
+        const apiType = this.getDatabaseApiType(database);
+        return [this.prettyDatabaseString(database), edition, apiType];
+      }),
+    );
     logger.info(table.toString());
   }
 
@@ -60,16 +81,13 @@ export class PrettyPrint {
       colWidths: [30, colValueWidth],
     });
 
-    const edition =
-      !database.databaseEdition ||
-      database.databaseEdition === types.DatabaseEdition.DATABASE_EDITION_UNSPECIFIED
-        ? types.DatabaseEdition.STANDARD
-        : database.databaseEdition;
+    const edition = this.getDatabaseEdition(database);
+    const apiType = this.getDatabaseApiType(database);
     table.push(
       ["Name", clc.yellow(database.name)],
       ["Create Time", clc.yellow(database.createTime)],
       ["Last Update Time", clc.yellow(database.updateTime)],
-      ["Type", clc.yellow(database.type)],
+      ["Type", clc.yellow(apiType)],
       ["Edition", clc.yellow(edition)],
       ["Location", clc.yellow(database.locationId)],
       ["Delete Protection State", clc.yellow(database.deleteProtectionState)],
@@ -313,14 +331,17 @@ export class PrettyPrint {
         return;
       }
 
-      // Normal field indexes have an "order", array indexes have an
-      // "arrayConfig", and vector indexes have a "vectorConfig" we want to
-      // display whichever one is present.
+      /* Normal field indexes have an "order", array indexes have an
+      "arrayConfig", search indexes have a "searchConfig"
+      and vector indexes have a "vectorConfig". We want to
+      display whichever one is present. */
       let configString;
       if (field.order) {
         configString = field.order;
       } else if (field.arrayConfig) {
         configString = field.arrayConfig;
+      } else if (field.searchConfig) {
+        configString = "SEARCH";
       } else if (field.vectorConfig) {
         configString = `VECTOR<${field.vectorConfig.dimension}>`;
       }

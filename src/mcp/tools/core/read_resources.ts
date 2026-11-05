@@ -10,6 +10,8 @@ export const read_resources = tool(
     name: "read_resources",
     description:
       "Use this to read the contents of `firebase://` resources or list available resources",
+    humanReadableDescription:
+      "Read the contents of internal firebase:// documentation resources or list all available resources.",
     annotations: {
       title: "Read Firebase Resources",
       destructiveHint: false,

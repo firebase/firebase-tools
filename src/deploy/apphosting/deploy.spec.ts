@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+import * as os from "os";
 import { Config } from "../../config";
 import * as gcs from "../../gcp/storage";
 import { RC } from "../../rc";
@@ -10,6 +11,7 @@ import * as fs from "fs";
 import * as getProjectNumber from "../../getProjectNumber";
 import * as experiments from "../../experiments";
 import { FirebaseError } from "../../error";
+import { CLOUD_RUN_SIZE_LIMIT_BYTES } from "../../apphosting/constants";
 
 const BASE_OPTS = {
   cwd: "/",
@@ -41,9 +43,9 @@ function initializeContext(): Context {
     backendStorageUris: {},
     backendLocalBuilds: {
       fooLocalBuild: {
-        buildDir: "./nextjs/standalone",
+        archive: "path/to/foo-local-build-1234.tar.gz",
+        rootDirectory: "",
         buildConfig: {},
-        annotations: {},
       },
     },
   };
@@ -72,6 +74,7 @@ describe("apphosting", () => {
     createReadStreamStub = sinon
       .stub(fs, "createReadStream")
       .throws("Unexpected createReadStream call");
+    sinon.stub(os, "tmpdir").returns("/tmp");
     sinon.stub(experiments, "isEnabled").returns(true);
     sinon.stub(experiments, "assertEnabled");
   });
@@ -110,7 +113,6 @@ describe("apphosting", () => {
       getProjectNumberStub.resolves(projectNumber);
       upsertBucketStub.resolves(bucketName);
       createArchiveStub.onFirstCall().resolves("path/to/foo-1234.zip");
-      createTarArchiveStub.onFirstCall().resolves("path/to/foo-local-build-1234.tar.gz");
 
       uploadObjectStub.onFirstCall().resolves({
         bucket: bucketName,
@@ -170,20 +172,18 @@ describe("apphosting", () => {
         context.backendConfigs["foo"],
         process.cwd(),
       );
-      expect(createTarArchiveStub).to.be.calledWithExactly(
-        context.backendConfigs["fooLocalBuild"],
-        process.cwd(),
-        "./nextjs/standalone",
-      );
+      // The prepare step already tarred the local build, so it's uploaded as is.
+      expect(createTarArchiveStub).not.to.have.been.called;
       expect(uploadObjectStub).to.be.calledWithMatch(
         sinon.match.any,
         "firebaseapphosting-sources-000000000000-us-central1",
         gcs.ContentType.ZIP,
       );
       expect(uploadObjectStub).to.be.calledWithMatch(
-        sinon.match.any,
+        { file: "path/to/foo-local-build-1234.tar.gz" },
         "firebaseapphosting-sources-000000000000-us-central1",
         gcs.ContentType.TAR,
+        CLOUD_RUN_SIZE_LIMIT_BYTES,
       );
     });
 
@@ -195,7 +195,6 @@ describe("apphosting", () => {
       getProjectNumberStub.resolves(projectNumber);
       upsertBucketStub.resolves(bucketName);
       createArchiveStub.onFirstCall().resolves("path/to/foo-1234.zip");
-      createTarArchiveStub.onFirstCall().resolves("path/to/foo-local-build-1234.tar.gz");
 
       uploadObjectStub.onFirstCall().resolves({
         bucket: bucketName,
@@ -213,20 +212,17 @@ describe("apphosting", () => {
         context.backendConfigs["foo"],
         process.cwd(),
       );
-      expect(createTarArchiveStub).to.be.calledWithExactly(
-        context.backendConfigs["fooLocalBuild"],
-        process.cwd(),
-        "./nextjs/standalone",
-      );
+      expect(createTarArchiveStub).not.to.have.been.called;
       expect(uploadObjectStub).to.be.calledWithMatch(
         sinon.match.any,
         "firebaseapphosting-sources-000000000000-us-central1",
         gcs.ContentType.ZIP,
       );
       expect(uploadObjectStub).to.be.calledWithMatch(
-        sinon.match.any,
+        { file: "path/to/foo-local-build-1234.tar.gz" },
         "firebaseapphosting-sources-000000000000-us-central1",
         gcs.ContentType.TAR,
+        CLOUD_RUN_SIZE_LIMIT_BYTES,
       );
 
       expect(context.backendStorageUris["foo"]).to.equal(`gs://${bucketName}/foo-1234.zip`);

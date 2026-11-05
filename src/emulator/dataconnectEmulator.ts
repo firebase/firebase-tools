@@ -16,6 +16,7 @@ import {
 } from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators, ListenSpec } from "./types";
 import { FirebaseError } from "../error";
+import { getErrMsg, getErrStatus } from "../error";
 import { EmulatorLogger } from "./emulatorLogger";
 import { BuildResult, mainSchemaYaml, requiresVector } from "../dataconnect/types";
 import { listenSpecsToString } from "./portUtils";
@@ -63,7 +64,7 @@ export const dataConnectEmulatorEvents = new EventEmitter();
 
 export class DataConnectEmulator implements EmulatorInstance {
   private emulatorClient: DataConnectEmulatorClient;
-  private usingExistingEmulator: boolean = false;
+  private usingExistingEmulator = false;
   private postgresServer: PostgresServer | undefined;
 
   constructor(private args: DataConnectEmulatorArgs) {
@@ -95,8 +96,8 @@ export class DataConnectEmulator implements EmulatorInstance {
           );
         }
       }
-    } catch (err: any) {
-      this.logger.log("DEBUG", `'fdc build' failed with error: ${err.message}`);
+    } catch (err: unknown) {
+      this.logger.log("DEBUG", `'fdc build' failed with error: ${getErrMsg(err)}`);
     }
     const env = await DataConnectEmulator.getEnv(this.args.account, this.args.extraEnv);
     await start(
@@ -174,7 +175,11 @@ export class DataConnectEmulator implements EmulatorInstance {
         "dataconnect",
         "Could not connect to SQL Connect emulator. Check dataconnect-debug.log for more details.",
       );
-      return Promise.reject();
+      return Promise.reject(
+        new FirebaseError(
+          "Could not connect to SQL Connect emulator. Check dataconnect-debug.log for more details.",
+        ),
+      );
     }
     return Promise.resolve();
   }
@@ -259,8 +264,8 @@ export class DataConnectEmulator implements EmulatorInstance {
           // Handle errors like command not found
           reject(err);
         });
-      } catch (e: any) {
-        if (isIncomaptibleArchError(e)) {
+      } catch (e: unknown) {
+        if (isIncomaptibleArchError(e as Error)) {
           reject(
             new FirebaseError(
               `Unknown system error when running the SQL Connect toolkit. ` +
@@ -343,14 +348,14 @@ export class DataConnectEmulator implements EmulatorInstance {
           `Successfully connected to ${connectionString}}`,
         );
         return true;
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (i === MAX_RETRIES) {
           throw err;
         }
         this.logger.logLabeled(
           "DEBUG",
           "SQL Connect",
-          `Retrying connectToPostgress call (${i} of ${MAX_RETRIES} attempts): ${err}`,
+          `Retrying connectToPostgress call (${i} of ${MAX_RETRIES} attempts): ${getErrMsg(err)}`,
         );
         await new Promise((resolve) => setTimeout(resolve, 2000));
       }
@@ -413,9 +418,11 @@ export class DataConnectEmulatorClient {
         body,
       );
       return res;
-    } catch (err: any) {
-      if (err.status === 500) {
-        throw new FirebaseError(`SQL Connect emulator: ${err?.context?.body?.message}`);
+    } catch (err: unknown) {
+      const status = getErrStatus(err);
+      if (status === 500) {
+        const message = (err as any)?.context?.body?.message;
+        throw new FirebaseError(`SQL Connect emulator: ${message || String(err)}`);
       }
       throw err;
     }

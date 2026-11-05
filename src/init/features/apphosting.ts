@@ -91,16 +91,8 @@ export async function doSetup(setup: Setup, config: Config, options: Options): P
       utils.logWarning(`Firebase web app not set`);
     }
 
-    const experiments = await dynamicImport("./experiments");
     const prompts = await dynamicImport("./apphosting/prompts");
-
-    let runtime = experiments.isEnabled("abiu") ? prompts.DEFAULT_RUNTIME : undefined;
-    let automaticBaseImageUpdatesDisabled = experiments.isEnabled("abiu") ? false : undefined;
-
-    if (experiments.isEnabled("abiu") && !options.nonInteractive) {
-      runtime = await prompts.promptRuntime(projectId, location);
-      automaticBaseImageUpdatesDisabled = !(await prompts.promptAutomaticBaseImageUpdates());
-    }
+    const runtime = await prompts.resolveRuntime(projectId, location, options.nonInteractive);
 
     const createBackendSpinner = ora("Creating your new backend...").start();
     const backend = await createBackend(
@@ -112,7 +104,6 @@ export async function doSetup(setup: Setup, config: Config, options: Options): P
       webApp?.id,
       /* rootDir= */ "/",
       runtime,
-      automaticBaseImageUpdatesDisabled,
     );
 
     createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
@@ -122,13 +113,20 @@ export async function doSetup(setup: Setup, config: Config, options: Options): P
   backendConfig.rootDir = await input({
     default: "/",
     message: "Specify your app's root directory relative to your firebase.json directory",
+    validate: (input: string) => {
+      const absPath = path.join(config.projectDir, input);
+      if (!existsSync(absPath)) {
+        return `Directory ${absPath} does not exist. Please enter a valid directory.`;
+      }
+      return true;
+    },
   });
 
   upsertAppHostingConfig(backendConfig, config);
   config.writeProjectFile("firebase.json", config.src);
 
   utils.logBullet("Writing default settings to " + clc.bold("apphosting.yaml") + "...");
-  const absRootDir = path.join(process.cwd(), backendConfig.rootDir);
+  const absRootDir = path.join(config.projectDir, backendConfig.rootDir);
   if (!existsSync(absRootDir)) {
     throw new FirebaseError(
       `Failed to write apphosting.yaml file because app root directory ${absRootDir} does not exist. Please try again with a valid directory.`,

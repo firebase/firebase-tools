@@ -1,7 +1,10 @@
-import fetch, { Response } from "node-fetch";
-
 import { CLIProcess } from "./cli";
 import { Emulators } from "../../src/emulator/types";
+import {
+  DEFAULT_WAIT_TIMEOUT_MS,
+  DEFAULT_WAIT_INTERVAL_MS,
+  waitForCondition,
+} from "../../src/test/helpers/waitForCondition";
 
 const FIREBASE_PROJECT_ZONE = "us-central1";
 
@@ -398,25 +401,11 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
   }
 
   waitForCondition(
-    conditionFn: () => boolean,
-    timeout: number,
-    callback: (err?: Error) => void,
-  ): void {
-    let elapsed = 0;
-    const interval = 10;
-    const id = setInterval(() => {
-      elapsed += interval;
-      if (elapsed > timeout) {
-        clearInterval(id);
-        callback(new Error(`Timed out waiting for condition: ${conditionFn.toString()}}`));
-        return;
-      }
-
-      if (conditionFn()) {
-        clearInterval(id);
-        callback();
-      }
-    }, interval);
+    conditionFn: () => boolean | Promise<boolean>,
+    timeoutMs = DEFAULT_WAIT_TIMEOUT_MS,
+    intervalMs = DEFAULT_WAIT_INTERVAL_MS,
+  ): Promise<void> {
+    return waitForCondition(conditionFn, timeoutMs, intervalMs);
   }
 
   disableBackgroundTriggers(): Promise<Response> {
@@ -429,3 +418,9 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
     return fetch(url, { method: "PUT" });
   }
 }
+
+export {
+  DEFAULT_WAIT_TIMEOUT_MS,
+  DEFAULT_WAIT_INTERVAL_MS,
+  waitForCondition,
+} from "../../src/test/helpers/waitForCondition";

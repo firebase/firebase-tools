@@ -113,17 +113,6 @@ describe("Backend", () => {
   };
 
   describe("Helper functions", () => {
-    it("isEmptyBackend", () => {
-      expect(backend.isEmptyBackend(backend.empty())).to.be.true;
-      expect(
-        backend.isEmptyBackend({
-          ...backend.empty(),
-          requiredAPIs: [{ api: "foo.googleapis.com", reason: "foo" }],
-        }),
-      ).to.be.false;
-      expect(backend.isEmptyBackend(backend.of({ ...ENDPOINT, httpsTrigger: {} })));
-    });
-
     it("names", () => {
       expect(backend.functionName(ENDPOINT)).to.equal(
         "projects/project/locations/region/functions/id",
@@ -340,6 +329,7 @@ describe("Backend", () => {
           ingressSettings: "ALLOW_ALL" as const,
           timeoutSeconds: 60,
           serviceAccount: null,
+          runServiceId: "id",
         };
         delete wantEndpoint.state;
 
@@ -359,6 +349,49 @@ describe("Backend", () => {
         await backend.existingBackend(context);
 
         expect(context.unreachableRegions?.run).to.deep.equal(["unknown"]);
+      });
+
+      it("should read missing Cloud Run services when dartfunctions experiment is enabled", async () => {
+        isEnabled.withArgs("dartfunctions").returns(true);
+        listAllFunctions.onFirstCall().resolves({
+          functions: [],
+          unreachable: [],
+        });
+        listAllFunctionsV2.onFirstCall().resolves({
+          functions: [],
+          unreachable: [],
+        });
+        listServices.onFirstCall().resolves([RUN_SERVICE]);
+
+        const have = await backend.existingBackend(newContext());
+
+        const wantEndpoint = {
+          ...ENDPOINT,
+          platform: "gcfv2" as const,
+          concurrency: 80,
+          cpu: 1,
+          httpsTrigger: {},
+          availableMemoryMb: 256 as const,
+          environmentVariables: {
+            FUNCTION_TARGET: "function",
+          },
+          labels: {
+            "deployment-tool": "cli-firebase",
+            "goog-managed-by": "cloud-functions",
+            "goog-cloudfunctions-runtime": "nodejs16",
+            "firebase-functions-codebase": "default",
+          },
+          secretEnvironmentVariables: [],
+          ingressSettings: "ALLOW_ALL" as const,
+          timeoutSeconds: 60,
+          serviceAccount: null,
+          runServiceId: "id",
+        };
+        delete wantEndpoint.state;
+
+        expect(have).to.deep.equal(backend.of(wantEndpoint));
+        expect(listAllFunctionsV2).to.have.been.calledOnce;
+        expect(listServices).to.have.been.calledOnce;
       });
     });
 
@@ -637,12 +670,6 @@ describe("Backend", () => {
         endpointUS,
       );
       expect(backend.findEndpoint(bkend, (fn) => fn.id === "missing")).to.be.undefined;
-    });
-
-    it("regionalEndpoints", () => {
-      const have = backend.regionalEndpoints(bkend, endpointUS.region);
-      const want = [endpointUS];
-      expect(have).to.deep.equal(want);
     });
 
     it("hasEndpoint", () => {

@@ -18,8 +18,10 @@ npx --yes clean-publish@5.0.0 --without-publish --before-script ./scripts/clean-
 echo "Ran clean-publish@5.0.0 --without-publish."
 echo "Packaging cleaned firebase-tools..."
 cd $ROOT_DIR/clean
-PACKED=$(npm pack --pack-destination ./ | tail -n 1)
+npm pack --pack-destination ./
+PACKED=$(ls -1 *.tgz | head -n 1)
 echo "Packaged firebase-tools to $PACKED."
 echo "Installing clean-packaged firebase-tools..."
-npm install -g $PACKED
+npm install -g "./$PACKED"
 echo "Installed clean-packaged firebase-tools."
+cd "$ROOT_DIR"

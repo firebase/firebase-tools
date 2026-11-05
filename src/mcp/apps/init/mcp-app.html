@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Firebase Init</title>
+    <style>
+      :root {
+        --color-bg: #f4f6f8;
+        --color-surface: #ffffff;
+        --color-primary: #039be5; /* Firebase Navy/Blue */
+        --color-primary-hover: #0288d1;
+        --color-accent: #ffca28; /* Firebase Amber */
+        --color-text: #202124;
+        --color-text-secondary: #5f6368;
+        --color-border: #dadce0;
+        --border-radius: 8px;
+        --shadow: 0 2px 10px rgba(0,0,0,0.05);
+        --transition-speed: 0.2s;
+      }
+
+      body {
+        font-family: 'Roboto', 'Google Sans', sans-serif;
+        background-color: var(--color-bg);
+        color: var(--color-text);
+        margin: 0;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        box-sizing: border-box;
+      }
+
+      .container {
+        width: 100%;
+        max-width: 500px;
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: var(--border-radius);
+        padding: 32px;
+        box-shadow: var(--shadow);
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+
+      .header {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
+      }
+
+      h1 {
+        font-size: 24px;
+        font-weight: 500;
+        margin: 0;
+        color: var(--color-text);
+      }
+
+      p.subtitle {
+        font-size: 14px;
+        color: var(--color-text-secondary);
+        margin: 0;
+      }
+
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        text-align: left;
+      }
+
+      label {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--color-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      input[type="text"], select {
+        background: #ffffff;
+        border: 1px solid var(--color-border);
+        border-radius: 4px;
+        padding: 12px 16px;
+        color: var(--color-text);
+        font-size: 14px;
+        transition: border-color var(--transition-speed);
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      input[type="text"]:focus, select:focus {
+        border-color: var(--color-primary);
+        outline: none;
+      }
+
+      .radio-group {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 8px;
+      }
+
+      .radio-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+      }
+
+      .radio-item input {
+        cursor: pointer;
+      }
+
+      .conditional-section {
+        display: none;
+        flex-direction: column;
+        gap: 16px;
+        border-top: 1px solid var(--color-border);
+        padding-top: 16px;
+        margin-top: 8px;
+      }
+
+      .conditional-section.active {
+        display: flex;
+      }
+
+      .sub-section {
+        display: none;
+        flex-direction: column;
+        gap: 12px;
+        margin-left: 24px;
+        margin-top: 8px;
+        border-left: 2px solid var(--color-border);
+        padding-left: 16px;
+      }
+
+      .sub-section.active {
+        display: flex;
+      }
+
+      .search-box {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        text-align: left;
+      }
+
+      .dropdown-container {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        text-align: left;
+      }
+
+      .dropdown-list {
+        background: #ffffff;
+        border: 1px solid var(--color-border);
+        border-radius: 4px;
+        max-height: 200px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .dropdown-item {
+        padding: 12px 16px;
+        cursor: pointer;
+        border-bottom: 1px solid var(--color-border);
+        transition: background-color var(--transition-speed);
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        text-align: left;
+      }
+
+      .dropdown-item:hover {
+        background-color: #f8f9fa;
+      }
+
+      .dropdown-item.selected {
+        background-color: #e8f0fe;
+        border-left: 4px solid var(--color-primary);
+      }
+
+      .item-name {
+        font-weight: 500;
+        font-size: 14px;
+      }
+
+      .item-id {
+        font-size: 12px;
+        color: var(--color-text-secondary);
+      }
+
+      button {
+        background-color: var(--color-primary);
+        color: #ffffff;
+        border: none;
+        border-radius: 4px;
+        padding: 12px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color var(--transition-speed);
+        width: 100%;
+      }
+
+      button:hover {
+        background-color: var(--color-primary-hover);
+      }
+
+      button:disabled {
+        background: #dadce0;
+        color: #9aa0a6;
+        cursor: not-allowed;
+      }
+
+      #status-box {
+        padding: 12px;
+        border-radius: 4px;
+        font-size: 14px;
+        display: none;
+        text-align: left;
+      }
+
+      .status.success {
+        display: block;
+        background: #e6f4ea;
+        border: 1px solid #137333;
+        color: #137333;
+      }
+
+      .status.error {
+        display: block;
+        background: #fce8e6;
+        border: 1px solid #c5221f;
+        color: #c5221f;
+      }
+
+      .status.info {
+        display: block;
+        background: #e8f0fe;
+        border: 1px solid #1a73e8;
+        color: #1a73e8;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Initialize Firebase Product</h1>
+        <p class="subtitle">Choose a product to initialize in your workspace.</p>
+        <div style="font-size: 12px; color: var(--color-text-secondary); margin-top: 8px;">
+          Directory: <span id="env-dir" style="font-weight: 500; color: var(--color-text);">Loading...</span>
+        </div>
+      </div>
+
+      <!-- Project Selection -->
+      <div class="search-box">
+        <label for="search-input">Search Projects</label>
+        <input type="text" id="search-input" placeholder="Type to filter projects..." />
+      </div>
+
+      <div class="dropdown-container">
+        <label>Select Project</label>
+        <div id="project-list" class="dropdown-list">
+          <!-- Items will be injected here -->
+          <div class="dropdown-item" style="cursor: default;">
+            <div class="item-name">Loading projects...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Select Product</label>
+        <div class="radio-group">
+          <label class="radio-item">
+            <input type="radio" name="product" value="firestore" checked />
+            <span>Firestore</span>
+          </label>
+          <label class="radio-item">
+            <input type="radio" name="product" value="auth" />
+            <span>Authentication</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Firestore Section -->
+      <div id="firestore-section" class="conditional-section active">
+        <div class="form-group">
+          <label for="firestore-db-id">Database ID</label>
+          <input type="text" id="firestore-db-id" value="(default)" placeholder="e.g. (default)" />
+        </div>
+        <div class="form-group">
+          <label for="firestore-rules-file">Rules File</label>
+          <input type="text" id="firestore-rules-file" value="firestore.rules" />
+        </div>
+      </div>
+
+      <!-- Auth Section -->
+      <div id="auth-section" class="conditional-section">
+        <div class="form-group">
+          <label>Providers</label>
+          <label class="radio-item">
+            <input type="checkbox" id="auth-email" checked />
+            <span>Email/Password</span>
+          </label>
+          <label class="radio-item">
+            <input type="checkbox" id="auth-anonymous" />
+            <span>Anonymous</span>
+          </label>
+          <label class="radio-item">
+            <input type="checkbox" id="auth-google" />
+            <span>Google Sign-In</span>
+          </label>
+          
+          <div id="google-fields" class="sub-section">
+            <div class="form-group">
+              <label for="google-display-name">OAuth Brand Display Name</label>
+              <input type="text" id="google-display-name" placeholder="My App" />
+            </div>
+            <div class="form-group">
+              <label for="google-support-email">Support Email</label>
+              <input type="text" id="google-support-email" placeholder="support@example.com" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="init-btn" disabled>Initialize</button>
+      </div>
+
+      <div id="status-box"></div>
+    </div>
+    <script type="module" src="mcp-app.ts"></script>
+  </body>
+</html>

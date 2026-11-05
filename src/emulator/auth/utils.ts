@@ -57,7 +57,7 @@ export function isValidPhoneNumber(phoneNumber: string): boolean {
   // is not worth the effort and bloat (500+ kB). libphonenumber-js is not used
   // either since it has different behaviors and may block numbers that are
   // valid in production.
-  return /^\+/.test(phoneNumber);
+  return phoneNumber.startsWith("+");
 }
 
 /**

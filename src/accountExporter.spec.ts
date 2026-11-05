@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "./test/helpers/nock";
 import * as os from "os";
 import * as sinon from "sinon";
 
@@ -9,20 +9,24 @@ import { validateOptions, serialExportUsers } from "./accountExporter";
 describe("accountExporter", () => {
   describe("validateOptions", () => {
     it("should reject when no format provided", () => {
-      expect(() => validateOptions({}, "output_file")).to.throw();
+      expect(() => {
+        validateOptions({}, "output_file");
+      }).to.throw();
     });
 
     it("should reject when format is not csv or json", () => {
-      expect(() => validateOptions({ format: "txt" }, "output_file")).to.throw();
+      expect(() => {
+        validateOptions({ format: "txt" }, "output_file");
+      }).to.throw();
     });
 
     it("should ignore format param when implicitly specified in file name", () => {
-      const ret = validateOptions({ format: "JSON" }, "output_file.csv");
+      const ret = validateOptions({ format: "JSON" }, "output_file.csv") as { format: string };
       expect(ret.format).to.eq("csv");
     });
 
     it("should use format param when not implicitly specified in file name", () => {
-      const ret = validateOptions({ format: "JSON" }, "output_file");
+      const ret = validateOptions({ format: "JSON" }, "output_file") as { format: string };
       expect(ret.format).to.eq("json");
     });
   });
@@ -35,6 +39,19 @@ describe("accountExporter", () => {
       displayName: string;
       disabled: boolean;
       customAttributes?: string;
+      mfaInfo?: {
+        mfaEnrollmentId: string;
+        displayName?: string;
+        phoneInfo?: string;
+        enrolledAt?: string;
+      }[];
+      providerUserInfo?: {
+        providerId: string;
+        rawId: string;
+        email?: string;
+        displayName?: string;
+        photoUrl?: string;
+      }[];
     }[] = [];
     const writeStream = {
       write: () => {},
@@ -46,12 +63,29 @@ describe("accountExporter", () => {
       sandbox = sinon.createSandbox();
       spyWrite = sandbox.spy(writeStream, "write");
       for (let i = 0; i < 7; i++) {
-        userList.push({
-          localId: i.toString(),
-          email: "test" + i + "@test.org",
-          displayName: "John Tester" + i,
-          disabled: i % 2 === 0,
-        });
+        if (i === 6) {
+          userList.push({
+            localId: i.toString(),
+            email: `test${i}@test.org`,
+            displayName: `John Tester${i}`,
+            disabled: i % 2 === 0,
+            providerUserInfo: [
+              {
+                providerId: "microsoft.com",
+                rawId: "123234234",
+                email: "test@test.org",
+                photoUrl: "https://example.com/photo.jpg",
+              },
+            ],
+          });
+        } else {
+          userList.push({
+            localId: i.toString(),
+            email: `test${i}@test.org`,
+            displayName: `John Tester${i}`,
+            disabled: i % 2 === 0,
+          });
+        }
       }
     });
 
@@ -89,7 +123,7 @@ describe("accountExporter", () => {
       });
       expect(spyWrite.callCount).to.eq(userList.length);
       for (let j = 0; j < userList.length; j++) {
-        const expectedEntry =
+        let expectedEntry =
           userList[j].localId +
           "," +
           userList[j].email +
@@ -97,7 +131,13 @@ describe("accountExporter", () => {
           userList[j].displayName +
           Array(22).join(",") + // A lot of empty fields...
           userList[j].disabled;
-        expect(spyWrite.getCall(j).args[0]).to.eq(expectedEntry + ",," + os.EOL);
+        if (j === 6) {
+          expectedEntry +=
+            ",,,,,,123234234,test@test.org,,https://example.com/photo.jpg" + Array(18).join(",");
+        } else {
+          expectedEntry += Array(27).join(",");
+        }
+        expect(spyWrite.getCall(j).args[0]).to.eq(expectedEntry + os.EOL);
       }
       expect(nock.isDone()).to.be.true;
     });
@@ -145,7 +185,52 @@ describe("accountExporter", () => {
         '"' +
         Array(22).join(",") + // A lot of empty fields.
         singleUser.disabled;
-      expect(spyWrite.getCall(0).args[0]).to.eq(expectedEntry + ",," + os.EOL);
+      expect(spyWrite.getCall(0).args[0]).to.eq(expectedEntry + Array(27).join(",") + os.EOL);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should escape displayNames with double quotes for csv formats", async () => {
+      // Initialize user with double quotes in display name.
+      const singleUser = {
+        localId: "1",
+        email: "foo1@bar.org",
+        displayName: 'Foo "Bar" Baz',
+        disabled: false,
+      };
+      nock("https://www.googleapis.com")
+        .post("/identitytoolkit/v3/relyingparty/downloadAccount", {
+          maxResults: 1,
+          targetProjectId: "test-project-id",
+        })
+        .reply(200, {
+          users: [singleUser],
+          nextPageToken: "1",
+        })
+        .post("/identitytoolkit/v3/relyingparty/downloadAccount", {
+          maxResults: 1,
+          nextPageToken: "1",
+          targetProjectId: "test-project-id",
+        })
+        .reply(200, {
+          users: [],
+          nextPageToken: "1",
+        });
+
+      await serialExportUsers("test-project-id", {
+        format: "csv",
+        batchSize: 1,
+        writeStream: writeStream,
+      });
+      expect(spyWrite.callCount).to.eq(1);
+      const expectedEntry =
+        singleUser.localId +
+        "," +
+        singleUser.email +
+        ",false,,," +
+        '"Foo ""Bar"" Baz"' +
+        Array(22).join(",") + // A lot of empty fields.
+        singleUser.disabled;
+      expect(spyWrite.getCall(0).args[0]).to.eq(expectedEntry + Array(27).join(",") + os.EOL);
       expect(nock.isDone()).to.be.true;
     });
 
@@ -213,6 +298,38 @@ describe("accountExporter", () => {
       userList[0].customAttributes =
         '{ "customBoolean": true, "customString": "test", "customInt": 99 }';
       userList[1].customAttributes = '{ "customBoolean": true }';
+      nock("https://www.googleapis.com")
+        .post("/identitytoolkit/v3/relyingparty/downloadAccount", {
+          maxResults: 3,
+          targetProjectId: "test-project-id",
+        })
+        .reply(200, {
+          users: userList.slice(0, 3),
+        });
+      await serialExportUsers("test-project-id", {
+        format: "JSON",
+        batchSize: 3,
+        writeStream: writeStream,
+      });
+      expect(spyWrite.getCall(0).args[0]).to.eq(JSON.stringify(userList[0], null, 2));
+      expect(spyWrite.getCall(1).args[0]).to.eq(
+        "," + os.EOL + JSON.stringify(userList[1], null, 2),
+      );
+      expect(spyWrite.getCall(2).args[0]).to.eq(
+        "," + os.EOL + JSON.stringify(userList[2], null, 2),
+      );
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should export a user's mfaInfo for JSON formats", async () => {
+      userList[0].mfaInfo = [
+        {
+          mfaEnrollmentId: "enrollment-id-1",
+          displayName: "My SMS MFA",
+          phoneInfo: "+11111111111",
+          enrolledAt: "2026-06-24T00:00:00Z",
+        },
+      ];
       nock("https://www.googleapis.com")
         .post("/identitytoolkit/v3/relyingparty/downloadAccount", {
           maxResults: 3,
