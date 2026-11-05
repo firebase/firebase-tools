@@ -33,6 +33,7 @@ import * as functionsConfig from "../../functionsConfig";
 import * as args from "./args";
 import * as projectUtils from "../../projectUtils";
 import * as prepareFunctionsUpload from "./prepareFunctionsUpload";
+import * as prompts from "./prompts";
 import { DeployOptions } from "..";
 
 describe("partition env helper", () => {
@@ -1392,7 +1393,7 @@ describe("prepare", () => {
 
     describe("prepare", () => {
       let sandbox: sinon.SinonSandbox;
-      let checkAvailabilityStub: sinon.SinonStub;
+      let promptForFailurePoliciesStub: sinon.SinonStub;
 
       beforeEach(() => {
         sandbox = sinon.createSandbox();
@@ -1406,7 +1407,7 @@ describe("prepare", () => {
         sandbox.stub(serviceusage, "generateServiceIdentity").resolves();
         sandbox.stub(backend, "existingBackend").resolves(backend.empty());
         sandbox.stub(prepareFunctionsUpload, "prepareFunctionsUpload").resolves(undefined);
-        checkAvailabilityStub = sandbox.stub(backend, "checkAvailability").resolves();
+        promptForFailurePoliciesStub = sandbox.stub(prompts, "promptForFailurePolicies").resolves();
         sandbox.stub(runtimes, "getRuntimeDelegate").resolves({
           language: "nodejs",
           runtime: latest("nodejs"),
@@ -1448,7 +1449,7 @@ describe("prepare", () => {
           prepare.prepare({ projectId: "project" } as args.Context, options, {} as args.Payload),
         ).to.be.rejectedWith(FirebaseError, "north(europe-north1)");
         expect(listLocationsStub).to.have.been.calledOnceWithExactly("project");
-        expect(checkAvailabilityStub).to.have.been.called;
+        expect(promptForFailurePoliciesStub).to.not.have.been.called;
       });
     });
   });

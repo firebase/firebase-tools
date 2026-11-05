@@ -529,13 +529,13 @@ export async function prepare(
   const matchingBackend = backend.matchingBackend(wantBackend, (endpoint) => {
     return endpointMatchesAnyFilter(endpoint, context.filters);
   });
+  await ensureScheduleRegionsSupported(projectId, matchingBackend);
   await promptForFailurePolicies(options, matchingBackend, haveBackend);
   await promptForMinInstances(options, matchingBackend, haveBackend);
 
   // ===Phase 7. Finalize preparation by "fixing" all extraneous environment issues like IAM policies.
   // We limit the scope endpoints being deployed.
   await backend.checkAvailability(context, matchingBackend);
-  await ensureScheduleRegionsSupported(projectId, matchingBackend);
   await validate.secretsAreValid(projectId, matchingBackend);
   await ensureServiceAgentRoles(
     projectId,
