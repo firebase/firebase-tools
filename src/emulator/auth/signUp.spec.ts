@@ -1,6 +1,8 @@
 import { expect } from "chai";
+import * as sinon from "sinon";
 import nock from "../../test/helpers/nock";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
+import * as authUtils from "./utils";
 import { FirebaseJwtPayload } from "./operations";
 import { describeAuthEmulator, PROJECT_ID } from "./testing/setup";
 import {
@@ -28,7 +30,11 @@ import {
   PHOTO_URL,
 } from "./testing/helpers";
 
-describeAuthEmulator("accounts:signUp", ({ authApi }) => {
+describeAuthEmulator("accounts:signUp", ({ authApi, getClock }) => {
+  afterEach(() => {
+    sinon.restore();
+  });
+
   it("should throw error if no email provided", async () => {
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
@@ -97,6 +103,36 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
           email: [email],
         });
       });
+  });
+
+  it("should ensure validSince does not exceed auth_time on email+password signUp", async () => {
+    // Tick to near a second boundary (999ms)
+    getClock().tick(999);
+    sinon.stub(authUtils, "canonicalizeEmailAddress").callsFake((email) => {
+      // Simulate crossing the second boundary between timestamp capture and validSince assignment
+      getClock().tick(2);
+      return email.toLowerCase();
+    });
+
+    const email = "boundary@example.com";
+    const res = await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
+      .send({ email, password: "notasecret" })
+      .query({ key: "fake-api-key" });
+
+    expectStatusCode(200, res);
+    const idToken = res.body.idToken;
+    const decoded = decodeJwt(idToken, { complete: true }) as {
+      header: JwtHeader;
+      payload: FirebaseJwtPayload;
+    } | null;
+    expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
+
+    const user = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(user.validSince).not.to.be.undefined;
+    expect(decoded!.payload.auth_time).to.be.a("number");
+    // validSince must not exceed auth_time; otherwise Firebase Admin SDK rejects the token with auth/id-token-revoked
+    expect(Number(user.validSince)).to.equal(decoded!.payload.auth_time);
   });
 
   it("should ignore displayName and photoUrl for new anon account", async () => {
