@@ -3,9 +3,15 @@ import * as sinon from "sinon";
 import * as path from "path";
 import * as fs from "fs-extra";
 
-import { validateAndResolveDirectoryKit, buildAndInstallDirectoryKit } from "./directory";
+import {
+  validateAndResolveDirectoryKit,
+  buildAndInstallDirectoryKit,
+  createDirectoryAdapter,
+} from "./directory";
 import * as initSpawn from "../../../init/spawn";
+import { Config } from "../../../config";
 import { FirebaseError } from "../../../error";
+import { ValidatedKitSingle } from "../../projectConfig";
 
 describe("functions/kits/sources/directory", () => {
   let wrapSpawnStub: sinon.SinonStub;
@@ -207,6 +213,25 @@ describe("functions/kits/sources/directory", () => {
         FirebaseError,
         /TypeScript build failed: tsc error/,
       );
+    });
+  });
+
+  describe("createDirectoryAdapter", () => {
+    it("should find existing kit by local directory path", () => {
+      const existingKits: ValidatedKitSingle[] = [
+        {
+          kit: "dir-kit",
+          source: "my-local-kit",
+          instances: { inst1: "function-kits/dir-kit/config-inst1" },
+        },
+      ];
+      const adapter = createDirectoryAdapter(
+        { projectDir: "/mock/project" } as Config,
+        "my-local-kit",
+      );
+
+      expect(adapter.defaultKitId).to.equal("my-local-kit");
+      expect(adapter.findExistingKit(existingKits)).to.equal(existingKits[0]);
     });
   });
 });
