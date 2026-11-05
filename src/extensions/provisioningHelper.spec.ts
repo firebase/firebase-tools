@@ -249,6 +249,21 @@ describe("provisioningHelper", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("fails provisioning check storage when no firebase storage buckets", async () => {
+      nock(api.extensionsOrigin())
+        .get(`/v1beta/publishers/test/extensions/test/versions/0.1.0`)
+        .reply(200, extensionVersionResponse("0.1.0", SPEC_WITH_STORAGE));
+      nock(api.firebaseStorageOrigin())
+        .get(`/v1beta/projects/${PROJECT_ID}/buckets`)
+        .reply(200, {});
+
+      await expect(
+        provisioningHelper.bulkCheckProductsProvisioned(PROJECT_ID, [instanceSpec("0.1.0")]),
+      ).to.be.rejectedWith(FirebaseError, "Firebase Storage: store and retrieve user-generated");
+
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("fails provisioning check storage when no auth is not provisioned", async () => {
       nock(api.extensionsOrigin())
         .get(`/v1beta/publishers/test/extensions/test/versions/0.1.0`)
