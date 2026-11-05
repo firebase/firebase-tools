@@ -1,1 +1,2 @@
+- Fixed a race condition across a second boundary during `accounts:signUp` in the Auth emulator where `validSince` could exceed `auth_time`. (#11413)
 - Fixed Hosting shutdown leaving earlier sites running when serving multiple sites.
