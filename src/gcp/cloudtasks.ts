@@ -34,10 +34,6 @@ export interface RetryConfig {
   maxDoublings?: number | null;
 }
 
-export interface StackdriverLoggingConfig {
-  samplingRatio: number;
-}
-
 export type State = "RUNNING" | "PAUSED" | "DISABLED";
 
 export interface Queue {
