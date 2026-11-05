@@ -8,7 +8,7 @@ import {
   parseErrorCode,
 } from "./executor";
 import * as ensure from "../ensure";
-import { FirebaseError, getError, getErrStack } from "../../../error";
+import { FirebaseError, getErrMsg, getError, getErrStack } from "../../../error";
 
 import { SourceTokenScraper } from "./sourceTokenScraper";
 import { Timer } from "./timer";
@@ -1202,7 +1202,34 @@ export class Fabricator {
     const jobName = scheduler.jobNameForEndpoint(endpoint, endpoint.region);
     await this.executor
       .run(() => scheduler.deleteJob(jobName))
-      .catch(rethrowAsUnlessNotFound(endpoint, "delete schedule"));
+      .catch(async (err: unknown) => {
+        // Cloud Scheduler answers 400, not 404, for a region it doesn't support. No job can
+        // exist there, so the function itself must still be deletable.
+        if (
+          parseErrorCode(err) === 400 &&
+          !(await this.schedulerSupportsRegion(endpoint.project, endpoint.region))
+        ) {
+          logger.debug(
+            `Cloud Scheduler does not support ${endpoint.region}; no schedule to delete for ${endpoint.id}.`,
+          );
+          return;
+        }
+        return rethrowAsUnlessNotFound(endpoint, "delete schedule")(err);
+      });
+  }
+
+  /**
+   * Whether Cloud Scheduler supports `region`. True if the lookup fails or lists no regions,
+   * so callers keep their original error.
+   */
+  private async schedulerSupportsRegion(projectId: string, region: string): Promise<boolean> {
+    try {
+      const regions = await scheduler.listLocations(projectId);
+      return regions.length === 0 || regions.includes(region);
+    } catch (err: unknown) {
+      logger.debug(`Failed to list Cloud Scheduler locations: ${getErrMsg(err)}`);
+      return true;
+    }
   }
 
   async disableTaskQueue(endpoint: backend.Endpoint & backend.TaskQueueTriggered): Promise<void> {

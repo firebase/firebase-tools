@@ -156,6 +156,50 @@ describe("cloudscheduler", () => {
     });
   });
 
+  describe("listLocations", () => {
+    afterEach(() => {
+      nock.cleanAll();
+    });
+
+    it("returns the location IDs", async () => {
+      nock(api.cloudschedulerOrigin())
+        .get(`/${VERSION}/projects/test-project/locations`)
+        .reply(200, {
+          locations: [{ locationId: "us-central1" }, { locationId: "europe-west9" }],
+        });
+
+      expect(await cloudscheduler.listLocations("test-project")).to.deep.equal([
+        "us-central1",
+        "europe-west9",
+      ]);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("follows nextPageToken until every page is read", async () => {
+      nock(api.cloudschedulerOrigin())
+        .get(`/${VERSION}/projects/test-project/locations`)
+        .reply(200, { locations: [{ locationId: "us-central1" }], nextPageToken: "page2" });
+      nock(api.cloudschedulerOrigin())
+        .get(`/${VERSION}/projects/test-project/locations`)
+        .query({ pageToken: "page2" })
+        .reply(200, { locations: [{ locationId: "europe-west9" }] });
+
+      expect(await cloudscheduler.listLocations("test-project")).to.deep.equal([
+        "us-central1",
+        "europe-west9",
+      ]);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("returns an empty array when locations is omitted", async () => {
+      nock(api.cloudschedulerOrigin())
+        .get(`/${VERSION}/projects/test-project/locations`)
+        .reply(200, {});
+
+      expect(await cloudscheduler.listLocations("test-project")).to.deep.equal([]);
+    });
+  });
+
   describe("jobFromEndpoint", () => {
     const V1_ENDPOINT: backend.Endpoint = {
       platform: "gcfv1",
