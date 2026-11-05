@@ -31,6 +31,9 @@ import * as functionsEnv from "../../functions/env";
 import * as ensure from "./ensure";
 import * as functionsConfig from "../../functionsConfig";
 import * as args from "./args";
+import * as projectUtils from "../../projectUtils";
+import * as prepareFunctionsUpload from "./prepareFunctionsUpload";
+import { DeployOptions } from "..";
 
 describe("partition env helper", () => {
   it("splits a Record into two based on which keys begin with FIREBASE_SECRET_REF", () => {
@@ -1385,6 +1388,68 @@ describe("prepare", () => {
       const want = backend.of(scheduled("north", "europe-north1"));
 
       await expect(prepare.ensureScheduleRegionsSupported("project", want)).to.be.fulfilled;
+    });
+
+    describe("prepare", () => {
+      let sandbox: sinon.SinonSandbox;
+      let checkAvailabilityStub: sinon.SinonStub;
+
+      beforeEach(() => {
+        sandbox = sinon.createSandbox();
+        sandbox.stub(projectUtils, "needProjectNumber").resolves("123");
+        sandbox.stub(ensureApiEnabled, "ensure").resolves();
+        sandbox
+          .stub(ensureApiEnabled, "check")
+          .callsFake((_, apiOrigin) => Promise.resolve(!apiOrigin.includes("runtimeconfig")));
+        sandbox.stub(ensure, "cloudBuildEnabled").resolves();
+        sandbox.stub(functionsConfig, "getFirebaseConfig").resolves({ projectId: "project" });
+        sandbox.stub(serviceusage, "generateServiceIdentity").resolves();
+        sandbox.stub(backend, "existingBackend").resolves(backend.empty());
+        sandbox.stub(prepareFunctionsUpload, "prepareFunctionsUpload").resolves(undefined);
+        checkAvailabilityStub = sandbox.stub(backend, "checkAvailability").resolves();
+        sandbox.stub(runtimes, "getRuntimeDelegate").resolves({
+          language: "nodejs",
+          runtime: latest("nodejs"),
+          bin: "node",
+          validate: sandbox.stub().resolves(),
+          build: sandbox.stub().resolves(),
+          watch: sandbox.stub().resolves(() => Promise.resolve()),
+          discoverBuild: sandbox.stub().resolves(
+            build.of({
+              north: {
+                platform: "gcfv2",
+                region: ["europe-north1"],
+                entryPoint: "north",
+                project: "project",
+                runtime: latest("nodejs"),
+                scheduleTrigger: { schedule: "every 5 minutes" },
+              },
+            }),
+          ),
+        });
+      });
+
+      afterEach(() => {
+        sandbox.restore();
+      });
+
+      it("rejects a deploy of a scheduled function in a region without Cloud Scheduler", async () => {
+        const options = {
+          config: {
+            src: { functions: { source: "functions" } },
+            path: (p: string) => p,
+            projectDir: "/project",
+          },
+          projectId: "project",
+          nonInteractive: true,
+        } as unknown as DeployOptions;
+
+        await expect(
+          prepare.prepare({ projectId: "project" } as args.Context, options, {} as args.Payload),
+        ).to.be.rejectedWith(FirebaseError, "north(europe-north1)");
+        expect(listLocationsStub).to.have.been.calledOnceWithExactly("project");
+        expect(checkAvailabilityStub).to.have.been.called;
+      });
     });
   });
 
