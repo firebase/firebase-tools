@@ -61,3 +61,4 @@ export {
   actuate as agentSkillsActuate,
   AgentSkillsInfo,
 } from "./agentSkills";
+export { askQuestions as runAskQuestions, actuate as runActuate, RunInfo } from "./run";

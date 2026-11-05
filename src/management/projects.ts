@@ -378,7 +378,7 @@ export async function addFirebaseToCloudProject(
     logger.debug(err.message);
     if (isTosNotAcceptedError(err)) {
       throw new FirebaseError(
-        `Failed to add Firebase to Google Cloud Platform project ${clc.bold(projectId)} because your account has not accepted the Firebase Terms of Service. Please accept the Terms of Service in the Firebase console at ${api.consoleOrigin()} and try again.`,
+        `Failed to add Firebase to Google Cloud Platform project ${clc.bold(projectId)} because your account has not accepted the Firebase Terms of Service. Please accept the Terms of Service in the Firebase console at ${api.consoleOrigin()}/?forceCheckTos=true and try again.`,
         { exit: 2, original: err },
       );
     }
@@ -490,7 +490,7 @@ export async function listFirebaseProjects(pageSize?: number): Promise<FirebaseP
 }
 
 export async function checkAndRecommendProjectId(
-  projectId: String,
+  projectId: string,
 ): Promise<{ isAvailable: boolean; suggestedProjectId?: string }> {
   try {
     const res = await firebaseV1APIClient.request<

@@ -553,7 +553,7 @@ function toExegesisController(
 
       // Need to check refresh token for tenant ID for grantToken endpoint
       if (ctx.requestBody?.refreshToken) {
-        const refreshTokenRecord = decodeRefreshToken(ctx.requestBody!.refreshToken);
+        const refreshTokenRecord = decodeRefreshToken(ctx.requestBody.refreshToken);
         if (refreshTokenRecord.tenantId && targetTenantId) {
           // Shouldn't ever reach this assertion, but adding for completeness
           assert(

@@ -95,10 +95,8 @@ The Firebase MCP server provides three types of capabilities: **Tools** (functio
 | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | backend_init_guide         | Firebase Backend Init Guide: guides the coding agent through configuring Firebase backend services in the current project                                  |
 | ai_init_guide              | Firebase GenAI Init Guide: guides the coding agent through configuring GenAI capabilities in the current project utilizing Firebase                        |
-| data_connect_init_guide    | Firebase SQL Connect Init Guide: guides the coding agent through configuring SQL Connect for PostgreSQL access in the current project                      |
 | firestore_init_guide       | Firestore Init Guide: guides the coding agent through configuring Firestore in the current project                                                         |
 | firestore_rules_init_guide | Firestore Rules Init Guide: guides the coding agent through setting up Firestore security rules in the project                                             |
-| rtdb_init_guide            | Firebase Realtime Database Init Guide: guides the coding agent through configuring Realtime Database in the current project                                |
 | auth_init_guide            | Firebase Authentication Init Guide: guides the coding agent through configuring Firebase Authentication in the current project                             |
 | hosting_init_guide         | Firebase Hosting Deployment Guide: guides the coding agent through deploying to Firebase Hosting in the current project                                    |
 | docs                       | Firebase Docs: loads plain text content from Firebase documentation, e.g. `https://firebase.google.com/docs/functions` becomes `firebase://docs/functions` |

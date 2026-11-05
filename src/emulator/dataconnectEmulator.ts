@@ -64,7 +64,7 @@ export const dataConnectEmulatorEvents = new EventEmitter();
 
 export class DataConnectEmulator implements EmulatorInstance {
   private emulatorClient: DataConnectEmulatorClient;
-  private usingExistingEmulator: boolean = false;
+  private usingExistingEmulator = false;
   private postgresServer: PostgresServer | undefined;
 
   constructor(private args: DataConnectEmulatorArgs) {
@@ -175,7 +175,11 @@ export class DataConnectEmulator implements EmulatorInstance {
         "dataconnect",
         "Could not connect to SQL Connect emulator. Check dataconnect-debug.log for more details.",
       );
-      return Promise.reject();
+      return Promise.reject(
+        new FirebaseError(
+          "Could not connect to SQL Connect emulator. Check dataconnect-debug.log for more details.",
+        ),
+      );
     }
     return Promise.resolve();
   }

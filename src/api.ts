@@ -22,6 +22,8 @@ export const cloudloggingOrigin = (): string =>
   utils.envOverride("FIREBASE_CLOUDLOGGING_URL", "https://logging.googleapis.com");
 export const cloudMonitoringOrigin = (): string =>
   utils.envOverride("CLOUD_MONITORING_URL", "https://monitoring.googleapis.com");
+export const cloudTraceOrigin = (): string =>
+  utils.envOverride("CLOUD_TRACE_URL", "https://cloudtrace.googleapis.com");
 export const containerRegistryDomain = (): string =>
   utils.envOverride("CONTAINER_REGISTRY_DOMAIN", "gcr.io");
 
@@ -64,8 +66,6 @@ export const eventarcOrigin = (): string =>
   utils.envOverride("EVENTARC_URL", "https://eventarc.googleapis.com");
 export const firebaseApiOrigin = (): string =>
   utils.envOverride("FIREBASE_API_URL", "https://firebase.googleapis.com");
-export const firebaseExtensionsRegistryOrigin = (): string =>
-  utils.envOverride("FIREBASE_EXT_REGISTRY_ORIGIN", "https://extensions-registry.firebaseapp.com");
 export const firedataOrigin = (): string =>
   utils.envOverride("FIREBASE_FIREDATA_URL", "https://mobilesdk-pa.googleapis.com");
 export const firestoreOriginOrEmulator = (): string =>
@@ -130,8 +130,6 @@ export const messagingApiOrigin = (): string =>
   utils.envOverride("FIREBASE_MESSAGING_CONFIG_URL", "https://fcm.googleapis.com");
 export const crashlyticsApiOrigin = (): string =>
   utils.envOverride("FIREBASE_CRASHLYTICS_URL", "https://firebasecrashlytics.googleapis.com");
-export const firebaseTelemetryOrigin = (): string =>
-  utils.envOverride("FIREBASE_TELEMETRY_URL", "https://firebasetelemetry.googleapis.com");
 export const firebaseTelemetryAdminOrigin = (): string =>
   utils.envOverride(
     "FIREBASE_TELEMETRY_ADMIN_URL",

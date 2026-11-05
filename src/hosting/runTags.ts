@@ -25,7 +25,7 @@ export async function gcTagsForServices(project: string, services: run.Service[]
   const validTagsByServiceByRegion: Record<string, Record<string, Set<string>>> = {};
   const sites = await api.listSites(project);
   const allVersionsNested = await Promise.all(
-    sites.map((site) => api.listVersions(posix.basename(site.name))),
+    sites.map((site) => api.listVersions(project, posix.basename(site.name))),
   );
   const activeVersions = [...flattenArray(allVersionsNested)].filter((version) => {
     return version.status === "CREATED" || version.status === "FINALIZED";
@@ -104,7 +104,7 @@ export async function setRewriteTags(
         );
       })
       // filter does not drop the null annotation
-      .filter((s) => s !== null) as Array<Promise<run.Service>>,
+      .filter((s): s is Promise<run.Service> => s !== null),
   );
   // Unnecessary due to functional programming, but creates an observable side effect for tests
   if (!services.length) {
