@@ -15,19 +15,6 @@ export enum DeferredProduct {
 }
 
 /**
- * Checks whether products used by the extension require provisioning.
- *
- * @param spec extension spec
- */
-export async function checkProductsProvisioned(
-  projectId: string,
-  spec: ExtensionSpec,
-): Promise<void> {
-  const usedProducts = getUsedProducts(spec);
-  await checkProducts(projectId, usedProducts);
-}
-
-/**
  * Checks whether products used for any extension version in a deploy requires provisioning.
  *
  * @param extensionVersionRefs
