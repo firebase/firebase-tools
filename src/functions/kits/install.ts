@@ -83,7 +83,6 @@ export interface InstallKitOrInstanceOptions {
 }
 
 export interface InstallKitOrInstanceResult {
-  action: "installedKit" | "addedInstance" | "configuredEnv";
   kitId: string;
   instanceId?: string;
   sourcePath?: string;
@@ -166,7 +165,6 @@ export interface EnsureKitResult {
 export interface ResolveOrCreateInstanceOptions {
   config: Config;
   kit: ValidatedKitSingle;
-  isNewKit: boolean;
   existingFunctionsInfo: ExistingFunctionsInfo;
   project?: string;
   projectId?: string;
@@ -178,19 +176,18 @@ export interface ResolveOrCreateInstanceOptions {
 }
 
 export interface ResolvedKitInstance {
-  action: "installedKit" | "addedInstance" | "configuredEnv";
   instanceId: string;
   configDirPath: string;
   absConfigDirPath: string;
+  isNewInstance: boolean;
 }
 
 export interface ConfigureInstanceForProjectOptions {
   config: Config;
   kit: ValidatedKitSingle;
   instanceId: string;
-  configDirPath: string;
+  configDirPath?: string;
   absConfigDirPath: string;
-  action: "installedKit" | "addedInstance" | "configuredEnv";
   project?: string;
   projectId?: string;
   rc?: RC;
@@ -424,10 +421,12 @@ export interface AddKitToConfigOptions {
   sourcePackage?: KitSourcePackage;
   predeploy?: string[];
   runtime?: ActiveRuntime;
+  write?: boolean;
 }
 
 /**
- * Appends the newly configured kit into the firebase.json configuration and saves the file.
+ * Appends the newly configured kit into the in-memory firebase.json configuration,
+ * and optionally writes the file to disk if options.write is true.
  */
 export function addKitToConfig(options: AddKitToConfigOptions): ValidatedKitSingle {
   const configSrc = options.config.src;
@@ -449,7 +448,9 @@ export function addKitToConfig(options: AddKitToConfigOptions): ValidatedKitSing
     configSrc.functions = [functionsRaw, newKitConfig];
   }
 
-  options.config.writeProjectFile("firebase.json", configSrc);
+  if (options.write) {
+    options.config.writeProjectFile("firebase.json", configSrc);
+  }
   return newKitConfig as ValidatedKitSingle;
 }
 
@@ -710,10 +711,10 @@ export async function printKitFirstDeployReport(
 }
 
 /**
- * Stage 1: Ensures the kit source exists and is registered in firebase.json.
+ * Stage 1: Ensures the kit source exists and is registered in the in-memory config.
  * If the kit is already registered, returns the existing kit configuration.
  * Otherwise validates the source, prompts for a kit ID, prepares/builds the source,
- * and adds the kit entry to firebase.json.
+ * and adds the kit entry to the in-memory config (deferring writing firebase.json until Stage 2).
  */
 export async function ensureKit(options: EnsureKitOptions): Promise<EnsureKitResult> {
   const { config, adapter, existingFunctionsInfo, createdPaths = [] } = options;
@@ -753,7 +754,7 @@ export async function ensureKit(options: EnsureKitOptions): Promise<EnsureKitRes
 export async function resolveOrCreateInstance(
   options: ResolveOrCreateInstanceOptions,
 ): Promise<ResolvedKitInstance> {
-  const { kit, isNewKit, existingFunctionsInfo, createdPaths = [] } = options;
+  const { kit, existingFunctionsInfo, createdPaths = [] } = options;
   const projectId = getProjectId(options) || options.projectId;
   const projectAlias =
     options.rc?.hasProjects && options.project && options.rc.hasProjectAlias(options.project)
@@ -763,7 +764,8 @@ export async function resolveOrCreateInstance(
   let mode: "addInstance" | "addEnv";
   let unconfiguredInstances: string[] = [];
 
-  if (isNewKit) {
+  const existingInstancesCount = Object.keys(kit.instances || {}).length;
+  if (existingInstancesCount === 0) {
     mode = "addInstance";
   } else {
     unconfiguredInstances = getUnconfiguredInstancesForProject({
@@ -772,8 +774,7 @@ export async function resolveOrCreateInstance(
       projectId,
       projectAlias,
     });
-    const isConfiguredForProject =
-      Object.keys(kit.instances || {}).length > 0 && unconfiguredInstances.length === 0;
+    const isConfiguredForProject = existingInstancesCount > 0 && unconfiguredInstances.length === 0;
 
     if (
       options.instanceId &&
@@ -824,24 +825,18 @@ export async function resolveOrCreateInstance(
       customInstanceId: options.instanceId,
     });
 
-    const expectedConfigDirPath = path.join(FUNCTION_KITS_DIR, kit.kit, `config-${instanceId}`);
-    const absConfigDirPath = options.config.path(expectedConfigDirPath);
-    const absKitDir = options.config.path(path.join(FUNCTION_KITS_DIR, kit.kit));
-    if (!createdPaths.includes(absKitDir)) {
-      createdPaths.push(absConfigDirPath);
-    }
-
     const result = await addInstanceToKit({
       config: options.config,
       kitId: kit.kit,
       instanceId,
     });
+    createdPaths.push(result.absConfigDirPath);
 
     return {
-      action: isNewKit ? "installedKit" : "addedInstance",
       instanceId,
       configDirPath: result.configDirPath,
       absConfigDirPath: result.absConfigDirPath,
+      isNewInstance: true,
     };
   }
 
@@ -859,22 +854,22 @@ export async function resolveOrCreateInstance(
   const absConfigDirPath = options.config.path(configDirPath);
 
   return {
-    action: "configuredEnv",
     instanceId,
     configDirPath,
     absConfigDirPath,
+    isNewInstance: false,
   };
 }
 
 /**
  * Stage 3: Configures the resolved kit instance for the target Firebase project
- * (seeds .env.<projectId>, discovers build parameters, prompts for values, and prints deploy report).
+ * (seeds .env.<projectId>, discovers build parameters, and prompts for values).
  * Packaging-system and directory-source agnostic.
  */
 export async function configureInstanceForProject(
   options: ConfigureInstanceForProjectOptions,
-): Promise<void> {
-  const { kit, instanceId, absConfigDirPath, action, createdPaths = [] } = options;
+): Promise<build.Build | undefined> {
+  const { kit, instanceId, absConfigDirPath, createdPaths = [] } = options;
   const projectId = getProjectId(options) || options.projectId;
   const projectAlias =
     options.rc?.hasProjects && options.project && options.rc.hasProjectAlias(options.project)
@@ -882,7 +877,7 @@ export async function configureInstanceForProject(
       : undefined;
   const absSourcePath = options.config.path(kit.source);
 
-  if (projectId && action === "configuredEnv") {
+  if (projectId) {
     const envPath = path.join(absConfigDirPath, `.env.${projectId}`);
     if (!(await fs.pathExists(envPath))) {
       createdPaths.push(envPath);
@@ -933,37 +928,14 @@ export async function configureInstanceForProject(
     }
   }
 
-  if (action === "installedKit") {
-    logLabeledSuccess("functions", `Function kit ${clc.bold(kit.kit)} successfully installed.`);
-  } else if (action === "addedInstance") {
-    logLabeledSuccess(
-      "functions",
-      `Function kit instance ${clc.bold(instanceId)} successfully added to kit ${clc.bold(kit.kit)}.`,
-    );
-  } else if (action === "configuredEnv") {
-    const projectDisplay = projectId || options.project || "project";
-    logLabeledSuccess(
-      "functions",
-      `Function kit instance ${clc.bold(instanceId)} successfully configured for ${clc.bold(projectDisplay)}.`,
-    );
-  }
-
-  await printKitFirstDeployReport({
-    config: options.config,
-    project: options.project,
-    projectId: options.projectId,
-    instanceId,
-    absSourcePath,
-    runtime: kit.runtime,
-    preDiscoveredBuild: discoveredBuild,
-  });
+  return discoveredBuild;
 }
 
 /**
  * Orchestrates the complete 3-stage kit installation flow:
  * 1. ensureKit: resolves an existing kit or installs/scaffolds a new kit source.
  * 2. resolveOrCreateInstance: creates a new instance or selects an unconfigured instance.
- * 3. configureInstanceForProject: seeds env, prompts for build params, and prints deploy preview.
+ * 3. configureInstanceForProject: seeds env and prompts for build params.
  */
 export async function installKitOrInstance(
   options: InstallKitOrInstanceOptions,
@@ -994,6 +966,7 @@ export async function installKitOrInstance(
 
   try {
     const existingFunctionsInfo = extractExistingFunctionsInfo(options.config.src.functions);
+    const projectId = getProjectId(options) || options.projectId;
 
     const { kit, isNewKit } = await ensureKit({
       ...options,
@@ -1003,26 +976,49 @@ export async function installKitOrInstance(
     });
     kitId = kit.kit;
 
-    const { action, instanceId, configDirPath, absConfigDirPath } = await resolveOrCreateInstance({
-      ...options,
-      kit,
-      isNewKit,
-      existingFunctionsInfo,
-      createdPaths,
-    });
+    const { instanceId, configDirPath, absConfigDirPath, isNewInstance } =
+      await resolveOrCreateInstance({
+        ...options,
+        kit,
+        existingFunctionsInfo,
+        createdPaths,
+      });
 
-    await configureInstanceForProject({
+    const discoveredBuild = await configureInstanceForProject({
       ...options,
       kit,
       instanceId,
       configDirPath,
       absConfigDirPath,
-      action,
       createdPaths,
     });
 
+    if (isNewKit) {
+      logLabeledSuccess("functions", `Function kit ${clc.bold(kit.kit)} successfully installed.`);
+    } else if (isNewInstance) {
+      logLabeledSuccess(
+        "functions",
+        `Function kit instance ${clc.bold(instanceId)} successfully added to kit ${clc.bold(kit.kit)}.`,
+      );
+    } else {
+      const projectDisplay = projectId || options.project || "project";
+      logLabeledSuccess(
+        "functions",
+        `Function kit instance ${clc.bold(instanceId)} successfully configured for ${clc.bold(projectDisplay)}.`,
+      );
+    }
+
+    await printKitFirstDeployReport({
+      config: options.config,
+      project: options.project,
+      projectId: options.projectId,
+      instanceId,
+      absSourcePath: options.config.path(kit.source),
+      runtime: kit.runtime,
+      preDiscoveredBuild: discoveredBuild,
+    });
+
     return {
-      action,
       kitId: kit.kit,
       instanceId,
       sourcePath: kit.source,
