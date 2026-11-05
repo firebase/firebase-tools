@@ -10,7 +10,9 @@ import { FirebaseError } from "../error";
 import * as appsModule from "../management/apps";
 import * as requireAuthModule from "../requireAuth";
 import {
+  deleteDebugTokenAndCleanLocal,
   ensureCanCreateOrOverwriteDebugToken,
+  findStaleLocalDebugTokens,
   getDefaultDisplayName,
   inspectLocalDebugTokens,
   isWebAppId,
@@ -26,6 +28,7 @@ describe("appcheck debugTokens helpers", () => {
   const projectNumber = "1234567890";
   const iosAppId = `1:${projectNumber}:ios:0a1b2c3d4e5f6a7b8c9d0e`;
   const webAppId = `1:${projectNumber}:web:9f8e7d6c5b4a3f2e1d0c`;
+  const v2OtherProjectAppId = "2:9999999999:android:abcdef123456";
   const validUuid = "e3d9b1a0-cf48-4389-8d19-482a177ffec8";
 
   let sandbox: sinon.SinonSandbox;
@@ -228,7 +231,42 @@ describe("appcheck debugTokens helpers", () => {
     });
   });
 
-  describe("inspectLocalDebugTokens", () => {
+  describe("inspectLocalDebugTokens & findStaleLocalDebugTokens", () => {
+    it("detects individual token revocation via recorded tokenNames even when teammates still have tokens", async () => {
+      const myResourceName = `projects/${projectNumber}/apps/${iosAppId}/debugTokens/my-revoked-id`;
+      const teammateResourceName = `projects/${projectNumber}/apps/${iosAppId}/debugTokens/teammate-id`;
+
+      saveLocalToken(iosAppId, validUuid, myResourceName);
+      saveLocalToken(v2OtherProjectAppId, "f4e8c2b1-da59-4490-9e20-593b288ffed9");
+      saveLocalToken("custom-non-gmp-app", "a1b2c3d4-e5f6-4789-89ab-cdef01234567");
+
+      sandbox.stub(appsModule, "listFirebaseApps").resolves([
+        {
+          name: `projects/${projectId}/iosApps/${iosAppId}`,
+          projectId,
+          appId: iosAppId,
+          platform: appsModule.AppPlatform.IOS,
+        },
+      ]);
+
+      nock(appCheckOrigin())
+        .get(`/v1/projects/${projectNumber}/apps/${iosAppId}/debugTokens`)
+        .reply(200, {
+          debugTokens: [{ name: teammateResourceName, displayName: "teammate@laptop" }],
+        });
+
+      const stale = await findStaleLocalDebugTokens({ projectId, projectNumber });
+      expect(stale).to.deep.equal([
+        {
+          appId: iosAppId,
+          tokenPrefix: "e3d9b1a0-...",
+          status: "REVOKED",
+          name: myResourceName,
+        },
+      ]);
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("treats HTTP 409 (hidden/pending-deletion app in App Check) as APP_DELETED and degrades gracefully to UNCHECKED when offline", async () => {
       saveLocalToken(iosAppId, validUuid);
 
@@ -286,6 +324,31 @@ describe("appcheck debugTokens helpers", () => {
           status: "UNCHECKED",
         },
       ]);
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("deleteDebugTokenAndCleanLocal", () => {
+    it("removes local entry only when its recorded resource name matches the deleted token", async () => {
+      const myResourceName = `projects/${projectNumber}/apps/${iosAppId}/debugTokens/my-id`;
+      const otherResourceName = `projects/${projectNumber}/apps/${iosAppId}/debugTokens/ci-id`;
+      saveLocalToken(iosAppId, validUuid, myResourceName);
+
+      nock(appCheckOrigin()).delete(`/v1/${otherResourceName}`).reply(200, {});
+      const removedOther = await deleteDebugTokenAndCleanLocal({
+        appId: iosAppId,
+        debugTokenName: otherResourceName,
+      });
+      expect(removedOther).to.be.false;
+      expect(getLocalToken(iosAppId)).to.equal(validUuid);
+
+      nock(appCheckOrigin()).delete(`/v1/${myResourceName}`).reply(200, {});
+      const removedMine = await deleteDebugTokenAndCleanLocal({
+        appId: iosAppId,
+        debugTokenName: myResourceName,
+      });
+      expect(removedMine).to.be.true;
+      expect(getLocalToken(iosAppId)).to.be.undefined;
       expect(nock.isDone()).to.be.true;
     });
   });
