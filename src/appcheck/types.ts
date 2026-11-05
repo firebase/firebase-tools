@@ -15,6 +15,7 @@ export interface ListDebugTokensResponse {
 export interface AppCheckDebugOptions extends Options {
   app?: string;
   displayName?: string;
+  saveLocal?: boolean;
 }
 
 /** How App Check treats requests to a service. */
