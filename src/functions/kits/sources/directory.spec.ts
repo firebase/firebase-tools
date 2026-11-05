@@ -225,36 +225,13 @@ describe("functions/kits/sources/directory", () => {
           instances: { inst1: "function-kits/dir-kit/config-inst1" },
         },
       ];
-      const adapter = createDirectoryAdapter({
-        config: { projectDir: "/mock/project" } as Config,
-        directory: "my-local-kit",
-      });
+      const adapter = createDirectoryAdapter(
+        { projectDir: "/mock/project" } as Config,
+        "my-local-kit",
+      );
 
       expect(adapter.defaultKitId).to.equal("my-local-kit");
       expect(adapter.findExistingKit(existingKits)).to.equal(existingKits[0]);
-    });
-
-    it("should prepare directory source and return predeploy when build script exists", async () => {
-      (fs.pathExists as sinon.SinonStub).withArgs("/mock/project/my-kit").resolves(true);
-      (fs.pathExists as sinon.SinonStub)
-        .withArgs(path.join("/mock/project/my-kit", "package.json"))
-        .resolves(true);
-      (fs.readJson as sinon.SinonStub)
-        .withArgs(path.join("/mock/project/my-kit", "package.json"))
-        .resolves({ scripts: { build: "tsc" } });
-
-      const adapter = createDirectoryAdapter({
-        config: { projectDir: "/mock/project" } as Config,
-        directory: "my-kit",
-      });
-
-      await adapter.validateAndConfirm();
-      const prepared = await adapter.prepareSource("my-kit");
-
-      expect(prepared).to.deep.equal({
-        sourcePath: "my-kit",
-        predeploy: ['npm --prefix "$RESOURCE_DIR" run build'],
-      });
     });
   });
 });

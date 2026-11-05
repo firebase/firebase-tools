@@ -14,11 +14,6 @@ export interface ValidatedDirectoryKit {
   hasBuildScript: boolean;
 }
 
-export interface DirectoryAdapterOptions {
-  config: Config;
-  directory: string;
-}
-
 /**
  * Validates a local directory for use as a functions kit.
  * Checks that the directory exists, is a directory, and contains a valid package.json.
@@ -98,10 +93,10 @@ export async function buildAndInstallDirectoryKit(
 /**
  * Creates a KitSourceAdapter for a local directory kit.
  */
-export function createDirectoryAdapter(options: DirectoryAdapterOptions): KitSourceAdapter {
-  const absDir = path.isAbsolute(options.directory)
-    ? options.directory
-    : path.resolve(options.config.projectDir, options.directory);
+export function createDirectoryAdapter(config: Config, directory: string): KitSourceAdapter {
+  const absDir = path.isAbsolute(directory)
+    ? directory
+    : path.resolve(config.projectDir, directory);
   let validated: ValidatedDirectoryKit | undefined;
 
   return {
@@ -111,21 +106,15 @@ export function createDirectoryAdapter(options: DirectoryAdapterOptions): KitSou
         (c): c is ValidatedKitSingle =>
           isKitConfig(c) &&
           !c.sourcePackage &&
-          path.resolve(options.config.projectDir, c.source) === absDir,
+          path.resolve(config.projectDir, c.source) === absDir,
       );
     },
     async validateAndConfirm(): Promise<void> {
-      validated = await validateAndResolveDirectoryKit(
-        options.config.projectDir,
-        options.directory,
-      );
+      validated = await validateAndResolveDirectoryKit(config.projectDir, directory);
     },
     async prepareSource(): Promise<PreparedKitSource> {
       if (!validated) {
-        validated = await validateAndResolveDirectoryKit(
-          options.config.projectDir,
-          options.directory,
-        );
+        validated = await validateAndResolveDirectoryKit(config.projectDir, directory);
       }
       await buildAndInstallDirectoryKit(validated.absDirectoryPath, validated.hasBuildScript);
       return {
