@@ -1218,7 +1218,10 @@ export class Fabricator {
       });
   }
 
-  /** Returns true when the lookup fails, so callers keep their original error. */
+  /**
+   * Whether Cloud Scheduler supports `region`. True if the lookup fails or lists no regions,
+   * so callers keep their original error.
+   */
   private async schedulerSupportsRegion(projectId: string, region: string): Promise<boolean> {
     try {
       const regions = await scheduler.listLocations(projectId);
