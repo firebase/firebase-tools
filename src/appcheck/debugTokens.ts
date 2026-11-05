@@ -6,11 +6,14 @@ import { logger } from "../logger";
 import { AppPlatform, listFirebaseApps } from "../management/apps";
 import { getProjectId, needProjectId, needProjectNumber } from "../projectUtils";
 import { requireAuth } from "../requireAuth";
+import { logWarning } from "../utils";
 import { createDebugToken, deleteDebugToken, listDebugTokens } from "./api";
 import {
   getAllLocalTokenNames,
   getAllLocalTokens,
   getLocalToken,
+  getLocalTokenName,
+  removeLocalTokens,
   saveLocalToken,
 } from "./localConfig";
 import {
@@ -359,4 +362,69 @@ export async function inspectLocalDebugTokens(
       resourceName: tokenNames[appId],
     }),
   );
+}
+
+/**
+ * Finds stale local debug token entries (`APP_DELETED` or `REVOKED`) belonging strictly to `projectNumber`.
+ */
+export async function findStaleLocalDebugTokens(params: {
+  projectId: string;
+  projectNumber: string;
+}): Promise<LocalDebugTokenEntry[]> {
+  const { projectId, projectNumber } = params;
+  const tokens = getAllLocalTokens();
+  const candidateAppIds = Object.keys(tokens).filter(
+    (appId) => extractProjectNumberFromAppId(appId) === projectNumber,
+  );
+  if (candidateAppIds.length === 0) {
+    return [];
+  }
+
+  const tokenNames = getAllLocalTokenNames();
+  const statuses = await resolveProjectTokenStatuses({
+    projectId,
+    projectNumber,
+    candidateAppIds,
+    tokenNames,
+  });
+
+  const stale: LocalDebugTokenEntry[] = [];
+  for (const appId of candidateAppIds) {
+    const status = statuses[appId];
+    if (status === "APP_DELETED" || status === "REVOKED") {
+      stale.push(
+        buildLocalTokenEntry({
+          appId,
+          token: tokens[appId],
+          status,
+          resourceName: tokenNames[appId],
+        }),
+      );
+    }
+  }
+  return stale;
+}
+
+/**
+ * Deletes a server-registered debug token and removes the matching local configstore entry if present.
+ * Returns `true` when a matching local entry was also removed.
+ */
+export async function deleteDebugTokenAndCleanLocal(params: {
+  appId: string;
+  debugTokenName: string;
+}): Promise<boolean> {
+  const { appId, debugTokenName } = params;
+  await deleteDebugToken(debugTokenName);
+
+  try {
+    if (getLocalTokenName(appId) === debugTokenName) {
+      removeLocalTokens([appId]);
+      return true;
+    }
+  } catch (err: unknown) {
+    logWarning(
+      `Deleted server debug token, but failed to clean up local App Check config: ${getErrMsg(err)}`,
+    );
+  }
+  return false;
 }
