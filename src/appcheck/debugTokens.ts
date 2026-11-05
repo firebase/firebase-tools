@@ -1,13 +1,43 @@
+import * as clc from "colorette";
 import * as os from "os";
 
-import { FirebaseError, getErrStatus } from "../error";
-import { createDebugToken, deleteDebugToken } from "./api";
-import { saveLocalToken } from "./localConfig";
-import { DebugToken } from "./types";
+import { FirebaseError, getErrMsg, getErrStatus } from "../error";
+import { logger } from "../logger";
+import { AppPlatform, listFirebaseApps } from "../management/apps";
+import { getProjectId, needProjectId, needProjectNumber } from "../projectUtils";
+import { requireAuth } from "../requireAuth";
+import { createDebugToken, deleteDebugToken, listDebugTokens } from "./api";
+import {
+  getAllLocalTokenNames,
+  getAllLocalTokens,
+  getLocalToken,
+  saveLocalToken,
+} from "./localConfig";
+import {
+  AppCheckDebugOptions,
+  DebugToken,
+  LocalDebugTokenEntry,
+  LocalDebugTokenStatus,
+} from "./types";
 
 const MAX_DEBUG_TOKENS_PER_APP = 20;
 const MAX_DISPLAY_NAME_LENGTH = 50;
+const MASK_PREFIX_LENGTH = 8;
 const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const GMP_APP_ID_PROJECT_NUMBER_REGEX = /^\d+:(\d+):/;
+
+function extractProjectNumberFromAppId(appId: string): string | undefined {
+  const match = GMP_APP_ID_PROJECT_NUMBER_REGEX.exec(appId);
+  return match ? match[1] : undefined;
+}
+
+function maskDebugToken(token: string): string {
+  if (token.length <= MASK_PREFIX_LENGTH) {
+    return "********";
+  }
+  const prefix = token.slice(0, MASK_PREFIX_LENGTH);
+  return token[MASK_PREFIX_LENGTH] === "-" ? `${prefix}-...` : `${prefix}...`;
+}
 
 async function deleteServerTokensIgnoringNotFound(tokens: readonly DebugToken[]): Promise<void> {
   for (const existing of tokens) {
@@ -19,6 +49,83 @@ async function deleteServerTokensIgnoringNotFound(tokens: readonly DebugToken[])
       }
     }
   }
+}
+
+async function checkAppServerTokenStatus(
+  projectNumber: string,
+  appId: string,
+  recordedResourceName?: string,
+): Promise<LocalDebugTokenStatus> {
+  let serverTokens: DebugToken[];
+  try {
+    serverTokens = await listDebugTokens(projectNumber, appId);
+  } catch (err: unknown) {
+    const status = getErrStatus(err);
+    // App Check returns 404 when an app does not exist and 409 ABORTED when an app's row is hidden/pending deletion.
+    if (status === 404 || status === 409) {
+      return "APP_DELETED";
+    }
+    throw err;
+  }
+
+  if (serverTokens.length === 0) {
+    return "REVOKED";
+  }
+  if (recordedResourceName) {
+    return serverTokens.some((t) => t.name === recordedResourceName) ? "ACTIVE" : "REVOKED";
+  }
+  return "UNCHECKED";
+}
+
+async function resolveProjectTokenStatuses(params: {
+  projectId: string;
+  projectNumber: string;
+  candidateAppIds: readonly string[];
+  tokenNames: Readonly<Record<string, string>>;
+}): Promise<Record<string, LocalDebugTokenStatus>> {
+  const { projectId, projectNumber, candidateAppIds, tokenNames } = params;
+  const statuses: Record<string, LocalDebugTokenStatus> = {};
+  if (candidateAppIds.length === 0) {
+    return statuses;
+  }
+
+  const apps = await listFirebaseApps(projectId, AppPlatform.ANY);
+  const activeProjectAppIds = new Set(apps.map((app) => app.appId));
+
+  await Promise.all(
+    candidateAppIds.map(async (appId) => {
+      if (!activeProjectAppIds.has(appId)) {
+        statuses[appId] = "APP_DELETED";
+        return;
+      }
+      try {
+        statuses[appId] = await checkAppServerTokenStatus(projectNumber, appId, tokenNames[appId]);
+      } catch (err: unknown) {
+        logger.debug(`Failed to check server token status for app ${appId}: ${getErrMsg(err)}`);
+        statuses[appId] = "UNCHECKED";
+      }
+    }),
+  );
+
+  return statuses;
+}
+
+function buildLocalTokenEntry(params: {
+  appId: string;
+  token: string;
+  status: LocalDebugTokenStatus;
+  resourceName?: string;
+}): LocalDebugTokenEntry {
+  const { appId, token, status, resourceName } = params;
+  const entry: LocalDebugTokenEntry = {
+    appId,
+    tokenPrefix: maskDebugToken(token),
+    status,
+  };
+  if (resourceName) {
+    entry.name = resourceName;
+  }
+  return entry;
 }
 
 /**
@@ -118,6 +225,22 @@ export function isWebAppId(appId: string): boolean {
 }
 
 /**
+ * Formats a `LocalDebugTokenStatus` value for human-readable CLI output.
+ */
+export function formatLocalTokenStatus(status: LocalDebugTokenStatus): string {
+  switch (status) {
+    case "ACTIVE":
+      return clc.green("Active");
+    case "REVOKED":
+      return clc.yellow("Revoked");
+    case "APP_DELETED":
+      return clc.red("App Deleted");
+    case "UNCHECKED":
+      return clc.gray("Unchecked");
+  }
+}
+
+/**
  * Verifies that creating (or overwriting) a debug token will not exceed the 20-token per-app backend limit.
  */
 export function ensureCanCreateOrOverwriteDebugToken(params: {
@@ -178,4 +301,62 @@ export async function provisionDebugToken(params: {
   }
 
   return hydrated;
+}
+
+/**
+ * Lists locally stored debug tokens (optionally filtered by `--app`), enriching entries belonging
+ * to the active Firebase project with their live server status when authenticated.
+ */
+export async function inspectLocalDebugTokens(
+  options: Partial<AppCheckDebugOptions>,
+): Promise<LocalDebugTokenEntry[]> {
+  let tokens: Record<string, string>;
+  if (options.app) {
+    const single = getLocalToken(options.app);
+    tokens = single ? { [options.app]: single } : {};
+  } else {
+    tokens = getAllLocalTokens();
+  }
+
+  const appIds = Object.keys(tokens);
+  if (appIds.length === 0) {
+    return [];
+  }
+
+  const tokenNames = getAllLocalTokenNames();
+  const statusByAppId: Record<string, LocalDebugTokenStatus> = {};
+  for (const appId of appIds) {
+    statusByAppId[appId] = "UNCHECKED";
+  }
+
+  if (getProjectId(options) || options.projectNumber) {
+    try {
+      await requireAuth(options);
+      const projectId = needProjectId(options);
+      const projectNumber = await needProjectNumber(options);
+      const candidateAppIds = appIds.filter(
+        (appId) => extractProjectNumberFromAppId(appId) === projectNumber,
+      );
+      const resolvedStatuses = await resolveProjectTokenStatuses({
+        projectId,
+        projectNumber,
+        candidateAppIds,
+        tokenNames,
+      });
+      Object.assign(statusByAppId, resolvedStatuses);
+    } catch (err: unknown) {
+      logger.debug(
+        `Skipping server status check for local App Check debug tokens: ${getErrMsg(err)}`,
+      );
+    }
+  }
+
+  return appIds.map((appId) =>
+    buildLocalTokenEntry({
+      appId,
+      token: tokens[appId],
+      status: statusByAppId[appId],
+      resourceName: tokenNames[appId],
+    }),
+  );
 }

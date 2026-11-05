@@ -7,18 +7,22 @@ import * as sinon from "sinon";
 
 import { appCheckOrigin } from "../api";
 import { FirebaseError } from "../error";
+import * as appsModule from "../management/apps";
+import * as requireAuthModule from "../requireAuth";
 import {
   ensureCanCreateOrOverwriteDebugToken,
   getDefaultDisplayName,
+  inspectLocalDebugTokens,
   isWebAppId,
   provisionDebugToken,
   validateDebugTokenUuid,
   validateDisplayName,
 } from "./debugTokens";
-import { getLocalToken, getLocalTokenName } from "./localConfig";
+import { getLocalToken, getLocalTokenName, saveLocalToken } from "./localConfig";
 import { DebugToken } from "./types";
 
 describe("appcheck debugTokens helpers", () => {
+  const projectId = "my-ai-project";
   const projectNumber = "1234567890";
   const iosAppId = `1:${projectNumber}:ios:0a1b2c3d4e5f6a7b8c9d0e`;
   const webAppId = `1:${projectNumber}:web:9f8e7d6c5b4a3f2e1d0c`;
@@ -220,6 +224,68 @@ describe("appcheck debugTokens helpers", () => {
       });
 
       expect(callOrder).to.deep.equal(["delete", "create"]);
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("inspectLocalDebugTokens", () => {
+    it("treats HTTP 409 (hidden/pending-deletion app in App Check) as APP_DELETED and degrades gracefully to UNCHECKED when offline", async () => {
+      saveLocalToken(iosAppId, validUuid);
+
+      sandbox.stub(requireAuthModule, "requireAuth").rejects(new FirebaseError("Not logged in"));
+      const offlineEntries = await inspectLocalDebugTokens({ project: projectId });
+      expect(offlineEntries).to.deep.equal([
+        {
+          appId: iosAppId,
+          tokenPrefix: "e3d9b1a0-...",
+          status: "UNCHECKED",
+        },
+      ]);
+
+      sandbox.restore();
+      sandbox = sinon.createSandbox();
+      sandbox.stub(os, "homedir").returns(tempRoot);
+      sandbox.stub(requireAuthModule, "requireAuth").resolves("a@b.com");
+      sandbox.stub(appsModule, "listFirebaseApps").resolves([
+        {
+          name: `projects/${projectId}/iosApps/${iosAppId}`,
+          projectId,
+          appId: iosAppId,
+          platform: appsModule.AppPlatform.IOS,
+        },
+        {
+          name: `projects/${projectId}/webApps/${webAppId}`,
+          projectId,
+          appId: webAppId,
+          platform: appsModule.AppPlatform.WEB,
+        },
+      ]);
+
+      saveLocalToken(webAppId, "f4e8c2b1-da59-4490-9e20-593b288ffed9");
+
+      nock(appCheckOrigin())
+        .get(`/v1/projects/${projectNumber}/apps/${iosAppId}/debugTokens`)
+        .reply(409, { error: { message: "The app is not active" } });
+      nock(appCheckOrigin())
+        .get(`/v1/projects/${projectNumber}/apps/${webAppId}/debugTokens`)
+        .reply(500, { error: { message: "Internal backend failure" } });
+
+      const checkedEntries = await inspectLocalDebugTokens({
+        project: projectId,
+        projectNumber,
+      });
+      expect(checkedEntries).to.deep.equal([
+        {
+          appId: iosAppId,
+          tokenPrefix: "e3d9b1a0-...",
+          status: "APP_DELETED",
+        },
+        {
+          appId: webAppId,
+          tokenPrefix: "f4e8c2b1-...",
+          status: "UNCHECKED",
+        },
+      ]);
       expect(nock.isDone()).to.be.true;
     });
   });
