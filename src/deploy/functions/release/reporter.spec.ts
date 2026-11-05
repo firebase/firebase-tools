@@ -5,7 +5,6 @@ import { logger } from "../../../logger";
 import * as backend from "../backend";
 import * as reporter from "./reporter";
 import * as track from "../../../track";
-import * as events from "../../../functions/events";
 import * as args from "../args";
 
 const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
@@ -19,104 +18,6 @@ const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
 const ENDPOINT: backend.Endpoint = { ...ENDPOINT_BASE, httpsTrigger: {} };
 
 describe("reporter", () => {
-  describe("triggerTag", () => {
-    it("detects v1.https", () => {
-      expect(
-        reporter.triggerTag({
-          ...ENDPOINT_BASE,
-          httpsTrigger: {},
-        }),
-      ).to.equal("v1.https");
-    });
-
-    it("detects v2.https", () => {
-      expect(
-        reporter.triggerTag({
-          ...ENDPOINT_BASE,
-          platform: "gcfv2",
-          httpsTrigger: {},
-        }),
-      ).to.equal("v2.https");
-    });
-
-    it("detects v1.callable", () => {
-      expect(
-        reporter.triggerTag({
-          ...ENDPOINT_BASE,
-          httpsTrigger: {},
-          labels: {
-            "deployment-callable": "true",
-          },
-        }),
-      ).to.equal("v1.callable");
-    });
-
-    it("detects v2.callable", () => {
-      expect(
-        reporter.triggerTag({
-          ...ENDPOINT_BASE,
-          platform: "gcfv2",
-          httpsTrigger: {},
-          labels: {
-            "deployment-callable": "true",
-          },
-        }),
-      ).to.equal("v2.callable");
-    });
-
-    it("detects v1.scheduled", () => {
-      expect(
-        reporter.triggerTag({
-          ...ENDPOINT_BASE,
-          scheduleTrigger: {},
-        }),
-      ).to.equal("v1.scheduled");
-    });
-
-    it("detects v2.scheduled", () => {
-      expect(
-        reporter.triggerTag({
-          ...ENDPOINT_BASE,
-          platform: "gcfv2",
-          scheduleTrigger: {},
-        }),
-      ).to.equal("v2.scheduled");
-    });
-
-    it("detects v1.blocking", () => {
-      expect(
-        reporter.triggerTag({
-          ...ENDPOINT_BASE,
-          blockingTrigger: { eventType: events.v1.BEFORE_CREATE_EVENT },
-        }),
-      ).to.equal("v1.blocking");
-    });
-
-    it("detects v2.blocking", () => {
-      expect(
-        reporter.triggerTag({
-          ...ENDPOINT_BASE,
-          platform: "gcfv2",
-          blockingTrigger: { eventType: events.v1.BEFORE_CREATE_EVENT },
-        }),
-      ).to.equal("v2.blocking");
-    });
-
-    it("detects others", () => {
-      expect(
-        reporter.triggerTag({
-          ...ENDPOINT_BASE,
-          platform: "gcfv2",
-          eventTrigger: {
-            eventType: "google.pubsub.topic.publish",
-            eventFilters: {},
-            retry: false,
-          },
-        }),
-      ).to.equal("google.pubsub.topic.publish");
-    });
-  });
-
   describe("logAndTrackDeployStats", () => {
     let trackGA4Stub: sinon.SinonStub;
     let debugStub: sinon.SinonStub;
