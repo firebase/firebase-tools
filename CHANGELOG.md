@@ -1,1 +1,2 @@
+- Fixed a race condition across a second boundary during `accounts:signUp` in the Auth emulator where `validSince` could exceed `auth_time`. (#11413)
 - Fixed deploying a 2nd gen scheduled function to a region without Cloud Scheduler: the deploy now fails before creating the function, and `functions:delete` can remove a function left behind by an earlier deploy. (#11453)
