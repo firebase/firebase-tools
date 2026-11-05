@@ -178,28 +178,22 @@ describe("profilingManager", () => {
     it("should return the configuration on successful response", async () => {
       const mockResponse = {
         name: `projects/${projectNumber}/apps/${appId}/profilingManagerConfig`,
-        gcsBucket: expectedBucketResourceName,
+        bucket: expectedBucketResourceName,
         heapDumpCollectionEnabled: true,
       };
 
       nock(crashlyticsApiOrigin()).get(resourcePath).reply(200, mockResponse);
 
       const result = await getProfilingManagerConfig(appId);
-      expect(result).to.deep.equal({
-        gcsBucket: expectedBucketName,
-        heapDumpCollectionEnabled: true,
-      });
+      expect(result).to.deep.equal(mockResponse);
       expect(nock.isDone()).to.be.true;
     });
 
-    it("should return default values when configuration is empty", async () => {
+    it("should return empty object when configuration is empty", async () => {
       nock(crashlyticsApiOrigin()).get(resourcePath).reply(200, {});
 
       const result = await getProfilingManagerConfig(appId);
-      expect(result).to.deep.equal({
-        gcsBucket: "",
-        heapDumpCollectionEnabled: false,
-      });
+      expect(result).to.deep.equal({});
       expect(nock.isDone()).to.be.true;
     });
 
@@ -215,25 +209,25 @@ describe("profilingManager", () => {
     it("should send the PATCH update request with field mask successfully", async () => {
       nock(crashlyticsApiOrigin())
         .patch(resourcePath, {
-          gcsBucket: expectedBucketResourceName,
+          bucket: expectedBucketResourceName,
           heapDumpCollectionEnabled: true,
         })
-        .query({ updateMask: "gcsBucket,heapDumpCollectionEnabled" })
+        .query({ updateMask: "bucket,heapDumpCollectionEnabled" })
         .reply(200, {
           name: `projects/${projectNumber}/apps/${appId}/profilingManagerConfig`,
-          gcsBucket: expectedBucketResourceName,
+          bucket: expectedBucketResourceName,
           heapDumpCollectionEnabled: true,
         });
 
-      const result = await updateProfilingManagerConfig(appId, {
-        gcsBucket: expectedBucketName,
-        heapDumpCollectionEnabled: true,
-      });
+      await updateProfilingManagerConfig(
+        appId,
+        {
+          bucket: expectedBucketResourceName,
+          heapDumpCollectionEnabled: true,
+        },
+        "bucket,heapDumpCollectionEnabled",
+      );
 
-      expect(result).to.deep.equal({
-        gcsBucket: expectedBucketName,
-        heapDumpCollectionEnabled: true,
-      });
       expect(nock.isDone()).to.be.true;
     });
 
@@ -245,41 +239,31 @@ describe("profilingManager", () => {
         .query({ updateMask: "heapDumpCollectionEnabled" })
         .reply(200, {
           name: `projects/${projectNumber}/apps/${appId}/profilingManagerConfig`,
-          gcsBucket: expectedBucketResourceName,
+          bucket: expectedBucketResourceName,
           heapDumpCollectionEnabled: false,
         });
 
-      const result = await updateProfilingManagerConfig(appId, {
-        heapDumpCollectionEnabled: false,
-      });
-
-      expect(result).to.deep.equal({
-        gcsBucket: expectedBucketName,
-        heapDumpCollectionEnabled: false,
-      });
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("should default empty configuration fields when omitted", async () => {
-      nock(crashlyticsApiOrigin())
-        .patch(resourcePath, {
-          gcsBucket: "",
+      await updateProfilingManagerConfig(
+        appId,
+        {
           heapDumpCollectionEnabled: false,
-        })
-        .query({ updateMask: "gcsBucket,heapDumpCollectionEnabled" })
-        .reply(200, {});
-
-      await updateProfilingManagerConfig(appId, {});
+        },
+        "heapDumpCollectionEnabled",
+      );
 
       expect(nock.isDone()).to.be.true;
     });
 
     it("should throw a FirebaseError if the appId is invalid", async () => {
       await expect(
-        updateProfilingManagerConfig("invalid-app", {
-          gcsBucket: expectedBucketName,
-          heapDumpCollectionEnabled: true,
-        }),
+        updateProfilingManagerConfig(
+          "invalid-app",
+          {
+            bucket: expectedBucketResourceName,
+            heapDumpCollectionEnabled: true,
+          },
+          "bucket,heapDumpCollectionEnabled",
+        ),
       ).to.be.rejectedWith(FirebaseError, "Unable to get the projectId from the AppId.");
     });
   });
@@ -476,13 +460,13 @@ describe("profilingManager", () => {
       sinon.stub(resourceManager, "serviceAccountHasRoles").resolves(true);
       nock(crashlyticsApiOrigin())
         .patch(resourcePath, {
-          gcsBucket: expectedBucketResourceName,
+          bucket: expectedBucketResourceName,
           heapDumpCollectionEnabled: true,
         })
-        .query({ updateMask: "gcsBucket,heapDumpCollectionEnabled" })
+        .query({ updateMask: "bucket,heapDumpCollectionEnabled" })
         .reply(200, {
           name: `projects/${projectNumber}/apps/${appId}/profilingManagerConfig`,
-          gcsBucket: expectedBucketResourceName,
+          bucket: expectedBucketResourceName,
           heapDumpCollectionEnabled: true,
         });
 
@@ -500,7 +484,7 @@ describe("profilingManager", () => {
         .query({ updateMask: "heapDumpCollectionEnabled" })
         .reply(200, {
           name: `projects/${projectNumber}/apps/${appId}/profilingManagerConfig`,
-          gcsBucket: expectedBucketResourceName,
+          bucket: expectedBucketResourceName,
           heapDumpCollectionEnabled: false,
         });
 
