@@ -1,4 +1,2 @@
-- Fixed high query latency on Linux in Data Connect PGlite emulator by enabling TCP_NODELAY on sockets. (#11402)
-- Fixed the emulators startup message showing 127.0.0.1 for the Emulator UI and Hub when they listen on 0.0.0.0; it now also prints the address they listen on. (#6222)
-- Fixed an issue on Windows where starting Java-based emulators (Firestore, Database, Pub/Sub, Storage) could open extra console windows or leave orphaned `java.exe` processes running after exit (#3871, #11261).
+- Fixed a race condition across a second boundary during `accounts:signUp` in the Auth emulator where `validSince` could exceed `auth_time`. (#11413)
 - `firebase deploy --only functions` now fails fast with an actionable error if a 1st gen function relies on a missing or disabled default App Engine service account, instead of surfacing a generic "internal error" after several retries (#4524)
