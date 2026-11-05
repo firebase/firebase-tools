@@ -21,6 +21,10 @@ export interface LocalDebugTokenEntry {
   name?: string;
 }
 
+export interface PruneDebugTokensResult {
+  prunedAppIds: string[];
+}
+
 export interface AppCheckDebugOptions extends Options {
   app?: string;
   displayName?: string;
