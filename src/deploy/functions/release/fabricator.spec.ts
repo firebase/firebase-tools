@@ -1321,6 +1321,16 @@ describe("Fabricator", () => {
         );
       });
 
+      it("wraps the 400 when no regions are listed", async () => {
+        scheduler.deleteJob.rejects(invalidLocation);
+        scheduler.listLocations.resolves([]);
+
+        await expect(fab.deleteScheduleV2(northEp)).to.eventually.be.rejectedWith(
+          reporter.DeploymentError,
+          "delete schedule",
+        );
+      });
+
       it("does not list regions for errors other than 400", async () => {
         scheduler.deleteJob.rejects(new FirebaseError("Permission denied.", { status: 403 }));
 

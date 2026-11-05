@@ -1221,7 +1221,8 @@ export class Fabricator {
   /** Returns true when the lookup fails, so callers keep their original error. */
   private async schedulerSupportsRegion(projectId: string, region: string): Promise<boolean> {
     try {
-      return (await scheduler.listLocations(projectId)).includes(region);
+      const regions = await scheduler.listLocations(projectId);
+      return regions.length === 0 || regions.includes(region);
     } catch (err: unknown) {
       logger.debug(`Failed to list Cloud Scheduler locations: ${getErrMsg(err)}`);
       return true;
