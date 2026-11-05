@@ -16,6 +16,7 @@ import * as runV2NS from "../../../gcp/runv2";
 import * as cloudtasksNS from "../../../gcp/cloudtasks";
 import * as backend from "../backend";
 import * as scraper from "./sourceTokenScraper";
+import { SingleBuildCoordinator } from "./singleBuildCoordinator";
 import * as planner from "./planner";
 import * as v2events from "../../../functions/events/v2";
 import * as v1events from "../../../functions/events/v1";
@@ -26,6 +27,7 @@ import { deepCopy } from "@angular-devkit/core";
 import * as gce from "../../../gcp/computeEngine";
 import * as iam from "../../../gcp/iam";
 import * as resourcemanager from "../../../gcp/resourceManager";
+import * as artifactregistryNS from "../../../gcp/artifactregistry";
 
 describe("Fabricator", () => {
   // Stub all GCP APIs to make sure this test is hermetic
@@ -60,6 +62,7 @@ describe("Fabricator", () => {
     tasks.queueFromEndpoint.restore();
     tasks.queueNameForEndpoint.restore();
     runv2.serviceFromEndpoint.restore();
+    runv2.functionNameToServiceName.restore();
     gcf.createFunction.rejects(new Error("unexpected gcf.createFunction"));
     gcf.updateFunction.rejects(new Error("unexpected gcf.updateFunction"));
     gcf.deleteFunction.rejects(new Error("unexpected gcf.deleteFunction"));
@@ -2259,6 +2262,132 @@ describe("Fabricator", () => {
       expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, sinon.match.string, [
         "private",
       ]);
+    });
+  });
+
+  describe("updateUpgradedRunService", () => {
+    let ensureDockerRepoStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      ensureDockerRepoStub = sinon.stub(artifactregistryNS, "ensureDockerRepository").resolves();
+      runv2.submitBuild.resolves();
+      fab.singleBuildCoordinator = new SingleBuildCoordinator();
+    });
+
+    afterEach(() => {
+      ensureDockerRepoStub.restore();
+    });
+
+    it("builds container once via SingleBuildCoordinator and updates Cloud Run service", async () => {
+      runv2.getService.resolves({
+        name: "projects/project/locations/us-central1/services/myfn",
+        template: {
+          revision: "myfn-00001-abc",
+          containers: [
+            {
+              name: "worker",
+              image: "old-image",
+              env: [
+                { name: "LOG_EXECUTION_ID", value: "true" },
+                {
+                  name: "EVENTARC_CLOUD_EVENT_SOURCE",
+                  value: "projects/project/locations/us-central1/functions/myfn",
+                },
+              ],
+            },
+          ],
+        },
+      } as any);
+      runv2.updateService.resolves({ uri: "https://myfn-uri" } as any);
+
+      const ep = endpoint(
+        { httpsTrigger: {} },
+        {
+          id: "myFn",
+          project: "project",
+          region: "us-central1",
+          codebase: "default",
+          entryPoint: "myFn",
+          runtime: "nodejs22",
+          secretEnvironmentVariables: [
+            { key: "API_KEY", secret: "my-secret", projectId: "project", version: "1" },
+          ],
+        },
+      );
+
+      await fab.updateUpgradedRunService(ep);
+
+      expect(runv2.submitBuild).to.have.been.calledOnce;
+      const buildArgs = runv2.submitBuild.firstCall.args;
+      expect(buildArgs[0]).to.equal("project");
+      expect(buildArgs[1]).to.equal("us-central1");
+      expect(buildArgs[2].buildpackBuild.runtime).to.equal("nodejs22");
+
+      expect(runv2.getService).to.have.been.calledWith("project", "us-central1", "myfn");
+
+      expect(runv2.updateService).to.have.been.calledWith(
+        sinon.match({
+          template: sinon.match({
+            revision: undefined,
+            containers: [
+              sinon.match({
+                image: sinon.match(
+                  /^us-central1-docker\.pkg\.dev\/project\/gcf-artifacts\/default:\d+$/,
+                ),
+                env: sinon.match.some(sinon.match({ name: "FUNCTION_TARGET", value: "myFn" })),
+              }),
+            ],
+          }),
+        }),
+      );
+
+      const patchCall = runv2.updateService.firstCall.args[0];
+      const envs = patchCall.template?.containers?.[0].env;
+      expect(envs).to.deep.include({
+        name: "API_KEY",
+        valueSource: {
+          secretKeyRef: {
+            secret: "my-secret",
+            version: "1",
+          },
+        },
+      });
+      expect(envs).to.deep.include({
+        name: "LOG_EXECUTION_ID",
+        value: "true",
+      });
+      expect(envs).to.deep.include({
+        name: "EVENTARC_CLOUD_EVENT_SOURCE",
+        value: "projects/project/locations/us-central1/functions/myfn",
+      });
+
+      expect(ep.uri).to.equal("https://myfn-uri");
+      expect(ep.runServiceId).to.equal("myfn");
+    });
+
+    it("shares the same build across multiple functions in the codebase", async () => {
+      runv2.getService.resolves({
+        name: "projects/project/locations/us-central1/services/fn",
+        template: {
+          revision: "old-rev",
+          containers: [{ name: "worker", image: "old-image" }],
+        },
+      } as any);
+      runv2.updateService.resolves({ uri: "https://uri" } as any);
+
+      const ep1 = endpoint({ httpsTrigger: {} }, { id: "fn1", codebase: "default" });
+      const ep2 = endpoint({ httpsTrigger: {} }, { id: "fn2", codebase: "default" });
+
+      await Promise.all([fab.updateUpgradedRunService(ep1), fab.updateUpgradedRunService(ep2)]);
+
+      // SingleBuildCoordinator deduplicated: submitBuild was called only ONCE for both functions
+      expect(runv2.submitBuild).to.have.been.calledOnce;
+      // Both services were patched in Cloud Run with the same image
+      expect(runv2.updateService).to.have.been.calledTwice;
+
+      const firstImage = runv2.updateService.firstCall.args[0].template?.containers?.[0].image;
+      const secondImage = runv2.updateService.secondCall.args[0].template?.containers?.[0].image;
+      expect(firstImage).to.equal(secondImage);
     });
   });
 

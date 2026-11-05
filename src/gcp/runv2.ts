@@ -10,6 +10,7 @@ import { LongRunningOperation, pollOperation } from "../operation-poller";
 import * as backend from "../deploy/functions/backend";
 import { CODEBASE_LABEL } from "../functions/constants";
 import { EnvVar, mebibytes, PlaintextEnvVar, SecretEnvVar } from "./k8s";
+export { EnvVar, PlaintextEnvVar, SecretEnvVar } from "./k8s";
 import { latest, Runtime } from "../deploy/functions/runtimes/supported";
 import { logger } from "../logger";
 import { partition } from "../functional";
@@ -365,7 +366,7 @@ export async function listServices(projectId: string, functionsOnly = true): Pro
 }
 
 // TODO: Replace with real version:
-function functionNameToServiceName(id: string): string {
+export function functionNameToServiceName(id: string): string {
   return id.toLowerCase().replace(/_/g, "-");
 }
 
