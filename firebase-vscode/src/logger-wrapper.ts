@@ -37,8 +37,7 @@ for (const logLevel in pluginLogger) {
  */
 export function logSetup() {
   // Log to console (use built in CLI functionality)
-  process.env.DEBUG = "true";
-  useConsoleLoggers();
+  useConsoleLoggers(true);
 
   // Log to file
   // Only log to file if firebase.debug extension setting is true.

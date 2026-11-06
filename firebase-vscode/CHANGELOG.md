@@ -1,6 +1,7 @@
 ## NEXT
 
 - [Fixed] Fix false warning about missing Firebase CLI by checking configured `firebasePath` and using robust version parsing.
+- [Fixed] Read the installed Firebase CLI version correctly instead of a year from the CLI's debug log, so the outdated CLI warning can show again (#11363).
 
 ## 2.4.3
 
