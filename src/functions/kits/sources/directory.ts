@@ -1,9 +1,12 @@
 import * as path from "path";
 import * as fs from "fs-extra";
 
+import { Config } from "../../../config";
 import { FirebaseError, getErrMsg } from "../../../error";
 import { wrapSpawn } from "../../../init/spawn";
 import { logLabeledBullet, resolveWithin } from "../../../utils";
+import { isKitConfig, ValidatedKitSingle, ValidatedSingle } from "../../projectConfig";
+import { KitSourceAdapter, PreparedKitSource, sanitizeToKitId } from "./types";
 
 export interface ValidatedDirectoryKit {
   absDirectoryPath: string;
@@ -85,4 +88,41 @@ export async function buildAndInstallDirectoryKit(
       throw new FirebaseError(`TypeScript build failed: ${getErrMsg(err)}`);
     }
   }
+}
+
+/**
+ * Creates a KitSourceAdapter for a local directory kit.
+ */
+export function createDirectoryAdapter(config: Config, directory: string): KitSourceAdapter {
+  const absDir = path.isAbsolute(directory)
+    ? directory
+    : path.resolve(config.projectDir, directory);
+  let validated: ValidatedDirectoryKit | undefined;
+
+  return {
+    defaultKitId: sanitizeToKitId(path.basename(absDir)) || "kit",
+    findExistingKit(existingFunctions: ValidatedSingle[]): ValidatedKitSingle | undefined {
+      return existingFunctions.find(
+        (c): c is ValidatedKitSingle =>
+          isKitConfig(c) &&
+          !c.sourcePackage &&
+          path.resolve(config.projectDir, c.source) === absDir,
+      );
+    },
+    async validateAndConfirm(): Promise<void> {
+      validated = await validateAndResolveDirectoryKit(config.projectDir, directory);
+    },
+    async prepareSource(): Promise<PreparedKitSource> {
+      if (!validated) {
+        validated = await validateAndResolveDirectoryKit(config.projectDir, directory);
+      }
+      await buildAndInstallDirectoryKit(validated.absDirectoryPath, validated.hasBuildScript);
+      return {
+        sourcePath: validated.relSourcePath,
+        ...(validated.hasBuildScript
+          ? { predeploy: ['npm --prefix "$RESOURCE_DIR" run build'] }
+          : {}),
+      };
+    },
+  };
 }
