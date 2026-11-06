@@ -126,6 +126,20 @@ async function readdirRecursiveHelper(options: {
 }
 
 /**
+ * Builds a matcher for `functions.ignore` style globs. A path is ignored if a glob
+ * matches it relative to `baseDir` or as given, so globs naming folders above
+ * `baseDir` keep matching.
+ */
+export function createIgnoreMatcher(baseDir: string, globs: string[]): (p: string) => boolean {
+  const mmopts = { matchBase: true, dot: true };
+  const rules = globs.map((glob) => new minimatch.Minimatch(glob, mmopts));
+  return (p: string) => {
+    const relPath = relative(baseDir, p);
+    return rules.some((rule) => rule.match(relPath) || rule.match(p));
+  };
+}
+
+/**
  * Recursively read a directory.
  * @param options options object.
  * @return array of files that match.
@@ -133,10 +147,7 @@ async function readdirRecursiveHelper(options: {
 export async function readdirRecursive(
   options: ReaddirRecursiveOpts,
 ): Promise<ReaddirRecursiveFile[]> {
-  const mmopts = { matchBase: true, dot: true };
-  const ignoreRules = (options.ignoreStrings || []).map((glob) => {
-    return (p: string) => minimatch(p, glob, mmopts);
-  });
+  const isIgnored = createIgnoreMatcher(options.path, options.ignoreStrings || []);
   const filter = (targetPath: string, gitIgnoreStack: GitIgnoreState[] = []): boolean => {
     if (options.supportGitIgnore) {
       let ignored = false;
@@ -157,9 +168,7 @@ export async function readdirRecursive(
       }
       return ignored;
     }
-    return ignoreRules.some((rule) => {
-      return rule(targetPath);
-    });
+    return isIgnored(targetPath);
   };
 
   const initialGitIgnoreStack: GitIgnoreState[] = [];
