@@ -28,7 +28,10 @@ interface DeployTarget {
 function getDeployHelp(): string {
   const boldFn = (str: string) => clc.bold(str);
 
-  let targetHelp = "Deploy targets include:\n\n";
+  let targetHelp =
+    `All deploy targets require a ${boldFn("firebase.json")} file in the current directory or a parent directory, ` +
+    "and each target you deploy must be configured in it.\n\n";
+  targetHelp += "Deploy targets include:\n\n";
   for (const [targetName, target] of Object.entries(TARGETS)) {
     const desc = (target as DeployTarget).help || `Deploy ${targetName} resources`;
     const formattedDesc = desc
@@ -50,7 +53,9 @@ function getDeployHelp(): string {
 }
 
 export const command = new Command("deploy")
-  .description("deploy code and assets to your Firebase project")
+  .description(
+    "deploy code and assets to your Firebase project (requires firebase.json for all targets)",
+  )
   .help(getDeployHelp())
   .withForce(
     "delete Cloud Functions missing from the current working directory and bypass interactive prompts",
@@ -59,13 +64,13 @@ export const command = new Command("deploy")
   .option("-m, --message <message>", "an optional message describing this deploy")
   .option(
     "--only <targets>",
-    'only deploy to specified, comma-separated targets (e.g. "hosting,storage"). For functions, ' +
+    'only deploy to specified, comma-separated targets (e.g. "hosting,storage"). Each target must be configured in firebase.json. For functions, ' +
       'can specify filters with colons to scope function deploys to only those functions (e.g. "--only functions:func1,functions:func2"). ' +
       "When filtering based on export groups (the exported module object keys), use dots to specify group names " +
       '(e.g. "--only functions:group1.subgroup1,functions:group2"). ' +
       "When filtering based on codebases, use colons to specify codebase names " +
       '(e.g. "--only functions:codebase1:func1,functions:codebase2:group1.subgroup1"). ' +
-      "For data connect, can specify filters with colons to deploy only a service, connector, or schema" +
+      "For data connect, can specify filters with colons to deploy only a service, connector, or schema " +
       '(e.g. "--only dataconnect:serviceId,dataconnect:serviceId:connectorId,dataconnect:serviceId:schema")',
   )
   .option("--except <targets>", 'deploy to all targets except specified (e.g. "database")')
