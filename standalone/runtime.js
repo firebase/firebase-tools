@@ -81,42 +81,38 @@ exports.Script_ShellJS = async function() {
     path.join(process.cwd(), "node_modules/.bin")
   ]);
 
-  let index;
-  if ((index = args.indexOf("-c")) !== -1) {
-    args.splice(index, 1);
+  if (args.length === 0) {
+    process.exit(0);
   }
 
-  args[0] = args[0].replace(process.execPath, "node");
-  let [cmdRuntime, cmdScript, ...otherArgs] = args[0].split(" ");
-
-  if (cmdRuntime === process.execPath) {
-    cmdRuntime = "node";
-  }
-
-  let cmd;
-  if (cmdRuntime === "node") {
-    if ([".", "/"].indexOf(cmdScript[0]) === -1) {
-      cmdScript = await getSafeCrossPlatformPath(
-        isWin,
-        path.join(process.cwd(), cmdScript)
-      );
+  let commandToRun;
+  if (args[0] === "-c") {
+    if (args[1] === "--") {
+      commandToRun = args.slice(2).join(" ");
+    } else {
+      commandToRun = args.slice(1).join(" ");
     }
-
-    cmd = child_process.fork(cmdScript, otherArgs, {
-      env: process.env,
-      cwd: process.cwd(),
-      stdio: "inherit"
-    });
   } else {
-    cmd = child_process.spawn(cmdRuntime, [cmdScript, ...otherArgs], {
-      env: process.env,
-      cwd: process.cwd(),
-      stdio: "inherit",
-      shell: true
-    });
+    commandToRun = args.join(" ");
   }
+
+  const cmd = isWin
+    ? child_process.spawn("cmd.exe", ["/d", "/s", "/c", commandToRun], {
+        env: process.env,
+        cwd: process.cwd(),
+        stdio: "inherit"
+      })
+    : child_process.spawn("/bin/sh", ["-c", commandToRun], {
+        env: process.env,
+        cwd: process.cwd(),
+        stdio: "inherit"
+      });
 
   cmd.on("exit", code => {
-    process.exit(code);
+    process.exit(code !== null ? code : 0);
+  });
+  cmd.on("error", err => {
+    console.error(err);
+    process.exit(1);
   });
 };
