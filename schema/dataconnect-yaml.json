@@ -80,6 +80,13 @@
     },
     "schema": {
       "$ref": "#/definitions/schema"
+    },
+    "schemas": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/schema"
+      },
+      "description": "A list of schema configurations."
     }
   }
 }
