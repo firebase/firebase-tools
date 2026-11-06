@@ -516,7 +516,7 @@ export function validateProjectId(project: string): void {
   if (PROJECT_ID_REGEX.test(project)) {
     return;
   }
-  trackGA4("error", {
+  void trackGA4("error", {
     error_type: "Error (User)",
     details: "Invalid project ID",
   });
