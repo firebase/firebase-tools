@@ -680,12 +680,9 @@ export async function ensureServiceIsConnectedToCloudSql(
   linkIfNotConnected: boolean,
   schemaName?: string,
 ): Promise<void> {
-  let currentSchema = await getSchema(serviceName, MAIN_SCHEMA_ID, [
-    "name",
-    "datasources",
-    "reconciling",
-    "source",
-  ]);
+  // Fetch the full schema without a field mask: it may be sent back in an upsert below, and a
+  // partial resource would clear any fields the mask omitted.
+  let currentSchema = await getSchema(serviceName);
   let postgresql = currentSchema?.datasources?.find((d) => d.postgresql)?.postgresql;
   if (
     currentSchema?.reconciling && // active LRO
