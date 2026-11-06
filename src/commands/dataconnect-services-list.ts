@@ -45,6 +45,7 @@ export const command = new Command("dataconnect:services:list")
       const connectors = await client.listConnectors(service.name, [
         "connectors.name",
         "connectors.updateTime",
+        "nextPageToken",
       ]);
       const serviceName = names.parseServiceName(service.name);
       const postgresDatasource = schema?.datasources.find((d) => d.postgresql);
