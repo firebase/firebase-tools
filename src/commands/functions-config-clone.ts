@@ -10,10 +10,17 @@ import { functionsConfigClone } from "../functionsConfigClone";
 import * as utils from "../utils";
 
 export const command = new Command("functions:config:clone")
-  .description("clone environment config from another project")
-  .option("--from <projectId>", "the project from which to clone configuration")
-  .option("--only <keys>", "a comma-separated list of keys to clone")
-  .option("--except <keys>", "a comma-separated list of keys to not clone")
+  .description(
+    "[DEPRECATED] clone legacy functions.config() environment config from another project. " +
+      'Disabled by default; run "firebase experiments:enable legacyRuntimeConfigCommands" to use. ' +
+      'Migrate with "firebase functions:config:export".',
+  )
+  .option("--from <projectId>", "(required) the project ID from which to clone configuration")
+  .option("--only <keys>", "a comma-separated list of keys to clone (cannot be used with --except)")
+  .option(
+    "--except <keys>",
+    "a comma-separated list of keys to not clone (cannot be used with --only)",
+  )
   .before(functionsConfig.ensureLegacyRuntimeConfigCommandsEnabled)
   .before(requirePermissions, [
     "runtimeconfig.configs.list",
