@@ -172,6 +172,14 @@ export async function prepareDynamicExtensions(
   const filters = getEndpointFilters(options, functionsConfig);
   const extensions = extractExtensionsFromBuilds(builds, filters);
   const projectId = needProjectId(options);
+
+  // Skip extensions API checks if no extensions are defined in the builds.
+  // This avoids unnecessary API calls and permission errors for projects
+  // that don't use Firebase Extensions but still deploy functions.
+  if (Object.keys(extensions).length === 0) {
+    return;
+  }
+
   const projectNumber = await needProjectNumber(options);
 
   let haveExtensions: planner.DeploymentInstanceSpec[] = [];
@@ -192,8 +200,8 @@ export async function prepareDynamicExtensions(
     return;
   }
 
-  if (Object.keys(extensions).length === 0 && haveExtensions.length === 0) {
-    // Nothing defined, and nothing to delete
+  if (haveExtensions.length === 0) {
+    // Nothing to delete
     return;
   }
 
