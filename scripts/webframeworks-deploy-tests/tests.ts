@@ -412,8 +412,8 @@ describe("webframeworks", function (this) {
           join(I18N_BASE, locale, NEXT_BASE_PATH, "pages", "fallback", "1.html"),
           join(I18N_BASE, locale, NEXT_BASE_PATH, "pages", "fallback", "2.html"),
           join(I18N_BASE, locale, NEXT_BASE_PATH, "pages", "ssg.html"),
-          // TODO(jamesdaniels) figure out why 404 isn't being translated
-          // `/${I18N_BASE}/${locale}/${NEXT_BASE_PATH}/404.html`,
+          // Next.js >= 16.4 also emits a translated 404 page per locale.
+          ...(locale ? [join(I18N_BASE, locale, NEXT_BASE_PATH, "404.html")] : []),
           join(I18N_BASE, locale, NEXT_BASE_PATH, "500.html"),
           join(I18N_BASE, locale, NEXT_BASE_PATH, "index.html"),
         ])
