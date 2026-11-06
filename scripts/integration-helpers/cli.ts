@@ -50,25 +50,36 @@ export class CLIProcess {
       started = new Promise((resolve, reject) => {
         const customCallback = (data: unknown): void => {
           if (logDoneFn(data)) {
+            p.stdout?.removeListener("data", customCallback);
             // eslint-disable-next-line @typescript-eslint/no-use-before-define
             p.stdout?.removeListener("close", customFailure);
+            // eslint-disable-next-line @typescript-eslint/no-use-before-define
+            p.stderr?.removeListener("data", customStderr);
             resolve();
           }
         };
+        const customStderr = (data: unknown): void => {
+          console.error(`[${this.name} stderr]`, String(data));
+        };
         const customFailure = (): void => {
           p.stdout?.removeListener("data", customCallback);
+          p.stdout?.removeListener("close", customFailure);
+          p.stderr?.removeListener("data", customStderr);
           reject(new Error("failed to resolve startup before process.stdout closed"));
         };
         p.stdout?.on("data", customCallback);
         p.stdout?.on("close", customFailure);
-        p.stderr?.on("data", (data) => {
-          console.error(`[${this.name} stderr]`, data.toString());
-        });
+        p.stderr?.on("data", customStderr);
       });
     } else {
       started = new Promise((resolve) => {
         p.once("close", () => {
-          this.process = undefined;
+          p.removeAllListeners();
+          p.stdout?.removeAllListeners();
+          p.stderr?.removeAllListeners();
+          if (this.process === p) {
+            this.process = undefined;
+          }
           resolve();
         });
       });
@@ -84,16 +95,26 @@ export class CLIProcess {
     }
     this.process = undefined;
 
+    const cleanup = (): void => {
+      p.removeAllListeners();
+      p.stdout?.removeAllListeners();
+      p.stderr?.removeAllListeners();
+      if (this.process === p) {
+        this.process = undefined;
+      }
+    };
+
+    if (p.exitCode !== null || p.signalCode !== null) {
+      cleanup();
+      return Promise.resolve();
+    }
+
     if (process.platform === "win32" && p.pid) {
+      let timeoutId: NodeJS.Timeout | undefined;
       const exitPromise = new Promise<void>((resolve) => {
-        if (p.exitCode !== null || p.signalCode !== null) {
-          resolve();
-          return;
-        }
         p.once("exit", () => resolve());
       });
 
-      let timeoutId: NodeJS.Timeout;
       const timeoutPromise = new Promise<void>((resolve) => {
         timeoutId = setTimeout(resolve, WINDOWS_KILL_TIMEOUT_MS);
       });
@@ -105,16 +126,21 @@ export class CLIProcess {
       }
 
       return Promise.race([exitPromise, timeoutPromise]).then(() => {
-        clearTimeout(timeoutId);
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+        cleanup();
       });
     }
 
     const pid = p.pid;
     if (!pid || pid <= 0) {
+      cleanup();
       return Promise.resolve();
     }
 
     if (p.exitCode !== null || p.signalCode !== null) {
+      cleanup();
       return Promise.resolve();
     }
 
@@ -153,6 +179,7 @@ export class CLIProcess {
 
     const exitPromise = new Promise<void>((resolve) => {
       p.once("exit", () => {
+        cleanup();
         resolve();
       });
     });
@@ -169,6 +196,7 @@ export class CLIProcess {
 
     return exitPromise.then(() => {
       clearTimeout(timeoutId);
+      cleanup();
       try {
         process.kill(-pid, "SIGKILL");
       } catch {
