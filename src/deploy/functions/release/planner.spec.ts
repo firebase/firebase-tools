@@ -57,6 +57,29 @@ describe("planner", () => {
       });
     });
 
+    it("flags a GCFv2 function left FAILED with no service by a failed create", () => {
+      const want: backend.Endpoint = { ...func("a", "b"), platform: "gcfv2" };
+      const have: backend.Endpoint = { ...want, state: "FAILED" };
+      expect(planner.calculateUpdate(want, have).failedCreate).to.be.true;
+    });
+
+    it("does not flag a FAILED GCFv2 function that still has a service", () => {
+      const want: backend.Endpoint = { ...func("a", "b"), platform: "gcfv2" };
+      const have: backend.Endpoint = { ...want, state: "FAILED", runServiceId: "a" };
+      expect(planner.calculateUpdate(want, have).failedCreate).to.be.undefined;
+    });
+
+    it("does not flag an ACTIVE GCFv2 function", () => {
+      const want: backend.Endpoint = { ...func("a", "b"), platform: "gcfv2" };
+      expect(planner.calculateUpdate(want, want).failedCreate).to.be.undefined;
+    });
+
+    it("does not flag a FAILED GCFv1 function", () => {
+      const want = func("a", "b");
+      const have: backend.Endpoint = { ...want, state: "FAILED" };
+      expect(planner.calculateUpdate(want, have).failedCreate).to.be.undefined;
+    });
+
     it("knows to delete & recreate for v2 topic changes", () => {
       const original: backend.Endpoint = {
         ...func("a", "b", {
