@@ -126,7 +126,7 @@ export interface AnalyticsParams {
 export async function trackGA4(
   eventName: cliEventNames,
   params: AnalyticsParams,
-  duration: number = 1, // Default to 1ms duration so that events show up in realtime view.
+  duration = 1, // Default to 1ms duration so that events show up in realtime view.
 ): Promise<void> {
   const session = cliSession();
   if (!session) {

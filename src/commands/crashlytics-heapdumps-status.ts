@@ -27,7 +27,7 @@ export const command = new Command("crashlytics:heapdumps:status")
     table.push([
       appId,
       config.heapDumpCollectionEnabled ? clc.green("Enabled") : clc.red("Disabled"),
-      config.gcsBucket || clc.yellow("(none)"),
+      config.bucket || clc.yellow("(none)"),
     ]);
 
     logger.info("");

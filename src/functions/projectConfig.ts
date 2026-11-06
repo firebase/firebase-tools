@@ -227,15 +227,19 @@ function assertUniqueSourcePrefixPair(config: ValidatedConfig): void {
       continue;
     }
 
-    const key = JSON.stringify({ source: sourceIdentifier, prefix: c.prefix || "" });
-    if (sourcePrefixPairs.has(key)) {
-      throw new FirebaseError(
-        `More than one functions config specifies the same ${sourceDescription} and prefix ('${
-          c.prefix ?? ""
-        }'). Please add a unique 'prefix' to each function configuration that shares this source to resolve the conflict.`,
-      );
+    const prefixes = isKitConfig(c)
+      ? Object.keys(c.instances).map((instanceId) => addKitPrefix(instanceId))
+      : [c.prefix || ""];
+
+    for (const prefix of prefixes) {
+      const key = JSON.stringify({ source: sourceIdentifier, prefix });
+      if (sourcePrefixPairs.has(key)) {
+        throw new FirebaseError(
+          `More than one functions config specifies the same ${sourceDescription} and prefix ('${prefix}'). Please use kits with a unique instance ID to resolve this conflict.`,
+        );
+      }
+      sourcePrefixPairs.add(key);
     }
-    sourcePrefixPairs.add(key);
   }
 }
 
@@ -309,8 +313,8 @@ export function validate(config: NormalizedConfig): ValidatedConfig {
   const validated = config.map((cfg) => validateSingle(cfg)) as ValidatedConfig;
   assertUnique(validated, "codebase");
   assertUnique(validated, "kit");
-  assertUniqueSourcePrefixPair(validated);
   assertUniqueKitInstancesAndCodebases(validated);
+  assertUniqueSourcePrefixPair(validated);
   return validated;
 }
 

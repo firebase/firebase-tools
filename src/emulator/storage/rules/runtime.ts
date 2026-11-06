@@ -151,6 +151,7 @@ export class StorageRulesRuntime {
     const command = _getCommand(Emulators.STORAGE, {});
     this._childprocess = spawn(command.binary, command.args, {
       stdio: ["pipe", "pipe", "pipe"],
+      windowsHide: true,
     });
 
     this._childprocess.on("exit", () => {
