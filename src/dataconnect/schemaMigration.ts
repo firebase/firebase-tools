@@ -866,5 +866,5 @@ function diffsToString(diffs: Diff[]): string {
 }
 
 function diffToString(diff: Diff) {
-  return `\/** ${diff.destructive ? clc.red("Destructive: ") : ""}${diff.description}*\/\n${format(diff.sql, { language: "postgresql" })}`;
+  return `/** ${diff.destructive ? clc.red("Destructive: ") : ""}${diff.description}*/\n${format(diff.sql, { language: "postgresql" })}`;
 }
