@@ -12,7 +12,7 @@ import { FunctionsEmulator } from "./functionsEmulator";
 import { ExpressBasedEmulator } from "./ExpressBasedEmulator";
 import { PortName } from "./portUtils";
 import { DataConnectEmulator } from "./dataconnectEmulator";
-import { asyncHandler } from "./shared/express";
+import { asyncHandler, jsonErrorHandler } from "./shared/express";
 
 // We use the CLI version from package.json
 const pkg = require("../../package.json");
@@ -200,6 +200,7 @@ export class EmulatorHub extends ExpressBasedEmulator {
       }),
     );
 
+    app.use(jsonErrorHandler(Emulators.HUB));
     return app;
   }
 

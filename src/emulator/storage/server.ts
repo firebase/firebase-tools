@@ -8,7 +8,7 @@ import { RulesConfig, StorageEmulator } from "./index";
 import { createFirebaseEndpoints } from "./apis/firebase";
 import { InvalidArgumentError } from "../auth/errors";
 import { SourceFile } from "./rules/types";
-import { asyncHandler } from "../shared/express";
+import { asyncHandler, jsonErrorHandler } from "../shared/express";
 
 /**
  * @param defaultProjectId
@@ -177,6 +177,7 @@ export function createApp(
 
   app.use("/v0", createFirebaseEndpoints(emulator));
   app.use("/", createCloudEndpoints(emulator));
+  app.use(jsonErrorHandler(Emulators.STORAGE));
 
   return Promise.resolve(app);
 }
