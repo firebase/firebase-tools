@@ -14,6 +14,7 @@ describe("firestore prepare", () => {
   let sandbox: sinon.SinonSandbox;
   let getDatabaseStub: sinon.SinonStub;
   let createDatabaseStub: sinon.SinonStub;
+  let getFirestoreConfigStub: sinon.SinonStub;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
@@ -23,7 +24,7 @@ describe("firestore prepare", () => {
     sandbox.stub(loadCJSON, "loadCJSON").returns({});
     sandbox.stub(RulesDeploy.prototype, "addFile").returns();
     sandbox.stub(RulesDeploy.prototype, "compile").resolves();
-    sandbox.stub(fsConfig, "getFirestoreConfig").returns([
+    getFirestoreConfigStub = sandbox.stub(fsConfig, "getFirestoreConfig").returns([
       {
         database: "test-db",
         rules: "firestore.rules",
@@ -34,6 +35,47 @@ describe("firestore prepare", () => {
 
   afterEach(() => {
     sandbox.restore();
+  });
+
+  describe("database-scoped resource selection", () => {
+    const options = {
+      projectId: "test-project",
+      only: "firestore:test-db:rules",
+      config: {
+        path: (p: string) => p,
+        data: {
+          firestore: {
+            database: "test-db",
+          },
+        },
+      },
+    } as unknown as Options;
+
+    it("should prepare only rules for a database-scoped rules target", async () => {
+      getFirestoreConfigStub.returns([{ database: "test-db", rules: "firestore.rules" }]);
+      const context: Record<string, unknown> = { projectId: "test-project" };
+
+      await prepare(context, options);
+
+      expect(context["firestoreRules"]).to.be.true;
+      expect(context["firestoreIndexes"]).to.be.false;
+      const firestore = context["firestore"] as { rules: unknown[]; indexes: unknown[] };
+      expect(firestore.rules).to.have.length(1);
+      expect(firestore.indexes).to.have.length(0);
+    });
+
+    it("should prepare only indexes for a database-scoped indexes target", async () => {
+      getFirestoreConfigStub.returns([{ database: "test-db", indexes: "firestore.indexes.json" }]);
+      const context: Record<string, unknown> = { projectId: "test-project" };
+
+      await prepare(context, { ...options, only: "firestore:test-db:indexes" });
+
+      expect(context["firestoreRules"]).to.be.false;
+      expect(context["firestoreIndexes"]).to.be.true;
+      const firestore = context["firestore"] as { rules: unknown[]; indexes: unknown[] };
+      expect(firestore.rules).to.have.length(0);
+      expect(firestore.indexes).to.have.length(1);
+    });
   });
 
   describe("createDatabase", () => {
