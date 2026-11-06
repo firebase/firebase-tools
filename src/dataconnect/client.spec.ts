@@ -67,9 +67,7 @@ describe("client", () => {
       const service = await client.getService("projects/p/locations/l/services/s");
 
       expect(service).to.deep.equal({ name: "service" });
-      expect(getStub).to.be.calledWith("projects/p/locations/l/services/s", {
-        queryParams: { fields: "" },
-      });
+      expect(getStub).to.be.calledWith("projects/p/locations/l/services/s");
     });
 
     it("getService with fields", async () => {
@@ -138,9 +136,7 @@ describe("client", () => {
       getStub.resolves({ body: { name: "schema" } });
       const schema = await client.getSchema("projects/p/locations/l/services/s");
       expect(schema).to.deep.equal({ name: "schema" });
-      expect(getStub).to.be.calledWith("projects/p/locations/l/services/s/schemas/main", {
-        queryParams: { fields: "" },
-      });
+      expect(getStub).to.be.calledWith("projects/p/locations/l/services/s/schemas/main");
     });
 
     it("getSchema with schemaId and fields", async () => {
@@ -225,9 +221,7 @@ describe("client", () => {
       getStub.resolves({ body: { name: "connector" } });
       const connector = await client.getConnector("projects/p/locations/l/services/s/connectors/c");
       expect(connector).to.deep.equal({ name: "connector" });
-      expect(getStub).to.be.calledWith("projects/p/locations/l/services/s/connectors/c", {
-        queryParams: { fields: "" },
-      });
+      expect(getStub).to.be.calledWith("projects/p/locations/l/services/s/connectors/c");
     });
 
     it("getConnector with fields", async () => {
