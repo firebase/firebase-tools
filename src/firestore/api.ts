@@ -110,6 +110,11 @@ export class FirestoreApi {
     // (collectionGroup, fieldPath) pair. Otherwise any differences will be resolved
     // as part of the "PATCH" process.
     const fieldOverridesToDelete = existingFieldOverrides.filter((field) => {
+      // We never want to delete TTL fields as they are an implementation detail of the TTL system
+      if (field.ttlConfig) {
+        return false;
+      }
+
       return !fieldOverridesToDeploy.some((spec) => {
         const parsedName = util.parseFieldName(field.name);
 
