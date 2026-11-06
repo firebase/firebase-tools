@@ -30,9 +30,7 @@ export async function getService(
   fields: string[] = [],
 ): Promise<types.Service> {
   const res = await dataconnectClient().get<types.Service>(serviceName, {
-    queryParams: {
-      fields: fields.join(","),
-    },
+    queryParams: fields.length ? { fields: fields.join(",") } : undefined,
   });
   return res.body;
 }
@@ -98,9 +96,7 @@ export async function getSchema(
 ): Promise<types.Schema | undefined> {
   try {
     const res = await dataconnectClient().get<types.Schema>(`${serviceName}/schemas/${schemaId}`, {
-      queryParams: {
-        fields: fields.join(","),
-      },
+      queryParams: fields.length ? { fields: fields.join(",") } : undefined,
     });
     return res.body;
   } catch (err: any) {
@@ -124,7 +120,7 @@ export async function listSchemas(
       queryParams: {
         pageSize: PAGE_SIZE_MAX,
         pageToken,
-        fields: fields.join(","),
+        ...(fields.length ? { fields: fields.join(",") } : {}),
       },
     });
     schemas.push(...(res.body.schemas || []));
@@ -172,9 +168,7 @@ export async function deleteSchema(name: string): Promise<void> {
 
 export async function getConnector(name: string, fields: string[] = []): Promise<types.Connector> {
   const res = await dataconnectClient().get<types.Connector>(name, {
-    queryParams: {
-      fields: fields.join(","),
-    },
+    queryParams: fields.length ? { fields: fields.join(",") } : undefined,
   });
   return res.body;
 }
@@ -199,7 +193,7 @@ export async function listConnectors(serviceName: string, fields: string[] = [])
       queryParams: {
         pageSize: PAGE_SIZE_MAX,
         pageToken,
-        fields: fields.join(","),
+        ...(fields.length ? { fields: fields.join(",") } : {}),
       },
     });
     connectors.push(...(res.body.connectors || []));
