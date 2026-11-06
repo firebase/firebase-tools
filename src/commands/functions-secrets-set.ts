@@ -4,10 +4,11 @@ import * as tty from "tty";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { ensureValidKey, ensureSecret, validateJsonSecret } from "../functions/secrets";
+import { isFirebaseManaged } from "../deploymentTool";
 import { Command } from "../command";
 import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
-import { confirm } from "../prompt";
+import { confirm, checkbox, Choice } from "../prompt";
 import { logBullet, logSuccess, logWarning, readSecretValue } from "../utils";
 import { needProjectId, needProjectNumber } from "../projectUtils";
 import {
@@ -92,8 +93,9 @@ export const command = new Command("functions:secrets:set <KEY>")
     }
 
     let haveBackend = await backend.existingBackend({ projectId } as args.Context);
-    const endpointsToUpdate = backend
+    let endpointsToUpdate = backend
       .allEndpoints(haveBackend)
+      .filter((e) => isFirebaseManaged(e.labels ?? {}))
       .filter((e) => secrets.inUse({ projectId, projectNumber }, secret, e));
 
     if (endpointsToUpdate.length === 0) {
@@ -113,6 +115,30 @@ export const command = new Command("functions:secrets:set <KEY>")
           force: options.force,
         });
     if (!redeploy) {
+      logBullet(
+        "Please deploy your functions for the change to take effect by running:\n\t" +
+          clc.bold("firebase deploy --only functions"),
+      );
+      return;
+    }
+
+    const choices = endpointsToUpdate.map((e): Choice<backend.Endpoint> => {
+      const currentVersion = secrets.getSecretVersions(e)[secret.name];
+      return {
+        name: `${e.id}(${e.region}) - current secret version: ${currentVersion ?? "unknown"}`,
+        value: e,
+        checked: true,
+      };
+    });
+    endpointsToUpdate = await checkbox<backend.Endpoint>({
+      message:
+        "Which functions do you want to re-deploy?" +
+        "Press Space to select functions, then Enter to confirm your choices.",
+      choices: choices,
+    });
+
+    if (endpointsToUpdate.length === 0) {
+      logBullet(`No functions confirmed for automatic re-deployment.`);
       logBullet(
         "Please deploy your functions for the change to take effect by running:\n\t" +
           clc.bold("firebase deploy --only functions"),
