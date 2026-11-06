@@ -42,7 +42,7 @@ const API_SPEC_PATH = "/emulator/openapi.json";
 const AUTH_HEADER_PREFIX = "bearer ";
 const SERVICE_ACCOUNT_TOKEN_PREFIX = "ya29.";
 
-function specForRouter(): OpenAPIObject {
+export function specForRouter(): OpenAPIObject {
   const paths: PathsObject = {};
   Object.entries(apiSpec.paths).forEach(([path, pathObj]) => {
     const servers = (pathObj as { servers?: { url: string }[] }).servers ?? apiSpec.servers;
@@ -105,6 +105,10 @@ function specWithEmulatorServer(protocol: string, host: string | undefined): Ope
   }
 }
 
+export interface CreateAppOptions {
+  lazyCompileValidationSchemas?: boolean;
+}
+
 /**
  * Create an Express app that serves Auth Emulator APIs.
  *
@@ -114,11 +118,13 @@ function specWithEmulatorServer(protocol: string, host: string | undefined): Ope
  * accepted by the target endpoint), it assumes ALL keys / tokens map to this
  * default project ID.
  * @param projectStateForId a map from projectId to state, injectable for tests
+ * @param options configuration options for creating the app, e.g. schema compilation
  */
 export async function createApp(
   defaultProjectId: string,
   singleProjectMode = SingleProjectMode.NO_WARNING,
   projectStateForId = new Map<string, AgentProjectState>(),
+  options: CreateAppOptions = {},
 ): Promise<express.Express> {
   const app = express();
   app.set("json spaces", 2);
@@ -227,6 +233,9 @@ export async function createApp(
     );
   };
   const apis = await exegesisExpress.middleware(specForRouter(), {
+    // Eager ajv compilation of the entire 386 KB Identity Toolkit spec takes ~10-20s.
+    // Compiling validation schemas lazily on first use cuts startup time and speeds up unit tests.
+    lazyCompileValidationSchemas: options.lazyCompileValidationSchemas ?? true,
     controllers: { auth: toExegesisController(authOperations, getProjectStateById) },
     authenticators: {
       apiKeyQuery: apiKeyAuthenticator,
