@@ -407,6 +407,9 @@ export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endp
  * upgrading to v2 in tests before production is ready
  */
 export function checkForV2Upgrade(want: backend.Endpoint, have: backend.Endpoint): void {
+  if (process.env.FIREBASE_FUNCTIONS_SINGLE_BUILD === "true") {
+    return;
+  }
   if (want.platform === "gcfv2" && have.platform === "gcfv1") {
     throw new FirebaseError(
       `[${getFunctionLabel(have)}] Upgrading from 1st Gen to 2nd Gen is not yet supported. ` +
