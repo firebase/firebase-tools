@@ -14,7 +14,10 @@ export const command = new Command("dataconnect:sql:diff")
   .description(
     "display the differences between the local SQL Connect schema and your CloudSQL database's schema",
   )
-  .option("--service <serviceId>", "the serviceId of the SQL Connect service")
+  .option(
+    "--service <serviceId>",
+    "the serviceId of the SQL Connect service. Required if firebase.json configures more than one service.",
+  )
   .option(
     "--location <location>",
     "the location of the SQL Connect service. Only needed if service ID is used in multiple locations.",
