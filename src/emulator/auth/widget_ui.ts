@@ -34,7 +34,7 @@ var firebaseAppId = query.get('appId');
 var apn = query.get('apn');
 var ibi = query.get('ibi');
 var appIdentifier = apn || ibi;
-var isSamlProvider = !!providerId.match(/^saml\./);
+var isSamlProvider = !!providerId.match(/^saml\\./);
 assert(
   appName || clientId || firebaseAppId || appIdentifier,
   'Missing one of appName / clientId / appId / apn / ibi query params.'

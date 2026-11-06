@@ -191,10 +191,10 @@ interface EmulatedTriggerRecord {
 
 export function createIgnoredFilter(ignore?: string[]): chokidar.Matcher[] {
   const ignored: chokidar.Matcher[] = [
-    /(^|[\/\\])\../, // Ignore hidden files/dirs (covers .dart_tool, .git, etc.)
+    /(^|[/\\])\../, // Ignore hidden files/dirs (covers .dart_tool, .git, etc.)
     /.+\.log/, // Ignore log files
-    /.+?[\\\/]node_modules[\\\/].+?/, // Ignore node_modules
-    /.+?[\\\/]venv[\\\/].+?/, // Ignore venv
+    /.+?[\\/]node_modules[\\/].+?/, // Ignore node_modules
+    /.+?[\\/]venv[\\/].+?/, // Ignore venv
   ];
   if (ignore) {
     const minimatchInstances = ignore.map((pattern) => {
@@ -1948,7 +1948,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     // req.url = /:projectId/:region/:trigger_name/*
     const url = new URL(`${req.protocol}://${req.hostname}${req.url}`);
     let path = `${url.pathname}${url.search}`.replace(
-      new RegExp(`\/${this.args.projectId}\/[^\/]*\/${req.params.trigger_name}\/?`),
+      new RegExp(`/${this.args.projectId}/[^/]*/${req.params.trigger_name}/?`),
       "/",
     );
 
