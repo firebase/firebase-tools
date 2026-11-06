@@ -30,6 +30,7 @@ import { connectableHostname } from "../utils";
 import { Account } from "../types/auth";
 import { ensure } from "../ensureApiEnabled";
 import { getCredentialPathAsync } from "../defaultCredentials";
+import { isEnabled } from "../experiments";
 
 export interface DataConnectEmulatorArgs {
   projectId: string;
@@ -100,6 +101,7 @@ export class DataConnectEmulator implements EmulatorInstance {
       this.logger.log("DEBUG", `'fdc build' failed with error: ${getErrMsg(err)}`);
     }
     const env = await DataConnectEmulator.getEnv(this.args.account, this.args.extraEnv);
+    const eventarcEmulator = getEventarcEmulatorAddress();
     await start(
       Emulators.DATACONNECT,
       {
@@ -108,6 +110,7 @@ export class DataConnectEmulator implements EmulatorInstance {
         config_dir: resolvedConfigDir,
         enable_output_schema_extensions: this.args.enable_output_schema_extensions,
         enable_output_generated_sdk: this.args.enable_output_generated_sdk,
+        ...(eventarcEmulator && { eventarc_emulator: eventarcEmulator }),
       },
       env,
     );
@@ -443,4 +446,25 @@ async function getInfo(client: Client): Promise<GetInfoResponse | void> {
   } catch (err) {
     return;
   }
+}
+
+/**
+ * Returns the host:port address of the running Eventarc emulator when the
+ * fscEventTriggers experiment is enabled and both the Eventarc and Functions
+ * emulators are running, or undefined otherwise.
+ */
+export function getEventarcEmulatorAddress(): string | undefined {
+  if (!isEnabled("fscEventTriggers")) {
+    return undefined;
+  }
+  if (!EmulatorRegistry.isRunning(Emulators.FUNCTIONS)) {
+    return undefined;
+  }
+  const instance = EmulatorRegistry.get(Emulators.EVENTARC);
+  if (!instance) {
+    return undefined;
+  }
+  const info = instance.getInfo();
+  const host = info.host === "0.0.0.0" || info.host === "::" ? "127.0.0.1" : info.host;
+  return `${host}:${info.port}`;
 }

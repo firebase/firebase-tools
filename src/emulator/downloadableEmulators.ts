@@ -302,6 +302,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
       "config_dir",
       "enable_output_schema_extensions",
       "enable_output_generated_sdk",
+      "eventarc_emulator",
       // Additional flags that CLI shouldn't pass:
       // rpc_retry_count,
       // resolvers_emulator,
