@@ -43,12 +43,12 @@ describe("dataconnect release", () => {
       .reply(200, { name: "op-name" });
     nock(dataconnectOrigin())
       .get(
-        "/v1/projects/p/locations/l/services/s1/connectors?pageSize=100&pageToken=&fields=connectors.name",
+        "/v1/projects/p/locations/l/services/s1/connectors?pageSize=100&pageToken=&fields=connectors.name,nextPageToken",
       )
       .reply(200, { connectors: [] });
     nock(dataconnectOrigin())
       .get(
-        "/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=schemas.name",
+        "/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=schemas.name,nextPageToken",
       )
       .reply(200, { schemas: [] });
 
@@ -89,12 +89,12 @@ describe("dataconnect release", () => {
       .reply(200, { name: "op-name" });
     nock(dataconnectOrigin())
       .get(
-        "/v1/projects/p/locations/l/services/s1/connectors?pageSize=100&pageToken=&fields=connectors.name",
+        "/v1/projects/p/locations/l/services/s1/connectors?pageSize=100&pageToken=&fields=connectors.name,nextPageToken",
       )
       .reply(200, { connectors: [] });
     nock(dataconnectOrigin())
       .get(
-        "/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=schemas.name",
+        "/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=schemas.name,nextPageToken",
       )
       .reply(200, { schemas: [] });
     const serviceInfos = [
@@ -129,14 +129,14 @@ describe("dataconnect release", () => {
       .reply(200, { name: "op-name" });
     nock(dataconnectOrigin())
       .get(
-        "/v1/projects/p/locations/l/services/s1/connectors?pageSize=100&pageToken=&fields=connectors.name",
+        "/v1/projects/p/locations/l/services/s1/connectors?pageSize=100&pageToken=&fields=connectors.name,nextPageToken",
       )
       .reply(200, {
         connectors: [{ name: "projects/p/locations/l/services/s1/connectors/unused-connector" }],
       });
     nock(dataconnectOrigin())
       .get(
-        "/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=schemas.name",
+        "/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=schemas.name,nextPageToken",
       )
       .reply(200, { schemas: [] });
 
@@ -177,12 +177,12 @@ describe("dataconnect release", () => {
       .reply(200, { name: "op-name" });
     nock(dataconnectOrigin())
       .get(
-        "/v1/projects/p/locations/l/services/s1/connectors?pageSize=100&pageToken=&fields=connectors.name",
+        "/v1/projects/p/locations/l/services/s1/connectors?pageSize=100&pageToken=&fields=connectors.name,nextPageToken",
       )
       .reply(200, { connectors: [] });
     nock(dataconnectOrigin())
       .get(
-        "/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=schemas.name",
+        "/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=schemas.name,nextPageToken",
       )
       .reply(200, {
         schemas: [
@@ -228,14 +228,14 @@ describe("dataconnect release", () => {
       .reply(200, { name: "op-name" });
     nock(dataconnectOrigin())
       .get(
-        "/v1/projects/p/locations/l/services/s1/connectors?pageSize=100&pageToken=&fields=connectors.name",
+        "/v1/projects/p/locations/l/services/s1/connectors?pageSize=100&pageToken=&fields=connectors.name,nextPageToken",
       )
       .reply(200, {
         connectors: [{ name: "projects/p/locations/l/services/s1/connectors/unused-connector" }],
       });
     nock(dataconnectOrigin())
       .get(
-        "/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=schemas.name",
+        "/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=schemas.name,nextPageToken",
       )
       .reply(200, { schemas: [] });
     const serviceInfos = [
@@ -271,12 +271,12 @@ describe("dataconnect release", () => {
       .reply(200, { name: "op-name" });
     nock(dataconnectOrigin())
       .get(
-        "/v1/projects/p/locations/l/services/s1/connectors?pageSize=100&pageToken=&fields=connectors.name",
+        "/v1/projects/p/locations/l/services/s1/connectors?pageSize=100&pageToken=&fields=connectors.name,nextPageToken",
       )
       .reply(200, { connectors: [] });
     nock(dataconnectOrigin())
       .get(
-        "/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=schemas.name",
+        "/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=schemas.name,nextPageToken",
       )
       .reply(200, {
         schemas: [
