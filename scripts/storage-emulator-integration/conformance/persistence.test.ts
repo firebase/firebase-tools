@@ -1,6 +1,7 @@
 import * as puppeteer from "puppeteer";
 import { expect } from "chai";
-import * as admin from "firebase-admin";
+import { applicationDefault, cert, deleteApp, getApp, initializeApp } from "firebase-admin/app";
+import { getStorage } from "firebase-admin/storage";
 import { Bucket } from "@google-cloud/storage";
 import firebasePkg from "firebase/compat/app";
 import { EmulatorEndToEndTest } from "../../integration-helpers/framework";
@@ -51,10 +52,10 @@ describe("Storage persistence conformance tests", () => {
 
     // Init GCS admin SDK.
     const credential = TEST_ENV.prodServiceAccountKeyJson
-      ? admin.credential.cert(TEST_ENV.prodServiceAccountKeyJson)
-      : admin.credential.applicationDefault();
-    admin.initializeApp({ credential });
-    testBucket = admin.storage().bucket(TEST_ENV.appConfig.storageBucket);
+      ? cert(TEST_ENV.prodServiceAccountKeyJson)
+      : applicationDefault();
+    initializeApp({ credential });
+    testBucket = getStorage().bucket(TEST_ENV.appConfig.storageBucket);
 
     // Init fake browser page.
     browser = await puppeteer.launch({
@@ -99,7 +100,7 @@ describe("Storage persistence conformance tests", () => {
 
   after(async function (this) {
     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
-    admin.app().delete();
+    await deleteApp(getApp());
     fs.rmSync(tmpDir, { recursive: true, force: true });
     await page.close();
     await browser.close();
