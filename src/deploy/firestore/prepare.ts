@@ -151,32 +151,12 @@ async function createDatabase(context: any, options: Options): Promise<void> {
 export default async function (context: any, options: DeployOptions): Promise<void> {
   await ensure(context.projectId, firestoreOrigin(), "firestore");
   await ensure(context.projectId, firestoreOrigin(), "firestore");
-  if (options.only) {
-    const targets = options.only.split(",");
-
-    // Used for edge case when deploying to a named database
-    // https://github.com/firebase/firebase-tools/pull/6129
-    const excludeRules = targets.includes("firestore:indexes");
-    const excludeIndexes = targets.includes("firestore:rules");
-
-    // Used for edge case when deploying --only firestore:rules,firestore:indexes
-    // https://github.com/firebase/firebase-tools/issues/6857
-    const includeRules = targets.includes("firestore:rules");
-    const includeIndexes = targets.includes("firestore:indexes");
-
-    const onlyFirestore = targets.includes("firestore");
-
-    context.firestoreIndexes = !excludeIndexes || includeIndexes || onlyFirestore;
-    context.firestoreRules = !excludeRules || includeRules || onlyFirestore;
-  } else {
-    context.firestoreIndexes = true;
-    context.firestoreRules = true;
-  }
-
   const firestoreConfigs: fsConfig.ParsedFirestoreConfig[] = fsConfig.getFirestoreConfig(
     context.projectId,
     options,
   );
+  context.firestoreIndexes = firestoreConfigs.some((config) => Boolean(config.indexes));
+  context.firestoreRules = firestoreConfigs.some((config) => Boolean(config.rules));
   if (!firestoreConfigs || firestoreConfigs.length === 0) {
     return;
   }
