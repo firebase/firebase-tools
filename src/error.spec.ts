@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { FirebaseError } from "./error";
+import { FirebaseError, getErrMsg, getErrStack } from "./error";
 
 describe("error", () => {
   describe("FirebaseError", () => {
@@ -36,6 +36,16 @@ describe("error", () => {
       const error = new FirebaseError("test-message", allOptions);
 
       expect(error).to.deep.include(allOptions);
+    });
+  });
+
+  describe("getErrMsg", () => {
+    it("does not throw on a circular non-Error value", () => {
+      const circular: Record<string, unknown> = { msg: "real message" };
+      circular.self = circular;
+
+      expect(getErrMsg(circular)).to.contain("real message");
+      expect(getErrStack(circular)).to.contain("real message");
     });
   });
 });

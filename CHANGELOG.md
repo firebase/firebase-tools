@@ -1,3 +1,4 @@
+- Fixed the Functions emulator dropping static properties (such as `admin.firestore.Timestamp`) of `firebase-admin` namespaces, and a crash while logging thrown values that contain circular references.
 - Improved Auth emulator startup time by compiling validation schemas lazily. (#11176)
 - Updated the Firebase SQL Connect local toolkit to v3.4.26, which includes the following changes:
   - Internal improvements and bug fixes.

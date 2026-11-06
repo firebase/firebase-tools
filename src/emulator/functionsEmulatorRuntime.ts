@@ -95,7 +95,7 @@ interface ProxyTarget extends Object {
   obj.value === 1;
   obj.incremented === 2;
    */
-class Proxied<T extends ProxyTarget> {
+export class Proxied<T extends ProxyTarget> {
   /**
    * Gets a property from the original object.
    */
@@ -107,8 +107,28 @@ class Proxied<T extends ProxyTarget> {
     } else if (Proxied.isConstructor(value) || typeof value !== "function") {
       return value;
     } else {
-      return value.bind(target);
+      return Proxied.bindKeepingStatics(value, target);
     }
+  }
+
+  /**
+   * Binds a function to a target while preserving the function's own static
+   * properties. Function.prototype.bind drops them, which breaks namespaces
+   * that are functions with attached members (e.g. firebase-admin's
+   * `admin.firestore.Timestamp`).
+   */
+  private static bindKeepingStatics(fn: (...args: any[]) => any, target: any): any {
+    const bound = fn.bind(target);
+    for (const key of Reflect.ownKeys(fn)) {
+      if (key === "length" || key === "name" || key === "prototype") {
+        continue;
+      }
+      const desc = Object.getOwnPropertyDescriptor(fn, key);
+      if (desc) {
+        Object.defineProperty(bound, key, desc);
+      }
+    }
+    return bound;
   }
 
   /**

@@ -1,3 +1,4 @@
+import { inspect } from "util";
 import { defaultTo } from "lodash";
 
 interface FirebaseErrorOptions {
@@ -47,7 +48,12 @@ export function getErrMsg(err: unknown, defaultMsg?: string): string {
   } else if (defaultMsg) {
     return defaultMsg;
   }
-  return JSON.stringify(err);
+  try {
+    return JSON.stringify(err);
+  } catch {
+    // e.g. a circular structure; fall back to something that cannot throw.
+    return inspect(err);
+  }
 }
 
 /**
