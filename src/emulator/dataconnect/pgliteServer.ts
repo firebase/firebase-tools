@@ -46,7 +46,7 @@ export class PostgresServer {
   public db: PGlite | undefined = undefined;
   private server: net.Server | undefined = undefined;
 
-  public async createPGServer(host: string = "127.0.0.1", port: number): Promise<net.Server> {
+  public async createPGServer(host = "127.0.0.1", port: number): Promise<net.Server> {
     const getDb = this.getDb.bind(this);
 
     const server = net.createServer(async (socket) => {
@@ -274,6 +274,9 @@ export class PostgresServer {
  * upgrades available in Node.js environments.
  */
 export async function fromNodeSocket(socket: net.Socket, options?: PostgresConnectionOptions) {
+  // Disable Nagle's algorithm to prevent delayed ACK latency (~40-100ms per query on Linux).
+  // See https://github.com/firebase/firebase-tools/issues/11402
+  socket.setNoDelay(true);
   const rs = Readable.toWeb(socket) as unknown as ReadableStream;
   const ws = Writable.toWeb(socket);
   const opts = options
