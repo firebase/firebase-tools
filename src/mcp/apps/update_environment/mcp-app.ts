@@ -119,7 +119,8 @@ app.onhostcontextchanged = (ctx) => {
   }
 };
 
-(async () => {
+// Initial connection and project load catch all errors and report status via showStatus
+void (async () => {
   try {
     await app.connect();
     showStatus("Connecting to server...", "info");

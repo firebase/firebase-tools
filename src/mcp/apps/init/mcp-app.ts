@@ -222,7 +222,8 @@ app.onhostcontextchanged = (ctx) => {
   }
 };
 
-(async () => {
+// Initial connection and project load catch all errors and report status via setStatus
+void (async () => {
   const envDirEl = document.getElementById("env-dir") as HTMLSpanElement;
   try {
     await app.connect();
