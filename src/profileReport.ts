@@ -64,7 +64,7 @@ export function formatNumber(num: number) {
 export function formatBytes(bytes: number) {
   const threshold = 1000;
   if (Math.round(bytes) < threshold) {
-    return bytes + " B";
+    return `${bytes} B`;
   }
   const units = ["kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
   let u = -1;
@@ -359,7 +359,7 @@ export class ProfileReport {
       },
     });
     const unindexed = this.collapsePaths(this.state.unindexed, (u1: any, u2: any) => {
-      _.mergeWith(u1, u2, (p1, p2) => {
+      _.mergeWith(u1, u2, (p1: { times: number; query: unknown }, p2: { times: number }) => {
         return {
           times: p1.times + p2.times,
           query: p1.query,
@@ -386,7 +386,8 @@ export class ProfileReport {
         border: this.options.isFile ? [] : ["grey"],
       },
     });
-    const data = this.collapsePaths(pureData, (b1: any, b2: any) => {
+    type Bandwidth = { bytes: number; times: number };
+    const data = this.collapsePaths(pureData, (b1: Bandwidth, b2: Bandwidth) => {
       return {
         bytes: b1.bytes + b2.bytes,
         times: b1.times + b2.times,
@@ -468,7 +469,14 @@ export class ProfileReport {
         border: this.options.isFile ? [] : ["grey"],
       },
     });
-    const data = this.collapsePaths(pureData, (s1: any, s2: any) => {
+    type SpeedStats = {
+      times: number;
+      millis: number;
+      pendingCount: number;
+      pendingTime: number;
+      rejected: number;
+    };
+    const data = this.collapsePaths(pureData, (s1: SpeedStats, s2: SpeedStats) => {
       return {
         times: s1.times + s2.times,
         millis: s1.millis + s2.millis,
