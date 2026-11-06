@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import * as chokidar from "chokidar";
+import * as path from "path";
 import { createIgnoredFilter } from "./functionsEmulator";
 import {
   extractParamsFromPath,
@@ -199,38 +200,54 @@ describe("FunctionsEmulatorUtils", () => {
       });
     }
 
+    const functionsDir = path.join(path.sep, "project", "functions");
+    const inFunctions = (p: string): string => path.join(functionsDir, p);
+
     it("should ignore hidden files and directories", () => {
-      const filter = createIgnoredFilter();
+      const filter = createIgnoredFilter(functionsDir);
       expect(matches(filter, ".git/config")).to.be.true;
       expect(matches(filter, "src/.hidden.js")).to.be.true;
       expect(matches(filter, ".dart_tool/package_config.json")).to.be.true;
     });
 
     it("should ignore log files", () => {
-      const filter = createIgnoredFilter();
+      const filter = createIgnoredFilter(functionsDir);
       expect(matches(filter, "firebase-debug.log")).to.be.true;
       expect(matches(filter, "path/to/debug.log")).to.be.true;
     });
 
     it("should ignore node_modules and venv", () => {
-      const filter = createIgnoredFilter();
+      const filter = createIgnoredFilter(functionsDir);
       expect(matches(filter, "functions/node_modules/express/index.js")).to.be.true;
       expect(matches(filter, "functions/venv/bin/activate")).to.be.true;
     });
 
     it("should not ignore regular source files when no custom ignore is provided", () => {
-      const filter = createIgnoredFilter();
+      const filter = createIgnoredFilter(functionsDir);
       expect(matches(filter, "src/index.ts")).to.be.false;
       expect(matches(filter, "package.json")).to.be.false;
     });
 
     it("should support custom globs in ignore list", () => {
-      const filter = createIgnoredFilter(["*.tmp", "dist/**", "ignored.txt"]);
-      expect(matches(filter, "cache.tmp")).to.be.true;
-      expect(matches(filter, "dist/bundle.js")).to.be.true;
-      expect(matches(filter, "sub/dir/dist/bundle.js")).to.be.true;
-      expect(matches(filter, "ignored.txt")).to.be.true;
-      expect(matches(filter, "src/index.ts")).to.be.false;
+      const filter = createIgnoredFilter(functionsDir, ["*.tmp", "dist/**", "ignored.txt"]);
+      expect(matches(filter, inFunctions("cache.tmp"))).to.be.true;
+      expect(matches(filter, inFunctions("sub/cache.tmp"))).to.be.true;
+      expect(matches(filter, inFunctions("dist/bundle.js"))).to.be.true;
+      expect(matches(filter, inFunctions("ignored.txt"))).to.be.true;
+      expect(matches(filter, inFunctions("src/index.ts"))).to.be.false;
+    });
+
+    it("matches path globs relative to the functions directory", () => {
+      const filter = createIgnoredFilter(functionsDir, ["deployment/*"]);
+      expect(matches(filter, inFunctions("deployment/a.json"))).to.be.true;
+      expect(matches(filter, inFunctions("src/deployment/a.json"))).to.be.false;
+    });
+
+    it("still matches globs that name folders above the functions directory", () => {
+      const filter = createIgnoredFilter(functionsDir, ["**/functions/deployment/**"]);
+      expect(matches(filter, inFunctions("deployment/a.json"))).to.be.true;
+      expect(matches(filter, inFunctions("deployment/sub/b.json"))).to.be.true;
+      expect(matches(filter, inFunctions("src/deployment/a.json"))).to.be.false;
     });
   });
 });

@@ -1,2 +1,2 @@
 - Fixed a race condition across a second boundary during `accounts:signUp` in the Auth emulator where `validSince` could exceed `auth_time`. (#11413)
-- Fixed `functions.ignore` patterns containing a `/`, such as `deployment/*`, so they match paths relative to the functions source directory. (#8131)
+- Fixed `functions.ignore` patterns containing a `/`, such as `deployment/*`, so they match paths relative to the functions source directory, in both deploys and the Functions emulator. (#8131)
