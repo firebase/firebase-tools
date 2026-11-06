@@ -235,7 +235,7 @@ const throttlerTest = (ThrottlerConstructor: ThrottlerConstructorType): void => 
       });
   });
 
-  it("should return the result of task", () => {
+  it("should return the result of task", async () => {
     const handler = (task: number) => {
       return Promise.resolve(`result: ${task}`);
     };
@@ -244,8 +244,8 @@ const throttlerTest = (ThrottlerConstructor: ThrottlerConstructorType): void => 
       handler,
     });
 
-    expect(q.run(2)).to.eventually.to.equal("result: 2");
-    expect(q.run(3)).to.eventually.to.equal("result: 3");
+    await expect(q.run(2)).to.eventually.to.equal("result: 2");
+    await expect(q.run(3)).to.eventually.to.equal("result: 3");
   });
 
   it("should resolve if task finishes before timeout", async () => {

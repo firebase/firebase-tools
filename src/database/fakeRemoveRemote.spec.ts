@@ -29,19 +29,19 @@ export class FakeRemoveRemote implements RemoveRemote {
     return Promise.resolve(true);
   }
 
-  deleteSubPath(path: string, subPaths: string[]): Promise<boolean> {
+  async deleteSubPath(path: string, subPaths: string[]): Promise<boolean> {
     const d = this._dataAtpath(path);
     let size = 0;
     for (const p of subPaths) {
       size += this._size(d[p]);
     }
     if (size > this.largeThreshold) {
-      return Promise.resolve(false);
+      return false;
     }
     for (const p of subPaths) {
-      this.deletePath(`${path}/${p}`);
+      await this.deletePath(`${path}/${p}`);
     }
-    return Promise.resolve(true);
+    return true;
   }
 
   private _deletePath(path: string): void {
