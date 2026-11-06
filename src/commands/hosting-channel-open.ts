@@ -3,7 +3,8 @@ import { bold } from "colorette";
 import * as open from "open";
 
 import { Command } from "../command";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
+import { logger } from "../logger";
 import { getChannel, listChannels, normalizeName } from "../hosting/api";
 import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
@@ -55,7 +56,9 @@ export const command = new Command("hosting:channel:open [channelId]")
 
       logLabeledBullet("hosting:channel", channel.url);
       if (!options.nonInteractive) {
-        open(channel.url);
+        open(channel.url).catch((err: unknown) => {
+          logger.debug(`Unable to open URL: ${getErrMsg(err)}`);
+        });
       }
 
       return { url: channel.url };
