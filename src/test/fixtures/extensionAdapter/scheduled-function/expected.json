@@ -1,0 +1,29 @@
+{
+  "endpoints": {
+    "dailyCleanup": {
+      "entryPoint": "dailyCleanup",
+      "platform": "gcfv1",
+      "project": "test-project",
+      "runtime": "nodejs20",
+      "region": ["us-central1"],
+      "scheduleTrigger": {
+        "schedule": "every day 02:00",
+        "timeZone": "America/New_York"
+      },
+      "timeoutSeconds": 300
+    },
+    "hourlySync": {
+      "entryPoint": "hourlySync",
+      "platform": "gcfv1",
+      "project": "test-project",
+      "runtime": "nodejs20",
+      "region": ["us-central1"],
+      "scheduleTrigger": {
+        "schedule": "0 * * * *",
+        "timeZone": null
+      }
+    }
+  },
+  "params": [],
+  "requiredAPIs": []
+}
