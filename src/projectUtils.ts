@@ -44,6 +44,7 @@ export function needProjectId({
   const aliasCount = Object.keys(aliases).length;
 
   if (aliasCount === 0) {
+    // marked returns a string unless called with { async: true }.
     throw new FirebaseError(
       "No currently active project.\n" +
         "To run this command, you need to specify a project. You have two options:\n" +
@@ -56,9 +57,9 @@ export function needProjectId({
         "To list all the Firebase projects to which you have access, run " +
         clc.bold("firebase projects:list") +
         ".\n" +
-        marked(
+        (marked(
           "To learn about active projects for the CLI, visit https://firebase.google.com/docs/cli#project_aliases",
-        ),
+        ) as string),
     );
   }
 
