@@ -52,7 +52,7 @@ async function localesForTarget(
       for (const [locale, { baseHref }] of Object.entries(i18n.locales)) {
         if (baseHref !== "")
           throw new FirebaseError(
-            `All your i18n locales must have a baseHref of \"\" on Firebase, errored on ${locale}.`,
+            `All your i18n locales must have a baseHref of "" on Firebase, errored on ${locale}.`,
           );
         locales.push(locale);
       }

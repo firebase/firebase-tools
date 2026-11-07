@@ -1,23 +1,11 @@
-import { Client } from "../apiv2";
-import { crashlyticsApiOrigin } from "../api";
 import { FirebaseError, getErrStatus } from "../error";
 import { logger } from "../logger";
 import { logLabeledBullet, logLabeledSuccess } from "../utils";
-import { parseProjectNumber, TIMEOUT } from "./utils";
+import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
 import * as storage from "../gcp/storage";
 import * as resourceManager from "../gcp/resourceManager";
 import * as serviceusage from "../gcp/serviceusage";
 import { AppPlatform, listFirebaseApps, selectAppInteractively } from "../management/apps";
-
-/**
- * Returns an authenticated v1 API client for the Firebase Crashlytics API.
- */
-export function getCrashlyticsV1Client(): Client {
-  return new Client({
-    urlPrefix: crashlyticsApiOrigin(),
-    apiVersion: "v1",
-  });
-}
 
 export const CRASHLYTICS_SERVICE_NAME = "firebasecrashlytics.googleapis.com";
 export const STORAGE_OBJECT_CREATOR_ROLE = "roles/storage.objectCreator";
@@ -40,23 +28,12 @@ export const DEFAULT_LIFECYCLE_RULES: storage.LifecycleRule[] = [
 ];
 
 const ANDROID_APP_ID_REGEX = /^\d+:(\d+):android:([a-fA-F0-9]+)$/;
+const GCS_BUCKET_RESOURCE_PREFIX = "projects/_/buckets/";
 
 export interface ProfilingManagerConfig {
-  gcsBucket?: string;
+  name?: string;
+  bucket?: string;
   heapDumpCollectionEnabled?: boolean;
-}
-
-export interface GetProfilingManagerConfigResponse {
-  configuration?: ProfilingManagerConfig;
-}
-
-export interface UpdateProfilingManagerConfigRequest {
-  projectNumber: string;
-  gmpAppId: string;
-  configuration: {
-    gcsBucket: string;
-    heapDumpCollectionEnabled: boolean;
-  };
 }
 
 /**
@@ -135,48 +112,40 @@ export async function resolveAndroidAppId(
 export async function getProfilingManagerConfig(appId: string): Promise<ProfilingManagerConfig> {
   const projectNumber = parseProjectNumber(appId);
   logger.debug(`[crashlytics] getProfilingManagerConfig called with appId: ${appId}`);
-  const response = await getCrashlyticsV1Client().request<void, GetProfilingManagerConfigResponse>({
+  const response = await CRASHLYTICS_API_CLIENT.request<void, ProfilingManagerConfig>({
     method: "GET",
     headers: {
       "Content-Type": "application/json",
     },
-    path: `/projects/${projectNumber}/apps/${appId}/appconfig:profilingManager`,
+    path: `/projects/${projectNumber}/apps/${appId}/profilingManagerConfig`,
     timeout: TIMEOUT,
   });
-  const config = response.body?.configuration || {};
-  return {
-    gcsBucket: config.gcsBucket || "",
-    heapDumpCollectionEnabled: config.heapDumpCollectionEnabled ?? false,
-  };
+  return response.body;
 }
 
 /**
  * Updates the Crashlytics Profiling Manager configuration for an app.
  * @param appId GMP App ID
- * @param config Profiling manager configuration
+ * @param config Profiling manager configuration fields to update
+ * @param updateMask Comma-separated field mask of fields to update
  */
 export async function updateProfilingManagerConfig(
   appId: string,
   config: ProfilingManagerConfig,
+  updateMask: string,
 ): Promise<void> {
   const projectNumber = parseProjectNumber(appId);
   logger.debug(
-    `[crashlytics] updateProfilingManagerConfig called with appId: ${appId}, config: ${JSON.stringify(config)}`,
+    `[crashlytics] updateProfilingManagerConfig called with appId: ${appId}, config: ${JSON.stringify(config)}, updateMask: ${updateMask}`,
   );
-  await getCrashlyticsV1Client().request<UpdateProfilingManagerConfigRequest, void>({
-    method: "POST",
+  await CRASHLYTICS_API_CLIENT.request<ProfilingManagerConfig, void>({
+    method: "PATCH",
     headers: {
       "Content-Type": "application/json",
     },
-    path: `/projects/${projectNumber}/apps/${appId}/appconfig:profilingManager`,
-    body: {
-      projectNumber,
-      gmpAppId: appId,
-      configuration: {
-        gcsBucket: config.gcsBucket ?? "",
-        heapDumpCollectionEnabled: config.heapDumpCollectionEnabled ?? false,
-      },
-    },
+    path: `/projects/${projectNumber}/apps/${appId}/profilingManagerConfig`,
+    queryParams: { updateMask },
+    body: config,
     timeout: TIMEOUT,
   });
 }
@@ -296,10 +265,14 @@ export async function enableHeapDumpCollection(
   logLabeledBullet("crashlytics", "Configuring service agent permissions...");
   await ensureHeapDumpP4saRole(projectId, projectNumber);
   logLabeledBullet("crashlytics", "Enabling Crashlytics heap dump collection...");
-  await updateProfilingManagerConfig(appId, {
-    gcsBucket: bucketName,
-    heapDumpCollectionEnabled: true,
-  });
+  await updateProfilingManagerConfig(
+    appId,
+    {
+      bucket: `${GCS_BUCKET_RESOURCE_PREFIX}${bucketName}`,
+      heapDumpCollectionEnabled: true,
+    },
+    "bucket,heapDumpCollectionEnabled",
+  );
   logLabeledSuccess("crashlytics", "Successfully enabled Crashlytics heap dump collection!");
   return bucketName;
 }
@@ -310,10 +283,12 @@ export async function enableHeapDumpCollection(
  */
 export async function disableHeapDumpCollection(appId: string): Promise<void> {
   logLabeledBullet("crashlytics", "Disabling Crashlytics heap dump collection...");
-  const currentConfig = await getProfilingManagerConfig(appId);
-  await updateProfilingManagerConfig(appId, {
-    gcsBucket: currentConfig.gcsBucket,
-    heapDumpCollectionEnabled: false,
-  });
+  await updateProfilingManagerConfig(
+    appId,
+    {
+      heapDumpCollectionEnabled: false,
+    },
+    "heapDumpCollectionEnabled",
+  );
   logLabeledSuccess("crashlytics", "Successfully disabled Crashlytics heap dump collection!");
 }
