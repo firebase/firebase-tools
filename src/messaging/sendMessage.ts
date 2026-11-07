@@ -39,7 +39,7 @@ export async function sendFcmMessage(
     }
     const message: Message = options.token
       ? {
-          token: options.token!,
+          token: options.token,
           notification: notification,
         }
       : {

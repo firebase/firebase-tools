@@ -178,7 +178,7 @@ describe("crashlytics:heapdumps commands", () => {
   describe("crashlytics:heapdumps:status", () => {
     it("should return the status and configuration when enabled", async () => {
       sinon.stub(profilingManager, "getProfilingManagerConfig").resolves({
-        gcsBucket: bucketName,
+        bucket: bucketName,
         heapDumpCollectionEnabled: true,
       });
 
@@ -189,14 +189,14 @@ describe("crashlytics:heapdumps commands", () => {
 
       expect(result).to.deep.equal({
         appId,
-        gcsBucket: bucketName,
+        bucket: bucketName,
         heapDumpCollectionEnabled: true,
       });
     });
 
     it("should return the status and configuration when disabled with no bucket", async () => {
       sinon.stub(profilingManager, "getProfilingManagerConfig").resolves({
-        gcsBucket: "",
+        bucket: "",
         heapDumpCollectionEnabled: false,
       });
 
@@ -207,14 +207,14 @@ describe("crashlytics:heapdumps commands", () => {
 
       expect(result).to.deep.equal({
         appId,
-        gcsBucket: "",
+        bucket: "",
         heapDumpCollectionEnabled: false,
       });
     });
 
     it("should register and run crashlytics.heapdumps commands via command loader", async () => {
       sinon.stub(profilingManager, "getProfilingManagerConfig").resolves({
-        gcsBucket: bucketName,
+        bucket: bucketName,
         heapDumpCollectionEnabled: true,
       });
 
@@ -239,7 +239,7 @@ describe("crashlytics:heapdumps commands", () => {
 
       expect(result).to.deep.equal({
         appId,
-        gcsBucket: bucketName,
+        bucket: bucketName,
         heapDumpCollectionEnabled: true,
       });
     });

@@ -35,19 +35,6 @@ export async function createTopic(topic: Topic): Promise<Topic> {
   return result.body;
 }
 
-export async function getTopic(name: string): Promise<Topic> {
-  const result = await client.get<Topic>(name);
-  return result.body;
-}
-
-export async function updateTopic(topic: Topic): Promise<Topic> {
-  const queryParams = {
-    updateMask: proto.fieldMasks(topic).join(","),
-  };
-  const result = await client.patch<Topic, Topic>(topic.name, topic, { queryParams });
-  return result.body;
-}
-
 export async function deleteTopic(name: string): Promise<void> {
   await client.delete(name);
 }

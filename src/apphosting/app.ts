@@ -96,7 +96,7 @@ function firebaseAppsToMap(apps: AppMetadata[]): Map<string, string> {
  * TODO: Make this generic to be re-used in other parts of the CLI
  */
 function isQuotaError(error: any): boolean {
-  const original = error.original as any;
+  const original = error.original;
   const code: number | undefined =
     original?.status ||
     original?.context?.response?.statusCode ||
