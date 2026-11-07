@@ -1,3 +1,4 @@
+- Fixed the Storage emulator storing objects whose names contain `.` or `..` segments under the normalized name, so they could read, overwrite or delete a different object. (#11301)
 - Improved Auth emulator startup time by compiling validation schemas lazily. (#11176)
 - Updated the Firebase SQL Connect local toolkit to v3.4.26, which includes the following changes:
   - Internal improvements and bug fixes.
