@@ -157,7 +157,7 @@ export async function signInWithPassword(
   testAgent: TestAgent,
   email: string,
   password: string,
-  extractMfaPending: boolean = false,
+  extractMfaPending = false,
 ): Promise<{
   idToken?: string;
   localId?: string;
