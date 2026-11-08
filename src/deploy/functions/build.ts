@@ -344,6 +344,7 @@ export interface ResolveBackendOpts {
   codebase: string;
   nonInteractive?: boolean;
   isEmulator?: boolean;
+  resolveRegions?: (build: Build, paramValues: Record<string, params.ParamValue>) => Promise<void>;
 }
 
 /**
@@ -363,6 +364,10 @@ export async function resolveBackend(opts: ResolveBackendOpts): Promise<{
     nonInteractive: opts.nonInteractive,
     isEmulator: opts.isEmulator,
   });
+
+  if (opts.resolveRegions) {
+    await opts.resolveRegions(opts.build, paramValues);
+  }
 
   return { backend: toBackend(opts.build, paramValues), envs: paramValues, secretRefs: secretRefs };
 }

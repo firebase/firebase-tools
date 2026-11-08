@@ -14,6 +14,7 @@ import { trackEmulator } from "../track";
 import { Constants } from "./constants";
 import { EmulatorInfo, EmulatorInstance, Emulators, FunctionsExecutionMode } from "./types";
 import * as chokidar from "chokidar";
+import * as minimatch from "minimatch";
 import * as portfinder from "portfinder";
 
 import * as spawn from "cross-spawn";
@@ -41,7 +42,7 @@ import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 import { RuntimeWorker, RuntimeWorkerPool } from "./functionsRuntimeWorker";
 import { PubsubEmulator } from "./pubsubEmulator";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
 import { WorkQueue, Work } from "./workQueue";
 import { allSettled, connectableHostname, createDestroyer, debounce, randomInt } from "../utils";
 import {
@@ -175,12 +176,6 @@ export interface FunctionsRuntimeInstance {
   conn: IPCConn | TCPConn;
 }
 
-export interface InvokeRuntimeOpts {
-  nodeBinary: string;
-  extensionTriggers?: ParsedTriggerDefinition[];
-  ignore_warnings?: boolean;
-}
-
 interface RequestWithRawBody extends express.Request {
   rawBody: Buffer;
 }
@@ -192,6 +187,26 @@ interface EmulatedTriggerRecord {
   ignored: boolean;
 
   url?: string;
+}
+
+export function createIgnoredFilter(ignore?: string[]): chokidar.Matcher[] {
+  const ignored: chokidar.Matcher[] = [
+    /(^|[/\\])\../, // Ignore hidden files/dirs (covers .dart_tool, .git, etc.)
+    /.+\.log/, // Ignore log files
+    /.+?[\\/]node_modules[\\/].+?/, // Ignore node_modules
+    /.+?[\\/]venv[\\/].+?/, // Ignore venv
+  ];
+  if (ignore) {
+    const minimatchInstances = ignore.map((pattern) => {
+      const p = pattern.startsWith("**/") ? pattern : `**/${pattern}`;
+      return new minimatch.Minimatch(p, { dot: true });
+    });
+    ignored.push((filePath: string) => {
+      const normalized = filePath.replace(/\\/g, "/");
+      return minimatchInstances.some((m) => m.match(normalized));
+    });
+  }
+  return ignored;
 }
 
 export class FunctionsEmulator implements EmulatorInstance {
@@ -519,7 +534,15 @@ export class FunctionsEmulator implements EmulatorInstance {
           "functions",
           `Starting build_runner watch for Dart functions...`,
         );
-        const debouncedLoadTriggers = debounce(() => this.loadTriggers(backend), 1000);
+        const debouncedLoadTriggers = debounce(() => {
+          this.loadTriggers(backend).catch((err: unknown) =>
+            this.logger.logLabeled(
+              "WARN",
+              "functions",
+              `Failed to reload triggers: ${getErrMsg(err)}`,
+            ),
+          );
+        }, 1000);
         const cleanup = await delegate.watch(() => {
           this.logger.log("DEBUG", "build_runner rebuilt, reloading triggers");
           debouncedLoadTriggers();
@@ -528,22 +551,24 @@ export class FunctionsEmulator implements EmulatorInstance {
         this.logger.logLabeled("SUCCESS", "functions", `build_runner initial build completed`);
       } else {
         const watcher = chokidar.watch(backend.functionsDir, {
-          ignored: [
-            /(^|[\/\\])\../, // Ignore hidden files/dirs (covers .dart_tool, .git, etc.)
-            /.+\.log/, // Ignore log files
-            /.+?[\\\/]node_modules[\\\/].+?/, // Ignore node_modules
-            /.+?[\\\/]venv[\\\/].+?/, // Ignore venv
-            ...(backend.ignore?.map((i) => `**/${i}`) ?? []),
-          ],
+          ignored: createIgnoredFilter(backend.ignore),
           persistent: true,
         });
 
         this.watchers.push(watcher);
 
-        const debouncedLoadTriggers = debounce(() => this.loadTriggers(backend), 1000);
+        const debouncedLoadTriggers = debounce(() => {
+          this.loadTriggers(backend).catch((err: unknown) =>
+            this.logger.logLabeled(
+              "WARN",
+              "functions",
+              `Failed to reload triggers: ${getErrMsg(err)}`,
+            ),
+          );
+        }, 1000);
         watcher.on("change", (filePath) => {
           this.logger.log("DEBUG", `File ${filePath} changed, reloading triggers`);
-          return debouncedLoadTriggers();
+          debouncedLoadTriggers();
         });
       }
     }
@@ -1939,7 +1964,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     // req.url = /:projectId/:region/:trigger_name/*
     const url = new URL(`${req.protocol}://${req.hostname}${req.url}`);
     let path = `${url.pathname}${url.search}`.replace(
-      new RegExp(`\/${this.args.projectId}\/[^\/]*\/${req.params.trigger_name}\/?`),
+      new RegExp(`/${this.args.projectId}/[^/]*/${req.params.trigger_name}/?`),
       "/",
     );
 

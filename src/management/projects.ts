@@ -490,7 +490,7 @@ export async function listFirebaseProjects(pageSize?: number): Promise<FirebaseP
 }
 
 export async function checkAndRecommendProjectId(
-  projectId: String,
+  projectId: string,
 ): Promise<{ isAvailable: boolean; suggestedProjectId?: string }> {
   try {
     const res = await firebaseV1APIClient.request<

@@ -684,7 +684,7 @@ describe("Fabricator", () => {
       });
 
       const saError = new FirebaseError(
-        "Service account sa@proj.iam.gserviceaccount.com was not found",
+        "Service account firebase-fn-123@proj.iam.gserviceaccount.com was not found",
         { status: 404 },
       );
 
@@ -714,6 +714,34 @@ describe("Fabricator", () => {
       const saError = new FirebaseError(
         "Validation failed for trigger: The request was invalid: invalid service account firebase-fn-123@proj.iam.gserviceaccount.com provided",
         { status: 400 },
+      );
+
+      gcfv2.createFunction.onFirstCall().rejects(saError);
+      gcfv2.createFunction.onSecondCall().resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      run.setInvokerCreate.resolves();
+
+      const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
+      const sc = new scraper.SourceTokenScraper();
+      await fabWithQueue.createV2Function(ep, sc);
+
+      expect(gcfv2.createFunction).to.have.been.calledTwice;
+    });
+
+    it("retries createV2Function and succeeds when service account 403 propagation error occurs", async () => {
+      const queueExec = new executor.QueueExecutor({
+        retries: 5,
+        backoff: 1,
+        maxBackoff: 1,
+      });
+      const fabWithQueue = new fabricator.Fabricator({
+        ...ctorArgs,
+        functionExecutor: queueExec,
+      });
+
+      const saError = new FirebaseError(
+        "Could not create Cloud Run service projects/p/locations/l/services/s. Permission 'iam.serviceaccounts.actAs' denied on service account firebase-fn-456@proj.iam.gserviceaccount.com (or it may not exist).",
+        { status: 403 },
       );
 
       gcfv2.createFunction.onFirstCall().rejects(saError);
@@ -1947,6 +1975,123 @@ describe("Fabricator", () => {
       await fab.applyPlan(plan);
       expect(scrapers).to.have.lengthOf(2);
       expect(scrapers[0]).to.not.equal(scrapers[1]);
+    });
+
+    it("throws FirebaseError and skips deletes when applyUpserts rejects unexpectedly", async () => {
+      const ep1 = endpoint({ httpsTrigger: {} }, { id: "createFn", region: "us-central1" });
+      const ep2 = endpoint({ httpsTrigger: {} }, { id: "deleteFn", region: "us-west1" });
+      const plan: planner.DeploymentPlan = {
+        default: {
+          plannedBackend: backend.of(ep1),
+          regionalChangesets: {
+            "us-central1": {
+              endpointsToCreate: [ep1],
+              endpointsToUpdate: [],
+              endpointsToDelete: [],
+              endpointsToSkip: [],
+            },
+            "us-west1": {
+              endpointsToCreate: [],
+              endpointsToUpdate: [],
+              endpointsToDelete: [ep2],
+              endpointsToSkip: [],
+            },
+          },
+        },
+      };
+
+      const upsertCause = new Error("Unexpected upsert crash");
+      const applyUpsertsStub = sinon.stub(fab, "applyUpserts");
+      applyUpsertsStub.onFirstCall().rejects(upsertCause);
+      applyUpsertsStub.onSecondCall().resolves([]);
+      const applyDeletesSpy = sinon.spy(fab, "applyDeletes");
+
+      const err = (await expect(fab.applyPlan(plan)).to.be.rejectedWith(
+        FirebaseError,
+        "Fabricator.applyUpserts encountered an unhandled exception: Unexpected upsert crash",
+      )) as FirebaseError;
+      expect(err.original).to.equal(upsertCause);
+      expect(applyDeletesSpy).to.not.have.been.called;
+    });
+
+    it("throws FirebaseError with children and skips role removals when applyDeletes rejects across regions", async () => {
+      const ep1 = endpoint({ httpsTrigger: {} }, { id: "deleteFnCentral", region: "us-central1" });
+      const ep2 = endpoint({ httpsTrigger: {} }, { id: "deleteFnWest", region: "us-west1" });
+      const plan: planner.DeploymentPlan = {
+        default: {
+          plannedBackend: backend.empty(),
+          regionalChangesets: {
+            "us-central1": {
+              endpointsToCreate: [],
+              endpointsToUpdate: [],
+              endpointsToDelete: [ep1],
+              endpointsToSkip: [],
+            },
+            "us-west1": {
+              endpointsToCreate: [],
+              endpointsToUpdate: [],
+              endpointsToDelete: [ep2],
+              endpointsToSkip: [],
+            },
+          },
+        },
+      };
+
+      const applyDeletesStub = sinon.stub(fab, "applyDeletes");
+      applyDeletesStub.onFirstCall().rejects(new Error("Unexpected delete crash central"));
+      applyDeletesStub.onSecondCall().rejects(new Error("Unexpected delete crash west"));
+      const removeOldRolesSpy = sinon.spy(fab, "removeOldRoles");
+
+      const err = (await expect(fab.applyPlan(plan)).to.be.rejectedWith(
+        FirebaseError,
+        "Fabricator.applyDeletes encountered unhandled exceptions",
+      )) as FirebaseError;
+      expect(err.children).to.have.lengthOf(2);
+      expect((err.children[0] as Error).message).to.equal("Unexpected delete crash central");
+      expect((err.children[1] as Error).message).to.equal("Unexpected delete crash west");
+      expect(removeOldRolesSpy).to.not.have.been.called;
+    });
+
+    it("isolates logOpStart errors to the failing endpoint and handles unknown runtimes", async () => {
+      const epUnknownRuntime = endpoint(
+        { httpsTrigger: {} },
+        {
+          id: "unknownRuntimeFn",
+          region: "us-central1",
+          runtime: "custom-future-runtime" as backend.Endpoint["runtime"],
+        },
+      );
+      const epFailingLog = endpoint(
+        { httpsTrigger: {} },
+        { id: "failingLogFn", region: "us-central1" },
+      );
+      const changes: planner.Changeset = {
+        endpointsToCreate: [epUnknownRuntime, epFailingLog],
+        endpointsToUpdate: [],
+        endpointsToDelete: [],
+        endpointsToSkip: [],
+      };
+
+      sinon.stub(fab, "createEndpoint").resolves();
+      const origLogOpStart = fab.logOpStart.bind(fab);
+      sinon.stub(fab, "logOpStart").callsFake((op: string, ep: backend.Endpoint) => {
+        if (ep.id === "failingLogFn") {
+          throw new Error("logOpStart failure");
+        }
+        origLogOpStart(op, ep);
+      });
+
+      const results = await fab.applyUpserts(
+        changes,
+        new scraper.SourceTokenScraper(),
+        new scraper.SourceTokenScraper(),
+      );
+
+      expect(results).to.have.lengthOf(2);
+      expect(results[0].endpoint.id).to.equal("unknownRuntimeFn");
+      expect(results[0].error).to.be.undefined;
+      expect(results[1].endpoint.id).to.equal("failingLogFn");
+      expect(results[1].error?.message).to.equal("logOpStart failure");
     });
   });
 

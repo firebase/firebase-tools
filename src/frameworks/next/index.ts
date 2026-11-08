@@ -513,9 +513,12 @@ export async function ɵcodegenPublicDirectory(
           {
             srcRoute: null,
             initialRevalidateSeconds: false,
+            initialExpireSeconds: undefined,
             dataRoute: "",
             experimentalPPR: false,
+            renderingMode: undefined,
             prefetchDataRoute: "",
+            allowHeader: [],
           },
         ];
       }),

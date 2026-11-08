@@ -10,6 +10,8 @@ import * as lifecycle from "../deploy/functions/release/lifecycle";
 import { FirebaseError } from "../error";
 import { Options } from "../options";
 import * as requirePermissions from "../requirePermissions";
+import * as experiments from "../experiments";
+import * as ensureApiEnabled from "../ensureApiEnabled";
 
 describe("functions:lifecycle commands", () => {
   let sandbox: sinon.SinonSandbox;
@@ -36,6 +38,7 @@ describe("functions:lifecycle commands", () => {
   });
 
   afterEach(() => {
+    experiments.setEnabled("kits", null);
     sandbox.restore();
   });
 
@@ -43,7 +46,7 @@ describe("functions:lifecycle commands", () => {
     it("should throw FirebaseError if codebase is not defined in firebase.json", async () => {
       await expect(loadCodebaseBuild("non-existent", options)).to.be.rejectedWith(
         FirebaseError,
-        'Codebase "non-existent" is not defined in firebase.json.',
+        "No functions config found for codebase or kit instance non-existent",
       );
     });
 
@@ -60,12 +63,60 @@ describe("functions:lifecycle commands", () => {
           },
         },
       };
-      sandbox.stub(prepare, "loadCodebases").resolves({
+      const loadCodebasesStub = sandbox.stub(prepare, "loadCodebases").resolves({
         "my-codebase": mockBuild,
       });
 
       const build = await loadCodebaseBuild("my-codebase", options);
       expect(build).to.deep.equal(mockBuild);
+      expect(loadCodebasesStub).to.have.been.calledOnceWithExactly(
+        sinon.match.array,
+        options,
+        sinon.match.object,
+        sinon.match.object,
+        [{ codebase: "my-codebase" }],
+      );
+    });
+
+    it("should load function kit instance build without checking runtime config", async () => {
+      experiments.setEnabled("kits", true);
+      options.config.src.functions = [
+        { codebase: "my-codebase", source: "functions" },
+        {
+          kit: "my-kit",
+          source: "kits/my-kit",
+          instances: {
+            inst1: "configs/inst1",
+          },
+        },
+      ];
+      const mockBuild = {
+        requiredAPIs: [],
+        endpoints: {},
+        params: [],
+        lifecycleHooks: {
+          afterFirstDeploy: {
+            task: {
+              function: "kit-inst1-myTask",
+            },
+          },
+        },
+      };
+      const ensureCheckStub = sandbox.stub(ensureApiEnabled, "check");
+      const loadCodebasesStub = sandbox.stub(prepare, "loadCodebases").resolves({
+        inst1: mockBuild,
+      });
+
+      const build = await loadCodebaseBuild("inst1", options);
+      expect(build).to.deep.equal(mockBuild);
+      expect(ensureCheckStub).to.not.have.been.called;
+      expect(loadCodebasesStub).to.have.been.calledOnceWithExactly(
+        sinon.match.array,
+        options,
+        sinon.match.object,
+        sinon.match.object,
+        [{ codebase: "inst1" }],
+      );
     });
   });
 

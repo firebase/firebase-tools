@@ -39,7 +39,7 @@ export async function askQuestions(setup: Setup, config: Config): Promise<void> 
     // Will also prompt user for databaseId if default does not exist.
     info.databaseId = info.databaseId || "(default)";
     const api = new FirestoreApi();
-    const databases = await api.listDatabases(setup.projectId!);
+    const databases = await api.listDatabases(setup.projectId);
     const nativeDatabaseNames = databases
       .filter((db) => db.type === "FIRESTORE_NATIVE")
       .map((db) => db.name.split("/")[3]);
@@ -53,7 +53,7 @@ export async function askQuestions(setup: Setup, config: Config): Promise<void> 
       }
       // Create the default database in deploy later.
       info.databaseId = "(default)";
-      const locations = await api.locations(setup.projectId!);
+      const locations = await api.locations(setup.projectId);
       const choice = await select<string>({
         message: "Please select the location of your Firestore database:",
         choices: locations.map((location) => location.name.split("/")[3]),

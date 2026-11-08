@@ -221,8 +221,8 @@ async function signUp(
     );
     updates.salt = "fakeSalt" + randomId(20);
     updates.passwordHash = hashPassword(reqBody.password, updates.salt);
-    updates.passwordUpdatedAt = Date.now();
-    updates.validSince = toUnixTimestamp(new Date()).toString();
+    updates.passwordUpdatedAt = timestamp.getTime();
+    updates.validSince = toUnixTimestamp(timestamp).toString();
   }
   if (reqBody.mfaInfo) {
     updates.mfaInfo = getMfaEnrollmentsFromRequest(state, reqBody.mfaInfo, {
@@ -1987,7 +1987,7 @@ function grantToken(
   };
 }
 
-function deleteAllAccountsInProject(state: ProjectState): {} {
+function deleteAllAccountsInProject(state: ProjectState): Record<string, never> {
   state.deleteAllAccounts();
   return {};
 }

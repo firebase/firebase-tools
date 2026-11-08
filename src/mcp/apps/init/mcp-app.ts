@@ -111,7 +111,7 @@ googleCheckbox.addEventListener("change", (e) => {
   }
 });
 
-initBtn.addEventListener("click", async () => {
+async function onInitClick(): Promise<void> {
   const selectedProduct = Array.from(productRadios).find((r) => r.checked)?.value;
 
   if (!selectedProjectId) {
@@ -205,6 +205,11 @@ initBtn.addEventListener("click", async () => {
     initBtn.disabled = false;
     initBtn.textContent = "Initialize";
   }
+}
+
+// onInitClick catches all errors and reports status via setStatus
+initBtn.addEventListener("click", () => {
+  void onInitClick();
 });
 
 app.onhostcontextchanged = (ctx) => {

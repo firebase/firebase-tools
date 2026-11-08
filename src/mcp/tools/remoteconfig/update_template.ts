@@ -43,7 +43,7 @@ export const update_template = tool(
   },
   async ({ template, version_number, force }, { projectId }) => {
     if (version_number) {
-      return toContent(await rollbackTemplate(projectId, version_number!));
+      return toContent(await rollbackTemplate(projectId, version_number));
     }
 
     if (template) {
