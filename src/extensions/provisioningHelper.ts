@@ -15,19 +15,6 @@ export enum DeferredProduct {
 }
 
 /**
- * Checks whether products used by the extension require provisioning.
- *
- * @param spec extension spec
- */
-export async function checkProductsProvisioned(
-  projectId: string,
-  spec: ExtensionSpec,
-): Promise<void> {
-  const usedProducts = getUsedProducts(spec);
-  await checkProducts(projectId, usedProducts);
-}
-
-/**
  * Checks whether products used for any extension version in a deploy requires provisioning.
  *
  * @param extensionVersionRefs
@@ -119,7 +106,7 @@ export function getUsedProducts(spec: ExtensionSpec): DeferredProduct[] {
  * Parses out trigger eventType from the propertiesYaml.
  */
 function getTriggerType(propertiesYaml: string | undefined) {
-  return propertiesYaml?.match(/eventType:\ ([\S]+)/)?.[1];
+  return propertiesYaml?.match(/eventType: ([\S]+)/)?.[1];
 }
 
 async function isStorageProvisioned(projectId: string): Promise<boolean> {
