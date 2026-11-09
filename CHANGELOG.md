@@ -1,3 +1,4 @@
+- Added support for the Node.js 26 runtime (Preview) for Cloud Functions. (#11393)
 - Improved Auth emulator startup time by compiling validation schemas lazily. (#11176)
 - Updated the Firebase SQL Connect local toolkit to v3.4.26, which includes the following changes:
   - Internal improvements and bug fixes.
