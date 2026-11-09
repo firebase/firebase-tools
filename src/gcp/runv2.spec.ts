@@ -660,21 +660,4 @@ describe("runv2", () => {
       });
     });
   });
-
-  describe("listRevisions", () => {
-    afterEach(() => sinon.restore());
-
-    it("lists the service's newest revisions", async () => {
-      const getStub: sinon.SinonStub = sinon.stub(Client.prototype, "get");
-      getStub.resolves({ body: { revisions: [{ name: "r2" }] } });
-
-      const revisions = await runv2.listRevisions(PROJECT_ID, LOCATION, SERVICE_ID, 1);
-
-      expect(revisions).to.deep.equal([{ name: "r2" }]);
-      expect(getStub).to.have.been.calledOnceWithExactly(
-        `/projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}/revisions`,
-        { queryParams: { pageSize: "1" } },
-      );
-    });
-  });
 });

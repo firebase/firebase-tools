@@ -64,6 +64,10 @@ export interface ContainerBuildConfig {
   buildpacksBuild?: {
     /** The base image to build on. Required if the container has a baseImageUri. */
     buildBaseImageUri?: string;
+    /**
+     * Env vars for the build only, not the container's runtime env vars. Plain values only: Cloud
+     * Run's build API doesn't support secrets yet.
+     */
     environmentVariables?: Record<string, string>;
   };
 }
@@ -147,7 +151,6 @@ export interface Service {
   // Is this redundant with the Build API?
   buildConfig?: BuildConfig;
   uri?: string;
-  latestCreatedRevision?: string;
 }
 
 export type ServiceOutputFields =
@@ -263,29 +266,6 @@ export async function getService(
   const name = `projects/${projectId}/locations/${location}/services/${serviceId}`;
   const res = await client.get<Service>(name);
   return res.body;
-}
-
-/** A revision's status. Like Service, it only has the fields that the CLI uses. */
-export interface Revision {
-  name: string;
-  containerStatuses?: Array<{
-    /** How building the container's image went, if Cloud Run built it (see Container.buildConfig). */
-    buildStatus?: { status?: "SUCCESS" | "FAILURE" | "PENDING"; cloudBuildLogUrl?: string };
-  }>;
-}
-
-/** Lists a service's newest `pageSize` revisions, newest first. */
-export async function listRevisions(
-  projectId: string,
-  location: string,
-  serviceId: string,
-  pageSize: number,
-): Promise<Revision[]> {
-  const res = await client.get<{ revisions?: Revision[] }>(
-    `/projects/${projectId}/locations/${location}/services/${serviceId}/revisions`,
-    { queryParams: { pageSize: String(pageSize) } },
-  );
-  return res.body.revisions || [];
 }
 
 /**
