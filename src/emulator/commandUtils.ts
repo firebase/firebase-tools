@@ -265,7 +265,7 @@ function processKillSignal(
 ): SignalsListener {
   let lastSignal = new Date().getTime();
   let signalCount = 0;
-  return async () => {
+  const handleSignal = async (): Promise<void> => {
     try {
       const now = new Date().getTime();
       const diff = now - lastSignal;
@@ -338,6 +338,11 @@ function processKillSignal(
       logger.debug(e as any);
       rej(getError(e));
     }
+  };
+
+  // handleSignal catches all errors and routes them to res/rej
+  return () => {
+    void handleSignal();
   };
 }
 
