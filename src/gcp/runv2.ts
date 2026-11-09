@@ -64,6 +64,10 @@ export interface ContainerBuildConfig {
   buildpacksBuild?: {
     /** The base image to build on. Required if the container has a baseImageUri. */
     buildBaseImageUri?: string;
+    /**
+     * Env vars for the build only, not the container's runtime env vars. Plain values only: Cloud
+     * Run's build API doesn't support secrets yet.
+     */
     environmentVariables?: Record<string, string>;
   };
 }

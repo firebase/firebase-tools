@@ -13,7 +13,7 @@ import * as utils from "../../utils";
 import * as apphostingLocalBuild from "../apphosting/localBuild";
 import * as apphostingUtil from "../apphosting/util";
 import { ServiceDeploy } from "./args";
-import { deploy, localBuildTemplate, revisionTemplate } from "./deploy";
+import { deploy, localBuildTemplate, remoteBuildConfig, revisionTemplate } from "./deploy";
 
 const NODEJS22 = "us-central1-docker.pkg.dev/serverless-runtimes/google-22/runtimes/nodejs22";
 const DEPLOY_MESSAGE = "firebase.google.com/deploy-message";
@@ -121,17 +121,6 @@ describe("run deploy", () => {
     });
   });
 
-  it("keeps GOOGLE_BUILDABLE from buildEnv if the user set it", async () => {
-    sinon.stub(fs, "existsSync").callsFake((file) => file === path.join("/project", "turbo.json"));
-
-    await deployOne({ config: web, buildEnv: { GOOGLE_BUILDABLE: "custom/web" } });
-
-    const container = createServiceStub.firstCall.args[3].template.containers[0];
-    expect(container.buildConfig.buildpacksBuild.environmentVariables).to.include({
-      GOOGLE_BUILDABLE: "custom/web",
-    });
-  });
-
   it("builds without a base image if the service doesn't have one", async () => {
     await deployOne({ config: web });
 
@@ -139,17 +128,6 @@ describe("run deploy", () => {
     const container = createServiceStub.firstCall.args[3].template.containers[0];
     expect(container).not.to.have.property("baseImageUri");
     expect(container.buildConfig).to.deep.equal(buildConfig);
-  });
-
-  it("passes the service's plain build env vars to Cloud Build, but never secrets", async () => {
-    const buildEnv = { API_URL: "https://api.example.com", NPM_TOKEN: { secret: "npm-token" } };
-
-    await deployOne({ config: web, buildEnv });
-
-    const container = createServiceStub.firstCall.args[3].template.containers[0];
-    const { environmentVariables } = container.buildConfig.buildpacksBuild;
-    expect(environmentVariables).to.include({ API_URL: "https://api.example.com" });
-    expect(environmentVariables).not.to.have.property("NPM_TOKEN");
   });
 
   it("rolls out a new revision of an existing service with all traffic, keeping its tags", async () => {
@@ -618,6 +596,61 @@ describe("run deploy", () => {
           { name: "MODE", value: "development" },
           { name: "NODE_ENV", value: "production" },
         ]);
+      });
+    });
+  });
+
+  describe("remoteBuildConfig", () => {
+    it("has Cloud Run push to the repository and build with App Hosting's buildpacks", () => {
+      expect(remoteBuildConfig({ config: web }, imageRepository, "")).to.deep.equal({
+        imageRepositoryUri: imageRepository,
+        buildpacksBuild: {
+          environmentVariables: {
+            X_GOOGLE_TARGET_PLATFORM: "fah",
+            FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
+          },
+        },
+      });
+    });
+
+    it("builds on the service's base image, if it has one", () => {
+      const withBaseImage = remoteBuildConfig(
+        { config: web, baseImage: NODEJS22 },
+        imageRepository,
+        "",
+      );
+      expect(withBaseImage.buildpacksBuild?.buildBaseImageUri).to.equal(NODEJS22);
+
+      const withoutBaseImage = remoteBuildConfig({ config: web }, imageRepository, "");
+      expect(withoutBaseImage.buildpacksBuild).not.to.have.property("buildBaseImageUri");
+    });
+
+    it("tells the buildpacks where the app is in a monorepo", () => {
+      const config = remoteBuildConfig({ config: web }, imageRepository, "apps/web");
+
+      expect(config.buildpacksBuild?.environmentVariables).to.include({
+        GOOGLE_BUILDABLE: "apps/web",
+      });
+    });
+
+    it("passes the build env's plain values, but never its secrets", () => {
+      const buildEnv = { API_URL: "https://api.example.com", NPM_TOKEN: { secret: "npm-token" } };
+
+      const config = remoteBuildConfig({ config: web, buildEnv }, imageRepository, "");
+
+      const env = config.buildpacksBuild?.environmentVariables;
+      expect(env).to.include({ API_URL: "https://api.example.com" });
+      expect(env).not.to.have.property("NPM_TOKEN");
+    });
+
+    it("lets the build env set GOOGLE_BUILDABLE, but not App Hosting's buildpack settings", () => {
+      const buildEnv = { GOOGLE_BUILDABLE: "custom/web", X_GOOGLE_TARGET_PLATFORM: "gcp" };
+
+      const config = remoteBuildConfig({ config: web, buildEnv }, imageRepository, "apps/web");
+
+      expect(config.buildpacksBuild?.environmentVariables).to.include({
+        GOOGLE_BUILDABLE: "custom/web",
+        X_GOOGLE_TARGET_PLATFORM: "fah",
       });
     });
   });

@@ -270,8 +270,26 @@ async function sourceBucket(projectId: string, options: Options, region: string)
 }
 
 /**
- * Returns the revision to roll out, without what its container runs: the live revision's settings
- * (env vars, service account, scaling, etc.) with the new base image and deploy message.
+ * Returns the new revision's template, without what its main container runs. The caller adds that:
+ * remoteBuildTemplate adds the source for Cloud Run to build, localBuildTemplate adds the local
+ * build's output.
+ *
+ * A new service starts from a template with just a container named after the service. An existing
+ * service starts from a copy of its live revision's template, so that the new revision keeps every
+ * setting that deploys don't manage: env vars, secrets, service account, CPU, memory, scaling, etc.
+ * These are removed from the copy:
+ * - `revision`, the live revision's name. Without it, Cloud Run names the new revision.
+ * - The main container's `image`, `sourceCode` and `buildConfig`. They say what the live revision
+ *   runs, and every deploy replaces them. A container can't have an image and a build config.
+ * - The main container's `command`, only if the live revision ran a local build's output. Then it's
+ *   that build's start command (see localBuildTemplate). Any other command stays, e.g. one that the
+ *   user set with gcloud.
+ *
+ * Then it sets what this deploy decides:
+ * - `baseImageUri`: the base image that prepare resolved, or none.
+ * - FIREBASE_CONFIG: from the linked Firebase Web App, or removed if this deploy unlinks the app.
+ * - The deploy message annotation: this deploy's message, or none.
+ *
  * Exported for testing.
  */
 export function revisionTemplate(svc: ServiceDeploy, message?: string): runv2.RevisionTemplate {
@@ -328,10 +346,8 @@ export function revisionTemplate(svc: ServiceDeploy, message?: string): runv2.Re
 }
 
 /**
- * Returns the revision to roll out for a remote build: revisionTemplate's, with a container that
- * Cloud Run builds from the uploaded build folder with App Hosting's buildpacks. `appFolder` is
- * the app folder's path in the build folder, or empty if they're the same folder (see
- * BuildDirectory in apphosting/util.ts).
+ * Returns the revision to roll out for a remote build: revisionTemplate's, with a main container
+ * that Cloud Run builds from the uploaded build folder (see remoteBuildConfig).
  */
 function remoteBuildTemplate(
   svc: ServiceDeploy,
@@ -344,25 +360,45 @@ function remoteBuildTemplate(
   // revisionTemplate has already checked that there's a container.
   const container = mainContainer(template)!;
   container.sourceCode = { cloudStorageSource: source };
-  container.buildConfig = {
+  container.buildConfig = remoteBuildConfig(svc, imageRepository, appFolder);
+  return template;
+}
+
+/**
+ * Returns how Cloud Run builds a remote build's image from the uploaded build folder, with App
+ * Hosting's buildpacks. Exported for testing.
+ * - `imageRepositoryUri`: the Artifact Registry repository that Cloud Run pushes the image to.
+ * - `buildpacksBuild.buildBaseImageUri`: only if the service has a base image, i.e. automatic base
+ *   image updates. Cloud Run requires it then. The image is built on the base image that it runs
+ *   on, like Cloud Functions does.
+ * - `buildpacksBuild.environmentVariables`: env vars for the build only. The container doesn't get
+ *   them at runtime. If two have the same name, the later one in this list wins:
+ *   1. GOOGLE_BUILDABLE: the app's folder in the build folder (`appFolder`, see buildDirectory in
+ *      apphosting/util.ts). Only set if the app is in an Nx or Turborepo monorepo, whose root is
+ *      the build folder.
+ *   2. The service's build env (see buildEnv.ts), without secrets: Cloud Run's build API only takes
+ *      plain values, and prepare already rejects secrets for remote builds.
+ *   3. X_GOOGLE_TARGET_PLATFORM=fah, so that the buildpacks build the app like App Hosting does,
+ *      with its framework adapters. They then need FIREBASE_OUTPUT_BUNDLE_DIR, the folder to write
+ *      App Hosting's output bundle to.
+ */
+export function remoteBuildConfig(
+  svc: ServiceDeploy,
+  imageRepository: string,
+  appFolder: string,
+): runv2.ContainerBuildConfig {
+  return {
     imageRepositoryUri: imageRepository,
     buildpacksBuild: {
-      // Cloud Run requires a build base image for a container with automatic base image updates.
-      // Build on the base image that the container runs on, like Cloud Functions does.
-      ...(container.baseImageUri ? { buildBaseImageUri: container.baseImageUri } : {}),
+      ...(svc.baseImage ? { buildBaseImageUri: svc.baseImage } : {}),
       environmentVariables: {
-        // In a monorepo, tell the buildpacks which folder in the build folder is the app.
         ...(appFolder ? { GOOGLE_BUILDABLE: appFolder } : {}),
-        // Cloud Build only takes plain values, so pass only the non-secret env vars. Prepare already
-        // rejects secrets for builds on Cloud Build.
         ...nonSecretValues(svc.buildEnv || {}),
-        // Use App Hosting's buildpacks, which need to know where to write the output bundle.
         X_GOOGLE_TARGET_PLATFORM: "fah",
         FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
       },
     },
   };
-  return template;
 }
 
 /**

@@ -535,19 +535,6 @@ export function merge(...backends: Backend[]): Backend {
 }
 
 /**
- * A helper utility to test whether a backend is empty.
- * Consumers should use this before assuming a backend is empty (e.g. nooping
- * deploy processes) because it's possible that fields have been added.
- */
-export function isEmptyBackend(backend: Backend): boolean {
-  return (
-    Object.keys(backend.requiredAPIs).length === 0 &&
-    Object.keys(backend.endpoints).length === 0 &&
-    Object.keys(backend.lifecycleHooks || {}).length === 0
-  );
-}
-
-/**
  * Deprecated fields for Runtime Config.
  * RuntimeConfig will not be available in production for GCFv2 functions.
  * Future refactors of this code should move this type deeper into the codebase.
@@ -807,11 +794,6 @@ export function matchingBackend(
     filtered.endpoints[endpoint.region][endpoint.id] = endpoint;
   }
   return filtered;
-}
-
-/** A helper utility for flattening all endpoints in a region since typing is a bit wonky. */
-export function regionalEndpoints(backend: Backend, region: string): Endpoint[] {
-  return backend.endpoints[region] ? Object.values<Endpoint>(backend.endpoints[region]) : [];
 }
 
 /** A curried function used for filters, returns a matcher for functions in a backend. */
