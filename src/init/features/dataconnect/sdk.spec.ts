@@ -277,6 +277,16 @@ describe("chooseApp", () => {
       { platform: Platform.WEB, directory: "web", frameworks: [Framework.REACT] },
     ]);
   });
+
+  it("should filter out unsupported platforms such as UNITY", async () => {
+    const apps: App[] = [{ platform: Platform.UNITY, directory: "." }];
+    detectAppsStub.resolves(apps);
+
+    const selectedApps = await chooseApp();
+
+    expect(selectedApps).to.be.empty;
+    expect(promptStub.called).to.be.false;
+  });
 });
 
 describe("askQuestions", () => {
@@ -423,6 +433,18 @@ describe("actuate", () => {
 
   it("should log a message and exit if no apps are found", async () => {
     detectAppsStub.resolves([]);
+
+    await actuate(setup, config);
+
+    expect(
+      logLabeledBulletStub.calledWith("dataconnect", "No apps to setup SQL Connect Generated SDKs"),
+    ).to.be.true;
+    expect(writeProjectFileStub.called).to.be.false;
+    expect(generateStub.called).to.be.false;
+  });
+
+  it("should log a message and exit if only unsupported apps (e.g. UNITY) are found", async () => {
+    detectAppsStub.resolves([{ platform: Platform.UNITY, directory: "." }]);
 
     await actuate(setup, config);
 
