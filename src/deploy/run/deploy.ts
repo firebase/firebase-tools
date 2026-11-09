@@ -253,8 +253,7 @@ async function upload(
 
 /**
  * Returns the region's source bucket, creating it if needed. Like App Hosting, each region has one
- * source bucket. Unlike App Hosting's, it keeps uploads: Cloud Run reads a service's upload again
- * whenever the service is edited, e.g. in the console.
+ * source bucket, which deletes uploads after 30 days.
  */
 async function sourceBucket(projectId: string, options: Options, region: string): Promise<string> {
   const baseName = `firebase-run-src-${await getProjectNumber(options)}-${region.toLowerCase()}`;
@@ -266,6 +265,7 @@ async function sourceBucket(projectId: string, options: Options, region: string)
       baseName,
       purposeLabel: `run-source-${region.toLowerCase()}`,
       location: region,
+      lifecycle: { rule: [{ action: { type: "Delete" }, condition: { age: 30 } }] },
     },
   });
 }

@@ -37,7 +37,6 @@ describe("run deploy", () => {
   const scratchDir = "/tmp/run-local-build-web-abc123";
   const builtApp = { bucket: "source-bucket", object: "web.tar.gz" };
   const deployed = { uri: "https://web.run.app" } as runv2.Service;
-  let upsertBucketStub: sinon.SinonStub;
   let createArchiveStub: sinon.SinonStub;
   let ensureRepoStub: sinon.SinonStub;
   let createServiceStub: sinon.SinonStub;
@@ -46,7 +45,7 @@ describe("run deploy", () => {
 
   beforeEach(() => {
     sinon.stub(getProjectNumber, "getProjectNumber").resolves("123");
-    upsertBucketStub = sinon.stub(gcs, "upsertBucket").resolves("source-bucket");
+    sinon.stub(gcs, "upsertBucket").resolves("source-bucket");
     createArchiveStub = sinon
       .stub(apphostingUtil, "createSourceDeployArchive")
       .resolves("/tmp/web.zip");
@@ -166,13 +165,6 @@ describe("run deploy", () => {
         pollTimeoutMs: 45 * 60 * 1000,
       },
     );
-  });
-
-  it("creates the source bucket without a rule that deletes uploads", async () => {
-    await deployOne({ config: web });
-
-    // Cloud Run reads a service's upload again whenever the service is edited.
-    expect(upsertBucketStub.firstCall.args[0].req).not.to.have.property("lifecycle");
   });
 
   describe("build logs", () => {
