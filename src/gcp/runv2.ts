@@ -176,7 +176,7 @@ export interface StorageSource {
  */
 export async function updateService(
   service: Omit<Service, ServiceOutputFields>,
-  opts: { updateMask?: string[]; pollTimeoutMs?: number; pollMaxBackoffMs?: number } = {},
+  opts: { updateMask?: string[]; pollTimeoutMs?: number } = {},
 ): Promise<Service> {
   // If no explicit updateMask is provided, infer the mask from the fields set on the service.
   let updateMask = opts.updateMask;
@@ -199,7 +199,6 @@ export async function updateService(
     apiVersion: API_VERSION,
     operationResourceName: res.body.name,
     masterTimeout: opts.pollTimeoutMs,
-    maxBackoff: opts.pollMaxBackoffMs,
   });
   return svc;
 }
@@ -213,7 +212,7 @@ export async function createService(
   location: string,
   serviceId: string,
   service: Omit<Service, ServiceOutputFields>,
-  opts: { pollTimeoutMs?: number; pollMaxBackoffMs?: number } = {},
+  opts: { pollTimeoutMs?: number } = {},
 ): Promise<Service> {
   // The create API expects the name to be empty or unset, as the parent is in the URL
   // and resource ID is a query param.
@@ -233,7 +232,6 @@ export async function createService(
     apiVersion: API_VERSION,
     operationResourceName: res.body.name,
     masterTimeout: opts.pollTimeoutMs,
-    maxBackoff: opts.pollMaxBackoffMs,
   });
   return svc;
 }

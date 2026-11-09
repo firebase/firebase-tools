@@ -17,7 +17,6 @@ import { deploy, localBuildTemplate, remoteBuildConfig, revisionTemplate } from 
 
 const NODEJS22 = "us-central1-docker.pkg.dev/serverless-runtimes/google-22/runtimes/nodejs22";
 const DEPLOY_MESSAGE = "firebase.google.com/deploy-message";
-const ROLLOUT_POLLING = { pollTimeoutMs: 45 * 60 * 1000, pollMaxBackoffMs: 10 * 1000 };
 const APP_ID = "firebase.google.com/app-id";
 
 describe("run deploy", () => {
@@ -101,7 +100,7 @@ describe("run deploy", () => {
       ingress: "INGRESS_TRAFFIC_ALL",
       launchStage: "ALPHA",
     });
-    expect(createServiceStub.firstCall.args[4]).to.deep.equal(ROLLOUT_POLLING);
+    expect(createServiceStub.firstCall.args[4]).to.deep.equal({ pollTimeoutMs: 45 * 60 * 1000 });
     expect(svc.deployed).to.deep.equal({ uri: "https://web.run.app" });
   });
 
@@ -162,7 +161,10 @@ describe("run deploy", () => {
         ],
         launchStage: "ALPHA",
       },
-      { updateMask: ["template", "traffic", "annotations", "launchStage"], ...ROLLOUT_POLLING },
+      {
+        updateMask: ["template", "traffic", "annotations", "launchStage"],
+        pollTimeoutMs: 45 * 60 * 1000,
+      },
     );
   });
 

@@ -622,7 +622,6 @@ describe("runv2", () => {
       await runv2.updateService(BASE_RUN_SERVICE, {
         updateMask: ["template", "traffic"],
         pollTimeoutMs: 60000,
-        pollMaxBackoffMs: 10000,
       });
 
       expect(patchStub).to.have.been.calledOnceWithExactly(
@@ -633,7 +632,6 @@ describe("runv2", () => {
       expect(pollStub).to.have.been.calledWithMatch({
         operationResourceName: "operations/op1",
         masterTimeout: 60000,
-        maxBackoff: 10000,
       });
     });
 
@@ -643,7 +641,6 @@ describe("runv2", () => {
 
       await runv2.createService(PROJECT_ID, LOCATION, SERVICE_ID, BASE_RUN_SERVICE, {
         pollTimeoutMs: 60000,
-        pollMaxBackoffMs: 10000,
       });
 
       const expectedBody: Partial<runv2.Service> = { ...BASE_RUN_SERVICE };
@@ -656,7 +653,6 @@ describe("runv2", () => {
       expect(pollStub).to.have.been.calledWithMatch({
         operationResourceName: "operations/op2",
         masterTimeout: 60000,
-        maxBackoff: 10000,
       });
     });
   });
