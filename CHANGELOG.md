@@ -1,4 +1,8 @@
-- Updated chokidar dependency to ^4.0.3 to remove vulnerable braces dependency (#11308).
-- Fixed an issue where the Firebase MCP server referred to `update_firebase_environment` instead of `firebase_update_environment`.
-- Fixed CVE-2026-111181 by updating `body-parser` dependency.
-- Fixed the Firestore emulator exiting when it could not watch the rules file for changes. It now logs a warning instead. (#4298)
+- Improved Auth emulator startup time by compiling validation schemas lazily. (#11176)
+- Updated the Firebase SQL Connect local toolkit to v3.4.26, which includes the following changes:
+  - Internal improvements and bug fixes.
+- Fixed the emulators startup message showing 127.0.0.1 for the Emulator UI and Hub when they listen on 0.0.0.0; it now also prints the address they listen on. (#6222)
+- Fixed a race condition across a second boundary during `accounts:signUp` in the Auth emulator where `validSince` could exceed `auth_time`. (#11413)
+- Added local machine config persistence to `appcheck:debugtokens:create`, `--local` support to `appcheck:debugtokens:list`, and `appcheck:debugtokens:prune` to clean up stale local debug tokens.
+- Fixed `database:import` failing with an unhandled promise rejection when a batch write fails.
+- Fixed emulator crashes when a Firestore rules reload or emulator HTTP handler throws.
