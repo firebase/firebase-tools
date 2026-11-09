@@ -19,10 +19,11 @@ import { FIREBASE_APP_ANNOTATION, mainContainer } from "./util";
 
 const DEPLOY_MESSAGE_ANNOTATION = "firebase.google.com/deploy-message";
 /**
- * Cloud Run can queue a build for 6 minutes, run it for 30, then take 4 to start the revision.
- * Check at least every 10 seconds, so that the deploy ends soon after the rollout does.
+ * Rolling out a revision can take longer than the operation poller's default timeout. Cloud Run
+ * builds the image first: it can queue the build for 6 minutes, run it for 30, then take 4 to start
+ * the revision.
  */
-const ROLLOUT_POLLING = { pollTimeoutMs: 45 * 60 * 1000, pollMaxBackoffMs: 10 * 1000 } as const;
+const ROLLOUT_TIMEOUT_MS = 45 * 60 * 1000;
 /**
  * Cloud Run's build API is in alpha, so services have to allow alpha features. This only allows
  * them: Cloud Run reports the launch stage of the features that a service actually uses.
@@ -394,7 +395,9 @@ function createNewService(
     ingress: "INGRESS_TRAFFIC_ALL",
     launchStage: LAUNCH_STAGE,
   };
-  return runv2.createService(projectId, region, serviceId, service, ROLLOUT_POLLING);
+  return runv2.createService(projectId, region, serviceId, service, {
+    pollTimeoutMs: ROLLOUT_TIMEOUT_MS,
+  });
 }
 
 /** Rolls out a new revision of an existing service and sends it all traffic. */
@@ -416,7 +419,7 @@ function deployRevision(
   };
   return runv2.updateService(update, {
     updateMask: ["template", "traffic", "annotations", "launchStage"],
-    ...ROLLOUT_POLLING,
+    pollTimeoutMs: ROLLOUT_TIMEOUT_MS,
   });
 }
 
