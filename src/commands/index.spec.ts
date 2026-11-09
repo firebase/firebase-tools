@@ -61,4 +61,31 @@ describe("commands/index", () => {
     const registeredNames = program.commands.map((cmd: { name: () => string }) => cmd.name());
     expect(registeredNames).to.include("crashlytics:setup");
   });
+
+  it("registers appcheck:debugtokens create, list, prune, and delete commands", () => {
+    const program = new Program();
+    const client = load({
+      cli: program as CLIClient["cli"],
+      errorOut: sinon.stub(),
+    });
+
+    const debugtokens = (client.appcheck as { debugtokens?: Record<string, unknown> })?.debugtokens;
+    expect(debugtokens).to.be.an("object");
+    expect(Object.keys(debugtokens ?? {})).to.have.members(["create", "list", "prune", "delete"]);
+
+    for (const cmdModule of Object.values(debugtokens ?? {})) {
+      expect(isCommandModule(cmdModule)).to.be.true;
+      if (isCommandModule(cmdModule)) {
+        cmdModule.load();
+      }
+    }
+
+    const registeredNames = program.commands.map((cmd: { name: () => string }) => cmd.name());
+    expect(registeredNames).to.include.members([
+      "appcheck:debugtokens:create",
+      "appcheck:debugtokens:list",
+      "appcheck:debugtokens:prune",
+      "appcheck:debugtokens:delete",
+    ]);
+  });
 });
