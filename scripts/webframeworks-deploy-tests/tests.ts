@@ -21,7 +21,7 @@ const I18N_BASE = "";
 const DEFAULT_LANG = "en";
 const LOG_FILE = "firebase-debug.log";
 const NEXT_SOURCE = `${__dirname}/nextjs`;
-const PATH_SEPARATOR = IS_WINDOWS ? `\\\\` : `\/`;
+const PATH_SEPARATOR = IS_WINDOWS ? `\\\\` : `/`;
 
 async function getFilesListFromDir(dir: string): Promise<string[]> {
   const files = await glob(`${dir}/**/*`, { nodir: true });
@@ -412,8 +412,8 @@ describe("webframeworks", function (this) {
           join(I18N_BASE, locale, NEXT_BASE_PATH, "pages", "fallback", "1.html"),
           join(I18N_BASE, locale, NEXT_BASE_PATH, "pages", "fallback", "2.html"),
           join(I18N_BASE, locale, NEXT_BASE_PATH, "pages", "ssg.html"),
-          // TODO(jamesdaniels) figure out why 404 isn't being translated
-          // `/${I18N_BASE}/${locale}/${NEXT_BASE_PATH}/404.html`,
+          // Next.js >= 16.4 also emits a translated 404 page per locale.
+          ...(locale ? [join(I18N_BASE, locale, NEXT_BASE_PATH, "404.html")] : []),
           join(I18N_BASE, locale, NEXT_BASE_PATH, "500.html"),
           join(I18N_BASE, locale, NEXT_BASE_PATH, "index.html"),
         ])
@@ -447,8 +447,8 @@ describe("webframeworks", function (this) {
       const distDir = ".next";
 
       const UNEXPECTED_PATTERNS = [
-        `${distDir}\/cache\/.*-development`,
-        `${distDir}\/cache\/eslint`,
+        `${distDir}/cache/.*-development`,
+        `${distDir}/cache/eslint`,
       ].map((it) => new RegExp(it));
 
       const files = await getFilesListFromDir(`${NEXT_OUTPUT_PATH}/functions/${distDir}`);
@@ -503,9 +503,9 @@ describe("webframeworks", function (this) {
 
       const EXPECTED_PATTERNS = ["", "en", "fr", "es"]
         .flatMap((locale) => [
-          [I18N_BASE, locale, ANGULAR_BASE_PATH, `main\.[^\.]+\.js`],
-          [I18N_BASE, locale, ANGULAR_BASE_PATH, `polyfills\.[^\.]+\.js`],
-          [I18N_BASE, locale, ANGULAR_BASE_PATH, `styles\.[^\.]+\.css`],
+          [I18N_BASE, locale, ANGULAR_BASE_PATH, `main.[^.]+.js`],
+          [I18N_BASE, locale, ANGULAR_BASE_PATH, `polyfills.[^.]+.js`],
+          [I18N_BASE, locale, ANGULAR_BASE_PATH, `styles.[^.]+.css`],
         ])
         .map((it) => new RegExp(it.filter(Boolean).join(PATH_SEPARATOR)));
 
