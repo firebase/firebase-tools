@@ -7,6 +7,7 @@ import {
   ApplicationIdSchema,
   EventFilter,
   EventFilterSchema,
+  FilterExpressionSchema,
   filterToUrlSearchParams,
 } from "./filters";
 import { FirebaseError } from "../error";
@@ -26,6 +27,9 @@ export const ReportInputSchema = z.object({
   appId: ApplicationIdSchema,
   report: CrashlyticsReportSchema,
   filter: EventFilterSchema,
+  filterExpression: FilterExpressionSchema.describe(
+    `An AIP-160 filter expression for custom keys (e.g. 'custom_keys.env = "prod"'). Only supported for web apps; check the report's usage to see whether it supports filter_expression.`,
+  ),
   pageSize: z.number().optional().describe("Number of rows to return").default(DEFAULT_PAGE_SIZE),
   granularity: TimeGranularitySchema,
 });
@@ -85,6 +89,7 @@ export async function listReports(appId: string): Promise<ListReportsResponse> {
  * @param filter The report will count only events matching the given filters
  * @param pageSize Number of rows to return, generally defaulting to 10
  * @param granularity Optional time granularity for report metrics
+ * @param filterExpression Optional AIP-160 filter expression for custom keys
  * @return A Report object, grouped appropriately with metrics for eventCount and impactedUsers
  */
 export async function getReport(
@@ -93,6 +98,7 @@ export async function getReport(
   filter: EventFilter,
   pageSize = DEFAULT_PAGE_SIZE,
   granularity?: TimeGranularity,
+  filterExpression?: string,
 ): Promise<Report> {
   const requestProjectNumber = parseProjectNumber(appId);
   let availableReports = reportsCache.get(appId);
@@ -121,6 +127,9 @@ export async function getReport(
   queryParams.set("page_size", `${pageSize}`);
   if (granularity) {
     queryParams.set("granularity", granularity);
+  }
+  if (filterExpression) {
+    queryParams.set("filter_expression", filterExpression);
   }
   logger.debug(
     `[crashlytics] report ${reportName} called with appId: ${appId} filter: ${queryParams.toString()}, page_size: ${pageSize}`,
