@@ -139,8 +139,8 @@ describe("events", () => {
       expect(formatted[4]).to.equal("... frames omitted ...");
     });
 
-    it("should preserve all frames when full is true", () => {
-      const formatted = formatFrames(makeFrames(25), 20, true);
+    it("should preserve all frames when frame count does not exceed maxFrames", () => {
+      const formatted = formatFrames(makeFrames(25), Infinity);
       expect(formatted).to.have.length(25);
       expect(formatted[24]).to.equal("at com.example.App.fn24 (App.kt:25)");
     });

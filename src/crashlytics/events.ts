@@ -124,15 +124,11 @@ export async function batchGetEvents(
 }
 
 /**
- * Formats stack frames into readable lines, truncating when exceeding `maxFrames` unless `full` is set.
+ * Formats stack frames into readable lines, truncating when exceeding `maxFrames`.
  */
-export function formatFrames(
-  origFrames: Frame[],
-  maxFrames = DEFAULT_MAX_FRAMES,
-  full = false,
-): string[] {
+export function formatFrames(origFrames: Frame[], maxFrames = DEFAULT_MAX_FRAMES): string[] {
   const frames: Frame[] = origFrames || [];
-  const shouldTruncate = !full && frames.length > maxFrames;
+  const shouldTruncate = frames.length > maxFrames;
   const sliceCount = maxFrames > 1 ? maxFrames - 1 : 1;
   const framesToFormat = shouldTruncate ? frames.slice(0, sliceCount) : frames;
   const formatted = framesToFormat.map((frame) => {
@@ -163,6 +159,7 @@ export function toText(event: Event, options: EventFormatOptions = {}): Record<s
     return {};
   }
   const { maxFrames = DEFAULT_MAX_FRAMES, full = false } = options;
+  const effectiveMaxFrames = full ? Infinity : maxFrames;
   const result: Record<string, string> = {};
   for (const [key, value] of Object.entries(event)) {
     if (key === "logs") {
@@ -202,7 +199,7 @@ export function toText(event: Event, options: EventFormatOptions = {}): Record<s
       }
       const threadStrings = threads.map((thread) => {
         const header = `Thread: ${thread.name || thread.threadId || ""}${thread.crashed ? " (crashed)" : ""}`;
-        const frameStrings = formatFrames(thread.frames || [], maxFrames, full);
+        const frameStrings = formatFrames(thread.frames || [], effectiveMaxFrames);
         return [header, ...frameStrings].join("\n");
       });
       result["threads"] = threadStrings.join("\n\n");
@@ -214,7 +211,7 @@ export function toText(event: Event, options: EventFormatOptions = {}): Record<s
       const exceptionStrings = exceptions.map((exception) => {
         const header = exception.nested ? "Caused by: " : "";
         const exceptionHeader = `${header}${exception.type || ""}: ${exception.exceptionMessage || ""}`;
-        const frameStrings = formatFrames(exception.frames || [], maxFrames, full);
+        const frameStrings = formatFrames(exception.frames || [], effectiveMaxFrames);
         return [exceptionHeader, ...frameStrings].join("\n");
       });
       result["exceptions"] = exceptionStrings.join("\n\n");
@@ -225,7 +222,7 @@ export function toText(event: Event, options: EventFormatOptions = {}): Record<s
       const errors = (value as Error[]) || [];
       const errorStrings = errors.map((error) => {
         const header = `Error: ${error.title || "error"}`;
-        const frameStrings = formatFrames(error.frames || [], maxFrames, full);
+        const frameStrings = formatFrames(error.frames || [], effectiveMaxFrames);
         return [header, ...frameStrings].join("\n");
       });
       result["errors"] = errorStrings.join("\n\n");
