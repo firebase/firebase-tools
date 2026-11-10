@@ -1,3 +1,5 @@
+- Added an optional `filterExpression` parameter to the Crashlytics MCP `list_events` tool to filter by custom keys.
+- Fixed Crashlytics filter validation rejecting web app version names without a build number.
 - Improved Auth emulator startup time by compiling validation schemas lazily. (#11176)
 - Updated the Firebase SQL Connect local toolkit to v3.4.26, which includes the following changes:
   - Internal improvements and bug fixes.
