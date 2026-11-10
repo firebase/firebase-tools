@@ -9,7 +9,7 @@ import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { Constants } from "./constants";
 import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger } from "./emulatorLogger";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
 import { connectableHostname } from "../utils";
 
 export interface DatabaseEmulatorArgs {
@@ -25,7 +25,7 @@ export interface DatabaseEmulatorArgs {
 
 export class DatabaseEmulator implements EmulatorInstance {
   private importedNamespaces: string[] = [];
-  private rulesWatcher?: chokidar.FSWatcher;
+  private rulesWatchers: chokidar.FSWatcher[] = [];
   private logger = EmulatorLogger.forEmulator(Emulators.DATABASE);
 
   constructor(private args: DatabaseEmulatorArgs) {}
@@ -48,26 +48,32 @@ export class DatabaseEmulator implements EmulatorInstance {
           continue;
         }
 
-        this.rulesWatcher = chokidar.watch(c.rules, { persistent: true, ignoreInitial: true });
-        this.rulesWatcher.on("change", async () => {
-          // There have been some race conditions reported (on Windows) where reading the
-          // file too quickly after the watcher fires results in an empty file being read.
-          // Adding a small delay prevents that at very little cost.
-          await new Promise((res) => setTimeout(res, 5));
+        const watcher = chokidar.watch(c.rules, { persistent: true, ignoreInitial: true });
+        this.rulesWatchers.push(watcher);
+        watcher.on("change", () => {
+          const update = async (): Promise<void> => {
+            // There have been some race conditions reported (on Windows) where reading the
+            // file too quickly after the watcher fires results in an empty file being read.
+            // Adding a small delay prevents that at very little cost.
+            await new Promise((res) => setTimeout(res, 5));
 
-          this.logger.logLabeled(
-            "BULLET",
-            "database",
-            `Change detected, updating rules for ${c.instance}...`,
-          );
+            this.logger.logLabeled(
+              "BULLET",
+              "database",
+              `Change detected, updating rules for ${c.instance}...`,
+            );
 
-          try {
-            await this.updateRules(c.instance, c.rules);
-            this.logger.logLabeled("SUCCESS", "database", "Rules updated.");
-          } catch (e: any) {
-            this.logger.logLabeled("WARN", "database", this.prettyPrintRulesError(c.rules, e));
-            this.logger.logLabeled("WARN", "database", "Failed to update rules");
-          }
+            try {
+              await this.updateRules(c.instance, c.rules);
+              this.logger.logLabeled("SUCCESS", "database", "Rules updated.");
+            } catch (e: any) {
+              this.logger.logLabeled("WARN", "database", this.prettyPrintRulesError(c.rules, e));
+              this.logger.logLabeled("WARN", "database", "Failed to update rules");
+            }
+          };
+          update().catch((err: unknown) => {
+            this.logger.logLabeled("WARN", "database", `Failed to update rules: ${getErrMsg(err)}`);
+          });
         });
       }
     }
@@ -97,7 +103,9 @@ export class DatabaseEmulator implements EmulatorInstance {
     }
   }
 
-  stop(): Promise<void> {
+  async stop(): Promise<void> {
+    await Promise.allSettled(this.rulesWatchers.map((w) => w.close()));
+    this.rulesWatchers = [];
     return downloadableEmulators.stop(Emulators.DATABASE);
   }
 

@@ -83,6 +83,7 @@ describe("crashlytics:sourcemap:upload", () => {
     const args = gcsMock.upsertBucket.firstCall.args;
     expect(args[0].req.baseName).to.equal("firebasecrashlytics-sourcemaps-12345-us-central1");
     expect(args[0].req.location).to.equal("US-CENTRAL1");
+    expect(args[0].req.autoclass).to.deep.equal({ enabled: true });
   });
 
   it("should create a custom cloud storage bucket", async () => {
@@ -97,6 +98,7 @@ describe("crashlytics:sourcemap:upload", () => {
       "firebasecrashlytics-sourcemaps-12345-a-different-location",
     );
     expect(args[0].req.location).to.equal("A-DIFFERENT-LOCATION");
+    expect(args[0].req.autoclass).to.deep.equal({ enabled: true });
   });
 
   it("should throw an error if the mapping file path is invalid", async () => {
@@ -353,11 +355,12 @@ describe("crashlytics:sourcemap:upload", () => {
       .getCalls()
       .map((call) => call.args[1] as SourceMap)
       .sort((a, b) => a.obfuscatedFilePath.localeCompare(b.obfuscatedFilePath));
-    expect(payloads[0].name).to.match(
-      /projects\/test-project\/locations\/global\/mappingFiles\/35370827/,
+    const expectedUid = utils.murmurHashV3("mock_mapping.js.map");
+    expect(payloads[0].name).to.equal(
+      `projects/test-project/locations/global/mappingFiles/${expectedUid}`,
     );
     expect(payloads[0]).to.deep.equal({
-      name: "projects/test-project/locations/global/mappingFiles/35370827",
+      name: `projects/test-project/locations/global/mappingFiles/${expectedUid}`,
       appId: "test-app",
       version: "a".repeat(40),
       obfuscatedFilePath: "/mock_mapping.js.map",

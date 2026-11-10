@@ -12,9 +12,24 @@ export interface ListDebugTokensResponse {
   nextPageToken?: string;
 }
 
+export type LocalDebugTokenStatus = "ACTIVE" | "REVOKED" | "APP_DELETED" | "UNCHECKED";
+
+export interface LocalDebugTokenEntry {
+  appId: string;
+  tokenPrefix: string;
+  status: LocalDebugTokenStatus;
+  name?: string;
+}
+
+export interface PruneDebugTokensResult {
+  prunedAppIds: string[];
+}
+
 export interface AppCheckDebugOptions extends Options {
   app?: string;
   displayName?: string;
+  saveLocal?: boolean;
+  local?: boolean;
 }
 
 /** How App Check treats requests to a service. */

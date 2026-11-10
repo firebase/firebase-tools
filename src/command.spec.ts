@@ -2,6 +2,8 @@ import { expect } from "chai";
 import { Command as Program } from "commander";
 import * as sinon from "sinon";
 import * as rc from "./rc";
+import * as track from "./track";
+import * as utils from "./utils";
 import nock from "./test/helpers/nock";
 import { configstore } from "./configstore";
 
@@ -267,6 +269,75 @@ describe("Command", () => {
 
     expect(result).to.deep.eq({
       except: "firestore,hosting,auth",
+    });
+  });
+
+  describe("register", () => {
+    let exitStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sinon.stub(configstore, "get").returns({});
+      sinon
+        .stub(rc, "loadRC")
+        .returns(new rc.RC(undefined, { projects: { default: "default-project" } }));
+      sinon.stub(track, "trackGA4").resolves();
+      sinon.stub(track, "trackEmulator").resolves();
+      exitStub = sinon.stub(process, "exit");
+    });
+
+    afterEach(() => {
+      sinon.restore();
+      nock.cleanAll();
+    });
+
+    it("should still call client.errorOut when analytics tracking times out on command error", async () => {
+      const deployError = new FirebaseError("There was an error deploying functions", { exit: 2 });
+      sinon.stub(utils, "withTimeout").rejects(new Error("Timed out."));
+      let resolveErrorOut!: () => void;
+      const errorOutCalled = new Promise<void>((resolve) => {
+        resolveErrorOut = resolve;
+      });
+      const errorOutStub = sinon.stub().callsFake(() => {
+        resolveErrorOut();
+      });
+      const client = {
+        cli: new Program(),
+        errorOut: errorOutStub,
+      } as unknown as CLIClient;
+      command.action(() => {
+        throw deployError;
+      });
+      command.register(client);
+
+      client.cli.parse(["node", "firebase", "example"]);
+      await errorOutCalled;
+
+      expect(errorOutStub.calledOnceWithExactly(deployError)).to.be.true;
+      expect(exitStub.called).to.be.false;
+    });
+
+    it("should exit cleanly without calling client.errorOut when analytics tracking times out on success", async () => {
+      sinon.stub(utils, "withTimeout").rejects(new Error("Timed out."));
+      let resolveExit!: () => void;
+      const exitCalled = new Promise<void>((resolve) => {
+        resolveExit = resolve;
+      });
+      exitStub.callsFake((() => {
+        resolveExit();
+      }) as unknown as typeof process.exit);
+      const errorOutStub = sinon.stub();
+      const client = {
+        cli: new Program(),
+        errorOut: errorOutStub,
+      } as unknown as CLIClient;
+      command.action(() => "ok");
+      command.register(client);
+
+      client.cli.parse(["node", "firebase", "example"]);
+      await exitCalled;
+
+      expect(exitStub.calledOnce).to.be.true;
+      expect(errorOutStub.called).to.be.false;
     });
   });
 });

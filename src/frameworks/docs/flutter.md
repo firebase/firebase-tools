@@ -1,23 +1,28 @@
-Project: /docs/hosting/_project.yaml
-Book: /docs/_book.yaml
-page_type: guide
-
-{% include "_shared/apis/console/_local_variables.html" %}
-{% include "_local_variables.html" %}
-{% include "docs/hosting/_local_variables.html" %}
-
-<link rel="stylesheet" type="text/css" href="/styles/docs.css" />
-
 # Integrate Flutter Web
 
-With the Firebase framework-aware {{cli}}, you can deploy your Flutter application
+With the Firebase framework-aware CLI, you can deploy your Flutter application
 to Firebase.
 
-<<_includes/_preview-disclaimer.md>>
+Note: Framework-aware Hosting is an early public preview. This means
+that the functionality might change in backward-incompatible ways. A preview
+release is not subject to any SLA or deprecation policy and may receive limited
+or no support.
 
-<<_includes/_before-you-begin.md>>
+## Before you begin
 
-<<_includes/_initialize-firebase.md>>
+Before you get started deploying your app to Firebase,
+review the following requirements and options:
+
+- Firebase CLI version 12.1.0 or later. Make sure to
+  [install the CLI](https://firebase.google.com/docs/cli#setup_update_cli)
+  using your preferred method.
+- Optional: Billing enabled on your Firebase project
+  (required if you plan to use SSR)
+
+## Initialize Firebase
+
+To get started, initialize Firebase for your framework project.
+Modify `firebase.json` for an existing project.
 
 ### Initialize an existing project
 

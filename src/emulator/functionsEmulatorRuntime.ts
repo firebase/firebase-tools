@@ -869,7 +869,7 @@ async function main(): Promise<void> {
   app.all("/favicon.ico|/robots.txt", (req, res) => {
     res.status(404).send();
   });
-  app.all(`/*`, async (req: express.Request, res: express.Response) => {
+  async function handleRequest(req: express.Request, res: express.Response): Promise<void> {
     try {
       const trigger = FUNCTION_TARGET_NAME.split(".").reduce((mod, functionTargetPart) => {
         return mod?.[functionTargetPart];
@@ -880,7 +880,7 @@ async function main(): Promise<void> {
 
       switch (FUNCTION_SIGNATURE) {
         case "event":
-        case "cloudevent":
+        case "cloudevent": {
           let reqBody;
           const rawBody = (req as RequestWithRawBody).rawBody;
           if (EventUtils.isBinaryCloudEvent(req)) {
@@ -892,13 +892,21 @@ async function main(): Promise<void> {
           await processBackground(trigger, reqBody, FUNCTION_SIGNATURE);
           res.send({ status: "acknowledged" });
           break;
+        }
         case "http":
           await runHTTPS(trigger, [req, res]);
       }
     } catch (err: unknown) {
       new EmulatorLog("FATAL", "runtime-error", getErrStack(err)).log();
-      res.status(500).send(getErrMsg(err));
+      if (!res.headersSent) {
+        res.status(500).send(getErrMsg(err));
+      }
     }
+  }
+
+  // handleRequest catches all errors and responds with status 500
+  app.all(`/*`, (req: express.Request, res: express.Response) => {
+    void handleRequest(req, res);
   });
   app.listen(process.env.PORT, () => {
     logDebug(`Listening to port: ${process.env.PORT}`);

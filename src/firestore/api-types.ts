@@ -63,7 +63,7 @@ export interface SearchConfig {
 
 export interface VectorConfig {
   dimension: number;
-  flat?: {};
+  flat?: Record<string, unknown>;
 }
 
 export enum State {

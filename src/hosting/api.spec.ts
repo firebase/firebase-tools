@@ -294,12 +294,12 @@ describe("hosting", () => {
 
     it("should make the API requests to create a version", async () => {
       const VERSION = { status: "CREATED" } as const;
-      const FULL_NAME = `projects/-/sites/${SITE}/versions/my-new-version`;
+      const FULL_NAME = `projects/${PROJECT_ID}/sites/${SITE}/versions/my-new-version`;
       nock(hostingApiOrigin())
-        .post(`/v1beta1/projects/-/sites/${SITE}/versions`, VERSION)
+        .post(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/versions`, VERSION)
         .reply(200, { name: FULL_NAME });
 
-      const res = await hostingApi.createVersion(SITE, VERSION);
+      const res = await hostingApi.createVersion(PROJECT_ID, SITE, VERSION);
 
       expect(res).to.deep.equal(FULL_NAME);
       expect(nock.isDone()).to.be.true;
@@ -308,13 +308,12 @@ describe("hosting", () => {
     it("should throw an error if the server returns an error", async () => {
       const VERSION = { status: "CREATED" } as const;
       nock(hostingApiOrigin())
-        .post(`/v1beta1/projects/-/sites/${SITE}/versions`, VERSION)
+        .post(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/versions`, VERSION)
         .reply(500, { error: "server boo-boo" });
 
-      await expect(hostingApi.createVersion(SITE, VERSION)).to.eventually.be.rejectedWith(
-        FirebaseError,
-        /server boo-boo/,
-      );
+      await expect(
+        hostingApi.createVersion(PROJECT_ID, SITE, VERSION),
+      ).to.eventually.be.rejectedWith(FirebaseError, /server boo-boo/);
 
       expect(nock.isDone()).to.be.true;
     });
@@ -326,11 +325,11 @@ describe("hosting", () => {
     it("should make the API requests to update a version", async () => {
       const VERSION = { status: "FINALIZED" } as const;
       nock(hostingApiOrigin())
-        .patch(`/v1beta1/projects/-/sites/${SITE}/versions/my-version`, VERSION)
+        .patch(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/versions/my-version`, VERSION)
         .query({ updateMask: "status" })
         .reply(200, VERSION);
 
-      const res = await hostingApi.updateVersion(SITE, "my-version", VERSION);
+      const res = await hostingApi.updateVersion(PROJECT_ID, SITE, "my-version", VERSION);
 
       expect(res).to.deep.equal(VERSION);
       expect(nock.isDone()).to.be.true;
@@ -339,12 +338,12 @@ describe("hosting", () => {
     it("should throw an error if the server returns an error", async () => {
       const VERSION = { status: "FINALIZED" } as const;
       nock(hostingApiOrigin())
-        .patch(`/v1beta1/projects/-/sites/${SITE}/versions/my-version`, VERSION)
+        .patch(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/versions/my-version`, VERSION)
         .query({ updateMask: "status" })
         .reply(500, { error: "server boo-boo" });
 
       await expect(
-        hostingApi.updateVersion(SITE, "my-version", VERSION),
+        hostingApi.updateVersion(PROJECT_ID, SITE, "my-version", VERSION),
       ).to.eventually.be.rejectedWith(FirebaseError, /server boo-boo/);
 
       expect(nock.isDone()).to.be.true;
@@ -355,7 +354,7 @@ describe("hosting", () => {
     afterEach(nock.cleanAll);
 
     const VERSION_1: hostingApi.Version = {
-      name: `projects/-/sites/${SITE}/versions/v1`,
+      name: `projects/${PROJECT_ID}/sites/${SITE}/versions/v1`,
       status: "FINALIZED",
       config: {},
       createTime: "now",
@@ -367,48 +366,50 @@ describe("hosting", () => {
     };
     const VERSION_2 = {
       ...VERSION_1,
-      name: `projects/-/sites/${SITE}/versions/v2`,
+      name: `projects/${PROJECT_ID}/sites/${SITE}/versions/v2`,
     };
 
     it("returns no versions if no versions are returned", async () => {
-      nock(hostingApiOrigin()).get(`/v1beta1/projects/-/sites/${SITE}/versions`).reply(200, {});
+      nock(hostingApiOrigin())
+        .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/versions`)
+        .reply(200, {});
       nock(hostingApiOrigin());
 
-      const versions = await hostingApi.listVersions(SITE);
+      const versions = await hostingApi.listVersions(PROJECT_ID, SITE);
       expect(versions).deep.equals([]);
       expect(nock.isDone()).to.be.true;
     });
 
     it("returns a single page of versions", async () => {
       nock(hostingApiOrigin())
-        .get(`/v1beta1/projects/-/sites/${SITE}/versions`)
+        .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/versions`)
         .reply(200, { versions: [VERSION_1] });
       nock(hostingApiOrigin());
 
-      const versions = await hostingApi.listVersions(SITE);
+      const versions = await hostingApi.listVersions(PROJECT_ID, SITE);
       expect(versions).deep.equals([VERSION_1]);
       expect(nock.isDone()).to.be.true;
     });
 
     it("paginates through many versions", async () => {
       nock(hostingApiOrigin())
-        .get(`/v1beta1/projects/-/sites/${SITE}/versions`)
+        .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/versions`)
         .reply(200, { versions: [VERSION_1], nextPageToken: "page2" });
       nock(hostingApiOrigin())
-        .get(`/v1beta1/projects/-/sites/${SITE}/versions?pageToken=page2`)
+        .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/versions?pageToken=page2`)
         .reply(200, { versions: [VERSION_2] });
 
-      const versions = await hostingApi.listVersions(SITE);
+      const versions = await hostingApi.listVersions(PROJECT_ID, SITE);
       expect(versions).deep.equals([VERSION_1, VERSION_2]);
       expect(nock.isDone()).to.be.true;
     });
 
     it("handles errors", async () => {
       nock(hostingApiOrigin())
-        .get(`/v1beta1/projects/-/sites/${SITE}/versions`)
+        .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/versions`)
         .reply(500, { error: "server boo-boo" });
 
-      await expect(hostingApi.listVersions(SITE)).to.eventually.be.rejectedWith(
+      await expect(hostingApi.listVersions(PROJECT_ID, SITE)).to.eventually.be.rejectedWith(
         FirebaseError,
         /server boo-boo/,
       );
@@ -424,7 +425,7 @@ describe("hosting", () => {
       const SOURCE_VERSION = "my-version";
       const VERSION = { name: "my-new-version" };
       nock(hostingApiOrigin())
-        .post(`/v1beta1/projects/-/sites/${SITE}/versions:clone`, {
+        .post(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/versions:clone`, {
           sourceVersion: SOURCE_VERSION,
           finalize: false,
         })
@@ -437,7 +438,7 @@ describe("hosting", () => {
           response: VERSION,
         });
 
-      const res = await hostingApi.cloneVersion(SITE, SOURCE_VERSION);
+      const res = await hostingApi.cloneVersion(PROJECT_ID, SITE, SOURCE_VERSION);
 
       expect(res).to.deep.equal(VERSION);
       expect(nock.isDone()).to.be.true;
@@ -446,16 +447,15 @@ describe("hosting", () => {
     it("should throw an error if the server returns an error", async () => {
       const SOURCE_VERSION = "my-version";
       nock(hostingApiOrigin())
-        .post(`/v1beta1/projects/-/sites/${SITE}/versions:clone`, {
+        .post(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/versions:clone`, {
           sourceVersion: SOURCE_VERSION,
           finalize: false,
         })
         .reply(500, { error: "server boo-boo" });
 
-      await expect(hostingApi.cloneVersion(SITE, SOURCE_VERSION)).to.eventually.be.rejectedWith(
-        FirebaseError,
-        /server boo-boo/,
-      );
+      await expect(
+        hostingApi.cloneVersion(PROJECT_ID, SITE, SOURCE_VERSION),
+      ).to.eventually.be.rejectedWith(FirebaseError, /server boo-boo/);
 
       expect(nock.isDone()).to.be.true;
     });
@@ -470,11 +470,11 @@ describe("hosting", () => {
       const VERSION = "version";
       const VERSION_NAME = `sites/${SITE}/versions/${VERSION}`;
       nock(hostingApiOrigin())
-        .post(`/v1beta1/projects/-/sites/${SITE}/channels/${CHANNEL_ID}/releases`)
+        .post(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels/${CHANNEL_ID}/releases`)
         .query({ versionName: VERSION_NAME })
         .reply(201, RELEASE);
 
-      const res = await hostingApi.createRelease(SITE, CHANNEL_ID, VERSION_NAME);
+      const res = await hostingApi.createRelease(PROJECT_ID, SITE, CHANNEL_ID, VERSION_NAME);
 
       expect(res).to.deep.equal(RELEASE);
       expect(nock.isDone()).to.be.true;
@@ -487,13 +487,13 @@ describe("hosting", () => {
       const VERSION_NAME = `sites/${SITE}/versions/${VERSION}`;
       const MESSAGE = "yo dawg";
       nock(hostingApiOrigin())
-        .post(`/v1beta1/projects/-/sites/${SITE}/channels/${CHANNEL_ID}/releases`, {
+        .post(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels/${CHANNEL_ID}/releases`, {
           message: MESSAGE,
         })
         .query({ versionName: VERSION_NAME })
         .reply(201, RELEASE);
 
-      const res = await hostingApi.createRelease(SITE, CHANNEL_ID, VERSION_NAME, {
+      const res = await hostingApi.createRelease(PROJECT_ID, SITE, CHANNEL_ID, VERSION_NAME, {
         message: MESSAGE,
       });
 
@@ -506,12 +506,12 @@ describe("hosting", () => {
       const VERSION = "VERSION";
       const VERSION_NAME = `sites/${SITE}/versions/${VERSION}`;
       nock(hostingApiOrigin())
-        .post(`/v1beta1/projects/-/sites/${SITE}/channels/${CHANNEL_ID}/releases`)
+        .post(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels/${CHANNEL_ID}/releases`)
         .query({ versionName: VERSION_NAME })
         .reply(500, { error: "server boo-boo" });
 
       await expect(
-        hostingApi.createRelease(SITE, CHANNEL_ID, VERSION_NAME),
+        hostingApi.createRelease(PROJECT_ID, SITE, CHANNEL_ID, VERSION_NAME),
       ).to.eventually.be.rejectedWith(FirebaseError, /server boo-boo/);
 
       expect(nock.isDone()).to.be.true;

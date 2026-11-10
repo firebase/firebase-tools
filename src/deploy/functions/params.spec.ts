@@ -57,6 +57,21 @@ describe("CEL resolution", () => {
     ).to.equal("asdf jkl;");
   });
 
+  it("can interpolate a nested ternary into a CEL expression", () => {
+    const ternary =
+      '{{ params.PROJECT_ID == "xxx" ? "aaa" : params.PROJECT_ID == "yyy" ? "bbb" : "ccc" }}';
+    const projectId = {
+      PROJECT_ID: new params.ParamValue("yyy", false, { string: true }),
+    };
+    expect(params.resolveString(`sa-${ternary}@proj.iam`, projectId)).to.equal("sa-bbb@proj.iam");
+    expect(
+      params.resolveString(`${ternary}/{{ params.REGION }}`, {
+        ...projectId,
+        REGION: new params.ParamValue("west1", false, { string: true }),
+      }),
+    ).to.equal("bbb/west1");
+  });
+
   it("throws instead of coercing a param value with the wrong type", () => {
     expect(() =>
       params.resolveString("{{ params.foo }}", {
@@ -691,6 +706,52 @@ describe("resolveParams", () => {
       expect(passwordStub).to.have.been.calledWith(
         sinon.match({ message: "Enter a value for API Key:" }),
       );
+    } finally {
+      passwordStub.restore();
+      getSecretMetadataStub.restore();
+      createSecretStub.restore();
+      addVersionStub.restore();
+    }
+  });
+
+  it("validates that secret prompt input is not empty", async () => {
+    const passwordStub = sinon.stub(prompt, "password").resolves("secret-val");
+    const getSecretMetadataStub = sinon.stub(secretManager, "getSecretMetadata").resolves({
+      secret: undefined,
+    });
+    const createSecretStub = sinon.stub(secretManager, "createSecret").resolves();
+    const addVersionStub = sinon.stub(secretManager, "addVersion").resolves();
+
+    const paramsToResolve: params.Param[] = [
+      {
+        name: "API_KEY",
+        label: "API Key",
+        description: "Key used to authenticate with 3rd party API.",
+        type: "secret",
+        resourceId: "API_KEY",
+      },
+    ];
+
+    try {
+      await params.resolveParams({
+        params: paramsToResolve,
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "my-codebase",
+      });
+
+      // 1. Verify password prompt was called once
+      expect(passwordStub).to.have.been.calledOnce;
+
+      // 2. Verify the validate contract directly (both empty and valid cases)
+      const opts = passwordStub.firstCall.args[0];
+      expect(opts.validate).to.be.a("function");
+      expect(opts.validate!("")).to.equal("Secrets cannot have an empty value.");
+      expect(opts.validate!("secret-val")).to.be.true;
+
+      // 3. Verify downstream Secret Manager propagation
+      expect(createSecretStub).to.have.been.calledOnceWith("foo", "API_KEY", sinon.match.any);
+      expect(addVersionStub).to.have.been.calledOnceWith("foo", "API_KEY", "secret-val");
     } finally {
       passwordStub.restore();
       getSecretMetadataStub.restore();

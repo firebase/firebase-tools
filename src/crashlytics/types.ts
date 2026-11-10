@@ -12,6 +12,7 @@ export interface ReportGroup {
   operatingSystem?: OperatingSystem;
   browser?: Browser;
   webMetricsGroup?: WebMetricsGroup;
+  customAttribute?: CustomAttribute;
 }
 
 /** A set of computed metric values for a time interval */
@@ -24,8 +25,21 @@ export interface IntervalMetrics {
   eventsCount: number;
   /** The number of distinct users in the set of events. */
   impactedUsersCount: number;
-  /** The number of distinct sessions in the set of events. Only computed for web applications. */
+  /**
+   * The number of distinct sessions in the set of events. Only computed for web applications.
+   * @deprecated Prefer `impactedSessionsCount`.
+   */
   sessionsCount: number;
+  /** The number of distinct sessions in the set of events. */
+  impactedSessionsCount?: number;
+  /** The number of distinct users. */
+  totalUsersCount?: number;
+  /** The number of distinct sessions. */
+  totalSessionsCount?: number;
+  /** Mobile only. Percentage of crash-free users. */
+  crashFreeUsersPercentage?: number;
+  /** Mobile only. Percentage of crash-free sessions. */
+  crashFreeSessionsPercentage?: number;
 }
 
 /** Application software version. */
@@ -232,6 +246,14 @@ export interface Browser {
 export interface WebMetricsGroup {
   /** The id of the web metrics group */
   id?: string;
+}
+
+/** Developer-provided custom key-value pair metadata. */
+export interface CustomAttribute {
+  /** Custom attribute key name. */
+  key?: string;
+  /** Custom attribute value. */
+  value?: string;
 }
 
 /** Developer-provided end user identifiers. */
@@ -508,6 +530,8 @@ export interface ListEventsRequest {
   pageToken?: string;
   /** Filter only the desired events. */
   filter?: EventFilters;
+  /** AIP-160 filter expression for custom keys (e.g. `custom_keys.env = "prod"`). */
+  filterExpression?: string;
 }
 
 /** Response message for the ListEvents method. */
@@ -669,6 +693,12 @@ export interface DeviceFilter {
   formFactors?: FormFactor[];
 }
 
+/** Response message for the ListReports method. */
+export interface ListReportsResponse {
+  /** The available reports for the application, including names and usage instructions. */
+  reports?: Report[];
+}
+
 /** The request method for the GetReport method. */
 export interface GetReportRequest {
   /** Filters to customize the report. */
@@ -739,4 +769,27 @@ export interface BrowserFilter {
    * or just "name" for all possible versions, e.g. simply "Chrome".
    */
   displayNames: string[];
+}
+
+/** Supported alert types for template generation. */
+export type AlertType =
+  | "ALERT_TYPE_UNSPECIFIED"
+  | "ALERT_TYPE_NEW_ISSUE"
+  | "ALERT_TYPE_REGRESSED_ISSUE";
+
+export const AlertType = {
+  ALERT_TYPE_UNSPECIFIED: "ALERT_TYPE_UNSPECIFIED",
+  /** Alert for newly detected issues. */
+  ALERT_TYPE_NEW_ISSUE: "ALERT_TYPE_NEW_ISSUE",
+  /** Alert for regressed (reopened) issues. */
+  ALERT_TYPE_REGRESSED_ISSUE: "ALERT_TYPE_REGRESSED_ISSUE",
+} as const;
+
+/** Response message for the GenerateAlertPolicy method. */
+export interface GenerateAlertPolicyResponse {
+  /**
+   * The created Cloud Monitoring AlertPolicy resource name.
+   * Format: "projects/{project}/alertPolicies/{alert_policy_id}".
+   */
+  alertPolicy: string;
 }

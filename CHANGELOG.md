@@ -1,3 +1,10 @@
-- [fixed] Improve error message when billing is not enabled
-- Fixed a crash in `setEnqueuer` when deploying Cloud Tasks functions whose IAM policy has no bindings (#11184).
-- Updated dependencies to address security vulnerabilities, including `protobufjs`, `tar`, `@grpc/grpc-js`, `express`, `undici`, `hono`, `tmp`, and `form-data`.
+- Added an optional `filterExpression` parameter to the Crashlytics MCP `list_events` tool to filter by custom keys.
+- Fixed Crashlytics filter validation rejecting web app version names without a build number.
+- Improved Auth emulator startup time by compiling validation schemas lazily. (#11176)
+- Updated the Firebase SQL Connect local toolkit to v3.4.26, which includes the following changes:
+  - Internal improvements and bug fixes.
+- Fixed the emulators startup message showing 127.0.0.1 for the Emulator UI and Hub when they listen on 0.0.0.0; it now also prints the address they listen on. (#6222)
+- Fixed a race condition across a second boundary during `accounts:signUp` in the Auth emulator where `validSince` could exceed `auth_time`. (#11413)
+- Added local machine config persistence to `appcheck:debugtokens:create`, `--local` support to `appcheck:debugtokens:list`, and `appcheck:debugtokens:prune` to clean up stale local debug tokens.
+- Fixed `database:import` failing with an unhandled promise rejection when a batch write fails.
+- Fixed emulator crashes when a Firestore rules reload or emulator HTTP handler throws.

@@ -1,4 +1,3 @@
-import { existsSync } from "fs";
 import { pathExists } from "fs-extra";
 import { basename, extname, join, posix, sep, resolve, dirname } from "path";
 import { readFile } from "fs/promises";
@@ -38,10 +37,13 @@ import {
 } from "./constants";
 import { dirExistsSync, fileExistsSync } from "../../fsutils";
 import { IS_WINDOWS } from "../../utils";
+import { spawn } from "cross-spawn";
+import { loadStreamJson } from "../../streamJson";
+import { NPM_COMMAND_TIMEOUT_MILLIES } from "../constants";
 import { execSync } from "child_process";
 import { FirebaseError } from "../../error";
 
-export const I18N_SOURCE = /\/:nextInternalLocale(\([^\)]+\))?/;
+export const I18N_SOURCE = /\/:nextInternalLocale(\([^)]+\))?/;
 
 /**
  * Remove escaping from characters used for Regex patch matching that Next.js
@@ -164,16 +166,6 @@ export function getNextjsRewritesToUse(
 }
 
 /**
- * Check if `/app` directory is used in the Next.js project.
- * @param sourceDir location of the source directory
- * @return true if app directory is used in the Next.js project
- */
-export function usesAppDirRouter(sourceDir: string): boolean {
-  const appPathRoutesManifestPath = join(sourceDir, APP_PATH_ROUTES_MANIFEST);
-  return existsSync(appPathRoutesManifestPath);
-}
-
-/**
  * Check if the project is using the next/image component based on the export-marker.json file.
  * @param sourceDir location of the source directory
  * @return true if the Next.js project uses the next/image component
@@ -181,20 +173,6 @@ export function usesAppDirRouter(sourceDir: string): boolean {
 export async function usesNextImage(sourceDir: string, distDir: string): Promise<boolean> {
   const exportMarker = await readJSON<ExportMarker>(join(sourceDir, distDir, EXPORT_MARKER));
   return exportMarker.isNextImageImported;
-}
-
-/**
- * Check if Next.js is forced to serve the source image as-is instead of being oprimized
- * by setting `unoptimized: true` in next.config.js.
- * https://nextjs.org/docs/api-reference/next/image#unoptimized
- *
- * @param sourceDir location of the source directory
- * @param distDir location of the dist directory
- * @return true if image optimization is disabled
- */
-export async function hasUnoptimizedImage(sourceDir: string, distDir: string): Promise<boolean> {
-  const imagesManifest = await readJSON<ImagesManifest>(join(sourceDir, distDir, IMAGES_MANIFEST));
-  return imagesManifest.images.unoptimized;
 }
 
 /**
@@ -345,6 +323,36 @@ export function allDependencyNames(mod: NpmLsDepdendency): string[] {
     [] as string[],
   );
   return dependencyNames;
+}
+
+/**
+ * Run `npm ls` in `sourceDir` and resolve the unique names of all (transitive) production
+ * dependencies.
+ */
+export async function getProductionDependencyNames(sourceDir: string): Promise<string[]> {
+  const { chain, many, parser, pick, streamObject } = await loadStreamJson();
+  return new Promise((resolve, reject) => {
+    const dependencies: string[] = [];
+    const npmLs = spawn("npm", ["ls", "--omit=dev", "--all", "--json=true"], {
+      cwd: sourceDir,
+      timeout: NPM_COMMAND_TIMEOUT_MILLIES,
+    });
+    npmLs.on("error", reject);
+    if (!npmLs.stdout) {
+      return reject(new FirebaseError("Failed to capture npm ls output"));
+    }
+    const pipeline = chain([
+      npmLs.stdout,
+      parser({ packValues: false, packKeys: true, streamValues: false }),
+      pick({ filter: "dependencies" }),
+      streamObject(),
+      ({ key, value }: { key: string; value: NpmLsDepdendency }) =>
+        many([key, ...allDependencyNames(value)]),
+    ]);
+    pipeline.on("data", (it: string) => dependencies.push(it));
+    pipeline.on("error", reject);
+    pipeline.on("end", () => resolve([...new Set(dependencies)]));
+  });
 }
 
 /**

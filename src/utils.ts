@@ -21,7 +21,6 @@ import { logger, LogLevel } from "./logger";
 import { LogDataOrUndefined } from "./emulator/loggingEmulator";
 import { input, password } from "./prompt";
 import { readTemplateSync } from "./templates";
-import { isVSCodeExtension } from "./vsCodeUtils";
 import { Config } from "./config";
 import { dirExistsSync, fileExistsSync } from "./fsutils";
 import { platform } from "node:os";
@@ -33,7 +32,6 @@ const ERROR_CHAR = IS_WINDOWS ? "!!" : "⬢";
 const THIRTY_DAYS_IN_MILLISECONDS = 30 * 24 * 60 * 60 * 1000;
 
 export const envOverrides: string[] = [];
-export const vscodeEnvVars: { [key: string]: string } = {};
 /**
  * Create a Firebase Console URL for the specified path and project.
  */
@@ -57,15 +55,6 @@ export function getInheritedOption(options: any, key: string): any {
 }
 
 /**
- * Sets the VSCode environment variables to be used by the CLI when called by VSCode
- * @param envVar name of the environment variable
- * @param value value of the environment variable
- */
-export function setVSCodeEnvVars(envVar: string, value: string) {
-  vscodeEnvVars[envVar] = value;
-}
-
-/**
  * Override a value with supplied environment variable if present. A function
  * that returns the environment variable in an acceptable format can be
  * proivded. If it throws an error, the default value will be used.
@@ -75,8 +64,7 @@ export function envOverride(
   value: string,
   coerce?: (value: string, defaultValue: string) => any,
 ): string {
-  const currentEnvValue =
-    isVSCodeExtension() && vscodeEnvVars[envname] ? vscodeEnvVars[envname] : process.env[envname];
+  const currentEnvValue = process.env[envname];
   if (currentEnvValue && currentEnvValue.length) {
     envOverrides.push(envname);
     if (coerce) {
@@ -404,12 +392,14 @@ export async function promiseWhile<T>(
         if (check(res)) {
           return resolve(res);
         }
-        setTimeout(run, interval);
+        // run catches all errors and routes them to promiseReject
+        setTimeout(() => void run(), interval);
       } catch (err: unknown) {
         return promiseReject(err);
       }
     };
-    run();
+    // run catches all errors and routes them to promiseReject
+    void run();
   });
 }
 
@@ -946,27 +936,6 @@ export function readSecretValue(prompt: string, dataFile?: string): Promise<stri
     }
     throw e;
   }
-}
-
-/**
- * Updates or creates a .gitignore file with the given entries in the given path
- */
-export function updateOrCreateGitignore(dirPath: string, entries: string[]) {
-  const gitignorePath = path.join(dirPath, ".gitignore");
-
-  if (!fs.existsSync(gitignorePath)) {
-    fs.writeFileSync(gitignorePath, entries.join("\n"));
-    return;
-  }
-
-  let content = fs.readFileSync(gitignorePath, "utf-8");
-  for (const entry of entries) {
-    if (!content.includes(entry)) {
-      content += `\n${entry}\n`;
-    }
-  }
-
-  fs.writeFileSync(gitignorePath, content);
 }
 
 /**
