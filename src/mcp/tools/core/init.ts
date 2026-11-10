@@ -1,7 +1,10 @@
 import { z } from "zod";
 import { tool } from "../../tool";
 import { toContent } from "../../util";
-import { DEFAULT_RULES } from "../../../init/features/database";
+import { DEFAULT_RULES_FILENAME as DEFAULT_DATABASE_RULES_FILE } from "../../../init/features/database";
+import { DEFAULT_RULES_FILE as DEFAULT_FIRESTORE_RULES_FILE } from "../../../init/features/firestore/rules";
+import { DEFAULT_INDEXES_FILE as DEFAULT_FIRESTORE_INDEXES_FILE } from "../../../init/features/firestore/indexes";
+import { DEFAULT_RULES_FILE as DEFAULT_STORAGE_RULES_FILE } from "../../../init/features/storage";
 import { actuate, Setup, SetupInfo } from "../../../init/index";
 import { freeTrialTermsLink } from "../../../dataconnect/freeTrial";
 import { FirebaseError } from "../../../error";
@@ -30,13 +33,14 @@ export const init = tool(
             rules_filename: z
               .string()
               .optional()
-              .default("database.rules.json")
+              .default(DEFAULT_DATABASE_RULES_FILE)
               .describe("The file to use for Realtime Database Security Rules."),
             rules: z
               .string()
               .optional()
-              .default(DEFAULT_RULES)
-              .describe("The security rules to use for Realtime Database Security Rules."),
+              .describe(
+                "The security rules to use for Realtime Database Security Rules. Existing rules files are preserved unless rules are explicitly provided.",
+              ),
           })
           .optional()
           .describe(
@@ -57,13 +61,13 @@ export const init = tool(
             rules_filename: z
               .string()
               .optional()
-              .default("firestore.rules")
+              .default(DEFAULT_FIRESTORE_RULES_FILE)
               .describe("The file to use for Firestore Security Rules."),
             rules: z
               .string()
               .optional()
               .describe(
-                "The security rules to use for Firestore Security Rules. Default to open rules that expire in 30 days.",
+                "The security rules to use for Firestore Security Rules. Defaults to open rules that expire in 30 days when creating a new file; existing rules files are preserved unless rules are explicitly provided.",
               ),
           })
           .optional()
@@ -112,13 +116,13 @@ export const init = tool(
             rules_filename: z
               .string()
               .optional()
-              .default("storage.rules")
+              .default(DEFAULT_STORAGE_RULES_FILE)
               .describe("The file to use for Firebase Storage Security Rules."),
             rules: z
               .string()
               .optional()
               .describe(
-                "The security rules to use for Firebase Storage Security Rules. Default to closed rules that deny all access.",
+                "The security rules to use for Firebase Storage Security Rules. Defaults to closed rules that deny all access when creating a new file; existing rules files are preserved unless rules are explicitly provided.",
               ),
           })
           .optional()
@@ -200,24 +204,53 @@ export const init = tool(
     const featuresList: string[] = [];
     const featureInfo: SetupInfo = {};
     if (features.database) {
+      const existingDatabase = !Array.isArray(config?.src?.database)
+        ? config?.src?.database
+        : undefined;
+      const rulesFilename =
+        features.database.rules_filename || existingDatabase?.rules || DEFAULT_DATABASE_RULES_FILE;
+      const hasExplicitRules = Boolean(features.database.rules?.trim());
       featuresList.push("database");
       featureInfo.database = {
-        rulesFilename: features.database.rules_filename,
-        rules: features.database.rules,
-        writeRules: true,
+        rulesFilename,
+        rules: features.database.rules || "",
+        writeRules: hasExplicitRules || !config.projectFileExists(rulesFilename),
       };
     }
     if (features.firestore) {
+      const existingFirestore = !Array.isArray(config?.src?.firestore)
+        ? config?.src?.firestore
+        : undefined;
+      const rulesFilename =
+        features.firestore.rules_filename ||
+        existingFirestore?.rules ||
+        DEFAULT_FIRESTORE_RULES_FILE;
+      const indexesFilename = existingFirestore?.indexes || DEFAULT_FIRESTORE_INDEXES_FILE;
+      const hasExplicitRules = Boolean(features.firestore.rules?.trim());
       featuresList.push("firestore");
       featureInfo.firestore = {
         databaseId: features.firestore.database_id,
         locationId: features.firestore.location_id,
-        rulesFilename: features.firestore.rules_filename,
+        rulesFilename,
         rules: features.firestore.rules || "",
-        writeRules: true,
-        indexesFilename: "",
+        writeRules: hasExplicitRules || !config.projectFileExists(rulesFilename),
+        indexesFilename,
         indexes: "",
-        writeIndexes: true,
+        writeIndexes: !config.projectFileExists(indexesFilename),
+      };
+    }
+    if (features.storage) {
+      const existingStorage = !Array.isArray(config?.src?.storage)
+        ? config?.src?.storage
+        : undefined;
+      const rulesFilename =
+        features.storage.rules_filename || existingStorage?.rules || DEFAULT_STORAGE_RULES_FILE;
+      const hasExplicitRules = Boolean(features.storage.rules?.trim());
+      featuresList.push("storage");
+      featureInfo.storage = {
+        rulesFilename,
+        rules: features.storage.rules || "",
+        writeRules: hasExplicitRules || !config.projectFileExists(rulesFilename),
       };
     }
     if (features.dataconnect) {
