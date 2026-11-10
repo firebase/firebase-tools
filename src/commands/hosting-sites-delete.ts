@@ -1,15 +1,13 @@
 import { bold, underline } from "colorette";
 import { Command } from "../command";
 import { logLabeledSuccess } from "../utils";
-import { getSite, deleteSite } from "../hosting/api";
+import { getSite, deleteSite, ensureApiEnabled } from "../hosting/api";
 import { confirm } from "../prompt";
 import { FirebaseError } from "../error";
 import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
 import { requireConfig } from "../requireConfig";
 import { logger } from "../logger";
-import { ensure } from "../ensureApiEnabled";
-import { hostingApiOrigin } from "../api";
 
 const LOG_TAG = "hosting:sites";
 
@@ -18,7 +16,7 @@ export const command = new Command("hosting:sites:delete <siteId>")
   .withForce()
   .before(requireConfig)
   .before(requirePermissions, ["firebasehosting.sites.delete"])
-  .before((options) => ensure(needProjectId(options), hostingApiOrigin(), "hosting", true))
+  .before((options) => ensureApiEnabled(needProjectId(options)))
   .action(
     async (
       siteId: string,
