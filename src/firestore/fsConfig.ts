@@ -16,6 +16,17 @@ interface FirestoreSelection {
   byName: Map<string, Set<FirestoreResource>>;
 }
 
+function isFirestoreResource(value: string): value is FirestoreResource {
+  return value === "rules" || value === "indexes";
+}
+
+function invalidDeployTargetError(value: string): FirebaseError {
+  return new FirebaseError(
+    `Invalid Firestore deploy target: "${value}". Expected "firestore", "firestore:<databaseId|target>", "firestore:<databaseId|target>:rules", "firestore:<databaseId|target>:indexes", "firestore:rules", or "firestore:indexes".`,
+    { exit: 1 },
+  );
+}
+
 function parseFirestoreSelection(only: string | undefined): FirestoreSelection {
   const selection: FirestoreSelection = {
     allDatabases: !only,
@@ -56,19 +67,21 @@ function parseFirestoreSelection(only: string | undefined): FirestoreSelection {
       !name ||
       parts.length > 3 ||
       (parts.length === 3 && !resource) ||
-      (resource && resource !== "rules" && resource !== "indexes")
+      (resource && !isFirestoreResource(resource))
     ) {
-      throw new FirebaseError(`Invalid Firestore deploy target: ${value}`);
+      throw invalidDeployTargetError(value);
     }
 
-    if (name === "rules" || name === "indexes") {
+    if (isFirestoreResource(name)) {
       if (resource) {
-        throw new FirebaseError(`Invalid Firestore deploy target: ${value}`);
+        throw invalidDeployTargetError(value);
       }
       selection.allDatabases = true;
-      addResources(undefined, [name as FirestoreResource]);
+      addResources(undefined, [name]);
+    } else if (resource && isFirestoreResource(resource)) {
+      addResources(name, [resource]);
     } else {
-      addResources(name, resource ? [resource as FirestoreResource] : ["rules", "indexes"]);
+      addResources(name, ["rules", "indexes"]);
     }
   }
   return selection;
@@ -104,11 +117,21 @@ export function getFirestoreConfig(projectId: string, options: Options): ParsedF
     if (fsConfig) {
       // databaseId is (default) if none provided
       const databaseId = fsConfig.database || `(default)`;
-      const resources = selection.allDatabases
-        ? selection.allResources
-        : selection.byName.get(databaseId) || new Set<FirestoreResource>();
+      const unmatched = [...selection.byName.keys()].filter((name) => name !== databaseId);
+      if (!selection.allDatabases && unmatched.length !== 0) {
+        throw new FirebaseError(
+          `Could not find configurations in firebase.json for the following database targets: ${unmatched.join(", ")}`,
+          { exit: 1 },
+        );
+      }
       if (!selection.allDatabases && !selection.byName.has(databaseId)) {
         return [];
+      }
+      const resources = new Set<FirestoreResource>(
+        selection.allDatabases ? selection.allResources : [],
+      );
+      for (const resource of selection.byName.get(databaseId) || []) {
+        resources.add(resource);
       }
       return [
         filterFirestoreConfig(
@@ -149,7 +172,9 @@ export function getFirestoreConfig(projectId: string, options: Options): ParsedF
         for (const resource of selection.byName.get(database) || []) {
           resources.add(resource);
         }
-        results.push(filterFirestoreConfig(c as ParsedFirestoreConfig, resources));
+        results.push(
+          filterFirestoreConfig({ database, rules: c.rules, indexes: c.indexes }, resources),
+        );
       }
     } else {
       throw new FirebaseError('Must supply either "target" or "databaseId" in firestore config');
@@ -161,9 +186,8 @@ export function getFirestoreConfig(projectId: string, options: Options): ParsedF
   );
   if (!selection.allDatabases && unmatched.length !== 0) {
     throw new FirebaseError(
-      `Could not find configurations in firebase.json for the following database targets: ${[
-        ...unmatched,
-      ].join(", ")}`,
+      `Could not find configurations in firebase.json for the following database targets: ${unmatched.join(", ")}`,
+      { exit: 1 },
     );
   }
 
