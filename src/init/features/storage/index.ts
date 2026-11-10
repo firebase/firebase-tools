@@ -15,7 +15,7 @@ export interface RequiredInfo {
 }
 
 const RULES_TEMPLATE = readTemplateSync("init/storage/storage.rules");
-const DEFAULT_RULES_FILE = "storage.rules";
+export const DEFAULT_RULES_FILE = "storage.rules";
 
 export async function askQuestions(setup: Setup, config: Config): Promise<void> {
   logger.info();

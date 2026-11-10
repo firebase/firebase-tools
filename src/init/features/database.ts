@@ -25,7 +25,7 @@ export interface RequiredInfo {
   writeRules: boolean;
 }
 
-const DEFAULT_RULES_FILENAME = "database.rules.json";
+export const DEFAULT_RULES_FILENAME = "database.rules.json";
 
 export const DEFAULT_RULES = JSON.stringify(
   { rules: { ".read": "auth != null", ".write": "auth != null" } },
@@ -175,7 +175,7 @@ export async function actuate(setup: Setup, config: Config): Promise<void> {
   }
   // Populate defaults and update `firebase.json` config.
   info.rules = info.rules || DEFAULT_RULES;
-  info.rulesFilename = info.rulesFilename || "database.rules.json";
+  info.rulesFilename = info.rulesFilename || DEFAULT_RULES_FILENAME;
   setup.config.database = { rules: info.rulesFilename };
 
   if (info.writeRules) {
