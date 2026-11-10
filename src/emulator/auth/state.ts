@@ -9,7 +9,8 @@ import {
 import { MakeRequired } from "./utils";
 import { AuthCloudFunction } from "./cloudFunctions";
 import { assert, BadRequestError } from "./errors";
-import { MfaEnrollments, Schemas } from "./types";
+import { MfaEnrollment, MfaEnrollments, Schemas } from "./types";
+import { generateTotpSecret } from "./totp";
 
 export const PROVIDER_PASSWORD = "password";
 export const PROVIDER_PHONE = "phone";
@@ -29,6 +30,7 @@ export abstract class ProjectState {
   private localIdForPasskeyCredentialId: Map<string, string> = new Map();
   private oobs: Map<string, OobRecord> = new Map();
   private verificationCodes: Map<string, PhoneVerificationRecord> = new Map();
+  private totpEnrollmentSessions: Map<string, TotpEnrollmentSession> = new Map();
   private temporaryProofs: Map<string, TemporaryProofRecord> = new Map();
   private pendingLocalIds: Set<string> = new Set();
 
@@ -216,8 +218,8 @@ export abstract class ProjectState {
   /**
    * Validates a collection of MFA Enrollments. If all data is valid, returns the data
    * unmodified to the caller.
-   * @param enrollments the MFA Enrollments to validate. each enrollment must have a valid and unique phone number, a non-null enrollment ID,
-   * and the enrollment ID must be unique across all other enrollments in the array.
+   * @param enrollments the MFA Enrollments to validate. each enrollment must be a TOTP enrollment or have a valid and unique phone number,
+   * a non-null enrollment ID, and the enrollment ID must be unique across all other enrollments in the array.
    * @return the validated MFA Enrollments passed to this method
    * @throws BadRequestError if the phone number is absent or invalid
    * @throws BadRequestError if the MFA Enrollment ID is absent
@@ -230,20 +232,24 @@ export abstract class ProjectState {
     const phoneNumbers: Set<string> = new Set<string>();
     const enrollmentIds: Set<string> = new Set<string>();
     for (const enrollment of enrollments) {
-      assert(
-        enrollment.phoneInfo && isValidPhoneNumber(enrollment.phoneInfo),
-        "INVALID_MFA_PHONE_NUMBER : Invalid format.",
-      );
+      if (!enrollment.totpInfo) {
+        assert(
+          enrollment.phoneInfo && isValidPhoneNumber(enrollment.phoneInfo),
+          "INVALID_MFA_PHONE_NUMBER : Invalid format.",
+        );
+      }
       assert(
         enrollment.mfaEnrollmentId,
         "INVALID_MFA_ENROLLMENT_ID : mfaEnrollmentId must be defined.",
       );
       assert(!enrollmentIds.has(enrollment.mfaEnrollmentId), "DUPLICATE_MFA_ENROLLMENT_ID");
-      assert(
-        !phoneNumbers.has(enrollment.phoneInfo),
-        "INTERNAL_ERROR : MFA Enrollment Phone Numbers must be unique.",
-      );
-      phoneNumbers.add(enrollment.phoneInfo);
+      if (enrollment.phoneInfo) {
+        assert(
+          !phoneNumbers.has(enrollment.phoneInfo),
+          "INTERNAL_ERROR : MFA Enrollment Phone Numbers must be unique.",
+        );
+        phoneNumbers.add(enrollment.phoneInfo);
+      }
       enrollmentIds.add(enrollment.mfaEnrollmentId);
     }
     return enrollments;
@@ -506,6 +512,24 @@ export abstract class ProjectState {
     return this.verificationCodes.values();
   }
 
+  createTotpEnrollmentSession(localId: string): TotpEnrollmentSession {
+    const session: TotpEnrollmentSession = {
+      sessionInfo: randomBase64UrlStr(226),
+      localId,
+      sharedSecretKey: generateTotpSecret(),
+    };
+    this.totpEnrollmentSessions.set(session.sessionInfo, session);
+    return session;
+  }
+
+  getTotpEnrollmentSession(sessionInfo: string): TotpEnrollmentSession | undefined {
+    return this.totpEnrollmentSessions.get(sessionInfo);
+  }
+
+  deleteTotpEnrollmentSession(sessionInfo: string): boolean {
+    return this.totpEnrollmentSessions.delete(sessionInfo);
+  }
+
   deleteAllAccounts(): void {
     this.users.clear();
     this.localIdForEmail.clear();
@@ -649,7 +673,11 @@ export class AgentProjectState extends ProjectState {
   }
 
   get mfaConfig() {
-    return { state: "ENABLED" as const, enabledProviders: ["PHONE_SMS" as const] };
+    return {
+      state: "ENABLED" as const,
+      enabledProviders: ["PHONE_SMS" as const],
+      providerConfigs: [defaultTotpProviderConfig()],
+    };
   }
 
   get enableAnonymousUser() {
@@ -724,6 +752,7 @@ export class AgentProjectState extends ProjectState {
         mfaConfig: {
           state: "ENABLED",
           enabledProviders: ["PHONE_SMS"],
+          providerConfigs: [defaultTotpProviderConfig()],
         },
         enableAnonymousUser: true,
         enableEmailLinkSignin: true,
@@ -879,11 +908,12 @@ export type ProviderUserInfo = MakeRequired<
 export type PasskeyInfo = Schemas["GoogleCloudIdentitytoolkitV1PasskeyInfo"];
 export type UserInfo = Omit<
   Schemas["GoogleCloudIdentitytoolkitV1UserInfo"],
-  "localId" | "providerUserInfo" | "passkeyInfo"
+  "localId" | "providerUserInfo" | "passkeyInfo" | "mfaInfo"
 > & {
   localId: string;
   providerUserInfo?: ProviderUserInfo[];
   passkeyInfo?: PasskeyInfo[];
+  mfaInfo?: MfaEnrollment[];
 };
 export type MfaConfig = MakeRequired<
   Schemas["GoogleCloudIdentitytoolkitAdminV2MultiFactorAuthConfig"],
@@ -948,6 +978,24 @@ export interface PhoneVerificationRecord {
   code: string;
   phoneNumber: string;
   sessionInfo: string;
+}
+
+export interface TotpEnrollmentSession {
+  sessionInfo: string;
+  localId: string;
+  sharedSecretKey: string;
+  // Like phone verification codes, sessions never expire in the emulator to
+  // make interactive debugging easier.
+}
+
+// TOTP is enabled by default, like phone. Production also defaults to accepting
+// codes from 5 adjacent intervals.
+export const DEFAULT_TOTP_ADJACENT_INTERVALS = 5;
+function defaultTotpProviderConfig(): Schemas["GoogleCloudIdentitytoolkitAdminV2ProviderConfig"] {
+  return {
+    state: "ENABLED",
+    totpProviderConfig: { adjacentIntervals: DEFAULT_TOTP_ADJACENT_INTERVALS },
+  };
 }
 
 export enum BlockingFunctionEvents {

@@ -10,3 +10,4 @@
 - Added local machine config persistence to `appcheck:debugtokens:create`, `--local` support to `appcheck:debugtokens:list`, and `appcheck:debugtokens:prune` to clean up stale local debug tokens.
 - Fixed `database:import` failing with an unhandled promise rejection when a batch write fails.
 - Fixed emulator crashes when a Firestore rules reload or emulator HTTP handler throws.
+- Added support for TOTP second factors in the Auth Emulator. (#6224)
