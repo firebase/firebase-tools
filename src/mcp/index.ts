@@ -537,7 +537,7 @@ export class FirebaseMcpServer {
       const port = options.port || 3000;
       const transports: Record<string, SSEServerTransport> = {}; // session ID to transport
 
-      app.get("/sse", async (req: express.Request, res: express.Response) => {
+      const handleSse = async (req: express.Request, res: express.Response): Promise<void> => {
         this.logger.debug(`[SSE] GET /sse connection attempt from ${req.ip}`);
         try {
           const transport = new SSEServerTransport("/message", res);
@@ -564,9 +564,14 @@ export class FirebaseMcpServer {
         } catch (err) {
           this.logger.error(`[SSE] Connection error: ${err}`);
         }
+      };
+
+      // handleSse catches all errors and logs via this.logger.error
+      app.get("/sse", (req: express.Request, res: express.Response) => {
+        void handleSse(req, res);
       });
 
-      app.post("/message", async (req: express.Request, res: express.Response) => {
+      const handleMessage = async (req: express.Request, res: express.Response): Promise<void> => {
         const sessionId = req.query.sessionId as string;
         this.logger.debug(`[SSE] POST /message attempt for session ${sessionId}`);
 
@@ -585,6 +590,11 @@ export class FirebaseMcpServer {
           );
           res.status(400).send("No active SSE transport connection found for this session");
         }
+      };
+
+      // handleMessage catches all errors and logs via this.logger.error
+      app.post("/message", (req: express.Request, res: express.Response) => {
+        void handleMessage(req, res);
       });
 
       app.listen(port, "127.0.0.1", () => {
