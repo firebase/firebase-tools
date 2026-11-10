@@ -1,3 +1,4 @@
+- Fixed `firebase deploy --only` running the `predeploy` hooks of every functions codebase when several functions of the same codebase were listed. (#11475)
 - Fixed Hosting commands failing when unable to ensure the Firebase Hosting API is enabled, logging a warning instead. (#11335)
 - Updated `firebase init hosting` and `firebase init hosting:github` to ensure the Firebase Hosting API is enabled during setup.
 - Added an optional `filterExpression` parameter to the Crashlytics MCP `list_events` tool to filter by custom keys.
