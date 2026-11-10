@@ -287,7 +287,7 @@ export function readEnvFile(envPath: string): Record<string, string> {
 }
 
 export function isSystemParam(paramName: string): boolean {
-  const regex = /^firebaseextensions\.[a-zA-Z0-9\.]*\//;
+  const regex = /^firebaseextensions\.[a-zA-Z0-9.]*\//;
   return regex.test(paramName);
 }
 
