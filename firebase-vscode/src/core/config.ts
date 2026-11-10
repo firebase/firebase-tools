@@ -14,6 +14,8 @@ import { Result, ResultError, ResultValue } from "../result";
 import { FirebaseConfig } from "../firebaseConfig";
 import { computed, effect } from "@preact/signals-react";
 
+const NODE_MODULES_GLOB = "**/node_modules";
+
 const allFirebaseConfigsUris = globalSignal<Array<vscode.Uri>>([]);
 
 const selectedFirebaseConfigUri = globalSignal<vscode.Uri | undefined>(
@@ -328,7 +330,31 @@ export async function _createWatcher(
 }
 
 async function findFiles(file: string) {
-  return workspace.value.findFiles(file, "**/node_modules");
+  const filesExclude = workspace.value
+    .getConfiguration("files")
+    .get<Record<string, unknown>>("exclude");
+  return workspace.value.findFiles(file, _buildExcludeGlob(filesExclude));
+}
+
+/**
+ * Passing an explicit exclude to `findFiles` disables `files.exclude`, so we
+ * merge its patterns into the exclude glob ourselves. Otherwise, configs in
+ * hidden folders (such as git worktrees) are picked up.
+ *
+ * @internal
+ */
+export function _buildExcludeGlob(
+  filesExclude: Record<string, unknown> = {},
+): string {
+  const patterns = Object.entries(filesExclude)
+    // Conditional (`{ when: ... }`) entries can't be expressed as a glob, and
+    // VS Code globs don't support nested braces, so both are skipped.
+    .filter(([pattern, value]) => value === true && !pattern.includes("{"))
+    .map(([pattern]) => pattern);
+  if (!patterns.length) {
+    return NODE_MODULES_GLOB;
+  }
+  return `{${[NODE_MODULES_GLOB, ...patterns].join(",")}}`;
 }
 
 export function getRootFolders() {

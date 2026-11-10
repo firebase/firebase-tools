@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 import {
+  _buildExcludeGlob,
   _createWatcher,
   getConfigPath,
   _readFirebaseConfig,
@@ -265,6 +266,35 @@ firebaseSuite("_readRC", () => {
       `Unexpected token 'i', "invalid json" is not valid JSON`,
     );
   });
+});
+
+firebaseSuite("_buildExcludeGlob", () => {
+  firebaseTest("excludes only node_modules when files.exclude is unset", () => {
+    assert.equal(_buildExcludeGlob(undefined), "**/node_modules");
+    assert.equal(_buildExcludeGlob({}), "**/node_modules");
+  });
+
+  firebaseTest("merges enabled files.exclude patterns", () => {
+    assert.equal(
+      _buildExcludeGlob({ "**/.worktrees": true, "**/.git": true }),
+      "{**/node_modules,**/.worktrees,**/.git}",
+    );
+  });
+
+  firebaseTest(
+    "skips disabled, conditional, and brace-containing patterns",
+    () => {
+      assert.equal(
+        _buildExcludeGlob({
+          "**/.worktrees": true,
+          "**/disabled": false,
+          "**/*.js": { when: "$(basename).ts" },
+          "**/*.{log,tmp}": true,
+        }),
+        "{**/node_modules,**/.worktrees}",
+      );
+    },
+  );
 });
 
 firebaseSuite("_createWatcher", () => {

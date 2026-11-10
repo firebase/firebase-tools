@@ -1,5 +1,7 @@
 ## NEXT
 
+- [Fixed] `firebase.json` files in folders hidden by `files.exclude` (such as git worktrees) are no longer picked as the project config. (#11465)
+
 ## 2.4.4
 
 - Update internal `firebase-tools` dependency to 15.35.0
