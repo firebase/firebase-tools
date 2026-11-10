@@ -1,3 +1,4 @@
+- Fixed `firebase deploy --only firestore:<database>:rules` and `firestore:<database>:indexes` deploying both rules and indexes instead of only the specified resource. (#11447)
 - Fixed Hosting commands failing when unable to ensure the Firebase Hosting API is enabled, logging a warning instead. (#11335)
 - Updated `firebase init hosting` and `firebase init hosting:github` to ensure the Firebase Hosting API is enabled during setup.
 - Added an optional `filterExpression` parameter to the Crashlytics MCP `list_events` tool to filter by custom keys.
