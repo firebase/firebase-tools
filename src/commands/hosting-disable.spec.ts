@@ -5,8 +5,8 @@ import nock from "../test/helpers/nock";
 import { command } from "./hosting-disable";
 import { configstore } from "../configstore";
 import { hostingApiOrigin } from "../api";
+import * as hostingApi from "../hosting/api";
 import * as prompt from "../prompt";
-import * as ensureApiModule from "../ensureApiEnabled";
 
 describe("hosting:disable", () => {
   const PROJECT_ID = "test-project";
@@ -18,7 +18,7 @@ describe("hosting:disable", () => {
   beforeEach(() => {
     sinon.stub(configstore, "get").returns({});
     confirmStub = sinon.stub(prompt, "confirm").resolves(true);
-    ensureApiStub = sinon.stub(ensureApiModule, "ensure").resolves();
+    ensureApiStub = sinon.stub(hostingApi, "ensureApiEnabled").resolves();
   });
 
   afterEach(() => {
@@ -37,12 +37,7 @@ describe("hosting:disable", () => {
 
     expect(nock.isDone()).to.be.true;
     expect(confirmStub).to.have.been.calledOnce;
-    expect(ensureApiStub).to.have.been.calledOnceWith(
-      PROJECT_ID,
-      hostingApiOrigin(),
-      "hosting",
-      true,
-    );
+    expect(ensureApiStub).to.have.been.calledOnceWith(PROJECT_ID);
   });
 
   it("should not make a request if not confirmed", async () => {
@@ -51,11 +46,6 @@ describe("hosting:disable", () => {
     await command.runner()({ project: PROJECT_ID, site: SITE });
 
     expect(nock.isDone()).to.be.true;
-    expect(ensureApiStub).to.have.been.calledOnceWith(
-      PROJECT_ID,
-      hostingApiOrigin(),
-      "hosting",
-      true,
-    );
+    expect(ensureApiStub).to.have.been.calledOnceWith(PROJECT_ID);
   });
 });
