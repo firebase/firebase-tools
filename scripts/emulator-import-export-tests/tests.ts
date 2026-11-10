@@ -6,10 +6,12 @@ import { getStorage } from "firebase-admin/storage";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
+import * as tcpport from "tcp-port-used";
 
 import { CLIProcess } from "../integration-helpers/cli";
 import { FrameworkOptions } from "../integration-helpers/framework";
 import { Resolver } from "../../src/emulator/dns";
+import { FirebaseError } from "../../src/error";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 const ADMIN_CREDENTIAL = {
@@ -46,6 +48,30 @@ function readConfig(): FrameworkOptions {
   return JSON.parse(data);
 }
 
+const CONFIG = readConfig();
+if (!CONFIG.emulators) {
+  throw new FirebaseError("firebase.json is missing required 'emulators' configuration");
+}
+const EMULATORS = CONFIG.emulators;
+
+/**
+ * Polls until the specified port is closed and released.
+ */
+async function waitForPortClosed(port: number, host?: string, timeoutMs = 10000): Promise<void> {
+  const targetHost = host ?? (await localhost());
+  try {
+    await tcpport.waitUntilFreeOnHost(port, targetHost, 50, timeoutMs);
+    if (targetHost !== "127.0.0.1") {
+      await tcpport.waitUntilFreeOnHost(port, "127.0.0.1", 50, timeoutMs);
+    }
+  } catch (err: unknown) {
+    throw new FirebaseError(
+      `Port ${port} was not released on ${targetHost} within ${timeoutMs}ms`,
+      { original: err instanceof Error ? err : undefined, exit: 1 },
+    );
+  }
+}
+
 function logIncludes(msg: string) {
   return (data: unknown) => {
     if (typeof data !== "string" && !Buffer.isBuffer(data)) {
@@ -58,7 +84,10 @@ function logIncludes(msg: string) {
 describe("import/export end to end", () => {
   it("should be able to import/export firestore data", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await Promise.all([
+      waitForPortClosed(EMULATORS.hub.port),
+      waitForPortClosed(EMULATORS.firestore.port),
+    ]);
 
     // Start up emulator suite
     const emulatorsCLI = new CLIProcess("1", __dirname);
@@ -109,7 +138,10 @@ describe("import/export end to end", () => {
 
   it("should be able to import/export rtdb data", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await Promise.all([
+      waitForPortClosed(EMULATORS.hub.port),
+      waitForPortClosed(EMULATORS.database.port),
+    ]);
 
     // Start up emulator suite
     const emulatorsCLI = new CLIProcess("1", __dirname);
@@ -232,7 +264,10 @@ describe("import/export end to end", () => {
 
   it("should be able to import/export auth data", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await Promise.all([
+      waitForPortClosed(EMULATORS.hub.port),
+      waitForPortClosed(EMULATORS.auth.port),
+    ]);
 
     // Start up emulator suite
     const project = FIREBASE_PROJECT || "example";
@@ -348,7 +383,10 @@ describe("import/export end to end", () => {
 
   it("should be able to import/export multi-tenant auth data", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await Promise.all([
+      waitForPortClosed(EMULATORS.hub.port),
+      waitForPortClosed(EMULATORS.auth.port),
+    ]);
 
     // Start up emulator suite
     const project = FIREBASE_PROJECT || "example";
@@ -514,7 +552,10 @@ describe("import/export end to end", () => {
 
   it("should be able to import/export auth data with many users", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await Promise.all([
+      waitForPortClosed(EMULATORS.hub.port),
+      waitForPortClosed(EMULATORS.auth.port),
+    ]);
 
     // Start up emulator suite
     const project = FIREBASE_PROJECT || "example";
@@ -606,7 +647,10 @@ describe("import/export end to end", () => {
 
   it("should be able to export / import auth data with no users", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await Promise.all([
+      waitForPortClosed(EMULATORS.hub.port),
+      waitForPortClosed(EMULATORS.auth.port),
+    ]);
 
     // Start up emulator suite
     const project = FIREBASE_PROJECT || "example";
@@ -668,7 +712,10 @@ describe("import/export end to end", () => {
 
   it("should be able to import/export storage data", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await Promise.all([
+      waitForPortClosed(EMULATORS.hub.port),
+      waitForPortClosed(EMULATORS.storage.port),
+    ]);
 
     // Start up emulator suite
     const emulatorsCLI = new CLIProcess("1", __dirname);
@@ -768,7 +815,11 @@ describe("import/export end to end", () => {
 
   it("should export all data when `--only` flag isn't used `emulators:export`", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await Promise.all([
+      waitForPortClosed(EMULATORS.hub.port),
+      waitForPortClosed(EMULATORS.storage.port),
+      waitForPortClosed(EMULATORS.auth.port),
+    ]);
 
     // Start up emulator suite
     const emulatorsCLI = new CLIProcess("1", __dirname);
@@ -879,7 +930,11 @@ describe("import/export end to end", () => {
 
   it("should export only storage data with `emulators:export --only storage`", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await Promise.all([
+      waitForPortClosed(EMULATORS.hub.port),
+      waitForPortClosed(EMULATORS.storage.port),
+      waitForPortClosed(EMULATORS.auth.port),
+    ]);
 
     // Start up emulator suite
     const emulatorsCLI = new CLIProcess("1", __dirname);
@@ -992,7 +1047,10 @@ describe("import/export end to end", () => {
 
   it("should be able to export using POST", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await Promise.all([
+      waitForPortClosed(EMULATORS.hub.port),
+      waitForPortClosed(EMULATORS.firestore.port),
+    ]);
 
     // Start up emulator suite
     const emulatorsCLI = new CLIProcess("1", __dirname);

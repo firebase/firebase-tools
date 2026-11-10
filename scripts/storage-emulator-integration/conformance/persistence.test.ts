@@ -61,6 +61,12 @@ describe("Storage persistence conformance tests", () => {
     browser = await puppeteer.launch({
       headless: !TEST_ENV.showBrowser,
       devtools: true,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-web-security",
+        "--disable-features=IsolateOrigins,site-per-process,BlockInsecurePrivateNetworkRequests",
+      ],
     });
     page = await browser.newPage();
     await page.goto("https://example.com", {
@@ -83,7 +89,7 @@ describe("Storage persistence conformance tests", () => {
         firebase.initializeApp(appConfig);
         if (!useProductionServers) {
           firebase.auth().useEmulator(authEmulatorHost);
-          const [storageHost, storagePort] = storageEmulatorHost.split(":") as string[];
+          const [storageHost, storagePort] = storageEmulatorHost.split(":");
           (firebase.storage() as any).useEmulator(storageHost, storagePort);
         }
       },
