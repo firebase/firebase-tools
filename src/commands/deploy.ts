@@ -12,9 +12,7 @@ import { FirebaseError } from "../error";
 import { bold } from "colorette";
 import { pickHostingSiteName } from "../hosting/interactive";
 import { logBullet } from "../utils";
-import { createSite } from "../hosting/api";
-import { ensure } from "../ensureApiEnabled";
-import { hostingApiOrigin } from "../api";
+import { createSite, ensureApiEnabled } from "../hosting/api";
 import { needProjectId } from "../projectUtils";
 import { Options } from "../options";
 import * as experiments from "../experiments";
@@ -111,7 +109,7 @@ command
     }
 
     if (options.filteredTargets.includes("hosting")) {
-      await ensure(needProjectId(options), hostingApiOrigin(), "hosting", true);
+      await ensureApiEnabled(needProjectId(options));
       let shouldCreateSite = false;
       try {
         await requireHostingSite(options);
