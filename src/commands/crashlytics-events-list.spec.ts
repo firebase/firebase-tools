@@ -43,18 +43,16 @@ describe("crashlytics:events:list", () => {
     sinon.restore();
   });
 
-  it("should throw a platform-aware FirebaseError when required issue/variant ID is missing", async () => {
-    await expect(command.runner()({ app: appId })).to.be.rejectedWith(
-      FirebaseError,
-      "Must specify '--issue-id <id>' or '--variant-id <id>' to list events.",
-    );
-    await expect(command.runner()({ app: "1:1234567890:web:abcdef" })).to.be.rejectedWith(
+  it("should require --issue-id, even when --variant-id is set", async () => {
+    for (const app of [appId, "1:1234567890:web:abcdef", "1:1234567890:macos:abcdef"]) {
+      await expect(command.runner()({ app })).to.be.rejectedWith(
+        FirebaseError,
+        "Must specify '--issue-id <id>' to list events.",
+      );
+    }
+    await expect(command.runner()({ app: appId, variantId: "variant_1" })).to.be.rejectedWith(
       FirebaseError,
       "Must specify '--issue-id <id>' to list events.",
-    );
-    await expect(command.runner()({ app: "1:1234567890:macos:abcdef" })).to.be.rejectedWith(
-      FirebaseError,
-      "Must specify '--issue-id <id>' (or '--variant-id <id>' for Android/Apple apps) to list events.",
     );
     expect(listEventsStub.called).to.be.false;
   });

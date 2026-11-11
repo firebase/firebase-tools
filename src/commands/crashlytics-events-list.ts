@@ -11,10 +11,8 @@ import {
 } from "../crashlytics/commandUtils";
 import { DEFAULT_MAX_FRAMES, EVENT_DUMP_OPTIONS, listEvents, toText } from "../crashlytics/events";
 import { ListEventsResponse } from "../crashlytics/types";
-import { parseAppPlatform } from "../crashlytics/utils";
 import { FirebaseError, getErrMsg, getError, getErrStatus } from "../error";
 import { logger } from "../logger";
-import { AppPlatform } from "../management/apps";
 import { requireAuth } from "../requireAuth";
 
 export interface EventsListOptions extends CrashlyticsFilterCommandOptions {
@@ -22,17 +20,6 @@ export interface EventsListOptions extends CrashlyticsFilterCommandOptions {
   limit?: string | number;
   maxFrames?: string | number;
   full?: boolean;
-}
-
-function missingIssueIdMessage(appId: string): string {
-  const platform = parseAppPlatform(appId);
-  if (platform === AppPlatform.WEB) {
-    return "Must specify '--issue-id <id>' to list events.";
-  }
-  if (platform === AppPlatform.ANDROID || platform === AppPlatform.IOS) {
-    return "Must specify '--issue-id <id>' or '--variant-id <id>' to list events.";
-  }
-  return "Must specify '--issue-id <id>' (or '--variant-id <id>' for Android/Apple apps) to list events.";
 }
 
 export const command = withEventFilterOptions(new Command("crashlytics:events:list"))
@@ -52,7 +39,7 @@ export const command = withEventFilterOptions(new Command("crashlytics:events:li
   .withForce("overwrite output file without prompting")
   .help(
     `Lists the most recent Crashlytics events matching the specified filters.
-Requires --issue-id (or --variant-id for Android/Apple apps).
+Requires --issue-id. For Android/Apple apps, add --variant-id to narrow results to one issue variant.
 
 Custom Key Filtering (--filter):
   Filter events by Crashlytics custom keys using AIP-160 syntax:
@@ -66,8 +53,8 @@ Custom Key Filtering (--filter):
   .action(async (options: EventsListOptions): Promise<ListEventsResponse> => {
     const appId = requireAppId(options);
     const filter = parseEventFilters(options, appId);
-    if (!filter?.issueId && !filter?.issueVariantId) {
-      throw new FirebaseError(missingIssueIdMessage(appId), { exit: 1 });
+    if (!filter?.issueId) {
+      throw new FirebaseError("Must specify '--issue-id <id>' to list events.", { exit: 1 });
     }
 
     const limit = parsePositiveIntOption(options.limit, "--limit", {
