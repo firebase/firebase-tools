@@ -29,9 +29,14 @@ export interface AppsSdkConfigOptions extends Options {
 export const command = new Command("apps:sdkconfig [platform] [appId]")
   .description(
     "print the Google Services config of a Firebase app. " +
-      "[platform] can be IOS, ANDROID or WEB (case insensitive)",
+      "[platform] can be IOS, ANDROID or WEB (case insensitive); if omitted, apps on all platforms are considered. " +
+      "If [appId] is omitted, the only matching app is used automatically (even with --non-interactive), " +
+      "otherwise you are prompted to select one. To pass [appId], you must specify [platform] first",
   )
-  .option("-o, --out [file]", "(optional) write config output to a file")
+  .option(
+    "-o, --out [file]",
+    "write config output to a file instead of stdout (defaults to the platform's standard filename, e.g. google-services.json)",
+  )
   .before(requireAuth)
   .action(
     async (
@@ -39,7 +44,16 @@ export const command = new Command("apps:sdkconfig [platform] [appId]")
       appId = "",
       options: AppsSdkConfigOptions,
     ): Promise<AppConfigurationData> => {
-      let appPlatform = getAppPlatform(platform);
+      let appPlatform: AppPlatform;
+      try {
+        appPlatform = getAppPlatform(platform);
+      } catch (err: unknown) {
+        throw new FirebaseError(
+          `Unexpected platform "${String(platform)}". [platform] must be IOS, ANDROID, or WEB. ` +
+            "To specify an app ID, pass the platform first: firebase apps:sdkconfig <platform> <appId>",
+          { exit: 1, original: err instanceof Error ? err : undefined },
+        );
+      }
 
       if (!appId) {
         let projectId = needProjectId(options);
@@ -61,7 +75,9 @@ export const command = new Command("apps:sdkconfig [platform] [appId]")
         } else if (options.nonInteractive) {
           // If there's > 1 and we're non-interactive, fail.
           throw new FirebaseError(
-            `Project ${projectId} has multiple apps, must specify an app id.`,
+            `Project ${projectId} has multiple apps, must specify an app id. ` +
+              "Run firebase apps:list to find it, then run: firebase apps:sdkconfig <platform> <appId>",
+            { exit: 1 },
           );
         } else {
           // > 1, ask what the user wants.
