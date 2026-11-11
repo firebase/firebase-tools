@@ -296,7 +296,7 @@ export function parseEventFilters(
     if (err instanceof FirebaseError) {
       if (err.message.includes("topVersions report")) {
         throw new FirebaseError(
-          `--versions must match pattern 'version (build)'. Use the displayName values from the topVersions report (e.g. "2.4.0 (240)").`,
+          `--versions must match pattern 'version (build)' (e.g. "2.4.0 (240)"). Run 'firebase crashlytics:reports:get --app ${appId} topVersions' to list valid version display names.`,
           { exit: 1 },
         );
       }
