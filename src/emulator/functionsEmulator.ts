@@ -57,7 +57,13 @@ import * as backend from "../deploy/functions/backend";
 import * as build from "../deploy/functions/build";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as functionsEnv from "../functions/env";
-import { AUTH_BLOCKING_EVENTS, BEFORE_CREATE_EVENT } from "../functions/events/v1";
+import {
+  AUTH_BLOCKING_EVENTS,
+  BEFORE_CREATE_EVENT,
+  BEFORE_SEND_EMAIL_EVENT,
+  BEFORE_SEND_SMS_EVENT,
+  BEFORE_SIGN_IN_EVENT,
+} from "../functions/events/v1";
 import { BlockingFunctionsConfig } from "../gcp/identityPlatform";
 import { resolveBackend } from "../deploy/functions/build";
 import { getCredentialsEnvironment, setEnvVarsForEmulators } from "./env";
@@ -1372,19 +1378,34 @@ export class FunctionsEmulator implements EmulatorInstance {
           functionUri: url,
         },
       };
-    } else {
+    } else if (blockingTrigger.eventType === BEFORE_SIGN_IN_EVENT) {
       this.blockingFunctionsConfig.triggers = {
         ...this.blockingFunctionsConfig.triggers,
         beforeSignIn: {
           functionUri: url,
         },
       };
+    } else if (blockingTrigger.eventType === BEFORE_SEND_EMAIL_EVENT) {
+      this.blockingFunctionsConfig.triggers = {
+        ...this.blockingFunctionsConfig.triggers,
+        beforeSendEmail: {
+          functionUri: url,
+        },
+      };
+    } else if (blockingTrigger.eventType === BEFORE_SEND_SMS_EVENT) {
+      this.blockingFunctionsConfig.triggers = {
+        ...this.blockingFunctionsConfig.triggers,
+        beforeSendSms: {
+          functionUri: url,
+        },
+      };
     }
 
+    // Merge like registerTriggerLocked in deploy/functions/services/auth.ts does, so a trigger
+    // without credential options (beforeSendEmail, beforeSendSms) doesn't turn forwarding off.
     this.blockingFunctionsConfig.forwardInboundCredentials = {
-      accessToken: !!blockingTrigger.options!.accessToken,
-      idToken: !!blockingTrigger.options!.idToken,
-      refreshToken: !!blockingTrigger.options!.refreshToken,
+      ...this.blockingFunctionsConfig.forwardInboundCredentials,
+      ...blockingTrigger.options,
     };
 
     return true;
