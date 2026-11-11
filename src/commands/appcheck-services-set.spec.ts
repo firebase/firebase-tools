@@ -90,7 +90,9 @@ describe("appcheck:services:set", () => {
   it("explains a 400 on a service that does not support replay protection", async () => {
     // Only some services accept replayProtection, and the API says nothing
     // more useful than "invalid argument".
-    updateServiceStub.rejects(new FirebaseError("invalid argument", { status: 400 }));
+    updateServiceStub.rejects(
+      new FirebaseError("Replay protection is not supported for", { status: 400 }),
+    );
 
     await expect(
       command.runner()("firestore", "enforced", {
@@ -98,7 +100,7 @@ describe("appcheck:services:set", () => {
         force: true,
         replayProtection: "unenforced",
       }),
-    ).to.be.rejectedWith(FirebaseError, /Not every service supports it/);
+    ).to.be.rejectedWith(FirebaseError, /Replay protection is not supported for/);
   });
 
   it("does not reinterpret a 400 when replay protection was not requested", async () => {

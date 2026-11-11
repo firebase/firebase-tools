@@ -37,7 +37,9 @@ ${serviceAliasHelp()}
   unenforced   requests are allowed, but counted in the App Check metrics
   enforced     requests without a valid App Check token are rejected
 
-For most services the usual rollout is unenforced first, then check the metrics in the console, then enforced.
+For already published apps that have newly implemented App Check, you should release them to your users and initially set this mode to unenforced. Monitor App Check metrics in the Firebase console, and set this mode to enforced when appropriate.
+
+For new apps, consider starting in enforced mode.
 
 Firebase AI Logic works differently. It is enforced by default and enforcement becomes mandatory, so there is no monitoring phase: keep it enforced, use a debug token while you develop (\`appcheck:debugtokens:create\`), and register a real attestation provider before you ship (\`appcheck:providers:set\`).
 
@@ -102,7 +104,7 @@ For example:
         // Connect all answer 400.
         if (replayProtection && getErrStatus(err) === 400) {
           throw new FirebaseError(
-            `The API rejected replay protection for ${clc.bold(alias)}. Not every service supports it.\n\nRun the command again without --replay-protection to set enforcement on its own.`,
+            `Replay protection is not supported for ${clc.bold(alias)}.\n\nRun the command again without --replay-protection to set enforcement on its own.`,
             { original: err instanceof Error ? err : undefined },
           );
         }
@@ -122,7 +124,7 @@ For example:
       // screen for someone who passed --force or scripted this.
       if (isMandatoryFrom(serviceId) && enforcementMode !== "ENFORCED") {
         logWarning(
-          `Starting ${AI_LOGIC_ENFORCEMENT_DATE}, Firebase will automatically enforce App Check for all Gemini API requests via Firebase AI Logic, and App Check cannot be un-enforced for AI Logic. Implement App Check before this date to avoid service interruptions: ${AI_LOGIC_APP_CHECK_DOCS}`,
+          `Starting ${AI_LOGIC_ENFORCEMENT_DATE}, Firebase will automatically enforce App Check for all Gemini API requests via Firebase AI Logic, and App Check cannot be unenforced for AI Logic. Implement App Check before this date to avoid service interruptions: ${AI_LOGIC_APP_CHECK_DOCS}`,
         );
       }
 
