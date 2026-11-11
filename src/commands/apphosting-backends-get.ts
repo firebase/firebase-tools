@@ -8,7 +8,10 @@ import * as apphosting from "../gcp/apphosting";
 import { printBackendsTable } from "./apphosting-backends-list";
 
 export const command = new Command("apphosting:backends:get <backend>")
-  .description("print info about a Firebase App Hosting backend")
+  .description(
+    "print info about a Firebase App Hosting backend, looked up by ID across all regions " +
+      "(if the ID exists in multiple regions, warns and prints the first match)",
+  )
   .before(requireAuth)
   .before(apphosting.ensureApiEnabled)
   .action(async (backend: string, options: Options) => {
@@ -32,9 +35,9 @@ export const command = new Command("apphosting:backends:get <backend>")
     if (backendsList.length > 1) {
       const regions = backendsList.map((b) => apphosting.parseBackendName(b.name).location);
       logWarning(
-        `Detected multiple backends with the same ${backend} ID in regions: ${regions.join(", ")}}. This is not allowed until we can support more locations.\n` +
+        `Detected multiple backends with ID "${backend}" in regions: ${regions.join(", ")}. This is not allowed until we can support more locations.\n` +
           `Please delete and recreate any backends that share an ID with another backend. ` +
-          `Use apphosting:backends:list to see all backends.\n Returning the following backend:`,
+          `Use apphosting:backends:list to see all backends.\nReturning the backend in region ${regions[0]}:`,
       );
     }
     printBackendsTable(backendsList.slice(0, 1));

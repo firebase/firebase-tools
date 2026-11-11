@@ -11,8 +11,12 @@ import { deleteBackendAndPoll, chooseBackends } from "../apphosting/backend";
 import * as ora from "ora";
 
 export const command = new Command("apphosting:backends:delete <backend>")
-  .description("delete a Firebase App Hosting backend")
-  .withForce()
+  .description(
+    "delete a Firebase App Hosting backend by ID; if backends with this ID exist in multiple regions, you are prompted to choose which to delete",
+  )
+  .withForce(
+    "skip the deletion confirmation prompt (fails if backends with this ID exist in multiple regions)",
+  )
   .before(requireAuth)
   .before(apphosting.ensureApiEnabled)
   .action(async (backendId: string, options: Options) => {

@@ -498,7 +498,9 @@ describe("apphosting setup functions", () => {
       await expect(
         chooseBackends(projectId, "chicken", /* prompt= */ "", /* force= */ true),
       ).to.be.rejectedWith(
-        "Force cannot be used because multiple backends were found with ID chicken.",
+        "Force cannot be used because multiple backends were found with ID chicken " +
+          "(in asia-east1, europe-west4, us-central1). Re-run this command without --force or " +
+          "--non-interactive to choose which backend(s) to delete.",
       );
     });
 
@@ -581,6 +583,16 @@ describe("apphosting setup functions", () => {
         message: "Please select the location of the backend you'd like to delete:",
         choices: [location, "otherRegion"],
       });
+    });
+    it("throws instead of prompting if backend is ambiguous and force is set", async () => {
+      listBackendsStub.resolves({ backends: [backendFoo, backendFooOtherRegion, backendBar] });
+
+      await expect(
+        getBackendForAmbiguousLocation(projectId, "foo", /* prompt= */ "", /* force= */ true),
+      ).to.be.rejectedWith(
+        `Multiple backends found with ID foo (in locations: ${location}, otherRegion). Please specify the location of your target backend with --location.`,
+      );
+      expect(promptStub.select).to.not.have.been.called;
     });
   });
 

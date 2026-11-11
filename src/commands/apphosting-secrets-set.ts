@@ -9,7 +9,12 @@ import { apphostingSecretsSetAction } from "../apphosting/secrets";
 
 export const command = new Command("apphosting:secrets:set <secretName>")
   .description("create or update a secret for use in Firebase App Hosting")
-  .option("-l, --location <location>", "optional location to retrict secret replication")
+  .option(
+    "-l, --location <location>",
+    "optional region (e.g. us-central1) to restrict replication of a newly created secret to. " +
+      "If omitted, the secret uses automatic replication (no prompt). " +
+      "Replication cannot be changed after the secret is created",
+  )
   // TODO: What is the right --force behavior for granting access? Seems correct to grant permissions
   // if there is only one set of accounts, but should maybe fail if there are more than one set of
   // accounts for different backends?
