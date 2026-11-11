@@ -1,6 +1,8 @@
 import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
 import * as fs from "fs-extra";
+import * as os from "os";
+import * as path from "path";
 import * as sinon from "sinon";
 
 import { Command } from "../command";
@@ -83,7 +85,7 @@ describe("crashlytics commandUtils", () => {
 
     it("should write formatted JSON without prompting when file does not exist", async () => {
       sinon.stub(fs, "existsSync").returns(false);
-      const writeStub = sinon.stub(fs, "writeFileSync");
+      const writeStub = sinon.stub(fs, "outputFileSync");
       const confirmStub = sinon.stub(prompt, "confirm");
 
       const wrote = await writeOutputFileIfRequested({ id: "123" }, {
@@ -98,7 +100,7 @@ describe("crashlytics commandUtils", () => {
 
     it("should prompt when file exists and write if confirmed", async () => {
       sinon.stub(fs, "existsSync").returns(true);
-      const writeStub = sinon.stub(fs, "writeFileSync");
+      const writeStub = sinon.stub(fs, "outputFileSync");
       const confirmStub = sinon.stub(prompt, "confirm").resolves(true);
 
       const wrote = await writeOutputFileIfRequested({ id: "123" }, {
@@ -114,7 +116,7 @@ describe("crashlytics commandUtils", () => {
 
     it("should not write file when overwrite prompt is declined", async () => {
       sinon.stub(fs, "existsSync").returns(true);
-      const writeStub = sinon.stub(fs, "writeFileSync");
+      const writeStub = sinon.stub(fs, "outputFileSync");
       sinon.stub(prompt, "confirm").resolves(false);
 
       const wrote = await writeOutputFileIfRequested({ id: "123" }, {
@@ -123,6 +125,35 @@ describe("crashlytics commandUtils", () => {
 
       expect(wrote).to.be.true;
       expect(writeStub.called).to.be.false;
+    });
+
+    it("should create missing parent directories for --output", async () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), "crashlytics-out-"));
+      try {
+        const outputPath = path.join(dir, "nested", "out.json");
+        const wrote = await writeOutputFileIfRequested({ ok: true }, {
+          output: outputPath,
+        } as CrashlyticsCommandOptions);
+        expect(wrote).to.be.true;
+        expect(JSON.parse(fs.readFileSync(outputPath, "utf8"))).to.deep.equal({ ok: true });
+      } finally {
+        fs.removeSync(dir);
+      }
+    });
+
+    it("should throw a FirebaseError when the output file cannot be written", async () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), "crashlytics-out-"));
+      try {
+        const blocker = path.join(dir, "not-a-dir");
+        fs.writeFileSync(blocker, "x"); // a file where a directory is expected -> ENOTDIR
+        await expect(
+          writeOutputFileIfRequested({ ok: true }, {
+            output: path.join(blocker, "out.json"),
+          } as CrashlyticsCommandOptions),
+        ).to.be.rejectedWith(FirebaseError, "Failed to write output to");
+      } finally {
+        fs.removeSync(dir);
+      }
     });
   });
 

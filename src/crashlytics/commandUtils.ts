@@ -1,6 +1,6 @@
 import * as fs from "fs-extra";
 import { Command } from "../command";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg, getError } from "../error";
 import { logger } from "../logger";
 import { Options } from "../options";
 import * as prompt from "../prompt";
@@ -104,7 +104,14 @@ export async function writeOutputFileIfRequested(
       return true;
     }
   }
-  fs.writeFileSync(outputPath, `${JSON.stringify(data, null, 2)}\n`, "utf8");
+  try {
+    fs.outputFileSync(outputPath, `${JSON.stringify(data, null, 2)}\n`, "utf8");
+  } catch (err: unknown) {
+    throw new FirebaseError(`Failed to write output to ${outputPath}: ${getErrMsg(err)}`, {
+      exit: 1,
+      original: getError(err),
+    });
+  }
   logger.info(`Wrote output to ${outputPath}`);
   return true;
 }
