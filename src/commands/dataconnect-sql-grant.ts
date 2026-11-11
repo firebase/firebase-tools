@@ -21,13 +21,16 @@ type GrantOptions = Options & {
 };
 
 export const command = new Command("dataconnect:sql:grant")
-  .description("grants the SQL role <role> to the provided user or service account <email>")
-  .option("-R, --role <role>", "The SQL role to grant. One of: owner, writer, or reader.")
+  .description("grant the SQL role given by --role to the user or service account given by --email")
+  .option("-R, --role <role>", "(required) the SQL role to grant: owner, writer, or reader")
   .option(
     "-E, --email <email>",
-    "The email of the user or service account we would like to grant the role to.",
+    "(required) the email of the user or service account to grant the role to",
   )
-  .option("--service <serviceId>", "the serviceId of the SQL Connect service")
+  .option(
+    "--service <serviceId>",
+    "the serviceId of the SQL Connect service. Required if firebase.json configures more than one service.",
+  )
   .option(
     "--location <location>",
     "the location of the SQL Connect service. Only needed if service ID is used in multiple locations.",
