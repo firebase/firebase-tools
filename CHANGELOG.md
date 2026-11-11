@@ -10,3 +10,4 @@
 - Added local machine config persistence to `appcheck:debugtokens:create`, `--local` support to `appcheck:debugtokens:list`, and `appcheck:debugtokens:prune` to clean up stale local debug tokens.
 - Fixed `database:import` failing with an unhandled promise rejection when a batch write fails.
 - Fixed emulator crashes when a Firestore rules reload or emulator HTTP handler throws.
+- Fixed an issue where own properties on bound `firebase-admin` namespace functions (such as `admin.firestore.FieldValue` and `admin.database.ServerValue`) were dropped in the Functions emulator runtime. (#11471)
