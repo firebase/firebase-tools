@@ -330,10 +330,14 @@ export async function _createWatcher(
 }
 
 async function findFiles(file: string) {
-  const filesExclude = workspace.value
+  const ws = workspace.value;
+  if (!ws) {
+    return [];
+  }
+  const filesExclude = ws
     .getConfiguration("files")
-    .get<Record<string, unknown>>("exclude");
-  return workspace.value.findFiles(file, _buildExcludeGlob(filesExclude));
+    .get<Record<string, unknown> | null>("exclude");
+  return ws.findFiles(file, _buildExcludeGlob(filesExclude));
 }
 
 /**
@@ -344,9 +348,9 @@ async function findFiles(file: string) {
  * @internal
  */
 export function _buildExcludeGlob(
-  filesExclude: Record<string, unknown> = {},
+  filesExclude?: Record<string, unknown> | null,
 ): string {
-  const patterns = Object.entries(filesExclude)
+  const patterns = Object.entries(filesExclude ?? {})
     // Conditional (`{ when: ... }`) entries can't be expressed as a glob, and
     // VS Code globs don't support nested braces, so both are skipped.
     .filter(([pattern, value]) => value === true && !pattern.includes("{"))

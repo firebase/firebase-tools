@@ -271,6 +271,7 @@ firebaseSuite("_readRC", () => {
 firebaseSuite("_buildExcludeGlob", () => {
   firebaseTest("excludes only node_modules when files.exclude is unset", () => {
     assert.equal(_buildExcludeGlob(undefined), "**/node_modules");
+    assert.equal(_buildExcludeGlob(null), "**/node_modules");
     assert.equal(_buildExcludeGlob({}), "**/node_modules");
   });
 
