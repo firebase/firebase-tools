@@ -329,6 +329,25 @@ describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
       });
   });
 
+  it("should error for duplicate emails that differ only in case if sanityCheck is true", async () => {
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchCreate`)
+      .set("Authorization", "Bearer owner")
+      .send({
+        sanityCheck: true,
+        users: [
+          { localId: "test1", email: "foo@example.com" },
+          { localId: "test2", email: "FOO@example.com" },
+        ],
+      })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error)
+          .to.have.property("message")
+          .equal("DUPLICATE_EMAIL : FOO@example.com");
+      });
+  });
+
   it("should block reusing existing email if sanityCheck is true", async () => {
     // Existing user:
     const user = await signInWithEmailLink(authApi(), "bar@example.com");
@@ -338,6 +357,27 @@ describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
       .send({
         sanityCheck: true,
         users: [{ localId: "test1", email: user.email }],
+      })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.error).to.eql([
+          {
+            index: 0,
+            message: "email exists in other account in database",
+          },
+        ]);
+      });
+  });
+
+  it("should block reusing existing email in a different case if sanityCheck is true", async () => {
+    // Existing user:
+    await signInWithEmailLink(authApi(), "bar@example.com");
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchCreate`)
+      .set("Authorization", "Bearer owner")
+      .send({
+        sanityCheck: true,
+        users: [{ localId: "test1", email: "BAR@example.com" }],
       })
       .then((res) => {
         expectStatusCode(200, res);

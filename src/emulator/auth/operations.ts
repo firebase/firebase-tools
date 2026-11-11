@@ -346,8 +346,9 @@ function batchCreate(
       const existingEmails = new Set<string>();
       for (const userInfo of reqBody.users) {
         if (userInfo.email) {
-          assert(!existingEmails.has(userInfo.email), `DUPLICATE_EMAIL : ${userInfo.email}`);
-          existingEmails.add(userInfo.email);
+          const email = canonicalizeEmailAddress(userInfo.email);
+          assert(!existingEmails.has(email), `DUPLICATE_EMAIL : ${userInfo.email}`);
+          existingEmails.add(email);
         }
       }
     }
@@ -456,7 +457,7 @@ function batchCreate(
         fields.createdAt = userInfo.createdAt;
       }
       if (userInfo.email) {
-        const email = userInfo.email;
+        const email = canonicalizeEmailAddress(userInfo.email);
         assert(isValidEmailAddress(email), "email is invalid");
 
         // For simplicity, Auth Emulator performs this check in all cases
@@ -469,7 +470,7 @@ function batchCreate(
             ? "email exists in other account in database"
             : `((Auth Emulator does not support importing duplicate email: ${email}))`,
         );
-        fields.email = canonicalizeEmailAddress(email);
+        fields.email = email;
       }
       fields.emailVerified = !!userInfo.emailVerified;
       fields.disabled = !!userInfo.disabled;
