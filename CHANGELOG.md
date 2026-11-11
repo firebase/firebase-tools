@@ -10,3 +10,4 @@
 - Added local machine config persistence to `appcheck:debugtokens:create`, `--local` support to `appcheck:debugtokens:list`, and `appcheck:debugtokens:prune` to clean up stale local debug tokens.
 - Fixed `database:import` failing with an unhandled promise rejection when a batch write fails.
 - Fixed emulator crashes when a Firestore rules reload or emulator HTTP handler throws.
+- Fixed `accounts:batchCreate` (`importUsers`) in the Auth emulator accepting an email that differs only in case from an existing account or another user in the same batch.
