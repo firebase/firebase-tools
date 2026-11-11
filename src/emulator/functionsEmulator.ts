@@ -14,7 +14,6 @@ import { trackEmulator } from "../track";
 import { Constants } from "./constants";
 import { EmulatorInfo, EmulatorInstance, Emulators, FunctionsExecutionMode } from "./types";
 import * as chokidar from "chokidar";
-import * as minimatch from "minimatch";
 import * as portfinder from "portfinder";
 
 import * as spawn from "cross-spawn";
@@ -64,6 +63,7 @@ import { getCredentialsEnvironment, setEnvVarsForEmulators } from "./env";
 import { runWithVirtualEnv } from "../functions/python";
 import { runtimeIsLanguage, Runtime } from "../deploy/functions/runtimes/supported";
 import { DART_ENTRY_POINT } from "../deploy/functions/runtimes/dart";
+import { createIgnoreMatcher } from "../fsAsync";
 import {
   isDartEndpoint,
   classifyNonProductionEndpoints,
@@ -189,7 +189,7 @@ interface EmulatedTriggerRecord {
   url?: string;
 }
 
-export function createIgnoredFilter(ignore?: string[]): chokidar.Matcher[] {
+export function createIgnoredFilter(functionsDir: string, ignore?: string[]): chokidar.Matcher[] {
   const ignored: chokidar.Matcher[] = [
     /(^|[/\\])\../, // Ignore hidden files/dirs (covers .dart_tool, .git, etc.)
     /.+\.log/, // Ignore log files
@@ -197,14 +197,7 @@ export function createIgnoredFilter(ignore?: string[]): chokidar.Matcher[] {
     /.+?[\\/]venv[\\/].+?/, // Ignore venv
   ];
   if (ignore) {
-    const minimatchInstances = ignore.map((pattern) => {
-      const p = pattern.startsWith("**/") ? pattern : `**/${pattern}`;
-      return new minimatch.Minimatch(p, { dot: true });
-    });
-    ignored.push((filePath: string) => {
-      const normalized = filePath.replace(/\\/g, "/");
-      return minimatchInstances.some((m) => m.match(normalized));
-    });
+    ignored.push(createIgnoreMatcher(functionsDir, ignore));
   }
   return ignored;
 }
@@ -551,7 +544,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         this.logger.logLabeled("SUCCESS", "functions", `build_runner initial build completed`);
       } else {
         const watcher = chokidar.watch(backend.functionsDir, {
-          ignored: createIgnoredFilter(backend.ignore),
+          ignored: createIgnoredFilter(backend.functionsDir, backend.ignore),
           persistent: true,
         });
 
