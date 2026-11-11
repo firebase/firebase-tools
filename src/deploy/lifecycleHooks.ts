@@ -6,6 +6,7 @@ const needProjectId = require("../projectUtils").needProjectId;
 import { logger } from "../logger";
 import * as path from "path";
 import { Options } from "../options";
+import { Deployable } from "../firebaseConfig";
 import { isVSCodeExtension } from "../vsCodeUtils";
 
 function runCommand(command: string, childOptions: childProcess.SpawnOptions) {
@@ -118,7 +119,8 @@ function runTargetCommands(
     });
 }
 
-export function getReleventConfigs(target: string, options: Options) {
+/** Exported for testing. */
+export function getReleventConfigs(target: string, options: Options): Deployable[] {
   let targetConfigs = options.config.get(target);
   if (!targetConfigs) {
     return [];
