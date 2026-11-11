@@ -6,6 +6,7 @@ const needProjectId = require("../projectUtils").needProjectId;
 import { logger } from "../logger";
 import * as path from "path";
 import { Options } from "../options";
+import { Deployable } from "../firebaseConfig";
 import { isVSCodeExtension } from "../vsCodeUtils";
 
 function runCommand(command: string, childOptions: childProcess.SpawnOptions) {
@@ -118,7 +119,8 @@ function runTargetCommands(
     });
 }
 
-function getReleventConfigs(target: string, options: Options) {
+/** Exported for testing. */
+export function getReleventConfigs(target: string, options: Options): Deployable[] {
   let targetConfigs = options.config.get(target);
   if (!targetConfigs) {
     return [];
@@ -154,12 +156,14 @@ function getReleventConfigs(target: string, options: Options) {
       if (!config.codebase) {
         onlyConfigs.push(config);
       } else {
-        const found = onlyTargets.find(
+        const found = onlyTargets.filter(
           (individualOnly) => config.codebase === individualOnly.split(":")[0],
         );
-        if (found) {
+        if (found.length) {
           onlyConfigs.push(config);
-          matched[found] = true;
+          for (const individualOnly of found) {
+            matched[individualOnly] = true;
+          }
         }
       }
     }
