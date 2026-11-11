@@ -78,24 +78,27 @@ interface SuccessfulModuleResolution {
   resolution: string;
 }
 
-interface ProxyTarget extends Object {
+/**
+ * Generic key-value target wrapped by {@link Proxied}.
+ */
+export interface ProxyTarget extends Object {
   [key: string]: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
-/*
-  This helper is used to create mocks for Firebase SDKs. It simplifies creation of Proxy objects
-  by allowing us to easily overide some or all of an objects methods. When placed back into require's
-  cache the proxy will be automatically used when the module is imported so we can influence the runtime
-  behavior of Firebase SDKs in user code.
-
-  const px = new Proxied({"value": 1});
-  px.when("incremented", (original) => original["value"] + 1);
-
-  const obj = px.finalize();
-  obj.value === 1;
-  obj.incremented === 2;
-   */
-class Proxied<T extends ProxyTarget> {
+/**
+ * This helper is used to create mocks for Firebase SDKs. It simplifies creation of Proxy objects
+ * by allowing us to easily override some or all of an object's methods. When placed back into require's
+ * cache the proxy will be automatically used when the module is imported so we can influence the runtime
+ * behavior of Firebase SDKs in user code.
+ *
+ * const px = new Proxied({"value": 1});
+ * px.when("incremented", (original) => original["value"] + 1);
+ *
+ * const obj = px.finalize();
+ * obj.value === 1;
+ * obj.incremented === 2;
+ */
+export class Proxied<T extends ProxyTarget> {
   /**
    * Gets a property from the original object.
    */
@@ -107,7 +110,10 @@ class Proxied<T extends ProxyTarget> {
     } else if (Proxied.isConstructor(value) || typeof value !== "function") {
       return value;
     } else {
-      return value.bind(target);
+      // Preserve own property descriptors (enumerable and non-enumerable namespace
+      // members such as FieldValue, v1, etc.) that Function.prototype.bind() drops.
+      const bound: object = value.bind(target);
+      return Object.defineProperties(bound, Object.getOwnPropertyDescriptors(value));
     }
   }
 
