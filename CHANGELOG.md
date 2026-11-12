@@ -1,0 +1,1 @@
+- Fixed `crashlytics:heapdumps:enable` bypassing the confirmation prompt without `--force` in non-interactive environments.

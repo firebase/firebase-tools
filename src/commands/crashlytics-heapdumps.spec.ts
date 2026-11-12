@@ -22,14 +22,17 @@ describe("crashlytics:heapdumps commands", () => {
   const originalEnableBefores = [...(enableCommand["befores"] || [])];
   const originalDisableBefores = [...(disableCommand["befores"] || [])];
   const originalStatusBefores = [...(statusCommand["befores"] || [])];
+  let originalGlobalNonInteractive: boolean;
 
   beforeEach(() => {
+    originalGlobalNonInteractive = promptModule.isNonInteractive();
     enableCommand["befores"] = [];
     disableCommand["befores"] = [];
     statusCommand["befores"] = [];
   });
 
   afterEach(() => {
+    promptModule.setNonInteractive(originalGlobalNonInteractive);
     enableCommand["befores"] = [...originalEnableBefores];
     disableCommand["befores"] = [...originalDisableBefores];
     statusCommand["befores"] = [...originalStatusBefores];
@@ -79,6 +82,56 @@ describe("crashlytics:heapdumps commands", () => {
 
       expect(result).to.be.undefined;
       expect(enableCollectionStub).to.not.have.been.called;
+    });
+
+    it("should abort in non-interactive mode when --force is omitted", async () => {
+      confirmStub.restore();
+
+      await expect(
+        enableCommand.runner()({
+          project: projectId,
+          app: appId,
+          nonInteractive: true,
+        }),
+      ).to.be.rejectedWith(FirebaseError, "cannot be answered in non-interactive mode");
+
+      expect(enableCollectionStub).to.not.have.been.called;
+    });
+
+    it("should abort when stdin is not a TTY (e.g., piped input) and --force is omitted", async () => {
+      confirmStub.restore();
+      sinon.stub(process.stdin, "isTTY").value(false);
+
+      await expect(
+        enableCommand.runner()({
+          project: projectId,
+          app: appId,
+        }),
+      ).to.be.rejectedWith(FirebaseError, "cannot be answered in non-interactive mode");
+
+      expect(enableCollectionStub).to.not.have.been.called;
+    });
+
+    it("should succeed in non-interactive mode when --force is provided", async () => {
+      confirmStub.restore();
+
+      const result: unknown = await enableCommand.runner()({
+        project: projectId,
+        app: appId,
+        nonInteractive: true,
+        force: true,
+      });
+
+      expect(result).to.deep.equal({
+        appId,
+        bucketName,
+        heapDumpCollectionEnabled: true,
+      });
+      expect(enableCollectionStub).to.have.been.calledOnceWith(
+        projectId,
+        appId,
+        profilingManager.DEFAULT_BUCKET_LOCATION,
+      );
     });
 
     it("should successfully provision bucket, grant P4SA role, and enable collection", async () => {
