@@ -27,7 +27,7 @@ export const command = new Command("crashlytics:heapdumps:enable")
   .option("--app <appID>", "the app id of your Firebase Android app")
   .option(
     "--location <location>",
-    `the location for the Cloud Storage bucket (default: ${DEFAULT_BUCKET_LOCATION})`,
+    "the location for the Cloud Storage bucket",
     DEFAULT_BUCKET_LOCATION,
   )
   .withForce("automatically configure without prompting for confirmation")

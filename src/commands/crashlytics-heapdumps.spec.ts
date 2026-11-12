@@ -114,6 +114,29 @@ describe("crashlytics:heapdumps commands", () => {
       );
     });
 
+    it("should render a single default location annotation in --help output", () => {
+      const cli = new program.Command();
+      const client: CLIClient = {
+        cli: cli as unknown as typeof program,
+        errorOut: sinon.stub(),
+      };
+      enableCommand.register(client);
+      const registeredCmd = cli.commands.find(
+        (cmd) => cmd.name() === "crashlytics:heapdumps:enable",
+      );
+      if (!registeredCmd) {
+        expect.fail("Expected crashlytics:heapdumps:enable command to be registered");
+      }
+
+      const helpText = registeredCmd.helpInformation().replace(/\s+/g, " ");
+      expect(helpText).to.include(
+        `--location <location> the location for the Cloud Storage bucket (default: "${profilingManager.DEFAULT_BUCKET_LOCATION}")`,
+      );
+      expect(helpText).to.not.include(
+        `(default: ${profilingManager.DEFAULT_BUCKET_LOCATION}) (default:`,
+      );
+    });
+
     it("should rethrow error when provisioning or enabling collection fails", async () => {
       const boom = new FirebaseError("Storage failure");
       enableCollectionStub.rejects(boom);
@@ -191,6 +214,24 @@ describe("crashlytics:heapdumps commands", () => {
         appId,
         bucket: bucketName,
         heapDumpCollectionEnabled: true,
+      });
+    });
+
+    it("should include heapDumpCollectionEnabled: false when omitted by the API on a disabled app", async () => {
+      const resourceName = `projects/${projectNumber}/apps/${appId}/profilingManagerConfig`;
+      sinon.stub(profilingManager, "getProfilingManagerConfig").resolves({
+        name: resourceName,
+      });
+
+      const result: unknown = await statusCommand.runner()({
+        project: projectId,
+        app: appId,
+      });
+
+      expect(result).to.deep.equal({
+        appId,
+        name: resourceName,
+        heapDumpCollectionEnabled: false,
       });
     });
 

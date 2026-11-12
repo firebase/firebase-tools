@@ -5,7 +5,7 @@ import { randomInt } from "crypto";
 
 import { firebaseStorageOrigin, storageOrigin } from "../api";
 import { Client } from "../apiv2";
-import { FirebaseError, getError, getErrStatus } from "../error";
+import { FirebaseError, getError, getErrStatus, isObject } from "../error";
 import { logger } from "../logger";
 import { ensure } from "../ensureApiEnabled";
 import * as utils from "../utils";
@@ -348,10 +348,31 @@ export async function getBucket(bucketName: string): Promise<BucketResponse> {
   }
 }
 
+function extractApiErrorMessage(err: unknown): string | undefined {
+  if (!isObject(err) || !isObject(err.context) || !isObject(err.context.body)) {
+    return undefined;
+  }
+  const apiError = err.context.body.error;
+  if (typeof apiError === "string" && apiError.trim()) {
+    return apiError.trim();
+  }
+  if (
+    isObject(apiError) &&
+    typeof apiError.message === "string" &&
+    apiError.message.trim() &&
+    apiError.message !== "Unknown Error"
+  ) {
+    return apiError.message.trim();
+  }
+  return undefined;
+}
+
 /**
  * Creates a storage bucket on GCP.
  * Ref: https://cloud.google.com/storage/docs/json_api/v1/buckets/insert
- * @param {string} bucketName name of the storage bucket
+ * @param projectId GCP project identifier
+ * @param req bucket creation request payload
+ * @param projectPrivate whether to apply projectPrivate predefined ACLs
  * @return a bucket resource object
  */
 export async function createBucket(
@@ -377,11 +398,19 @@ export async function createBucket(
       { queryParams },
     );
     return result.body;
-  } catch (err: any) {
-    logger.debug(err);
-    throw new FirebaseError("Failed to create the storage bucket", {
-      original: err,
-    });
+  } catch (err: unknown) {
+    const error = getError(err);
+    logger.debug(error);
+    const detail = extractApiErrorMessage(err) || error.message;
+    throw new FirebaseError(
+      detail
+        ? `Failed to create the storage bucket: ${detail}`
+        : "Failed to create the storage bucket",
+      {
+        original: error,
+        status: getErrStatus(err),
+      },
+    );
   }
 }
 
