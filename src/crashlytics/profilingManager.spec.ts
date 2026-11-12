@@ -16,7 +16,6 @@ import {
   disableHeapDumpCollection,
   CRASHLYTICS_SERVICE_NAME,
   STORAGE_OBJECT_CREATOR_ROLE,
-  DEFAULT_BUCKET_LOCATION,
   DEFAULT_CORS_RULES,
   DEFAULT_LIFECYCLE_RULES,
 } from "./profilingManager";
@@ -26,8 +25,8 @@ import * as storage from "../gcp/storage";
 import * as resourceManager from "../gcp/resourceManager";
 import * as serviceusage from "../gcp/serviceusage";
 import * as appsModule from "../management/apps";
-import * as utils from "../utils";
 import { Policy } from "../gcp/iam";
+import * as utils from "../utils";
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;
@@ -275,14 +274,14 @@ describe("profilingManager", () => {
       rule: DEFAULT_LIFECYCLE_RULES,
     };
 
-    it("should create a new bucket in us-east1 with CORS and 90-day TTL when it does not exist", async () => {
+    it("should create a new bucket with CORS and 90-day TTL when it does not exist", async () => {
       const notFoundError = new FirebaseError("Not found", { status: 404 });
       const getBucketStub = sinon.stub(storage, "getBucket").rejects(notFoundError);
       const createBucketStub = sinon
         .stub(storage, "createBucket")
         .resolves({} as storage.BucketResponse);
 
-      const result = await ensureHeapDumpStorageBucket(projectId, appId);
+      const result = await ensureHeapDumpStorageBucket(projectId, appId, "us-central1");
 
       expect(result).to.equal(expectedBucketName);
       expect(getBucketStub).to.have.been.calledWith(expectedBucketName);
@@ -290,7 +289,7 @@ describe("profilingManager", () => {
         projectId,
         {
           name: expectedBucketName,
-          location: DEFAULT_BUCKET_LOCATION,
+          location: "us-central1",
           cors: DEFAULT_CORS_RULES,
           lifecycle: expectedLifecycle,
         },
@@ -307,6 +306,73 @@ describe("profilingManager", () => {
         forbiddenError,
       );
       expect(createBucketStub).to.not.have.been.called;
+    });
+
+    it("should warn and reuse existing bucket when requested location differs from existing bucket location", async () => {
+      sinon.stub(storage, "getBucket").resolves({
+        name: expectedBucketName,
+        projectNumber,
+        location: "US-CENTRAL1",
+        cors: DEFAULT_CORS_RULES,
+        lifecycle: expectedLifecycle,
+      } as unknown as storage.BucketResponse);
+      const patchBucketStub = sinon.stub(storage, "patchBucket");
+      const createBucketStub = sinon.stub(storage, "createBucket");
+      const logWarningStub = sinon.stub(utils, "logLabeledWarning");
+
+      const result = await ensureHeapDumpStorageBucket(projectId, appId, "europe-west1");
+
+      expect(result).to.equal(expectedBucketName);
+      expect(patchBucketStub).to.not.have.been.called;
+      expect(createBucketStub).to.not.have.been.called;
+      expect(logWarningStub).to.have.been.calledOnceWith(
+        "crashlytics",
+        sinon.match(
+          (msg: string) =>
+            msg.includes("US-CENTRAL1") &&
+            msg.includes("europe-west1") &&
+            msg.includes("cannot be changed"),
+        ),
+      );
+    });
+
+    it("should warn when default location differs from existing bucket location", async () => {
+      sinon.stub(storage, "getBucket").resolves({
+        name: expectedBucketName,
+        projectNumber,
+        location: "US-CENTRAL1",
+        cors: DEFAULT_CORS_RULES,
+        lifecycle: expectedLifecycle,
+      } as unknown as storage.BucketResponse);
+      sinon.stub(storage, "patchBucket");
+      sinon.stub(storage, "createBucket");
+      const logWarningStub = sinon.stub(utils, "logLabeledWarning");
+
+      const result = await ensureHeapDumpStorageBucket(projectId, appId);
+
+      expect(result).to.equal(expectedBucketName);
+      expect(logWarningStub).to.have.been.calledOnceWith(
+        "crashlytics",
+        sinon.match((msg: string) => msg.includes("US-CENTRAL1") && msg.includes("us-east1")),
+      );
+    });
+
+    it("should not warn when existing bucket location matches requested location case-insensitively", async () => {
+      sinon.stub(storage, "getBucket").resolves({
+        name: expectedBucketName,
+        projectNumber,
+        location: "US-EAST1",
+        cors: DEFAULT_CORS_RULES,
+        lifecycle: expectedLifecycle,
+      } as unknown as storage.BucketResponse);
+      sinon.stub(storage, "patchBucket");
+      sinon.stub(storage, "createBucket");
+      const logWarningStub = sinon.stub(utils, "logLabeledWarning");
+
+      const result = await ensureHeapDumpStorageBucket(projectId, appId, "us-east1");
+
+      expect(result).to.equal(expectedBucketName);
+      expect(logWarningStub).to.not.have.been.called;
     });
 
     it("should throw a FirebaseError if the bucket is owned by another project", async () => {
@@ -388,49 +454,21 @@ describe("profilingManager", () => {
       expect(createBucketStub).to.not.have.been.called;
     });
 
-    it("should do nothing and not warn if bucket exists in US-EAST1 with both CORS and lifecycle configuration", async () => {
+    it("should do nothing if bucket exists with both CORS and lifecycle configuration", async () => {
       sinon.stub(storage, "getBucket").resolves({
         name: expectedBucketName,
         projectNumber,
-        location: "US-EAST1",
         cors: DEFAULT_CORS_RULES,
         lifecycle: expectedLifecycle,
       } as unknown as storage.BucketResponse);
       const patchBucketStub = sinon.stub(storage, "patchBucket");
       const createBucketStub = sinon.stub(storage, "createBucket");
-      const logWarningStub = sinon.stub(utils, "logLabeledWarning");
 
       const result = await ensureHeapDumpStorageBucket(projectId, appId);
 
       expect(result).to.equal(expectedBucketName);
       expect(patchBucketStub).to.not.have.been.called;
       expect(createBucketStub).to.not.have.been.called;
-      expect(logWarningStub).to.not.have.been.called;
-    });
-
-    it("should reuse an existing bucket in another location and warn without recreating it", async () => {
-      sinon.stub(storage, "getBucket").resolves({
-        name: expectedBucketName,
-        projectNumber,
-        location: "US-CENTRAL1",
-        cors: DEFAULT_CORS_RULES,
-        lifecycle: expectedLifecycle,
-      } as unknown as storage.BucketResponse);
-      const patchBucketStub = sinon.stub(storage, "patchBucket");
-      const createBucketStub = sinon.stub(storage, "createBucket");
-      const logWarningStub = sinon.stub(utils, "logLabeledWarning");
-
-      const result = await ensureHeapDumpStorageBucket(projectId, appId);
-
-      expect(result).to.equal(expectedBucketName);
-      expect(patchBucketStub).to.not.have.been.called;
-      expect(createBucketStub).to.not.have.been.called;
-      expect(logWarningStub).to.have.been.calledOnceWith(
-        "crashlytics",
-        sinon.match(
-          (msg: string) => msg.includes("US-CENTRAL1") && msg.includes(DEFAULT_BUCKET_LOCATION),
-        ),
-      );
     });
   });
 

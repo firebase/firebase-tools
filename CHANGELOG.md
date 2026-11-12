@@ -1,1 +1,1 @@
-- Removed the `--location` option from `crashlytics:heapdumps:enable` and locked new Crashlytics heap dump Cloud Storage buckets to `us-east1`.
+- Warned when `crashlytics:heapdumps:enable` reuses an existing Cloud Storage bucket whose location differs from `--location` instead of silently ignoring the requested location.
