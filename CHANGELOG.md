@@ -1,0 +1,1 @@
+- Scoped Crashlytics service agent `roles/storage.objectCreator` access to the dedicated heap dump Cloud Storage bucket and enabled Uniform Bucket-Level Access and enforced Public Access Prevention in `crashlytics:heapdumps:enable`.

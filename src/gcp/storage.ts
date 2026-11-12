@@ -10,8 +10,14 @@ import { logger } from "../logger";
 import { ensure } from "../ensureApiEnabled";
 import * as utils from "../utils";
 import { fieldMasks } from "./proto";
+import { Binding, isRetryableIamError, mergeBindings, Policy } from "./iam";
 
-/** Content Type **/
+const BUCKET_IAM_POLICY_VERSION = "3";
+const IAM_RETRY_COUNT = 7;
+const IAM_RETRY_INITIAL_DELAY_MS = 1000;
+const IAM_RETRY_MAX_DELAY_MS = 5000;
+
+/** Content Type */
 export enum ContentType {
   ZIP = "ZIP",
   TAR = "TAR",
@@ -66,13 +72,7 @@ export interface BucketResponse {
       etag: string;
     },
   ];
-  iamConfiguration: {
-    publicAccessPrevention: string;
-    uniformBucketLevelAccess: {
-      enabled: boolean;
-      lockedTime: string;
-    };
-  };
+  iamConfiguration: BucketIamConfiguration;
   encryption: {
     defaultKmsKeyName: string;
   };
@@ -105,6 +105,16 @@ export interface BucketResponse {
     requesterPays: boolean;
   };
   etag: string;
+}
+
+export type PublicAccessPrevention = "enforced" | "inherited";
+
+export interface BucketIamConfiguration {
+  publicAccessPrevention?: PublicAccessPrevention;
+  uniformBucketLevelAccess?: {
+    enabled: boolean;
+    lockedTime?: string;
+  };
 }
 
 export interface Autoclass {
@@ -151,6 +161,7 @@ export interface CreateBucketRequest {
   };
   cors?: CorsRule[];
   autoclass?: Autoclass;
+  iamConfiguration?: BucketIamConfiguration;
 }
 
 export interface LifecycleRule {
@@ -362,9 +373,8 @@ export async function createBucket(
   const queryParams: Record<string, string> = {
     project: projectId,
   };
-  // TODO: This should probably be always on, but we need to audit the other cases of this method to
-  // make sure we don't break anything.
-  if (projectPrivate) {
+  // GCS rejects legacy predefined ACL query parameters when Uniform Bucket-Level Access is enabled.
+  if (projectPrivate && !req.iamConfiguration?.uniformBucketLevelAccess?.enabled) {
     queryParams["predefinedAcl"] = "projectPrivate";
     queryParams["predefinedDefaultObjectAcl"] = "projectPrivate";
   }
@@ -439,6 +449,8 @@ const dynamicDispatch = exports as {
   createBucket: typeof createBucket;
   patchBucket: typeof patchBucket;
   randomString: typeof randomString;
+  getBucketIamPolicy: typeof getBucketIamPolicy;
+  setBucketIamPolicy: typeof setBucketIamPolicy;
 };
 
 /**
@@ -614,4 +626,83 @@ export async function getDownloadUrl(
       },
     );
   }
+}
+
+/**
+ * Fetches the IAM policy for a Cloud Storage bucket.
+ * Ref: https://cloud.google.com/storage/docs/json_api/v1/buckets/getIamPolicy
+ */
+export async function getBucketIamPolicy(bucketName: string): Promise<Policy> {
+  try {
+    const localAPIClient = new Client({ urlPrefix: storageOrigin() });
+    const response = await localAPIClient.get<Policy>(`/storage/v1/b/${bucketName}/iam`, {
+      queryParams: { optionsRequestedPolicyVersion: BUCKET_IAM_POLICY_VERSION },
+    });
+    return response.body;
+  } catch (err: unknown) {
+    const error = getError(err);
+    logger.debug(error);
+    throw new FirebaseError("Failed to get the storage bucket IAM policy", {
+      original: error,
+      status: getErrStatus(err),
+    });
+  }
+}
+
+/**
+ * Updates the IAM policy for a Cloud Storage bucket.
+ * Ref: https://cloud.google.com/storage/docs/json_api/v1/buckets/setIamPolicy
+ */
+export async function setBucketIamPolicy(bucketName: string, policy: Policy): Promise<Policy> {
+  try {
+    const localAPIClient = new Client({ urlPrefix: storageOrigin() });
+    const response = await localAPIClient.put<Policy, Policy>(
+      `/storage/v1/b/${bucketName}/iam`,
+      policy,
+    );
+    return response.body;
+  } catch (err: unknown) {
+    const error = getError(err);
+    logger.debug(error);
+    throw new FirebaseError("Failed to set the storage bucket IAM policy", {
+      original: error,
+      status: getErrStatus(err),
+    });
+  }
+}
+
+/**
+ * Ensures a service account holds the given IAM roles on a specific Cloud Storage bucket,
+ * retrying transient HTTP 409 etag conflicts and HTTP 400 service-agent replication lag.
+ */
+export async function addServiceAccountToBucketRoles(
+  bucketName: string,
+  serviceAccountEmail: string,
+  roles: string[],
+): Promise<Policy> {
+  const email = serviceAccountEmail.split("/").pop() || serviceAccountEmail;
+  const memberName = `serviceAccount:${email}`;
+  return await utils.retryWithBackoff(
+    async () => {
+      const policy = await dynamicDispatch.getBucketIamPolicy(bucketName);
+      policy.bindings = policy.bindings || [];
+
+      const requiredBindings: Binding[] = roles.map((role) => ({
+        role,
+        members: [memberName],
+      }));
+      const updated = mergeBindings(policy, requiredBindings);
+      if (!updated) {
+        return policy;
+      }
+
+      return await dynamicDispatch.setBucketIamPolicy(bucketName, policy);
+    },
+    {
+      retries: IAM_RETRY_COUNT,
+      delay: IAM_RETRY_INITIAL_DELAY_MS,
+      maxDelay: IAM_RETRY_MAX_DELAY_MS,
+      retryPredicate: isRetryableIamError,
+    },
+  );
 }

@@ -466,4 +466,175 @@ describe("storage", () => {
       }
     });
   });
+
+  describe("createBucket", () => {
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it("should omit predefinedAcl query params when uniformBucketLevelAccess is enabled", async () => {
+      const req: storage.CreateBucketRequest = {
+        name: "ubla-bucket",
+        location: "us-east1",
+        iamConfiguration: {
+          publicAccessPrevention: "enforced",
+          uniformBucketLevelAccess: { enabled: true },
+        },
+      };
+      const postStub = sinon.stub(Client.prototype, "post").resolves({
+        status: 200,
+        response: new Response(),
+        body: { name: "ubla-bucket" } as storage.BucketResponse,
+      });
+
+      await storage.createBucket("test-project", req, true);
+
+      expect(postStub).to.be.calledOnceWith("/storage/v1/b", req, {
+        queryParams: { project: "test-project" },
+      });
+    });
+
+    it("should include projectPrivate predefinedAcl query params when UBLA is not enabled", async () => {
+      const req: storage.CreateBucketRequest = {
+        name: "legacy-bucket",
+        location: "us-east1",
+      };
+      const postStub = sinon.stub(Client.prototype, "post").resolves({
+        status: 200,
+        response: new Response(),
+        body: { name: "legacy-bucket" } as storage.BucketResponse,
+      });
+
+      await storage.createBucket("test-project", req, true);
+
+      expect(postStub).to.be.calledOnceWith("/storage/v1/b", req, {
+        queryParams: {
+          project: "test-project",
+          predefinedAcl: "projectPrivate",
+          predefinedDefaultObjectAcl: "projectPrivate",
+        },
+      });
+    });
+  });
+
+  describe("bucket IAM policy helpers", () => {
+    const bucketName = "my-heap-dump-bucket";
+    const saEmail = "service-123@gcp-sa-crashlytics.iam.gserviceaccount.com";
+
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it("getBucketIamPolicy should request policy version 3", async () => {
+      const mockPolicy = { version: 3, etag: "abc", bindings: [] };
+      const getStub = sinon.stub(Client.prototype, "get").resolves({
+        status: 200,
+        response: new Response(),
+        body: mockPolicy,
+      });
+
+      const policy = await storage.getBucketIamPolicy(bucketName);
+
+      expect(policy).to.deep.equal(mockPolicy);
+      expect(getStub).to.be.calledOnceWith(`/storage/v1/b/${bucketName}/iam`, {
+        queryParams: { optionsRequestedPolicyVersion: "3" },
+      });
+    });
+
+    it("setBucketIamPolicy should PUT updated policy to bucket IAM endpoint", async () => {
+      const updatedPolicy = {
+        version: 1,
+        etag: "abc",
+        bindings: [{ role: "roles/storage.objectCreator", members: [`serviceAccount:${saEmail}`] }],
+      };
+      const putStub = sinon.stub(Client.prototype, "put").resolves({
+        status: 200,
+        response: new Response(),
+        body: updatedPolicy,
+      });
+
+      const result = await storage.setBucketIamPolicy(bucketName, updatedPolicy);
+
+      expect(result).to.deep.equal(updatedPolicy);
+      expect(putStub).to.be.calledOnceWith(`/storage/v1/b/${bucketName}/iam`, updatedPolicy);
+    });
+
+    it("addServiceAccountToBucketRoles should add missing binding and preserve existing bindings", async () => {
+      const existingBinding = {
+        role: "roles/storage.legacyBucketOwner",
+        members: ["projectOwner:my-project"],
+      };
+      const getPolicyStub = sinon.stub(storage, "getBucketIamPolicy").resolves({
+        version: 1,
+        etag: "etag-1",
+        bindings: [existingBinding],
+      });
+      const setPolicyStub = sinon.stub(storage, "setBucketIamPolicy").callsFake(async (_b, p) => p);
+
+      const result = await storage.addServiceAccountToBucketRoles(bucketName, saEmail, [
+        "roles/storage.objectCreator",
+      ]);
+
+      expect(getPolicyStub).to.be.calledOnceWith(bucketName);
+      expect(setPolicyStub).to.be.calledOnceWith(bucketName, {
+        version: 1,
+        etag: "etag-1",
+        bindings: [
+          existingBinding,
+          {
+            role: "roles/storage.objectCreator",
+            members: [`serviceAccount:${saEmail}`],
+          },
+        ],
+      });
+      expect(result.bindings).to.have.lengthOf(2);
+    });
+
+    it("addServiceAccountToBucketRoles should skip setBucketIamPolicy if binding already exists", async () => {
+      const existingPolicy = {
+        version: 1,
+        etag: "etag-1",
+        bindings: [
+          {
+            role: "roles/storage.objectCreator",
+            members: [`serviceAccount:${saEmail}`],
+          },
+        ],
+      };
+      sinon.stub(storage, "getBucketIamPolicy").resolves(existingPolicy);
+      const setPolicyStub = sinon.stub(storage, "setBucketIamPolicy");
+
+      const result = await storage.addServiceAccountToBucketRoles(bucketName, saEmail, [
+        "roles/storage.objectCreator",
+      ]);
+
+      expect(result).to.deep.equal(existingPolicy);
+      expect(setPolicyStub).to.not.be.called;
+    });
+
+    it("addServiceAccountToBucketRoles should retry on HTTP 400 service account propagation error", async () => {
+      const origRetryWithBackoff = utils.retryWithBackoff;
+      const retryStub = sinon
+        .stub(utils, "retryWithBackoff")
+        .callsFake((fn, opts) => origRetryWithBackoff(fn, { ...opts, delay: 1, maxDelay: 5 }));
+      const getPolicyStub = sinon
+        .stub(storage, "getBucketIamPolicy")
+        .callsFake(async () => ({ version: 1, etag: "etag-1", bindings: [] }));
+      const setPolicyStub = sinon.stub(storage, "setBucketIamPolicy");
+      setPolicyStub.onFirstCall().rejects(
+        new FirebaseError(`Service account ${saEmail} does not exist.`, {
+          status: 400,
+        }),
+      );
+      setPolicyStub.onSecondCall().callsFake(async (_b, p) => p);
+
+      await storage.addServiceAccountToBucketRoles(bucketName, saEmail, [
+        "roles/storage.objectCreator",
+      ]);
+
+      expect(retryStub).to.be.calledOnce;
+      expect(getPolicyStub).to.be.calledTwice;
+      expect(setPolicyStub).to.be.calledTwice;
+    });
+  });
 });

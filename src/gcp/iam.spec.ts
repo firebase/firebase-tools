@@ -2,6 +2,7 @@ import { expect } from "chai";
 import nock from "../test/helpers/nock";
 
 import { resourceManagerOrigin } from "../api";
+import { FirebaseError } from "../error";
 import * as iam from "./iam";
 
 const BINDING = {
@@ -57,6 +58,55 @@ describe("iam", () => {
 
       expect(updated).to.be.true;
       expect(policy.bindings).to.deep.equal([BINDING]);
+    });
+
+    it("should not merge an unconditional binding into an existing conditional binding", () => {
+      const conditionalBinding: iam.Binding = {
+        role: "some/role",
+        members: ["conditionaluser"],
+        condition: {
+          title: "temporary",
+          expression: "request.time < timestamp('2030-01-01T00:00:00Z')",
+        },
+      };
+      const policy: iam.Policy = {
+        etag: "etag",
+        version: 3,
+        bindings: [conditionalBinding],
+      };
+
+      const updated = iam.mergeBindings(policy, [
+        { role: "some/role", members: ["unconditionaluser"] },
+      ]);
+
+      expect(updated).to.be.true;
+      expect(policy.bindings).to.deep.equal([
+        conditionalBinding,
+        { role: "some/role", members: ["unconditionaluser"] },
+      ]);
+    });
+  });
+
+  describe("isRetryableIamError", () => {
+    it("should return true for HTTP 409 conflict errors", () => {
+      const err = new FirebaseError("Conflict", { status: 409 });
+      expect(iam.isRetryableIamError(err)).to.be.true;
+    });
+
+    it("should return true for HTTP 400 service account replication lag errors", () => {
+      const err = new FirebaseError(
+        "Service account service-123@gcp-sa-crashlytics.iam.gserviceaccount.com does not exist.",
+        { status: 400 },
+      );
+      expect(iam.isRetryableIamError(err)).to.be.true;
+    });
+
+    it("should return false for non-retryable 400, 403, or 500 errors", () => {
+      expect(iam.isRetryableIamError(new FirebaseError("Role does not exist.", { status: 400 }))).to
+        .be.false;
+      expect(iam.isRetryableIamError(new FirebaseError("Forbidden", { status: 403 }))).to.be.false;
+      expect(iam.isRetryableIamError(new FirebaseError("Server Error", { status: 500 }))).to.be
+        .false;
     });
   });
 

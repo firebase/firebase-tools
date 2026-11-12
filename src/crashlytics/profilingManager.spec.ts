@@ -18,11 +18,11 @@ import {
   STORAGE_OBJECT_CREATOR_ROLE,
   DEFAULT_CORS_RULES,
   DEFAULT_LIFECYCLE_RULES,
+  DEFAULT_IAM_CONFIGURATION,
 } from "./profilingManager";
 import { FirebaseError } from "../error";
 import { crashlyticsApiOrigin } from "../api";
 import * as storage from "../gcp/storage";
-import * as resourceManager from "../gcp/resourceManager";
 import * as serviceusage from "../gcp/serviceusage";
 import * as appsModule from "../management/apps";
 import { Policy } from "../gcp/iam";
@@ -273,7 +273,7 @@ describe("profilingManager", () => {
       rule: DEFAULT_LIFECYCLE_RULES,
     };
 
-    it("should create a new bucket with CORS and 90-day TTL when it does not exist", async () => {
+    it("should create a new bucket with CORS, 90-day TTL, UBLA, and enforced PAP when it does not exist", async () => {
       const notFoundError = new FirebaseError("Not found", { status: 404 });
       const getBucketStub = sinon.stub(storage, "getBucket").rejects(notFoundError);
       const createBucketStub = sinon
@@ -284,16 +284,13 @@ describe("profilingManager", () => {
 
       expect(result).to.equal(expectedBucketName);
       expect(getBucketStub).to.have.been.calledWith(expectedBucketName);
-      expect(createBucketStub).to.have.been.calledWith(
-        projectId,
-        {
-          name: expectedBucketName,
-          location: "us-central1",
-          cors: DEFAULT_CORS_RULES,
-          lifecycle: expectedLifecycle,
-        },
-        true,
-      );
+      expect(createBucketStub).to.have.been.calledOnceWithExactly(projectId, {
+        name: expectedBucketName,
+        location: "us-central1",
+        cors: DEFAULT_CORS_RULES,
+        lifecycle: expectedLifecycle,
+        iamConfiguration: DEFAULT_IAM_CONFIGURATION,
+      });
     });
 
     it("should rethrow non-404 errors from getBucket", async () => {
@@ -321,7 +318,7 @@ describe("profilingManager", () => {
       expect(patchBucketStub).to.not.have.been.called;
     });
 
-    it("should patch CORS and lifecycle if bucket exists without either configuration", async () => {
+    it("should patch CORS, lifecycle, and iamConfiguration if bucket exists without required settings", async () => {
       sinon.stub(storage, "getBucket").resolves({
         name: expectedBucketName,
         projectNumber,
@@ -337,6 +334,7 @@ describe("profilingManager", () => {
       expect(patchBucketStub).to.have.been.calledWith(expectedBucketName, {
         cors: DEFAULT_CORS_RULES,
         lifecycle: expectedLifecycle,
+        iamConfiguration: DEFAULT_IAM_CONFIGURATION,
       });
       expect(createBucketStub).to.not.have.been.called;
     });
@@ -352,6 +350,7 @@ describe("profilingManager", () => {
         projectNumber,
         cors: [existingCors],
         lifecycle: { rule: [existingLifecycleRule] },
+        iamConfiguration: DEFAULT_IAM_CONFIGURATION,
       } as unknown as storage.BucketResponse);
       const patchBucketStub = sinon
         .stub(storage, "patchBucket")
@@ -366,11 +365,16 @@ describe("profilingManager", () => {
       });
     });
 
-    it("should patch only lifecycle if bucket exists with CORS but without lifecycle", async () => {
+    it("should patch only missing publicAccessPrevention when UBLA, CORS, and lifecycle are already configured", async () => {
       sinon.stub(storage, "getBucket").resolves({
         name: expectedBucketName,
         projectNumber,
         cors: DEFAULT_CORS_RULES,
+        lifecycle: expectedLifecycle,
+        iamConfiguration: {
+          publicAccessPrevention: "inherited",
+          uniformBucketLevelAccess: { enabled: true },
+        },
       } as unknown as storage.BucketResponse);
       const patchBucketStub = sinon
         .stub(storage, "patchBucket")
@@ -381,17 +385,18 @@ describe("profilingManager", () => {
 
       expect(result).to.equal(expectedBucketName);
       expect(patchBucketStub).to.have.been.calledWith(expectedBucketName, {
-        lifecycle: expectedLifecycle,
+        iamConfiguration: { publicAccessPrevention: "enforced" },
       });
       expect(createBucketStub).to.not.have.been.called;
     });
 
-    it("should do nothing if bucket exists with both CORS and lifecycle configuration", async () => {
+    it("should do nothing if bucket exists with CORS, lifecycle, UBLA, and enforced PAP", async () => {
       sinon.stub(storage, "getBucket").resolves({
         name: expectedBucketName,
         projectNumber,
         cors: DEFAULT_CORS_RULES,
         lifecycle: expectedLifecycle,
+        iamConfiguration: DEFAULT_IAM_CONFIGURATION,
       } as unknown as storage.BucketResponse);
       const patchBucketStub = sinon.stub(storage, "patchBucket");
       const createBucketStub = sinon.stub(storage, "createBucket");
@@ -405,59 +410,41 @@ describe("profilingManager", () => {
   });
 
   describe("ensureHeapDumpP4saRole", () => {
-    it("should generate service identity and add the role if the P4SA does not currently have it", async () => {
+    it("should generate service identity and scope roles/storage.objectCreator to the target bucket", async () => {
       const p4saEmail = getCrashlyticsP4sa(projectNumber);
       const generateIdentityStub = sinon
         .stub(serviceusage, "generateServiceIdentityAndPoll")
         .resolves();
-      sinon.stub(resourceManager, "serviceAccountHasRoles").resolves(false);
-      const addRoleStub = sinon
-        .stub(resourceManager, "addServiceAccountToRoles")
+      const addBucketRoleStub = sinon
+        .stub(storage, "addServiceAccountToBucketRoles")
         .resolves({} as Policy);
 
-      await ensureHeapDumpP4saRole(projectId, projectNumber);
+      await ensureHeapDumpP4saRole(projectNumber, expectedBucketName);
 
       expect(generateIdentityStub).to.have.been.calledOnceWith(
         projectNumber,
         CRASHLYTICS_SERVICE_NAME,
         "crashlytics",
       );
-      expect(addRoleStub).to.have.been.calledWith(
-        projectId,
-        p4saEmail,
-        [STORAGE_OBJECT_CREATOR_ROLE],
-        true,
-      );
-    });
-
-    it("should not add the role if the P4SA already has it", async () => {
-      const generateIdentityStub = sinon
-        .stub(serviceusage, "generateServiceIdentityAndPoll")
-        .resolves();
-      sinon.stub(resourceManager, "serviceAccountHasRoles").resolves(true);
-      const addRoleStub = sinon.stub(resourceManager, "addServiceAccountToRoles");
-
-      await ensureHeapDumpP4saRole(projectId, projectNumber);
-
-      expect(generateIdentityStub).to.have.been.calledOnceWith(
-        projectNumber,
-        CRASHLYTICS_SERVICE_NAME,
-        "crashlytics",
-      );
-      expect(addRoleStub).to.not.have.been.called;
+      expect(addBucketRoleStub).to.have.been.calledOnceWithExactly(expectedBucketName, p4saEmail, [
+        STORAGE_OBJECT_CREATOR_ROLE,
+      ]);
     });
   });
 
   describe("enableHeapDumpCollection & disableHeapDumpCollection", () => {
-    it("should orchestrate bucket provisioning, P4SA role setup, and config enablement", async () => {
+    it("should orchestrate bucket provisioning, bucket-scoped P4SA role setup, and config enablement", async () => {
       sinon.stub(storage, "getBucket").resolves({
         name: expectedBucketName,
         projectNumber,
         cors: DEFAULT_CORS_RULES,
         lifecycle: { rule: DEFAULT_LIFECYCLE_RULES },
+        iamConfiguration: DEFAULT_IAM_CONFIGURATION,
       } as unknown as storage.BucketResponse);
       sinon.stub(serviceusage, "generateServiceIdentityAndPoll").resolves();
-      sinon.stub(resourceManager, "serviceAccountHasRoles").resolves(true);
+      const addBucketRoleStub = sinon
+        .stub(storage, "addServiceAccountToBucketRoles")
+        .resolves({} as Policy);
       nock(crashlyticsApiOrigin())
         .patch(resourcePath, {
           bucket: expectedBucketResourceName,
@@ -473,6 +460,11 @@ describe("profilingManager", () => {
       const result = await enableHeapDumpCollection(projectId, appId);
 
       expect(result).to.equal(expectedBucketName);
+      expect(addBucketRoleStub).to.have.been.calledOnceWithExactly(
+        expectedBucketName,
+        getCrashlyticsP4sa(projectNumber),
+        [STORAGE_OBJECT_CREATOR_ROLE],
+      );
       expect(nock.isDone()).to.be.true;
     });
 
