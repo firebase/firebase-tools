@@ -337,12 +337,10 @@ describe("cloudRunProxy", () => {
   });
 
   it("should route to the local functions emulator when targets includes 'functions'", async () => {
-    const fakeFunctionsEmulator = new FakeEmulator(Emulators.FUNCTIONS, [
-      { address: "127.0.0.1", family: "IPv4", port: 7778 },
-    ]);
+    const fakeFunctionsEmulator = await FakeEmulator.create(Emulators.FUNCTIONS);
     await EmulatorRegistry.start(fakeFunctionsEmulator);
 
-    nock("http://127.0.0.1:7778")
+    nock(`http://127.0.0.1:${fakeFunctionsEmulator.getInfo().port}`)
       .get("/project-foo/us-central1/helloworld/")
       .reply(200, "local version");
 
@@ -361,12 +359,10 @@ describe("cloudRunProxy", () => {
   });
 
   it("should route to the local functions emulator in another region", async () => {
-    const fakeFunctionsEmulator = new FakeEmulator(Emulators.FUNCTIONS, [
-      { address: "127.0.0.1", family: "IPv4", port: 7778 },
-    ]);
+    const fakeFunctionsEmulator = await FakeEmulator.create(Emulators.FUNCTIONS);
     await EmulatorRegistry.start(fakeFunctionsEmulator);
 
-    nock("http://127.0.0.1:7778")
+    nock(`http://127.0.0.1:${fakeFunctionsEmulator.getInfo().port}`)
       .get("/project-foo/asia-southeast1/helloworld/")
       .reply(200, "local version");
 
