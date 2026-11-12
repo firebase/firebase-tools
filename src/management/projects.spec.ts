@@ -89,12 +89,10 @@ describe("Project management", () => {
   beforeEach(() => {
     sandbox = sinon.createSandbox();
     pollOperationStub = sandbox.stub(pollUtils, "pollOperation").throws("Unexpected poll call");
-    nock.disableNetConnect();
   });
 
   afterEach(() => {
     sandbox.restore();
-    nock.enableNetConnect();
   });
 
   describe("Interactive flows", () => {
