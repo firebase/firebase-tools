@@ -244,6 +244,7 @@ export async function createFunction(
     const res = await client.post<Omit<CloudFunction, OutputOnlyFields>, CloudFunction>(
       endpoint,
       cloudFunction,
+      { retryOnPrematureClose: false },
     );
     return {
       name: res.body.name,
@@ -412,6 +413,7 @@ export async function updateFunction(
         queryParams: {
           updateMask: fieldMasks.join(","),
         },
+        retryOnPrematureClose: false,
       },
     );
     return {
@@ -431,7 +433,7 @@ export async function updateFunction(
 export async function deleteFunction(name: string): Promise<Operation> {
   const endpoint = `/${name}`;
   try {
-    const res = await client.delete<Operation>(endpoint);
+    const res = await client.delete<Operation>(endpoint, { retryOnPrematureClose: false });
     return {
       done: false,
       name: res.body.name,
