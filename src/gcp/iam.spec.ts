@@ -60,6 +60,18 @@ describe("iam", () => {
       expect(policy.bindings).to.deep.equal([BINDING]);
     });
 
+    it("should initialize bindings when policy.bindings is undefined", () => {
+      const policy = {
+        etag: "etag",
+        version: 3,
+      } as unknown as iam.Policy;
+
+      const updated = iam.mergeBindings(policy, [BINDING]);
+
+      expect(updated).to.be.true;
+      expect(policy.bindings).to.deep.equal([BINDING]);
+    });
+
     it("should not merge an unconditional binding into an existing conditional binding", () => {
       const conditionalBinding: iam.Binding = {
         role: "some/role",

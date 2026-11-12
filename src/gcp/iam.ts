@@ -248,6 +248,7 @@ export function isRetryableIamError(err: unknown): boolean {
 /** Helper to merge all required bindings into the IAM policy, returns boolean if the policy has been updated */
 export function mergeBindings(policy: Policy, requiredBindings: Binding[]): boolean {
   let updated = false;
+  policy.bindings = policy.bindings || [];
   for (const requiredBinding of requiredBindings) {
     const match = policy.bindings.find(
       (b) => b.role === requiredBinding.role && !b.condition && !requiredBinding.condition,
