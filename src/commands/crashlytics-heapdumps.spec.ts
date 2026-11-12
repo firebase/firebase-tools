@@ -81,11 +81,10 @@ describe("crashlytics:heapdumps commands", () => {
       expect(enableCollectionStub).to.not.have.been.called;
     });
 
-    it("should successfully provision bucket, grant P4SA role, and enable collection", async () => {
+    it("should successfully provision bucket, grant P4SA role, and enable collection in us-east1", async () => {
       const result: unknown = await enableCommand.runner()({
         project: projectId,
         app: appId,
-        location: "us-central1",
         force: true,
       });
 
@@ -96,22 +95,32 @@ describe("crashlytics:heapdumps commands", () => {
       });
 
       expect(checkBillingStub).to.have.been.calledWith(projectId);
-      expect(enableCollectionStub).to.have.been.calledOnceWith(projectId, appId, "us-central1");
+      expect(confirmStub).to.have.been.calledOnceWith(
+        sinon.match({
+          message: sinon.match(`in ${profilingManager.DEFAULT_BUCKET_LOCATION}`),
+        }),
+      );
+      expect(enableCollectionStub).to.have.been.calledOnceWithExactly(projectId, appId);
     });
 
-    it("should default location to DEFAULT_BUCKET_LOCATION when location option is empty", async () => {
-      await enableCommand.runner()({
-        project: projectId,
-        app: appId,
-        location: "",
-        force: true,
-      });
-
-      expect(enableCollectionStub).to.have.been.calledOnceWith(
-        projectId,
-        appId,
-        profilingManager.DEFAULT_BUCKET_LOCATION,
+    it("should not expose a --location option in --help output", () => {
+      const cli = new program.Command();
+      const client: CLIClient = {
+        cli: cli as unknown as typeof program,
+        errorOut: sinon.stub(),
+      };
+      enableCommand.register(client);
+      const registeredCmd = cli.commands.find(
+        (cmd) => cmd.name() === "crashlytics:heapdumps:enable",
       );
+      if (!registeredCmd) {
+        expect.fail("Expected crashlytics:heapdumps:enable command to be registered");
+      }
+
+      const helpText = registeredCmd.helpInformation();
+      expect(helpText).to.include("--app <appID>");
+      expect(helpText).to.include("-f, --force");
+      expect(helpText).to.not.include("--location");
     });
 
     it("should rethrow error when provisioning or enabling collection fails", async () => {

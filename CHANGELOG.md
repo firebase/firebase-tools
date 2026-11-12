@@ -1,0 +1,1 @@
+- Removed the `--location` option from `crashlytics:heapdumps:enable` and locked new Crashlytics heap dump Cloud Storage buckets to `us-east1`.

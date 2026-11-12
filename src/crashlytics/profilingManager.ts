@@ -1,6 +1,6 @@
 import { FirebaseError, getErrStatus } from "../error";
 import { logger } from "../logger";
-import { logLabeledBullet, logLabeledSuccess } from "../utils";
+import { logLabeledBullet, logLabeledSuccess, logLabeledWarning } from "../utils";
 import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
 import * as storage from "../gcp/storage";
 import * as resourceManager from "../gcp/resourceManager";
@@ -152,15 +152,13 @@ export async function updateProfilingManagerConfig(
 
 /**
  * Ensures the GCS bucket for heap dumps exists and is configured with CORS and 90-day file TTL.
- * Creates the bucket if it does not already exist.
+ * Creates the bucket in us-east1 if it does not already exist.
  * @param projectId Cloud Project ID
  * @param appId GMP App ID
- * @param location Bucket location / region
  */
 export async function ensureHeapDumpStorageBucket(
   projectId: string,
   appId: string,
-  location: string = DEFAULT_BUCKET_LOCATION,
 ): Promise<string> {
   const bucketName = createBucketName(appId);
   const projectNumber = parseProjectNumber(appId);
@@ -170,6 +168,15 @@ export async function ensureHeapDumpStorageBucket(
     if (bucket.projectNumber && String(bucket.projectNumber) !== projectNumber) {
       throw new FirebaseError(
         `Cloud Storage bucket '${bucketName}' already exists and is owned by another project.`,
+      );
+    }
+    if (
+      bucket.location &&
+      bucket.location.toLowerCase() !== DEFAULT_BUCKET_LOCATION.toLowerCase()
+    ) {
+      logLabeledWarning(
+        "crashlytics",
+        `Reusing existing Cloud Storage bucket '${bucketName}' in ${bucket.location} (default location is ${DEFAULT_BUCKET_LOCATION}).`,
       );
     }
     const patchPayload: Partial<storage.BucketResponse> = {};
@@ -201,12 +208,12 @@ export async function ensureHeapDumpStorageBucket(
     }
   }
 
-  logger.debug(`[crashlytics] Creating GCS bucket ${bucketName} in ${location}...`);
+  logger.debug(`[crashlytics] Creating GCS bucket ${bucketName} in ${DEFAULT_BUCKET_LOCATION}...`);
   await storage.createBucket(
     projectId,
     {
       name: bucketName,
-      location,
+      location: DEFAULT_BUCKET_LOCATION,
       cors: DEFAULT_CORS_RULES,
       lifecycle: { rule: DEFAULT_LIFECYCLE_RULES },
     },
@@ -252,16 +259,11 @@ export async function ensureHeapDumpP4saRole(
  * and enables heap dump collection for the specified Android app.
  * @param projectId Cloud Project ID
  * @param appId GMP App ID
- * @param location Bucket location / region
  */
-export async function enableHeapDumpCollection(
-  projectId: string,
-  appId: string,
-  location: string = DEFAULT_BUCKET_LOCATION,
-): Promise<string> {
+export async function enableHeapDumpCollection(projectId: string, appId: string): Promise<string> {
   const projectNumber = parseProjectNumber(appId);
   logLabeledBullet("crashlytics", "Configuring Google Cloud Storage bucket...");
-  const bucketName = await ensureHeapDumpStorageBucket(projectId, appId, location);
+  const bucketName = await ensureHeapDumpStorageBucket(projectId, appId);
   logLabeledBullet("crashlytics", "Configuring service agent permissions...");
   await ensureHeapDumpP4saRole(projectId, projectNumber);
   logLabeledBullet("crashlytics", "Enabling Crashlytics heap dump collection...");
