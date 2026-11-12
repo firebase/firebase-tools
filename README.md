@@ -170,6 +170,26 @@ Detailed doc is [here](https://firebase.google.com/docs/cli/auth).
 | **functions:delete**          | Delete one or more Cloud Functions by name or group name.                                                    |
 | **functions:shell**           | Locally emulate functions and start Node.js shell where these local functions can be invoked with test data. |
 
+#### Runtime security updates
+
+Set `runtimeUpdatePolicy` in a functions configuration in `firebase.json` to choose
+when runtime security patches are applied to its 2nd gen functions:
+
+```json
+{
+  "functions": {
+    "source": "functions",
+    "runtimeUpdatePolicy": "automatic"
+  }
+}
+```
+
+`automatic` applies runtime security patches without requiring a deployment.
+`on-deploy` applies them only when the function is redeployed. When omitted,
+deployments preserve the policy of existing functions and new functions use the
+Cloud Functions API default. This setting applies independently to each functions
+configuration and has no effect on 1st gen functions or the local emulators.
+
 ### Hosting Commands
 
 | Command             | Description                                                                                                                                                          |

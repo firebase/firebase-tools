@@ -71,6 +71,21 @@ import * as resourcemanager from "../../gcp/resourceManager";
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 export const DECLARATIVE_SECURITY_ETAG_LABEL = "firebase-declarative-security-etag";
 
+/** Applies the codebase runtime update policy to its 2nd gen functions. */
+export function applyRuntimeUpdatePolicy(
+  want: backend.Backend,
+  policy: backend.Endpoint["runtimeUpdatePolicy"],
+): void {
+  if (policy === undefined) {
+    return;
+  }
+  for (const endpoint of backend.allEndpoints(want)) {
+    if (endpoint.platform === "gcfv2") {
+      endpoint.runtimeUpdatePolicy = policy;
+    }
+  }
+}
+
 /**
  * Discovers and coordinates declarative security details for a codebase.
  * Mutates `want` Backend to populate managed service account and etag labels.
@@ -353,6 +368,7 @@ export async function prepare(
     });
 
     functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
+    applyRuntimeUpdatePolicy(wantBackend, config.runtimeUpdatePolicy);
     if (
       experiments.isEnabled("secretEnvParams") &&
       experiments.isEnabled("writeDefaultSecretBindings")
