@@ -428,19 +428,6 @@ export class TaskQueue {
     this.queue.remove(taskId);
   }
 
-  getDebugInfo(): string {
-    return `
-    Task Queue (${this.key}): 
-    - Active: ${this.isActive().toString()}
-    - Tokens: ${this.tokens}
-    - In Queue: ${this.queue.size()}
-    - Dispatch: [
-      ${this.dispatches.map((t) => (t === null ? "empty" : t.task.name)).join(",\n")}
-    ]
-    - Open Locations: [${this.openDispatches.join(", ")}]
-    `;
-  }
-
   getStatistics(): QueueStatistics {
     const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
     const oneMinuteAgo = Date.now() - 60 * 1000;

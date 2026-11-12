@@ -111,14 +111,6 @@ export interface EventOptions {
  * Utilities for operating on event types.
  */
 export class EventUtils {
-  static isEvent(proto: any): proto is Event {
-    return proto.context && proto.data;
-  }
-
-  static isLegacyEvent(proto: any): proto is LegacyEvent {
-    return proto.data && proto.resource;
-  }
-
   static isBinaryCloudEvent(req: express.Request): boolean {
     return !!(
       req.header("ce-type") &&

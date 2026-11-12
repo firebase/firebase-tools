@@ -74,10 +74,6 @@ export class StorageRulesetInstance {
 
     return this.runtime.verifyWithRuleset(this.rulesetName, opts, runtimeVariableOverrides);
   }
-
-  unload() {
-    throw new Error("NOT_IMPLEMENTED");
-  }
 }
 
 export class StorageRulesIssues {
