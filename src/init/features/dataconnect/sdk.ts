@@ -49,12 +49,6 @@ export interface SdkRequiredInfo {
   apps: App[];
 }
 
-export type SDKInfo = {
-  connectorYamlContents: string;
-  connectorInfo: ConnectorInfo;
-  displayIOSWarning: boolean;
-};
-
 export async function askQuestions(
   setup: Setup,
   config?: Config,
