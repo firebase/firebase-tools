@@ -20,7 +20,11 @@ const MAX_LIMIT = 100;
 const MAX_CELL_LENGTH = 60;
 
 /** Reports that are always scoped to a single issue and require `--issue-id`. */
-export const REPORTS_REQUIRING_ISSUE_ID = ["topVariants", "topBrowsers", "topCustomKeys"];
+export const REPORTS_REQUIRING_ISSUE_ID: readonly string[] = [
+  "topVariants",
+  "topBrowsers",
+  "topCustomKeys",
+];
 
 export interface ReportsGetOptions extends CrashlyticsFilterCommandOptions {
   limit?: string | number;
@@ -39,7 +43,7 @@ interface MetricColumn {
   always?: boolean;
 }
 
-const METRIC_COLUMNS: MetricColumn[] = [
+const METRIC_COLUMNS: readonly MetricColumn[] = [
   { header: "Events", value: (m) => m.eventsCount, always: true },
   { header: "Impacted Users", value: (m) => m.impactedUsersCount, always: true },
   { header: "Impacted Sessions", value: (m) => m.impactedSessionsCount },
