@@ -37,12 +37,10 @@ describe("Provision module", () => {
     sandbox = sinon.createSandbox();
     pollOperationStub = sandbox.stub(pollUtils, "pollOperation");
     pollOperationStub.throws("Unexpected poll call");
-    nock.disableNetConnect();
   });
 
   afterEach(() => {
     sandbox.restore();
-    nock.enableNetConnect();
     nock.cleanAll();
   });
 
