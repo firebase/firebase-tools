@@ -26,7 +26,6 @@ concurrency:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    if: contains(fromJSON('["pull_request", "merge_group"]'), github.event_name)
     strategy:
       matrix:
         node-version:
@@ -46,6 +45,8 @@ jobs:
       - run: npm i -g npm@9.5
       - run: npm ci
       - run: npm run lint:changed-files
+      - run: npm run lint:quiet
+      - run: npm run test:compile
       - run: npm run lint
         working-directory: firebase-vscode
 
@@ -163,7 +164,7 @@ jobs:
 
       - run: npm i -g npm@9.5
       - run: npm ci
-      - run: npm test -- -- --forbid-only
+      - run: npm run mocha -- --forbid-only
         if: matrix.node-version == '24'
       - run: npm run mocha:fast -- --forbid-only
         if: matrix.node-version != '24'
