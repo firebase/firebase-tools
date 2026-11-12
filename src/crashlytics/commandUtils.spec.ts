@@ -293,5 +293,98 @@ describe("crashlytics commandUtils", () => {
       expect(filter?.issueSignals).to.deep.equal(["SIGNAL_FRESH"]);
       expect(filter?.browserFilterDisplayNames).to.deep.equal(["Chrome (123)"]);
     });
+
+    it("should translate validator field names to CLI flag names", () => {
+      expect(() =>
+        parseEventFilters(
+          { deviceNames: "Pixel 8" } as CrashlyticsFilterCommandOptions,
+          androidAppId,
+        ),
+      ).to.throw(FirebaseError, "--device-names must match pattern 'manufacturer (device)'");
+
+      expect(() =>
+        parseEventFilters(
+          { osNames: "Android 14" } as CrashlyticsFilterCommandOptions,
+          androidAppId,
+        ),
+      ).to.throw(FirebaseError, "--os-names must match pattern 'os (version)'");
+    });
+
+    describe("time flags", () => {
+      const daysAgo = (n: number): Date => new Date(Date.now() - n * 24 * 60 * 60 * 1000);
+      const recentDate = daysAgo(2).toISOString().slice(0, 10); // YYYY-MM-DD
+
+      it("should reject non-ISO values with a format hint", () => {
+        for (const startTime of ["10", "11/01/2026", "2026-11-01T08:00:00"]) {
+          expect(() =>
+            parseEventFilters({ startTime } as CrashlyticsFilterCommandOptions, androidAppId),
+          ).to.throw(
+            FirebaseError,
+            `Invalid --start-time '${startTime}'. Use an ISO 8601 date or timestamp`,
+          );
+        }
+        expect(() =>
+          parseEventFilters(
+            { endTime: "2026-11-01T08:00:00" } as CrashlyticsFilterCommandOptions,
+            androidAppId,
+          ),
+        ).to.throw(
+          FirebaseError,
+          "Invalid --end-time '2026-11-01T08:00:00'. Use an ISO 8601 date or timestamp",
+        );
+      });
+
+      it("should normalize date-only and offset timestamps to UTC", () => {
+        const filter = parseEventFilters(
+          {
+            startTime: recentDate,
+            endTime: `${recentDate}T08:00:00-07:00`,
+          } as CrashlyticsFilterCommandOptions,
+          androidAppId,
+        );
+        expect(filter?.intervalStartTime).to.equal(`${recentDate}T00:00:00.000Z`);
+        expect(filter?.intervalEndTime).to.equal(`${recentDate}T15:00:00.000Z`);
+      });
+
+      it("should reject --start-time after or equal to --end-time", () => {
+        expect(() =>
+          parseEventFilters(
+            {
+              startTime: daysAgo(1).toISOString(),
+              endTime: daysAgo(2).toISOString(),
+            } as CrashlyticsFilterCommandOptions,
+            androidAppId,
+          ),
+        ).to.throw(FirebaseError, "'--start-time' must be before '--end-time'.");
+
+        expect(() =>
+          parseEventFilters(
+            {
+              startTime: recentDate,
+              endTime: `${recentDate}T00:00:00Z`,
+            } as CrashlyticsFilterCommandOptions,
+            androidAppId,
+          ),
+        ).to.throw(FirebaseError, "'--start-time' must be before '--end-time'.");
+      });
+
+      it("should use flag names in the 90-day error", () => {
+        expect(() =>
+          parseEventFilters(
+            { startTime: daysAgo(120).toISOString() } as CrashlyticsFilterCommandOptions,
+            androidAppId,
+          ),
+        ).to.throw(FirebaseError, "'--start-time' must be within the last 90 days");
+      });
+
+      it("should require --start-time when --end-time is set", () => {
+        expect(() =>
+          parseEventFilters(
+            { endTime: daysAgo(1).toISOString() } as CrashlyticsFilterCommandOptions,
+            androidAppId,
+          ),
+        ).to.throw(FirebaseError, "'--end-time' requires '--start-time'.");
+      });
+    });
   });
 });

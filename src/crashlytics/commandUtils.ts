@@ -146,6 +146,30 @@ function validateEnumList<T extends string>(
   return values as T[];
 }
 
+const ISO_DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+const ISO_DATE_TIME_WITH_TZ =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/i;
+
+function parseTimeOption(raw: string | undefined, flagName: string): string | undefined {
+  const value = raw?.trim();
+  if (!value) {
+    return undefined;
+  }
+  const isDateOnly = ISO_DATE_ONLY.test(value);
+  const date =
+    isDateOnly || ISO_DATE_TIME_WITH_TZ.test(value)
+      ? new Date(isDateOnly ? `${value}T00:00:00Z` : value)
+      : undefined;
+  if (!date || isNaN(date.getTime())) {
+    throw new FirebaseError(
+      `Invalid ${flagName} '${value}'. Use an ISO 8601 date or timestamp, ` +
+        `e.g. "2026-11-01" or "2026-11-01T08:00:00Z".`,
+      { exit: 1 },
+    );
+  }
+  return date.toISOString();
+}
+
 /**
  * Registers the shared Crashlytics event filter flags on a CLI Command.
  */
@@ -178,8 +202,14 @@ export function withEventFilterOptions(command: Command): Command {
       "--browser-names <list>",
       'comma-separated browser display names (e.g. "Chrome (123)", web only)',
     )
-    .option("--start-time <iso>", "start of time interval in ISO 8601 format (within last 90 days)")
-    .option("--end-time <iso>", "end of time interval in ISO 8601 format (within last 90 days)");
+    .option(
+      "--start-time <iso>",
+      'start of the time interval as an ISO 8601 date or timestamp (e.g. "2026-11-01" or "2026-11-01T08:00:00Z"); within the last 90 days, default: 7 days ago',
+    )
+    .option(
+      "--end-time <iso>",
+      "end of the time interval as an ISO 8601 date or timestamp; requires --start-time (default: now)",
+    );
 }
 
 const MOBILE_ONLY_FLAGS: ReadonlyArray<[keyof CrashlyticsFilterCommandOptions, string]> = [
@@ -226,9 +256,17 @@ export function parseEventFilters(
   appId: string,
 ): EventFilter {
   validatePlatformSpecificFlags(options, appId);
+  const intervalStartTime = parseTimeOption(options.startTime, "--start-time");
+  const intervalEndTime = parseTimeOption(options.endTime, "--end-time");
+  if (intervalStartTime && intervalEndTime && intervalStartTime >= intervalEndTime) {
+    throw new FirebaseError("'--start-time' must be before '--end-time'.", { exit: 1 });
+  }
+  if (intervalEndTime && !intervalStartTime) {
+    throw new FirebaseError("'--end-time' requires '--start-time'.", { exit: 1 });
+  }
   const filter: EventFilter = {
-    intervalStartTime: options.startTime?.trim() || undefined,
-    intervalEndTime: options.endTime?.trim() || undefined,
+    intervalStartTime,
+    intervalEndTime,
     versionDisplayNames: splitCommaSeparatedList(options.versions),
     issueId: options.issueId?.trim() || undefined,
     issueVariantId: options.variantId?.trim() || undefined,
@@ -262,7 +300,14 @@ export function parseEventFilters(
           { exit: 1 },
         );
       }
-      throw new FirebaseError(err.message, { exit: 1 });
+      const message = err.message
+        .replace(
+          "intervalStartTime must be less than 90 days in the past",
+          "'--start-time' must be within the last 90 days",
+        )
+        .replace(/^deviceDisplayNames/, "--device-names")
+        .replace(/^operatingSystemDisplayNames/, "--os-names");
+      throw new FirebaseError(message, { exit: 1 });
     }
     throw err;
   }
