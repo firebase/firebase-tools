@@ -99,6 +99,18 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   );
 
   gcloudStorageAPI.get(
+    ["/b/:bucketId", "/v1/b/:bucketId", "/storage/v1/b/:bucketId"],
+    async (req, res) => {
+      const buckets = await adminStorageLayer.listBuckets();
+      const bucket = buckets.find((b) => b.id === req.params.bucketId);
+      if (!bucket) {
+        return sendBucketNotFound(res);
+      }
+      return res.json(bucket);
+    },
+  );
+
+  gcloudStorageAPI.get(
     [
       "/b/:bucketId/o/:objectId",
       "/download/storage/v1/b/:bucketId/o/:objectId",
@@ -561,6 +573,25 @@ function sendObjectNotFound(req: Request, res: Response): void {
       },
     });
   }
+}
+
+/** Sends 404 matching API when bucket does not exist */
+function sendBucketNotFound(res: Response): void {
+  res.status(404);
+  const message = `The specified bucket does not exist`;
+  res.json({
+    error: {
+      code: 404,
+      message,
+      errors: [
+        {
+          message,
+          domain: "global",
+          reason: "notFound",
+        },
+      ],
+    },
+  });
 }
 
 function getIncomingFileNameFromRequest(
