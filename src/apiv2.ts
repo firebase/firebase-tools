@@ -1,6 +1,7 @@
 import { URL, URLSearchParams } from "url";
 import { Readable } from "stream";
 import { ProxyAgent, request } from "undici";
+import type { Dispatcher } from "undici";
 import * as retry from "retry";
 import * as http from "http";
 import * as https from "https";
@@ -692,7 +693,7 @@ class UndiciResponseCompat {
   readonly body: any;
   readonly ok: boolean;
 
-  constructor(undiciRes: any) {
+  constructor(undiciRes: Dispatcher.ResponseData) {
     this.status = undiciRes.statusCode;
     this.ok = undiciRes.statusCode >= 200 && undiciRes.statusCode < 300;
     this.headers = new Headers();
