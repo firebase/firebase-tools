@@ -235,6 +235,22 @@ describe("crashlytics:heapdumps commands", () => {
       });
     });
 
+    it("should handle an undefined configuration from the API without throwing", async () => {
+      sinon
+        .stub(profilingManager, "getProfilingManagerConfig")
+        .resolves(undefined as unknown as profilingManager.ProfilingManagerConfig);
+
+      const result: unknown = await statusCommand.runner()({
+        project: projectId,
+        app: appId,
+      });
+
+      expect(result).to.deep.equal({
+        appId,
+        heapDumpCollectionEnabled: false,
+      });
+    });
+
     it("should return the status and configuration when disabled with no bucket", async () => {
       sinon.stub(profilingManager, "getProfilingManagerConfig").resolves({
         bucket: "",
