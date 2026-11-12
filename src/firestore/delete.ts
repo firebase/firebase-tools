@@ -38,7 +38,6 @@ export class FirestoreDelete {
   private project: string;
   private recursive: boolean;
   private shallow: boolean;
-  private allCollections: boolean;
   private databaseId: string;
 
   private readBatchSize: number;
@@ -76,7 +75,6 @@ export class FirestoreDelete {
     this.path = path || "";
     this.recursive = Boolean(options.recursive);
     this.shallow = Boolean(options.shallow);
-    this.allCollections = Boolean(options.allCollections);
     this.databaseId = options.databaseId;
     this.urlPrefix = options.urlPrefix ?? firestoreOriginOrEmulator();
 

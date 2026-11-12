@@ -692,7 +692,7 @@ class UndiciResponseCompat {
   readonly body: any;
   readonly ok: boolean;
 
-  constructor(private undiciRes: any) {
+  constructor(undiciRes: any) {
     this.status = undiciRes.statusCode;
     this.ok = undiciRes.statusCode >= 200 && undiciRes.statusCode < 300;
     this.headers = new Headers();
