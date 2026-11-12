@@ -100,16 +100,31 @@ describe("crashlytics:heapdumps commands", () => {
 
     it("should abort when stdin is not a TTY (e.g., piped input) and --force is omitted", async () => {
       confirmStub.restore();
-      sinon.stub(process.stdin, "isTTY").value(false);
+      const hadIsTTY = "isTTY" in process.stdin;
+      if (!hadIsTTY) {
+        Object.defineProperty(process.stdin, "isTTY", {
+          value: true,
+          configurable: true,
+          writable: true,
+        });
+      }
+      try {
+        sinon.stub(process.stdin, "isTTY").value(false);
 
-      await expect(
-        enableCommand.runner()({
-          project: projectId,
-          app: appId,
-        }),
-      ).to.be.rejectedWith(FirebaseError, "cannot be answered in non-interactive mode");
+        await expect(
+          enableCommand.runner()({
+            project: projectId,
+            app: appId,
+          }),
+        ).to.be.rejectedWith(FirebaseError, "cannot be answered in non-interactive mode");
 
-      expect(enableCollectionStub).to.not.have.been.called;
+        expect(enableCollectionStub).to.not.have.been.called;
+      } finally {
+        sinon.restore();
+        if (!hadIsTTY) {
+          delete (process.stdin as { isTTY?: boolean }).isTTY;
+        }
+      }
     });
 
     it("should succeed in non-interactive mode when --force is provided", async () => {
