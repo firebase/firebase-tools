@@ -1,6 +1,6 @@
 import { URL, URLSearchParams } from "url";
 import { Readable } from "stream";
-import { ProxyAgent, request } from "undici";
+import { EnvHttpProxyAgent, ProxyAgent, request } from "undici";
 import * as retry from "retry";
 import * as http from "http";
 import * as https from "https";
@@ -159,6 +159,14 @@ function proxyURIFromEnv(): string | undefined {
   return uri;
 }
 
+// Returns the contents of NO_PROXY/no_proxy (or an empty string) so an
+// EnvHttpProxyAgent can apply the same bypass rules as other Node and CLI
+// tools. See https://github.com/firebase/firebase-tools/issues/11249.
+function noProxyFromEnv(): string {
+  const env = process.env.NO_PROXY || process.env.no_proxy || "";
+  return env === "undefined" || env === "null" ? "" : env;
+}
+
 // Some networks (and recent Node.js security releases) interact badly with
 // node-fetch's keep-alive handling: a reused/closed keep-alive socket surfaces
 // as an "Invalid response body ...: Premature close" error while the response
@@ -199,7 +207,7 @@ export type ClientOptions = {
 };
 
 interface FetchOptions extends RequestInit {
-  dispatcher?: ProxyAgent;
+  dispatcher?: ProxyAgent | EnvHttpProxyAgent;
   duplex?: "half";
   agent?: http.Agent | https.Agent | ((parsedUrl: URL) => http.Agent | https.Agent);
 }
@@ -423,7 +431,14 @@ export class Client {
 
     const proxyURI = proxyURIFromEnv();
     if (proxyURI) {
-      fetchOptions.dispatcher = new ProxyAgent({ uri: proxyURI });
+      // Use EnvHttpProxyAgent rather than ProxyAgent so NO_PROXY/no_proxy is
+      // honored. Without this, localhost requests (e.g. between emulators) get
+      // sent through the configured HTTPS_PROXY and fail with ECONNREFUSED.
+      fetchOptions.dispatcher = new EnvHttpProxyAgent({
+        httpProxy: proxyURI,
+        httpsProxy: proxyURI,
+        noProxy: noProxyFromEnv(),
+      });
     }
 
     if (options.signal) {
