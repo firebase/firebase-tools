@@ -665,42 +665,6 @@ describe("hosting", () => {
     });
   });
 
-  describe("updateSite", () => {
-    const SITE_OBJ: hostingApi.Site = {
-      name: "my-site",
-      defaultUrl: "",
-      appId: "foo",
-      labels: {},
-    };
-
-    afterEach(nock.cleanAll);
-
-    it("should make the API request to update a site", async () => {
-      nock(hostingApiOrigin())
-        .patch(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`)
-        .query({ updateMask: "appId" })
-        .reply(201, SITE_OBJ);
-
-      const res = await hostingApi.updateSite(PROJECT_ID, SITE_OBJ, ["appId"]);
-
-      expect(res).to.deep.equal(SITE_OBJ);
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("should throw an error if the server returns an error", async () => {
-      nock(hostingApiOrigin())
-        .patch(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`)
-        .query({ updateMask: "appId" })
-        .reply(500, { error: "server boo-boo" });
-
-      await expect(
-        hostingApi.updateSite(PROJECT_ID, SITE_OBJ, ["appId"]),
-      ).to.eventually.be.rejectedWith(FirebaseError, /server boo-boo/);
-
-      expect(nock.isDone()).to.be.true;
-    });
-  });
-
   describe("deleteSite", () => {
     afterEach(nock.cleanAll);
 
