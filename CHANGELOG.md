@@ -1,0 +1,1 @@
+- Updated the standalone binaries and Docker image to Node.js 24.22, which no longer trusts the eMudhra (emSign) root CA certificates distrusted after their October 2026 key compromise.
