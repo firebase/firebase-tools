@@ -76,6 +76,14 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 }
 
+export function parseVersionOutput(stdout: string): string | undefined {
+  return stdout
+    .split(/\r?\n/)
+    .map((line) => semver.valid(line.trim()))
+    .filter((version): version is string => !!version)
+    .pop();
+}
+
 async function checkCLIInstallation(): Promise<void> {
   // This should never error out - it must be best effort.
   let message = "";
@@ -104,15 +112,11 @@ async function checkCLIInstallation(): Promise<void> {
 
     const versionRes = runCommand("firebase --version");
     const versionStdout = versionRes.status === 0 ? versionRes.stdout?.toString().trim() : "";
-    const currentVersion = versionStdout
-      ? (semver.valid(versionStdout) || semver.coerce(versionStdout)?.version)
-      : undefined;
+    const currentVersion = parseVersionOutput(versionStdout);
 
     const npmVersionRes = runCommand("npm --version");
     const npmStdout = npmVersionRes.status === 0 ? npmVersionRes.stdout?.toString().trim() : "";
-    const npmVersion = npmStdout
-      ? (semver.valid(npmStdout) || semver.coerce(npmStdout)?.version)
-      : undefined;
+    const npmVersion = parseVersionOutput(npmStdout);
 
     if (!currentVersion) {
       message = `The Firebase CLI is not installed (or not available on $PATH). If you would like to install it, run ${
