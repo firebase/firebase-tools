@@ -79,7 +79,8 @@ describe("applyHash", () => {
       );
       const getSecretsHash = sinon.stub(hash, "getSecretsHash");
       getSecretsHash.callsFake(
-        (endpoint: backend.Endpoint) => "secret=" + endpoint.secretEnvironmentVariables?.[0].secret,
+        (endpoint: backend.Endpoint) =>
+          `secret=${String(endpoint.secretEnvironmentVariables?.[0].secret)}`,
       );
 
       const getEndpointHash = sinon.stub(hash, "getEndpointHash");

@@ -146,7 +146,7 @@ export function assertKeyTypes<T extends object>(
         throw new FirebaseError(`Expected ${fullKey} to be type object; was ${typeof value}`);
       }
     } else {
-      throw new FirebaseError("YAML validation is missing a handled type " + schema[key]);
+      throw new FirebaseError(`YAML validation is missing a handled type ${String(schema[key])}`);
     }
   }
 }
