@@ -2,4 +2,5 @@
 - Fixed `crashlytics:heapdumps:enable` bypassing the confirmation prompt without `--force` in non-interactive environments.
 - Warned when `crashlytics:heapdumps:enable` reuses an existing Cloud Storage bucket whose location differs from `--location` instead of silently ignoring the requested location.
 - Fixed `crashlytics:heapdumps:status --json` omitting `heapDumpCollectionEnabled` when disabled, removed duplicated default location text in `crashlytics:heapdumps:enable --help`, and surfaced Cloud Storage API error details when bucket creation fails.
+- Fixed `crashlytics:heapdumps:enable` printing an invalid Firebase Console Crashlytics URL by linking to `/crashlytics/app/android:<packageName>/issues` instead of the GMP App ID.
 - Scoped Crashlytics service agent `roles/storage.objectCreator` access to the dedicated heap dump Cloud Storage bucket and enabled Uniform Bucket-Level Access and enforced Public Access Prevention in `crashlytics:heapdumps:enable`.

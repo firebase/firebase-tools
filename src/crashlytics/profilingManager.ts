@@ -1,10 +1,16 @@
 import { FirebaseError, getErrStatus } from "../error";
 import { logger } from "../logger";
-import { logLabeledBullet, logLabeledSuccess, logLabeledWarning } from "../utils";
+import { consoleUrl, logLabeledBullet, logLabeledSuccess, logLabeledWarning } from "../utils";
 import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
 import * as storage from "../gcp/storage";
 import * as serviceusage from "../gcp/serviceusage";
-import { AppPlatform, listFirebaseApps, selectAppInteractively } from "../management/apps";
+import {
+  AndroidAppMetadata,
+  AppMetadata,
+  AppPlatform,
+  listFirebaseApps,
+  selectAppInteractively,
+} from "../management/apps";
 
 export const CRASHLYTICS_SERVICE_NAME = "firebasecrashlytics.googleapis.com";
 export const STORAGE_OBJECT_CREATOR_ROLE = "roles/storage.objectCreator";
@@ -37,6 +43,27 @@ export interface ProfilingManagerConfig {
   name?: string;
   bucket?: string;
   heapDumpCollectionEnabled?: boolean;
+}
+
+export interface ResolvedAndroidApp {
+  appId: string;
+  packageName?: string;
+}
+
+function isAndroidAppMetadata(app: AppMetadata): app is AndroidAppMetadata {
+  return (
+    app.platform === AppPlatform.ANDROID &&
+    "packageName" in app &&
+    typeof app.packageName === "string"
+  );
+}
+
+function toResolvedAndroidApp(app: AppMetadata): ResolvedAndroidApp {
+  const packageName = isAndroidAppMetadata(app) ? app.packageName.trim() : "";
+  return {
+    appId: app.appId,
+    ...(packageName ? { packageName } : {}),
+  };
 }
 
 /**
@@ -73,13 +100,26 @@ export function getCrashlyticsP4sa(projectNumber: string): string {
 }
 
 /**
- * Resolves and validates the Android app ID from options.app against the project,
+ * Builds the Firebase Console Crashlytics URL for an Android app.
+ * Uses the legacy `android:<packageName>` client ID expected by the Firebase Console router,
+ * falling back to the project-level Crashlytics page if `packageName` is unavailable.
+ */
+export function getCrashlyticsConsoleUrl(projectId: string, packageName?: string): string {
+  const trimmedPackageName = packageName?.trim();
+  if (!trimmedPackageName) {
+    return consoleUrl(projectId, "/crashlytics");
+  }
+  return consoleUrl(projectId, `/crashlytics/app/android:${trimmedPackageName}/issues`);
+}
+
+/**
+ * Resolves and validates the Android app metadata from options.app against the project,
  * or interactively prompts if multiple Android apps exist.
  */
-export async function resolveAndroidAppId(
+export async function resolveAndroidApp(
   projectId: string,
   options: { app?: string; nonInteractive?: boolean },
-): Promise<string> {
+): Promise<ResolvedAndroidApp> {
   const requestedAppId = options.app;
   if (requestedAppId) {
     parseAndroidHashedId(requestedAppId);
@@ -95,7 +135,7 @@ export async function resolveAndroidAppId(
         { exit: 1 },
       );
     }
-    return matchedApp.appId;
+    return toResolvedAndroidApp(matchedApp);
   }
   if (apps.length === 0) {
     throw new FirebaseError(
@@ -105,7 +145,7 @@ export async function resolveAndroidAppId(
   }
 
   if (apps.length === 1) {
-    return apps[0].appId;
+    return toResolvedAndroidApp(apps[0]);
   }
 
   if (options.nonInteractive) {
@@ -117,7 +157,19 @@ export async function resolveAndroidAppId(
   const selectedApp = await selectAppInteractively(apps, AppPlatform.ANDROID, {
     message: "Select an Android app:",
   });
-  return selectedApp.appId;
+  return toResolvedAndroidApp(selectedApp);
+}
+
+/**
+ * Resolves and validates the Android app ID from options.app against the project,
+ * or interactively prompts if multiple Android apps exist.
+ */
+export async function resolveAndroidAppId(
+  projectId: string,
+  options: { app?: string; nonInteractive?: boolean },
+): Promise<string> {
+  const app = await resolveAndroidApp(projectId, options);
+  return app.appId;
 }
 
 /**
