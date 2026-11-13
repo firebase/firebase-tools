@@ -6,6 +6,7 @@ used for testing.
 ## Workflows
 
 - `node-test.yml` - unit tests and integration tests.
+- `npm-audit.yml` - fails on high/critical `npm audit` findings in production (`--omit=dev`) dependencies. Runs on PRs that change `package.json`/`npm-shrinkwrap.json`, on pushes to `main`, and daily.
 
 ## Secrets
 
