@@ -108,15 +108,6 @@ These commands let you deploy and interact with your Firebase services.
 | **appdistribution:testcases:export** | Export test cases as a YAML file.                                                        |
 | **appdistribution:testcases:import** | Import test cases from YAML file.                                                        |
 
-With `--json`, `appdistribution:distribute` returns the uploaded [Release resource](https://firebase.google.com/docs/reference/app-distribution/rest/v1/projects.apps.releases) in the `result` field. It includes `name`, `releaseNotes`, `displayVersion`, `buildVersion`, `createTime`, `firebaseConsoleUri`, `testingUri`, and `binaryDownloadUri`, when provided by the API. Release notes reflect the update performed by the command. The result is returned after distribution and any blocking automated tests succeed.
-
-```bash
-firebase appdistribution:distribute app.ipa --app APP_ID --groups qa --release-notes "Bug fixes" --json > release.json
-jq -r '.result.testingUri' release.json
-```
-
-The `binaryDownloadUri` is a signed download URL that expires after one hour.
-
 ### Auth Commands
 
 | Command         | Description                                            |
