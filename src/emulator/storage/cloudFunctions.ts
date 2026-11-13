@@ -22,7 +22,7 @@ export class StorageCloudFunctions {
   private enabled = false;
   private client?: Client;
 
-  constructor(private projectId: string) {
+  constructor(projectId: string) {
     if (EmulatorRegistry.isRunning(Emulators.FUNCTIONS)) {
       this.enabled = true;
       this.multicastPath = `/functions/projects/${projectId}/trigger_multicast`;
