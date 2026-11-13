@@ -15,13 +15,6 @@ describe("ensureApiEnabled", () => {
     const sandbox = sinon.createSandbox();
     let configstoreGetMock: sinon.SinonStub;
     let configstoreSetMock: sinon.SinonStub;
-    before(() => {
-      nock.disableNetConnect();
-    });
-
-    after(() => {
-      nock.enableNetConnect();
-    });
 
     beforeEach(() => {
       configstoreGetMock = sandbox.stub(configstore, "get");
@@ -82,7 +75,6 @@ describe("ensureApiEnabled", () => {
     const originalPollInterval = POLL_SETTINGS.pollInterval;
     const originalPollsBeforeRetry = POLL_SETTINGS.pollsBeforeRetry;
     beforeEach(() => {
-      nock.disableNetConnect();
       POLL_SETTINGS.pollInterval = 0;
       POLL_SETTINGS.pollsBeforeRetry = 0; // Zero means "one check".
 
@@ -91,7 +83,6 @@ describe("ensureApiEnabled", () => {
     });
 
     afterEach(() => {
-      nock.enableNetConnect();
       POLL_SETTINGS.pollInterval = originalPollInterval;
       POLL_SETTINGS.pollsBeforeRetry = originalPollsBeforeRetry;
       sandbox.restore();

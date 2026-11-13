@@ -52,14 +52,12 @@ describe("requireTosAcceptance", () => {
   let hasDefaultCredentialsStub: sinon.SinonStub;
 
   beforeEach(() => {
-    nock.disableNetConnect();
     loggedInStub = sinon.stub(auth, "loggedIn");
     hasDefaultCredentialsStub = sinon
       .stub(defaultCredentials, "hasDefaultCredentials")
       .resolves(false);
   });
   afterEach(() => {
-    nock.enableNetConnect();
     loggedInStub.restore();
     hasDefaultCredentialsStub.restore();
   });
