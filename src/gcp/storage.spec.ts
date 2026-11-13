@@ -499,14 +499,16 @@ describe("storage", () => {
         name: "legacy-bucket",
         location: "us-east1",
       };
+      const mockBucket = { name: "legacy-bucket", location: "US-EAST1" } as storage.BucketResponse;
       const postStub = sinon.stub(Client.prototype, "post").resolves({
         status: 200,
         response: new Response(),
-        body: { name: "legacy-bucket" } as storage.BucketResponse,
+        body: mockBucket,
       });
 
-      await storage.createBucket("test-project", req, true);
+      const result = await storage.createBucket("test-project", req, true);
 
+      expect(result).to.deep.equal(mockBucket);
       expect(postStub).to.be.calledOnceWith("/storage/v1/b", req, {
         queryParams: {
           project: "test-project",
@@ -514,6 +516,75 @@ describe("storage", () => {
           predefinedDefaultObjectAcl: "projectPrivate",
         },
       });
+    });
+
+    it("should surface GCS 400 error details and status when location is invalid", async () => {
+      const apiError = new FirebaseError(
+        "Request to https://storage.googleapis.com/storage/v1/b?project=test-project had HTTP Error: 400, The specified location constraint is not valid.",
+        {
+          status: 400,
+          exit: 1,
+          context: {
+            body: {
+              error: {
+                code: 400,
+                message: "The specified location constraint is not valid.",
+              },
+            },
+            response: { statusCode: 400 },
+          },
+        },
+      );
+      sinon.stub(Client.prototype, "post").rejects(apiError);
+
+      try {
+        await storage.createBucket(
+          "test-project",
+          { name: "my-bucket", location: "bogus-region-1" },
+          true,
+        );
+        expect.fail("Expected createBucket to throw");
+      } catch (err: unknown) {
+        expect(err).to.be.instanceOf(FirebaseError);
+        const fbErr = err as FirebaseError;
+        expect(fbErr.message).to.equal(
+          "Failed to create the storage bucket: The specified location constraint is not valid.",
+        );
+        expect(fbErr.status).to.equal(400);
+        expect(fbErr.original).to.equal(apiError);
+      }
+    });
+
+    it("should fall back to error message when API error context is absent", async () => {
+      const networkError = new Error("socket hang up");
+      sinon.stub(Client.prototype, "post").rejects(networkError);
+
+      try {
+        await storage.createBucket("test-project", { name: "my-bucket", location: "us-east1" });
+        expect.fail("Expected createBucket to throw");
+      } catch (err: unknown) {
+        expect(err).to.be.instanceOf(FirebaseError);
+        const fbErr = err as FirebaseError;
+        expect(fbErr.message).to.equal("Failed to create the storage bucket: socket hang up");
+        expect(fbErr.status).to.equal(500);
+        expect(fbErr.original).to.equal(networkError);
+      }
+    });
+
+    it("should fall back to generic message when error has no details", async () => {
+      const emptyError = new Error("");
+      sinon.stub(Client.prototype, "post").rejects(emptyError);
+
+      try {
+        await storage.createBucket("test-project", { name: "my-bucket", location: "us-east1" });
+        expect.fail("Expected createBucket to throw");
+      } catch (err: unknown) {
+        expect(err).to.be.instanceOf(FirebaseError);
+        const fbErr = err as FirebaseError;
+        expect(fbErr.message).to.equal("Failed to create the storage bucket");
+        expect(fbErr.status).to.equal(500);
+        expect(fbErr.original).to.equal(emptyError);
+      }
     });
   });
 
