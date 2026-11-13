@@ -1,3 +1,5 @@
+- Fixed a bug where singular lookup queries using server value key expressions (such as `id_expr`) did not trigger realtime subscription updates or client-side cache tracking when returning `null`.
+- Declare and export enums selected only inside nested relations in generated JS and Admin Node SDKs.
 - Fixed `crashlytics:heapdumps` commands accepting `--app` IDs that do not belong to the target Firebase project.
 - Fixed `crashlytics:heapdumps:enable` bypassing the confirmation prompt without `--force` in non-interactive environments.
 - Warned when `crashlytics:heapdumps:enable` reuses an existing Cloud Storage bucket whose location differs from `--location` instead of silently ignoring the requested location.
