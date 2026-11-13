@@ -178,6 +178,20 @@ describe("App management", () => {
       expect(err).to.be.an.instanceOf(FirebaseError);
       expect(err.message).to.include("Flutter is not supported");
     });
+
+    it("should throw an error if a Unity app is detected", async () => {
+      getPlatformsFromFolderStub.resolves([appUtils.Platform.UNITY]);
+
+      let err;
+      try {
+        await getPlatform("any-dir", {} as any);
+      } catch (e: any) {
+        err = e;
+      }
+
+      expect(err).to.be.an.instanceOf(FirebaseError);
+      expect(err.message).to.include("Unity is not supported");
+    });
   });
 
   describe("createIosApp", () => {

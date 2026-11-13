@@ -272,12 +272,147 @@ describe("isCrashlyticsAvailable", () => {
     expect(result).to.be.true;
   });
 
+  it("should return true for a Flutter project with Crashlytics in pubspec.lock", async () => {
+    mockfs({
+      "/test-dir": {
+        "pubspec.yaml": "dependencies:\n  shared_core: ^1.0.0",
+        "pubspec.lock": "packages:\n  firebase_crashlytics:\n    version: 3.0.0",
+        ios: { "Runner.xcodeproj": {} },
+        android: { src: { main: {} } },
+      },
+    });
+
+    const result = await isCrashlyticsAvailable(mockContext("/test-dir"));
+
+    expect(result).to.be.true;
+  });
+
   it("should return false for a Flutter project without Crashlytics", async () => {
     mockfs({
       "/test-dir": {
         "pubspec.yaml": "dependencies:\n  firebase_core: ^1.0.0",
         ios: { "Runner.xcodeproj": {} },
         android: { src: { main: {} } },
+      },
+    });
+
+    const result = await isCrashlyticsAvailable(mockContext("/test-dir"));
+
+    expect(result).to.be.false;
+  });
+
+  it("should return true for a Unity project with Crashlytics in Packages/manifest.json", async () => {
+    mockfs({
+      "/test-dir": {
+        ProjectSettings: { "ProjectVersion.txt": "m_EditorVersion: 2022.3.10f1" },
+        Packages: {
+          "manifest.json": JSON.stringify({
+            dependencies: {
+              "com.google.firebase.app": "12.4.0",
+              "com.google.firebase.crashlytics": "12.4.0",
+            },
+          }),
+        },
+      },
+    });
+
+    const result = await isCrashlyticsAvailable(mockContext("/test-dir"));
+
+    expect(result).to.be.true;
+  });
+
+  it("should return true for a Unity project with CrashlyticsDependencies.xml", async () => {
+    mockfs({
+      "/test-dir": {
+        ProjectSettings: { "ProjectVersion.txt": "m_EditorVersion: 2022.3.10f1" },
+        Assets: {
+          Firebase: {
+            Editor: {
+              "CrashlyticsDependencies.xml": "<dependencies></dependencies>",
+            },
+          },
+        },
+      },
+    });
+
+    const result = await isCrashlyticsAvailable(mockContext("/test-dir"));
+
+    expect(result).to.be.true;
+  });
+
+  it("should return true for a Unity project with Firebase.Crashlytics.dll", async () => {
+    mockfs({
+      "/test-dir": {
+        ProjectSettings: { "ProjectVersion.txt": "m_EditorVersion: 2022.3.10f1" },
+        Assets: {
+          Firebase: {
+            Plugins: {
+              iOS: {
+                "Firebase.Crashlytics.dll": "binary",
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const result = await isCrashlyticsAvailable(mockContext("/test-dir"));
+
+    expect(result).to.be.true;
+  });
+
+  it("should return true for a Unity project with Crashlytics in mainTemplate.gradle", async () => {
+    mockfs({
+      "/test-dir": {
+        ProjectSettings: { "ProjectVersion.txt": "m_EditorVersion: 2022.3.10f1" },
+        Assets: {
+          Plugins: {
+            Android: {
+              "mainTemplate.gradle":
+                "dependencies { implementation 'com.google.firebase:firebase-crashlytics:18.6.0' }",
+            },
+          },
+        },
+      },
+    });
+
+    const result = await isCrashlyticsAvailable(mockContext("/test-dir"));
+
+    expect(result).to.be.true;
+  });
+
+  it("should return true for a Unity project with Crashlytics in mainTemplate.gradle.kts", async () => {
+    mockfs({
+      "/test-dir": {
+        ProjectSettings: { "ProjectVersion.txt": "m_EditorVersion: 2022.3.10f1" },
+        Assets: {
+          Plugins: {
+            Android: {
+              "mainTemplate.gradle.kts":
+                'dependencies { implementation("com.google.firebase:firebase-crashlytics:18.6.0") }',
+            },
+          },
+        },
+      },
+    });
+
+    const result = await isCrashlyticsAvailable(mockContext("/test-dir"));
+
+    expect(result).to.be.true;
+  });
+
+  it("should return false for a Unity project without Crashlytics", async () => {
+    mockfs({
+      "/test-dir": {
+        ProjectSettings: { "ProjectVersion.txt": "m_EditorVersion: 2022.3.10f1" },
+        Packages: {
+          "manifest.json": JSON.stringify({
+            dependencies: {
+              "com.google.firebase.app": "12.4.0",
+            },
+          }),
+        },
+        Assets: {},
       },
     });
 
