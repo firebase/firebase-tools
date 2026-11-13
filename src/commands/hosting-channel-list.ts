@@ -1,7 +1,7 @@
 import { bold } from "colorette";
 import * as Table from "cli-table3";
 
-import { Channel, listChannels } from "../hosting/api";
+import { Channel, listChannels, ensureApiEnabled } from "../hosting/api";
 import { Command } from "../command";
 import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
@@ -9,8 +9,6 @@ import { logger } from "../logger";
 import { requireConfig } from "../requireConfig";
 import { datetimeString } from "../utils";
 import { requireHostingSite } from "../requireHostingSite";
-import { ensure } from "../ensureApiEnabled";
-import { hostingApiOrigin } from "../api";
 
 const TABLE_HEAD = ["Channel ID", "Last Release Time", "URL", "Expire Time"];
 
@@ -20,7 +18,7 @@ export const command = new Command("hosting:channel:list")
   .before(requireConfig)
   // TODO: `update` permission is maybe a bit aggressive. Bring down to view-ish?
   .before(requirePermissions, ["firebasehosting.sites.update"])
-  .before((options) => ensure(needProjectId(options), hostingApiOrigin(), "hosting", true))
+  .before((options) => ensureApiEnabled(needProjectId(options)))
   .before(requireHostingSite)
   .action(
     async (

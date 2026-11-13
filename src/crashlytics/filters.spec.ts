@@ -1,7 +1,12 @@
 import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
 
-import { validateEventFilters, filterToUrlSearchParams, EventFilter } from "./filters";
+import {
+  validateEventFilters,
+  filterToUrlSearchParams,
+  EventFilter,
+  FilterExpressionSchema,
+} from "./filters";
 import { FirebaseError } from "../error";
 
 chai.use(chaiAsPromised);
@@ -143,6 +148,34 @@ describe("filters", () => {
         expect(() => validateEventFilters(filter)).to.throw(
           FirebaseError,
           "versionDisplayNames must match pattern 'version (build)'",
+        );
+      });
+
+      it("should include example and topVersions hint in mobile versionDisplayNames error", () => {
+        const androidAppId = "1:1234567890:android:abcdef1234567890";
+        const filter: EventFilter = {
+          versionDisplayNames: ["2.4.0"],
+        };
+        expect(() => validateEventFilters(filter, androidAppId)).to.throw(
+          FirebaseError,
+          "versionDisplayNames must match pattern 'version (build)' (e.g., \"2.4.0 (240)\"). Use the displayName values returned by the topVersions report.",
+        );
+      });
+
+      it("should allow plain version strings without build numbers for web apps", () => {
+        const webAppId = "1:1234567890:web:abcdef1234567890";
+        const filter: EventFilter = {
+          versionDisplayNames: ["2.4.0", "2.4.1-rc.1"],
+        };
+        expect(() => validateEventFilters(filter, webAppId)).to.not.throw();
+      });
+    });
+
+    describe("FilterExpressionSchema", () => {
+      it("should accept optional AIP-160 filter expression strings", () => {
+        expect(FilterExpressionSchema.parse(undefined)).to.be.undefined;
+        expect(FilterExpressionSchema.parse('custom_keys.env = "prod"')).to.equal(
+          'custom_keys.env = "prod"',
         );
       });
     });

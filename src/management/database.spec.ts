@@ -97,11 +97,9 @@ describe("Database management", () => {
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    nock.disableNetConnect();
   });
 
   afterEach(() => {
-    nock.enableNetConnect();
     sandbox.restore();
   });
 

@@ -10,12 +10,31 @@ import { Client } from "../../../apiv2";
 import { askQuestions, actuate } from "./index";
 import { Setup } from "../..";
 import * as github from "./github";
+import { Options } from "../../../options";
+import { RC } from "../../../rc";
+
+function createTestOptions(cfg: config.Config): Options {
+  return {
+    cwd: "/",
+    configPath: "",
+    only: "",
+    except: "",
+    config: cfg,
+    filteredTargets: [],
+    force: false,
+    nonInteractive: false,
+    debug: false,
+    rc: new RC(),
+  };
+}
 
 describe("hosting feature init", () => {
   let sandbox: sinon.SinonSandbox;
+  let ensureApiEnabledStub: sinon.SinonStub;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
+    ensureApiEnabledStub = sandbox.stub(hostingApi, "ensureApiEnabled").resolves();
   });
 
   afterEach(() => {
@@ -34,7 +53,9 @@ describe("hosting feature init", () => {
 
       sandbox.stub(frameworks, "discover").resolves(undefined);
       // Mock existing site check
-      sandbox.stub(getDefaultHostingSiteMod, "getDefaultHostingSite").resolves("test-site");
+      const getDefaultSiteStub = sandbox
+        .stub(getDefaultHostingSiteMod, "getDefaultHostingSite")
+        .resolves("test-site");
 
       const inputStub = sandbox.stub(prompt, "input").resolves("public");
       const confirmStub = sandbox.stub(prompt, "confirm").resolves(false);
@@ -47,6 +68,9 @@ describe("hosting feature init", () => {
         except: "",
         nonInteractive: false,
       } as any);
+
+      expect(ensureApiEnabledStub).to.have.been.calledOnceWith("test-project");
+      expect(ensureApiEnabledStub.calledBefore(getDefaultSiteStub)).to.be.true;
 
       expect(
         inputStub.calledWith(
@@ -97,6 +121,25 @@ describe("hosting feature init", () => {
       expect(setup.featureInfo?.hosting?.newSiteId).to.equal("new-site-id");
     });
 
+    it("should skip ensuring Hosting API when projectId is not set", async () => {
+      const setup: Setup = {
+        config: {},
+        rcfile: { projects: {}, targets: {}, etags: {} },
+        instructions: [],
+      };
+      const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
+
+      sandbox.stub(frameworks, "discover").resolves(undefined);
+      const getDefaultSiteStub = sandbox.stub(getDefaultHostingSiteMod, "getDefaultHostingSite");
+      sandbox.stub(prompt, "input").resolves("public");
+      sandbox.stub(prompt, "confirm").resolves(false);
+
+      await askQuestions(setup, cfg, createTestOptions(cfg));
+
+      expect(ensureApiEnabledStub.called).to.be.false;
+      expect(getDefaultSiteStub.called).to.be.false;
+    });
+
     describe("App Hosting supported frameworks", () => {
       for (const framework of ["next", "angular", "nuxt", "nuxt2", "express", "svelekit"]) {
         it(`${framework}: should redirect to App Hosting when user accepts`, async () => {
@@ -124,6 +167,7 @@ describe("hosting feature init", () => {
 
           expect(setup.features).to.deep.equal(["apphosting"]);
           expect(setup.featureInfo?.hosting).to.deep.equal({ redirectToAppHosting: true });
+          expect(ensureApiEnabledStub.called).to.be.false;
           expect(inputStub.called).to.be.false;
         });
 
@@ -187,6 +231,7 @@ describe("hosting feature init", () => {
             } as any),
           ).to.be.rejectedWith(/Hosting initialization cancelled/);
 
+          expect(ensureApiEnabledStub.called).to.be.false;
           expect(inputStub.called).to.be.false;
         });
 
@@ -345,6 +390,8 @@ describe("hosting feature init", () => {
           nonInteractive: false,
         } as any),
       ).to.be.rejectedWith(/Could not find hosting info/);
+
+      expect(ensureApiEnabledStub.called).to.be.false;
     });
 
     it("should be a no-op when hosting was redirected to apphosting", async () => {
@@ -366,6 +413,7 @@ describe("hosting feature init", () => {
         nonInteractive: false,
       } as any);
 
+      expect(ensureApiEnabledStub.called).to.be.false;
       expect(askWriteStub.called).to.be.false;
     });
 
@@ -399,6 +447,7 @@ describe("hosting feature init", () => {
         nonInteractive: false,
       } as any);
 
+      expect(ensureApiEnabledStub).to.have.been.calledOnceWith("test-project");
       expect(askWriteStub.calledTwice).to.be.true;
       expect(askWriteStub.firstCall.args[0]).to.equal("public/404.html");
       expect(askWriteStub.secondCall.args[0]).to.equal("public/index.html");
@@ -477,7 +526,34 @@ describe("hosting feature init", () => {
         nonInteractive: false,
       } as any);
 
+      expect(ensureApiEnabledStub).to.have.been.calledOnceWith("test-project");
+      expect(ensureApiEnabledStub.calledBefore(createSiteStub)).to.be.true;
       expect(createSiteStub.calledWith("test-project", "new-site")).to.be.true;
+    });
+
+    it("should skip ensuring Hosting API in actuate when projectId is not set", async () => {
+      const setup: Setup = {
+        config: {},
+        rcfile: { projects: {}, targets: {}, etags: {} },
+        featureInfo: {
+          hosting: {
+            public: "public",
+            spa: true,
+          },
+        },
+        instructions: [],
+      };
+      const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
+      sandbox.stub(cfg, "askWriteProjectFile").resolves();
+      sandbox.stub(Client.prototype, "get").resolves({
+        body: { current: { version: "1.2.3" } },
+        status: 200,
+        response: new Response(),
+      });
+
+      await actuate(setup, cfg, createTestOptions(cfg));
+
+      expect(ensureApiEnabledStub.called).to.be.false;
     });
   });
 }).timeout(5000);
