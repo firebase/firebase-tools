@@ -613,6 +613,27 @@ export interface FirebaseFunctionMetadata {
 // values from the dependent services? But serviceFromEndpoint currently
 // only returns the service and not the dependent resources, which we will
 // need for updates.
+function ingressSettingsFromService(
+  service: Omit<Service, ServiceOutputFields>,
+): backend.IngressSettings {
+  switch (service.ingress) {
+    case "INGRESS_TRAFFIC_INTERNAL_ONLY":
+      return "ALLOW_INTERNAL_ONLY";
+    case "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER":
+      return "ALLOW_INTERNAL_AND_GCLB";
+    case "INGRESS_TRAFFIC_ALL":
+      return "ALLOW_ALL";
+  }
+  switch (service.annotations?.["run.googleapis.com/ingress"]) {
+    case "internal":
+      return "ALLOW_INTERNAL_ONLY";
+    case "internal-and-cloud-load-balancing":
+      return "ALLOW_INTERNAL_AND_GCLB";
+    default:
+      return "ALLOW_ALL";
+  }
+}
+
 /**
  * Converts a Cloud Run Service definition into a Firebase internal Endpoint representation.
  * Handles parsing of environment variables, secrets, and labels to reconstruct the function configuration.
@@ -664,11 +685,7 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
       : 60,
     serviceAccount: service.template.serviceAccount || null,
     runServiceId: svcId,
-    ingressSettings: (service.annotations?.["run.googleapis.com/ingress"] === "internal"
-      ? "ALLOW_INTERNAL_ONLY"
-      : service.annotations?.["run.googleapis.com/ingress"] === "internal-and-cloud-load-balancing"
-        ? "ALLOW_INTERNAL_AND_GCLB"
-        : "ALLOW_ALL") as backend.IngressSettings,
+    ingressSettings: ingressSettingsFromService(service),
     // TODO: Figure out how to encode all trigger types to the underlying Run service that is compatible with both V2 functions and "direct to run" functions
     ...(!service.annotations?.[TRIGGER_TYPE_ANNOTATION] ||
     service.annotations?.[TRIGGER_TYPE_ANNOTATION] === "HTTP_TRIGGER"
@@ -821,16 +838,12 @@ export function serviceFromEndpoint(
   }
 
   if (endpoint.ingressSettings) {
-    const ingressAnnotation =
+    service.ingress =
       endpoint.ingressSettings === "ALLOW_INTERNAL_ONLY"
-        ? "internal"
+        ? "INGRESS_TRAFFIC_INTERNAL_ONLY"
         : endpoint.ingressSettings === "ALLOW_INTERNAL_AND_GCLB"
-          ? "internal-and-cloud-load-balancing"
-          : "all";
-    service.annotations = {
-      ...service.annotations,
-      "run.googleapis.com/ingress": ingressAnnotation,
-    };
+          ? "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
+          : "INGRESS_TRAFFIC_ALL";
   }
 
   return service;
