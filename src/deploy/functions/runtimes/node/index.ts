@@ -6,7 +6,7 @@ import * as semver from "semver";
 import * as spawn from "cross-spawn";
 import { ChildProcess } from "child_process";
 
-import { FirebaseError } from "../../../../error";
+import { FirebaseError, getErrMsg } from "../../../../error";
 import { getRuntimeChoice } from "./parseRuntimeAndValidateSDK";
 import { logger } from "../../../../logger";
 import {
@@ -51,6 +51,39 @@ export async function tryCreateDelegate(context: DelegateContext): Promise<Deleg
   }
 
   return new Delegate(context.projectId, context.projectDir, context.sourceDir, runtime);
+}
+
+type SdkPackageJson = { name?: string; bin?: string | Record<string, string> };
+
+/** @internal */
+export function findSdkBinEntry(sdkPath: string): string | undefined {
+  for (
+    let dir = path.dirname(sdkPath);
+    path.basename(dir) !== "node_modules" && path.dirname(dir) !== dir;
+    dir = path.dirname(dir)
+  ) {
+    const packageJsonPath = path.join(dir, "package.json");
+    if (!fileExistsSync(packageJsonPath)) {
+      continue;
+    }
+    let pkg: SdkPackageJson | null;
+    try {
+      pkg = JSON.parse(fs.readFileSync(packageJsonPath, "utf8")) as SdkPackageJson | null;
+    } catch (err: unknown) {
+      logger.debug(`Failed to read ${packageJsonPath}: ${getErrMsg(err)}`);
+      continue;
+    }
+    if (pkg?.name !== "firebase-functions") {
+      continue;
+    }
+    const entry = typeof pkg.bin === "string" ? pkg.bin : pkg.bin?.["firebase-functions"];
+    if (typeof entry !== "string" || !entry) {
+      return undefined;
+    }
+    const binEntry = path.join(dir, entry);
+    return fileExistsSync(binEntry) ? binEntry : undefined;
+  }
+  return undefined;
 }
 
 // TODO(inlined): Consider moving contents in parseRuntimeAndValidateSDK and validate around.
@@ -158,7 +191,7 @@ export class Delegate {
     return Promise.resolve(() => Promise.resolve());
   }
 
-  private findFunctionsBinary(): string {
+  private findFunctionsBinary(): string[] {
     // Location of the binary included in the Firebase Functions SDK
     // differs depending on the developer's setup and choice of package manager.
     //
@@ -188,8 +221,14 @@ export class Delegate {
       const binPath = path.join(nodeModulesPath, ".bin", "firebase-functions");
       if (fileExistsSync(binPath)) {
         logger.debug(`Found firebase-functions binary at '${binPath}'`);
-        return binPath;
+        return [binPath];
       }
+    }
+
+    const binEntry = findSdkBinEntry(sdkPath);
+    if (binEntry) {
+      logger.debug(`Found firebase-functions bin entry at '${binEntry}'`);
+      return [this.bin, binEntry];
     }
 
     throw new FirebaseError(
@@ -217,8 +256,8 @@ export class Delegate {
       env.CLOUD_RUNTIME_CONFIG = JSON.stringify(config);
     }
 
-    const binPath = this.findFunctionsBinary();
-    const childProcess = spawn(binPath, [this.sourceDir], {
+    const [command, ...args] = this.findFunctionsBinary();
+    const childProcess = spawn(command, [...args, this.sourceDir], {
       env,
       cwd: this.sourceDir,
       stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "pipe"],
