@@ -1,6 +1,12 @@
 import { bold, yellow } from "colorette";
 
-import { Channel, createChannel, addAuthDomains, normalizeName } from "../hosting/api";
+import {
+  Channel,
+  createChannel,
+  addAuthDomains,
+  normalizeName,
+  ensureApiEnabled,
+} from "../hosting/api";
 import { Command } from "../command";
 import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils";
 import { FirebaseError } from "../error";
@@ -25,6 +31,7 @@ export const command = new Command("hosting:channel:create [channelId]")
   .option("--site <siteId>", "site for which to create the channel")
   .before(requireConfig)
   .before(requirePermissions, ["firebasehosting.sites.update"])
+  .before((options) => ensureApiEnabled(needProjectId(options)))
   .before(async (options) => {
     try {
       await requireHostingSite(options);

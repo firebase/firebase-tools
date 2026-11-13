@@ -9,14 +9,6 @@ import { FirebaseError } from "../error";
 describe("cloudtrace", () => {
   let clock: sinon.SinonFakeTimers;
 
-  before(() => {
-    nock.disableNetConnect();
-  });
-
-  after(() => {
-    nock.enableNetConnect();
-  });
-
   beforeEach(() => {
     clock = sinon.useFakeTimers(new Date("2026-01-01T00:00:00.000Z").getTime());
   });

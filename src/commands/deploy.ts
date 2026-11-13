@@ -12,7 +12,8 @@ import { FirebaseError } from "../error";
 import { bold } from "colorette";
 import { pickHostingSiteName } from "../hosting/interactive";
 import { logBullet } from "../utils";
-import { createSite } from "../hosting/api";
+import { createSite, ensureApiEnabled } from "../hosting/api";
+import { needProjectId } from "../projectUtils";
 import { Options } from "../options";
 import * as experiments from "../experiments";
 import * as clc from "colorette";
@@ -88,6 +89,9 @@ command
     if (options.filteredTargets.includes("ailogic")) {
       experiments.assertEnabled("ailogic", "deploy AI Logic resources");
     }
+    if (options.filteredTargets.includes("run")) {
+      experiments.assertEnabled("directcloudrun", "deploy Cloud Run services");
+    }
     const permissions = options.filteredTargets.reduce((perms: string[], target: string) => {
       return perms.concat(TARGET_PERMISSIONS[target as (typeof VALID_DEPLOY_TARGETS)[number]]);
     }, []);
@@ -105,6 +109,7 @@ command
     }
 
     if (options.filteredTargets.includes("hosting")) {
+      await ensureApiEnabled(needProjectId(options));
       let shouldCreateSite = false;
       try {
         await requireHostingSite(options);

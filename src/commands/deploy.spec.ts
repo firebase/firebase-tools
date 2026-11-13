@@ -2,7 +2,9 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import { command } from "./deploy";
+import * as hostingApi from "../hosting/api";
 import * as experiments from "../experiments";
+import * as requireHostingSiteModule from "../requireHostingSite";
 import * as requirePermissionsModule from "../requirePermissions";
 import { FirebaseError } from "../error";
 import { Options } from "../options";
@@ -44,5 +46,55 @@ describe("deploy command ailogic gating", () => {
     experiments.setEnabled("ailogic", true);
     await filterBefore.fn(makeOptions());
     expect(requirePermissionsModule.requirePermissions).to.have.been.calledOnce;
+  });
+});
+
+describe("deploy command hosting API enablement", () => {
+  const hostingBefore = (
+    command as unknown as {
+      befores: Array<{ fn: (options: Options) => Promise<void>; args: unknown[] }>;
+    }
+  ).befores.find((b) => b.fn.toString().includes("requireHostingSite"));
+
+  let ensureHostingApiStub: sinon.SinonStub;
+  let requireHostingSiteStub: sinon.SinonStub;
+
+  beforeEach(() => {
+    ensureHostingApiStub = sinon.stub(hostingApi, "ensureApiEnabled").resolves();
+    requireHostingSiteStub = sinon.stub(requireHostingSiteModule, "requireHostingSite").resolves();
+  });
+
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it("ensures hosting API is enabled when hosting is in filtered targets", async () => {
+    if (!hostingBefore) {
+      throw new Error("Could not find hosting before hook on deploy command");
+    }
+    const options = {
+      project: "my-project",
+      filteredTargets: ["hosting"],
+    } as unknown as Options;
+
+    await hostingBefore.fn(options);
+
+    expect(ensureHostingApiStub).to.have.been.calledOnceWith("my-project");
+    expect(requireHostingSiteStub).to.have.been.calledOnceWith(options);
+  });
+
+  it("does not check hosting API when hosting is not in filtered targets", async () => {
+    if (!hostingBefore) {
+      throw new Error("Could not find hosting before hook on deploy command");
+    }
+    const options = {
+      project: "my-project",
+      filteredTargets: ["firestore"],
+    } as unknown as Options;
+
+    await hostingBefore.fn(options);
+
+    expect(ensureHostingApiStub).to.not.have.been.called;
+    expect(requireHostingSiteStub).to.not.have.been.called;
   });
 });

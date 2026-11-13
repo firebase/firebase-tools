@@ -107,6 +107,7 @@ describe("hosting prepare", () => {
     expect(trackingStub.trackGA4).to.have.been.calledOnceWith("hosting_version", {
       framework: "fake-framework",
     });
+    expect(hostingStub.ensureApiEnabled).to.have.been.calledOnceWith("project");
     expect(hostingStub.createVersion).to.have.been.calledOnce;
     expect(context.hosting).to.deep.equal({
       deploys: [

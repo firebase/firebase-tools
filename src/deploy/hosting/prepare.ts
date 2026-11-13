@@ -114,6 +114,8 @@ export async function prepare(
     return Promise.resolve();
   }
 
+  await api.ensureApiEnabled(context.projectId);
+
   const versions = await Promise.all(
     configs.map(async (config) => {
       // Get the site to confirm that it exists on this project

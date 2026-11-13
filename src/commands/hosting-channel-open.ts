@@ -4,7 +4,7 @@ import * as open from "open";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import { getChannel, listChannels, normalizeName } from "../hosting/api";
+import { getChannel, listChannels, normalizeName, ensureApiEnabled } from "../hosting/api";
 import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
 import { requireConfig } from "../requireConfig";
@@ -18,6 +18,7 @@ export const command = new Command("hosting:channel:open [channelId]")
   .option("--site <siteId>", "the site to which the channel belongs")
   .before(requireConfig)
   .before(requirePermissions, ["firebasehosting.sites.get"])
+  .before((options) => ensureApiEnabled(needProjectId(options)))
   .before(requireHostingSite)
   .action(
     async (

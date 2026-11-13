@@ -1,7 +1,7 @@
 import { bold, underline } from "colorette";
 import { Command } from "../command";
 import { logLabeledSuccess } from "../utils";
-import { getSite, deleteSite } from "../hosting/api";
+import { getSite, deleteSite, ensureApiEnabled } from "../hosting/api";
 import { confirm } from "../prompt";
 import { FirebaseError } from "../error";
 import { requirePermissions } from "../requirePermissions";
@@ -16,6 +16,7 @@ export const command = new Command("hosting:sites:delete <siteId>")
   .withForce()
   .before(requireConfig)
   .before(requirePermissions, ["firebasehosting.sites.delete"])
+  .before((options) => ensureApiEnabled(needProjectId(options)))
   .action(
     async (
       siteId: string,

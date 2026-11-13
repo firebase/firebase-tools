@@ -13,7 +13,7 @@ import { readTemplateSync } from "../../../templates";
 import { FirebaseError } from "../../../error";
 import { Setup } from "../..";
 import { Config } from "../../../config";
-import { createSite } from "../../../hosting/api";
+import { createSite, ensureApiEnabled } from "../../../hosting/api";
 
 const INDEX_TEMPLATE = readTemplateSync("init/hosting/index.html");
 const MISSING_TEMPLATE = readTemplateSync("init/hosting/404.html");
@@ -40,8 +40,7 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
       case "nuxt":
       case "nuxt2":
       case "express":
-      // "svelekit" should not be removed unless it's confirmed to not cause breakages.
-      case "svelekit":
+      case "svelekit": // "svelekit" should not be removed unless it's confirmed to not cause breakages.
       case "sveltekit": {
         logger.info();
         const useAppHosting = await confirm({
@@ -93,6 +92,7 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
   // There's a path where we can set up Hosting without a project, so if
   // if setup.projectId is empty, we don't do any checking for a Hosting site.
   if (setup.projectId) {
+    await ensureApiEnabled(setup.projectId);
     let hasHostingSite = true;
     try {
       await getDefaultHostingSite({ projectId: setup.projectId });
@@ -155,6 +155,10 @@ export async function actuate(setup: Setup, config: Config, options: Options): P
 
   if (hostingInfo.redirectToAppHosting) {
     return;
+  }
+
+  if (setup.projectId) {
+    await ensureApiEnabled(setup.projectId);
   }
 
   if (hostingInfo.newSiteId && setup.projectId) {

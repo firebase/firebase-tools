@@ -3,6 +3,7 @@ import * as clc from "colorette";
 import { Client } from "../apiv2";
 import { Command } from "../command";
 import { hostingApiOrigin } from "../api";
+import { ensureApiEnabled } from "../hosting/api";
 import { confirm } from "../prompt";
 import { requireHostingSite } from "../requireHostingSite";
 import { requirePermissions } from "../requirePermissions";
@@ -14,6 +15,7 @@ export const command = new Command("hosting:disable")
   .option("-f, --force", "skip confirmation")
   .option("-s, --site <siteName>", "the site to disable")
   .before(requirePermissions, ["firebasehosting.sites.update"])
+  .before((options) => ensureApiEnabled(needProjectId(options)))
   .before(requireHostingSite)
   .action(async (options) => {
     const projectId = needProjectId(options);
