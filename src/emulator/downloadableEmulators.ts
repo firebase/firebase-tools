@@ -516,7 +516,8 @@ async function _runBinary(
             `softwareupdate --install-rosetta`,
         );
       }
-      _fatal(emulator.name, e);
+      // _fatal never rejects because its finally block calls process.exit(1)
+      void _fatal(emulator.name, e);
     }
 
     const description = Constants.description(emulator.name);

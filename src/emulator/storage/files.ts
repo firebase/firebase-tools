@@ -247,7 +247,8 @@ export class StorageLayer {
       this._files.delete(filePath);
       this._persistence.deleteFile(filePath);
 
-      this._cloudFunctions.dispatch("delete", new CloudStorageObjectMetadata(file.metadata));
+      // Fire-and-forget: dispatch() catches and logs its own failures.
+      void this._cloudFunctions.dispatch("delete", new CloudStorageObjectMetadata(file.metadata));
       return true;
     }
   }
@@ -337,7 +338,8 @@ export class StorageLayer {
     this._persistence.deleteFile(filePath, /* failSilently = */ true);
     this._persistence.renameFile(upload.path, filePath);
     this._files.set(filePath, new StoredFile(metadata));
-    this._cloudFunctions.dispatch("finalize", new CloudStorageObjectMetadata(metadata));
+    // Fire-and-forget: dispatch() catches and logs its own failures.
+    void this._cloudFunctions.dispatch("finalize", new CloudStorageObjectMetadata(metadata));
     return metadata;
   }
 
@@ -404,7 +406,8 @@ export class StorageLayer {
     const file = new StoredFile(copiedFileMetadata);
     this._files.set(destinationFilePath, file);
 
-    this._cloudFunctions.dispatch("finalize", new CloudStorageObjectMetadata(file.metadata));
+    // Fire-and-forget: dispatch() catches and logs its own failures.
+    void this._cloudFunctions.dispatch("finalize", new CloudStorageObjectMetadata(file.metadata));
     return file.metadata;
   }
 

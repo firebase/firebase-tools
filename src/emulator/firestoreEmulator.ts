@@ -90,9 +90,9 @@ export class FirestoreEmulator implements EmulatorInstance {
     return Promise.resolve();
   }
 
-  stop(): Promise<void> {
+  async stop(): Promise<void> {
     if (this.rulesWatcher) {
-      this.rulesWatcher.close();
+      await this.rulesWatcher.close();
     }
 
     return downloadableEmulators.stop(Emulators.FIRESTORE);
