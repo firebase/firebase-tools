@@ -24,6 +24,7 @@ describe("run deploy", () => {
   const image = "us-central1-docker.pkg.dev/my-project/cloud-run-source-deploy/web:42";
   const scratchDir = "/tmp/run-local-build-web-abc123";
   const builtApp = { bucket: "source-bucket", object: "web.tar.gz" };
+  let upsertBucketStub: sinon.SinonStub;
   let createArchiveStub: sinon.SinonStub;
   let submitBuildStub: sinon.SinonStub;
   let createServiceStub: sinon.SinonStub;
@@ -31,7 +32,7 @@ describe("run deploy", () => {
 
   beforeEach(() => {
     sinon.stub(getProjectNumber, "getProjectNumber").resolves("123");
-    sinon.stub(gcs, "upsertBucket").resolves("source-bucket");
+    upsertBucketStub = sinon.stub(gcs, "upsertBucket").resolves("source-bucket");
     createArchiveStub = sinon
       .stub(apphostingUtil, "createSourceDeployArchive")
       .resolves("/tmp/web.zip");
@@ -150,6 +151,13 @@ describe("run deploy", () => {
       },
       { updateMask: ["template", "traffic", "annotations"], pollTimeoutMs: 10 * 60 * 1000 },
     );
+  });
+
+  it("creates the source bucket without a rule that deletes uploads", async () => {
+    await deployOne({ config: web });
+
+    // Cloud Run reads a service's upload again whenever the service is edited.
+    expect(upsertBucketStub.firstCall.args[0].req).not.to.have.property("lifecycle");
   });
 
   describe("linked Firebase Web App", () => {
