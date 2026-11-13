@@ -70,18 +70,30 @@ export function getCrashlyticsP4sa(projectNumber: string): string {
 }
 
 /**
- * Resolves the Android app ID from options.app, or interactively prompts if multiple exist.
+ * Resolves and validates the Android app ID from options.app against the project,
+ * or interactively prompts if multiple Android apps exist.
  */
 export async function resolveAndroidAppId(
   projectId: string,
   options: { app?: string; nonInteractive?: boolean },
 ): Promise<string> {
-  if (options.app) {
-    parseAndroidHashedId(options.app);
-    return options.app;
+  const requestedAppId = options.app;
+  if (requestedAppId) {
+    parseAndroidHashedId(requestedAppId);
   }
 
   const apps = await listFirebaseApps(projectId, AppPlatform.ANDROID);
+  if (requestedAppId) {
+    const matchedApp = apps.find((app) => app.appId.toLowerCase() === requestedAppId.toLowerCase());
+    if (!matchedApp) {
+      throw new FirebaseError(
+        `Android app '${requestedAppId}' was not found in project '${projectId}'. ` +
+          "Run 'firebase apps:list ANDROID' to view valid Android app IDs for your project.",
+        { exit: 1 },
+      );
+    }
+    return matchedApp.appId;
+  }
   if (apps.length === 0) {
     throw new FirebaseError(
       `No Android apps found in project '${projectId}'. Heap dump collection is only supported for Android apps.\n` +
