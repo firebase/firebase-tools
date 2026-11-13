@@ -47,7 +47,6 @@ const RulesetType = {
  * RulesDeploy encapsulates logic for deploying rules.
  */
 export class RulesDeploy {
-  private project: string;
   private rulesFiles: Array<{ path: string; files: RulesetFile[]; databaseId?: string }>;
   private rulesetNames: { [key: string]: string };
 
@@ -60,7 +59,6 @@ export class RulesDeploy {
     public options: any,
     private type: RulesetServiceType,
   ) {
-    this.project = options.project;
     this.rulesFiles = [];
     this.rulesetNames = {};
   }
