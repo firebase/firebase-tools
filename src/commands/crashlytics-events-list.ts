@@ -15,6 +15,10 @@ import { FirebaseError, getErrMsg, getError, getErrStatus } from "../error";
 import { logger } from "../logger";
 import { requireAuth } from "../requireAuth";
 
+// Intentionally higher than the MCP list_events default (1), which is tuned for LLM token budgets.
+const DEFAULT_LIMIT = 10;
+const MAX_LIMIT = 100;
+
 export interface EventsListOptions extends CrashlyticsFilterCommandOptions {
   filter?: string;
   limit?: string | number;
@@ -29,7 +33,10 @@ export const command = withEventFilterOptions(new Command("crashlytics:events:li
     "--filter <expression>",
     "AIP-160 filter expression for custom keys (e.g. 'custom_keys.env = \"prod\"')",
   )
-  .option("-n, --limit <number>", "maximum number of events to return (1-100, default: 1)")
+  .option(
+    "-n, --limit <number>",
+    `maximum number of events to return (1-${MAX_LIMIT}, default: ${DEFAULT_LIMIT})`,
+  )
   .option(
     "--max-frames <number>",
     `maximum stack frames per thread or exception (default: ${DEFAULT_MAX_FRAMES}, ignored when --full is set)`,
@@ -58,8 +65,8 @@ Custom Key Filtering (--filter):
     }
 
     const limit = parsePositiveIntOption(options.limit, "--limit", {
-      defaultValue: 1,
-      max: 100,
+      defaultValue: DEFAULT_LIMIT,
+      max: MAX_LIMIT,
     });
     const maxFrames = parsePositiveIntOption(options.maxFrames, "--max-frames", {
       defaultValue: DEFAULT_MAX_FRAMES,

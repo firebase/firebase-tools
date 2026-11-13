@@ -85,7 +85,7 @@ describe("crashlytics:events:list", () => {
     ).to.be.true;
   });
 
-  it("should list events with default limit=1 and pass --filter expression", async () => {
+  it("should list events with default limit=10 and pass --filter expression", async () => {
     const result = await command.runner()({
       app: appId,
       issueId: "issue_1",
@@ -96,7 +96,7 @@ describe("crashlytics:events:list", () => {
       listEventsStub.calledOnceWithExactly(
         appId,
         sinon.match({ issueId: "issue_1" }),
-        1,
+        10,
         'custom_keys.env = "prod"',
       ),
     ).to.be.true;
