@@ -3,11 +3,13 @@ import * as fs from "fs";
 import * as path from "path";
 import * as sinon from "sinon";
 import * as localbuilds from "../../apphosting/localbuilds";
+import { FirebaseError } from "../../error";
 import * as artifactregistry from "../../gcp/artifactregistry";
 import * as runv2 from "../../gcp/runv2";
 import * as gcs from "../../gcp/storage";
 import * as getProjectNumber from "../../getProjectNumber";
 import { Options } from "../../options";
+import * as utils from "../../utils";
 import * as apphostingLocalBuild from "../apphosting/localBuild";
 import * as apphostingUtil from "../apphosting/util";
 import { ServiceDeploy } from "./args";
@@ -39,6 +41,7 @@ describe("run deploy", () => {
   let ensureRepoStub: sinon.SinonStub;
   let createServiceStub: sinon.SinonStub;
   let updateServiceStub: sinon.SinonStub;
+  let listRevisionsStub: sinon.SinonStub;
 
   beforeEach(() => {
     sinon.stub(getProjectNumber, "getProjectNumber").resolves("123");
@@ -53,6 +56,7 @@ describe("run deploy", () => {
     ensureRepoStub = sinon.stub(artifactregistry, "ensureDockerRepository").resolves();
     createServiceStub = sinon.stub(runv2, "createService").resolves(deployed);
     updateServiceStub = sinon.stub(runv2, "updateService").resolves(deployed);
+    listRevisionsStub = sinon.stub(runv2, "listRevisions").resolves([]);
   });
 
   afterEach(() => sinon.restore());
@@ -163,11 +167,106 @@ describe("run deploy", () => {
     );
   });
 
-  it("fails with Cloud Run's error if it can't build or start the new revision", async () => {
-    const rolloutError = new Error("Build projects/123/locations/us-central1/builds/b1 failed: {}");
-    createServiceStub.rejects(rolloutError);
+  describe("build logs", () => {
+    const logUrl = "https://console.cloud.google.com/cloud-build/builds;region=us-central1/b2";
+    const link = `View the build logs for service web in us-central1 at ${logUrl}`;
+    let clock: sinon.SinonFakeTimers;
+    let bulletStub: sinon.SinonStub;
 
-    await expect(deployOne({ config: web })).to.be.rejectedWith(rolloutError);
+    beforeEach(() => {
+      clock = sinon.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      bulletStub = sinon.stub(utils, "logLabeledBullet");
+    });
+
+    afterEach(() => clock.restore());
+
+    /** A revision that Cloud Run is building, with a link to the build's logs. */
+    function building(revisionId: string, cloudBuildLogUrl: string): runv2.Revision {
+      return {
+        name: `projects/my-project/locations/us-central1/services/web/revisions/${revisionId}`,
+        containerStatuses: [{ buildStatus: { cloudBuildLogUrl } }],
+      };
+    }
+
+    /** Deploys svc with a rollout that takes a minute. Returns the build log links it printed. */
+    async function deployForAMinute(svc: ServiceDeploy): Promise<string[]> {
+      const rollout = new Promise((resolve) => setTimeout(() => resolve(deployed), 60 * 1000));
+      createServiceStub.returns(rollout);
+      updateServiceStub.returns(rollout);
+      const done = deployOne(svc);
+      await clock.tickAsync(60 * 1000);
+      await done;
+      const messages = bulletStub.args.map((args) => args[1] as string);
+      return messages.filter((msg) => msg.includes("build logs"));
+    }
+
+    it("are linked as soon as Cloud Run starts the build, not after it", async () => {
+      // At first, the new service doesn't exist yet.
+      listRevisionsStub.onFirstCall().rejects(new Error("HTTP Error: 404"));
+      listRevisionsStub.onSecondCall().resolves([building("web-00001", logUrl)]);
+
+      expect(await deployForAMinute({ config: web })).to.deep.equal([link]);
+      // It stops looking once it has the link.
+      expect(listRevisionsStub).to.have.been.calledTwice;
+    });
+
+    it("are linked for the new build, not the service's last one", async () => {
+      const last = building("web-00001", "https://last-build");
+      const existing = {
+        name: "projects/my-project/locations/us-central1/services/web",
+        latestCreatedRevision: last.name,
+        template: { containers: [{ name: "web" }] },
+      } as unknown as runv2.Service;
+      // Until Cloud Run creates the new revision, the newest one is the service's last one.
+      listRevisionsStub.onFirstCall().resolves([last]);
+      listRevisionsStub.onSecondCall().resolves([building("web-00002", logUrl)]);
+
+      expect(await deployForAMinute({ config: web, existing })).to.deep.equal([link]);
+      expect(listRevisionsStub).to.have.been.calledWith("my-project", "us-central1", "web", 1);
+    });
+
+    it("aren't looked up once the rollout is done", async () => {
+      await deployOne({ config: web });
+      await clock.tickAsync(60 * 1000);
+
+      expect(listRevisionsStub).not.to.have.been.called;
+    });
+  });
+
+  describe("when the rollout fails", () => {
+    const rolloutError = new Error("Build projects/123/locations/us-central1/builds/b1 failed: {}");
+    const logUrl = "https://console.cloud.google.com/cloud-build/builds;region=us-central1/b1";
+
+    function revisionBuilt(status: "SUCCESS" | "FAILURE"): runv2.Revision {
+      const buildStatus = { status, cloudBuildLogUrl: logUrl };
+      return { name: "web-1", containerStatuses: [{ buildStatus }] };
+    }
+
+    beforeEach(() => {
+      createServiceStub.rejects(rolloutError);
+    });
+
+    it("links to the build's logs if Cloud Run couldn't build the image", async () => {
+      listRevisionsStub.resolves([revisionBuilt("FAILURE")]);
+
+      await expect(deployOne({ config: web })).to.be.rejectedWith(
+        FirebaseError,
+        `Failed to build service web in us-central1. View the build logs at ${logUrl}`,
+      );
+      expect(listRevisionsStub).to.have.been.calledWith("my-project", "us-central1", "web", 1);
+    });
+
+    it("rethrows the rollout's error if the build didn't fail", async () => {
+      listRevisionsStub.resolves([revisionBuilt("SUCCESS")]);
+
+      await expect(deployOne({ config: web })).to.be.rejectedWith(rolloutError);
+    });
+
+    it("rethrows the rollout's error if it can't look up the build", async () => {
+      listRevisionsStub.rejects(new Error("HTTP Error: 403"));
+
+      await expect(deployOne({ config: web })).to.be.rejectedWith(rolloutError);
+    });
   });
 
   describe("linked Firebase Web App", () => {

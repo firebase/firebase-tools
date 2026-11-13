@@ -2,13 +2,14 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import { validateLocalBuildNodeVersion } from "../../apphosting/localbuilds";
-import { FirebaseError } from "../../error";
+import { FirebaseError, getErrMsg, getError } from "../../error";
 import { AppHostingSingle, RunSingle } from "../../firebaseConfig";
 import { Backend } from "../../gcp/apphosting";
 import * as artifactregistry from "../../gcp/artifactregistry";
 import * as runv2 from "../../gcp/runv2";
 import * as gcs from "../../gcp/storage";
 import { getProjectNumber } from "../../getProjectNumber";
+import { logger } from "../../logger";
 import { Options } from "../../options";
 import { cloneDeep, logLabeledBullet } from "../../utils";
 import { buildLocally } from "../apphosting/localBuild";
@@ -29,6 +30,8 @@ const ROLLOUT_TIMEOUT_MS = 45 * 60 * 1000;
  * them: Cloud Run reports the launch stage of the features that a service actually uses.
  */
 const LAUNCH_STAGE = "ALPHA";
+/** How often to check whether Cloud Run has started the build, to link to its logs. */
+const BUILD_LOG_POLL_MS = 5 * 1000;
 
 /**
  * The image of a container that runs a local build's output. Cloud Run runs the output from Cloud
@@ -80,7 +83,92 @@ async function deployRemoteBuild(
   const message = options.message as string | undefined;
   const template = remoteBuildTemplate(svc, source, imageRepository, appFolder, message);
   logLabeledBullet("run", `Building and deploying service ${serviceId} in ${region}...`);
-  svc.deployed = await rollOut(projectId, svc, template);
+  const rollout = rollOut(projectId, svc, template);
+  const linked = linkBuildLogs(projectId, svc, rollout);
+  try {
+    svc.deployed = await rollout;
+  } catch (err: unknown) {
+    throw (await buildFailure(projectId, svc, err)) ?? err;
+  } finally {
+    await linked;
+  }
+}
+
+/**
+ * If the rollout failed because Cloud Run couldn't build the image, returns an error that links to
+ * the build's logs. Cloud Run's own error has the build's raw output instead.
+ */
+async function buildFailure(
+  projectId: string,
+  svc: ServiceDeploy,
+  err: unknown,
+): Promise<FirebaseError | undefined> {
+  const { serviceId, region } = svc.config;
+  const revision = await newRevision(projectId, svc);
+  const failed = revision?.containerStatuses?.find((c) => c.buildStatus?.status === "FAILURE");
+  const logUrl = failed?.buildStatus?.cloudBuildLogUrl;
+  if (!logUrl) {
+    return undefined;
+  }
+  return new FirebaseError(
+    `Failed to build service ${serviceId} in ${region}. View the build logs at ${logUrl}`,
+    { original: getError(err) },
+  );
+}
+
+/**
+ * Prints a link to the build's logs as soon as Cloud Run starts the build, a few seconds into the
+ * rollout, so that the build can be followed while it runs. Stops when the rollout ends.
+ */
+async function linkBuildLogs(
+  projectId: string,
+  svc: ServiceDeploy,
+  rollout: Promise<unknown>,
+): Promise<void> {
+  const { serviceId, region } = svc.config;
+  let ended = false;
+  const end = rollout
+    .catch(() => undefined)
+    .then(() => {
+      ended = true;
+    });
+  while (!ended) {
+    // Unref'd, so that the timer doesn't keep the CLI running after the rollout ends.
+    const timer = new Promise((resolve) => setTimeout(resolve, BUILD_LOG_POLL_MS).unref());
+    await Promise.race([end, timer]);
+    if (ended) {
+      return;
+    }
+    const revision = await newRevision(projectId, svc);
+    const logUrl = revision?.containerStatuses
+      ?.map((c) => c.buildStatus?.cloudBuildLogUrl)
+      .find((url) => url);
+    if (logUrl) {
+      logLabeledBullet(
+        "run",
+        `View the build logs for service ${serviceId} in ${region} at ${logUrl}`,
+      );
+      return;
+    }
+  }
+}
+
+/**
+ * Returns the revision that this rollout created, once Cloud Run has created it, or undefined if
+ * the newest revision is still the one the service had before (or can't be looked up yet).
+ */
+async function newRevision(
+  projectId: string,
+  svc: ServiceDeploy,
+): Promise<runv2.Revision | undefined> {
+  const { serviceId, region } = svc.config;
+  try {
+    const [newest] = await runv2.listRevisions(projectId, region, serviceId, 1);
+    return newest && newest.name !== svc.existing?.latestCreatedRevision ? newest : undefined;
+  } catch (err: unknown) {
+    logger.debug(`Couldn't look up the build of service ${serviceId}: ${getErrMsg(err)}`);
+    return undefined;
+  }
 }
 
 /**
