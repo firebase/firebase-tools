@@ -647,13 +647,19 @@ export class FirebaseMcpServer {
         while (this._pendingMessages.length) {
           const message = this._pendingMessages.shift();
           if (!message) continue;
-          this.server.sendLoggingMessage({
-            level: message.level,
-            data: message.data,
-          });
+          this.server
+            .sendLoggingMessage({
+              level: message.level,
+              data: message.data,
+            })
+            .catch(() => {
+              // Logging must never throw; the transport may already be closed.
+            });
         }
 
-        void this.server.sendLoggingMessage({ level, data });
+        this.server.sendLoggingMessage({ level, data }).catch(() => {
+          // Logging must never throw; the transport may already be closed.
+        });
       } else {
         this._pendingMessages.push({ level, data });
       }
@@ -664,6 +670,6 @@ export class FirebaseMcpServer {
         logLevel,
         (message: unknown) => logAtLevel(logLevel, message),
       ]),
-    ) as Record<LoggingLevel, (message: unknown) => Promise<void>>;
+    ) as Record<LoggingLevel, (message: unknown) => void>;
   }
 }
