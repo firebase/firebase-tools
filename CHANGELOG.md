@@ -1,0 +1,1 @@
+- Fixed `crashlytics:heapdumps` commands accepting `--app` IDs that do not belong to the target Firebase project.
