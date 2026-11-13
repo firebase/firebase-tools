@@ -1,0 +1,1 @@
+- Fixed `firebase deploy --dry-run` creating a missing Firestore database. A dry run now reports which database a deploy would create, and where. (#11491)
