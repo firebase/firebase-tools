@@ -7,6 +7,8 @@ import {
   parseAndroidHashedId,
   createBucketName,
   getCrashlyticsP4sa,
+  getCrashlyticsConsoleUrl,
+  resolveAndroidApp,
   resolveAndroidAppId,
   getProfilingManagerConfig,
   updateProfilingManagerConfig,
@@ -76,6 +78,71 @@ describe("profilingManager", () => {
       expect(getCrashlyticsP4sa(projectNumber)).to.equal(
         `service-${projectNumber}@gcp-sa-crashlytics.iam.gserviceaccount.com`,
       );
+    });
+  });
+
+  describe("getCrashlyticsConsoleUrl", () => {
+    it("should format the Crashlytics issues URL with android:<packageName>", () => {
+      expect(getCrashlyticsConsoleUrl("appmon-otel-test", "dev.firebase.loadingspinner")).to.equal(
+        "https://console.firebase.google.com/project/appmon-otel-test/crashlytics/app/android:dev.firebase.loadingspinner/issues",
+      );
+    });
+
+    it("should fall back to the project Crashlytics page when packageName is omitted or blank", () => {
+      expect(getCrashlyticsConsoleUrl(projectId)).to.equal(
+        `https://console.firebase.google.com/project/${projectId}/crashlytics`,
+      );
+      expect(getCrashlyticsConsoleUrl(projectId, "   ")).to.equal(
+        `https://console.firebase.google.com/project/${projectId}/crashlytics`,
+      );
+    });
+  });
+
+  describe("resolveAndroidApp", () => {
+    const mockAndroidApp: appsModule.AndroidAppMetadata = {
+      name: `projects/${projectId}/androidApps/${appId}`,
+      projectId,
+      appId,
+      platform: appsModule.AppPlatform.ANDROID,
+      packageName: "com.example.app",
+    };
+
+    it("should return canonical appId and packageName when --app is provided", async () => {
+      sinon.stub(appsModule, "listFirebaseApps").resolves([mockAndroidApp]);
+      const upperAppId = `1:${projectNumber}:android:${hashedAppId.toUpperCase()}`;
+
+      const result = await resolveAndroidApp(projectId, { app: upperAppId });
+
+      expect(result).to.deep.equal({
+        appId,
+        packageName: "com.example.app",
+      });
+    });
+
+    it("should return appId and packageName when a single Android app exists in the project", async () => {
+      sinon.stub(appsModule, "listFirebaseApps").resolves([mockAndroidApp]);
+
+      const result = await resolveAndroidApp(projectId, {});
+
+      expect(result).to.deep.equal({
+        appId,
+        packageName: "com.example.app",
+      });
+    });
+
+    it("should omit packageName when absent on returned AppMetadata", async () => {
+      sinon.stub(appsModule, "listFirebaseApps").resolves([
+        {
+          name: `projects/${projectId}/androidApps/${appId}`,
+          projectId,
+          appId,
+          platform: appsModule.AppPlatform.ANDROID,
+        },
+      ]);
+
+      const result = await resolveAndroidApp(projectId, {});
+
+      expect(result).to.deep.equal({ appId });
     });
   });
 
