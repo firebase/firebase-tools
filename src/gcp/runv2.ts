@@ -616,13 +616,15 @@ export interface FirebaseFunctionMetadata {
 function ingressSettingsFromService(
   service: Omit<Service, ServiceOutputFields>,
 ): backend.IngressSettings {
-  switch (service.ingress) {
-    case "INGRESS_TRAFFIC_INTERNAL_ONLY":
-      return "ALLOW_INTERNAL_ONLY";
-    case "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER":
-      return "ALLOW_INTERNAL_AND_GCLB";
-    case "INGRESS_TRAFFIC_ALL":
-      return "ALLOW_ALL";
+  if (service.ingress) {
+    switch (service.ingress) {
+      case "INGRESS_TRAFFIC_INTERNAL_ONLY":
+        return "ALLOW_INTERNAL_ONLY";
+      case "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER":
+        return "ALLOW_INTERNAL_AND_GCLB";
+      case "INGRESS_TRAFFIC_ALL":
+        return "ALLOW_ALL";
+    }
   }
   switch (service.annotations?.["run.googleapis.com/ingress"]) {
     case "internal":
