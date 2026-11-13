@@ -57,6 +57,12 @@ describe("export", () => {
       expect(mockDelegate.build.calledOnce).to.be.true;
       expect(mockDelegate.discoverBuild.calledOnce).to.be.true;
       expect(mockDelegate.discoverBuild.firstCall.args[1]).to.deep.include({ FOO: "bar" });
+      expect((functionsEnv.loadUserEnvs as sinon.SinonStub).calledOnce).to.be.true;
+      const getRuntimeDelegateStub = runtimes.getRuntimeDelegate as sinon.SinonStub<
+        [runtimes.DelegateContext],
+        Promise<runtimes.RuntimeDelegate>
+      >;
+      expect(getRuntimeDelegateStub.firstCall.args[0].userEnvs).to.deep.equal({ FOO: "bar" });
       expect(result).to.deep.equal({
         "functions.yaml": yaml.dump(mockBuild),
       });

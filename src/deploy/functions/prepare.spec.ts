@@ -333,6 +333,35 @@ describe("prepare", () => {
       });
     });
 
+    it("should load user envs once and pass them to the runtime delegate context", async () => {
+      const loadUserEnvsStub = sandbox
+        .stub(functionsEnv, "loadUserEnvs")
+        .returns({ MY_ENV_VAR: "my_val" });
+      const config: ValidatedConfig = [
+        { source: "source", codebase: "codebase", runtime: "nodejs22" },
+      ];
+      const options = {
+        config: {
+          path: (p: string) => p,
+        },
+        projectId: "project",
+      } as unknown as Options;
+      const firebaseConfig = { projectId: "project" };
+      const runtimeConfig = {};
+
+      await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
+
+      expect(loadUserEnvsStub).to.have.been.calledOnce;
+      const getRuntimeDelegateStub = runtimes.getRuntimeDelegate as sinon.SinonStub<
+        [runtimes.DelegateContext],
+        Promise<RuntimeDelegate>
+      >;
+      expect(getRuntimeDelegateStub.firstCall.args[0].userEnvs).to.deep.equal({
+        MY_ENV_VAR: "my_val",
+      });
+      expect(discoverBuildStub.firstCall.args[1]).to.deep.include({ MY_ENV_VAR: "my_val" });
+    });
+
     it("should preserve runtime from codebase config", async () => {
       const config: ValidatedConfig = [
         { source: "source", codebase: "codebase", runtime: "nodejs20" },
