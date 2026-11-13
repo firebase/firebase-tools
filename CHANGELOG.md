@@ -1,2 +1,4 @@
 - Fixed `crashlytics:heapdumps` commands accepting `--app` IDs that do not belong to the target Firebase project.
+- Fixed `crashlytics:heapdumps:enable` bypassing the confirmation prompt without `--force` in non-interactive environments.
+- Warned when `crashlytics:heapdumps:enable` reuses an existing Cloud Storage bucket whose location differs from `--location` instead of silently ignoring the requested location.
 - Scoped Crashlytics service agent `roles/storage.objectCreator` access to the dedicated heap dump Cloud Storage bucket and enabled Uniform Bucket-Level Access and enforced Public Access Prevention in `crashlytics:heapdumps:enable`.

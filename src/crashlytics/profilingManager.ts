@@ -1,6 +1,6 @@
 import { FirebaseError, getErrStatus } from "../error";
 import { logger } from "../logger";
-import { logLabeledBullet, logLabeledSuccess } from "../utils";
+import { logLabeledBullet, logLabeledSuccess, logLabeledWarning } from "../utils";
 import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
 import * as storage from "../gcp/storage";
 import * as serviceusage from "../gcp/serviceusage";
@@ -186,6 +186,12 @@ export async function ensureHeapDumpStorageBucket(
     if (bucket.projectNumber && String(bucket.projectNumber) !== projectNumber) {
       throw new FirebaseError(
         `Cloud Storage bucket '${bucketName}' already exists and is owned by another project.`,
+      );
+    }
+    if (bucket.location && bucket.location.trim().toLowerCase() !== location.trim().toLowerCase()) {
+      logLabeledWarning(
+        "crashlytics",
+        `Cloud Storage bucket '${bucketName}' already exists in ${bucket.location}; its location cannot be changed to '${location}' and will remain ${bucket.location}.`,
       );
     }
     const patchPayload: Partial<storage.BucketResponse> = {};
