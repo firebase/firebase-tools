@@ -49,10 +49,10 @@ export const command = new Command("crashlytics:heapdumps:enable")
     // 2. Derive deterministic bucket name
     const bucketName = createBucketName(appId);
 
-    // 3. Confirm with user if running interactively without --force
+    // 3. Confirm with user if running interactively without --force.
+    // Omit `default` so non-interactive/piped runs abort unless `--force` is set.
     const confirmed = await confirm({
       message: `Enable Crashlytics heap dump collection for ${appId} using Cloud Storage bucket '${bucketName}' in ${location} (with ${DEFAULT_FILE_TTL_DAYS}-day file TTL)?`,
-      default: true,
       force: options.force,
       nonInteractive: options.nonInteractive,
     });
