@@ -152,11 +152,6 @@ export async function purgeQueue(name: string): Promise<void> {
   await client.post(`${name}:purge`);
 }
 
-/** Deletes a queue with a given name. */
-export async function deleteQueue(name: string): Promise<void> {
-  await client.delete(name);
-}
-
 export interface Task {
   httpRequest: {
     url: string;

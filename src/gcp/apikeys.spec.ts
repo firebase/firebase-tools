@@ -15,14 +15,6 @@ const LOOKUP_KEYS_PATH = "/v2/keys:lookupKey";
 describe("apikeys", () => {
   const sandbox = sinon.createSandbox();
 
-  before(() => {
-    nock.disableNetConnect();
-  });
-
-  after(() => {
-    nock.enableNetConnect();
-  });
-
   afterEach(() => {
     sandbox.restore();
     nock.cleanAll();

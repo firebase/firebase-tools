@@ -1,8 +1,5 @@
-- Improved Auth emulator startup time by compiling validation schemas lazily. (#11176)
-- Updated the Firebase SQL Connect local toolkit to v3.4.26, which includes the following changes:
-  - Internal improvements and bug fixes.
-- Fixed the emulators startup message showing 127.0.0.1 for the Emulator UI and Hub when they listen on 0.0.0.0; it now also prints the address they listen on. (#6222)
-- Fixed a race condition across a second boundary during `accounts:signUp` in the Auth emulator where `validSince` could exceed `auth_time`. (#11413)
-- Added local machine config persistence to `appcheck:debugtokens:create`, `--local` support to `appcheck:debugtokens:list`, and `appcheck:debugtokens:prune` to clean up stale local debug tokens.
-- Fixed `database:import` failing with an unhandled promise rejection when a batch write fails.
-- Fixed emulator crashes when a Firestore rules reload or emulator HTTP handler throws.
+- Fixed `crashlytics:heapdumps` commands accepting `--app` IDs that do not belong to the target Firebase project.
+- Fixed `crashlytics:heapdumps:enable` bypassing the confirmation prompt without `--force` in non-interactive environments.
+- Warned when `crashlytics:heapdumps:enable` reuses an existing Cloud Storage bucket whose location differs from `--location` instead of silently ignoring the requested location.
+- Fixed `crashlytics:heapdumps:status --json` omitting `heapDumpCollectionEnabled` when disabled, removed duplicated default location text in `crashlytics:heapdumps:enable --help`, and surfaced Cloud Storage API error details when bucket creation fails.
+- Fixed `crashlytics:heapdumps:enable` printing an invalid Firebase Console Crashlytics URL by linking to `/crashlytics/app/android:<packageName>/issues` instead of the GMP App ID.

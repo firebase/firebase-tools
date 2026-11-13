@@ -7,6 +7,8 @@ import {
   parseAndroidHashedId,
   createBucketName,
   getCrashlyticsP4sa,
+  getCrashlyticsConsoleUrl,
+  resolveAndroidApp,
   resolveAndroidAppId,
   getProfilingManagerConfig,
   updateProfilingManagerConfig,
@@ -26,6 +28,7 @@ import * as resourceManager from "../gcp/resourceManager";
 import * as serviceusage from "../gcp/serviceusage";
 import * as appsModule from "../management/apps";
 import { Policy } from "../gcp/iam";
+import * as utils from "../utils";
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;
@@ -78,19 +81,128 @@ describe("profilingManager", () => {
     });
   });
 
+  describe("getCrashlyticsConsoleUrl", () => {
+    it("should format the Crashlytics issues URL with android:<packageName>", () => {
+      expect(getCrashlyticsConsoleUrl("appmon-otel-test", "dev.firebase.loadingspinner")).to.equal(
+        "https://console.firebase.google.com/project/appmon-otel-test/crashlytics/app/android:dev.firebase.loadingspinner/issues",
+      );
+    });
+
+    it("should fall back to the project Crashlytics page when packageName is omitted or blank", () => {
+      expect(getCrashlyticsConsoleUrl(projectId)).to.equal(
+        `https://console.firebase.google.com/project/${projectId}/crashlytics`,
+      );
+      expect(getCrashlyticsConsoleUrl(projectId, "   ")).to.equal(
+        `https://console.firebase.google.com/project/${projectId}/crashlytics`,
+      );
+    });
+  });
+
+  describe("resolveAndroidApp", () => {
+    const mockAndroidApp: appsModule.AndroidAppMetadata = {
+      name: `projects/${projectId}/androidApps/${appId}`,
+      projectId,
+      appId,
+      platform: appsModule.AppPlatform.ANDROID,
+      packageName: "com.example.app",
+    };
+
+    it("should return canonical appId and packageName when --app is provided", async () => {
+      sinon.stub(appsModule, "listFirebaseApps").resolves([mockAndroidApp]);
+      const upperAppId = `1:${projectNumber}:android:${hashedAppId.toUpperCase()}`;
+
+      const result = await resolveAndroidApp(projectId, { app: upperAppId });
+
+      expect(result).to.deep.equal({
+        appId,
+        packageName: "com.example.app",
+      });
+    });
+
+    it("should return appId and packageName when a single Android app exists in the project", async () => {
+      sinon.stub(appsModule, "listFirebaseApps").resolves([mockAndroidApp]);
+
+      const result = await resolveAndroidApp(projectId, {});
+
+      expect(result).to.deep.equal({
+        appId,
+        packageName: "com.example.app",
+      });
+    });
+
+    it("should omit packageName when absent on returned AppMetadata", async () => {
+      sinon.stub(appsModule, "listFirebaseApps").resolves([
+        {
+          name: `projects/${projectId}/androidApps/${appId}`,
+          projectId,
+          appId,
+          platform: appsModule.AppPlatform.ANDROID,
+        },
+      ]);
+
+      const result = await resolveAndroidApp(projectId, {});
+
+      expect(result).to.deep.equal({ appId });
+    });
+  });
+
   describe("resolveAndroidAppId", () => {
-    it("should return the explicitly provided valid Android app ID", async () => {
+    const mockAndroidApp: appsModule.AndroidAppMetadata = {
+      name: `projects/${projectId}/androidApps/${appId}`,
+      projectId,
+      appId,
+      platform: appsModule.AppPlatform.ANDROID,
+      packageName: "com.example.app",
+    };
+
+    it("should return the explicitly provided valid Android app ID when it belongs to the project", async () => {
+      const listAppsStub = sinon.stub(appsModule, "listFirebaseApps").resolves([mockAndroidApp]);
+
       const result = await resolveAndroidAppId(projectId, { app: appId });
+
+      expect(result).to.equal(appId);
+      expect(listAppsStub).to.have.been.calledOnceWith(projectId, appsModule.AppPlatform.ANDROID);
+    });
+
+    it("should match --app case-insensitively and return the canonical Firebase app ID", async () => {
+      sinon.stub(appsModule, "listFirebaseApps").resolves([mockAndroidApp]);
+      const upperAppId = `1:${projectNumber}:android:${hashedAppId.toUpperCase()}`;
+
+      const result = await resolveAndroidAppId(projectId, { app: upperAppId });
+
       expect(result).to.equal(appId);
     });
 
-    it("should throw a FirebaseError when an invalid or non-Android app ID is provided", async () => {
+    it("should throw a FirebaseError when the provided Android app ID belongs to a different project", async () => {
+      const otherProjectAppId = "1:9999999999:android:dba41e8917c618732010d1";
+      sinon.stub(appsModule, "listFirebaseApps").resolves([mockAndroidApp]);
+
+      await expect(resolveAndroidAppId(projectId, { app: otherProjectAppId })).to.be.rejectedWith(
+        FirebaseError,
+        `Android app '${otherProjectAppId}' was not found in project '${projectId}'.`,
+      );
+    });
+
+    it("should throw a FirebaseError when the provided Android app ID does not exist in the project", async () => {
+      const fabricatedAppId = `1:${projectNumber}:android:ffffffffffffffff`;
+      sinon.stub(appsModule, "listFirebaseApps").resolves([mockAndroidApp]);
+
+      await expect(resolveAndroidAppId(projectId, { app: fabricatedAppId })).to.be.rejectedWith(
+        FirebaseError,
+        `Android app '${fabricatedAppId}' was not found in project '${projectId}'.`,
+      );
+    });
+
+    it("should throw a FirebaseError before listing apps when an invalid or non-Android app ID is provided", async () => {
+      const listAppsStub = sinon.stub(appsModule, "listFirebaseApps");
+
       await expect(
         resolveAndroidAppId(projectId, { app: `1:${projectNumber}:ios:${hashedAppId}` }),
       ).to.be.rejectedWith(
         FirebaseError,
         "Heap dump collection is only supported for Android apps.",
       );
+      expect(listAppsStub).to.not.have.been.called;
     });
 
     it("should throw a FirebaseError when no Android apps exist in the project", async () => {
@@ -305,6 +417,73 @@ describe("profilingManager", () => {
         forbiddenError,
       );
       expect(createBucketStub).to.not.have.been.called;
+    });
+
+    it("should warn and reuse existing bucket when requested location differs from existing bucket location", async () => {
+      sinon.stub(storage, "getBucket").resolves({
+        name: expectedBucketName,
+        projectNumber,
+        location: "US-CENTRAL1",
+        cors: DEFAULT_CORS_RULES,
+        lifecycle: expectedLifecycle,
+      } as unknown as storage.BucketResponse);
+      const patchBucketStub = sinon.stub(storage, "patchBucket");
+      const createBucketStub = sinon.stub(storage, "createBucket");
+      const logWarningStub = sinon.stub(utils, "logLabeledWarning");
+
+      const result = await ensureHeapDumpStorageBucket(projectId, appId, "europe-west1");
+
+      expect(result).to.equal(expectedBucketName);
+      expect(patchBucketStub).to.not.have.been.called;
+      expect(createBucketStub).to.not.have.been.called;
+      expect(logWarningStub).to.have.been.calledOnceWith(
+        "crashlytics",
+        sinon.match(
+          (msg: string) =>
+            msg.includes("US-CENTRAL1") &&
+            msg.includes("europe-west1") &&
+            msg.includes("cannot be changed"),
+        ),
+      );
+    });
+
+    it("should warn when default location differs from existing bucket location", async () => {
+      sinon.stub(storage, "getBucket").resolves({
+        name: expectedBucketName,
+        projectNumber,
+        location: "US-CENTRAL1",
+        cors: DEFAULT_CORS_RULES,
+        lifecycle: expectedLifecycle,
+      } as unknown as storage.BucketResponse);
+      sinon.stub(storage, "patchBucket");
+      sinon.stub(storage, "createBucket");
+      const logWarningStub = sinon.stub(utils, "logLabeledWarning");
+
+      const result = await ensureHeapDumpStorageBucket(projectId, appId);
+
+      expect(result).to.equal(expectedBucketName);
+      expect(logWarningStub).to.have.been.calledOnceWith(
+        "crashlytics",
+        sinon.match((msg: string) => msg.includes("US-CENTRAL1") && msg.includes("us-east1")),
+      );
+    });
+
+    it("should not warn when existing bucket location matches requested location case-insensitively", async () => {
+      sinon.stub(storage, "getBucket").resolves({
+        name: expectedBucketName,
+        projectNumber,
+        location: "US-EAST1",
+        cors: DEFAULT_CORS_RULES,
+        lifecycle: expectedLifecycle,
+      } as unknown as storage.BucketResponse);
+      sinon.stub(storage, "patchBucket");
+      sinon.stub(storage, "createBucket");
+      const logWarningStub = sinon.stub(utils, "logLabeledWarning");
+
+      const result = await ensureHeapDumpStorageBucket(projectId, appId, "us-east1");
+
+      expect(result).to.equal(expectedBucketName);
+      expect(logWarningStub).to.not.have.been.called;
     });
 
     it("should throw a FirebaseError if the bucket is owned by another project", async () => {

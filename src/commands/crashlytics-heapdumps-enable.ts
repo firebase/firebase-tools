@@ -14,7 +14,8 @@ import {
   DEFAULT_BUCKET_LOCATION,
   DEFAULT_FILE_TTL_DAYS,
   enableHeapDumpCollection,
-  resolveAndroidAppId,
+  getCrashlyticsConsoleUrl,
+  resolveAndroidApp,
 } from "../crashlytics/profilingManager";
 
 interface CommandOptions extends Options {
@@ -27,14 +28,14 @@ export const command = new Command("crashlytics:heapdumps:enable")
   .option("--app <appID>", "the app id of your Firebase Android app")
   .option(
     "--location <location>",
-    `the location for the Cloud Storage bucket (default: ${DEFAULT_BUCKET_LOCATION})`,
+    "the location for the Cloud Storage bucket",
     DEFAULT_BUCKET_LOCATION,
   )
   .withForce("automatically configure without prompting for confirmation")
   .before(requireAuth)
   .action(async (options: CommandOptions) => {
     const projectId = needProjectId(options);
-    const appId = await resolveAndroidAppId(projectId, options);
+    const { appId, packageName } = await resolveAndroidApp(projectId, options);
     const location = options.location || DEFAULT_BUCKET_LOCATION;
 
     // 1. Verify project billing is enabled (required for GCS bucket creation and storage)
@@ -49,10 +50,10 @@ export const command = new Command("crashlytics:heapdumps:enable")
     // 2. Derive deterministic bucket name
     const bucketName = createBucketName(appId);
 
-    // 3. Confirm with user if running interactively without --force
+    // 3. Confirm with user if running interactively without --force.
+    // Omit `default` so non-interactive/piped runs abort unless `--force` is set.
     const confirmed = await confirm({
       message: `Enable Crashlytics heap dump collection for ${appId} using Cloud Storage bucket '${bucketName}' in ${location} (with ${DEFAULT_FILE_TTL_DAYS}-day file TTL)?`,
-      default: true,
       force: options.force,
       nonInteractive: options.nonInteractive,
     });
@@ -73,7 +74,7 @@ export const command = new Command("crashlytics:heapdumps:enable")
     logger.info(`  Status:     ${clc.green("Enabled")}`);
     logger.info("");
     logger.info(
-      `View collected heap dumps in the Firebase Console: ${consoleUrl(projectId, `/crashlytics/app/${appId}`)}`,
+      `View collected heap dumps in the Firebase Console: ${getCrashlyticsConsoleUrl(projectId, packageName)}`,
     );
 
     return {

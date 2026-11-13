@@ -8,14 +8,6 @@ import { firebaseApiOrigin } from "./api";
 import { FirebaseError } from "./error";
 
 describe("fetchWebSetup module", () => {
-  before(() => {
-    nock.disableNetConnect();
-  });
-
-  after(() => {
-    nock.enableNetConnect();
-  });
-
   afterEach(() => {
     expect(nock.isDone()).to.be.true;
   });
