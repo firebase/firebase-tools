@@ -1,5 +1,4 @@
 import { ChildProcess } from "child_process";
-import { EventEmitter } from "events";
 
 import { getErrStack } from "../error";
 
@@ -38,12 +37,6 @@ export const DOWNLOADABLE_EMULATORS = [
   Emulators.DATACONNECT,
 ];
 
-export type ImportExportEmulators =
-  | Emulators.FIRESTORE
-  | Emulators.DATABASE
-  | Emulators.AUTH
-  | Emulators.STORAGE
-  | Emulators.DATACONNECT;
 export const IMPORT_EXPORT_EMULATORS = [
   Emulators.FIRESTORE,
   Emulators.DATABASE,
@@ -258,29 +251,6 @@ export class EmulatorLog {
     });
   }
 
-  static waitForLog(
-    emitter: EventEmitter,
-    level: string,
-    type: string,
-    filter?: (el: EmulatorLog) => boolean,
-  ): Promise<EmulatorLog> {
-    return new Promise((resolve) => {
-      const listener = (el: EmulatorLog) => {
-        const levelTypeMatch = el.level === level && el.type === type;
-        let filterMatch = true;
-        if (filter) {
-          filterMatch = filter(el);
-        }
-
-        if (levelTypeMatch && filterMatch) {
-          emitter.removeListener("log", listener);
-          resolve(el);
-        }
-      };
-      emitter.on("log", listener);
-    });
-  }
-
   static fromJSON(json: string): EmulatorLog {
     let parsedLog;
     let isNotJSON = false;
@@ -329,11 +299,7 @@ export class EmulatorLog {
   }
 
   toString(): string {
-    return this.toStringCore(false);
-  }
-
-  toPrettyString(): string {
-    return this.toStringCore(true);
+    return this.toStringCore();
   }
 
   /**
@@ -380,18 +346,14 @@ export class EmulatorLog {
     }
   }
 
-  private toStringCore(pretty = false): string {
-    return JSON.stringify(
-      {
-        timestamp: this.timestamp,
-        level: this.level,
-        text: this.text,
-        data: this.data,
-        type: this.type,
-      },
-      undefined,
-      pretty ? 2 : 0,
-    );
+  private toStringCore(): string {
+    return JSON.stringify({
+      timestamp: this.timestamp,
+      level: this.level,
+      text: this.text,
+      data: this.data,
+      type: this.type,
+    });
   }
 }
 
