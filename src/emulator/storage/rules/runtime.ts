@@ -288,7 +288,7 @@ export class StorageRulesRuntime {
       throw new FirebaseError("Attempted to send Cloud Storage rules request with stale id");
     }
 
-    return new Promise<RuntimeActionResponse>((resolve) => {
+    return new Promise<RuntimeActionResponse>((resolve, reject) => {
       const requestId = runtimeActionRequest.id;
       this._requests[requestId] = {
         request: runtimeActionRequest,
@@ -309,10 +309,15 @@ export class StorageRulesRuntime {
       // framed on newlines (see the handler in start()), the delay is
       // unnecessary and only slows every request, so release the lock as soon
       // as the write is queued.
-      lock.acquire(synchonizationKey, (done) => {
-        this._childprocess?.stdin?.write(serializedRequest + "\n");
-        done();
-      });
+      lock
+        .acquire(synchonizationKey, (done) => {
+          this._childprocess?.stdin?.write(serializedRequest + "\n");
+          done();
+        })
+        .catch((err: unknown) => {
+          delete this._requests[requestId];
+          reject(err);
+        });
     });
   }
 

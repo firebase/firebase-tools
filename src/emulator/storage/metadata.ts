@@ -238,7 +238,8 @@ export class StoredFileMetadata {
     this.updated = new Date();
     this.setDownloadTokensFromCustomMetadata();
     if (shouldTrigger) {
-      this._cloudFunctions.dispatch("metadataUpdate", new CloudStorageObjectMetadata(this));
+      // Fire-and-forget: dispatch() catches and logs its own failures.
+      void this._cloudFunctions.dispatch("metadataUpdate", new CloudStorageObjectMetadata(this));
     }
   }
 

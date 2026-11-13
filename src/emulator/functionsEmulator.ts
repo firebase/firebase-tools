@@ -324,7 +324,8 @@ export class FunctionsEmulator implements EmulatorInstance {
   createHubServer(): express.Application {
     // TODO(samstern): Should not need this here but some tests are directly calling this method
     // because FunctionsEmulator.start() used to not be test safe.
-    this.workQueue.start();
+    // start() loops until stop() is called and catches errors from each job.
+    void this.workQueue.start();
 
     const hub = express();
 
@@ -498,7 +499,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     const { host, port } = this.getInfo();
-    this.workQueue.start();
+    // start() loops until stop() is called and catches errors from each job.
+    void this.workQueue.start();
     const server = this.createHubServer().listen(port, host);
     this.destroyServer = createDestroyer(server);
     return Promise.resolve();

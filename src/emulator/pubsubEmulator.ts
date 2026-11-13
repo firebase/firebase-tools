@@ -7,7 +7,7 @@ import { Client } from "../apiv2";
 import { EmulatorLogger } from "./emulatorLogger";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { Constants } from "./constants";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
 import { EmulatorRegistry } from "./registry";
 import { SignatureType } from "./functionsEmulatorShared";
 import { CloudEvent } from "./events/types";
@@ -214,7 +214,13 @@ export class PubsubEmulator implements EmulatorInstance {
     }
 
     sub.on("message", (message: Message) => {
-      this.onMessage(topicName, message);
+      this.onMessage(topicName, message).catch((err: unknown) =>
+        this.logger.logLabeled(
+          "WARN",
+          "pubsub",
+          `Failed to handle message ${message.id} on topic ${topicName}: ${getErrMsg(err)}`,
+        ),
+      );
     });
 
     return sub;
