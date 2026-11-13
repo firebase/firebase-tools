@@ -66,7 +66,8 @@ export const command = new Command("ext:dev:init")
 
       await npmDependencies.askInstallDependencies({ source: "functions" }, config);
 
-      return logger.info("\n" + marked(welcome));
+      // marked returns a string unless called with { async: true }.
+      return logger.info(`\n${marked(welcome) as string}`);
     } catch (err: unknown) {
       if (!(err instanceof FirebaseError)) {
         throw new FirebaseError(

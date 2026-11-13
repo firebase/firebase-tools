@@ -58,7 +58,7 @@ async function getRulesFromConsole(projectId: string): Promise<string | null> {
   }
 
   if (rules.length > 1) {
-    return utils.reject("Ruleset has too many files: " + rules.length, { exit: 1 });
+    return utils.reject(`Ruleset has too many files: ${rules.length}`, { exit: 1 });
   }
 
   // Even though the rules API allows for multi-file rulesets, right

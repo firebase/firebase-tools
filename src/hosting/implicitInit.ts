@@ -30,7 +30,7 @@ export async function implicitInit(options: any): Promise<TemplateServerResponse
   try {
     config = await fetchWebSetup(options);
   } catch (e: any) {
-    logger.debug("fetchWebSetup error: " + e);
+    logger.debug(`fetchWebSetup error: ${String(e)}`);
     const statusCode = _.get(e, "context.response.statusCode");
     if (statusCode === 403) {
       utils.logLabeledWarning(

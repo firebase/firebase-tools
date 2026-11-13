@@ -161,7 +161,7 @@ export function resolveExpression(
   } else if (wantType === "boolean" && isComparisonExpression(expr)) {
     return resolveComparison(expr, params);
   } else {
-    throw new ExprParseError("CEL expression '" + expr + "' is of an unsupported form");
+    throw new ExprParseError(`CEL expression '${String(expr)}' is of an unsupported form`);
   }
 }
 
