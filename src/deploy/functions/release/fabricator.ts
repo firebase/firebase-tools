@@ -11,6 +11,7 @@ import * as ensure from "../ensure";
 import { FirebaseError, getError, getErrStack } from "../../../error";
 
 import { SourceTokenScraper } from "./sourceTokenScraper";
+import { SingleBuildCoordinator } from "./singleBuildCoordinator";
 import { Timer } from "./timer";
 import { assertExhaustive } from "../../../functional";
 import { RUNTIMES } from "../runtimes/supported";
@@ -74,6 +75,7 @@ export interface FabricatorArgs {
   sources: Record<string, args.Source>;
   projectNumber: string;
   projectId: string;
+  singleBuildCoordinator?: SingleBuildCoordinator;
 }
 
 const rethrowAs =
@@ -104,6 +106,7 @@ export class Fabricator {
   appEngineLocation: string;
   projectNumber: string;
   projectId: string;
+  singleBuildCoordinator: SingleBuildCoordinator;
 
   constructor(args: FabricatorArgs) {
     this.executor = args.executor;
@@ -113,6 +116,7 @@ export class Fabricator {
     this.appEngineLocation = args.appEngineLocation;
     this.projectNumber = args.projectNumber;
     this.projectId = args.projectId;
+    this.singleBuildCoordinator = args.singleBuildCoordinator || new SingleBuildCoordinator();
   }
 
   async grantNewRoles(plan: planner.CodebasePlan, codebase: string): Promise<void> {
@@ -494,7 +498,11 @@ export class Fabricator {
     if (update.endpoint.platform === "gcfv1") {
       await this.updateV1Function(update.endpoint, scraperV1);
     } else if (update.endpoint.platform === "gcfv2") {
-      await this.updateV2Function(update.endpoint, scraperV2);
+      if (process.env.FIREBASE_FUNCTIONS_SINGLE_BUILD === "true") {
+        await this.updateUpgradedRunService(update.endpoint);
+      } else {
+        await this.updateV2Function(update.endpoint, scraperV2);
+      }
     } else if (update.endpoint.platform === "run") {
       await this.updateRunFunction(update);
     } else {
@@ -1038,6 +1046,119 @@ export class Fabricator {
         .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invokerUpdate))
         .catch(rethrowAs(endpoint, "set invoker"));
     }
+  }
+
+  /**
+   * Updates an in-place upgrading function's Cloud Run v2 service with new V2 code.
+   * Leverages SingleBuildCoordinator to build the container once per (codebase, region)
+   * and patches the service in-place.
+   */
+  async updateUpgradedRunService(endpoint: backend.Endpoint): Promise<void> {
+    const storageSource = this.sources[endpoint.codebase!]?.storage;
+    if (!storageSource) {
+      logger.debug("Precondition failed. Cannot update an upgraded function without storage");
+      throw new Error("Precondition failed");
+    }
+
+    const imageUri = await this.singleBuildCoordinator.buildCodebase({
+      projectId: endpoint.project,
+      region: endpoint.region,
+      codebase: endpoint.codebase!,
+      entryPoint: endpoint.entryPoint,
+      storageSource: {
+        bucket: storageSource.bucket,
+        object: storageSource.object,
+        generation: storageSource.generation ? String(storageSource.generation) : undefined,
+      },
+      runtime: endpoint.runtime,
+    });
+
+    await this.runFunctionExecutor
+      .run(
+        async () => {
+          const serviceId =
+            endpoint.runServiceId || runV2.functionNameToServiceName(endpoint.id);
+          const existingService = await runV2.getService(
+            endpoint.project,
+            endpoint.region,
+            serviceId,
+          );
+
+          // Strip output-only fields so they are not included in the inferred updateMask
+          const {
+            generation,
+            createTime,
+            updateTime,
+            creator,
+            lastModifier,
+            ...serviceBase
+          } = existingService;
+
+          // Build merged environment variables: preserve existing GCF container variables
+          // (such as LOG_EXECUTION_ID and EVENTARC_CLOUD_EVENT_SOURCE), then overlay user envs,
+          // secrets, FUNCTION_TARGET, and FUNCTION_SIGNATURE_TYPE.
+          const envMap = new Map<string, runV2.EnvVar>();
+          for (const env of existingService.template.containers?.[0]?.env || []) {
+            envMap.set(env.name, env);
+          }
+          for (const [name, value] of Object.entries(endpoint.environmentVariables || {})) {
+            envMap.set(name, { name, value });
+          }
+          for (const secret of endpoint.secretEnvironmentVariables || []) {
+            envMap.set(secret.key, {
+              name: secret.key,
+              valueSource: {
+                secretKeyRef: {
+                  secret: secret.secret,
+                  version: secret.version,
+                },
+              },
+            });
+          }
+          envMap.set(runV2.FUNCTION_TARGET_ENV, {
+            name: runV2.FUNCTION_TARGET_ENV,
+            value: endpoint.entryPoint,
+          });
+          envMap.set(runV2.FUNCTION_SIGNATURE_TYPE_ENV, {
+            name: runV2.FUNCTION_SIGNATURE_TYPE_ENV,
+            value: backend.isEventTriggered(endpoint) ? "cloudevent" : "http",
+          });
+
+          const template: runV2.RevisionTemplate = {
+            ...existingService.template,
+            containers: [
+              {
+                ...existingService.template.containers?.[0],
+                name: "worker",
+                image: imageUri,
+                env: Array.from(envMap.values()),
+                resources: {
+                  limits: {
+                    cpu: String(endpoint.cpu || 1),
+                    memory: `${endpoint.availableMemoryMb || 256}Mi`,
+                  },
+                  cpuIdle: true,
+                  startupCpuBoost: true,
+                },
+              },
+            ],
+            maxInstanceRequestConcurrency: endpoint.concurrency || backend.DEFAULT_CONCURRENCY,
+          };
+          // Drop the existing revision name so Cloud Run creates a new unique revision
+          delete template.revision;
+
+          const patchService: Omit<runV2.Service, runV2.ServiceOutputFields> = {
+            ...serviceBase,
+            template,
+          };
+
+          const op = await runV2.updateService(patchService);
+          endpoint.uri = op.uri;
+          endpoint.runServiceId = serviceId;
+        },
+        { retryPredicates: [isTransientError, isServiceAccountPropagationError] },
+      )
+      .catch(rethrowAs(endpoint, "update"));
   }
 
   async deleteRunFunction(endpoint: backend.Endpoint): Promise<void> {
