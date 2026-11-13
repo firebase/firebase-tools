@@ -10,6 +10,7 @@ import * as profilingManager from "../crashlytics/profilingManager";
 import * as appsModule from "../management/apps";
 import * as cloudbilling from "../gcp/cloudbilling";
 import * as promptModule from "../prompt";
+import { logger } from "../logger";
 import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
 
@@ -175,6 +176,46 @@ describe("crashlytics:heapdumps commands", () => {
 
       expect(checkBillingStub).to.have.been.calledWith(projectId);
       expect(enableCollectionStub).to.have.been.calledOnceWith(projectId, appId, "us-central1");
+    });
+
+    it("should log the Crashlytics console URL using android:<packageName>/issues instead of GMP appId", async () => {
+      const loggerInfoSpy = sinon.spy(logger, "info");
+
+      await enableCommand.runner()({
+        project: projectId,
+        app: appId,
+        force: true,
+      });
+
+      const loggedMessages = loggerInfoSpy.args.map((args) => args.map(String).join(" "));
+      expect(loggedMessages).to.include(
+        `View collected heap dumps in the Firebase Console: https://console.firebase.google.com/project/${projectId}/crashlytics/app/android:${mockAndroidApp.packageName}/issues`,
+      );
+      expect(loggedMessages.some((msg) => msg.includes(`/crashlytics/app/${appId}`))).to.be.false;
+    });
+
+    it("should fall back to the project Crashlytics console URL if packageName is unavailable", async () => {
+      const loggerInfoSpy = sinon.spy(logger, "info");
+      (appsModule.listFirebaseApps as sinon.SinonStub).resolves([
+        {
+          name: `projects/${projectId}/androidApps/${appId}`,
+          projectId,
+          appId,
+          platform: appsModule.AppPlatform.ANDROID,
+        },
+      ]);
+
+      await enableCommand.runner()({
+        project: projectId,
+        app: appId,
+        force: true,
+      });
+
+      const loggedMessages = loggerInfoSpy.args.map((args) => args.map(String).join(" "));
+      expect(loggedMessages).to.include(
+        `View collected heap dumps in the Firebase Console: https://console.firebase.google.com/project/${projectId}/crashlytics`,
+      );
+      expect(loggedMessages.some((msg) => msg.includes(`/crashlytics/app/${appId}`))).to.be.false;
     });
 
     it("should default location to DEFAULT_BUCKET_LOCATION when location option is empty", async () => {

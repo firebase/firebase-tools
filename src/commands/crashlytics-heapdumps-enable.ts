@@ -14,7 +14,8 @@ import {
   DEFAULT_BUCKET_LOCATION,
   DEFAULT_FILE_TTL_DAYS,
   enableHeapDumpCollection,
-  resolveAndroidAppId,
+  getCrashlyticsConsoleUrl,
+  resolveAndroidApp,
 } from "../crashlytics/profilingManager";
 
 interface CommandOptions extends Options {
@@ -34,7 +35,7 @@ export const command = new Command("crashlytics:heapdumps:enable")
   .before(requireAuth)
   .action(async (options: CommandOptions) => {
     const projectId = needProjectId(options);
-    const appId = await resolveAndroidAppId(projectId, options);
+    const { appId, packageName } = await resolveAndroidApp(projectId, options);
     const location = options.location || DEFAULT_BUCKET_LOCATION;
 
     // 1. Verify project billing is enabled (required for GCS bucket creation and storage)
@@ -73,7 +74,7 @@ export const command = new Command("crashlytics:heapdumps:enable")
     logger.info(`  Status:     ${clc.green("Enabled")}`);
     logger.info("");
     logger.info(
-      `View collected heap dumps in the Firebase Console: ${consoleUrl(projectId, `/crashlytics/app/${appId}`)}`,
+      `View collected heap dumps in the Firebase Console: ${getCrashlyticsConsoleUrl(projectId, packageName)}`,
     );
 
     return {
