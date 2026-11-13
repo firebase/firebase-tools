@@ -130,7 +130,7 @@ describe("accountExporter", () => {
           ",false,,," +
           userList[j].displayName +
           Array(22).join(",") + // A lot of empty fields...
-          userList[j].disabled;
+          String(userList[j].disabled);
         if (j === 6) {
           expectedEntry +=
             ",,,,,,123234234,test@test.org,,https://example.com/photo.jpg" + Array(18).join(",");
@@ -184,7 +184,7 @@ describe("accountExporter", () => {
         singleUser.displayName +
         '"' +
         Array(22).join(",") + // A lot of empty fields.
-        singleUser.disabled;
+        String(singleUser.disabled);
       expect(spyWrite.getCall(0).args[0]).to.eq(expectedEntry + Array(27).join(",") + os.EOL);
       expect(nock.isDone()).to.be.true;
     });
@@ -229,7 +229,7 @@ describe("accountExporter", () => {
         ",false,,," +
         '"Foo ""Bar"" Baz"' +
         Array(22).join(",") + // A lot of empty fields.
-        singleUser.disabled;
+        String(singleUser.disabled);
       expect(spyWrite.getCall(0).args[0]).to.eq(expectedEntry + Array(27).join(",") + os.EOL);
       expect(nock.isDone()).to.be.true;
     });
