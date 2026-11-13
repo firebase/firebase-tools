@@ -59,7 +59,6 @@ module.exports = {
         "@typescript-eslint/no-unsafe-member-access": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-unsafe-return": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-var-requires": "warn", // TODO(bkendall): remove, allow to error.
-        "@typescript-eslint/prefer-regexp-exec": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/restrict-plus-operands": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/restrict-template-expressions": "warn", // TODO(bkendall): remove, allow to error.
       },
@@ -79,7 +78,6 @@ module.exports = {
         "@typescript-eslint/no-unsafe-return": "off",
         "@typescript-eslint/no-var-requires": "off",
         "@typescript-eslint/prefer-includes": "off",
-        "@typescript-eslint/prefer-regexp-exec": "off",
         "@typescript-eslint/restrict-plus-operands": "off",
         "@typescript-eslint/restrict-template-expressions": "off",
         "@typescript-eslint/unbound-method": "off",
