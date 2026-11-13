@@ -73,7 +73,10 @@ export class AppDistributionClient {
     });
   }
 
-  async updateReleaseNotes(releaseName: string, releaseNotes?: string): Promise<void> {
+  async updateReleaseNotes(
+    releaseName: string,
+    releaseNotes?: string,
+  ): Promise<Release | undefined> {
     if (!releaseNotes) {
       utils.logWarning("no release notes specified, skipping");
       return;
@@ -89,13 +92,17 @@ export class AppDistributionClient {
     };
     const queryParams = { updateMask: "release_notes.text" };
 
+    let response: ClientResponse<Release>;
     try {
-      await this.appDistroV1Client.patch(`/${releaseName}`, data, { queryParams });
+      response = await this.appDistroV1Client.patch<typeof data, Release>(`/${releaseName}`, data, {
+        queryParams,
+      });
     } catch (err: unknown) {
       throw new FirebaseError(`failed to update release notes with ${getErrMsg(err)}`);
     }
 
     utils.logSuccess("added release notes successfully");
+    return response.body;
   }
 
   async distribute(
