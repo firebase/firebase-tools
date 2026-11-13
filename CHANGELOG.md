@@ -1,1 +1,2 @@
+- Fixed `crashlytics:heapdumps` commands accepting `--app` IDs that do not belong to the target Firebase project.
 - Fixed `crashlytics:heapdumps:status --json` omitting `heapDumpCollectionEnabled` when disabled, removed duplicated default location text in `crashlytics:heapdumps:enable --help`, and surfaced Cloud Storage API error details when bucket creation fails.
