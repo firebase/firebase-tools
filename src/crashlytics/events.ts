@@ -64,6 +64,10 @@ export async function listEvents(
   return response.body;
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 /**
  * Normalizes a short event ID or full event resource name into
  * `projects/{project}/apps/{app_id}/events/{event_id}`.
@@ -74,19 +78,17 @@ export function normalizeEventResourceName(appId: string, eventIdOrName: string)
     throw new FirebaseError("Event ID cannot be empty.");
   }
   const requestProjectNumber = parseProjectNumber(appId);
-  const expectedPrefix = `projects/${requestProjectNumber}/apps/${appId}/events/`;
-  if (trimmed.startsWith(expectedPrefix)) {
-    const eventId = trimmed.slice(expectedPrefix.length);
-    if (eventId && !eventId.includes("/")) {
-      return trimmed;
-    }
+  // Web Issue.sampleEvent uses projectId and ?sessionEventKey=... rather than projectNumber.
+  const fullNamePattern = new RegExp(`^projects/[^/]+/apps/${escapeRegExp(appId)}/events/[^/]+$`);
+  if (fullNamePattern.test(trimmed)) {
+    return trimmed;
   }
   if (trimmed.includes("/")) {
     throw new FirebaseError(
-      `Invalid event resource name '${trimmed}'. Expected an event ID or '${expectedPrefix}{event_id}'.`,
+      `Invalid event resource name '${trimmed}'. Expected an event ID or 'projects/{project}/apps/${appId}/events/{event_id}'.`,
     );
   }
-  return `${expectedPrefix}${trimmed}`;
+  return `projects/${requestProjectNumber}/apps/${appId}/events/${trimmed}`;
 }
 
 /**
