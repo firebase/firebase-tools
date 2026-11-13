@@ -1,0 +1,1 @@
+- Adds `--source` option to `firebase deploy` command to specify the source directory to deploy functions from.
