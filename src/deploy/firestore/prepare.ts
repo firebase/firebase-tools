@@ -14,6 +14,8 @@ import * as types from "../../firestore/api-types";
 import { FirestoreConfig } from "../../firebaseConfig";
 import { FirestoreApi } from "../../firestore/api";
 
+const DEFAULT_FIRESTORE_LOCATION = "nam5";
+
 export interface RulesContext {
   databaseId: string;
   rulesFile: string;
@@ -129,7 +131,7 @@ async function createDatabase(context: any, options: DeployOptions): Promise<boo
     await api.getDatabase(options.projectId, firestoreCfg.database);
   } catch (e: any) {
     if (e.status === 404) {
-      const locationId = firestoreCfg.location || "nam5"; // Default to 'nam5' if location is not specified
+      const locationId = firestoreCfg.location || DEFAULT_FIRESTORE_LOCATION;
       if (options.dryRun) {
         utils.logLabeledWarning(
           "firestore",
