@@ -165,25 +165,6 @@ export async function createConnection(
 }
 
 /**
- * Deletes a connection that matches the given parameters
- */
-export async function deleteConnection(
-  projectId: string,
-  location: string,
-  connectionId: string,
-): Promise<Operation> {
-  /**
-   * TODO: specify a unique request ID so that if you must retry your request,
-   * the server will know to ignore the request if it has already been
-   * completed. The server will guarantee that for at least 60 minutes after
-   * the first request.
-   */
-  const name = `projects/${projectId}/locations/${LOCATION_OVERRIDE ?? location}/connections/${connectionId}`;
-  const res = await client.delete<Operation>(name, { queryParams: { force: "true" } });
-  return res.body;
-}
-
-/**
  * Gets details of a single Developer Connect Connection.
  */
 export async function getConnection(

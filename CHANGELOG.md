@@ -1,1 +1,6 @@
+- Fixed `crashlytics:heapdumps` commands accepting `--app` IDs that do not belong to the target Firebase project.
+- Fixed `crashlytics:heapdumps:enable` bypassing the confirmation prompt without `--force` in non-interactive environments.
+- Warned when `crashlytics:heapdumps:enable` reuses an existing Cloud Storage bucket whose location differs from `--location` instead of silently ignoring the requested location.
+- Fixed `crashlytics:heapdumps:status --json` omitting `heapDumpCollectionEnabled` when disabled, removed duplicated default location text in `crashlytics:heapdumps:enable --help`, and surfaced Cloud Storage API error details when bucket creation fails.
+- Fixed `crashlytics:heapdumps:enable` printing an invalid Firebase Console Crashlytics URL by linking to `/crashlytics/app/android:<packageName>/issues` instead of the GMP App ID.
 - Fixed `firebase deploy` failing to find the Cloud Functions SDK when the package manager does not create a `node_modules/.bin/firebase-functions` file, such as Bun on Windows. (#11386)
