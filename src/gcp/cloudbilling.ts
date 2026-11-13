@@ -148,7 +148,7 @@ async function openBillingAccount(
 ): Promise<boolean> {
   if (open) {
     try {
-      opn(url);
+      await opn(url);
     } catch (err: any) {
       logger.debug("Unable to open billing URL: " + err.stack);
     }
