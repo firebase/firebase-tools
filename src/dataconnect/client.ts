@@ -25,11 +25,17 @@ export async function listLocations(projectId: string): Promise<string[]> {
 }
 
 /** Service methods */
-export async function getService(serviceName: string): Promise<types.Service> {
-  const res = await dataconnectClient().get<types.Service>(serviceName);
+export async function getService(
+  serviceName: string,
+  fields: string[] = [],
+): Promise<types.Service> {
+  const res = await dataconnectClient().get<types.Service>(serviceName, {
+    queryParams: fields.length ? { fields: fields.join(",") } : undefined,
+  });
   return res.body;
 }
 
+// TODO(b/442666798): Pass field mask once CCFE supports field masks on aggregate list requests.
 export async function listAllServices(projectId: string): Promise<types.Service[]> {
   const res = await dataconnectClient().get<{ services: types.Service[] }>(
     `/projects/${projectId}/locations/-/services`,
@@ -86,9 +92,12 @@ export async function deleteService(serviceName: string): Promise<types.Service>
 export async function getSchema(
   serviceName: string,
   schemaId: string = types.MAIN_SCHEMA_ID,
+  fields: string[] = [],
 ): Promise<types.Schema | undefined> {
   try {
-    const res = await dataconnectClient().get<types.Schema>(`${serviceName}/schemas/${schemaId}`);
+    const res = await dataconnectClient().get<types.Schema>(`${serviceName}/schemas/${schemaId}`, {
+      queryParams: fields.length ? { fields: fields.join(",") } : undefined,
+    });
     return res.body;
   } catch (err: any) {
     if (err.status !== 404) {
@@ -111,7 +120,7 @@ export async function listSchemas(
       queryParams: {
         pageSize: PAGE_SIZE_MAX,
         pageToken,
-        fields: fields.join(","),
+        ...(fields.length ? { fields: fields.join(",") } : {}),
       },
     });
     schemas.push(...(res.body.schemas || []));
@@ -157,8 +166,10 @@ export async function deleteSchema(name: string): Promise<void> {
 
 /** Connector methods */
 
-export async function getConnector(name: string): Promise<types.Connector> {
-  const res = await dataconnectClient().get<types.Connector>(name);
+export async function getConnector(name: string, fields: string[] = []): Promise<types.Connector> {
+  const res = await dataconnectClient().get<types.Connector>(name, {
+    queryParams: fields.length ? { fields: fields.join(",") } : undefined,
+  });
   return res.body;
 }
 
@@ -182,7 +193,7 @@ export async function listConnectors(serviceName: string, fields: string[] = [])
       queryParams: {
         pageSize: PAGE_SIZE_MAX,
         pageToken,
-        fields: fields.join(","),
+        ...(fields.length ? { fields: fields.join(",") } : {}),
       },
     });
     connectors.push(...(res.body.connectors || []));

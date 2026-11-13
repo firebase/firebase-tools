@@ -54,6 +54,7 @@ export const list_services = tool(
 
     if (projectId) {
       try {
+        // TODO(b/442666798): Pass field masks once CCFE supports field masks on aggregate list requests.
         const [services, schemas, connectors] = await Promise.all([
           client.listAllServices(projectId),
           client.listSchemas(`projects/${projectId}/locations/-/services/-`),

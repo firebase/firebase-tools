@@ -160,7 +160,9 @@ export default async function (context: Context, options: Options): Promise<void
 async function deployedConnectors(serviceInfos: ServiceInfo[]): Promise<Connector[]> {
   let connectors: Connector[] = [];
   for (const si of serviceInfos) {
-    connectors = connectors.concat(await listConnectors(si.serviceName));
+    connectors = connectors.concat(
+      await listConnectors(si.serviceName, ["connectors.name", "nextPageToken"]),
+    );
   }
   return connectors;
 }
@@ -169,7 +171,7 @@ async function deployedConnectors(serviceInfos: ServiceInfo[]): Promise<Connecto
 // We don't need to worry about schemas on other services because we will delete/ignore the service during deploy
 async function deployedSchemas(serviceInfos: ServiceInfo[]): Promise<Schema[]> {
   const schemasPerService = await Promise.all(
-    serviceInfos.map((si) => listSchemas(si.serviceName)),
+    serviceInfos.map((si) => listSchemas(si.serviceName, ["schemas.name", "nextPageToken"])),
   );
   return schemasPerService.flat();
 }
