@@ -311,6 +311,10 @@ export function load(client: CLIClient): CLIClient {
     client.run.services.update = loadCommand("run-services-update");
   }
   client.serve = loadCommand("serve");
+  client.skills = {};
+  client.skills.add = loadCommand("skills-add");
+  client.skills.update = loadCommand("skills-update");
+  client.skills.delete = loadCommand("skills-delete");
   client.setup = {};
   client.setup.emulators = {};
   client.setup.emulators.database = loadCommand("setup-emulators-database");
