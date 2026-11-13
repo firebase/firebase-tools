@@ -7,15 +7,12 @@ export const RUN_PERMISSIONS = [
   "run.services.update",
   "run.services.setIamPolicy",
   "run.operations.get",
-  "cloudbuild.builds.create",
-  "cloudbuild.builds.get",
   // No bucket or object permissions: owners and editors get those from each bucket's
   // IAM policy, which this project-level check can't see.
   "storage.buckets.list",
   "storage.buckets.create",
   "artifactregistry.repositories.get",
   "artifactregistry.repositories.create",
-  "artifactregistry.repositories.downloadArtifacts",
   "iam.serviceAccounts.actAs",
 ];
 

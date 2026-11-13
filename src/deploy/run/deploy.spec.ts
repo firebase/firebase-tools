@@ -11,7 +11,7 @@ import { Options } from "../../options";
 import * as apphostingLocalBuild from "../apphosting/localBuild";
 import * as apphostingUtil from "../apphosting/util";
 import { ServiceDeploy } from "./args";
-import { deploy, localBuildTemplate, revisionTemplate } from "./deploy";
+import { deploy, localBuildTemplate, remoteBuildConfig, revisionTemplate } from "./deploy";
 
 const NODEJS22 = "us-central1-docker.pkg.dev/serverless-runtimes/google-22/runtimes/nodejs22";
 const DEPLOY_MESSAGE = "firebase.google.com/deploy-message";
@@ -20,12 +20,23 @@ const APP_ID = "firebase.google.com/app-id";
 describe("run deploy", () => {
   const options = { config: { projectDir: "/project" } } as unknown as Options;
   const web = { serviceId: "web", region: "us-central1", rootDir: "apps/web" };
-  // Date.now() is stubbed to return 42, which tags the image.
-  const image = "us-central1-docker.pkg.dev/my-project/cloud-run-source-deploy/web:42";
+  const source = { bucket: "source-bucket", object: "web.zip" };
+  const imageRepository = "us-central1-docker.pkg.dev/my-project/cloud-run-source-deploy/web";
+  /** How Cloud Run builds web's source. */
+  const buildConfig = {
+    imageRepositoryUri: imageRepository,
+    buildpacksBuild: {
+      environmentVariables: {
+        X_GOOGLE_TARGET_PLATFORM: "fah",
+        FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
+      },
+    },
+  };
   const scratchDir = "/tmp/run-local-build-web-abc123";
   const builtApp = { bucket: "source-bucket", object: "web.tar.gz" };
+  const deployed = { uri: "https://web.run.app" } as runv2.Service;
   let createArchiveStub: sinon.SinonStub;
-  let submitBuildStub: sinon.SinonStub;
+  let ensureRepoStub: sinon.SinonStub;
   let createServiceStub: sinon.SinonStub;
   let updateServiceStub: sinon.SinonStub;
 
@@ -39,12 +50,9 @@ describe("run deploy", () => {
     sinon
       .stub(gcs, "uploadObject")
       .resolves({ bucket: "source-bucket", object: "web.zip", generation: "1" });
-    sinon.stub(artifactregistry, "ensureDockerRepository").resolves();
-    submitBuildStub = sinon.stub(runv2, "submitBuild").resolves();
-    const deployed = { uri: "https://web.run.app" } as runv2.Service;
+    ensureRepoStub = sinon.stub(artifactregistry, "ensureDockerRepository").resolves();
     createServiceStub = sinon.stub(runv2, "createService").resolves(deployed);
     updateServiceStub = sinon.stub(runv2, "updateService").resolves(deployed);
-    sinon.stub(Date, "now").returns(42);
   });
 
   afterEach(() => sinon.restore());
@@ -63,18 +71,31 @@ describe("run deploy", () => {
       path.join("/project", "apps/web"),
       "/project",
     );
-    expect(submitBuildStub).to.have.been.calledWithMatch("my-project", "us-central1", {
-      storageSource: { bucket: "source-bucket", object: "web.zip" },
-      imageUri: image,
-      buildpackBuild: { baseImage: NODEJS22, enableAutomaticUpdates: true },
-    });
-    const { environmentVariables } = submitBuildStub.firstCall.args[2].buildpackBuild;
-    expect(environmentVariables).not.to.have.property("GOOGLE_BUILDABLE");
+    expect(ensureRepoStub).to.have.been.calledWith(
+      "my-project",
+      "us-central1",
+      "cloud-run-source-deploy",
+    );
     expect(createServiceStub).to.have.been.calledWithMatch("my-project", "us-central1", "web", {
-      template: { containers: [{ name: "web", image, baseImageUri: NODEJS22 }] },
+      template: {
+        containers: [
+          {
+            name: "web",
+            baseImageUri: NODEJS22,
+            sourceCode: { cloudStorageSource: source },
+            // The build runs on the service's base image.
+            buildConfig: {
+              ...buildConfig,
+              buildpacksBuild: { ...buildConfig.buildpacksBuild, buildBaseImageUri: NODEJS22 },
+            },
+          },
+        ],
+      },
       invokerIamDisabled: true,
       ingress: "INGRESS_TRAFFIC_ALL",
+      launchStage: "ALPHA",
     });
+    expect(createServiceStub.firstCall.args[4]).to.deep.equal({ pollTimeoutMs: 45 * 60 * 1000 });
     expect(svc.deployed).to.deep.equal({ uri: "https://web.run.app" });
   });
 
@@ -88,36 +109,19 @@ describe("run deploy", () => {
       { backendId: "web" },
       path.join("/project"),
     );
-    const { environmentVariables } = submitBuildStub.firstCall.args[2].buildpackBuild;
-    expect(environmentVariables).to.include({ GOOGLE_BUILDABLE: "apps/web" });
-  });
-
-  it("keeps GOOGLE_BUILDABLE from buildEnv if the user set it", async () => {
-    sinon.stub(fs, "existsSync").callsFake((file) => file === path.join("/project", "turbo.json"));
-
-    await deployOne({ config: web, buildEnv: { GOOGLE_BUILDABLE: "custom/web" } });
-
-    const { environmentVariables } = submitBuildStub.firstCall.args[2].buildpackBuild;
-    expect(environmentVariables).to.include({ GOOGLE_BUILDABLE: "custom/web" });
+    const container = createServiceStub.firstCall.args[3].template.containers[0];
+    expect(container.buildConfig.buildpacksBuild.environmentVariables).to.include({
+      GOOGLE_BUILDABLE: "apps/web",
+    });
   });
 
   it("builds without a base image if the service doesn't have one", async () => {
     await deployOne({ config: web });
 
-    // Without a base image, Cloud Build can't turn on automatic base image updates.
-    const { buildpackBuild } = submitBuildStub.firstCall.args[2];
-    expect(buildpackBuild).not.to.have.property("baseImage");
-    expect(buildpackBuild).not.to.have.property("enableAutomaticUpdates");
-  });
-
-  it("passes the service's plain build env vars to Cloud Build, but never secrets", async () => {
-    const buildEnv = { API_URL: "https://api.example.com", NPM_TOKEN: { secret: "npm-token" } };
-
-    await deployOne({ config: web, buildEnv });
-
-    const { environmentVariables } = submitBuildStub.firstCall.args[2].buildpackBuild;
-    expect(environmentVariables).to.include({ API_URL: "https://api.example.com" });
-    expect(environmentVariables).not.to.have.property("NPM_TOKEN");
+    // Without a base image, Cloud Run doesn't turn on automatic base image updates.
+    const container = createServiceStub.firstCall.args[3].template.containers[0];
+    expect(container).not.to.have.property("baseImageUri");
+    expect(container.buildConfig).to.deep.equal(buildConfig);
   });
 
   it("rolls out a new revision of an existing service with all traffic, keeping its tags", async () => {
@@ -142,14 +146,28 @@ describe("run deploy", () => {
       {
         name: "projects/my-project/locations/us-central1/services/web",
         annotations: {},
-        template: { containers: [{ name: "web", image }] },
+        // A container can't have both an image and a build config, so the old image is gone.
+        template: {
+          containers: [{ name: "web", sourceCode: { cloudStorageSource: source }, buildConfig }],
+        },
         traffic: [
           { type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 },
           { type: "TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION", revision: "web-000", tag: "preview" },
         ],
+        launchStage: "ALPHA",
       },
-      { updateMask: ["template", "traffic", "annotations"], pollTimeoutMs: 10 * 60 * 1000 },
+      {
+        updateMask: ["template", "traffic", "annotations", "launchStage"],
+        pollTimeoutMs: 45 * 60 * 1000,
+      },
     );
+  });
+
+  it("fails with Cloud Run's error if it can't build or start the new revision", async () => {
+    const rolloutError = new Error("Build projects/123/locations/us-central1/builds/b1 failed: {}");
+    createServiceStub.rejects(rolloutError);
+
+    await expect(deployOne({ config: web })).to.be.rejectedWith(rolloutError);
   });
 
   describe("linked Firebase Web App", () => {
@@ -176,7 +194,7 @@ describe("run deploy", () => {
 
       expect(updateServiceStub).to.have.been.calledWithMatch(
         { annotations: { team: "frontend", [APP_ID]: "1:123:web:def" } },
-        { updateMask: ["template", "traffic", "annotations"] },
+        { updateMask: ["template", "traffic", "annotations", "launchStage"] },
       );
     });
 
@@ -247,7 +265,7 @@ describe("run deploy", () => {
         "source-bucket",
         gcs.ContentType.TAR,
       );
-      expect(submitBuildStub).not.to.have.been.called;
+      expect(ensureRepoStub).not.to.have.been.called;
       expect(container).to.deep.include({
         image: "scratch",
         sourceCode: { cloudStorageSource: builtApp },
@@ -325,20 +343,18 @@ describe("run deploy", () => {
       } as runv2.Service;
     }
 
-    it("starts a new service with just the image", () => {
-      expect(revisionTemplate({ config: web }, image)).to.deep.equal({
-        containers: [{ name: "web", image }],
-      });
+    it("starts a new service with just a named container", () => {
+      expect(revisionTemplate({ config: web })).to.deep.equal({ containers: [{ name: "web" }] });
     });
 
-    it("keeps the live revision's settings, but not its name", () => {
-      const template = revisionTemplate({ config: web, existing, baseImage: NODEJS22 }, image);
+    it("keeps the live revision's settings, but not its name or image", () => {
+      const template = revisionTemplate({ config: web, existing, baseImage: NODEJS22 });
 
       expect(template).to.deep.equal({
         serviceAccount: "web@my-project.iam.gserviceaccount.com",
         annotations: { team: "frontend" },
         containers: [
-          { name: "web", image, baseImageUri: NODEJS22, env: [{ name: "MODE", value: "prod" }] },
+          { name: "web", baseImageUri: NODEJS22, env: [{ name: "MODE", value: "prod" }] },
         ],
       });
       // The live service itself isn't changed.
@@ -346,37 +362,48 @@ describe("run deploy", () => {
     });
 
     it("sets the base image, or clears it", () => {
-      const withBaseImage = revisionTemplate(
-        { config: web, existing, baseImage: "nodejs24" },
-        image,
-      );
+      const withBaseImage = revisionTemplate({ config: web, existing, baseImage: "nodejs24" });
       expect(withBaseImage.containers?.[0].baseImageUri).to.equal("nodejs24");
 
-      const withoutBaseImage = revisionTemplate({ config: web, existing }, image);
+      const withoutBaseImage = revisionTemplate({ config: web, existing });
       expect(withoutBaseImage.containers?.[0]).not.to.have.property("baseImageUri");
     });
 
     it("sets the deploy message, or clears the last one", () => {
-      const withMessage = revisionTemplate({ config: web, existing }, image, "Fix the login page");
+      const withMessage = revisionTemplate({ config: web, existing }, "Fix the login page");
       expect(withMessage.annotations).to.deep.equal({
         team: "frontend",
         [DEPLOY_MESSAGE]: "Fix the login page",
       });
 
-      const withoutMessage = revisionTemplate({ config: web, existing }, image);
+      const withoutMessage = revisionTemplate({ config: web, existing });
       expect(withoutMessage.annotations).to.deep.equal({ team: "frontend" });
     });
 
-    it("switches a service from a local build back to an image", () => {
+    it("drops a local build's output and start command", () => {
       const fromLocalBuild = webRunning({
         image: "scratch",
         command: ["npm", "run", "start"],
         sourceCode: { cloudStorageSource: builtApp },
       });
 
-      const template = revisionTemplate({ config: web, existing: fromLocalBuild }, image);
+      const template = revisionTemplate({ config: web, existing: fromLocalBuild });
 
-      expect(template).to.deep.equal({ containers: [{ name: "web", image }] });
+      expect(template).to.deep.equal({ containers: [{ name: "web" }] });
+    });
+
+    it("drops the last remote build's source and build config, but keeps the command", () => {
+      const fromRemoteBuild = webRunning({
+        command: ["node", "server.js"],
+        sourceCode: { cloudStorageSource: source },
+        buildConfig,
+      });
+
+      const template = revisionTemplate({ config: web, existing: fromRemoteBuild });
+
+      expect(template).to.deep.equal({
+        containers: [{ name: "web", command: ["node", "server.js"] }],
+      });
     });
 
     describe("FIREBASE_CONFIG", () => {
@@ -393,7 +420,7 @@ describe("run deploy", () => {
           autoInit: { appId: "1:123:web:abc", firebaseConfig: "current" },
         };
 
-        const template = revisionTemplate(svc, image);
+        const template = revisionTemplate(svc);
 
         expect(template.containers?.[0].env).to.deep.equal([
           { name: "FIREBASE_CONFIG", value: "current" },
@@ -411,7 +438,7 @@ describe("run deploy", () => {
           annotations: { [APP_ID]: "1:123:web:abc" },
         };
 
-        const template = revisionTemplate({ config: web, existing }, image);
+        const template = revisionTemplate({ config: web, existing });
 
         expect(template.containers?.[0].env).to.deep.equal([{ name: "MODE", value: "prod" }]);
       });
@@ -419,7 +446,7 @@ describe("run deploy", () => {
       it("is left alone if the user set it on a service that was never linked", () => {
         const svc = { config: web, existing: withConfig("mine") };
 
-        const template = revisionTemplate(svc, image);
+        const template = revisionTemplate(svc);
 
         expect(template.containers?.[0].env).to.deep.equal([
           { name: "FIREBASE_CONFIG", value: "mine" },
@@ -464,6 +491,61 @@ describe("run deploy", () => {
           { name: "MODE", value: "development" },
           { name: "NODE_ENV", value: "production" },
         ]);
+      });
+    });
+  });
+
+  describe("remoteBuildConfig", () => {
+    it("has Cloud Run push to the repository and build with App Hosting's buildpacks", () => {
+      expect(remoteBuildConfig({ config: web }, imageRepository, "")).to.deep.equal({
+        imageRepositoryUri: imageRepository,
+        buildpacksBuild: {
+          environmentVariables: {
+            X_GOOGLE_TARGET_PLATFORM: "fah",
+            FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
+          },
+        },
+      });
+    });
+
+    it("builds on the service's base image, if it has one", () => {
+      const withBaseImage = remoteBuildConfig(
+        { config: web, baseImage: NODEJS22 },
+        imageRepository,
+        "",
+      );
+      expect(withBaseImage.buildpacksBuild?.buildBaseImageUri).to.equal(NODEJS22);
+
+      const withoutBaseImage = remoteBuildConfig({ config: web }, imageRepository, "");
+      expect(withoutBaseImage.buildpacksBuild).not.to.have.property("buildBaseImageUri");
+    });
+
+    it("tells the buildpacks where the app is in a monorepo", () => {
+      const config = remoteBuildConfig({ config: web }, imageRepository, "apps/web");
+
+      expect(config.buildpacksBuild?.environmentVariables).to.include({
+        GOOGLE_BUILDABLE: "apps/web",
+      });
+    });
+
+    it("passes the build env's plain values, but never its secrets", () => {
+      const buildEnv = { API_URL: "https://api.example.com", NPM_TOKEN: { secret: "npm-token" } };
+
+      const config = remoteBuildConfig({ config: web, buildEnv }, imageRepository, "");
+
+      const env = config.buildpacksBuild?.environmentVariables;
+      expect(env).to.include({ API_URL: "https://api.example.com" });
+      expect(env).not.to.have.property("NPM_TOKEN");
+    });
+
+    it("lets the build env set GOOGLE_BUILDABLE, but not App Hosting's buildpack settings", () => {
+      const buildEnv = { GOOGLE_BUILDABLE: "custom/web", X_GOOGLE_TARGET_PLATFORM: "gcp" };
+
+      const config = remoteBuildConfig({ config: web, buildEnv }, imageRepository, "apps/web");
+
+      expect(config.buildpacksBuild?.environmentVariables).to.include({
+        GOOGLE_BUILDABLE: "custom/web",
+        X_GOOGLE_TARGET_PLATFORM: "fah",
       });
     });
   });
