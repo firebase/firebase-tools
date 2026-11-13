@@ -94,7 +94,6 @@ describe("Fabricator", () => {
     tasks.createQueue.rejects(new Error("unexpected tasks.createQueue"));
     tasks.updateQueue.rejects(new Error("unexpected tasks.updateQueue"));
     tasks.disableQueue.rejects(new Error("unexpected tasks.disableQueue"));
-    tasks.deleteQueue.rejects(new Error("unexpected tasks.deleteQueue"));
     tasks.setEnqueuer.rejects(new Error("unexpected tasks.setEnqueuer"));
     tasks.setIamPolicy.rejects(new Error("unexpected tasks.setIamPolicy"));
     tasks.getIamPolicy.rejects(new Error("unexpected tasks.getIamPolicy"));

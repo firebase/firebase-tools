@@ -3,19 +3,19 @@ import * as clc from "colorette";
 import { Client } from "../apiv2";
 import { Command } from "../command";
 import { hostingApiOrigin } from "../api";
+import { ensureApiEnabled } from "../hosting/api";
 import { confirm } from "../prompt";
 import { requireHostingSite } from "../requireHostingSite";
 import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
 import * as utils from "../utils";
-import { ensure } from "../ensureApiEnabled";
 
 export const command = new Command("hosting:disable")
   .description("stop serving web traffic to your Firebase Hosting site")
   .option("-f, --force", "skip confirmation")
   .option("-s, --site <siteName>", "the site to disable")
   .before(requirePermissions, ["firebasehosting.sites.update"])
-  .before((options) => ensure(needProjectId(options), hostingApiOrigin(), "hosting", true))
+  .before((options) => ensureApiEnabled(needProjectId(options)))
   .before(requireHostingSite)
   .action(async (options) => {
     const projectId = needProjectId(options);
