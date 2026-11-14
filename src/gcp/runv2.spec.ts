@@ -202,6 +202,34 @@ describe("runv2", () => {
       expect(result.labels?.["deployment-tool"]).to.be.undefined;
       expect(result.labels?.[runv2.CLIENT_NAME_LABEL]).to.equal("firebase-functions");
     });
+
+    it("should set service.ingress instead of run.googleapis.com/ingress annotation", () => {
+      const cases: Array<{
+        ingressSettings: backend.IngressSettings;
+        expectedIngress: runv2.IngressTraffic;
+      }> = [
+        { ingressSettings: "ALLOW_ALL", expectedIngress: "INGRESS_TRAFFIC_ALL" },
+        {
+          ingressSettings: "ALLOW_INTERNAL_ONLY",
+          expectedIngress: "INGRESS_TRAFFIC_INTERNAL_ONLY",
+        },
+        {
+          ingressSettings: "ALLOW_INTERNAL_AND_GCLB",
+          expectedIngress: "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER",
+        },
+      ];
+
+      for (const { ingressSettings, expectedIngress } of cases) {
+        const endpoint: backend.Endpoint = {
+          ...BASE_ENDPOINT_RUN,
+          httpsTrigger: {},
+          ingressSettings,
+        };
+        const result = runv2.serviceFromEndpoint(endpoint, IMAGE_URI);
+        expect(result.ingress).to.equal(expectedIngress);
+        expect(result.annotations?.["run.googleapis.com/ingress"]).to.be.undefined;
+      }
+    });
   });
 
   describe("endpointFromService", () => {
@@ -474,6 +502,55 @@ describe("runv2", () => {
       };
 
       expect(runv2.endpointFromService(service)).to.deep.equal(expectedEndpoint);
+    });
+
+    it("should map service.ingress to ingressSettings", () => {
+      const cases: Array<{
+        ingress: runv2.IngressTraffic;
+        expected: backend.IngressSettings;
+      }> = [
+        { ingress: "INGRESS_TRAFFIC_ALL", expected: "ALLOW_ALL" },
+        { ingress: "INGRESS_TRAFFIC_INTERNAL_ONLY", expected: "ALLOW_INTERNAL_ONLY" },
+        {
+          ingress: "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER",
+          expected: "ALLOW_INTERNAL_AND_GCLB",
+        },
+      ];
+
+      for (const { ingress, expected } of cases) {
+        const service: Omit<runv2.Service, runv2.ServiceOutputFields> = {
+          ...BASE_RUN_SERVICE,
+          name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}`,
+          ingress,
+        };
+        expect(runv2.endpointFromService(service).ingressSettings).to.equal(expected);
+      }
+    });
+
+    it("should fall back to run.googleapis.com/ingress annotation when service.ingress is unset", () => {
+      const internalService: Omit<runv2.Service, runv2.ServiceOutputFields> = {
+        ...BASE_RUN_SERVICE,
+        name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}`,
+        annotations: {
+          ...BASE_RUN_SERVICE.annotations,
+          "run.googleapis.com/ingress": "internal",
+        },
+      };
+      expect(runv2.endpointFromService(internalService).ingressSettings).to.equal(
+        "ALLOW_INTERNAL_ONLY",
+      );
+
+      const gclbService: Omit<runv2.Service, runv2.ServiceOutputFields> = {
+        ...BASE_RUN_SERVICE,
+        name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}`,
+        annotations: {
+          ...BASE_RUN_SERVICE.annotations,
+          "run.googleapis.com/ingress": "internal-and-cloud-load-balancing",
+        },
+      };
+      expect(runv2.endpointFromService(gclbService).ingressSettings).to.equal(
+        "ALLOW_INTERNAL_AND_GCLB",
+      );
     });
   });
 
