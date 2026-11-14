@@ -3,6 +3,7 @@ import * as sinon from "sinon";
 import * as checkIam from "./checkIam";
 import * as storage from "../../gcp/storage";
 import * as rm from "../../gcp/resourceManager";
+import * as iam from "../../gcp/iam";
 import * as backend from "./backend";
 
 const projectId = "my-project";
@@ -75,6 +76,26 @@ describe("checkIam", () => {
     });
   });
 
+  describe("obtainEventarcDeliveryAgentBindings", () => {
+    it("grants delivery roles to explicit service accounts", () => {
+      const serviceAccount = "eventarc@my-project.iam.gserviceaccount.com";
+
+      const bindings = checkIam.obtainEventarcDeliveryAgentBindings([serviceAccount]);
+      expect(bindings).to.deep.equal([
+        {
+          role: checkIam.RUN_INVOKER_ROLE,
+          members: [`serviceAccount:${serviceAccount}`],
+        },
+        {
+          role: checkIam.EVENTARC_EVENT_RECEIVER_ROLE,
+          members: [`serviceAccount:${serviceAccount}`],
+        },
+      ]);
+      bindings[0].members.push("serviceAccount:another@example.com");
+      expect(bindings[1].members).not.to.include("serviceAccount:another@example.com");
+    });
+  });
+
   describe("ensureServiceAgentRoles", () => {
     it("should return early if we do not have new services", async () => {
       const v1EventFn: backend.Endpoint = {
@@ -115,6 +136,67 @@ describe("checkIam", () => {
       );
 
       expect(storageStub).to.not.have.been.called;
+      expect(getIamStub).to.not.have.been.called;
+      expect(setIamStub).to.not.have.been.called;
+    });
+
+    it("should ensure delivery roles for new direct Run event functions", async () => {
+      const serviceAccount = "eventarc@";
+      const expandedServiceAccount = "eventarc@my-project.iam.gserviceaccount.com";
+      const runEventFn: backend.Endpoint = {
+        id: "dartFirestore",
+        entryPoint: "dartFirestore",
+        platform: "run",
+        eventTrigger: {
+          eventType: "google.cloud.firestore.document.v1.written",
+          retry: false,
+          serviceAccount,
+        },
+        ...SPEC,
+        project: projectId,
+      };
+      getIamStub.resolves({
+        etag: "etag",
+        version: 3,
+        bindings: [BINDING],
+      });
+      setIamStub.resolves();
+
+      await checkIam.ensureServiceAgentRoles(
+        projectId,
+        projectNumber,
+        backend.of(runEventFn),
+        backend.empty(),
+      );
+
+      const updatedPolicy = setIamStub.firstCall.args[1];
+      const eventReceiverBinding = updatedPolicy.bindings.find(
+        (binding: iam.Binding) => binding.role === checkIam.EVENTARC_EVENT_RECEIVER_ROLE,
+      );
+      expect(eventReceiverBinding?.members).to.include(`serviceAccount:${expandedServiceAccount}`);
+    });
+
+    it("should not read IAM for unchanged direct Run event functions", async () => {
+      const runEventFn: backend.Endpoint = {
+        id: "dartFirestore",
+        entryPoint: "dartFirestore",
+        platform: "run",
+        eventTrigger: {
+          eventType: "google.cloud.firestore.document.v1.written",
+          retry: false,
+          serviceAccount: "eventarc@",
+        },
+        ...SPEC,
+        project: projectId,
+      };
+
+      await checkIam.ensureServiceAgentRoles(
+        projectId,
+        projectNumber,
+        backend.of(runEventFn),
+        backend.of(runEventFn),
+      );
+
       expect(getIamStub).to.not.have.been.called;
       expect(setIamStub).to.not.have.been.called;
     });
