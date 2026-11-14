@@ -1,0 +1,104 @@
+# Based on real firebase_firestore-bigquery-export extension
+name: firestore-bigquery-export
+version: 0.1.0
+specVersion: v1beta
+
+displayName: Export Collections to BigQuery
+description: Exports Firestore collections to BigQuery
+
+apis:
+  - apiName: bigquery.googleapis.com
+    reason: Needed to use BigQuery
+
+roles:
+  - role: bigquery.dataEditor
+    reason: Allows the extension to write to BigQuery
+  - role: datastore.viewer
+    reason: Allows the extension to read from Firestore
+
+resources:
+  - name: fsexportbigquery
+    type: firebaseextensions.v1beta.function
+    description: Listens for Firestore writes and exports them to BigQuery
+    properties:
+      runtime: nodejs20
+      availableMemoryMb: ${param:FUNCTION_MEMORY}
+      timeout: ${param:FUNCTION_TIMEOUT}
+      location: ${param:LOCATION}
+      eventTrigger:
+        eventType: providers/cloud.firestore/eventTypes/document.write
+        resource: projects/{project}/databases/(default)/documents/${param:COLLECTION_PATH}/{documentId}
+
+  - name: syncBigQuery
+    type: firebaseextensions.v1beta.function
+    description: Backfills existing Firestore data to BigQuery
+    properties:
+      runtime: nodejs20
+      availableMemoryMb: ${param:FUNCTION_MEMORY}
+      timeout: 540s
+      location: ${param:LOCATION}
+      taskQueueTrigger:
+        rateLimits:
+          maxDispatchesPerSecond: ${param:MAX_DISPATCHES_PER_SECOND}
+
+params:
+  - param: LOCATION
+    label: Cloud Functions location
+    type: select
+    options:
+      - label: Iowa (us-central1)
+        value: us-central1
+      - label: Belgium (europe-west1)
+        value: europe-west1
+    default: us-central1
+    required: true
+
+  - param: COLLECTION_PATH
+    label: Collection path
+    description: The Firestore collection to export
+    type: string
+    example: users
+    validationRegex: ^[^/]+(/[^/]+/[^/]+)*$
+    required: true
+
+  - param: DATASET_ID
+    label: BigQuery Dataset ID
+    type: string
+    example: firestore_export
+    validationRegex: ^[a-zA-Z][a-zA-Z0-9_]{0,1023}$
+    required: true
+
+  - param: TABLE_ID
+    label: BigQuery Table ID
+    type: string
+    example: users_raw_changelog
+    validationRegex: ^[a-zA-Z][a-zA-Z0-9_]{0,1023}$
+    required: true
+
+  - param: FUNCTION_MEMORY
+    label: Memory for the export function
+    type: select
+    options:
+      - label: 512 MB
+        value: 512
+      - label: 1 GB
+        value: 1024
+      - label: 2 GB
+        value: 2048
+    default: 1024
+
+  - param: FUNCTION_TIMEOUT
+    label: Function timeout
+    type: select
+    options:
+      - label: 5 minutes
+        value: 300s
+      - label: 9 minutes
+        value: 540s
+    default: 540s
+
+  - param: MAX_DISPATCHES_PER_SECOND
+    label: Max dispatches per second
+    type: string
+    default: "10"
+    validationRegex: ^\d+$

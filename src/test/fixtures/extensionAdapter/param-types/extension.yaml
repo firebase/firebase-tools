@@ -1,0 +1,51 @@
+name: param-types
+version: 1.0.0
+specVersion: v1beta
+
+resources:
+  - name: processData
+    type: firebaseextensions.v1beta.function
+    description: Function using various parameter types
+    properties:
+      runtime: nodejs20
+      httpsTrigger: {}
+      location: ${param:LOCATION}
+
+params:
+  - param: LOCATION
+    label: Deployment location
+    type: select
+    options:
+      - label: Iowa (us-central1)
+        value: us-central1
+      - label: Oregon (us-west1)
+        value: us-west1
+    default: us-central1
+    required: true
+    immutable: true
+
+  - param: FEATURES
+    label: Features to enable
+    type: multiSelect
+    options:
+      - label: Email notifications
+        value: email
+      - label: SMS notifications
+        value: sms
+      - label: Push notifications
+        value: push
+    default: email,push
+
+  - param: API_KEY
+    label: External API Key
+    description: Your secret API key
+    type: secret
+    required: true
+
+  - param: COLLECTION_PATH
+    label: Firestore collection path
+    type: string
+    validationRegex: ^[^/]+(/[^/]+/[^/]+)*$
+    validationErrorMessage: Must be a valid collection path
+    example: users/data
+    default: users

@@ -1,0 +1,68 @@
+{
+  "requiredAPIs": [
+    {
+      "api": "storage.googleapis.com",
+      "reason": "Needed to use Cloud Storage"
+    }
+  ],
+  "endpoints": {
+    "generateResizedImage": {
+      "entryPoint": "generateResizedImage",
+      "platform": "gcfv1",
+      "project": "test-project",
+      "runtime": "nodejs20",
+      "region": ["us-central1"],
+      "eventTrigger": {
+        "eventType": "google.storage.object.finalize",
+        "retry": false,
+        "eventFilters": {
+          "resource": "projects/_/buckets/{{ params.IMG_BUCKET }}"
+        }
+      },
+      "availableMemoryMb": 1024,
+      "timeoutSeconds": 540
+    },
+    "backfillImages": {
+      "entryPoint": "backfillImages",
+      "platform": "gcfv1",
+      "project": "test-project",
+      "runtime": "nodejs20",
+      "region": ["us-central1"],
+      "taskQueueTrigger": {
+        "rateLimits": {
+          "maxConcurrentDispatches": 10,
+          "maxDispatchesPerSecond": 5
+        }
+      },
+      "availableMemoryMb": 2048
+    }
+  },
+  "params": [
+    {
+      "type": "string",
+      "name": "IMG_BUCKET",
+      "label": "Cloud Storage bucket for images",
+      "description": "The bucket to watch for images",
+      "default": "my-bucket",
+      "input": {
+        "resource": {
+          "type": "storage.googleapis.com/Bucket"
+        }
+      }
+    },
+    {
+      "type": "string",
+      "name": "IMG_SIZES",
+      "label": "Sizes of resized images",
+      "description": "Comma-separated list of sizes",
+      "default": "200x200,400x400",
+      "input": {
+        "text": {
+          "validationRegex": "^\\d+x\\d+(,\\d+x\\d+)*$",
+          "validationErrorMessage": "Must be comma-separated WIDTHxHEIGHT",
+          "example": "200x200,400x400,800x800"
+        }
+      }
+    }
+  ]
+}
