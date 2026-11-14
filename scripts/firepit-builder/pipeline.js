@@ -77,14 +77,18 @@ echo(pwd());
 const configTemplate = require(path.join(pwd().toString(), "config.template.js"));
 configTemplate.firebase_tools_package = firebaseToolsPackage;
 
+const outputDir = path.join(tempdir().toString(), "firepit_artifacts");
+rm("-rf", outputDir);
+mkdir("-p", outputDir);
+
 if (styles.headless) {
   echo("-- Building headless binaries...");
 
   configTemplate.headless = true;
   echo(`module.exports = ` + JSON.stringify(configTemplate)).to("config.js");
-  npm("run", "pkg");
-  ls("dist/firepit-*").forEach((file) => {
-    mv(file, path.join("dist", path.basename(file).replace("firepit", "firebase-tools")));
+  npm("run", "build:sea");
+  ls("dist/firebase-tools-*").forEach((file) => {
+    cp(file, path.join(outputDir, path.basename(file)));
   });
 }
 
@@ -93,10 +97,13 @@ if (styles.headful) {
 
   configTemplate.headless = false;
   echo(`module.exports = ` + JSON.stringify(configTemplate)).to("config.js");
-  npm("run", "pkg");
+  npm("run", "build:sea");
 
   ls("dist/firepit-*").forEach((file) => {
-    mv(file, path.join("dist", path.basename(file).replace("firepit", "firebase-tools-instant")));
+    cp(
+      file,
+      path.join(outputDir, path.basename(file).replace("firepit", "firebase-tools-instant")),
+    );
   });
 }
 
@@ -106,16 +113,21 @@ if (isPublishing) {
     "firebase-tools-instant-win.exe",
     "firebase-tools-linux",
     "firebase-tools-macos",
+    "firebase-tools-macos-arm64",
+    "firebase-tools-macos-x64",
+    "firebase-tools-instant-macos",
+    "firebase-tools-instant-macos-arm64",
+    "firebase-tools-instant-macos-x64",
     "firebase-tools-win.exe",
   ];
 
   hub("clone", "firebase/firebase-tools");
   cd("firebase-tools");
 
-  ls("../dist").forEach((filename) => {
+  ls(outputDir).forEach((filename) => {
     if (publishedFiles.indexOf(filename) === -1) return;
     echo(`Publishing ${filename}...`);
-    hub("release", "edit", "-m", '""', "-a", path.join("../dist", filename), releaseTag);
+    hub("release", "edit", "-m", '""', "-a", path.join(outputDir, filename), releaseTag);
   });
   cd("..");
 } else {
@@ -123,13 +135,31 @@ if (isPublishing) {
 }
 
 echo("-- Artifacts");
-rm("-rf", "/tmp/firepit_artifacts");
-
-const outputDir = path.join(tempdir().toString(), "firepit_artifacts");
-echo(outputDir);
-mkdir(outputDir);
-mv("dist/*", outputDir);
 cd(outputDir);
+
+// Generate SHA256 Checksums for published release binaries
+const crypto = require("crypto");
+const sha256Lines = [];
+ls("firebase-tools*").forEach((file) => {
+  if (
+    file.endsWith(".json") ||
+    file.endsWith(".txt") ||
+    file.endsWith(".js") ||
+    file.endsWith(".tar.gz")
+  ) {
+    return;
+  }
+  if (!fs.statSync(file).isFile()) {
+    return;
+  }
+  const data = fs.readFileSync(file);
+  const hash = crypto.createHash("sha256").update(data).digest("hex");
+  sha256Lines.push(`${hash}  ${file}`);
+});
+if (sha256Lines.length > 0) {
+  fs.writeFileSync("SHA256SUMS.txt", sha256Lines.join("\n") + "\n");
+}
+
 console.log(
   ls(".")
     .map((fn) => path.join(pwd().toString(), fn.toString()))
