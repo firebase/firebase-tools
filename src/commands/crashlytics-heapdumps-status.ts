@@ -21,13 +21,14 @@ export const command = new Command("crashlytics:heapdumps:status")
     const appId = await resolveAndroidAppId(projectId, options);
 
     const config = await getProfilingManagerConfig(appId);
+    const heapDumpCollectionEnabled = Boolean(config?.heapDumpCollectionEnabled);
 
     const tableHead = ["App ID", "Collection Status", "Cloud Storage Bucket"];
     const table = new Table({ head: tableHead, style: { head: ["green"] } });
     table.push([
       appId,
-      config.heapDumpCollectionEnabled ? clc.green("Enabled") : clc.red("Disabled"),
-      config.bucket || clc.yellow("(none)"),
+      heapDumpCollectionEnabled ? clc.green("Enabled") : clc.red("Disabled"),
+      config?.bucket || clc.yellow("(none)"),
     ]);
 
     logger.info("");
@@ -35,6 +36,7 @@ export const command = new Command("crashlytics:heapdumps:status")
 
     return {
       appId,
-      ...config,
+      ...(config ?? {}),
+      heapDumpCollectionEnabled,
     };
   });
