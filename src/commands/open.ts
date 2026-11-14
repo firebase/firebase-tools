@@ -1,7 +1,7 @@
 import * as clc from "colorette";
 import * as open from "open";
 
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
 import * as api from "../api";
 import { Command } from "../command";
 import { logger } from "../logger";
@@ -114,5 +114,7 @@ export const command = new Command("open [link]")
     logger.info(`Opening ${clc.bold(link.name)} link in your default browser:`);
     logger.info(clc.bold(clc.underline(url)));
 
-    open(url);
+    open(url).catch((err: unknown) => {
+      logger.debug(`Unable to open URL: ${getErrMsg(err)}`);
+    });
   });
