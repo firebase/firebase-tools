@@ -171,6 +171,44 @@ describe("files", () => {
       });
     });
 
+    describe("#listObjects()", () => {
+      it("should page prefixes together with items under maxResults", async () => {
+        const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
+        for (const name of ["a.jpg", "b.jpg", "c.jpg", "2024/x.jpg", "2025/y.jpg", "2026/z.jpg"]) {
+          const upload = _uploadService.multipartUpload({
+            bucketId: "bucket",
+            objectId: `photos/${name}`,
+            dataRaw: Buffer.from("hello world"),
+            metadata: {},
+          });
+          await storageLayer.uploadObject(upload);
+        }
+
+        const pages: { prefixes: string[]; items: string[] }[] = [];
+        let pageToken: string | undefined;
+        do {
+          const response = await storageLayer.listObjects({
+            bucketId: "bucket",
+            prefix: "photos/",
+            delimiter: "/",
+            pageToken,
+            maxResults: 2,
+          });
+          pages.push({
+            prefixes: response.prefixes ?? [],
+            items: (response.items ?? []).map((item) => item.name),
+          });
+          pageToken = response.nextPageToken;
+        } while (pageToken && pages.length < 10);
+
+        expect(pages).to.deep.equal([
+          { prefixes: ["photos/2024/", "photos/2025/"], items: [] },
+          { prefixes: ["photos/2026/"], items: ["photos/a.jpg"] },
+          { prefixes: [], items: ["photos/b.jpg", "photos/c.jpg"] },
+        ]);
+      });
+    });
+
     const getStorageLayer = (rulesValidator: FirebaseRulesValidator) =>
       new StorageLayer(
         "project",
