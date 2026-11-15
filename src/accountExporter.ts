@@ -204,7 +204,7 @@ export async function serialExportUsers(projectId: string, options: any): Promis
     const userList = ret.body.users;
     if (userList && userList.length > 0) {
       options.writeUsersToFile(userList, options.format, options.writeStream);
-      utils.logSuccess("Exported " + userList.length + " account(s) successfully.");
+      utils.logSuccess(`Exported ${String(userList.length)} account(s) successfully.`);
       // The identitytoolkit API do not return a nextPageToken value
       // consistently when the last page is reached
       if (!ret.body.nextPageToken) {
