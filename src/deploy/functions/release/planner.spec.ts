@@ -80,6 +80,30 @@ describe("planner", () => {
       expect(planner.calculateUpdate(want, have).failedCreate).to.be.undefined;
     });
 
+    it("does not flag a failed create that is being deleted and recreated", () => {
+      const have: backend.Endpoint = {
+        ...func("a", "b", {
+          eventTrigger: {
+            eventType: v2events.PUBSUB_PUBLISH_EVENT,
+            eventFilters: { topic: "topic" },
+            retry: false,
+          },
+        }),
+        platform: "gcfv2",
+        state: "FAILED",
+      };
+      const want = JSON.parse(JSON.stringify(have)) as backend.Endpoint;
+      delete want.state;
+      if (backend.isEventTriggered(want)) {
+        want.eventTrigger.eventFilters = { topic: "anotherTopic" };
+      }
+      expect(planner.calculateUpdate(want, have)).to.deep.equal({
+        endpoint: want,
+        unsafe: false,
+        deleteAndRecreate: have,
+      });
+    });
+
     it("knows to delete & recreate for v2 topic changes", () => {
       const original: backend.Endpoint = {
         ...func("a", "b", {

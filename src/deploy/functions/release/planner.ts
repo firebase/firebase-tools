@@ -149,17 +149,16 @@ export function calculateUpdate(want: backend.Endpoint, have: backend.Endpoint):
     endpoint: want,
     unsafe: checkForUnsafeUpdate(want, have),
   };
-  // A failed GCFv2 update stays ACTIVE with its service, so FAILED with no service means
-  // the function was never created successfully.
-  if (have.platform === "gcfv2" && have.state === "FAILED" && !have.runServiceId) {
-    update.failedCreate = true;
-  }
   const needsDelete =
     changedTriggerRegion(want, have) ||
     changedV2PubSubTopic(want, have) ||
     upgradedScheduleFromV1ToV2(want, have);
   if (needsDelete) {
     update.deleteAndRecreate = have;
+  } else if (have.platform === "gcfv2" && have.state === "FAILED" && !have.runServiceId) {
+    // A failed GCFv2 update stays ACTIVE with its service, so FAILED with no service means
+    // the function was never created successfully.
+    update.failedCreate = true;
   }
   return update;
 }
