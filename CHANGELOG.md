@@ -1,0 +1,1 @@
+- Fixed Cloud Run v2 function deployments (such as Dart functions) failing with an invalid argument error by using `service.ingress` instead of the unsupported `run.googleapis.com/ingress` annotation.

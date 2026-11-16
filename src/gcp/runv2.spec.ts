@@ -205,8 +205,8 @@ describe("runv2", () => {
 
     it("should set service.ingress instead of run.googleapis.com/ingress annotation", () => {
       const cases: Array<{
-        ingressSettings: backend.IngressSettings;
-        expectedIngress: runv2.IngressTraffic;
+        ingressSettings: backend.IngressSettings | null | undefined;
+        expectedIngress: runv2.IngressTraffic | undefined;
       }> = [
         { ingressSettings: "ALLOW_ALL", expectedIngress: "INGRESS_TRAFFIC_ALL" },
         {
@@ -217,6 +217,8 @@ describe("runv2", () => {
           ingressSettings: "ALLOW_INTERNAL_AND_GCLB",
           expectedIngress: "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER",
         },
+        { ingressSettings: null, expectedIngress: "INGRESS_TRAFFIC_ALL" },
+        { ingressSettings: undefined, expectedIngress: undefined },
       ];
 
       for (const { ingressSettings, expectedIngress } of cases) {
@@ -506,7 +508,7 @@ describe("runv2", () => {
 
     it("should map service.ingress to ingressSettings", () => {
       const cases: Array<{
-        ingress: runv2.IngressTraffic;
+        ingress: runv2.IngressTraffic | undefined;
         expected: backend.IngressSettings;
       }> = [
         { ingress: "INGRESS_TRAFFIC_ALL", expected: "ALLOW_ALL" },
@@ -515,6 +517,7 @@ describe("runv2", () => {
           ingress: "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER",
           expected: "ALLOW_INTERNAL_AND_GCLB",
         },
+        { ingress: undefined, expected: "ALLOW_ALL" },
       ];
 
       for (const { ingress, expected } of cases) {
@@ -527,30 +530,21 @@ describe("runv2", () => {
       }
     });
 
-    it("should fall back to run.googleapis.com/ingress annotation when service.ingress is unset", () => {
-      const internalService: Omit<runv2.Service, runv2.ServiceOutputFields> = {
-        ...BASE_RUN_SERVICE,
-        name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}`,
-        annotations: {
-          ...BASE_RUN_SERVICE.annotations,
-          "run.googleapis.com/ingress": "internal",
-        },
-      };
-      expect(runv2.endpointFromService(internalService).ingressSettings).to.equal(
-        "ALLOW_INTERNAL_ONLY",
-      );
-
-      const gclbService: Omit<runv2.Service, runv2.ServiceOutputFields> = {
-        ...BASE_RUN_SERVICE,
-        name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}`,
-        annotations: {
-          ...BASE_RUN_SERVICE.annotations,
-          "run.googleapis.com/ingress": "internal-and-cloud-load-balancing",
-        },
-      };
-      expect(runv2.endpointFromService(gclbService).ingressSettings).to.equal(
-        "ALLOW_INTERNAL_AND_GCLB",
-      );
+    it("should map INGRESS_TRAFFIC_NONE to ALLOW_ALL and log a debug message", () => {
+      const debugStub = sinon.stub(logger, "debug");
+      try {
+        const service: Omit<runv2.Service, runv2.ServiceOutputFields> = {
+          ...BASE_RUN_SERVICE,
+          name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}`,
+          ingress: "INGRESS_TRAFFIC_NONE",
+        };
+        expect(runv2.endpointFromService(service).ingressSettings).to.equal("ALLOW_ALL");
+        expect(debugStub).to.have.been.calledWith(
+          "Converting a service with INGRESS_TRAFFIC_NONE to ALLOW_ALL",
+        );
+      } finally {
+        debugStub.restore();
+      }
     });
   });
 
