@@ -486,10 +486,12 @@ export class FunctionsEmulator implements EmulatorInstance {
       res.json({ status: "multicast_acknowledged" });
     };
 
-    const listBackendsCors: express.RequestHandler = (req, res, next) => {
-      const allowedOrigins = getAllowedEmulatorUIOrigins();
-      cors({ origin: allowedOrigins.length > 0 ? allowedOrigins : false })(req, res, next);
-    };
+    const listBackendsCors = cors({
+      origin: (origin, callback) => {
+        const allowedOrigins = getAllowedEmulatorUIOrigins();
+        callback(null, origin ? allowedOrigins.includes(origin) : false);
+      },
+    });
 
     const listBackendsHandler: express.RequestHandler = (req, res) => {
       const origin = req.headers.origin;
