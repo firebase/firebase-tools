@@ -1,3 +1,4 @@
+- Updated `glob` dependency to ^14.0.2 to resolve `glob` and transitive `minimatch` security advisories.
 - Updated Pub/Sub emulator to version 0.8.38.
 - Fixed `crashlytics:heapdumps` commands accepting `--app` IDs that do not belong to the target Firebase project.
 - Fixed `crashlytics:heapdumps:enable` bypassing the confirmation prompt without `--force` in non-interactive environments.
