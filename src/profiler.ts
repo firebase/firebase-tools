@@ -86,7 +86,7 @@ export async function profiler(options: any): Promise<unknown> {
   // If the response stream is closed, this handler is called (not
   // necessarially an error condition).
   res.body.on("end", () => {
-    spinner.text = counter + " operations recorded.\n";
+    spinner.text = `${counter} operations recorded.\n`;
   });
   // If the duration passes or another exception happens, this handler is
   // called.
