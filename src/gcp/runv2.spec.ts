@@ -202,6 +202,36 @@ describe("runv2", () => {
       expect(result.labels?.["deployment-tool"]).to.be.undefined;
       expect(result.labels?.[runv2.CLIENT_NAME_LABEL]).to.equal("firebase-functions");
     });
+
+    it("should set service.ingress instead of run.googleapis.com/ingress annotation", () => {
+      const cases: Array<{
+        ingressSettings: backend.IngressSettings | null | undefined;
+        expectedIngress: runv2.IngressTraffic | undefined;
+      }> = [
+        { ingressSettings: "ALLOW_ALL", expectedIngress: "INGRESS_TRAFFIC_ALL" },
+        {
+          ingressSettings: "ALLOW_INTERNAL_ONLY",
+          expectedIngress: "INGRESS_TRAFFIC_INTERNAL_ONLY",
+        },
+        {
+          ingressSettings: "ALLOW_INTERNAL_AND_GCLB",
+          expectedIngress: "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER",
+        },
+        { ingressSettings: null, expectedIngress: "INGRESS_TRAFFIC_ALL" },
+        { ingressSettings: undefined, expectedIngress: undefined },
+      ];
+
+      for (const { ingressSettings, expectedIngress } of cases) {
+        const endpoint: backend.Endpoint = {
+          ...BASE_ENDPOINT_RUN,
+          httpsTrigger: {},
+          ingressSettings,
+        };
+        const result = runv2.serviceFromEndpoint(endpoint, IMAGE_URI);
+        expect(result.ingress).to.equal(expectedIngress);
+        expect(result.annotations?.["run.googleapis.com/ingress"]).to.be.undefined;
+      }
+    });
   });
 
   describe("endpointFromService", () => {
@@ -474,6 +504,47 @@ describe("runv2", () => {
       };
 
       expect(runv2.endpointFromService(service)).to.deep.equal(expectedEndpoint);
+    });
+
+    it("should map service.ingress to ingressSettings", () => {
+      const cases: Array<{
+        ingress: runv2.IngressTraffic | undefined;
+        expected: backend.IngressSettings;
+      }> = [
+        { ingress: "INGRESS_TRAFFIC_ALL", expected: "ALLOW_ALL" },
+        { ingress: "INGRESS_TRAFFIC_INTERNAL_ONLY", expected: "ALLOW_INTERNAL_ONLY" },
+        {
+          ingress: "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER",
+          expected: "ALLOW_INTERNAL_AND_GCLB",
+        },
+        { ingress: undefined, expected: "ALLOW_ALL" },
+      ];
+
+      for (const { ingress, expected } of cases) {
+        const service: Omit<runv2.Service, runv2.ServiceOutputFields> = {
+          ...BASE_RUN_SERVICE,
+          name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}`,
+          ingress,
+        };
+        expect(runv2.endpointFromService(service).ingressSettings).to.equal(expected);
+      }
+    });
+
+    it("should map INGRESS_TRAFFIC_NONE to ALLOW_ALL and log a debug message", () => {
+      const debugStub = sinon.stub(logger, "debug");
+      try {
+        const service: Omit<runv2.Service, runv2.ServiceOutputFields> = {
+          ...BASE_RUN_SERVICE,
+          name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}`,
+          ingress: "INGRESS_TRAFFIC_NONE",
+        };
+        expect(runv2.endpointFromService(service).ingressSettings).to.equal("ALLOW_ALL");
+        expect(debugStub).to.have.been.calledWith(
+          "Converting a service with INGRESS_TRAFFIC_NONE to ALLOW_ALL",
+        );
+      } finally {
+        debugStub.restore();
+      }
     });
   });
 

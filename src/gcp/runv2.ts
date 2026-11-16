@@ -99,6 +99,18 @@ export type IngressTraffic =
   | "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
   | "INGRESS_TRAFFIC_NONE";
 
+const INGRESS_TRAFFIC_BY_SETTING: Record<backend.IngressSettings, IngressTraffic> = {
+  ALLOW_ALL: "INGRESS_TRAFFIC_ALL",
+  ALLOW_INTERNAL_ONLY: "INGRESS_TRAFFIC_INTERNAL_ONLY",
+  ALLOW_INTERNAL_AND_GCLB: "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER",
+} as const;
+
+const INGRESS_SETTING_BY_TRAFFIC: Partial<Record<IngressTraffic, backend.IngressSettings>> = {
+  INGRESS_TRAFFIC_ALL: "ALLOW_ALL",
+  INGRESS_TRAFFIC_INTERNAL_ONLY: "ALLOW_INTERNAL_ONLY",
+  INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER: "ALLOW_INTERNAL_AND_GCLB",
+} as const;
+
 // NOTE: This is a minmal copy of Cloud Run needed for our current API usage.
 // Add more as needed.
 // TODO: Can consider a helper where we have a second RecursiveKeysOf field for
@@ -641,6 +653,10 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
     logger.debug("Converting a service to an endpoint with an invalid memory option", memory);
   }
   const cpu = Number(service.template.containers![0]!.resources!.limits!.cpu);
+  if (service.ingress === "INGRESS_TRAFFIC_NONE") {
+    logger.debug("Converting a service with INGRESS_TRAFFIC_NONE to ALLOW_ALL");
+  }
+
   const endpoint: backend.Endpoint = {
     platform:
       service.labels?.[CLIENT_NAME_LABEL] === "cloud-functions" ||
@@ -664,11 +680,8 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
       : 60,
     serviceAccount: service.template.serviceAccount || null,
     runServiceId: svcId,
-    ingressSettings: (service.annotations?.["run.googleapis.com/ingress"] === "internal"
-      ? "ALLOW_INTERNAL_ONLY"
-      : service.annotations?.["run.googleapis.com/ingress"] === "internal-and-cloud-load-balancing"
-        ? "ALLOW_INTERNAL_AND_GCLB"
-        : "ALLOW_ALL") as backend.IngressSettings,
+    ingressSettings:
+      (service.ingress && INGRESS_SETTING_BY_TRAFFIC[service.ingress]) || "ALLOW_ALL",
     // TODO: Figure out how to encode all trigger types to the underlying Run service that is compatible with both V2 functions and "direct to run" functions
     ...(!service.annotations?.[TRIGGER_TYPE_ANNOTATION] ||
     service.annotations?.[TRIGGER_TYPE_ANNOTATION] === "HTTP_TRIGGER"
@@ -820,17 +833,10 @@ export function serviceFromEndpoint(
     };
   }
 
-  if (endpoint.ingressSettings) {
-    const ingressAnnotation =
-      endpoint.ingressSettings === "ALLOW_INTERNAL_ONLY"
-        ? "internal"
-        : endpoint.ingressSettings === "ALLOW_INTERNAL_AND_GCLB"
-          ? "internal-and-cloud-load-balancing"
-          : "all";
-    service.annotations = {
-      ...service.annotations,
-      "run.googleapis.com/ingress": ingressAnnotation,
-    };
+  if (endpoint.ingressSettings === null) {
+    service.ingress = "INGRESS_TRAFFIC_ALL";
+  } else if (endpoint.ingressSettings) {
+    service.ingress = INGRESS_TRAFFIC_BY_SETTING[endpoint.ingressSettings];
   }
 
   return service;
