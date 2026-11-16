@@ -39,7 +39,7 @@ export function latest<T extends Language>(
     });
   // Prefer GA so new projects are not scaffolded onto a Preview runtime. Languages with no GA
   // runtime yet (e.g. Dart) fall back to the newest one.
-  const ga = sorted.filter((r) => RUNTIMES[r].status === "GA");
+  const ga = sorted.filter((r) => RUNTIMES[r]?.status === "GA");
   const latest = utils.last(ga.length ? ga : sorted);
   if (!latest) {
     throw new FirebaseError(
