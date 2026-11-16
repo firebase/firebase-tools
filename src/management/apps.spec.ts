@@ -82,12 +82,10 @@ describe("App management", () => {
     sandbox = sinon.createSandbox();
     pollOperationStub = sandbox.stub(pollUtils, "pollOperation").throws("Unexpected poll call");
     sandbox.stub(fs, "readFileSync").throws("Unxpected readFileSync call");
-    nock.disableNetConnect();
   });
 
   afterEach(() => {
     sandbox.restore();
-    nock.enableNetConnect();
   });
 
   describe("getAppPlatform", () => {

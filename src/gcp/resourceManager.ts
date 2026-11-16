@@ -1,8 +1,7 @@
 import { resourceManagerOrigin } from "../api";
 import { Client } from "../apiv2";
-import { getErrMsg, getErrStatus } from "../error";
 import * as utils from "../utils";
-import { Binding, getServiceAccount, mergeBindings, Policy } from "./iam";
+import { Binding, getServiceAccount, isRetryableIamError, mergeBindings, Policy } from "./iam";
 
 const API_VERSION = "v1";
 
@@ -21,7 +20,6 @@ export const firebaseRoles = {
 /**
  * Fetches the IAM Policy of a project.
  * https://cloud.google.com/resource-manager/reference/rest/v1/projects/getIamPolicy
- *
  * @param projectIdOrNumber the id of the project whose IAM Policy you want to get
  */
 export async function getIamPolicy(projectIdOrNumber: string): Promise<Policy> {
@@ -34,7 +32,6 @@ export async function getIamPolicy(projectIdOrNumber: string): Promise<Policy> {
 /**
  * Sets the IAM Policy of a project.
  * https://cloud.google.com/resource-manager/reference/rest/v1/projects/setIamPolicy
- *
  * @param projectIdOrNumber the id of the project for which you want to set a new IAM Policy
  * @param newPolicy the new IAM policy for the project
  * @param updateMask A FieldMask specifying which fields of the policy to modify
@@ -55,38 +52,7 @@ export async function setIamPolicy(
 }
 
 /**
- * Determines whether an IAM policy modification error is transient and safe to retry.
- *
- * Retried errors:
- * 1. HTTP 409 (ABORTED): Policy update conflict ("There were concurrent policy changes.").
- *    Occurs when another operation updates the IAM policy concurrently, invalidating the etag.
- *    Retrying re-fetches the latest policy with a fresh etag and reapplies the desired bindings.
- * 2. HTTP 400 (INVALID_ARGUMENT) with message like "Service account ... does not exist":
- *    Occurs due to cross-region IAM eventual consistency lag immediately after service account creation.
- *    Retrying absorbs this replication window.
- *
- * Fast-failed errors (returns false):
- * - Always returns false for all non-4xx status codes (such as 5xx server errors or non-HTTP errors).
- * - Returns false for all other 4xx status codes (e.g. 403, 404), as well as non-retryable 400 errors
- *   (such as "Role roles/<name> does not exist.") which represent permanent configuration or permission
- *   failures that will not resolve on retry.
- */
-function isRetryableIamError(err: unknown): boolean {
-  const status = getErrStatus(err);
-  if (status === 409) {
-    return true;
-  }
-  const msg = getErrMsg(err).toLowerCase();
-  const hasSa = msg.includes("service account") || msg.includes("serviceaccount");
-  if (status === 400 && hasSa && msg.includes("does not exist")) {
-    return true;
-  }
-  return false;
-}
-
-/**
  * Update the IAM Policy of a project to include a service account in a role.
- *
  * @param projectId the id of the project whose IAM Policy you want to set
  * @param serviceAccountName the name of the service account
  * @param roles the new roles of the service account
