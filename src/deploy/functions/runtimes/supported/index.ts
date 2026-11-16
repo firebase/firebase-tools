@@ -65,7 +65,7 @@ export function isDecommissioned(runtime: Runtime, now: Date = new Date()): bool
  * increase testability.
  */
 export function guardVersionSupport(runtime: Runtime, now: Date = new Date()): void {
-  const { deprecationDate, decommissionDate } = RUNTIMES[runtime];
+  const { friendly, status, deprecationDate, decommissionDate } = RUNTIMES[runtime];
 
   const decommission = new Date(decommissionDate);
   if (now >= decommission) {
@@ -74,6 +74,15 @@ export function guardVersionSupport(runtime: Runtime, now: Date = new Date()): v
       `Runtime ${RUNTIMES[runtime].friendly} was decommissioned on ${decommissionDate}. To deploy ` +
         "you must first upgrade your runtime version.",
       { exit: 1 },
+    );
+  }
+
+  if (status === "beta" || status === "experimental") {
+    utils.logLabeledWarning(
+      "functions",
+      `Runtime ${friendly} is in Preview. Preview runtimes may change and are not recommended ` +
+        "for production workloads. See https://cloud.google.com/functions/docs/runtime-support " +
+        "for details.",
     );
   }
 

@@ -73,5 +73,28 @@ describe("supported runtimes", () => {
           "details on the lifecycle policy",
       );
     });
+
+    it("warns for a beta runtime", () => {
+      supported.guardVersionSupport("nodejs26", new Date("2026-11-16"));
+      expect(logLabeledWarning).to.have.been.calledOnceWith(
+        "functions",
+        "Runtime Node.js 26 is in Preview. Preview runtimes may change and are not recommended " +
+          "for production workloads. See https://cloud.google.com/functions/docs/runtime-support " +
+          "for details.",
+      );
+    });
+
+    it("warns for an experimental runtime", () => {
+      supported.guardVersionSupport("dart3", new Date("2026-11-16"));
+      expect(logLabeledWarning).to.have.been.calledOnceWith(
+        "functions",
+        sinon.match("Runtime Dart 3 is in Preview."),
+      );
+    });
+
+    it("does not warn for a GA runtime outside its deprecation window", () => {
+      supported.guardVersionSupport("nodejs24", new Date("2026-11-16"));
+      expect(logLabeledWarning).not.to.have.been.called;
+    });
   });
 });
