@@ -5,3 +5,6 @@
 - Fixed `crashlytics:heapdumps:enable` printing an invalid Firebase Console Crashlytics URL by linking to `/crashlytics/app/android:<packageName>/issues` instead of the GMP App ID.
 - Scoped Crashlytics service agent `roles/storage.objectCreator` access to the dedicated heap dump Cloud Storage bucket and enabled Uniform Bucket-Level Access and enforced Public Access Prevention in `crashlytics:heapdumps:enable`.
 - Fixed `firebase deploy` failing to find the Cloud Functions SDK when the package manager does not create a `node_modules/.bin/firebase-functions` file, such as Bun on Windows. (#11386)
+- Updated the Firebase SQL Connect local toolkit to v3.4.27, which includes the following changes:
+  - Fixed a bug where singular lookup queries using server value key expressions (such as `id_expr`) did not trigger realtime subscription updates or client-side cache tracking when returning `null`.
+  - Declare and export enums selected only inside nested relations in generated JS and Admin Node SDKs.
