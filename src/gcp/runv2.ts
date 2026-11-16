@@ -52,20 +52,20 @@ export interface Container {
   sourceCode?: {
     cloudStorageSource: StorageSource;
   };
-  /** Has Cloud Run build the image from sourceCode. */
+  /** If set, Cloud Run builds the image from sourceCode with these settings. */
   buildConfig?: ContainerBuildConfig;
   // Lots more. Most intereeseting is baseImageUri and maybe buildInfo.
 }
 
-/** How Cloud Run builds a container's image from its source code. */
+/** The settings that Cloud Run builds a container's image from its source code with. */
 export interface ContainerBuildConfig {
   /** The Artifact Registry repository to push the image to, without a tag. */
   imageRepositoryUri: string;
-  /** Build-time env vars, not runtime ones. No secrets: the build API doesn't take them yet. */
+  /** Env vars for the build, not for the running container. Cloud Run rejects secrets here. */
   environmentVariables?: PlaintextEnvVar[];
-  /** Builds with buildpacks. */
+  /** Settings for a build with buildpacks. */
   buildpacksBuild?: {
-    /** Required if the container has a baseImageUri. */
+    /** The base image to build on. Cloud Run requires it if the container has a baseImageUri. */
     buildBaseImageUri?: string;
   };
 }
