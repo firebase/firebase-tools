@@ -1,6 +1,11 @@
 - Fixed emulator crashes from unhandled promise rejections in the Pub/Sub, Eventarc, and Storage rules emulators and in `functions:shell`.
+- Updated Pub/Sub emulator to version 0.8.38.
 - Fixed `crashlytics:heapdumps` commands accepting `--app` IDs that do not belong to the target Firebase project.
 - Fixed `crashlytics:heapdumps:enable` bypassing the confirmation prompt without `--force` in non-interactive environments.
 - Warned when `crashlytics:heapdumps:enable` reuses an existing Cloud Storage bucket whose location differs from `--location` instead of silently ignoring the requested location.
 - Fixed `crashlytics:heapdumps:status --json` omitting `heapDumpCollectionEnabled` when disabled, removed duplicated default location text in `crashlytics:heapdumps:enable --help`, and surfaced Cloud Storage API error details when bucket creation fails.
 - Fixed `crashlytics:heapdumps:enable` printing an invalid Firebase Console Crashlytics URL by linking to `/crashlytics/app/android:<packageName>/issues` instead of the GMP App ID.
+- Scoped Crashlytics service agent `roles/storage.objectCreator` access to the dedicated heap dump Cloud Storage bucket and enabled Uniform Bucket-Level Access and enforced Public Access Prevention in `crashlytics:heapdumps:enable`.
+- Updated the Firebase SQL Connect local toolkit to v3.4.27, which includes the following changes:
+  - Fixed a bug where singular lookup queries using server value key expressions (such as `id_expr`) did not trigger realtime subscription updates or client-side cache tracking when returning `null`.
+  - Declare and export enums selected only inside nested relations in generated JS and Admin Node SDKs.
