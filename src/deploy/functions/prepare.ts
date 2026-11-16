@@ -683,11 +683,15 @@ export function inferDetailsFromExisting(
     // unset we still need to remember it so that the min instance price estimator
     // is accurate. If, on the other hand, we have a null value for availableMemoryMb
     // we need to keep that null (meaning "use defaults").
+    const memoryChanged =
+      typeof wantE.availableMemoryMb !== "undefined" &&
+      wantE.availableMemoryMb !== haveE.availableMemoryMb;
+
     if (typeof wantE.availableMemoryMb === "undefined" && haveE.availableMemoryMb) {
       wantE.availableMemoryMb = haveE.availableMemoryMb;
     }
 
-    if (typeof wantE.cpu === "undefined" && haveE.cpu) {
+    if (typeof wantE.cpu === "undefined" && haveE.cpu && !memoryChanged) {
       wantE.cpu = haveE.cpu;
     }
 

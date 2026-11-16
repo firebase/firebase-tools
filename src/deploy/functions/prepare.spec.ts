@@ -1172,6 +1172,61 @@ describe("prepare", () => {
       expect(want.concurrency).to.equal(1);
     });
 
+    it("recalculates CPU based on new memory when memory is changed without explicit CPU", () => {
+      const have: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+        availableMemoryMb: 512,
+        cpu: 1,
+      };
+      const want: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+        availableMemoryMb: 8192,
+      };
+
+      prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* useDotEnv= */ false);
+      prepare.resolveCpuAndConcurrency(backend.of(want));
+      expect(want.cpu).to.equal(2);
+    });
+
+    it("preserves existing CPU when memory has not changed", () => {
+      const have: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+        availableMemoryMb: 512,
+        cpu: 2,
+      };
+      const want: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+        availableMemoryMb: 512,
+      };
+
+      prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* useDotEnv= */ false);
+      prepare.resolveCpuAndConcurrency(backend.of(want));
+      expect(want.cpu).to.equal(2);
+    });
+
+    it("preserves explicitly specified CPU when memory is changed", () => {
+      const have: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+        availableMemoryMb: 512,
+        cpu: 1,
+      };
+      const want: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+        availableMemoryMb: 8192,
+        cpu: 4,
+      };
+
+      prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* useDotEnv= */ false);
+      prepare.resolveCpuAndConcurrency(backend.of(want));
+      expect(want.cpu).to.equal(4);
+    });
+
     it("defaults timeout to 60 for run platform functions", () => {
       const want: backend.Endpoint = {
         ...ENDPOINT_BASE,
