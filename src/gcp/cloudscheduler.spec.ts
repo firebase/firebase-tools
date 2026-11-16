@@ -197,6 +197,7 @@ describe("cloudscheduler", () => {
         .reply(200, {});
 
       expect(await cloudscheduler.listLocations("test-project")).to.deep.equal([]);
+      expect(nock.isDone()).to.be.true;
     });
   });
 

@@ -123,7 +123,7 @@ interface ListLocationsResponse {
  */
 export async function listLocations(projectId: string): Promise<string[]> {
   const locations: string[] = [];
-  let pageToken: string | undefined = undefined;
+  let pageToken: string | undefined;
   do {
     const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
     const res: { body?: ListLocationsResponse } = await apiClient.get<ListLocationsResponse>(
