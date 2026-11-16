@@ -2,7 +2,7 @@ import { existsSync, readdirSync, statSync, readFileSync } from "fs-extra";
 import ignorePkg from "ignore";
 import * as _ from "lodash";
 import * as minimatch from "minimatch";
-import { join, relative, sep } from "path";
+import { join, relative, resolve, sep } from "path";
 import { FirebaseError, getErrMsg, getError } from "./error";
 
 export interface ReaddirRecursiveOpts {
@@ -134,7 +134,11 @@ export function createIgnoreMatcher(baseDir: string, globs: string[]): (p: strin
   const mmopts = { matchBase: true, dot: true };
   const rules = globs.map((glob) => new minimatch.Minimatch(glob, mmopts));
   return (p: string) => {
-    const relPath = relative(baseDir, p);
+    const relPath = relative(resolve(baseDir), resolve(p));
+    // chokidar also tests the watched directory itself, which must never be ignored.
+    if (!relPath) {
+      return false;
+    }
     return rules.some((rule) => rule.match(relPath) || rule.match(p));
   };
 }

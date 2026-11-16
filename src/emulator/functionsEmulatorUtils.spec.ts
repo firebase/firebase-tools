@@ -243,6 +243,11 @@ describe("FunctionsEmulatorUtils", () => {
       expect(matches(filter, inFunctions("src/deployment/a.json"))).to.be.false;
     });
 
+    it("never ignores the functions directory itself", () => {
+      const filter = createIgnoredFilter(functionsDir, ["functions", "!visible"]);
+      expect(matches(filter, functionsDir)).to.be.false;
+    });
+
     it("still matches globs that name folders above the functions directory", () => {
       const filter = createIgnoredFilter(functionsDir, ["**/functions/deployment/**"]);
       expect(matches(filter, inFunctions("deployment/a.json"))).to.be.true;
