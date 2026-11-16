@@ -17,7 +17,8 @@ export enum DeferredProduct {
 /**
  * Checks whether products used for any extension version in a deploy requires provisioning.
  *
- * @param extensionVersionRefs
+ * @param projectId the ID of the Firebase project
+ * @param instanceSpecs list of extension instance specs to check
  */
 export async function bulkCheckProductsProvisioned(
   projectId: string,
