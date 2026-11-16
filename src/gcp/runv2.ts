@@ -61,11 +61,12 @@ export interface Container {
 export interface ContainerBuildConfig {
   /** The Artifact Registry repository to push the image to, without a tag. */
   imageRepositoryUri: string;
+  /** Build-time env vars, not runtime ones. No secrets: the build API doesn't take them yet. */
+  environmentVariables?: PlaintextEnvVar[];
+  /** Builds with buildpacks. */
   buildpacksBuild?: {
     /** Required if the container has a baseImageUri. */
     buildBaseImageUri?: string;
-    /** Build-time env vars, not runtime ones. No secrets: the build API doesn't take them yet. */
-    environmentVariables?: Record<string, string>;
   };
 }
 

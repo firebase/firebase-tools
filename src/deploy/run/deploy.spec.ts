@@ -25,12 +25,11 @@ describe("run deploy", () => {
   /** How Cloud Run builds web's source. */
   const buildConfig = {
     imageRepositoryUri: imageRepository,
-    buildpacksBuild: {
-      environmentVariables: {
-        X_GOOGLE_TARGET_PLATFORM: "fah",
-        FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
-      },
-    },
+    environmentVariables: [
+      { name: "X_GOOGLE_TARGET_PLATFORM", value: "fah" },
+      { name: "FIREBASE_OUTPUT_BUNDLE_DIR", value: "/workspace/.apphosting" },
+    ],
+    buildpacksBuild: {},
   };
   const scratchDir = "/tmp/run-local-build-web-abc123";
   const builtApp = { bucket: "source-bucket", object: "web.tar.gz" };
@@ -84,10 +83,7 @@ describe("run deploy", () => {
             baseImageUri: NODEJS22,
             sourceCode: { cloudStorageSource: source },
             // The build runs on the service's base image.
-            buildConfig: {
-              ...buildConfig,
-              buildpacksBuild: { ...buildConfig.buildpacksBuild, buildBaseImageUri: NODEJS22 },
-            },
+            buildConfig: { ...buildConfig, buildpacksBuild: { buildBaseImageUri: NODEJS22 } },
           },
         ],
       },
@@ -110,8 +106,9 @@ describe("run deploy", () => {
       path.join("/project"),
     );
     const container = createServiceStub.firstCall.args[3].template.containers[0];
-    expect(container.buildConfig.buildpacksBuild.environmentVariables).to.include({
-      GOOGLE_BUILDABLE: "apps/web",
+    expect(container.buildConfig.environmentVariables).to.deep.include({
+      name: "GOOGLE_BUILDABLE",
+      value: "apps/web",
     });
   });
 
@@ -497,15 +494,7 @@ describe("run deploy", () => {
 
   describe("remoteBuildConfig", () => {
     it("has Cloud Run push to the repository and build with App Hosting's buildpacks", () => {
-      expect(remoteBuildConfig({ config: web }, imageRepository, "")).to.deep.equal({
-        imageRepositoryUri: imageRepository,
-        buildpacksBuild: {
-          environmentVariables: {
-            X_GOOGLE_TARGET_PLATFORM: "fah",
-            FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
-          },
-        },
-      });
+      expect(remoteBuildConfig({ config: web }, imageRepository, "")).to.deep.equal(buildConfig);
     });
 
     it("builds on the service's base image, if it has one", () => {
@@ -514,17 +503,18 @@ describe("run deploy", () => {
         imageRepository,
         "",
       );
-      expect(withBaseImage.buildpacksBuild?.buildBaseImageUri).to.equal(NODEJS22);
+      expect(withBaseImage.buildpacksBuild).to.deep.equal({ buildBaseImageUri: NODEJS22 });
 
       const withoutBaseImage = remoteBuildConfig({ config: web }, imageRepository, "");
-      expect(withoutBaseImage.buildpacksBuild).not.to.have.property("buildBaseImageUri");
+      expect(withoutBaseImage.buildpacksBuild).to.deep.equal({});
     });
 
     it("tells the buildpacks where the app is in a monorepo", () => {
       const config = remoteBuildConfig({ config: web }, imageRepository, "apps/web");
 
-      expect(config.buildpacksBuild?.environmentVariables).to.include({
-        GOOGLE_BUILDABLE: "apps/web",
+      expect(config.environmentVariables).to.deep.include({
+        name: "GOOGLE_BUILDABLE",
+        value: "apps/web",
       });
     });
 
@@ -533,9 +523,10 @@ describe("run deploy", () => {
 
       const config = remoteBuildConfig({ config: web, buildEnv }, imageRepository, "");
 
-      const env = config.buildpacksBuild?.environmentVariables;
-      expect(env).to.include({ API_URL: "https://api.example.com" });
-      expect(env).not.to.have.property("NPM_TOKEN");
+      expect(config.environmentVariables).to.deep.equal([
+        { name: "API_URL", value: "https://api.example.com" },
+        ...buildConfig.environmentVariables,
+      ]);
     });
 
     it("lets the build env set GOOGLE_BUILDABLE, but not App Hosting's buildpack settings", () => {
@@ -543,10 +534,11 @@ describe("run deploy", () => {
 
       const config = remoteBuildConfig({ config: web, buildEnv }, imageRepository, "apps/web");
 
-      expect(config.buildpacksBuild?.environmentVariables).to.include({
-        GOOGLE_BUILDABLE: "custom/web",
-        X_GOOGLE_TARGET_PLATFORM: "fah",
-      });
+      // Each name is listed once, with the value that wins.
+      expect(config.environmentVariables).to.deep.equal([
+        { name: "GOOGLE_BUILDABLE", value: "custom/web" },
+        ...buildConfig.environmentVariables,
+      ]);
     });
   });
 });

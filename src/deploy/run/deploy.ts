@@ -253,11 +253,11 @@ function remoteBuildTemplate(
 
 /**
  * Returns how Cloud Run builds the uploaded source, with App Hosting's buildpacks.
- * - `buildBaseImageUri`: Cloud Run requires it if the service has a base image.
  * - `environmentVariables`: for the build only, not the running container. Later ones win:
  *   1. GOOGLE_BUILDABLE: the app's folder, if it's in an Nx or Turborepo monorepo.
  *   2. The service's build env, without secrets: Cloud Run's build API only takes plain values.
  *   3. X_GOOGLE_TARGET_PLATFORM and FIREBASE_OUTPUT_BUNDLE_DIR: build like App Hosting does.
+ * - `buildBaseImageUri`: Cloud Run requires it if the service has a base image.
  * Exported for testing.
  */
 export function remoteBuildConfig(
@@ -265,17 +265,16 @@ export function remoteBuildConfig(
   imageRepository: string,
   appFolder: string,
 ): runv2.ContainerBuildConfig {
+  const env: Record<string, string> = {
+    ...(appFolder ? { GOOGLE_BUILDABLE: appFolder } : {}),
+    ...nonSecretValues(svc.buildEnv || {}),
+    X_GOOGLE_TARGET_PLATFORM: "fah",
+    FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
+  };
   return {
     imageRepositoryUri: imageRepository,
-    buildpacksBuild: {
-      ...(svc.baseImage ? { buildBaseImageUri: svc.baseImage } : {}),
-      environmentVariables: {
-        ...(appFolder ? { GOOGLE_BUILDABLE: appFolder } : {}),
-        ...nonSecretValues(svc.buildEnv || {}),
-        X_GOOGLE_TARGET_PLATFORM: "fah",
-        FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
-      },
-    },
+    environmentVariables: Object.entries(env).map(([name, value]) => ({ name, value })),
+    buildpacksBuild: svc.baseImage ? { buildBaseImageUri: svc.baseImage } : {},
   };
 }
 
