@@ -32,7 +32,7 @@ export interface Scaling {
 
 export interface Container {
   name: string;
-  /** The image to run. Unset when Cloud Run builds the image from sourceCode (see buildConfig). */
+  /** Unset if Cloud Run builds the image (see buildConfig). */
   image?: string;
   command?: string[];
   args?: string[];
@@ -52,22 +52,19 @@ export interface Container {
   sourceCode?: {
     cloudStorageSource: StorageSource;
   };
-  /** Set with sourceCode to have Cloud Run build the image (Cloud Run's build API). */
+  /** Has Cloud Run build the image from sourceCode. */
   buildConfig?: ContainerBuildConfig;
   // Lots more. Most intereeseting is baseImageUri and maybe buildInfo.
 }
 
 /** How Cloud Run builds a container's image from its source code. */
 export interface ContainerBuildConfig {
-  /** Where to push the image, without a tag, e.g. us-central1-docker.pkg.dev/my-project/repo/web. */
+  /** The Artifact Registry repository to push the image to, without a tag. */
   imageRepositoryUri: string;
   buildpacksBuild?: {
-    /** The base image to build on. Required if the container has a baseImageUri. */
+    /** Required if the container has a baseImageUri. */
     buildBaseImageUri?: string;
-    /**
-     * Env vars for the build only, not the container's runtime env vars. Plain values only: Cloud
-     * Run's build API doesn't support secrets yet.
-     */
+    /** Build-time env vars, not runtime ones. No secrets: the build API doesn't take them yet. */
     environmentVariables?: Record<string, string>;
   };
 }
