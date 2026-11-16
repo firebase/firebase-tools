@@ -12,7 +12,11 @@ firebase setup:emulators:storage
 
 # Ensure Puppeteer browser is installed for conformance tests
 if [ -z "$PUPPETEER_EXECUTABLE_PATH" ]; then
-  node node_modules/puppeteer/install.js
+  if [ -f node_modules/puppeteer/install.mjs ]; then
+    node node_modules/puppeteer/install.mjs
+  elif [ -f node_modules/puppeteer/install.js ]; then
+    node node_modules/puppeteer/install.js
+  fi
 fi
 
 # Determine port check method once globally.

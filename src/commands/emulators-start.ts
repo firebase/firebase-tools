@@ -81,7 +81,7 @@ function printEmulatorOverview(options: any): void {
   if (uiRunning) {
     successMsg += `\n${clc.cyan("i")}  View Emulator UI at ${stylizeLink(
       EmulatorRegistry.url(Emulators.UI).toString(),
-    )}`;
+    )}${commandUtils.getListenSuffix(Emulators.UI)}`;
   }
   successMessageTable.push([successMsg]);
 
@@ -131,7 +131,9 @@ function printEmulatorOverview(options: any): void {
 ${emulatorsTable}
 ${
   hubInfo
-    ? clc.blackBright(`  Emulator Hub host: ${hubInfo.host} port: ${hubInfo.port}`)
+    ? clc.blackBright(
+        `  Emulator Hub host: ${hubInfo.host} port: ${hubInfo.port}${commandUtils.getListenSuffix(Emulators.HUB)}`,
+      )
     : clc.blackBright("  Emulator Hub not running.")
 }
 ${clc.blackBright("  Other reserved ports:")} ${reservedPortsString}

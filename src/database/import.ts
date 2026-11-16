@@ -186,10 +186,14 @@ export default class DatabaseImporter {
     };
 
     const writeBatch = new stream.Transform({ objectMode: true });
-    writeBatch._transform = async function (batch: SizedData, _, done) {
-      const res = await doWriteBatch(batch);
-      this.push(res);
-      done();
+    writeBatch._transform = function (batch: SizedData, _, done) {
+      void doWriteBatch(batch).then(
+        (res) => {
+          this.push(res);
+          done();
+        },
+        (err: Error) => done(err),
+      );
     };
 
     return new Promise((resolve, reject) => {

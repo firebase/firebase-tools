@@ -217,4 +217,11 @@ describe("DatabaseImporter", () => {
     expect(responses).to.have.length(1);
     expect(nock.isDone()).to.be.true;
   });
+
+  it("rejects with the write error when a batch write fails", async () => {
+    nock("https://test-db.firebaseio.com").get("/foo.json?shallow=true").reply(200);
+    nock("https://test-db.firebaseio.com").patch("/foo.json").reply(400, { error: "bad" });
+    const importer = new DatabaseImporter(dbUrl, DATA_STREAM, "/", payloadSize, concurrencyLimit);
+    await expect(importer.execute()).to.be.rejectedWith(FirebaseError, /400/);
+  });
 });

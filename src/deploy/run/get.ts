@@ -1,0 +1,47 @@
+import * as clc from "colorette";
+import { FirebaseError } from "../../error";
+import * as run from "../../gcp/run";
+import * as runv2 from "../../gcp/runv2";
+import { isManagedByAnotherProduct, parseServiceName } from "./util";
+
+/**
+ * Returns the project's service with this ID, in `region` if one is given, in Cloud Run's service
+ * YAML format: the v1 API's, which `gcloud run services describe` prints.
+ */
+export async function getServiceSpec(
+  projectId: string,
+  serviceId: string,
+  region?: string,
+): Promise<run.Service> {
+  // Lists even when a region is given, to keep one code path. If listing turns out to be slow,
+  // fetch the service directly with run.getService when there's a region.
+  let matches = (await runv2.listServices(projectId, /* functionsOnly= */ false)).filter((s) => {
+    const name = parseServiceName(s.name);
+    return name.serviceId === serviceId && (!region || name.region === region);
+  });
+  if (matches.length > 1) {
+    // Prefer the services that run:services:list shows, so that a function or App Hosting backend
+    // with the same ID in another region doesn't make the ID ambiguous.
+    const unmanaged = matches.filter((s) => !isManagedByAnotherProduct(s));
+    if (unmanaged.length) {
+      matches = unmanaged;
+    }
+  }
+  if (!matches.length) {
+    throw new FirebaseError(
+      `Cloud Run service ${serviceId} doesn't exist in ${region ?? `project ${projectId}`}. ` +
+        `See your services with ${clc.bold("firebase run:services:list")}.`,
+    );
+  }
+  if (matches.length > 1) {
+    // firebase.json could settle this in the future: if only one service in it has this ID, the
+    // user most likely means that one. For now, stay strict and ask for --region.
+    const regions = matches.map((s) => parseServiceName(s.name).region);
+    throw new FirebaseError(
+      `Cloud Run service ${serviceId} exists in more than one region: ${regions.join(", ")}. ` +
+        `Choose one with --region.`,
+    );
+  }
+  // The v1 API names services the same way as v2.
+  return run.getService(matches[0].name);
+}

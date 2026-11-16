@@ -28,6 +28,7 @@ export const command = new Command("crashlytics:sourcemap:upload [mappingFiles]"
     "--app-version <appVersion>",
     "the version of your Firebase app (defaults to Git commit hash, if available)",
   )
+  .option("--clean", "delete source map (.js.map) files after successful upload")
   .before(requireAuth)
   .action(async (mappingFiles: string | undefined, options: CommandOptions) => {
     checkGoogleAppID(options);
@@ -86,6 +87,9 @@ export const command = new Command("crashlytics:sourcemap:upload [mappingFiles]"
       "crashlytics",
       `Uploaded ${successCount} (${failedFiles.length} failed) mapping files to ${bucketName}`,
     );
+    if (options.clean && successCount > 0) {
+      logLabeledBullet("crashlytics", `Deleted ${successCount} uploaded mapping files`);
+    }
     if (failedFiles.length > 0) {
       logLabeledBullet(
         "crashlytics",

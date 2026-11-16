@@ -1296,5 +1296,103 @@ describe("crashlytics:sourcemap helpers", () => {
       );
       expect(clientPatchStub.callCount).to.equal(3);
     });
+
+    it("should delete successfully uploaded map files when clean option is true", async () => {
+      const map1 = tmp.fileSync({ postfix: ".js.map" });
+      const map2 = tmp.fileSync({ postfix: ".js.map" });
+      fs.writeFileSync(map1.name, "{}");
+      fs.writeFileSync(map2.name, "{}");
+      tempFiles.push(map1, map2);
+
+      const mappings = [
+        { mapFilePath: map1.name, obfuscatedFilePath: "file1.js" },
+        { mapFilePath: map2.name, obfuscatedFilePath: "file2.js" },
+      ];
+      const request = {
+        projectId: "test-project",
+        bucketName: "test-bucket",
+        appVersion: "1.0.0",
+        options: mockCommandOptions({
+          app: "1:12345:web:abc",
+          clean: true,
+        }),
+      };
+
+      const result = await uploadSourceMaps(mappings, request);
+
+      expect(result).to.deep.equal({
+        successCount: 2,
+        failedFiles: [],
+      });
+      expect(fs.existsSync(map1.name)).to.be.false;
+      expect(fs.existsSync(map2.name)).to.be.false;
+    });
+
+    it("should only delete successfully uploaded map files and preserve failed map files when clean option is true", async () => {
+      const map1 = tmp.fileSync({ postfix: ".js.map" });
+      const map2 = tmp.fileSync({ postfix: ".js.map" });
+      fs.writeFileSync(map1.name, "{}");
+      fs.writeFileSync(map2.name, "{}");
+      tempFiles.push(map1, map2);
+
+      const mappings = [
+        { mapFilePath: map1.name, obfuscatedFilePath: "file1.js" },
+        { mapFilePath: map2.name, obfuscatedFilePath: "file2.js" },
+      ];
+      const request = {
+        projectId: "test-project",
+        bucketName: "test-bucket",
+        appVersion: "1.0.0",
+        options: mockCommandOptions({
+          app: "1:12345:web:abc",
+          clean: true,
+          retryDelay: 1,
+        }),
+      };
+
+      uploadObjectStub.callsFake((source: { file: string }, bucketName: string) => {
+        if (source.file.includes("file2.js")) {
+          return Promise.reject(new Error("permanent upload error"));
+        }
+        return Promise.resolve({
+          bucket: bucketName,
+          object: source.file,
+          generation: "123",
+        });
+      });
+
+      const result = await uploadSourceMaps(mappings, request);
+
+      expect(result).to.deep.equal({
+        successCount: 1,
+        failedFiles: [map2.name],
+      });
+      expect(fs.existsSync(map1.name)).to.be.false;
+      expect(fs.existsSync(map2.name)).to.be.true;
+    });
+
+    it("should not delete uploaded map files when clean option is false or omitted", async () => {
+      const map1 = tmp.fileSync({ postfix: ".js.map" });
+      fs.writeFileSync(map1.name, "{}");
+      tempFiles.push(map1);
+
+      const mappings = [{ mapFilePath: map1.name, obfuscatedFilePath: "file1.js" }];
+      const request = {
+        projectId: "test-project",
+        bucketName: "test-bucket",
+        appVersion: "1.0.0",
+        options: mockCommandOptions({
+          app: "1:12345:web:abc",
+        }),
+      };
+
+      const result = await uploadSourceMaps(mappings, request);
+
+      expect(result).to.deep.equal({
+        successCount: 1,
+        failedFiles: [],
+      });
+      expect(fs.existsSync(map1.name)).to.be.true;
+    });
   });
 });
