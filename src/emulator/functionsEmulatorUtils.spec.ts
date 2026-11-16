@@ -243,6 +243,12 @@ describe("FunctionsEmulatorUtils", () => {
       expect(matches(filter, inFunctions("src/deployment/a.json"))).to.be.false;
     });
 
+    it("does not ignore files matched by a negated path glob", () => {
+      const filter = createIgnoredFilter(functionsDir, ["!deployment/**"]);
+      expect(matches(filter, inFunctions("deployment/a.json"))).to.be.false;
+      expect(matches(filter, inFunctions("src/index.js"))).to.be.true;
+    });
+
     it("never ignores the functions directory itself", () => {
       const filter = createIgnoredFilter(functionsDir, ["functions", "!visible"]);
       expect(matches(filter, functionsDir)).to.be.false;

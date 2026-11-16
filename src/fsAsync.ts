@@ -139,7 +139,9 @@ export function createIgnoreMatcher(baseDir: string, globs: string[]): (p: strin
     if (!relPath) {
       return false;
     }
-    return rules.some((rule) => rule.match(relPath) || rule.match(p));
+    return rules.some((rule) =>
+      rule.negate ? rule.match(relPath) && rule.match(p) : rule.match(relPath) || rule.match(p),
+    );
   };
 }
 
