@@ -1,10 +1,15 @@
-import { FirebaseError } from "../error";
+import * as clc from "colorette";
+
+import { FirebaseError, getErrMsg, getErrStatus, isObject } from "../error";
 import { hostingApiOrigin } from "../api";
 import { Client } from "../apiv2";
+import * as ensureApiEnabledModule from "../ensureApiEnabled";
+import { logger } from "../logger";
 import * as operationPoller from "../operation-poller";
 import { DEFAULT_DURATION } from "../hosting/expireUtils";
 import { getAuthDomains, updateAuthDomains } from "../gcp/auth";
 import * as proto from "../gcp/proto";
+import * as utils from "../utils";
 import { getHostnameFromUrl } from "../utils";
 import { Constants } from "../emulator/constants";
 
@@ -799,4 +804,106 @@ export async function getDeploymentDomain(
   });
 
   return site && getHostnameFromUrl(site?.defaultUrl);
+}
+
+const FAILED_API_CHECK_TTL_MS = 5 * 60 * 1000;
+const failedApiChecks = new Map<string, number>();
+const inFlightApiChecks = new Map<string, Promise<void>>();
+
+/**
+ * Resets cached Hosting API enablement state. Intended for unit tests only.
+ */
+export function resetEnsureApiEnabledCacheForTests(): void {
+  failedApiChecks.clear();
+  inFlightApiChecks.clear();
+}
+
+function isServiceUsagePermissionError(err: unknown): boolean {
+  if (getErrStatus(err) === 403) {
+    return true;
+  }
+  if (!isObject(err)) {
+    return false;
+  }
+  const context = isObject(err.context) ? err.context : undefined;
+  const body = context && isObject(context.body) ? context.body : undefined;
+  const errorBody = body && isObject(body.error) ? body.error : undefined;
+  return errorBody?.status === "PERMISSION_DENIED" || errorBody?.code === 403;
+}
+
+function isServiceUsageEnableError(err: unknown, errMsg: string): boolean {
+  if (errMsg.startsWith("Permissions denied enabling") || errMsg.includes(":enable")) {
+    return true;
+  }
+  if (!isObject(err) || !isObject(err.context) || !isObject(err.context.response)) {
+    return false;
+  }
+  const responseUrl = err.context.response.url;
+  return typeof responseUrl === "string" && responseUrl.includes(":enable");
+}
+
+/**
+ * Best-effort check to ensure the Firebase Hosting API is enabled on a project.
+ * Logs a bold warning if verification or enablement fails (e.g., due to missing
+ * Service Usage permissions on a service account) so callers with direct Hosting
+ * permissions can still proceed.
+ */
+export async function ensureApiEnabled(projectId: string): Promise<void> {
+  const apiUri = hostingApiOrigin();
+  const apiName = getHostnameFromUrl(apiUri) || apiUri;
+  const cacheKey = `${projectId}:${apiName}`;
+
+  const failedUntil = failedApiChecks.get(cacheKey);
+  if (failedUntil !== undefined) {
+    if (Date.now() < failedUntil) {
+      return;
+    }
+    failedApiChecks.delete(cacheKey);
+  }
+
+  const inFlight = inFlightApiChecks.get(cacheKey);
+  if (inFlight) {
+    return inFlight;
+  }
+
+  const checkPromise = (async () => {
+    try {
+      await ensureApiEnabledModule.ensure(projectId, apiUri, "hosting", true);
+      failedApiChecks.delete(cacheKey);
+    } catch (err: unknown) {
+      const errMsg = getErrMsg(err);
+      logger.debug(`[hosting] failed to ensure Hosting API is enabled: ${errMsg}`);
+      const enableUrl = ensureApiEnabledModule.enableApiURI(projectId, apiName);
+      if (isServiceUsagePermissionError(err)) {
+        failedApiChecks.set(cacheKey, Date.now() + FAILED_API_CHECK_TTL_MS);
+        if (isServiceUsageEnableError(err, errMsg)) {
+          utils.logLabeledWarning(
+            "hosting",
+            clc.bold(
+              `Unable to enable ${apiName} on project ${projectId}. Enable the API by visiting ${enableUrl}, or grant the caller the roles/serviceusage.serviceUsageAdmin role.`,
+            ),
+          );
+        } else {
+          utils.logLabeledWarning(
+            "hosting",
+            clc.bold(
+              `Unable to check whether ${apiName} is enabled on project ${projectId}. Grant the caller the roles/serviceusage.serviceUsageConsumer role to check API enablement, or ensure the API is enabled at ${enableUrl} if subsequent requests fail.`,
+            ),
+          );
+        }
+      } else {
+        utils.logLabeledWarning(
+          "hosting",
+          clc.bold(
+            `Unable to ensure that ${apiName} is enabled on project ${projectId}. Ensure it is enabled at ${enableUrl} if subsequent requests fail.`,
+          ),
+        );
+      }
+    } finally {
+      inFlightApiChecks.delete(cacheKey);
+    }
+  })();
+
+  inFlightApiChecks.set(cacheKey, checkPromise);
+  return checkPromise;
 }

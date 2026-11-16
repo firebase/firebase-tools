@@ -2,8 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import { command } from "./deploy";
-import { hostingApiOrigin } from "../api";
-import * as ensureApiEnabledModule from "../ensureApiEnabled";
+import * as hostingApi from "../hosting/api";
 import * as experiments from "../experiments";
 import * as requireHostingSiteModule from "../requireHostingSite";
 import * as requirePermissionsModule from "../requirePermissions";
@@ -61,7 +60,7 @@ describe("deploy command hosting API enablement", () => {
   let requireHostingSiteStub: sinon.SinonStub;
 
   beforeEach(() => {
-    ensureHostingApiStub = sinon.stub(ensureApiEnabledModule, "ensure").resolves();
+    ensureHostingApiStub = sinon.stub(hostingApi, "ensureApiEnabled").resolves();
     requireHostingSiteStub = sinon.stub(requireHostingSiteModule, "requireHostingSite").resolves();
   });
 
@@ -80,12 +79,7 @@ describe("deploy command hosting API enablement", () => {
 
     await hostingBefore.fn(options);
 
-    expect(ensureHostingApiStub).to.have.been.calledOnceWith(
-      "my-project",
-      hostingApiOrigin(),
-      "hosting",
-      true,
-    );
+    expect(ensureHostingApiStub).to.have.been.calledOnceWith("my-project");
     expect(requireHostingSiteStub).to.have.been.calledOnceWith(options);
   });
 

@@ -42,7 +42,7 @@ import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 import { RuntimeWorker, RuntimeWorkerPool } from "./functionsRuntimeWorker";
 import { PubsubEmulator } from "./pubsubEmulator";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
 import { WorkQueue, Work } from "./workQueue";
 import { allSettled, connectableHostname, createDestroyer, debounce, randomInt } from "../utils";
 import {
@@ -191,10 +191,10 @@ interface EmulatedTriggerRecord {
 
 export function createIgnoredFilter(ignore?: string[]): chokidar.Matcher[] {
   const ignored: chokidar.Matcher[] = [
-    /(^|[\/\\])\../, // Ignore hidden files/dirs (covers .dart_tool, .git, etc.)
+    /(^|[/\\])\../, // Ignore hidden files/dirs (covers .dart_tool, .git, etc.)
     /.+\.log/, // Ignore log files
-    /.+?[\\\/]node_modules[\\\/].+?/, // Ignore node_modules
-    /.+?[\\\/]venv[\\\/].+?/, // Ignore venv
+    /.+?[\\/]node_modules[\\/].+?/, // Ignore node_modules
+    /.+?[\\/]venv[\\/].+?/, // Ignore venv
   ];
   if (ignore) {
     const minimatchInstances = ignore.map((pattern) => {
@@ -534,7 +534,15 @@ export class FunctionsEmulator implements EmulatorInstance {
           "functions",
           `Starting build_runner watch for Dart functions...`,
         );
-        const debouncedLoadTriggers = debounce(() => this.loadTriggers(backend), 1000);
+        const debouncedLoadTriggers = debounce(() => {
+          this.loadTriggers(backend).catch((err: unknown) =>
+            this.logger.logLabeled(
+              "WARN",
+              "functions",
+              `Failed to reload triggers: ${getErrMsg(err)}`,
+            ),
+          );
+        }, 1000);
         const cleanup = await delegate.watch(() => {
           this.logger.log("DEBUG", "build_runner rebuilt, reloading triggers");
           debouncedLoadTriggers();
@@ -549,10 +557,18 @@ export class FunctionsEmulator implements EmulatorInstance {
 
         this.watchers.push(watcher);
 
-        const debouncedLoadTriggers = debounce(() => this.loadTriggers(backend), 1000);
+        const debouncedLoadTriggers = debounce(() => {
+          this.loadTriggers(backend).catch((err: unknown) =>
+            this.logger.logLabeled(
+              "WARN",
+              "functions",
+              `Failed to reload triggers: ${getErrMsg(err)}`,
+            ),
+          );
+        }, 1000);
         watcher.on("change", (filePath) => {
           this.logger.log("DEBUG", `File ${filePath} changed, reloading triggers`);
-          return debouncedLoadTriggers();
+          debouncedLoadTriggers();
         });
       }
     }
@@ -1948,7 +1964,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     // req.url = /:projectId/:region/:trigger_name/*
     const url = new URL(`${req.protocol}://${req.hostname}${req.url}`);
     let path = `${url.pathname}${url.search}`.replace(
-      new RegExp(`\/${this.args.projectId}\/[^\/]*\/${req.params.trigger_name}\/?`),
+      new RegExp(`/${this.args.projectId}/[^/]*/${req.params.trigger_name}/?`),
       "/",
     );
 

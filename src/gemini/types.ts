@@ -1,8 +1,6 @@
 import { Schema } from "../dataconnect/types";
 export { Schema };
 
-export type Role = "USER" | "MODEL";
-
 export interface TextChunk {
   text: string;
 }
@@ -15,11 +13,6 @@ export interface CodeChunk {
 export interface Part {
   textChunk?: TextChunk;
   codeChunk?: CodeChunk;
-}
-
-export interface ChatMessage {
-  role: Role;
-  parts: Part[];
 }
 
 export interface GenerationStatus {

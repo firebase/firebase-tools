@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { FirebaseError } from "../error";
+import { AppPlatform } from "../management/apps";
+import { parseAppPlatform } from "./utils";
 
 export const ApplicationIdSchema = z
   .string()
@@ -73,6 +75,13 @@ export const EventFilterSchema = z
 
 export type EventFilter = z.infer<typeof EventFilterSchema>;
 
+export const FilterExpressionSchema = z
+  .string()
+  .optional()
+  .describe(
+    `An AIP-160 filter expression for custom keys (e.g. 'custom_keys.env = "prod"', 'custom_keys.experiment_id:*', or combined with 'AND' across different keys and 'OR' across values of one key).`,
+  );
+
 // Most models seem to understand the flattened, camelCase representation better.
 // This maps those strings to the filter params the API expects.
 
@@ -119,9 +128,10 @@ const displayNamePattern = /^[^()]+\s+\([^()]+\)$/; // Regular expression like "
 /**
  * Perform some simplistic validation on filters and fill missing values.
  * @param filter filters to validate
+ * @param appId optional Firebase App ID used for platform-aware version validation
  * @throws FirebaseError if any of the filters are invalid.
  */
-export function validateEventFilters(filter: EventFilter = {}): EventFilter {
+export function validateEventFilters(filter: EventFilter = {}, appId?: string): EventFilter {
   if (!!filter.intervalStartTime && !filter.intervalEndTime) {
     // interval.end_time is required if interval.start_time is set but the agent likes to forget it
     filter.intervalEndTime = new Date().toISOString();
@@ -144,12 +154,16 @@ export function validateEventFilters(filter: EventFilter = {}): EventFilter {
       }
     });
   }
-  if (filter.versionDisplayNames) {
-    filter.versionDisplayNames.forEach((dn) => {
+  // For mobile apps, the API parses each version into a display and build version, so it must
+  // look like "2.4.0 (240)". Web apps have no build number, so plain versions are allowed.
+  if (filter.versionDisplayNames && parseAppPlatform(appId) !== AppPlatform.WEB) {
+    for (const dn of filter.versionDisplayNames) {
       if (!displayNamePattern.test(dn)) {
-        throw new FirebaseError("versionDisplayNames must match pattern 'version (build)'");
+        throw new FirebaseError(
+          `versionDisplayNames must match pattern 'version (build)' (e.g., "2.4.0 (240)"). Use the displayName values returned by the topVersions report.`,
+        );
       }
-    });
+    }
   }
   return filter;
 }

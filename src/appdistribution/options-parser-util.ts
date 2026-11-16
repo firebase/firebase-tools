@@ -188,7 +188,7 @@ function isPresenceMismatched(value1?: string, value2?: string) {
   return (value1 && !value2) || (!value1 && value2);
 }
 
-const APP_NAME_REGEX = /^projects\/(?<projectNumber>[^\/]+)\/apps\/(?<appId>[^\/]+)$/;
+const APP_NAME_REGEX = /^projects\/(?<projectNumber>[^/]+)\/apps\/(?<appId>[^/]+)$/;
 const BUCKET_NAME_FORMAT_REGEX = /^[a-z0-9_.-]+$/;
 
 /**

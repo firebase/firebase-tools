@@ -52,7 +52,7 @@ export const get_report = tool(
       result.content.push({ type: "text", text: forceAppIdGuide });
     }
     try {
-      filter = validateEventFilters(filter || {});
+      filter = validateEventFilters(filter || {}, appId);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       result.isError = true;
