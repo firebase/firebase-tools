@@ -5,14 +5,6 @@ import { firebaseTelemetryAdminOrigin } from "../api";
 import { FirebaseError } from "../error";
 
 describe("firebasetelemetry", () => {
-  before(() => {
-    nock.disableNetConnect();
-  });
-
-  after(() => {
-    nock.enableNetConnect();
-  });
-
   afterEach(() => {
     nock.cleanAll();
   });

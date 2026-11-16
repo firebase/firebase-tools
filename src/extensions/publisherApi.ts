@@ -131,9 +131,10 @@ export async function undeprecateExtensionVersion(extensionRef: string): Promise
 }
 
 /**
- * @param extensionVersionRef user-friendly identifier for the extension version (publisher-id/extension-id@1.0.0)
- * @param packageUri public URI of the extension archive (zip or tarball)
- * @param extensionRoot root directory that contains this extension, defaults to "/".
+ * @param args options for creating an extension version from local source
+ * @param args.extensionVersionRef user-friendly identifier for the extension version (publisher-id/extension-id@1.0.0)
+ * @param args.packageUri public URI of the extension archive (zip or tarball)
+ * @param args.extensionRoot root directory that contains this extension, defaults to "/".
  */
 export async function createExtensionVersionFromLocalSource(args: {
   extensionVersionRef: string;
@@ -174,10 +175,11 @@ export async function createExtensionVersionFromLocalSource(args: {
 }
 
 /**
- * @param extensionVersionRef user-friendly identifier for the extension version (publisher-id/extension-id@1.0.0)
- * @param repoUri public GitHub repo URI that contains the extension source
- * @param sourceRef commit hash, branch, or tag to build from the repo
- * @param extensionRoot root directory that contains this extension, defaults to "/".
+ * @param args options for creating an extension version from GitHub source
+ * @param args.extensionVersionRef user-friendly identifier for the extension version (publisher-id/extension-id@1.0.0)
+ * @param args.repoUri public GitHub repo URI that contains the extension source
+ * @param args.sourceRef commit hash, branch, or tag to build from the repo
+ * @param args.extensionRoot root directory that contains this extension, defaults to "/".
  */
 export async function createExtensionVersionFromGitHubSource(args: {
   extensionVersionRef: string;
@@ -221,7 +223,7 @@ export async function createExtensionVersionFromGitHubSource(args: {
 }
 
 /**
- * @param ref user-friendly identifier for the ExtensionVersion (publisher-id/extension-id@1.0.0)
+ * @param extensionVersionRef user-friendly identifier for the ExtensionVersion (publisher-id/extension-id@1.0.0)
  */
 export async function getExtensionVersion(extensionVersionRef: string): Promise<ExtensionVersion> {
   const ref = refs.parse(extensionVersionRef);
@@ -308,7 +310,7 @@ export async function listExtensionVersions(
 }
 
 /**
- * @param ref user-friendly identifier for the Extension (publisher-id/extension-id)
+ * @param extensionRef user-friendly identifier for the Extension (publisher-id/extension-id)
  * @return the extension
  */
 export async function getExtension(extensionRef: string): Promise<Extension> {
