@@ -18,13 +18,14 @@ export function runtimeIsLanguage<L extends Language>(
 }
 
 /**
- * Find the latest supported Runtime for a Language.
+ * Find the latest supported Runtime for a Language. When `runtimes` is given, returns the newest
+ * one in that list regardless of status.
  */
 export function latest<T extends Language>(
   language: T,
-  runtimes: Runtime[] = Object.keys(RUNTIMES) as Runtime[],
+  runtimes?: Runtime[],
 ): RuntimeOf<T> & Runtime {
-  const sorted = runtimes
+  const sorted = (runtimes ?? (Object.keys(RUNTIMES) as Runtime[]))
     .filter((s) => runtimeIsLanguage(s, language))
     // node8 is less than node20
     .sort((left, right) => {
@@ -37,9 +38,9 @@ export function latest<T extends Language>(
       }
       return leftVersion - rightVersion;
     });
-  // Prefer GA so new projects are not scaffolded onto a Preview runtime. Languages with no GA
-  // runtime yet (e.g. Dart) fall back to the newest one.
-  const ga = sorted.filter((r) => RUNTIMES[r]?.status === "GA");
+  // Prefer GA for the default so new projects are not scaffolded onto a Preview runtime. Languages
+  // with no GA runtime yet (e.g. Dart) fall back to the newest one.
+  const ga = runtimes ? [] : sorted.filter((r) => RUNTIMES[r]?.status === "GA");
   const latest = utils.last(ga.length ? ga : sorted);
   if (!latest) {
     throw new FirebaseError(

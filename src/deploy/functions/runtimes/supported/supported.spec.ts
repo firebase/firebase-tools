@@ -14,6 +14,10 @@ describe("supported runtimes", () => {
     expect(supported.latest("nodejs")).to.equal("nodejs24");
   });
 
+  it("returns the newest runtime in an explicit list, even if it is not GA", () => {
+    expect(supported.latest("nodejs", ["nodejs24", "nodejs26"])).to.equal("nodejs26");
+  });
+
   it("falls back to the newest runtime when a language has no GA runtime", () => {
     expect(supported.latest("dart")).to.equal("dart3");
   });
