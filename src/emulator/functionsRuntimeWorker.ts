@@ -1,5 +1,6 @@
 import * as http from "http";
 import { randomUUID } from "crypto";
+import { StringDecoder } from "node:string_decoder";
 
 import { FunctionsRuntimeInstance } from "./functionsEmulator";
 import { EmulatorLog, Emulators, FunctionsExecutionMode } from "./types";
@@ -65,16 +66,41 @@ export class RuntimeWorker {
       msgBuffer = this.processStream(msg, msgBuffer);
     });
 
-    let stdBuffer = "";
+    let stdoutBuffer = "";
     if (childProc.stdout) {
-      childProc.stdout.on("data", (data) => {
-        stdBuffer = this.processStream(data, stdBuffer);
+      const stdoutDecoder = new StringDecoder("utf8");
+      childProc.stdout.on("data", (data: Serializable) => {
+        const text = Buffer.isBuffer(data) ? stdoutDecoder.write(data) : data;
+        stdoutBuffer = this.processStream(text, stdoutBuffer);
+      });
+      childProc.stdout.on("end", () => {
+        const remaining = stdoutDecoder.end();
+        if (remaining) {
+          stdoutBuffer = this.processStream(remaining, stdoutBuffer);
+        }
+        if (stdoutBuffer) {
+          this.flushBuffer(stdoutBuffer);
+          stdoutBuffer = "";
+        }
       });
     }
 
+    let stderrBuffer = "";
     if (childProc.stderr) {
-      childProc.stderr.on("data", (data) => {
-        stdBuffer = this.processStream(data, stdBuffer);
+      const stderrDecoder = new StringDecoder("utf8");
+      childProc.stderr.on("data", (data: Serializable) => {
+        const text = Buffer.isBuffer(data) ? stderrDecoder.write(data) : data;
+        stderrBuffer = this.processStream(text, stderrBuffer);
+      });
+      childProc.stderr.on("end", () => {
+        const remaining = stderrDecoder.end();
+        if (remaining) {
+          stderrBuffer = this.processStream(remaining, stderrBuffer);
+        }
+        if (stderrBuffer) {
+          this.flushBuffer(stderrBuffer);
+          stderrBuffer = "";
+        }
       });
     }
 
@@ -87,25 +113,50 @@ export class RuntimeWorker {
 
     childProc.on("exit", () => {
       this.logDebug("exited");
+      if (stdoutBuffer) {
+        this.flushBuffer(stdoutBuffer);
+        stdoutBuffer = "";
+      }
+      if (stderrBuffer) {
+        this.flushBuffer(stderrBuffer);
+        stderrBuffer = "";
+      }
+      if (msgBuffer) {
+        this.flushBuffer(msgBuffer);
+        msgBuffer = "";
+      }
       this.state = RuntimeWorkerState.FINISHED;
     });
   }
 
+  private handleLogLine(line: string): void {
+    if (!line) {
+      return;
+    }
+    const log = EmulatorLog.fromJSON(line);
+    this.runtime.events.emit("log", log);
+
+    if (log.level === "FATAL") {
+      // Something went wrong, if we don't kill the process it'll wait for timeoutMs.
+      this.runtime.events.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
+      this.runtime.process.kill();
+    }
+  }
+
+  private flushBuffer(buf: string): void {
+    if (buf) {
+      this.handleLogLine(buf);
+    }
+  }
+
   private processStream(s: Serializable, buf: string): string {
-    buf += s.toString();
+    buf += s ? s.toString() : "";
 
     const lines = buf.split("\n");
     if (lines.length > 1) {
       // slice(0, -1) returns all elements but the last
       lines.slice(0, -1).forEach((line: string) => {
-        const log = EmulatorLog.fromJSON(line);
-        this.runtime.events.emit("log", log);
-
-        if (log.level === "FATAL") {
-          // Something went wrong, if we don't kill the process it'll wait for timeoutMs.
-          this.runtime.events.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
-          this.runtime.process.kill();
-        }
+        this.handleLogLine(line);
       });
     }
     return lines[lines.length - 1];
