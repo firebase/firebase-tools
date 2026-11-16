@@ -7,3 +7,4 @@
 - Updated the Firebase SQL Connect local toolkit to v3.4.27, which includes the following changes:
   - Fixed a bug where singular lookup queries using server value key expressions (such as `id_expr`) did not trigger realtime subscription updates or client-side cache tracking when returning `null`.
   - Declare and export enums selected only inside nested relations in generated JS and Admin Node SDKs.
+- Restricted cross-origin access on the Cloud Functions emulator `/backends` endpoint to the active Emulator UI origin.

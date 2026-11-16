@@ -12,7 +12,14 @@ import { Account } from "../types/auth";
 import { logger } from "../logger";
 import { trackEmulator } from "../track";
 import { Constants } from "./constants";
-import { EmulatorInfo, EmulatorInstance, Emulators, FunctionsExecutionMode } from "./types";
+import { IPV4_LOOPBACK, IPV4_UNSPECIFIED, IPV6_LOOPBACK, IPV6_UNSPECIFIED } from "./dns";
+import {
+  EmulatorInfo,
+  EmulatorInstance,
+  Emulators,
+  FunctionsExecutionMode,
+  ListenSpec,
+} from "./types";
 import * as chokidar from "chokidar";
 import * as minimatch from "minimatch";
 import * as portfinder from "portfinder";
@@ -207,6 +214,75 @@ export function createIgnoredFilter(ignore?: string[]): chokidar.Matcher[] {
     });
   }
   return ignored;
+}
+
+const LOOPBACK_AND_WILDCARD_HOSTS: readonly string[] = [
+  "localhost",
+  IPV4_LOOPBACK.address,
+  IPV6_LOOPBACK.address,
+  IPV4_UNSPECIFIED.address,
+  IPV6_UNSPECIFIED.address,
+];
+
+function addOrigin(
+  origins: Set<string>,
+  protocol: "http" | "https",
+  host: string,
+  port: number,
+): void {
+  const formattedHost = host.includes(":") && !host.startsWith("[") ? `[${host}]` : host;
+  try {
+    origins.add(new URL(`${protocol}://${formattedHost}:${port}`).origin);
+  } catch {
+    // Ignore malformed hostnames from environment configuration.
+  }
+}
+
+/**
+ * Returns the browser origins allowed to make cross-origin requests to
+ * Emulator UI-only endpoints (such as GET /backends).
+ */
+export function getAllowedEmulatorUIOrigins(): string[] {
+  const uiInfo = EmulatorRegistry.getInfo(Emulators.UI);
+  if (!uiInfo) {
+    return [];
+  }
+
+  const origins = new Set<string>();
+  const specs: readonly ListenSpec[] = uiInfo.listen?.length
+    ? uiInfo.listen
+    : [
+        {
+          address: uiInfo.host,
+          port: uiInfo.port,
+          family: uiInfo.host.includes(":") ? "IPv6" : "IPv4",
+        },
+      ];
+
+  for (const spec of specs) {
+    const { address, port } = spec;
+    if (LOOPBACK_AND_WILDCARD_HOSTS.includes(address)) {
+      addOrigin(origins, "http", "localhost", port);
+      addOrigin(origins, "http", IPV4_LOOPBACK.address, port);
+      addOrigin(origins, "http", IPV6_LOOPBACK.address, port);
+    } else {
+      addOrigin(origins, "http", address, port);
+    }
+
+    if (process.env.WEB_HOST) {
+      addOrigin(origins, "https", `${port}-${process.env.WEB_HOST}`, 443);
+    }
+    if (process.env.CODESPACE_NAME && process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN) {
+      addOrigin(
+        origins,
+        "https",
+        `${process.env.CODESPACE_NAME}-${port}.${process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}`,
+        443,
+      );
+    }
+  }
+
+  return Array.from(origins);
 }
 
 export class FunctionsEmulator implements EmulatorInstance {
@@ -410,14 +486,27 @@ export class FunctionsEmulator implements EmulatorInstance {
       res.json({ status: "multicast_acknowledged" });
     };
 
+    const listBackendsCors: express.RequestHandler = (req, res, next) => {
+      const allowedOrigins = getAllowedEmulatorUIOrigins();
+      cors({ origin: allowedOrigins.length > 0 ? allowedOrigins : false })(req, res, next);
+    };
+
     const listBackendsHandler: express.RequestHandler = (req, res) => {
+      const origin = req.headers.origin;
+      if (origin && !getAllowedEmulatorUIOrigins().includes(origin)) {
+        res.status(403).json({
+          message: `/backends cannot be accessed by external callers.`,
+        });
+        return;
+      }
       res.json({ backends: this.getBackendInfo() });
     };
 
     // The ordering here is important. The longer routes (background)
     // need to be registered first otherwise the HTTP functions consume
     // all events.
-    hub.get(listBackendsRoute, cors({ origin: true }), listBackendsHandler); // This route needs CORS so the Emulator UI can call it.
+    hub.options(listBackendsRoute, listBackendsCors);
+    hub.get(listBackendsRoute, listBackendsCors, listBackendsHandler); // This route needs CORS so the Emulator UI can call it.
     hub.post(backgroundFunctionRoute, dataMiddleware, httpsHandler);
     hub.post(multicastFunctionRoute, dataMiddleware, multicastHandler);
     hub.all(httpsFunctionRoutes, dataMiddleware, httpsHandler);

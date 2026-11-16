@@ -644,7 +644,8 @@ describe("FunctionsEmulator", function () {
         };
       });
 
-      await supertest(emu.createHubServer())
+      const hubApp = emu.createHubServer();
+      await supertest(hubApp)
         .get("/backends")
         .expect(200)
         .then((res) => {
@@ -661,6 +662,14 @@ describe("FunctionsEmulator", function () {
               region: "us-central1",
             },
           ]);
+        });
+
+      await supertest(hubApp)
+        .get("/backends")
+        .set("Origin", "https://evil.example.com")
+        .expect(403)
+        .then((res) => {
+          expect(res.get("access-control-allow-origin")).to.be.undefined;
         });
     });
 
