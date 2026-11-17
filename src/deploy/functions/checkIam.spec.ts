@@ -337,6 +337,7 @@ describe("checkIam", () => {
           ],
           projectId,
           "functions",
+          "Grant them with these `gcloud` commands:",
         );
       });
 
@@ -405,6 +406,7 @@ describe("checkIam", () => {
           ],
           projectId,
           "functions",
+          "Grant them with these `gcloud` commands:",
         );
       });
 

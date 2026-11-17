@@ -239,6 +239,7 @@ async function obtainEventarcServiceAccountBindings(
       ],
       projectId,
       "functions",
+      "Grant them with these `gcloud` commands:",
     );
   }
   return [];
