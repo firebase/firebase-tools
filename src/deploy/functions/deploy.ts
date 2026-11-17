@@ -15,6 +15,7 @@ import * as experiments from "../../experiments";
 import * as supported from "./runtimes/supported";
 import { findEndpoint } from "./backend";
 import { deploy as extDeploy } from "../extensions";
+import { getErrMsg } from "../../error";
 import { getProjectNumber } from "../../getProjectNumber";
 import * as path from "path";
 
@@ -164,8 +165,8 @@ async function uploadCodebase(
     if (uploads.length) {
       logLabeledSuccess("functions", `${clc.bold(label)} source uploaded successfully`);
     }
-  } catch (err: any) {
-    logWarning(clc.yellow("functions:") + " Upload Error: " + err.message);
+  } catch (err: unknown) {
+    logWarning(`${clc.yellow("functions:")} Upload Error: ${getErrMsg(err)}`);
     throw err;
   }
 }

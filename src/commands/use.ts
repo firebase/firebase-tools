@@ -154,7 +154,7 @@ async function genericUse(options: UseOptions) {
   if (options.projectAlias) {
     logger.info(
       "Active Project:",
-      clc.bold(clc.cyan(options.projectAlias + " (" + options.project + ")")),
+      clc.bold(clc.cyan(`${String(options.projectAlias)} (${String(options.project)})`)),
     );
   } else if (options.project) {
     logger.info("Active Project:", clc.bold(clc.cyan(options.project)));

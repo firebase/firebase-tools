@@ -161,7 +161,7 @@ export async function checkInstanceNameAvailable(
   } catch (err: any) {
     logger.debug(
       `Invalid Realtime Database instance name: ${instanceName}.${
-        err.message ? " " + err.message : ""
+        err.message ? ` ${String(err.message)}` : ""
       }`,
     );
     const errBody = err.context.body.error;

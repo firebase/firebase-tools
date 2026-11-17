@@ -334,7 +334,7 @@ export class FirestoreDelete {
 
       // Failure that can't be retried again
       if (failures.length > 0) {
-        logger.debug("Found " + failures.length + " failed operations, failing.");
+        logger.debug(`Found ${failures.length} failed operations, failing.`);
         return true;
       }
 
@@ -357,7 +357,7 @@ export class FirestoreDelete {
             lastDocName = docs[docs.length - 1].name;
           })
           .catch((e: unknown) => {
-            logger.debug("Failed to fetch page after " + lastDocName, e);
+            logger.debug(`Failed to fetch page after ${String(lastDocName)}`, e);
             pageIncoming = false;
 
             fetchFailures++;
