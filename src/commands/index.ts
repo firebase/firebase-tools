@@ -95,6 +95,13 @@ export function load(client: CLIClient): CLIClient {
   client.crashlytics.heapdumps.enable = loadCommand("crashlytics-heapdumps-enable");
   client.crashlytics.heapdumps.disable = loadCommand("crashlytics-heapdumps-disable");
   client.crashlytics.heapdumps.status = loadCommand("crashlytics-heapdumps-status");
+  if (experiments.isEnabled("crashlyticscli")) {
+    client.crashlytics.issues = {};
+    client.crashlytics.issues.get = loadCommand("crashlytics-issues-get");
+    client.crashlytics.events = {};
+    client.crashlytics.events.list = loadCommand("crashlytics-events-list");
+    client.crashlytics.events.get = loadCommand("crashlytics-events-get");
+  }
   client.database = {};
   client.database.get = loadCommand("database-get");
   client.database.import = loadCommand("database-import");
