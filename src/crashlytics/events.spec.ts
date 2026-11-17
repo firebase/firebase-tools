@@ -95,6 +95,8 @@ describe("events", () => {
   });
 
   describe("normalizeEventResourceName", () => {
+    const webAppId = "1:1234567890:web:abcdef1234567890";
+
     it("should expand a short event ID into a full resource name", () => {
       expect(normalizeEventResourceName(appId, "event_123")).to.equal(
         `projects/${requestProjectNumber}/apps/${appId}/events/event_123`,
@@ -106,6 +108,23 @@ describe("events", () => {
       expect(normalizeEventResourceName(appId, fullName)).to.equal(fullName);
     });
 
+    it("should pass through Web sampleEvent strings with a project ID and sessionEventKey", () => {
+      const webSampleEvent = `projects/my-project-id/apps/${webAppId}/events/event_123?sessionEventKey=session_456`;
+      expect(normalizeEventResourceName(webAppId, `  ${webSampleEvent}  `)).to.equal(
+        webSampleEvent,
+      );
+    });
+
+    it("should escape regex metacharacters in appId when matching resource names", () => {
+      const dottedAppId = "1:1234567890:web:a.b";
+      expect(() =>
+        normalizeEventResourceName(
+          dottedAppId,
+          "projects/my-project-id/apps/1:1234567890:web:axb/events/event_123",
+        ),
+      ).to.throw(FirebaseError, "Invalid event resource name");
+    });
+
     it("should throw FirebaseError for empty or malformed resource names", () => {
       expect(() => normalizeEventResourceName(appId, "   ")).to.throw(
         FirebaseError,
@@ -115,6 +134,21 @@ describe("events", () => {
         FirebaseError,
         "Invalid event resource name",
       );
+      expect(() =>
+        normalizeEventResourceName(webAppId, `projects//apps/${webAppId}/events/event_123`),
+      ).to.throw(FirebaseError, "Invalid event resource name");
+      expect(() =>
+        normalizeEventResourceName(webAppId, `projects/my-project-id/apps/${webAppId}/events/`),
+      ).to.throw(FirebaseError, "Invalid event resource name");
+      expect(() =>
+        normalizeEventResourceName(
+          webAppId,
+          `projects/my-project-id/apps/${webAppId}/events/event_123/extra`,
+        ),
+      ).to.throw(FirebaseError, "Invalid event resource name");
+      expect(() =>
+        normalizeEventResourceName(webAppId, `projects/my-project-id/apps/${appId}/events/evt_1`),
+      ).to.throw(FirebaseError, "Invalid event resource name");
     });
   });
 

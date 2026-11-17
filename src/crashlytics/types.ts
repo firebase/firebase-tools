@@ -709,6 +709,8 @@ export interface GetReportRequest {
   pageToken?: string;
   /** Returns one data point per time grain, or a single data point for the entire interval if omitted. */
   granularity?: TimeGranularity;
+  /** AIP-160 filter expression for custom keys (e.g. `custom_keys.env = "prod"`). Currently supported for web apps. */
+  filterExpression?: string;
 }
 
 /** Response message for the GetReport method. */
