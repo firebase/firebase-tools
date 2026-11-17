@@ -10,6 +10,7 @@ import * as profilingManager from "../crashlytics/profilingManager";
 import * as appsModule from "../management/apps";
 import * as cloudbilling from "../gcp/cloudbilling";
 import * as promptModule from "../prompt";
+import { logger } from "../logger";
 import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
 
@@ -177,6 +178,46 @@ describe("crashlytics:heapdumps commands", () => {
       expect(enableCollectionStub).to.have.been.calledOnceWith(projectId, appId, "us-central1");
     });
 
+    it("should log the Crashlytics console URL using android:<packageName>/issues instead of GMP appId", async () => {
+      const loggerInfoSpy = sinon.spy(logger, "info");
+
+      await enableCommand.runner()({
+        project: projectId,
+        app: appId,
+        force: true,
+      });
+
+      const loggedMessages = loggerInfoSpy.args.map((args) => args.map(String).join(" "));
+      expect(loggedMessages).to.include(
+        `View collected heap dumps in the Firebase Console: https://console.firebase.google.com/project/${projectId}/crashlytics/app/android:${mockAndroidApp.packageName}/issues`,
+      );
+      expect(loggedMessages.some((msg) => msg.includes(`/crashlytics/app/${appId}`))).to.be.false;
+    });
+
+    it("should fall back to the project Crashlytics console URL if packageName is unavailable", async () => {
+      const loggerInfoSpy = sinon.spy(logger, "info");
+      (appsModule.listFirebaseApps as sinon.SinonStub).resolves([
+        {
+          name: `projects/${projectId}/androidApps/${appId}`,
+          projectId,
+          appId,
+          platform: appsModule.AppPlatform.ANDROID,
+        },
+      ]);
+
+      await enableCommand.runner()({
+        project: projectId,
+        app: appId,
+        force: true,
+      });
+
+      const loggedMessages = loggerInfoSpy.args.map((args) => args.map(String).join(" "));
+      expect(loggedMessages).to.include(
+        `View collected heap dumps in the Firebase Console: https://console.firebase.google.com/project/${projectId}/crashlytics`,
+      );
+      expect(loggedMessages.some((msg) => msg.includes(`/crashlytics/app/${appId}`))).to.be.false;
+    });
+
     it("should default location to DEFAULT_BUCKET_LOCATION when location option is empty", async () => {
       await enableCommand.runner()({
         project: projectId,
@@ -189,6 +230,29 @@ describe("crashlytics:heapdumps commands", () => {
         projectId,
         appId,
         profilingManager.DEFAULT_BUCKET_LOCATION,
+      );
+    });
+
+    it("should render a single default location annotation in --help output", () => {
+      const cli = new program.Command();
+      const client: CLIClient = {
+        cli: cli as unknown as typeof program,
+        errorOut: sinon.stub(),
+      };
+      enableCommand.register(client);
+      const registeredCmd = cli.commands.find(
+        (cmd) => cmd.name() === "crashlytics:heapdumps:enable",
+      );
+      if (!registeredCmd) {
+        expect.fail("Expected crashlytics:heapdumps:enable command to be registered");
+      }
+
+      const helpText = registeredCmd.helpInformation().replace(/\s+/g, " ");
+      expect(helpText).to.include(
+        `--location <location> the location for the Cloud Storage bucket (default: "${profilingManager.DEFAULT_BUCKET_LOCATION}")`,
+      );
+      expect(helpText).to.not.include(
+        `(default: ${profilingManager.DEFAULT_BUCKET_LOCATION}) (default:`,
       );
     });
 
@@ -300,6 +364,40 @@ describe("crashlytics:heapdumps commands", () => {
         appId,
         bucket: bucketName,
         heapDumpCollectionEnabled: true,
+      });
+    });
+
+    it("should include heapDumpCollectionEnabled: false when omitted by the API on a disabled app", async () => {
+      const resourceName = `projects/${projectNumber}/apps/${appId}/profilingManagerConfig`;
+      sinon.stub(profilingManager, "getProfilingManagerConfig").resolves({
+        name: resourceName,
+      });
+
+      const result: unknown = await statusCommand.runner()({
+        project: projectId,
+        app: appId,
+      });
+
+      expect(result).to.deep.equal({
+        appId,
+        name: resourceName,
+        heapDumpCollectionEnabled: false,
+      });
+    });
+
+    it("should handle an undefined configuration from the API without throwing", async () => {
+      sinon
+        .stub(profilingManager, "getProfilingManagerConfig")
+        .resolves(undefined as unknown as profilingManager.ProfilingManagerConfig);
+
+      const result: unknown = await statusCommand.runner()({
+        project: projectId,
+        app: appId,
+      });
+
+      expect(result).to.deep.equal({
+        appId,
+        heapDumpCollectionEnabled: false,
       });
     });
 
