@@ -1,5 +1,7 @@
 import { expect } from "chai";
-import * as admin from "firebase-admin";
+import { applicationDefault, deleteApp, getApps, initializeApp } from "firebase-admin/app";
+import { DocumentSnapshot, getFirestore } from "firebase-admin/firestore";
+import { getStorage } from "firebase-admin/storage";
 import * as fs from "fs";
 import { rmSync } from "node:fs";
 import * as path from "path";
@@ -37,18 +39,14 @@ function cleanUpExtensionsCache(): void {
 
 async function pollForExtensionOutput(): Promise<{
   fileResized: boolean;
-  eventFired: FirebaseFirestore.DocumentSnapshot;
+  eventFired: DocumentSnapshot;
 }> {
   const start = Date.now();
   while (Date.now() - start < EXTENSION_POLL_TIMEOUT_MS) {
     try {
-      const [exists] = await admin.storage().bucket().file(STORAGE_RESIZED_FILE_NAME).exists();
+      const [exists] = await getStorage().bucket().file(STORAGE_RESIZED_FILE_NAME).exists();
       if (exists) {
-        const doc = await admin
-          .firestore()
-          .collection("resizedImages")
-          .doc(STORAGE_FILE_NAME)
-          .get();
+        const doc = await getFirestore().collection("resizedImages").doc(STORAGE_FILE_NAME).get();
         if (doc.exists && doc.data()?.eventHandlerFired) {
           return { fileResized: true, eventFired: doc };
         }
@@ -88,16 +86,16 @@ describe("CF3 and Extensions emulator", () => {
     test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, config);
     await test.startEmulators(["--only", "functions,extensions,storage,eventarc,firestore"]);
 
-    admin.initializeApp({
+    initializeApp({
       projectId: FIREBASE_PROJECT,
-      credential: admin.credential.applicationDefault(),
+      credential: applicationDefault(),
       storageBucket: `${FIREBASE_PROJECT}.appspot.com`,
     });
   });
 
   after(async function (this) {
     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
-    await Promise.allSettled(admin.apps.map((app) => app?.delete()));
+    await Promise.allSettled(getApps().map((app) => deleteApp(app)));
     cleanUpExtensionsCache();
     await test?.stopEmulators();
   });
