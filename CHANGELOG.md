@@ -1,4 +1,5 @@
 - Updated `qs`, `fast-uri`, `ip-address` and `stream-json` to resolve moderate severity security advisories.
+- Added support for the Node.js 26 runtime (Preview) for Cloud Functions. (#11393)
 - Fixed `firebase deploy --dry-run` creating a missing Firestore database. A dry run now reports which database a deploy would create, and where. (#11491)
 - Added an optional `filterExpression` parameter to the Crashlytics MCP `get_report` tool to filter reports by custom keys.
 - Fixed 2nd gen functions staying uncallable after their first deploy failed, because later deploys never set the invoker. (#8984)
