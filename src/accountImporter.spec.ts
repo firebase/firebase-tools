@@ -31,6 +31,31 @@ describe("accountImporter", () => {
     it("should reject when missing parameters", () => {
       expect(() => validateOptions({ hashAlgo: "HMAC_SHA1" })).to.throw();
     });
+
+    it("should reject invalid STANDARD_SCRYPT parameters", () => {
+      const invalid = {
+        hashAlgo: "STANDARD_SCRYPT",
+        memCost: "abc",
+        parallelization: "1",
+        blockSize: "8",
+        dkLen: "32",
+      };
+      expect(() => validateOptions(invalid)).to.throw();
+      expect(() => validateOptions({ ...invalid, memCost: "-5" })).to.throw();
+      expect(() => validateOptions({ ...invalid, dkLen: "0" })).to.throw();
+    });
+
+    it("should accept valid STANDARD_SCRYPT parameters", () => {
+      expect(
+        validateOptions({
+          hashAlgo: "STANDARD_SCRYPT",
+          memCost: "16384",
+          parallelization: "1",
+          blockSize: "8",
+          dkLen: "32",
+        }),
+      ).to.have.property("valid", true);
+    });
   });
 
   describe("validateUserJson", () => {

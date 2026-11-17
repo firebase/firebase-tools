@@ -258,6 +258,18 @@ function validateRequiredParameters(options: any): any {
       const parallelization = parseInt(options.parallelization, 10);
       const blockSize = parseInt(options.blockSize, 10);
       const dkLen = parseInt(options.dkLen, 10);
+      for (const [name, value] of Object.entries({
+        "memory cost": cpuMemCost,
+        parallelization: parallelization,
+        "block size": blockSize,
+        "key length": dkLen,
+      })) {
+        if (isNaN(value) || value <= 0) {
+          throw new FirebaseError(
+            "Must provide valid " + name + " for hash algorithm " + hashAlgoName,
+          );
+        }
+      }
       return {
         hashAlgo: hashAlgo,
         valid: true,
