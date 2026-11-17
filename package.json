@@ -269,7 +269,7 @@
       "ajv": "^8.17.1",
       "chokidar": "$chokidar"
     },
-    "hono": "^4.13.5",
+    "hono": "^4.13.16",
     "@tootallnate/once": "^3.0.1",
     "protobufjs": "^7.6.5",
     "serialize-javascript": "^7.0.5",
@@ -295,7 +295,8 @@
     },
     "firebase-functions": {
       "firebase-admin": "$firebase-admin"
-    }
+    },
+    "@hono/node-server": "^2.1.6"
   },
   "allowScripts": {
     "esbuild": true,
