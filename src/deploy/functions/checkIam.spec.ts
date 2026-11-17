@@ -340,6 +340,74 @@ describe("checkIam", () => {
         );
       });
 
+      it("should not print or warn for declarative security managed accounts", async () => {
+        setIamStub.resolves({});
+        const managedFn: backend.Endpoint = {
+          id: "managedFn",
+          entryPoint: "managedFn",
+          platform: "gcfv2",
+          eventTrigger: ALERTS_TRIGGER,
+          serviceAccount: `firebase-fn-1234567890@${projectId}.iam.gserviceaccount.com`,
+          ...SPEC,
+        };
+        const printStub = sinon.stub(iam, "printManualIamConfig");
+
+        await checkIam.ensureServiceAgentRoles(
+          projectId,
+          projectNumber,
+          backend.of(managedFn),
+          backend.empty(),
+        );
+
+        expect(setIamStub).to.have.been.calledOnceWithExactly(
+          projectNumber,
+          { etag: "etag", version: 3, bindings: [BINDING, PUBSUB_TOKEN_CREATOR] },
+          "bindings",
+        );
+        expect(printStub).to.not.have.been.called;
+        expect(warnStub).to.not.have.been.called;
+      });
+
+      it("should print only the custom accounts when managed accounts are also present", async () => {
+        setIamStub.resolves({});
+        const managedFn: backend.Endpoint = {
+          id: "managedFn",
+          entryPoint: "managedFn",
+          platform: "gcfv2",
+          eventTrigger: ALERTS_TRIGGER,
+          serviceAccount: `firebase-fn-1234567890@${projectId}.iam.gserviceaccount.com`,
+          ...SPEC,
+        };
+        const customFn: backend.Endpoint = {
+          id: "customFn",
+          entryPoint: "customFn",
+          platform: "gcfv2",
+          eventTrigger: ALERTS_TRIGGER,
+          serviceAccount: CUSTOM_SA,
+          ...SPEC,
+        };
+        const printStub = sinon.stub(iam, "printManualIamConfig");
+
+        await checkIam.ensureServiceAgentRoles(
+          projectId,
+          projectNumber,
+          backend.of(managedFn, customFn),
+          backend.empty(),
+        );
+
+        expect(printStub).to.have.been.calledOnceWithExactly(
+          [
+            { role: checkIam.RUN_INVOKER_ROLE, members: [`serviceAccount:${CUSTOM_SA}`] },
+            {
+              role: checkIam.EVENTARC_EVENT_RECEIVER_ROLE,
+              members: [`serviceAccount:${CUSTOM_SA}`],
+            },
+          ],
+          projectId,
+          "functions",
+        );
+      });
+
       it("should ignore v1 functions without a service account", async () => {
         setIamStub.resolves({});
         const v1Fn: backend.Endpoint = {

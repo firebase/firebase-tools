@@ -219,7 +219,10 @@ async function obtainEventarcServiceAccountBindings(
   const members = [
     ...new Set(
       eventEndpoints.flatMap((e) =>
-        e.serviceAccount ? [proto.formatServiceAccount(e.serviceAccount, projectId)] : [],
+        // Managed accounts get these roles from requiredRoles at release.
+        e.serviceAccount && !e.serviceAccount.startsWith("firebase-fn-")
+          ? [proto.formatServiceAccount(e.serviceAccount, projectId)]
+          : [],
       ),
     ),
   ];
