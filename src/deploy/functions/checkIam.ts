@@ -187,11 +187,14 @@ export async function obtainDefaultComputeServiceAgentBindings(
  * Returns the default compute service agent bindings, unless that account does not exist and
  * no v2 event function runs as it. In that case the bindings each function's own service account
  * needs are printed instead, since the CLI does not grant roles to user-chosen accounts.
+ * Declarative security accounts are only created at release and only get the roles their
+ * codebase declares, so they are told to declare the roles instead.
  */
 async function obtainEventarcServiceAccountBindings(
   projectId: string,
   projectNumber: string,
   want: backend.Backend,
+  managedAccountRoles: Record<string, string[]>,
 ): Promise<iam.Binding[]> {
   const bindings = await obtainDefaultComputeServiceAgentBindings(projectNumber);
   const defaultServiceAccount = await gce.getDefaultServiceAccount(projectNumber);
@@ -221,19 +224,32 @@ async function obtainEventarcServiceAccountBindings(
     );
   }
 
-  const members = [
+  const accounts = [
     ...new Set(
       eventEndpoints.flatMap((e) =>
-        e.serviceAccount ? [proto.formatServiceAccount(e.serviceAccount, projectId)] : [],
+        e.serviceAccount ? [proto.formatServiceAccount(e.serviceAccount, projectId, true)] : [],
       ),
     ),
   ];
-  if (members.length > 0) {
-    utils.logLabeledWarning(
-      "functions",
-      `The default compute service account ${defaultServiceAccount} does not exist, so its ` +
-        "roles were not granted. Your functions' service accounts need these roles to receive events.",
+  const userAccounts = accounts.filter((account) => !managedAccountRoles[account]);
+  const managedAccountsMissingRoles = accounts.flatMap((account) => {
+    const declared = managedAccountRoles[account];
+    const missing = [RUN_INVOKER_ROLE, EVENTARC_EVENT_RECEIVER_ROLE].filter(
+      (role) => declared && !declared.includes(role),
     );
+    return missing.length > 0 ? [{ account, missing }] : [];
+  });
+  if (userAccounts.length === 0 && managedAccountsMissingRoles.length === 0) {
+    return [];
+  }
+
+  utils.logLabeledWarning(
+    "functions",
+    `The default compute service account ${defaultServiceAccount} does not exist, so its ` +
+      "roles were not granted. Your functions' service accounts need these roles to receive events.",
+  );
+  if (userAccounts.length > 0) {
+    const members = userAccounts.map((account) => `serviceAccount:${account}`);
     iam.printManualIamConfig(
       [
         { role: RUN_INVOKER_ROLE, members },
@@ -242,6 +258,13 @@ async function obtainEventarcServiceAccountBindings(
       projectId,
       "functions",
       "Grant them with these `gcloud` commands:",
+    );
+  }
+  for (const { account, missing } of managedAccountsMissingRoles) {
+    utils.logLabeledWarning(
+      "functions",
+      `${account} is managed by declarative security, so declare its roles in the codebase ` +
+        `that uses it: ${missing.map((role) => `requiresRole("${role}")`).join(", ")}`,
     );
   }
   return [];
@@ -300,6 +323,8 @@ export async function ensureGenkitMonitoringRoles(
  * @param projectNumber project number
  * @param want backend that we want to deploy
  * @param have backend that we have currently deployed
+ * @param dryRun if true, report the roles that would be granted without granting them
+ * @param managedAccountRoles roles each declarative security account's codebase declares
  */
 export async function ensureServiceAgentRoles(
   projectId: string,
@@ -307,6 +332,7 @@ export async function ensureServiceAgentRoles(
   want: backend.Backend,
   have: backend.Backend,
   dryRun?: boolean,
+  managedAccountRoles: Record<string, string[]> = {},
 ): Promise<void> {
   // find new services
   const wantServices = backend.allEndpoints(want).reduce(reduceEventsToServices, []);
@@ -328,7 +354,12 @@ export async function ensureServiceAgentRoles(
   if (haveServices.length === 0) {
     requiredBindings.push(...obtainPubSubServiceAgentBindings(projectNumber));
     requiredBindings.push(
-      ...(await obtainEventarcServiceAccountBindings(projectId, projectNumber, want)),
+      ...(await obtainEventarcServiceAccountBindings(
+        projectId,
+        projectNumber,
+        want,
+        managedAccountRoles,
+      )),
     );
   }
   if (requiredBindings.length === 0) {

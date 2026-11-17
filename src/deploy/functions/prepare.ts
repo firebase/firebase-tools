@@ -535,12 +535,19 @@ export async function prepare(
   // We limit the scope endpoints being deployed.
   await backend.checkAvailability(context, matchingBackend);
   await validate.secretsAreValid(projectId, matchingBackend);
+  const managedAccountRoles: Record<string, string[]> = {};
+  for (const { managedSA, wantBackend } of Object.values(payload.functions)) {
+    if (managedSA) {
+      managedAccountRoles[managedSA] = wantBackend.requiredRoles ?? [];
+    }
+  }
   await ensureServiceAgentRoles(
     projectId,
     projectNumber,
     matchingBackend,
     haveBackend,
     options.dryRun,
+    managedAccountRoles,
   );
   await ensureGenkitMonitoringRoles(
     projectId,
