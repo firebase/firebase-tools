@@ -144,7 +144,8 @@ export abstract class Throttler<T, R> {
     }
 
     this.active++;
-    this.handle(this.nextWaitingTaskIndex());
+    // handle() records task success and failure itself and is intentionally not awaited (process() is sync and drives concurrency).
+    void this.handle(this.nextWaitingTaskIndex());
   }
 
   async handle(cursorIndex: number): Promise<void> {

@@ -492,8 +492,12 @@ namespace nock {
     mockAgent.disableNetConnect();
   }
 
-  export function enableNetConnect() {
-    mockAgent.enableNetConnect();
+  export function enableNetConnect(host?: string | RegExp | ((host: string) => boolean)) {
+    if (host !== undefined) {
+      mockAgent.enableNetConnect(host as any);
+    } else {
+      mockAgent.enableNetConnect();
+    }
   }
 
   export function pendingMocks() {

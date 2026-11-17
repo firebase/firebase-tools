@@ -336,6 +336,22 @@ describe("getReport", () => {
     expect(result).to.deep.equal(mockResponse);
     expect(nock.isDone()).to.be.true;
   });
+
+  it("should include filter_expression in query params when filterExpression is provided", async () => {
+    const mockResponse = { groups: [{ metrics: [{ eventsCount: 5 }] }] };
+    const filterExpression = 'custom_keys.env = "prod"';
+
+    mockListReports();
+    nock(crashlyticsApiOrigin())
+      .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/reports/appSummary`)
+      .query({ page_size: "10", filter_expression: filterExpression })
+      .reply(200, mockResponse);
+
+    const result = await getReport("appSummary", appId, {}, 10, undefined, filterExpression);
+
+    expect(result).to.deep.equal(mockResponse);
+    expect(nock.isDone()).to.be.true;
+  });
 });
 
 describe("listReports", () => {
