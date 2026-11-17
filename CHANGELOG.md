@@ -1,3 +1,4 @@
+- Updated Pub/Sub emulator to version 0.8.38.
 - Fixed `crashlytics:heapdumps` commands accepting `--app` IDs that do not belong to the target Firebase project.
 - Fixed `crashlytics:heapdumps:enable` bypassing the confirmation prompt without `--force` in non-interactive environments.
 - Warned when `crashlytics:heapdumps:enable` reuses an existing Cloud Storage bucket whose location differs from `--location` instead of silently ignoring the requested location.
