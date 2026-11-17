@@ -226,13 +226,13 @@ const LOOPBACK_AND_WILDCARD_HOSTS: readonly string[] = [
 
 function addOrigin(
   origins: Set<string>,
-  protocol: "http" | "https",
-  host: string,
-  port: number,
+  options: { protocol: "http" | "https"; host: string; port?: number },
 ): void {
+  const { protocol, host, port } = options;
   const formattedHost = host.includes(":") && !host.startsWith("[") ? `[${host}]` : host;
+  const portSuffix = port !== undefined ? `:${port}` : "";
   try {
-    origins.add(new URL(`${protocol}://${formattedHost}:${port}`).origin);
+    origins.add(new URL(`${protocol}://${formattedHost}${portSuffix}`).origin);
   } catch {
     // Ignore malformed hostnames from environment configuration.
   }
@@ -262,23 +262,21 @@ export function getAllowedEmulatorUIOrigins(): string[] {
   for (const spec of specs) {
     const { address, port } = spec;
     if (LOOPBACK_AND_WILDCARD_HOSTS.includes(address)) {
-      addOrigin(origins, "http", "localhost", port);
-      addOrigin(origins, "http", IPV4_LOOPBACK.address, port);
-      addOrigin(origins, "http", IPV6_LOOPBACK.address, port);
+      addOrigin(origins, { protocol: "http", host: "localhost", port });
+      addOrigin(origins, { protocol: "http", host: IPV4_LOOPBACK.address, port });
+      addOrigin(origins, { protocol: "http", host: IPV6_LOOPBACK.address, port });
     } else {
-      addOrigin(origins, "http", address, port);
+      addOrigin(origins, { protocol: "http", host: address, port });
     }
 
     if (process.env.WEB_HOST) {
-      addOrigin(origins, "https", `${port}-${process.env.WEB_HOST}`, 443);
+      addOrigin(origins, { protocol: "https", host: `${port}-${process.env.WEB_HOST}` });
     }
     if (process.env.CODESPACE_NAME && process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN) {
-      addOrigin(
-        origins,
-        "https",
-        `${process.env.CODESPACE_NAME}-${port}.${process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}`,
-        443,
-      );
+      addOrigin(origins, {
+        protocol: "https",
+        host: `${process.env.CODESPACE_NAME}-${port}.${process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}`,
+      });
     }
   }
 

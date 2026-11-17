@@ -51,6 +51,12 @@ describe("FunctionsEmulator /backends CORS and origin enforcement", () => {
     });
   }
 
+  beforeEach(() => {
+    delete process.env.WEB_HOST;
+    delete process.env.CODESPACE_NAME;
+    delete process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN;
+  });
+
   afterEach(async () => {
     restoreEnvVar("WEB_HOST", originalWebHost);
     restoreEnvVar("CODESPACE_NAME", originalCodespaceName);
@@ -117,7 +123,8 @@ describe("FunctionsEmulator /backends CORS and origin enforcement", () => {
       const preflightRes = await supertest(app)
         .options("/backends")
         .set("Origin", "https://evil.example.com")
-        .set("Access-Control-Request-Method", "GET");
+        .set("Access-Control-Request-Method", "GET")
+        .expect(403);
       expect(preflightRes.get("access-control-allow-origin")).to.be.undefined;
 
       const getRes = await supertest(app)
@@ -137,6 +144,13 @@ describe("FunctionsEmulator /backends CORS and origin enforcement", () => {
 
       emu = createTestFunctionsEmulator();
       const app = emu.createHubServer();
+
+      const preflightRes = await supertest(app)
+        .options("/backends")
+        .set("Origin", uiOrigin)
+        .set("Access-Control-Request-Method", "GET")
+        .expect(204);
+      expect(preflightRes.get("access-control-allow-origin")).to.equal(uiOrigin);
 
       const allowedRes = await supertest(app).get("/backends").set("Origin", uiOrigin).expect(200);
       const allowedBody = allowedRes.body as BackendsResponseBody;
