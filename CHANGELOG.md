@@ -1,4 +1,5 @@
 - Fixed emulator crashes from unhandled promise rejections in the Pub/Sub, Eventarc, and Storage rules emulators and in `functions:shell`.
+- Fixed 2nd gen functions staying uncallable after their first deploy failed, because later deploys never set the invoker. (#8984)
 - Updated Pub/Sub emulator to version 0.8.38.
 - Fixed `crashlytics:heapdumps` commands accepting `--app` IDs that do not belong to the target Firebase project.
 - Fixed `crashlytics:heapdumps:enable` bypassing the confirmation prompt without `--force` in non-interactive environments.
