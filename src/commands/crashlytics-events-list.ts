@@ -61,7 +61,10 @@ Custom Key Filtering (--filter):
     const appId = requireAppId(options);
     const filter = parseEventFilters(options, appId);
     if (!filter?.issueId) {
-      throw new FirebaseError("Must specify '--issue-id <id>' to list events.", { exit: 1 });
+      throw new FirebaseError(
+        `Must specify '--issue-id <id>' to list events. Run 'firebase crashlytics:reports:get --app ${appId} topIssues' to find issue IDs.`,
+        { exit: 1 },
+      );
     }
 
     const limit = parsePositiveIntOption(options.limit, "--limit", {
