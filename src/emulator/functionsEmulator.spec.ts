@@ -1,5 +1,4 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
 import * as supertest from "supertest";
 
 import {
@@ -53,7 +52,6 @@ describe("FunctionsEmulator /backends CORS and origin enforcement", () => {
   }
 
   afterEach(async () => {
-    sinon.restore();
     restoreEnvVar("WEB_HOST", originalWebHost);
     restoreEnvVar("CODESPACE_NAME", originalCodespaceName);
     restoreEnvVar("GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN", originalCodespaceDomain);

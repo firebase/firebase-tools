@@ -486,14 +486,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       res.json({ status: "multicast_acknowledged" });
     };
 
-    const listBackendsCors = cors({
-      origin: (origin, callback) => {
-        const allowedOrigins = getAllowedEmulatorUIOrigins();
-        callback(null, origin ? allowedOrigins.includes(origin) : false);
-      },
-    });
-
-    const listBackendsHandler: express.RequestHandler = (req, res) => {
+    const rejectDisallowedBackendsOrigin: express.RequestHandler = (req, res, next) => {
       const origin = req.headers.origin;
       if (origin && !getAllowedEmulatorUIOrigins().includes(origin)) {
         res.status(403).json({
@@ -501,14 +494,30 @@ export class FunctionsEmulator implements EmulatorInstance {
         });
         return;
       }
+      next();
+    };
+
+    const listBackendsCors = cors({
+      origin: (origin, callback) => {
+        // Non-browser callers omit Origin; allowed Origins already passed rejectDisallowedBackendsOrigin.
+        callback(null, Boolean(origin));
+      },
+    });
+
+    const listBackendsHandler: express.RequestHandler = (req, res) => {
       res.json({ backends: this.getBackendInfo() });
     };
 
     // The ordering here is important. The longer routes (background)
     // need to be registered first otherwise the HTTP functions consume
     // all events.
-    hub.options(listBackendsRoute, listBackendsCors);
-    hub.get(listBackendsRoute, listBackendsCors, listBackendsHandler); // This route needs CORS so the Emulator UI can call it.
+    hub.options(listBackendsRoute, rejectDisallowedBackendsOrigin, listBackendsCors);
+    hub.get(
+      listBackendsRoute,
+      rejectDisallowedBackendsOrigin,
+      listBackendsCors,
+      listBackendsHandler,
+    ); // This route needs CORS so the Emulator UI can call it.
     hub.post(backgroundFunctionRoute, dataMiddleware, httpsHandler);
     hub.post(multicastFunctionRoute, dataMiddleware, multicastHandler);
     hub.all(httpsFunctionRoutes, dataMiddleware, httpsHandler);
