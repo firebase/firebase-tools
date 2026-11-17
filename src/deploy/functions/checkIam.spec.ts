@@ -728,6 +728,105 @@ describe("checkIam", () => {
         assertRunAndEventarcMembers(policy, [DEFAULT_COMPUTE_SA]);
         assertRunAndEventarcMembersExclude(policy, CUSTOM_SA);
       });
+
+      const nonEventarcFns: Array<[string, backend.Endpoint]> = [
+        [
+          "v1 event",
+          {
+            ...storageFn("fn"),
+            platform: "gcfv1",
+            eventTrigger: {
+              eventType: "google.storage.object.finalize",
+              eventFilters: { resource: "projects/_/buckets/my-bucket" },
+              retry: false,
+            },
+          },
+        ],
+        [
+          "v1 blocking",
+          {
+            id: "fn",
+            entryPoint: "fn",
+            platform: "gcfv1",
+            blockingTrigger: { eventType: "providers/cloud.auth/eventTypes/user.beforeCreate" },
+            ...SPEC,
+          },
+        ],
+        [
+          "v2 blocking",
+          {
+            id: "fn",
+            entryPoint: "fn",
+            platform: "gcfv2",
+            blockingTrigger: { eventType: "providers/cloud.auth/eventTypes/user.beforeCreate" },
+            ...SPEC,
+          },
+        ],
+        [
+          "v2 scheduled",
+          {
+            id: "fn",
+            entryPoint: "fn",
+            platform: "gcfv2",
+            scheduleTrigger: { schedule: "every 1 minutes" },
+            ...SPEC,
+          },
+        ],
+        ["v2 HTTPS", { id: "fn", entryPoint: "fn", platform: "gcfv2", httpsTrigger: {}, ...SPEC }],
+      ];
+      for (const [kind, fn] of nonEventarcFns) {
+        it(`should not grant roles to the default service account for a ${kind} function without a service account`, async () => {
+          storageStub.resolves(STORAGE_RES);
+
+          await checkIam.ensureServiceAgentRoles(
+            projectId,
+            projectNumber,
+            backend.of(storageFn("v2fn", CUSTOM_SA), fn),
+            backend.empty(),
+          );
+
+          expect(gceStub).to.not.have.been.called;
+          const policy = setIamStub.firstCall.args[1];
+          assertRunAndEventarcMembers(policy, [CUSTOM_SA]);
+          assertRunAndEventarcMembersExclude(policy, DEFAULT_COMPUTE_SA);
+        });
+      }
+
+      it("should not grant roles to the default service account when only an AI Logic function is deployed", async () => {
+        const aiLogicFn: backend.Endpoint = {
+          id: "fn",
+          entryPoint: "fn",
+          platform: "gcfv2",
+          blockingTrigger: { eventType: "google.firebase.ailogic.v1.beforeGenerate" },
+          ...SPEC,
+        };
+
+        await checkIam.ensureServiceAgentRoles(
+          projectId,
+          projectNumber,
+          backend.of(aiLogicFn),
+          backend.empty(),
+        );
+
+        expect(gceStub).to.not.have.been.called;
+        expect(setIamStub).to.have.been.calledOnce;
+        assertRunAndEventarcMembersExclude(setIamStub.firstCall.args[1], DEFAULT_COMPUTE_SA);
+      });
+
+      it("should grant roles to the service account of a Cloud Run event function", async () => {
+        storageStub.resolves(STORAGE_RES);
+
+        await checkIam.ensureServiceAgentRoles(
+          projectId,
+          projectNumber,
+          backend.of({ ...storageFn("fn", CUSTOM_SA), platform: "run" }),
+          backend.empty(),
+        );
+
+        const policy = setIamStub.firstCall.args[1];
+        assertRunAndEventarcMembers(policy, [CUSTOM_SA]);
+        assertRunAndEventarcMembersExclude(policy, DEFAULT_COMPUTE_SA);
+      });
     });
   });
 

@@ -202,8 +202,8 @@ export function obtainComputeServiceAgentBindings(serviceAccountEmails: string[]
 }
 
 /**
- * Finds the endpoints whose runtime service accounts need the Eventarc roles: v2 event functions,
- * plus any function on the default compute account.
+ * Finds the endpoints whose runtime service accounts need the Eventarc roles. Only event
+ * functions on gcfv2 or Cloud Run are delivered through Eventarc.
  */
 function eventarcRuntimeEndpoints(want: backend.Backend): backend.Endpoint[] {
   return backend.allEndpoints(want).filter((endpoint) => {
@@ -212,8 +212,8 @@ function eventarcRuntimeEndpoints(want: backend.Backend): backend.Endpoint[] {
       return false;
     }
     return (
-      !endpoint.serviceAccount ||
-      (endpoint.platform === "gcfv2" && backend.isEventTriggered(endpoint))
+      (endpoint.platform === "gcfv2" || endpoint.platform === "run") &&
+      backend.isEventTriggered(endpoint)
     );
   });
 }
