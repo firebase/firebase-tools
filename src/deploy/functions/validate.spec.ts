@@ -767,19 +767,19 @@ describe("validate", () => {
       secretVersionStub.restore();
     });
 
-    it("passes validation with empty backend", () => {
-      expect(validate.secretsAreValid(project, backend.empty())).to.not.be.rejected;
+    it("passes validation with empty backend", async () => {
+      await expect(validate.secretsAreValid(project, backend.empty())).to.not.be.rejected;
     });
 
-    it("passes validation with no secret env vars", () => {
+    it("passes validation with no secret env vars", async () => {
       const b = backend.of({
         ...ENDPOINT,
         platform: "gcfv2",
       });
-      expect(validate.secretsAreValid(project, b)).to.not.be.rejected;
+      await expect(validate.secretsAreValid(project, b)).to.not.be.rejected;
     });
 
-    it("fails validation given non-existent secret version", () => {
+    it("fails validation given non-existent secret version", async () => {
       secretVersionStub.rejects({ reason: "Secret version does not exist" });
 
       const b = backend.of({
@@ -793,13 +793,13 @@ describe("validate", () => {
           },
         ],
       });
-      expect(validate.secretsAreValid(project, b)).to.be.rejectedWith(
+      await expect(validate.secretsAreValid(project, b)).to.be.rejectedWith(
         FirebaseError,
         /Failed to validate secret version/,
       );
     });
 
-    it("fails validation given non-existent secret version", () => {
+    it("fails validation given non-existent secret version", async () => {
       secretVersionStub.rejects({ reason: "Secret version does not exist" });
 
       const b = backend.of({
@@ -813,13 +813,13 @@ describe("validate", () => {
           },
         ],
       });
-      expect(validate.secretsAreValid(project, b)).to.be.rejectedWith(
+      await expect(validate.secretsAreValid(project, b)).to.be.rejectedWith(
         FirebaseError,
         /Failed to validate secret versions/,
       );
     });
 
-    it("fails validation given disabled secret version", () => {
+    it("fails validation given disabled secret version", async () => {
       secretVersionStub.resolves({
         secret,
         versionId: "1",
@@ -837,7 +837,7 @@ describe("validate", () => {
           },
         ],
       });
-      expect(validate.secretsAreValid(project, b)).to.be.rejectedWith(
+      await expect(validate.secretsAreValid(project, b)).to.be.rejectedWith(
         FirebaseError,
         /Failed to validate secret versions/,
       );

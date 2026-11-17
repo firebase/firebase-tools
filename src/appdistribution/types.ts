@@ -85,10 +85,6 @@ export interface Tester {
   lastActivityTime: Date;
 }
 
-export interface CreateReleaseTestRequest {
-  releaseTest: ReleaseTest;
-}
-
 export interface TestDevice {
   model: string;
   version: string;

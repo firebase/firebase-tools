@@ -2,17 +2,12 @@ import { resourceManagerOrigin, iamOrigin } from "../api";
 import { logger } from "../logger";
 import { Client } from "../apiv2";
 import * as utils from "../utils";
-import { FirebaseError, getErrStatus } from "../error";
+import { FirebaseError, getErrMsg, getErrStatus } from "../error";
 // Note: build configuration does not support synthetic default imports for JSON files at runtime.
 import * as knownRoles from "./knownRoles.json";
 import * as crypto from "crypto";
 
 const apiClient = new Client({ urlPrefix: iamOrigin(), apiVersion: "v1" });
-
-/** Returns the default cloud build service agent */
-export function getDefaultCloudBuildServiceAgent(projectNumber: string): string {
-  return `${projectNumber}@cloudbuild.gserviceaccount.com`;
-}
 
 // IAM Policy
 // https://cloud.google.com/resource-manager/reference/rest/Shared.Types/Policy
@@ -233,11 +228,31 @@ export async function testIamPermissions(
   );
 }
 
+/**
+ * Determines whether an IAM policy modification error is transient and safe to retry
+ * (HTTP 409 concurrent policy etag conflict, or HTTP 400 service account replication lag).
+ */
+export function isRetryableIamError(err: unknown): boolean {
+  const status = getErrStatus(err);
+  if (status === 409) {
+    return true;
+  }
+  const msg = getErrMsg(err).toLowerCase();
+  const hasSa = msg.includes("service account") || msg.includes("serviceaccount");
+  if (status === 400 && hasSa && msg.includes("does not exist")) {
+    return true;
+  }
+  return false;
+}
+
 /** Helper to merge all required bindings into the IAM policy, returns boolean if the policy has been updated */
 export function mergeBindings(policy: Policy, requiredBindings: Binding[]): boolean {
   let updated = false;
+  policy.bindings = policy.bindings || [];
   for (const requiredBinding of requiredBindings) {
-    const match = policy.bindings.find((b) => b.role === requiredBinding.role);
+    const match = policy.bindings.find(
+      (b) => b.role === requiredBinding.role && !b.condition && !requiredBinding.condition,
+    );
     if (!match) {
       updated = true;
       policy.bindings.push(requiredBinding);

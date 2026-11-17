@@ -1,6 +1,8 @@
 import { expect } from "chai";
 import { expectStatusCode, registerTenant, registerUser } from "./testing/helpers";
 import { describeAuthEmulator, PROJECT_ID } from "./testing/setup";
+import { createApp } from "./server";
+import { SingleProjectMode } from "./index";
 
 describeAuthEmulator("REST API mapping", ({ authApi }) => {
   it("should respond to status checks", async () => {
@@ -253,5 +255,16 @@ describeAuthEmulator("authentication", ({ authApi }) => {
         expectStatusCode(400, res);
         expect(res.body.error).to.have.property("message").equals("TENANT_ID_MISMATCH");
       });
+  });
+});
+
+describe("Auth Emulator OpenAPI schema validation", function (this: Mocha.Suite) {
+  this.timeout(60000);
+
+  it("should compile all OpenAPI validation schemas eagerly without error", async () => {
+    const app = await createApp("test-project", SingleProjectMode.NO_WARNING, undefined, {
+      lazyCompileValidationSchemas: false,
+    });
+    expect(app).to.be.a("function");
   });
 });

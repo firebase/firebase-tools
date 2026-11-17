@@ -16,6 +16,8 @@ export interface EndpointUpdate {
   endpoint: backend.Endpoint;
   deleteAndRecreate?: backend.Endpoint;
   unsafe?: boolean;
+  // The existing function is left over from a create that failed before IAM was written.
+  failedCreate?: boolean;
 }
 
 export interface Changeset {
@@ -153,6 +155,10 @@ export function calculateUpdate(want: backend.Endpoint, have: backend.Endpoint):
     upgradedScheduleFromV1ToV2(want, have);
   if (needsDelete) {
     update.deleteAndRecreate = have;
+  } else if (have.platform === "gcfv2" && have.state === "FAILED" && !have.runServiceId) {
+    // A failed GCFv2 update stays ACTIVE with its service, so FAILED with no service means
+    // the function was never created successfully.
+    update.failedCreate = true;
   }
   return update;
 }

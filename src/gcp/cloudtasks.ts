@@ -34,10 +34,6 @@ export interface RetryConfig {
   maxDoublings?: number | null;
 }
 
-export interface StackdriverLoggingConfig {
-  samplingRatio: number;
-}
-
 export type State = "RUNNING" | "PAUSED" | "DISABLED";
 
 export interface Queue {
@@ -154,11 +150,6 @@ export async function disableQueue(name: string): Promise<void> {
 /** Purges all messages in a queue with a given name. */
 export async function purgeQueue(name: string): Promise<void> {
   await client.post(`${name}:purge`);
-}
-
-/** Deletes a queue with a given name. */
-export async function deleteQueue(name: string): Promise<void> {
-  await client.delete(name);
 }
 
 export interface Task {

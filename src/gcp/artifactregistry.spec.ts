@@ -43,34 +43,6 @@ describe("artifactRegistry", () => {
     });
   });
 
-  describe("deletePackage", () => {
-    const PKG_NAME = `${REPO_NAME}/packages/test-pkg`;
-
-    it("should resolve with an operation object on success", async () => {
-      const operation: artifactRegistry.Operation = {
-        name: `projects/${PROJECT_ID}/locations/${REGION}/operations/test-op`,
-        done: true,
-      };
-      nock(artifactRegistryDomain()).delete(`/${API_VERSION}/${PKG_NAME}`).reply(200, operation);
-
-      const result = await artifactRegistry.deletePackage(PKG_NAME);
-
-      expect(result).to.deep.equal(operation);
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("should reject if the API call fails", async () => {
-      nock(artifactRegistryDomain())
-        .delete(`/${API_VERSION}/${PKG_NAME}`)
-        .reply(403, { error: { message: "Permission Denied" } });
-
-      await expect(artifactRegistry.deletePackage(PKG_NAME)).to.be.rejectedWith(
-        "Permission Denied",
-      );
-      expect(nock.isDone()).to.be.true;
-    });
-  });
-
   describe("updateRepository", () => {
     it("should send a patch request with update mask if one is present", async () => {
       const repo: artifactRegistry.RepositoryInput = {

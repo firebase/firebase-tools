@@ -33,6 +33,7 @@ export function load(client: CLIClient): CLIClient {
   client.appcheck.debugtokens = {};
   client.appcheck.debugtokens.create = loadCommand("appcheck-debugtokens-create");
   client.appcheck.debugtokens.list = loadCommand("appcheck-debugtokens-list");
+  client.appcheck.debugtokens.prune = loadCommand("appcheck-debugtokens-prune");
   client.appcheck.debugtokens.delete = loadCommand("appcheck-debugtokens-delete");
   // Enforcement and attestation providers are gated until the surface is API
   // council approved, since the shape could still change. The debug token
@@ -82,8 +83,7 @@ export function load(client: CLIClient): CLIClient {
   client.auth.export = loadCommand("auth-export");
   client.auth.import = loadCommand("auth-import");
   client.crashlytics = {};
-  client.crashlytics.onboard = {};
-  client.crashlytics.onboard.web = loadCommand("crashlytics-onboard-web");
+  client.crashlytics.setup = loadCommand("crashlytics-setup");
   client.crashlytics.symbols = {};
   client.crashlytics.symbols.upload = loadCommand("crashlytics-symbols-upload");
   client.crashlytics.mappingfile = {};
@@ -306,6 +306,8 @@ export function load(client: CLIClient): CLIClient {
   if (experiments.isEnabled("directcloudrun")) {
     client.run = {};
     client.run.services = {};
+    client.run.services.get = loadCommand("run-services-get");
+    client.run.services.list = loadCommand("run-services-list");
     client.run.services.update = loadCommand("run-services-update");
   }
   client.serve = loadCommand("serve");

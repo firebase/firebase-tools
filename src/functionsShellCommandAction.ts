@@ -143,7 +143,7 @@ export const actionFunction = async (options: Options) => {
 
       return new Promise((resolve) => {
         replServer.on("exit", () => {
-          return serveFunctions.stop().then(resolve).catch(resolve);
+          serveFunctions.stop().then(resolve).catch(resolve);
         });
       });
     });

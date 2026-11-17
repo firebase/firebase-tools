@@ -17,7 +17,7 @@ import { getFirebaseConfig } from "../functionsConfig";
 import { getProjectAdminSdkConfigOrCached } from "../emulator/adminSdkConfig";
 import { FirebaseError } from "../error";
 import { diagnose } from "./diagnose";
-import { ensure, check } from "../ensureApiEnabled";
+import { ensure } from "../ensureApiEnabled";
 import { deleteObject, uploadObject } from "../gcp/storage";
 import { getProjectId } from "../projectUtils";
 import { createSource } from "./extensionsApi";
@@ -71,8 +71,6 @@ export enum SourceOrigin {
 
 export const logPrefix = "extensions";
 const VALID_LICENSES = ["apache-2.0"];
-// Extension archive URLs must be HTTPS.
-export const URL_REGEX = /^https:/;
 export const EXTENSIONS_BUCKET_NAME = envOverride(
   "FIREBASE_EXTENSIONS_UPLOAD_BUCKET",
   "firebase-ext-eap-uploads",
@@ -89,7 +87,7 @@ export const resourceTypeToNiceName: Record<string, string> = {
   "firebaseextensions.v1beta.function": "Cloud Function",
 };
 export type ReleaseStage = "alpha" | "beta" | "rc" | "stable";
-const repoRegex = new RegExp(`^https:\/\/github\.com\/[^\/]+\/[^\/]+$`);
+const repoRegex = new RegExp(`^https://github.com/[^/]+/[^/]+$`);
 const stageOptions = ["rc", "alpha", "beta", "stable"];
 
 /**
@@ -205,7 +203,7 @@ export async function substituteSecretParams(
 /**
  * Sets params equal to defaults given in extension.yaml if not already set in .env file.
  * @param paramVars JSON object of params to values parsed from .env file
- * @param paramSpec information on params parsed from extension.yaml
+ * @param paramSpecs information on params parsed from extension.yaml
  * @return JSON object of params
  */
 export function populateDefaultParams(
@@ -364,7 +362,7 @@ export function validateSpec(spec: any) {
 export async function promptForValidInstanceId(instanceId: string): Promise<string> {
   let instanceIdIsValid = false;
   let newInstanceId = "";
-  const instanceIdRegex = /^[a-z][a-z\d\-]*[a-z\d]$/;
+  const instanceIdRegex = /^[a-z][a-z\d-]*[a-z\d]$/;
   while (!instanceIdIsValid) {
     newInstanceId = await input({
       default: instanceId,
@@ -417,6 +415,7 @@ export async function promptForExtensionRoot(defaultRoot: string): Promise<strin
 
 /**
  * Prompts for the extension version's release stage.
+ * @param args options for prompting the release stage
  * @param args.versionByStage map from stage to the next version to upload
  * @param args.autoReview whether the stable version will be automatically sent for review on upload
  * @param args.allowStable whether to allow stable versions
@@ -474,14 +473,6 @@ async function promptForReleaseStage(args: {
   return stage;
 }
 
-export async function checkExtensionsApiEnabled(options: any): Promise<boolean> {
-  const projectId = getProjectId(options);
-  if (!projectId) {
-    return false;
-  }
-  return await check(projectId, extensionsOrigin(), "extensions", options.markdown);
-}
-
 export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
   const projectId = getProjectId(options);
   if (!projectId) {
@@ -515,7 +506,7 @@ async function archiveAndUploadSource(extPath: string, bucketName: string): Prom
 /**
  * Gets a list of the next version to upload by release stage.
  * @param extensionRef the ref of the extension
- * @param version the new version of the extension
+ * @param newVersion the new version of the extension
  */
 export async function getNextVersionByStage(
   extensionRef: string,
@@ -554,7 +545,7 @@ export async function getNextVersionByStage(
 /**
  * Validates the extension spec.
  * @param rootDirectory the directory with the extension source
- * @param extensionRef the ref of the extension
+ * @param extensionId the ID of the extension
  */
 async function validateExtensionSpec(
   rootDirectory: string,
@@ -740,6 +731,7 @@ async function fetchExtensionSource(
 
 /**
  * Uploads an extension version from a GitHub repo.
+ * @param args options for uploading the extension version
  * @param args.publisherId the ID of the Publisher this Extension will be published under
  * @param args.extensionId the ID of the Extension to be published
  * @param args.repoUri the URI of the repo where this Extension's source exists
@@ -890,6 +882,7 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
 
 /**
  * Uploads an extension version from local source.
+ * @param args options for uploading the extension version
  * @param args.publisherId the ID of the Publisher this Extension will be published under
  * @param args.extensionId the ID of the Extension to be published
  * @param args.rootDirectory the root directory that contains this Extension's source
@@ -1067,6 +1060,7 @@ export function getPublisherProjectFromName(publisherName: string): number {
 
 /**
  * Displays the release notes and confirmation message for the extension to be uploaded.
+ * @param args options for displaying release notes
  * @param args.extensionRef the ref of the extension
  * @param args.newVersion the new version of the extension
  * @param args.autoReview the autoreview
@@ -1096,32 +1090,6 @@ export function displayReleaseNotes(args: {
     releaseNotesMessage +
     `Once an extension version is uploaded, it becomes installable by other users and cannot be changed. If you wish to make changes after uploading, you will need to upload a new version.\n`;
   logger.info(message);
-}
-
-// TODO(inlined): Fix prompt library so that a choices array doesn't assume all values
-// must be the same type as the literal of the first
-type repeateInstanceResponse = "updateExisting" | "installNew" | "cancel";
-
-/**
- * Confirm if the user wants to install another instance of an extension when they already have one.
- * @param projectName The name of the project in use.
- * @param extensionName The name of the extension being installed.
- */
-export async function promptForRepeatInstance(
-  projectName: string,
-  extensionName: string,
-): Promise<repeateInstanceResponse> {
-  const message = `An extension with the ID '${clc.bold(
-    extensionName,
-  )}' already exists in the project '${clc.bold(projectName)}'. What would you like to do?`;
-  return await select<repeateInstanceResponse>({
-    message,
-    choices: [
-      { name: "Update or reconfigure the existing instance", value: "updateExisting" },
-      { name: "Install a new instance with a different ID", value: "installNew" },
-      { name: "Cancel extension installation", value: "cancel" },
-    ],
-  });
 }
 
 export function isUrlPath(extInstallPath: string): boolean {
