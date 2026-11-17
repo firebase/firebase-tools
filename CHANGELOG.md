@@ -1,7 +1,14 @@
 - Added support for the Node.js 26 runtime (Preview) for Cloud Functions. (#11393)
-- Improved Auth emulator startup time by compiling validation schemas lazily. (#11176)
-- Updated the Firebase SQL Connect local toolkit to v3.4.26, which includes the following changes:
-  - Internal improvements and bug fixes.
-- Fixed the emulators startup message showing 127.0.0.1 for the Emulator UI and Hub when they listen on 0.0.0.0; it now also prints the address they listen on. (#6222)
-- Fixed a race condition across a second boundary during `accounts:signUp` in the Auth emulator where `validSince` could exceed `auth_time`. (#11413)
-- Added local machine config persistence to `appcheck:debugtokens:create`, `--local` support to `appcheck:debugtokens:list`, and `appcheck:debugtokens:prune` to clean up stale local debug tokens.
+- Fixed `firebase deploy --dry-run` creating a missing Firestore database. A dry run now reports which database a deploy would create, and where. (#11491)
+- Added an optional `filterExpression` parameter to the Crashlytics MCP `get_report` tool to filter reports by custom keys.
+- Fixed 2nd gen functions staying uncallable after their first deploy failed, because later deploys never set the invoker. (#8984)
+- Updated Pub/Sub emulator to version 0.8.38.
+- Fixed `crashlytics:heapdumps` commands accepting `--app` IDs that do not belong to the target Firebase project.
+- Fixed `crashlytics:heapdumps:enable` bypassing the confirmation prompt without `--force` in non-interactive environments.
+- Warned when `crashlytics:heapdumps:enable` reuses an existing Cloud Storage bucket whose location differs from `--location` instead of silently ignoring the requested location.
+- Fixed `crashlytics:heapdumps:status --json` omitting `heapDumpCollectionEnabled` when disabled, removed duplicated default location text in `crashlytics:heapdumps:enable --help`, and surfaced Cloud Storage API error details when bucket creation fails.
+- Fixed `crashlytics:heapdumps:enable` printing an invalid Firebase Console Crashlytics URL by linking to `/crashlytics/app/android:<packageName>/issues` instead of the GMP App ID.
+- Scoped Crashlytics service agent `roles/storage.objectCreator` access to the dedicated heap dump Cloud Storage bucket and enabled Uniform Bucket-Level Access and enforced Public Access Prevention in `crashlytics:heapdumps:enable`.
+- Updated the Firebase SQL Connect local toolkit to v3.4.27, which includes the following changes:
+  - Fixed a bug where singular lookup queries using server value key expressions (such as `id_expr`) did not trigger realtime subscription updates or client-side cache tracking when returning `null`.
+  - Declare and export enums selected only inside nested relations in generated JS and Admin Node SDKs.

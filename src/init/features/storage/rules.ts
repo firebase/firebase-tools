@@ -20,7 +20,7 @@ export async function getRulesFromConsole(projectId: string): Promise<string | n
   }
 
   if (rules.length > 1) {
-    return utils.reject("Ruleset has too many files: " + rules.length, { exit: 1 });
+    return utils.reject(`Ruleset has too many files: ${rules.length}`, { exit: 1 });
   }
 
   return rules[0].content;

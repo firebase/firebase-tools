@@ -658,6 +658,6 @@ export class StorageLayer {
 /** Returns file separator used in given path, either '\\' or '/'. */
 function getPathSep(decodedPath: string): string {
   // Checks for the first matching file separator
-  const firstSepIndex = decodedPath.search(/[\/|\\\\]/g);
+  const firstSepIndex = decodedPath.search(/[/|\\\\]/g);
   return decodedPath[firstSepIndex];
 }

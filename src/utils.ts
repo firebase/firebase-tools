@@ -392,12 +392,14 @@ export async function promiseWhile<T>(
         if (check(res)) {
           return resolve(res);
         }
-        setTimeout(run, interval);
+        // run catches all errors and routes them to promiseReject
+        setTimeout(() => void run(), interval);
       } catch (err: unknown) {
         return promiseReject(err);
       }
     };
-    run();
+    // run catches all errors and routes them to promiseReject
+    void run();
   });
 }
 
@@ -1131,7 +1133,7 @@ export function formatFilesize(bytes: number, decimals = 2): string {
   const dm = decimals < 0 ? 0 : decimals;
   const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
   const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
 }
 
 export type Limit = <T>(fn: () => Promise<T>) => Promise<T>;

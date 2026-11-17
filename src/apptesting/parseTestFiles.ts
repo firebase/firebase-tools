@@ -153,7 +153,7 @@ function toTestCaseInvocation(
     testCase: {
       id: testDef.id,
       prerequisiteTestCaseId: testDef.prerequisiteTestCaseId,
-      startUri: targetUri + route,
+      startUri: `${String(targetUri)}${String(route)}`,
       displayName: testDef.displayName,
       steps: steps.map((step: YamlStep) => fromYamlStep(step)),
     },

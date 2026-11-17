@@ -161,7 +161,7 @@ export function resolveExpression(
   } else if (wantType === "boolean" && isComparisonExpression(expr)) {
     return resolveComparison(expr, params);
   } else {
-    throw new ExprParseError("CEL expression '" + expr + "' is of an unsupported form");
+    throw new ExprParseError(`CEL expression '${String(expr)}' is of an unsupported form`);
   }
 }
 
@@ -176,7 +176,7 @@ function preprocessLists(
   params: Record<string, ParamValue>,
 ): CelExpression {
   let rv = expr;
-  const listMatcher = /\[[^\[\]]*\]/g;
+  const listMatcher = /\[[^[\]]*\]/g;
   let match: RegExpMatchArray | null;
   while ((match = listMatcher.exec(expr)) != null) {
     const list = match[0];

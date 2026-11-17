@@ -59,7 +59,6 @@ export class Command {
   };
   private befores: BeforeFunction[] = [];
   private helpText = "";
-  private client?: CLIClient;
   private positionalArgs: { name: string; required: boolean }[] = [];
 
   /**
@@ -159,7 +158,6 @@ export class Command {
    * @param client the client object (from src/index.js).
    */
   register(client: CLIClient): void {
-    this.client = client;
     const program = client.cli;
     const cmd = program.command(this.cmd);
     if (this.descriptionText) {
@@ -516,7 +514,7 @@ export function validateProjectId(project: string): void {
   if (PROJECT_ID_REGEX.test(project)) {
     return;
   }
-  trackGA4("error", {
+  void trackGA4("error", {
     error_type: "Error (User)",
     details: "Invalid project ID",
   });

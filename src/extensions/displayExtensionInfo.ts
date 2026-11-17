@@ -24,6 +24,7 @@ const TASKS_API = "cloudtasks.googleapis.com";
 
 /**
  * Displays info about an extension version, whether it is uploaded to the registry or a local spec.
+ * @param args options for displaying extension version info
  * @param args.spec the extension spec
  * @param args.extensionVersion (Optional) the extension version
  * @param args.latestApprovedVersion (Optional) The latest approved version
