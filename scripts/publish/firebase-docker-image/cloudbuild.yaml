@@ -18,12 +18,8 @@ steps:
         set -e
         VERSION_NUM="$$(cat /workspace/version_number.txt)"
         STAGING_REPO="us-docker.pkg.dev/${_TARGET_PROJECT_ID}/staging/firebase"
-        if [ "${_REPO_NAME}" = "staging" ]; then
-          RANDOM_HASH="$$(LC_ALL=C tr -dc 'a-f0-9' < /dev/urandom | head -c 16)"
-          EXTRA_TAG="no-new-use-public-image-$${RANDOM_HASH}"
-        else
-          EXTRA_TAG="public-image-$${VERSION_NUM}"
-        fi
+        RANDOM_HASH="$$(LC_ALL=C tr -dc 'a-f0-9' < /dev/urandom | head -c 16)"
+        EXTRA_TAG="no-new-use-public-image-$${RANDOM_HASH}"
         echo "Building Docker image for version $${VERSION_NUM}..."
         docker build \
           -t "$${STAGING_REPO}:$${VERSION_NUM}" \
@@ -43,5 +39,4 @@ options:
   requestedVerifyOption: VERIFIED
 
 substitutions:
-  _REPO_NAME: us
   _TARGET_PROJECT_ID: firebase-cli

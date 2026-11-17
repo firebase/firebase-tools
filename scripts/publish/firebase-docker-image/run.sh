@@ -45,7 +45,7 @@ gcloud --project $BUILD_PROJECT \
   builds \
   submit \
   --config=cloudbuild.yaml \
-  --substitutions=_REPO_NAME=$REPO_NAME,_TARGET_PROJECT_ID=$TARGET_PROJECT_ID \
+  --substitutions=_TARGET_PROJECT_ID=$TARGET_PROJECT_ID \
   .
 
 if [[ "$REPO_NAME" != "staging" ]]; then
