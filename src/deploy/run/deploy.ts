@@ -18,15 +18,9 @@ import { nonSecretValues, secretNames, toLocalBuildEnv } from "./buildEnv";
 import { FIREBASE_APP_ANNOTATION, mainContainer } from "./util";
 
 const DEPLOY_MESSAGE_ANNOTATION = "firebase.google.com/deploy-message";
-/**
- * How long to wait for a rollout. A remote build's rollout includes its build: Cloud Run can queue
- * the build for 6 minutes and run it for 30, then take 4 to start the revision.
- */
+/** Remote builds run inside the rollout operation (up to 6m queue + 30m build + 4m startup). */
 const ROLLOUT_TIMEOUT_MS = 45 * 60 * 1000;
-/**
- * The launch stage sent with every deploy. Cloud Run's build API is in alpha, and Cloud Run rejects
- * it at a lower stage. Services that don't use the build API, like local builds, still show as GA.
- */
+/** Required by Cloud Run's build API while it is in alpha. */
 const LAUNCH_STAGE = "ALPHA";
 
 /**
@@ -56,7 +50,7 @@ export async function deploy(context: Context, options: Options, payload: Payloa
   }
 }
 
-/** Uploads the service's source, which Cloud Run builds into an image and rolls out. */
+/** Uploads the service's source and deploys it using Cloud Run's build API. */
 async function deployRemoteBuild(
   context: Context,
   options: Options,
@@ -73,11 +67,16 @@ async function deployRemoteBuild(
     options.config.projectDir,
   );
   const source = await upload(projectId, options, svc.config, archive);
-  // Cloud Run pushes the image it builds to this repository, but doesn't create it.
+  // Cloud Run pushes the built image to this repository, which must already exist.
   await artifactregistry.ensureDockerRepository(projectId, region, "cloud-run-source-deploy");
   const imageRepository = `${region}-docker.pkg.dev/${projectId}/cloud-run-source-deploy/${serviceId}`;
-  const message = options.message as string | undefined;
-  const template = remoteBuildTemplate(svc, source, imageRepository, appFolder, message);
+  const buildConfig = remoteBuildConfig(svc, imageRepository, appFolder);
+  const template = remoteBuildTemplate(
+    svc,
+    source,
+    buildConfig,
+    options.message as string | undefined,
+  );
   logLabeledBullet("run", `Building and deploying service ${serviceId} in ${region}...`);
   svc.deployed = await rollOut(projectId, svc, template);
 }
@@ -182,16 +181,10 @@ async function sourceBucket(projectId: string, options: Options, region: string)
 }
 
 /**
- * Returns the new revision's template without `image`, `sourceCode` or `buildConfig` on its main
- * container. remoteBuildTemplate and localBuildTemplate add those.
- *
- * A new service gets a container named after the service. An existing service gets a copy of its
- * live revision's template, so that its other settings carry over, with these changes:
- * - `revision` is removed, so that Cloud Run names the new revision.
- * - The main container's `image`, `sourceCode` and `buildConfig` are removed.
- * - The main container's `command` is removed if a local build set it.
- * - The base image, FIREBASE_CONFIG and the deploy message are set for this deploy.
- * Exported for testing.
+ * Builds the base RevisionTemplate shared by remoteBuildTemplate and localBuildTemplate: preserves
+ * an existing service's settings while clearing `revision` and the main container's `image`,
+ * `sourceCode`, `buildConfig`, and `command`, and updating `baseImageUri`, `FIREBASE_CONFIG`, and
+ * the deploy message. Exported for testing.
  */
 export function revisionTemplate(svc: ServiceDeploy, message?: string): runv2.RevisionTemplate {
   const { serviceId, region } = svc.config;
@@ -204,16 +197,13 @@ export function revisionTemplate(svc: ServiceDeploy, message?: string): runv2.Re
   if (!container) {
     throw new FirebaseError(`Service ${serviceId} in ${region} has no containers.`);
   }
-  if (container.sourceCode && !container.buildConfig) {
-    // Source without a build config means the live revision ran a local build. Its command is
-    // that build's start command (see localBuildTemplate), so it mustn't carry over to an image
-    // that Cloud Run builds. A command on any other service is the user's, and stays.
-    delete container.command;
-  }
-  // remoteBuildTemplate and localBuildTemplate set these for the new build.
+  // Clear how the previous revision built or started: Cloud Run rejects `image` alongside
+  // `buildConfig`, and a prior `command` (e.g. from a local build) would override the new image's
+  // entrypoint.
   delete container.image;
   delete container.sourceCode;
   delete container.buildConfig;
+  delete container.command;
   // Prepare already resolved svc.baseImage: the service's current base image, unless this deploy
   // sets or clears it. A new service has none unless init sets one, so automatic base image
   // updates are off by default.
@@ -246,37 +236,23 @@ export function revisionTemplate(svc: ServiceDeploy, message?: string): runv2.Re
   return template;
 }
 
-/**
- * Returns the template for a remote build: revisionTemplate's template, plus the uploaded source
- * (`sourceCode`) and the settings that Cloud Run builds it with (`buildConfig`).
- */
+/** Returns the RevisionTemplate for a remote build on Cloud Run. */
 function remoteBuildTemplate(
   svc: ServiceDeploy,
   source: runv2.StorageSource,
-  imageRepository: string,
-  appFolder: string,
+  buildConfig: runv2.ContainerBuildConfig,
   message?: string,
 ): runv2.RevisionTemplate {
   const template = revisionTemplate(svc, message);
-  // revisionTemplate has already checked that there's a container.
   const container = mainContainer(template)!;
   container.sourceCode = { cloudStorageSource: source };
-  container.buildConfig = remoteBuildConfig(svc, imageRepository, appFolder);
+  container.buildConfig = buildConfig;
   return template;
 }
 
 /**
- * Returns the settings that Cloud Run builds the uploaded source with.
- * - `imageRepositoryUri`: the Artifact Registry repository that Cloud Run pushes the image to.
- * - `environmentVariables`: env vars for the build. The running container doesn't get them. If a
- *   name comes from more than one of these sources, the later source's value is used:
- *   1. GOOGLE_BUILDABLE, the app's folder: only if the app is in an Nx or Turborepo monorepo.
- *   2. The service's build env, without its secrets: Cloud Run only takes plain values.
- *   3. X_GOOGLE_TARGET_PLATFORM=fah, which makes the buildpacks build the app as App Hosting
- *      does, and FIREBASE_OUTPUT_BUNDLE_DIR, the folder they write App Hosting's output to.
- * - `buildpacksBuild.buildBaseImageUri`: the service's base image, if it has one. Cloud Run
- *   requires it then.
- * Exported for testing.
+ * Builds the ContainerBuildConfig for Cloud Run's build API. `appFolder` is the app's path within
+ * the uploaded archive, or empty when they're the same folder. Exported for testing.
  */
 export function remoteBuildConfig(
   svc: ServiceDeploy,
@@ -284,8 +260,11 @@ export function remoteBuildConfig(
   appFolder: string,
 ): runv2.ContainerBuildConfig {
   const env: Record<string, string> = {
+    // In a monorepo, tell the buildpacks which folder in the build folder is the app.
     ...(appFolder ? { GOOGLE_BUILDABLE: appFolder } : {}),
+    // Build-only env vars; Cloud Run's build API only accepts plain values, not secrets.
     ...nonSecretValues(svc.buildEnv || {}),
+    // Use App Hosting's buildpacks, which need to know where to write the output bundle.
     X_GOOGLE_TARGET_PLATFORM: "fah",
     FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
   };
@@ -316,9 +295,6 @@ export function localBuildTemplate(
   const command = build.runCommand?.trim();
   if (command) {
     container.command = command.split(/\s+/);
-  } else {
-    // The build didn't name a start command, so don't keep one from an earlier revision.
-    delete container.command;
   }
   // Set the runtime env vars that the build reports. Like the start command, they describe this
   // build's output, so the build wins: each one replaces any env var of the same name on the

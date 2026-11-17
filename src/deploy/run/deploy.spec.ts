@@ -377,30 +377,17 @@ describe("run deploy", () => {
       expect(withoutMessage.annotations).to.deep.equal({ team: "frontend" });
     });
 
-    it("drops a local build's output and start command", () => {
-      const fromLocalBuild = webRunning({
-        image: "scratch",
-        command: ["npm", "run", "start"],
-        sourceCode: { cloudStorageSource: builtApp },
-      });
-
-      const template = revisionTemplate({ config: web, existing: fromLocalBuild });
-
-      expect(template).to.deep.equal({ containers: [{ name: "web" }] });
-    });
-
-    it("drops the last remote build's source and build config, but keeps the command", () => {
-      const fromRemoteBuild = webRunning({
-        command: ["node", "server.js"],
+    it("clears image, sourceCode, buildConfig and command from the main container", () => {
+      const fromPreviousBuild = webRunning({
+        image: "old-image",
         sourceCode: { cloudStorageSource: source },
         buildConfig,
+        command: ["npm", "run", "start"],
       });
 
-      const template = revisionTemplate({ config: web, existing: fromRemoteBuild });
+      const template = revisionTemplate({ config: web, existing: fromPreviousBuild });
 
-      expect(template).to.deep.equal({
-        containers: [{ name: "web", command: ["node", "server.js"] }],
-      });
+      expect(template).to.deep.equal({ containers: [{ name: "web" }] });
     });
 
     describe("FIREBASE_CONFIG", () => {
@@ -463,6 +450,15 @@ describe("run deploy", () => {
           sourceCode: { cloudStorageSource: builtApp },
           command: ["npm", "run", "start"],
         });
+      });
+
+      it("leaves command unset when the local build reports no start command", () => {
+        const service = webRunning({ command: ["old", "cmd"] });
+        const build = { archive: "/tmp/web.tar.gz", runCommand: "  ", env: [] };
+
+        const template = localBuildTemplate({ config: web, existing: service }, build, builtApp);
+
+        expect(template.containers?.[0]).not.to.have.property("command");
       });
 
       it("sets the env vars the build reports, replacing the service's values for the same names", () => {
