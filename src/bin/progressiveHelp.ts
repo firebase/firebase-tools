@@ -119,7 +119,7 @@ export function setupProgressiveHelp(client: CLIClient): void {
           nsCmd.outputHelp();
           logger.info();
           logger.info(
-            `To deploy ${targetName}, run: ${clc.bold("firebase deploy --only " + targetName)}`,
+            `To deploy ${targetName}, run: ${clc.bold(`firebase deploy --only ${String(targetName)}`)}`,
           );
           logger.info();
         });

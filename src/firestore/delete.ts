@@ -38,7 +38,6 @@ export class FirestoreDelete {
   private project: string;
   private recursive: boolean;
   private shallow: boolean;
-  private allCollections: boolean;
   private databaseId: string;
 
   private readBatchSize: number;
@@ -76,7 +75,6 @@ export class FirestoreDelete {
     this.path = path || "";
     this.recursive = Boolean(options.recursive);
     this.shallow = Boolean(options.shallow);
-    this.allCollections = Boolean(options.allCollections);
     this.databaseId = options.databaseId;
     this.urlPrefix = options.urlPrefix ?? firestoreOriginOrEmulator();
 
@@ -336,7 +334,7 @@ export class FirestoreDelete {
 
       // Failure that can't be retried again
       if (failures.length > 0) {
-        logger.debug("Found " + failures.length + " failed operations, failing.");
+        logger.debug(`Found ${failures.length} failed operations, failing.`);
         return true;
       }
 
@@ -359,7 +357,7 @@ export class FirestoreDelete {
             lastDocName = docs[docs.length - 1].name;
           })
           .catch((e: unknown) => {
-            logger.debug("Failed to fetch page after " + lastDocName, e);
+            logger.debug(`Failed to fetch page after ${String(lastDocName)}`, e);
             pageIncoming = false;
 
             fetchFailures++;
