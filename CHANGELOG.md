@@ -1,3 +1,4 @@
+- Fixed 2nd gen event function deploys failing when the default compute service account was deleted, even though every function sets its own service account. (#10507)
 - Fixed 2nd gen functions staying uncallable after their first deploy failed, because later deploys never set the invoker. (#8984)
 - Updated Pub/Sub emulator to version 0.8.38.
 - Fixed `crashlytics:heapdumps` commands accepting `--app` IDs that do not belong to the target Firebase project.

@@ -4,6 +4,10 @@ import * as checkIam from "./checkIam";
 import * as storage from "../../gcp/storage";
 import * as rm from "../../gcp/resourceManager";
 import * as backend from "./backend";
+import * as iam from "../../gcp/iam";
+import * as gce from "../../gcp/computeEngine";
+import { FirebaseError } from "../../error";
+import * as utils from "../../utils";
 
 const projectId = "my-project";
 const projectNumber = "123456789";
@@ -12,6 +16,9 @@ const STORAGE_RES = {
   email_address: "service-123@gs-project-accounts.iam.gserviceaccount.com",
   kind: "storage#serviceAccount",
 };
+
+const DEFAULT_SA = `${projectNumber}-compute@developer.gserviceaccount.com`;
+const CUSTOM_SA = `custom-sa@${projectId}.iam.gserviceaccount.com`;
 
 const BINDING = {
   role: "some/role",
@@ -28,6 +35,7 @@ describe("checkIam", () => {
   let storageStub: sinon.SinonStub;
   let getIamStub: sinon.SinonStub;
   let setIamStub: sinon.SinonStub;
+  let getServiceAccountStub: sinon.SinonStub;
 
   beforeEach(() => {
     storageStub = sinon
@@ -39,6 +47,10 @@ describe("checkIam", () => {
     setIamStub = sinon
       .stub(rm, "setIamPolicy")
       .throws("unexpected call to resourceManager.setIamPolicy");
+    getServiceAccountStub = sinon
+      .stub(iam, "getServiceAccount")
+      .resolves({ email: DEFAULT_SA } as iam.ServiceAccount);
+    sinon.stub(gce, "getDefaultServiceAccount").resolves(DEFAULT_SA);
   });
 
   afterEach(() => {
@@ -241,6 +253,214 @@ describe("checkIam", () => {
       expect(getIamStub).to.have.been.calledOnce;
       expect(setIamStub).to.have.been.calledOnce;
       expect(setIamStub).to.have.been.calledWith(projectNumber, newIamPolicy, "bindings");
+    });
+
+    describe("when the default compute service account does not exist", () => {
+      const ALERTS_TRIGGER = {
+        eventType: "google.firebase.firebasealerts.alerts.v1.published",
+        eventFilters: { alertype: "crashlytics.newFatalIssue" },
+        retry: false,
+      };
+      const PUBSUB_TOKEN_CREATOR = {
+        role: checkIam.SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE,
+        members: [`serviceAccount:service-${projectNumber}@gcp-sa-pubsub.iam.gserviceaccount.com`],
+      };
+      let warnStub: sinon.SinonStub;
+
+      beforeEach(() => {
+        getServiceAccountStub.rejects(new FirebaseError("not found", { status: 404 }));
+        warnStub = sinon.stub(utils, "logLabeledWarning");
+        getIamStub.resolves({ etag: "etag", version: 3, bindings: [BINDING] });
+      });
+
+      it("should skip the default account's bindings when every v2 event function sets a service account", async () => {
+        setIamStub.resolves({});
+        const wantFn: backend.Endpoint = {
+          id: "wantFn",
+          entryPoint: "wantFn",
+          platform: "gcfv2",
+          eventTrigger: ALERTS_TRIGGER,
+          serviceAccount: CUSTOM_SA,
+          ...SPEC,
+        };
+
+        await checkIam.ensureServiceAgentRoles(
+          projectId,
+          projectNumber,
+          backend.of(wantFn),
+          backend.empty(),
+        );
+
+        expect(getServiceAccountStub).to.have.been.calledOnceWithExactly(projectId, DEFAULT_SA);
+        expect(setIamStub).to.have.been.calledOnceWithExactly(
+          projectNumber,
+          { etag: "etag", version: 3, bindings: [BINDING, PUBSUB_TOKEN_CREATOR] },
+          "bindings",
+        );
+        expect(warnStub).to.have.been.calledWithMatch("functions", DEFAULT_SA);
+      });
+
+      it("should print the bindings for the functions' service accounts, expanding shorthand", async () => {
+        setIamStub.resolves({});
+        const shorthandFn: backend.Endpoint = {
+          id: "shorthandFn",
+          entryPoint: "shorthandFn",
+          platform: "gcfv2",
+          eventTrigger: ALERTS_TRIGGER,
+          serviceAccount: "custom-sa@",
+          ...SPEC,
+        };
+        const fullFn: backend.Endpoint = {
+          id: "fullFn",
+          entryPoint: "fullFn",
+          platform: "gcfv2",
+          eventTrigger: ALERTS_TRIGGER,
+          serviceAccount: CUSTOM_SA,
+          ...SPEC,
+        };
+        const printStub = sinon.stub(iam, "printManualIamConfig");
+
+        await checkIam.ensureServiceAgentRoles(
+          projectId,
+          projectNumber,
+          backend.of(shorthandFn, fullFn),
+          backend.empty(),
+        );
+
+        expect(printStub).to.have.been.calledOnceWithExactly(
+          [
+            { role: checkIam.RUN_INVOKER_ROLE, members: [`serviceAccount:${CUSTOM_SA}`] },
+            {
+              role: checkIam.EVENTARC_EVENT_RECEIVER_ROLE,
+              members: [`serviceAccount:${CUSTOM_SA}`],
+            },
+          ],
+          projectId,
+          "functions",
+        );
+      });
+
+      it("should ignore v1 functions without a service account", async () => {
+        setIamStub.resolves({});
+        const v1Fn: backend.Endpoint = {
+          id: "v1Fn",
+          entryPoint: "v1Fn",
+          platform: "gcfv1",
+          eventTrigger: {
+            eventType: "providers/cloud.pubsub/eventTypes/topic.publish",
+            eventFilters: { resource: "projects/my-project/topics/my-topic" },
+            retry: false,
+          },
+          ...SPEC,
+        };
+        const v2Fn: backend.Endpoint = {
+          id: "v2Fn",
+          entryPoint: "v2Fn",
+          platform: "gcfv2",
+          eventTrigger: ALERTS_TRIGGER,
+          serviceAccount: CUSTOM_SA,
+          ...SPEC,
+        };
+
+        await checkIam.ensureServiceAgentRoles(
+          projectId,
+          projectNumber,
+          backend.of(v1Fn, v2Fn),
+          backend.empty(),
+        );
+
+        expect(setIamStub).to.have.been.calledOnceWithExactly(
+          projectNumber,
+          { etag: "etag", version: 3, bindings: [BINDING, PUBSUB_TOKEN_CREATOR] },
+          "bindings",
+        );
+      });
+
+      it("should error when a v2 event function would run as the default account", async () => {
+        const customFn: backend.Endpoint = {
+          id: "customFn",
+          entryPoint: "customFn",
+          platform: "gcfv2",
+          eventTrigger: ALERTS_TRIGGER,
+          serviceAccount: CUSTOM_SA,
+          ...SPEC,
+        };
+        const defaultFn: backend.Endpoint = {
+          id: "defaultFn",
+          entryPoint: "defaultFn",
+          platform: "gcfv2",
+          eventTrigger: ALERTS_TRIGGER,
+          ...SPEC,
+        };
+
+        await expect(
+          checkIam.ensureServiceAgentRoles(
+            projectId,
+            projectNumber,
+            backend.of(customFn, defaultFn),
+            backend.empty(),
+          ),
+        ).to.be.rejectedWith(FirebaseError, /does not exist.*defaultFn/);
+        expect(setIamStub).to.not.have.been.called;
+      });
+
+      it("should skip the default account's bindings in a dry run", async () => {
+        const wantFn: backend.Endpoint = {
+          id: "wantFn",
+          entryPoint: "wantFn",
+          platform: "gcfv2",
+          eventTrigger: ALERTS_TRIGGER,
+          serviceAccount: CUSTOM_SA,
+          ...SPEC,
+        };
+
+        await checkIam.ensureServiceAgentRoles(
+          projectId,
+          projectNumber,
+          backend.of(wantFn),
+          backend.empty(),
+          true,
+        );
+
+        expect(getServiceAccountStub).to.have.been.calledOnce;
+        expect(setIamStub).to.not.have.been.called;
+        expect(warnStub).to.have.been.calledWithMatch("functions", DEFAULT_SA);
+      });
+    });
+
+    it("should still add the default account's bindings when its lookup fails with another error", async () => {
+      getServiceAccountStub.rejects(new FirebaseError("forbidden", { status: 403 }));
+      getIamStub.resolves({ etag: "etag", version: 3, bindings: [BINDING] });
+      setIamStub.resolves({});
+      const wantFn: backend.Endpoint = {
+        id: "wantFn",
+        entryPoint: "wantFn",
+        platform: "gcfv2",
+        eventTrigger: {
+          eventType: "google.firebase.firebasealerts.alerts.v1.published",
+          eventFilters: { alertype: "crashlytics.newFatalIssue" },
+          retry: false,
+        },
+        serviceAccount: CUSTOM_SA,
+        ...SPEC,
+      };
+
+      await checkIam.ensureServiceAgentRoles(
+        projectId,
+        projectNumber,
+        backend.of(wantFn),
+        backend.empty(),
+      );
+
+      const policy = setIamStub.firstCall.args[1] as iam.Policy;
+      expect(policy.bindings).to.deep.include({
+        role: checkIam.RUN_INVOKER_ROLE,
+        members: [`serviceAccount:${DEFAULT_SA}`],
+      });
+      expect(policy.bindings).to.deep.include({
+        role: checkIam.EVENTARC_EVENT_RECEIVER_ROLE,
+        members: [`serviceAccount:${DEFAULT_SA}`],
+      });
     });
   });
 

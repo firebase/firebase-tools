@@ -2,13 +2,14 @@ import { bold } from "colorette";
 
 import { logger } from "../../logger";
 import { getEndpointFilters, endpointMatchesAnyFilter } from "./functionsDeployHelper";
-import { FirebaseError } from "../../error";
+import { FirebaseError, getErrStatus } from "../../error";
 import { Options } from "../../options";
 import { flattenArray } from "../../functional";
 import * as iam from "../../gcp/iam";
 import * as gce from "../../gcp/computeEngine";
 import * as args from "./args";
 import * as backend from "./backend";
+import * as proto from "../../gcp/proto";
 import { trackGA4 } from "../../track";
 import * as utils from "../../utils";
 
@@ -183,6 +184,64 @@ export async function obtainDefaultComputeServiceAgentBindings(
 }
 
 /**
+ * Returns the default compute service agent bindings, unless that account does not exist and
+ * no v2 event function runs as it. In that case the bindings each function's own service account
+ * needs are printed instead, since the CLI does not grant roles to user-chosen accounts.
+ */
+async function obtainEventarcServiceAccountBindings(
+  projectId: string,
+  projectNumber: string,
+  want: backend.Backend,
+): Promise<iam.Binding[]> {
+  const bindings = await obtainDefaultComputeServiceAgentBindings(projectNumber);
+  const defaultServiceAccount = await gce.getDefaultServiceAccount(projectNumber);
+  try {
+    await iam.getServiceAccount(projectId, defaultServiceAccount);
+    return bindings;
+  } catch (err: unknown) {
+    if (getErrStatus(err) !== 404) {
+      return bindings;
+    }
+  }
+
+  const eventEndpoints = backend
+    .allEndpoints(want)
+    .filter((endpoint) => endpoint.platform !== "gcfv1" && backend.isEventTriggered(endpoint));
+  const defaultEndpoints = eventEndpoints.filter((endpoint) => !endpoint.serviceAccount);
+  if (defaultEndpoints.length > 0) {
+    throw new FirebaseError(
+      `The default compute service account ${defaultServiceAccount} does not exist, but these ` +
+        `functions would run as it: ${defaultEndpoints.map((e) => e.id).join(", ")}. ` +
+        "Set a service account for them, for example with `setGlobalOptions({ serviceAccount })`.",
+    );
+  }
+
+  const members = [
+    ...new Set(
+      eventEndpoints.flatMap((e) =>
+        e.serviceAccount ? [proto.formatServiceAccount(e.serviceAccount, projectId)] : [],
+      ),
+    ),
+  ];
+  if (members.length > 0) {
+    utils.logLabeledWarning(
+      "functions",
+      `The default compute service account ${defaultServiceAccount} does not exist, so its ` +
+        "roles were not granted. Your functions' service accounts need these roles to receive events.",
+    );
+    iam.printManualIamConfig(
+      [
+        { role: RUN_INVOKER_ROLE, members },
+        { role: EVENTARC_EVENT_RECEIVER_ROLE, members },
+      ],
+      projectId,
+      "functions",
+    );
+  }
+  return [];
+}
+
+/**
  * Checks and sets the roles for any genkit deployed functions that are required
  * for Firebase Genkit Monitoring.
  * @param projectId human readable project id
@@ -262,7 +321,9 @@ export async function ensureServiceAgentRoles(
   const requiredBindings = [...flattenArray(nestedRequiredBindings)];
   if (haveServices.length === 0) {
     requiredBindings.push(...obtainPubSubServiceAgentBindings(projectNumber));
-    requiredBindings.push(...(await obtainDefaultComputeServiceAgentBindings(projectNumber)));
+    requiredBindings.push(
+      ...(await obtainEventarcServiceAccountBindings(projectId, projectNumber, want)),
+    );
   }
   if (requiredBindings.length === 0) {
     return;
