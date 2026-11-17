@@ -57,6 +57,53 @@ describe("planner", () => {
       });
     });
 
+    it("flags a GCFv2 function left FAILED with no service by a failed create", () => {
+      const want: backend.Endpoint = { ...func("a", "b"), platform: "gcfv2" };
+      const have: backend.Endpoint = { ...want, state: "FAILED" };
+      expect(planner.calculateUpdate(want, have).failedCreate).to.be.true;
+    });
+
+    it("does not flag a FAILED GCFv2 function that still has a service", () => {
+      const want: backend.Endpoint = { ...func("a", "b"), platform: "gcfv2" };
+      const have: backend.Endpoint = { ...want, state: "FAILED", runServiceId: "a" };
+      expect(planner.calculateUpdate(want, have).failedCreate).to.be.undefined;
+    });
+
+    it("does not flag an ACTIVE GCFv2 function", () => {
+      const want: backend.Endpoint = { ...func("a", "b"), platform: "gcfv2" };
+      expect(planner.calculateUpdate(want, want).failedCreate).to.be.undefined;
+    });
+
+    it("does not flag a FAILED GCFv1 function", () => {
+      const want = func("a", "b");
+      const have: backend.Endpoint = { ...want, state: "FAILED" };
+      expect(planner.calculateUpdate(want, have).failedCreate).to.be.undefined;
+    });
+
+    it("does not flag a failed create that is being deleted and recreated", () => {
+      const have: backend.Endpoint = {
+        ...func("a", "b", {
+          eventTrigger: {
+            eventType: v2events.PUBSUB_PUBLISH_EVENT,
+            eventFilters: { topic: "topic" },
+            retry: false,
+          },
+        }),
+        platform: "gcfv2",
+        state: "FAILED",
+      };
+      const want = JSON.parse(JSON.stringify(have)) as backend.Endpoint;
+      delete want.state;
+      if (backend.isEventTriggered(want)) {
+        want.eventTrigger.eventFilters = { topic: "anotherTopic" };
+      }
+      expect(planner.calculateUpdate(want, have)).to.deep.equal({
+        endpoint: want,
+        unsafe: false,
+        deleteAndRecreate: have,
+      });
+    });
+
     it("knows to delete & recreate for v2 topic changes", () => {
       const original: backend.Endpoint = {
         ...func("a", "b", {
