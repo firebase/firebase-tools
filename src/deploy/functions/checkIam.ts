@@ -207,12 +207,17 @@ async function obtainEventarcServiceAccountBindings(
   const eventEndpoints = backend
     .allEndpoints(want)
     .filter((endpoint) => endpoint.platform !== "gcfv1" && backend.isEventTriggered(endpoint));
-  const defaultEndpoints = eventEndpoints.filter((endpoint) => !endpoint.serviceAccount);
+  const defaultEndpoints = eventEndpoints.filter(
+    (endpoint) =>
+      !endpoint.serviceAccount ||
+      proto.formatServiceAccount(endpoint.serviceAccount, projectId, true) ===
+        defaultServiceAccount,
+  );
   if (defaultEndpoints.length > 0) {
     throw new FirebaseError(
       `The default compute service account ${defaultServiceAccount} does not exist, but these ` +
         `functions would run as it: ${defaultEndpoints.map((e) => e.id).join(", ")}. ` +
-        "Set a service account for them, for example with `setGlobalOptions({ serviceAccount })`.",
+        "Set a different service account for them.",
     );
   }
 

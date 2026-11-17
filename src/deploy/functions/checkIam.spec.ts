@@ -474,6 +474,29 @@ describe("checkIam", () => {
         expect(setIamStub).to.not.have.been.called;
       });
 
+      it("should error when a v2 event function explicitly sets the default account", async () => {
+        const printStub = sinon.stub(iam, "printManualIamConfig");
+        const explicitDefaultFn: backend.Endpoint = {
+          id: "explicitDefaultFn",
+          entryPoint: "explicitDefaultFn",
+          platform: "gcfv2",
+          eventTrigger: ALERTS_TRIGGER,
+          serviceAccount: DEFAULT_SA,
+          ...SPEC,
+        };
+
+        await expect(
+          checkIam.ensureServiceAgentRoles(
+            projectId,
+            projectNumber,
+            backend.of(explicitDefaultFn),
+            backend.empty(),
+          ),
+        ).to.be.rejectedWith(FirebaseError, /does not exist.*explicitDefaultFn/);
+        expect(printStub).to.not.have.been.called;
+        expect(setIamStub).to.not.have.been.called;
+      });
+
       it("should skip the default account's bindings in a dry run", async () => {
         const wantFn: backend.Endpoint = {
           id: "wantFn",
