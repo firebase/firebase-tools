@@ -6,14 +6,6 @@ import { googleOrigin } from "./api";
 import * as accountImporter from "./accountImporter";
 
 describe("accountImporter", () => {
-  before(() => {
-    nock.disableNetConnect();
-  });
-
-  after(() => {
-    nock.enableNetConnect();
-  });
-
   const transArrayToUser = accountImporter.transArrayToUser;
   const validateOptions = accountImporter.validateOptions;
   const validateUserJson = accountImporter.validateUserJson;

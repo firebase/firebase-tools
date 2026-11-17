@@ -697,7 +697,6 @@ describe("ext:migrate core logic (Unique Veneer)", () => {
       sandbox.stub(extensionsApi, "listInstances").resolves([mockInstance1]);
       sandbox.stub(migrateModule, "ensureInstanceUpToDate").resolves(mockInstance1);
       installKitOrInstanceStub = sandbox.stub(kitInstallModule, "installKitOrInstance").resolves({
-        action: "installedKit",
         kitId: "firestore-bigquery-export",
         instanceId: "email-1",
         sourcePath: "/mock/path",

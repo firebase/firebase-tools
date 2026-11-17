@@ -1,6 +1,7 @@
 import { Bucket, CopyOptions } from "@google-cloud/storage";
 import { expect } from "chai";
-import * as admin from "firebase-admin";
+import { applicationDefault, cert, deleteApp, getApp, initializeApp } from "firebase-admin/app";
+import { getStorage } from "firebase-admin/storage";
 import * as fs from "fs";
 import { EmulatorEndToEndTest } from "../../integration-helpers/framework";
 import { TEST_ENV } from "./env";
@@ -51,11 +52,11 @@ describe("GCS Javascript SDK conformance tests", () => {
 
     // Init GCS admin SDK.
     const credential = TEST_ENV.prodServiceAccountKeyJson
-      ? admin.credential.cert(TEST_ENV.prodServiceAccountKeyJson)
-      : admin.credential.applicationDefault();
-    admin.initializeApp({ credential });
-    testBucket = admin.storage().bucket(storageBucket);
-    otherTestBucket = admin.storage().bucket(otherStorageBucket);
+      ? cert(TEST_ENV.prodServiceAccountKeyJson)
+      : applicationDefault();
+    initializeApp({ credential });
+    testBucket = getStorage().bucket(storageBucket);
+    otherTestBucket = getStorage().bucket(otherStorageBucket);
     authHeader = { Authorization: `Bearer ${await TEST_ENV.adminAccessTokenGetter}` };
   });
 
@@ -65,7 +66,7 @@ describe("GCS Javascript SDK conformance tests", () => {
 
   after(async function (this) {
     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
-    admin.app().delete();
+    await deleteApp(getApp());
     fs.rmSync(tmpDir, { recursive: true, force: true });
 
     TEST_ENV.removeEnvVars();

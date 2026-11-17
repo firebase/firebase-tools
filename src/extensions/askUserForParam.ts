@@ -79,10 +79,12 @@ export function checkResponse(response: string, spec: Param): boolean {
 
 /**
  * Prompt users for params based on paramSpecs defined by the extension developer.
+ * @param args options for prompting the user
  * @param args.projectId The projectId for the params
  * @param args.instanceId The instanceId for the params
  * @param args.paramSpecs Array of params to ask the user about, parsed from extension.yaml.
  * @param args.firebaseProjectParams Autopopulated Firebase project-specific params
+ * @param args.reconfiguring Whether the extension is being reconfigured
  * @return Promisified map of env vars to values.
  */
 export async function ask(args: {
@@ -146,6 +148,7 @@ export async function ask(args: {
 
 /**
  * Asks the user for values for the extension parameter.
+ * @param args options for prompting for the parameter
  * @param args.projectId The projectId we are installing into
  * @param args.instanceId The instanceId we are creating/updating/configuring
  * @param args.paramSpec The spec for the param we are asking about

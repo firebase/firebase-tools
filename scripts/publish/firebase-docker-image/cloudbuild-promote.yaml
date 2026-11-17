@@ -1,0 +1,43 @@
+steps:
+  # Grab the latest version, store in workspace
+  - id: "Read New Version Number from npm"
+    name: "node"
+    entrypoint: "sh"
+    args:
+      - "-c"
+      - |
+        if [ -n "${_VERSION}" ]; then
+          echo "${_VERSION}" > /workspace/version_number.txt
+        else
+          npm view firebase-tools version > /workspace/version_number.txt
+        fi
+        cat /workspace/version_number.txt
+
+  # Promote image to production repository through Artifact Registry Exit Gate
+  # Runs in a separate build after the staging image build completes so that
+  # Cloud Build post-build SLSA provenance and SCILo SBOM generation have finished.
+  - id: "promote-docker-image"
+    name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
+    waitFor: ["Read New Version Number from npm"]
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        if [ -f "./promote.sh" ]; then
+          exec ./promote.sh
+        elif [ -f "./firebase-docker-image/promote.sh" ]; then
+          exec ./firebase-docker-image/promote.sh
+        else
+          echo "Error: promote.sh not found in /workspace" >&2
+          exit 1
+        fi
+    env:
+      - "_TARGET_PROJECT_ID=${_TARGET_PROJECT_ID}"
+      - "_REPO_NAME=${_REPO_NAME}"
+
+timeout: 1200s
+
+substitutions:
+  _TARGET_PROJECT_ID: firebase-cli
+  _REPO_NAME: us
+  _VERSION: ""

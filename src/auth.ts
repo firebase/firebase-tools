@@ -605,7 +605,17 @@ async function loginWithLocalhost<ResultType>(
   getTokens: (queryCode: string, callbackUrl: string) => Promise<ResultType>,
 ): Promise<ResultType> {
   return new Promise<ResultType>((resolve, reject) => {
-    const server = http.createServer(async (req, res) => {
+    const server = http.createServer((req, res) => {
+      handleCallback(req, res).catch((err: unknown) => {
+        reject(err);
+        server.close();
+      });
+    });
+
+    async function handleCallback(
+      req: http.IncomingMessage,
+      res: http.ServerResponse,
+    ): Promise<void> {
       let searchParams: URLSearchParams;
       try {
         searchParams = new URL(req.url || "", callbackUrl).searchParams;
@@ -634,7 +644,7 @@ async function loginWithLocalhost<ResultType>(
       }
       server.close();
       return;
-    });
+    }
 
     server.listen(port, () => {
       logger.info();

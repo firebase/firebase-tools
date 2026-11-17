@@ -8,7 +8,7 @@ interface serviceName {
 }
 
 const serviceNameRegex =
-  /projects\/(?<projectId>[^\/]+)\/locations\/(?<location>[^\/]+)\/services\/(?<serviceId>[^\/]+)/;
+  /projects\/(?<projectId>[^/]+)\/locations\/(?<location>[^/]+)\/services\/(?<serviceId>[^/]+)/;
 
 export function parseServiceName(serviceName: string): serviceName {
   const res = serviceNameRegex.exec(serviceName);
@@ -38,7 +38,7 @@ interface connectorName {
 }
 
 const connectorNameRegex =
-  /projects\/(?<projectId>[^\/]+)\/locations\/(?<location>[^\/]+)\/services\/(?<serviceId>[^\/]+)\/connectors\/(?<connectorId>[^\/]+)/;
+  /projects\/(?<projectId>[^/]+)\/locations\/(?<location>[^/]+)\/services\/(?<serviceId>[^/]+)\/connectors\/(?<connectorId>[^/]+)/;
 
 export function parseConnectorName(connectorName: string): connectorName {
   const res = connectorNameRegex.exec(connectorName);
@@ -69,7 +69,7 @@ interface cloudSQLInstanceName {
 }
 
 const cloudSQLInstanceNameRegex =
-  /projects\/(?<projectId>[^\/]+)\/locations\/(?<location>[^\/]+)\/instances\/(?<instanceId>[^\/]+)/;
+  /projects\/(?<projectId>[^/]+)\/locations\/(?<location>[^/]+)\/instances\/(?<instanceId>[^/]+)/;
 
 export function parseCloudSQLInstanceName(cloudSQLInstanceName: string): cloudSQLInstanceName {
   const res = cloudSQLInstanceNameRegex.exec(cloudSQLInstanceName);

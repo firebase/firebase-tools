@@ -241,37 +241,3 @@ export function printAbortedErrors(results: Array<Required<DeployResult>>): void
   );
   logger.info(`To delete these, use ${clc.bold("firebase functions:delete")}`);
 }
-
-/** Get a short synopsis of trigger type for analytics */
-export function triggerTag(endpoint: backend.Endpoint): string {
-  const prefix = endpoint.platform === "gcfv1" ? "v1" : "v2";
-  if (backend.isScheduleTriggered(endpoint)) {
-    return `${prefix}.scheduled`;
-  }
-
-  if (backend.isTaskQueueTriggered(endpoint)) {
-    return `${prefix}.taskQueue`;
-  }
-
-  if (backend.isCallableTriggered(endpoint)) {
-    return `${prefix}.callable`;
-  }
-
-  if (backend.isHttpsTriggered(endpoint)) {
-    // NOTE: Legacy trigger annotation relies on a special label to differentiate http vs callable triggers.
-    if (endpoint.labels?.["deployment-callable"]) {
-      return `${prefix}.callable`;
-    }
-    return `${prefix}.https`;
-  }
-
-  if (backend.isDataConnectGraphqlTriggered(endpoint)) {
-    return `${prefix}.dataConnectGraphql`;
-  }
-
-  if (backend.isBlockingTriggered(endpoint)) {
-    return `${prefix}.blocking`;
-  }
-
-  return endpoint.eventTrigger.eventType;
-}

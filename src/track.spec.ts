@@ -19,12 +19,10 @@ describe("track", () => {
     configstoreGetStub = sandbox.stub(configstore, "get");
     configstoreSetStub = sandbox.stub(configstore, "set");
     getGlobalDefaultAccountStub = sandbox.stub(auth, "getGlobalDefaultAccount");
-    nock.disableNetConnect();
   });
 
   afterEach(() => {
     sandbox.restore();
-    nock.enableNetConnect();
     delete process.env.IS_FIREBASE_CLI;
     setFirebaseMcp(false);
     delete process.env.FIREBASE_CLI_MP_VALIDATE;
