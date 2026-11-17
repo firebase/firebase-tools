@@ -498,6 +498,78 @@ describe("resolveParams", () => {
     }
   });
 
+  describe("in non-interactive mode", () => {
+    it("resolves params with defaults without prompting", async () => {
+      const paramsToResolve: params.Param[] = [
+        { name: "GREETING", default: "hello", type: "string", input: { text: {} } },
+        { name: "ENABLED", default: false, type: "boolean" },
+        { name: "RETRIES", default: 3, type: "int" },
+        { name: "REGIONS", default: ["us-central1", "europe-west1"], type: "list" },
+        { name: "PROJECT", default: "{{ params.PROJECT_ID }}", type: "string" },
+      ];
+
+      const { paramValues } = await params.resolveParams({
+        params: paramsToResolve,
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "default",
+        nonInteractive: true,
+      });
+
+      expect(input).to.not.have.been.called;
+      expect(paramValues.GREETING).to.deep.equal(
+        new params.ParamValue("hello", false, { string: true }),
+      );
+      expect(paramValues.ENABLED).to.deep.equal(
+        new params.ParamValue("false", false, { boolean: true }),
+      );
+      expect(paramValues.RETRIES).to.deep.equal(
+        new params.ParamValue("3", false, { number: true }),
+      );
+      expect(paramValues.REGIONS).to.deep.equal(
+        params.ParamValue.fromList(["us-central1", "europe-west1"]),
+      );
+      expect(paramValues.PROJECT).to.deep.equal(
+        new params.ParamValue(fakeConfig.projectId, false, { string: true }),
+      );
+    });
+
+    it("prefers a dotenv value over the default", async () => {
+      const { paramValues } = await params.resolveParams({
+        params: [{ name: "GREETING", default: "hello", type: "string" }],
+        firebaseConfig: fakeConfig,
+        userEnvs: { GREETING: new params.ParamValue("hi", false, { string: true }) },
+        codebase: "default",
+        nonInteractive: true,
+      });
+
+      expect(paramValues.GREETING).to.deep.equal(
+        new params.ParamValue("hi", false, { string: true }),
+      );
+    });
+
+    it("only reports the params that have no default", async () => {
+      const paramsToResolve: params.Param[] = [
+        { name: "GREETING", default: "hello", type: "string" },
+        { name: "API_HOST", type: "string" },
+      ];
+
+      await expect(
+        params.resolveParams({
+          params: paramsToResolve,
+          firebaseConfig: fakeConfig,
+          userEnvs: {},
+          codebase: "default",
+          nonInteractive: true,
+        }),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        /no value for the following environment variables: API_HOST\n/,
+      );
+      expect(input).to.not.have.been.called;
+    });
+  });
+
   it("does not throw in non-interactive mode if secret exists in cloud", async () => {
     const paramsToResolve: params.Param[] = [{ name: "MY_SECRET", type: "secret" }];
     const getSecretMetadataStub = sinon.stub(secretManager, "getSecretMetadata").resolves({

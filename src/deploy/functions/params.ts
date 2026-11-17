@@ -444,20 +444,19 @@ export async function resolveParams(
     }
   }
 
-  if (nonInteractive && needPrompt.length > 0) {
-    const envNames = needPrompt.map((p) => p.name).join(", ");
-    throw new FirebaseError(
-      `In non-interactive mode but have no value for the following environment variables: ${envNames}\n` +
-        "To continue, either run `firebase deploy` with an interactive terminal, or add values to a dotenv file. " +
-        "For information regarding how to use dotenv files, see https://firebase.google.com/docs/functions/config-env",
-    );
-  }
-  if (needPrompt.length > 0) {
+  if (needPrompt.length > 0 && !nonInteractive) {
     logger.info(`Prompting for parameters for codebase ${clc.bold(codebase)}:`);
   }
+  // In non-interactive mode a param with a default resolves to that default;
+  // only params without one need a value from a dotenv file.
+  const missingInNonInteractive: string[] = [];
   for (const param of needPrompt) {
     const promptable = param as Exclude<Param, SecretParam>;
     let paramDefault: RawParamValue | undefined = promptable.default;
+    if (nonInteractive && paramDefault === undefined) {
+      missingInNonInteractive.push(param.name);
+      continue;
+    }
     if (paramDefault && isCelExpression(paramDefault)) {
       paramDefault = resolveDefaultCEL(param.type, paramDefault, paramValues);
     }
@@ -466,10 +465,42 @@ export async function resolveParams(
         "Parameter " + param.name + " has default value " + paramDefault + " of wrong type",
       );
     }
+    if (nonInteractive) {
+      paramValues[param.name] = paramValueFromDefault(promptable, paramDefault as RawParamValue);
+      continue;
+    }
     paramValues[param.name] = await promptParam(param, firebaseConfig.projectId, paramDefault);
+  }
+  if (missingInNonInteractive.length > 0) {
+    const envNames = missingInNonInteractive.join(", ");
+    throw new FirebaseError(
+      `In non-interactive mode but have no value for the following environment variables: ${envNames}\n` +
+        "To continue, either run `firebase deploy` with an interactive terminal, or add values to a dotenv file. " +
+        "For information regarding how to use dotenv files, see https://firebase.google.com/docs/functions/config-env",
+    );
   }
 
   return { paramValues: paramValues, secretRefs: secretRefs };
+}
+
+/**
+ * Builds the value of a param from its (already resolved) default, matching
+ * what promptParam returns when the user accepts the default.
+ */
+function paramValueFromDefault(
+  param: Exclude<Param, SecretParam>,
+  resolvedDefault: RawParamValue,
+): ParamValue {
+  if (param.type === "string") {
+    return new ParamValue(String(resolvedDefault), false, { string: true });
+  } else if (param.type === "int") {
+    return new ParamValue(String(resolvedDefault), false, { number: true });
+  } else if (param.type === "boolean") {
+    return new ParamValue(String(resolvedDefault), false, { boolean: true });
+  } else if (param.type === "list") {
+    return ParamValue.fromList(resolvedDefault as string[], param.delimiter);
+  }
+  assertExhaustive(param);
 }
 
 function populateDefaultParams(config: FirebaseConfig): Record<string, ParamValue> {
