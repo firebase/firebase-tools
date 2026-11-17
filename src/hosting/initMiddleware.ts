@@ -6,6 +6,8 @@ import { logger } from "../logger";
 import * as utils from "../utils";
 
 const SDK_PATH_REGEXP = /^\/__\/firebase\/([^/]+)\/([^/]+)$/;
+const SDK_VERSION_REGEXP = /^[0-9]+\.[0-9]+\.[0-9]+(?:[-A-Za-z0-9.]+)?$/;
+const SDK_NAME_REGEXP = /^[A-Za-z0-9._-]+$/;
 
 /**
  * Initialize server middleware. Returns a middleware set up to provide the
@@ -22,6 +24,9 @@ export function initMiddleware(
     if (match) {
       const version = match[1];
       const sdkName = match[2];
+      if (!SDK_VERSION_REGEXP.test(version) || !SDK_NAME_REGEXP.test(sdkName)) {
+        return next();
+      }
       const u = new URL(`https://www.gstatic.com/firebasejs/${version}/${sdkName}`);
       const c = new Client({ urlPrefix: u.origin, auth: false });
       const headers: { [key: string]: string } = {};
