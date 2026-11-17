@@ -66,6 +66,9 @@ export interface Context {
 
   // True if functions deploy is using runtime config
   hasRuntimeConfig?: boolean;
+
+  // True if v2 functions build as their runtime service accounts
+  buildWithRuntimeServiceAccount?: boolean;
 }
 
 export interface CodebaseDeployEvent {

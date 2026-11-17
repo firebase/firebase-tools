@@ -2,13 +2,14 @@ import { bold } from "colorette";
 
 import { logger } from "../../logger";
 import { getEndpointFilters, endpointMatchesAnyFilter } from "./functionsDeployHelper";
-import { FirebaseError } from "../../error";
+import { FirebaseError, getErrMsg, getErrStatus } from "../../error";
 import { Options } from "../../options";
 import { flattenArray } from "../../functional";
 import * as iam from "../../gcp/iam";
 import * as gce from "../../gcp/computeEngine";
 import * as args from "./args";
 import * as backend from "./backend";
+import * as proto from "../../gcp/proto";
 import { trackGA4 } from "../../track";
 import * as utils from "../../utils";
 
@@ -19,6 +20,7 @@ const PERMISSION = "cloudfunctions.functions.setIamPolicy";
 export const SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE = "roles/iam.serviceAccountTokenCreator";
 export const RUN_INVOKER_ROLE = "roles/run.invoker";
 export const EVENTARC_EVENT_RECEIVER_ROLE = "roles/eventarc.eventReceiver";
+export const CLOUD_BUILD_BUILDER_ROLE = "roles/cloudbuild.builds.builder";
 export const GENKIT_MONITORING_ROLES = [
   "roles/monitoring.metricWriter",
   "roles/cloudtrace.agent",
@@ -180,6 +182,71 @@ export async function obtainDefaultComputeServiceAgentBindings(
     members: [defaultComputeServiceAgent],
   };
   return [runInvokerBinding, eventarcEventReceiverBinding];
+}
+
+/**
+ * Returns whether v2 functions must build as their own service accounts, because the default
+ * compute service account that GCF builds as is missing or disabled. The CLI does not grant roles
+ * to user-chosen accounts, so the commands to grant the build role are printed instead.
+ */
+export async function checkBuildServiceAccounts(
+  projectId: string,
+  projectNumber: string,
+  want: backend.Backend,
+): Promise<boolean> {
+  const v2Endpoints = backend.allEndpoints(want).filter((e) => e.platform === "gcfv2");
+  if (v2Endpoints.length === 0) {
+    return false;
+  }
+  const defaultServiceAccount = await gce.getDefaultServiceAccount(projectNumber);
+  try {
+    const account = await iam.getServiceAccount(projectId, defaultServiceAccount);
+    if (!account.disabled) {
+      return false;
+    }
+  } catch (err: unknown) {
+    if (getErrStatus(err) !== 404) {
+      logger.debug(
+        `Unable to look up default compute service account ${defaultServiceAccount}: ${getErrMsg(err)}`,
+      );
+      return false;
+    }
+  }
+
+  const defaultEndpoints = v2Endpoints.filter(
+    (endpoint) =>
+      !endpoint.serviceAccount ||
+      proto.formatServiceAccount(endpoint.serviceAccount, projectId, true) ===
+        defaultServiceAccount,
+  );
+  if (defaultEndpoints.length > 0) {
+    throw new FirebaseError(
+      `The default compute service account ${defaultServiceAccount} is missing or disabled, but ` +
+        `these functions would build as it: ${defaultEndpoints.map((e) => e.id).join(", ")}. ` +
+        "Set a different service account for them.",
+    );
+  }
+
+  const members = [
+    ...new Set(
+      v2Endpoints.flatMap((e) =>
+        e.serviceAccount ? [proto.formatServiceAccount(e.serviceAccount, projectId)] : [],
+      ),
+    ),
+  ];
+  utils.logLabeledWarning(
+    "functions",
+    `The default compute service account ${defaultServiceAccount} is missing or disabled, so ` +
+      "functions will build as their own service accounts. Those accounts need the Cloud Build " +
+      "builder role.",
+  );
+  iam.printManualIamConfig(
+    [{ role: CLOUD_BUILD_BUILDER_ROLE, members }],
+    projectId,
+    "functions",
+    "Grant it with these `gcloud` commands if you have not already:",
+  );
+  return true;
 }
 
 /**

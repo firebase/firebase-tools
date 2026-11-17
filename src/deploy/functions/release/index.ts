@@ -110,6 +110,7 @@ export async function release(
     appEngineLocation: getAppEngineLocation(context.firebaseConfig),
     projectNumber: projectNumber,
     projectId: context.projectId,
+    buildWithRuntimeServiceAccount: context.buildWithRuntimeServiceAccount,
   });
 
   const summary = await fab.applyPlan(plan);

@@ -8,7 +8,7 @@ import {
   parseErrorCode,
 } from "./executor";
 import * as ensure from "../ensure";
-import { FirebaseError, getError, getErrMsg, getErrStack, getErrStatus } from "../../../error";
+import { FirebaseError, getError, getErrStack } from "../../../error";
 
 import { SourceTokenScraper } from "./sourceTokenScraper";
 import { Timer } from "./timer";
@@ -74,6 +74,7 @@ export interface FabricatorArgs {
   sources: Record<string, args.Source>;
   projectNumber: string;
   projectId: string;
+  buildWithRuntimeServiceAccount?: boolean;
 }
 
 const rethrowAs =
@@ -104,7 +105,7 @@ export class Fabricator {
   appEngineLocation: string;
   projectNumber: string;
   projectId: string;
-  private defaultComputeServiceAccountUsable?: Promise<boolean>;
+  buildWithRuntimeServiceAccount: boolean;
 
   constructor(args: FabricatorArgs) {
     this.executor = args.executor;
@@ -114,6 +115,7 @@ export class Fabricator {
     this.appEngineLocation = args.appEngineLocation;
     this.projectNumber = args.projectNumber;
     this.projectId = args.projectId;
+    this.buildWithRuntimeServiceAccount = !!args.buildWithRuntimeServiceAccount;
   }
 
   async grantNewRoles(plan: planner.CodebasePlan, codebase: string): Promise<void> {
@@ -595,39 +597,13 @@ export class Fabricator {
 
   /**
    * GCF v2 builds run as the default compute service account unless buildConfig.serviceAccount
-   * is set. The runtime service account may lack build permissions, so it is only used for the
-   * build when the default account is missing or disabled.
+   * is set. Prepare decides whether that account is unusable, since runtime accounts often lack
+   * build permissions.
    */
-  private async setBuildServiceAccount(
-    endpoint: backend.Endpoint,
-    apiFunction: gcfV2.InputCloudFunction,
-  ): Promise<void> {
+  private setBuildServiceAccount(apiFunction: gcfV2.InputCloudFunction): void {
     const email = apiFunction.serviceConfig.serviceAccountEmail;
-    if (!email) {
-      return;
-    }
-    this.defaultComputeServiceAccountUsable ??= this.isDefaultComputeServiceAccountUsable();
-    if (await this.defaultComputeServiceAccountUsable) {
-      return;
-    }
-    apiFunction.buildConfig.serviceAccount = `projects/-/serviceAccounts/${email}`;
-    utils.logLabeledBullet(
-      "functions",
-      `Default compute service account is missing or disabled. Building ${helper.getFunctionLabel(endpoint)} as ${email}.`,
-    );
-  }
-
-  private async isDefaultComputeServiceAccountUsable(): Promise<boolean> {
-    const email = await gce.getDefaultServiceAccount(this.projectNumber);
-    try {
-      const account = await iam.getServiceAccount(this.projectId, email);
-      return !account.disabled;
-    } catch (err: unknown) {
-      if (getErrStatus(err) === 404) {
-        return false;
-      }
-      logger.debug(`Unable to look up default compute service account ${email}: ${getErrMsg(err)}`);
-      return true;
+    if (this.buildWithRuntimeServiceAccount && email) {
+      apiFunction.buildConfig.serviceAccount = `projects/-/serviceAccounts/${email}`;
     }
   }
 
@@ -638,7 +614,7 @@ export class Fabricator {
       throw new Error("Precondition failed");
     }
     const apiFunction = gcfV2.functionFromEndpoint({ ...endpoint, source: { storageSource } });
-    await this.setBuildServiceAccount(endpoint, apiFunction);
+    this.setBuildServiceAccount(apiFunction);
 
     // N.B. As of GCFv2 private preview GCF no longer creates Pub/Sub topics
     // for Pub/Sub event handlers. This may change, at which point this code
@@ -862,7 +838,7 @@ export class Fabricator {
       throw new Error("Precondition failed");
     }
     const apiFunction = gcfV2.functionFromEndpoint({ ...endpoint, source: { storageSource } });
-    await this.setBuildServiceAccount(endpoint, apiFunction);
+    this.setBuildServiceAccount(apiFunction);
 
     // N.B. As of GCFv2 private preview the API chokes on any update call that
     // includes the pub/sub topic even if that topic is unchanged.

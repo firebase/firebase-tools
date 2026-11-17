@@ -4,6 +4,10 @@ import * as checkIam from "./checkIam";
 import * as storage from "../../gcp/storage";
 import * as rm from "../../gcp/resourceManager";
 import * as backend from "./backend";
+import * as gce from "../../gcp/computeEngine";
+import * as iam from "../../gcp/iam";
+import * as utils from "../../utils";
+import { FirebaseError } from "../../error";
 
 const projectId = "my-project";
 const projectNumber = "123456789";
@@ -241,6 +245,131 @@ describe("checkIam", () => {
       expect(getIamStub).to.have.been.calledOnce;
       expect(setIamStub).to.have.been.calledOnce;
       expect(setIamStub).to.have.been.calledWith(projectNumber, newIamPolicy, "bindings");
+    });
+  });
+
+  describe("checkBuildServiceAccounts", () => {
+    const defaultServiceAccount = `${projectNumber}-compute@developer.gserviceaccount.com`;
+    let getServiceAccountStub: sinon.SinonStub;
+    let logLabeledBulletStub: sinon.SinonStub;
+    let logLabeledWarningStub: sinon.SinonStub;
+
+    const fn = (
+      id: string,
+      serviceAccount?: string,
+      platform: backend.Endpoint["platform"] = "gcfv2",
+    ): backend.Endpoint => ({
+      id,
+      entryPoint: id,
+      platform,
+      httpsTrigger: {},
+      ...SPEC,
+      ...(serviceAccount ? { serviceAccount } : {}),
+    });
+
+    beforeEach(() => {
+      sinon.stub(gce, "getDefaultServiceAccount").resolves(defaultServiceAccount);
+      getServiceAccountStub = sinon
+        .stub(iam, "getServiceAccount")
+        .resolves({ disabled: false } as iam.ServiceAccount);
+      logLabeledBulletStub = sinon.stub(utils, "logLabeledBullet");
+      logLabeledWarningStub = sinon.stub(utils, "logLabeledWarning");
+    });
+
+    it("does not look up the default account without v2 functions", async () => {
+      const result = await checkIam.checkBuildServiceAccounts(
+        projectId,
+        projectNumber,
+        backend.of(fn("v1", undefined, "gcfv1")),
+      );
+
+      expect(result).to.be.false;
+      expect(getServiceAccountStub).to.not.have.been.called;
+    });
+
+    it("keeps the default build account when it exists", async () => {
+      const result = await checkIam.checkBuildServiceAccounts(
+        projectId,
+        projectNumber,
+        backend.of(fn("a")),
+      );
+
+      expect(result).to.be.false;
+      expect(getServiceAccountStub).to.have.been.calledOnceWithExactly(
+        projectId,
+        defaultServiceAccount,
+      );
+      expect(logLabeledWarningStub).to.not.have.been.called;
+      expect(logLabeledBulletStub).to.not.have.been.called;
+    });
+
+    it("keeps the default build account when the lookup fails with a non-404 error", async () => {
+      getServiceAccountStub.rejects(new FirebaseError("Forbidden", { status: 403 }));
+
+      const result = await checkIam.checkBuildServiceAccounts(
+        projectId,
+        projectNumber,
+        backend.of(fn("a")),
+      );
+
+      expect(result).to.be.false;
+      expect(logLabeledWarningStub).to.not.have.been.called;
+    });
+
+    for (const [state, setup] of [
+      [
+        "missing",
+        () => getServiceAccountStub.rejects(new FirebaseError("Not found", { status: 404 })),
+      ],
+      ["disabled", () => getServiceAccountStub.resolves({ disabled: true } as iam.ServiceAccount)],
+    ] as const) {
+      it(`builds as the runtime accounts and prints the build role commands when the default account is ${state}`, async () => {
+        setup();
+
+        const result = await checkIam.checkBuildServiceAccounts(
+          projectId,
+          projectNumber,
+          backend.of(
+            fn("a", "sa@"),
+            fn("b", `sa@${projectId}.iam.gserviceaccount.com`),
+            fn("c", "other@other-project.iam.gserviceaccount.com"),
+            fn("v1", undefined, "gcfv1"),
+          ),
+        );
+
+        expect(result).to.be.true;
+        expect(logLabeledWarningStub).to.have.been.calledOnce;
+        expect(logLabeledBulletStub.args).to.deep.equal([
+          ["functions", "Grant it with these `gcloud` commands if you have not already:", "warn"],
+          [
+            "functions",
+            `\`gcloud projects add-iam-policy-binding ${projectId} ` +
+              `--member=serviceAccount:sa@${projectId}.iam.gserviceaccount.com ` +
+              `--role=${checkIam.CLOUD_BUILD_BUILDER_ROLE}\``,
+            "warn",
+          ],
+          [
+            "functions",
+            `\`gcloud projects add-iam-policy-binding ${projectId} ` +
+              "--member=serviceAccount:other@other-project.iam.gserviceaccount.com " +
+              `--role=${checkIam.CLOUD_BUILD_BUILDER_ROLE}\``,
+            "warn",
+          ],
+        ]);
+      });
+    }
+
+    it("throws for functions that would build as the missing default account", async () => {
+      getServiceAccountStub.rejects(new FirebaseError("Not found", { status: 404 }));
+
+      await expect(
+        checkIam.checkBuildServiceAccounts(
+          projectId,
+          projectNumber,
+          backend.of(fn("custom", "sa@"), fn("unset"), fn("explicit", defaultServiceAccount)),
+        ),
+      ).to.be.rejectedWith(FirebaseError, /would build as it: unset, explicit\./);
+      expect(logLabeledBulletStub).to.not.have.been.called;
     });
   });
 

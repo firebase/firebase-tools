@@ -253,22 +253,30 @@ export function mergeBindings(policy: Policy, requiredBindings: Binding[]): bool
   return updated;
 }
 
-/** Utility to print the required binding commands */
+/**
+ * Utility to print the required binding commands. A heading replaces the default explanation,
+ * which assumes the CLI tried and failed to set the bindings.
+ */
 export function printManualIamConfig(
   requiredBindings: Binding[],
   projectId: string,
   prefix: string,
+  heading?: string,
 ) {
-  utils.logLabeledBullet(
-    prefix,
-    "Failed to verify the project has the correct IAM bindings for a successful deployment.",
-    "warn",
-  );
-  utils.logLabeledBullet(
-    prefix,
-    "You can either re-run this command as a project owner or manually run the following set of `gcloud` commands:",
-    "warn",
-  );
+  if (heading) {
+    utils.logLabeledBullet(prefix, heading, "warn");
+  } else {
+    utils.logLabeledBullet(
+      prefix,
+      "Failed to verify the project has the correct IAM bindings for a successful deployment.",
+      "warn",
+    );
+    utils.logLabeledBullet(
+      prefix,
+      "You can either re-run this command as a project owner or manually run the following set of `gcloud` commands:",
+      "warn",
+    );
+  }
   for (const binding of requiredBindings) {
     for (const member of binding.members) {
       utils.logLabeledBullet(
