@@ -78,7 +78,7 @@ export function guardVersionSupport(runtime: Runtime, now: Date = new Date()): v
     );
   }
 
-  if (status === "beta" || status === "experimental") {
+  if (status === "beta") {
     utils.logLabeledWarning(
       "functions",
       `Runtime ${friendly} is in Preview. Preview runtimes may change and are not recommended ` +

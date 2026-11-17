@@ -88,12 +88,9 @@ describe("supported runtimes", () => {
       );
     });
 
-    it("warns for an experimental runtime", () => {
+    it("does not warn for an experimental runtime", () => {
       supported.guardVersionSupport("dart3", new Date("2026-11-16"));
-      expect(logLabeledWarning).to.have.been.calledOnceWith(
-        "functions",
-        sinon.match("Runtime Dart 3 is in Preview."),
-      );
+      expect(logLabeledWarning).not.to.have.been.called;
     });
 
     it("does not warn for a GA runtime outside its deprecation window", () => {
