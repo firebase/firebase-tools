@@ -68,6 +68,8 @@ export interface DelegateContext {
   // Absolute path of the source directory.
   sourceDir: string;
   runtime?: supported.Runtime;
+  // User-defined environment variables loaded from .env files.
+  userEnvs?: Record<string, string>;
 }
 
 type Factory = (context: DelegateContext) => Promise<RuntimeDelegate | undefined>;

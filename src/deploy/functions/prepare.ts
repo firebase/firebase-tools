@@ -829,12 +829,6 @@ export async function loadCodebases(
       );
     }
     const sourceDir = options.config.path(sourceDirName);
-    const delegateContext: runtimes.DelegateContext = {
-      projectId,
-      sourceDir,
-      projectDir: options.config.projectDir,
-      runtime: codebaseConfig.runtime,
-    };
     const firebaseJsonRuntime = codebaseConfig.runtime;
     if (firebaseJsonRuntime && !supported.isRuntime(firebaseJsonRuntime as string)) {
       throw new FirebaseError(
@@ -846,15 +840,6 @@ export async function loadCodebases(
             .join("\n"),
       );
     }
-    const runtimeDelegate = await runtimes.getRuntimeDelegate(delegateContext);
-    logger.debug(`Validating ${runtimeDelegate.language} source`);
-    if (!experiments.isEnabled("bypassfunctionsdeprecationcheck")) {
-      supported.guardVersionSupport(runtimeDelegate.runtime);
-    }
-    await runtimeDelegate.validate();
-    logger.debug(`Building ${runtimeDelegate.language} source`);
-    await runtimeDelegate.build();
-
     const userEnvOpt: functionsEnv.UserEnvsOpts = {
       functionsSource: sourceDir,
       projectId: projectId,
@@ -866,6 +851,22 @@ export async function loadCodebases(
       userEnvOpt.configDir = options.config.path(configDir);
     }
     const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
+
+    const delegateContext: runtimes.DelegateContext = {
+      projectId,
+      sourceDir,
+      projectDir: options.config.projectDir,
+      runtime: codebaseConfig.runtime,
+      userEnvs,
+    };
+    const runtimeDelegate = await runtimes.getRuntimeDelegate(delegateContext);
+    logger.debug(`Validating ${runtimeDelegate.language} source`);
+    if (!experiments.isEnabled("bypassfunctionsdeprecationcheck")) {
+      supported.guardVersionSupport(runtimeDelegate.runtime);
+    }
+    await runtimeDelegate.validate();
+    logger.debug(`Building ${runtimeDelegate.language} source`);
+    await runtimeDelegate.build();
 
     const firebaseEnvs = functionsEnv.loadFirebaseEnvs(
       firebaseConfig,
