@@ -493,11 +493,14 @@ function paramValueFromDefault(
 ): ParamValue {
   if (param.type === "string") {
     return new ParamValue(String(resolvedDefault), false, { string: true });
-  } else if (param.type === "int") {
+  }
+  if (param.type === "int") {
     return new ParamValue(String(resolvedDefault), false, { number: true });
-  } else if (param.type === "boolean") {
+  }
+  if (param.type === "boolean") {
     return new ParamValue(String(resolvedDefault), false, { boolean: true });
-  } else if (param.type === "list") {
+  }
+  if (param.type === "list") {
     return ParamValue.fromList(resolvedDefault as string[], param.delimiter);
   }
   assertExhaustive(param);
