@@ -608,6 +608,30 @@ export interface FirebaseFunctionMetadata {
   scheduleTrigger?: backend.ScheduleTrigger;
 }
 
+function triggerFromService(
+  service: Omit<Service, ServiceOutputFields>,
+  metadata: FirebaseFunctionMetadata,
+  signatureType: string | undefined,
+): backend.Triggered {
+  if (metadata.eventTrigger) {
+    return { eventTrigger: metadata.eventTrigger };
+  }
+  if (metadata.scheduleTrigger) {
+    return { scheduleTrigger: metadata.scheduleTrigger };
+  }
+  const triggerType = service.annotations?.[TRIGGER_TYPE_ANNOTATION];
+  if (signatureType !== "cloudevent" && (!triggerType || triggerType === "HTTP_TRIGGER")) {
+    return { httpsTrigger: {} };
+  }
+  return {
+    eventTrigger: {
+      eventType: triggerType || "unknown",
+      // TODO: Figure out how to recover retry info for services not created by Firebase.
+      retry: false,
+    },
+  };
+}
+
 // Partial implementation. A full implementation may require more refactoring.
 // E.g. server-side we need to know the actual names of the resources we're
 // referencing. So maybe endpointFromSerivce should be async and fetch the
@@ -667,27 +691,7 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
       : service.annotations?.["run.googleapis.com/ingress"] === "internal-and-cloud-load-balancing"
         ? "ALLOW_INTERNAL_AND_GCLB"
         : "ALLOW_ALL") as backend.IngressSettings,
-    ...(metadata.eventTrigger
-      ? { eventTrigger: metadata.eventTrigger }
-      : metadata.scheduleTrigger
-        ? { scheduleTrigger: metadata.scheduleTrigger }
-        : signatureType === "cloudevent"
-          ? {
-              eventTrigger: {
-                eventType: service.annotations?.[TRIGGER_TYPE_ANNOTATION] || "unknown",
-                retry: false,
-              },
-            }
-          : !service.annotations?.[TRIGGER_TYPE_ANNOTATION] ||
-              service.annotations?.[TRIGGER_TYPE_ANNOTATION] === "HTTP_TRIGGER"
-            ? { httpsTrigger: {} }
-            : {
-                eventTrigger: {
-                  eventType: service.annotations?.[TRIGGER_TYPE_ANNOTATION] || "unknown",
-                  // TODO: Figure out how to recover retry info for services not created by Firebase.
-                  retry: false,
-                },
-              }),
+    ...triggerFromService(service, metadata, signatureType),
   };
   endpoint.runServiceId = svcId;
   proto.renameIfPresent(endpoint, service.template, "concurrency", "maxInstanceRequestConcurrency");
@@ -735,8 +739,8 @@ export function serviceFromEndpoint(
     labels["deployment-tool"] = labels["deployment-tool"]
       .toLowerCase()
       .replace(/[^a-z0-9_-]/g, "-")
-      .replace(/^[^a-z0-9]+|[^a-z0-9]+$/g, "")
-      .slice(0, 63);
+      .slice(0, 63)
+      .replace(/^[^a-z0-9]+|[^a-z0-9]+$/g, "");
   }
 
   // TODO: hash

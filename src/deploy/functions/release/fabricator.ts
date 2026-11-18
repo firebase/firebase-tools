@@ -1403,9 +1403,6 @@ export class Fabricator {
     const triggerName = this.eventarcTriggerName(endpoint);
     await this.executor
       .run(async () => {
-        if ((await eventarc.getTrigger(triggerName)) === undefined) {
-          return;
-        }
         const op = await eventarc.deleteTrigger(triggerName);
         await poller.pollOperation<void>({
           ...eventarcPollerOptions,
@@ -1413,7 +1410,7 @@ export class Fabricator {
           operationResourceName: op.name,
         });
       })
-      .catch(rethrowAs(endpoint, "delete eventarc trigger"));
+      .catch(rethrowAsUnlessNotFound(endpoint, "delete eventarc trigger"));
   }
 
   async upsertScheduleV1(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
