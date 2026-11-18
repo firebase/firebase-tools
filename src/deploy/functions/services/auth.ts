@@ -141,11 +141,18 @@ export class AuthBlockingService implements Service {
     endpoint: backend.Endpoint & backend.BlockingTriggered,
   ): Promise<void> {
     const blockingConfig = await identityPlatform.getBlockingFunctionsConfig(endpoint.project);
+    // A 2nd gen function is registered with its cloudfunctions.net URL on create but with its
+    // run.app URL on update, so a function may be registered under either one.
+    const endpointUris = new Set(
+      [endpoint.uri, endpoint.runServiceUri].filter((uri): uri is string => !!uri),
+    );
+    const isEndpointUri = (functionUri?: string): boolean =>
+      !!functionUri && endpointUris.has(functionUri);
     if (
-      endpoint.uri !== blockingConfig.triggers?.beforeCreate?.functionUri &&
-      endpoint.uri !== blockingConfig.triggers?.beforeSignIn?.functionUri &&
-      endpoint.uri !== blockingConfig.triggers?.beforeSendEmail?.functionUri &&
-      endpoint.uri !== blockingConfig.triggers?.beforeSendSms?.functionUri
+      !isEndpointUri(blockingConfig.triggers?.beforeCreate?.functionUri) &&
+      !isEndpointUri(blockingConfig.triggers?.beforeSignIn?.functionUri) &&
+      !isEndpointUri(blockingConfig.triggers?.beforeSendEmail?.functionUri) &&
+      !isEndpointUri(blockingConfig.triggers?.beforeSendSms?.functionUri)
     ) {
       return;
     }
@@ -153,16 +160,16 @@ export class AuthBlockingService implements Service {
     // There is a possibility that the user changed the registration on identity platform,
     // to prevent 400 errors on every create and/or sign in on the app, we will treat
     // the blockingConfig as the source of truth and only delete matching uri's.
-    if (endpoint.uri === blockingConfig.triggers?.beforeCreate?.functionUri) {
+    if (isEndpointUri(blockingConfig.triggers?.beforeCreate?.functionUri)) {
       delete blockingConfig.triggers?.beforeCreate;
     }
-    if (endpoint.uri === blockingConfig.triggers?.beforeSignIn?.functionUri) {
+    if (isEndpointUri(blockingConfig.triggers?.beforeSignIn?.functionUri)) {
       delete blockingConfig.triggers?.beforeSignIn;
     }
-    if (endpoint.uri === blockingConfig.triggers?.beforeSendEmail?.functionUri) {
+    if (isEndpointUri(blockingConfig.triggers?.beforeSendEmail?.functionUri)) {
       delete blockingConfig.triggers?.beforeSendEmail;
     }
-    if (endpoint.uri === blockingConfig.triggers?.beforeSendSms?.functionUri) {
+    if (isEndpointUri(blockingConfig.triggers?.beforeSendSms?.functionUri)) {
       delete blockingConfig.triggers?.beforeSendSms;
     }
 

@@ -521,6 +521,7 @@ describe("cloudfunctionsv2", () => {
         httpsTrigger: {},
         platform: "gcfv2",
         uri: GCF_URL,
+        runServiceUri: RUN_URI,
       });
     });
 
@@ -538,6 +539,7 @@ describe("cloudfunctionsv2", () => {
         httpsTrigger: {},
         platform: "gcfv2",
         uri: GCF_URL,
+        runServiceUri: RUN_URI,
         runServiceId: "service-id",
       });
     });
@@ -547,6 +549,7 @@ describe("cloudfunctionsv2", () => {
         ...ENDPOINT,
         platform: "gcfv2",
         uri: GCF_URL,
+        runServiceUri: RUN_URI,
         eventTrigger: {
           eventType: events.v2.PUBSUB_PUBLISH_EVENT,
           eventFilters: { topic: "projects/p/topics/t" },
@@ -674,6 +677,7 @@ describe("cloudfunctionsv2", () => {
         ...ENDPOINT,
         platform: "gcfv2",
         uri: GCF_URL,
+        runServiceUri: RUN_URI,
         eventTrigger: {
           eventType: "com.custom.event",
           eventFilters: { customattr: "customvalue" },
@@ -709,6 +713,7 @@ describe("cloudfunctionsv2", () => {
         taskQueueTrigger: {},
         platform: "gcfv2",
         uri: GCF_URL,
+        runServiceUri: RUN_URI,
         labels: { "deployment-taskqueue": "true" },
       });
     });
@@ -726,6 +731,7 @@ describe("cloudfunctionsv2", () => {
         },
         platform: "gcfv2",
         uri: GCF_URL,
+        runServiceUri: RUN_URI,
         labels: { "deployment-blocking": "before-create" },
       });
     });
@@ -743,6 +749,7 @@ describe("cloudfunctionsv2", () => {
         },
         platform: "gcfv2",
         uri: GCF_URL,
+        runServiceUri: RUN_URI,
         labels: { "deployment-blocking": "before-sign-in" },
       });
     });
@@ -781,6 +788,7 @@ describe("cloudfunctionsv2", () => {
         platform: "gcfv2",
         httpsTrigger: {},
         uri: GCF_URL,
+        runServiceUri: RUN_URI,
         ...extraFields,
         serviceAccount: "inlined@google.com",
         vpc,
@@ -816,6 +824,7 @@ describe("cloudfunctionsv2", () => {
         ...ENDPOINT,
         platform: "gcfv2",
         uri: GCF_URL,
+        runServiceUri: RUN_URI,
         httpsTrigger: {},
         ...extraFields,
       });
@@ -834,6 +843,7 @@ describe("cloudfunctionsv2", () => {
         ...ENDPOINT,
         platform: "gcfv2",
         uri: GCF_URL,
+        runServiceUri: RUN_URI,
         httpsTrigger: {},
         labels: {
           ...ENDPOINT.labels,
@@ -857,6 +867,7 @@ describe("cloudfunctionsv2", () => {
         ...ENDPOINT,
         platform: "gcfv2",
         uri: GCF_URL,
+        runServiceUri: RUN_URI,
         httpsTrigger: {},
         labels: {
           ...ENDPOINT.labels,
@@ -890,6 +901,7 @@ describe("cloudfunctionsv2", () => {
         platform: "gcfv2",
         httpsTrigger: {},
         uri: GCF_URL,
+        runServiceUri: RUN_URI,
         entryPoint: "",
         runtime: undefined,
         source: undefined,

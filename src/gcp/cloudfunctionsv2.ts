@@ -737,6 +737,7 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
       "serviceAccount",
       "serviceAccountEmail",
     );
+    proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "runServiceUri", "uri");
     proto.convertIfPresent(
       endpoint,
       gcfFunction.serviceConfig,
