@@ -443,14 +443,6 @@ describe("authBlocking", () => {
     });
 
     it("should not unregister an endpoint without a uri", async () => {
-      const blockingConfig: identityPlatform.BlockingFunctionsConfig = {
-        triggers: {
-          beforeSignIn: {
-            functionUri: "beforesignin.url",
-          },
-        },
-        forwardInboundCredentials: {},
-      };
       const ep: backend.Endpoint = {
         ...BASE_EP,
         platform: "gcfv2",
@@ -459,10 +451,10 @@ describe("authBlocking", () => {
           options: {},
         },
       };
-      getConfig.resolves(blockingConfig);
 
       await authBlockingService.unregisterTrigger(ep);
 
+      expect(getConfig).to.not.have.been.called;
       expect(setConfig).to.not.have.been.called;
     });
 
