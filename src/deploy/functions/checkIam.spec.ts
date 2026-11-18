@@ -371,6 +371,77 @@ describe("checkIam", () => {
       ).to.be.rejectedWith(FirebaseError, /would build as it: unset, explicit\./);
       expect(logLabeledBulletStub).to.not.have.been.called;
     });
+
+    describe("with a declarative security managed account", () => {
+      const managedSA = `firebase-fn-1234567890@${projectId}.iam.gserviceaccount.com`;
+      const requiresRoleWarning =
+        `${managedSA} is managed by declarative security, so declare its roles in the ` +
+        `codebase that uses it: requiresRole("${checkIam.CLOUD_BUILD_BUILDER_ROLE}")`;
+
+      beforeEach(() => {
+        getServiceAccountStub.rejects(new FirebaseError("Not found", { status: 404 }));
+      });
+
+      it("suggests requiresRole for the managed account and gcloud for the others", async () => {
+        const result = await checkIam.checkBuildServiceAccounts(
+          projectId,
+          projectNumber,
+          backend.of(fn("managed", managedSA), fn("custom", "sa@")),
+          { [managedSA]: ["roles/datastore.user"] },
+        );
+
+        expect(result).to.be.true;
+        expect(logLabeledBulletStub.args).to.deep.equal([
+          ["functions", "Grant it with these `gcloud` commands if you have not already:", "warn"],
+          [
+            "functions",
+            `\`gcloud projects add-iam-policy-binding ${projectId} ` +
+              `--member=serviceAccount:sa@${projectId}.iam.gserviceaccount.com ` +
+              `--role=${checkIam.CLOUD_BUILD_BUILDER_ROLE}\``,
+            "warn",
+          ],
+        ]);
+        expect(logLabeledWarningStub).to.have.been.calledTwice;
+        expect(logLabeledWarningStub.secondCall.args).to.deep.equal([
+          "functions",
+          requiresRoleWarning,
+        ]);
+      });
+
+      it("does not suggest the role when the codebase declares it", async () => {
+        const result = await checkIam.checkBuildServiceAccounts(
+          projectId,
+          projectNumber,
+          backend.of(fn("managed", managedSA)),
+          { [managedSA]: [checkIam.CLOUD_BUILD_BUILDER_ROLE] },
+        );
+
+        expect(result).to.be.true;
+        expect(logLabeledBulletStub).to.not.have.been.called;
+        expect(logLabeledWarningStub).to.have.been.calledOnce;
+        expect(logLabeledWarningStub.firstCall.args[1]).to.include(defaultServiceAccount);
+      });
+
+      it("treats a firebase-fn- account that declarative security does not manage as a user account", async () => {
+        const result = await checkIam.checkBuildServiceAccounts(
+          projectId,
+          projectNumber,
+          backend.of(fn("managed", managedSA)),
+        );
+
+        expect(result).to.be.true;
+        expect(logLabeledBulletStub.args).to.deep.equal([
+          ["functions", "Grant it with these `gcloud` commands if you have not already:", "warn"],
+          [
+            "functions",
+            `\`gcloud projects add-iam-policy-binding ${projectId} ` +
+              `--member=serviceAccount:${managedSA} --role=${checkIam.CLOUD_BUILD_BUILDER_ROLE}\``,
+            "warn",
+          ],
+        ]);
+        expect(logLabeledWarningStub).to.have.been.calledOnce;
+      });
+    });
   });
 
   describe("ensureGenkitMonitoringRoles", () => {

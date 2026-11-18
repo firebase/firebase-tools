@@ -188,11 +188,14 @@ export async function obtainDefaultComputeServiceAgentBindings(
  * Returns whether v2 functions must build as their own service accounts, because the default
  * compute service account that GCF builds as is missing or disabled. The CLI does not grant roles
  * to user-chosen accounts, so the commands to grant the build role are printed instead.
+ * Declarative security accounts are only created at release and only get the roles their
+ * codebase declares, so they are told to declare the role instead.
  */
 export async function checkBuildServiceAccounts(
   projectId: string,
   projectNumber: string,
   want: backend.Backend,
+  managedAccountRoles: Record<string, string[]> = {},
 ): Promise<boolean> {
   const v2Endpoints = backend.allEndpoints(want).filter((e) => e.platform === "gcfv2");
   if (v2Endpoints.length === 0) {
@@ -227,25 +230,45 @@ export async function checkBuildServiceAccounts(
     );
   }
 
-  const members = [
+  const accounts = [
     ...new Set(
       v2Endpoints.flatMap((e) =>
-        e.serviceAccount ? [proto.formatServiceAccount(e.serviceAccount, projectId)] : [],
+        e.serviceAccount ? [proto.formatServiceAccount(e.serviceAccount, projectId, true)] : [],
       ),
     ),
   ];
+  const userAccounts = accounts.filter((account) => !managedAccountRoles[account]);
+  const managedAccountsMissingRole = accounts.filter(
+    (account) =>
+      managedAccountRoles[account] &&
+      !managedAccountRoles[account].includes(CLOUD_BUILD_BUILDER_ROLE),
+  );
   utils.logLabeledWarning(
     "functions",
     `The default compute service account ${defaultServiceAccount} is missing or disabled, so ` +
       "functions will build as their own service accounts. Those accounts need the Cloud Build " +
       "builder role.",
   );
-  iam.printManualIamConfig(
-    [{ role: CLOUD_BUILD_BUILDER_ROLE, members }],
-    projectId,
-    "functions",
-    "Grant it with these `gcloud` commands if you have not already:",
-  );
+  if (userAccounts.length > 0) {
+    iam.printManualIamConfig(
+      [
+        {
+          role: CLOUD_BUILD_BUILDER_ROLE,
+          members: userAccounts.map((account) => `serviceAccount:${account}`),
+        },
+      ],
+      projectId,
+      "functions",
+      "Grant it with these `gcloud` commands if you have not already:",
+    );
+  }
+  for (const account of managedAccountsMissingRole) {
+    utils.logLabeledWarning(
+      "functions",
+      `${account} is managed by declarative security, so declare its roles in the codebase ` +
+        `that uses it: requiresRole("${CLOUD_BUILD_BUILDER_ROLE}")`,
+    );
+  }
   return true;
 }
 
