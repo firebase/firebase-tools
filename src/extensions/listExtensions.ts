@@ -68,7 +68,7 @@ export async function listExtensions(projectId: string): Promise<Record<string, 
     }
     const instanceId = last(instance.name.split("/")) ?? "";
     const state =
-      instance.state +
+      String(instance.state) +
       ((instance.config.source.state || "ACTIVE") === "DELETED" ? " (UNPUBLISHED)" : "");
     const version = instance?.config?.source?.spec?.version;
     const updateTime = extensionsUtils.formatTimestamp(instance.updateTime);
