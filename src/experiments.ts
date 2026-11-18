@@ -264,6 +264,11 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: false,
   },
+  crashlyticscli: {
+    shortDescription: "Enable read-only Crashlytics commands for issues, events, and reports.",
+    default: false,
+    public: false,
+  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;

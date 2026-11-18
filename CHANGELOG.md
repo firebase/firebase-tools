@@ -1,3 +1,7 @@
+- Updated `@modelcontextprotocol/sdk` to 1.32.2, `undici` to 6.29.1 and `proxy-addr` to 2.0.8 to resolve critical and high severity security advisories.
+- Added support for the Node.js 26 runtime (Preview) for Cloud Functions. (#11393)
+- Fixed `firebase deploy --dry-run` creating a missing Firestore database. A dry run now reports which database a deploy would create, and where. (#11491)
+- Added an optional `filterExpression` parameter to the Crashlytics MCP `get_report` tool to filter reports by custom keys.
 - Fixed 2nd gen functions staying uncallable after their first deploy failed, because later deploys never set the invoker. (#8984)
 - Updated Pub/Sub emulator to version 0.8.38.
 - Fixed `crashlytics:heapdumps` commands accepting `--app` IDs that do not belong to the target Firebase project.
@@ -9,3 +13,4 @@
 - Updated the Firebase SQL Connect local toolkit to v3.4.27, which includes the following changes:
   - Fixed a bug where singular lookup queries using server value key expressions (such as `id_expr`) did not trigger realtime subscription updates or client-side cache tracking when returning `null`.
   - Declare and export enums selected only inside nested relations in generated JS and Admin Node SDKs.
+- Restricted cross-origin access on the Cloud Functions emulator `/backends` endpoint to the active Emulator UI origin.
