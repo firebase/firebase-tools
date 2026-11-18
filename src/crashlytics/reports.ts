@@ -72,6 +72,7 @@ export async function listReports(appId: string): Promise<ListReportsResponse> {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
+      "x-goog-user-project": requestProjectNumber,
     },
     path: `/projects/${requestProjectNumber}/apps/${appId}/reports`,
     timeout: TIMEOUT,
@@ -136,6 +137,7 @@ export async function getReport(
     method: "GET",
     headers: {
       "Content-Type": "application/json",
+      "x-goog-user-project": requestProjectNumber,
     },
     path: `/projects/${requestProjectNumber}/apps/${appId}/reports/${reportName}`,
     queryParams: queryParams,

@@ -15,6 +15,7 @@ export async function getIssue(appId: string, issueId: string): Promise<Issue> {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
+      "x-goog-user-project": requestProjectNumber,
     },
     path: `/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}`,
     timeout: TIMEOUT,
@@ -38,6 +39,7 @@ export async function updateIssue(appId: string, issueId: string, state: State):
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
+      "x-goog-user-project": requestProjectNumber,
     },
     path: `/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}`,
     queryParams: { updateMask: "state" },

@@ -55,6 +55,7 @@ export async function listEvents(
     method: "GET",
     headers: {
       "Content-Type": "application/json",
+      "x-goog-user-project": requestProjectNumber,
     },
     path: `/projects/${requestProjectNumber}/apps/${appId}/events`,
     queryParams: queryParams,
@@ -116,6 +117,7 @@ export async function batchGetEvents(
     method: "GET",
     headers: {
       "Content-Type": "application/json",
+      "x-goog-user-project": requestProjectNumber,
     },
     path: `/projects/${requestProjectNumber}/apps/${appId}/events:batchGet`,
     queryParams: queryParams,
