@@ -185,6 +185,114 @@ export async function obtainDefaultComputeServiceAgentBindings(
 }
 
 /**
+ * Returns the default compute service account if it is missing or disabled. Any other lookup
+ * error returns undefined, so callers keep their current behaviour.
+ */
+async function unusableDefaultComputeServiceAccount(
+  projectId: string,
+  projectNumber: string,
+): Promise<string | undefined> {
+  const defaultServiceAccount = await gce.getDefaultServiceAccount(projectNumber);
+  try {
+    const account = await iam.getServiceAccount(projectId, defaultServiceAccount);
+    return account.disabled ? defaultServiceAccount : undefined;
+  } catch (err: unknown) {
+    if (getErrStatus(err) !== 404) {
+      logger.debug(
+        `Unable to look up default compute service account ${defaultServiceAccount}: ${getErrMsg(err)}`,
+      );
+      return undefined;
+    }
+    return defaultServiceAccount;
+  }
+}
+
+/**
+ * Returns the default compute service agent bindings, unless that account is missing or disabled and
+ * no v2 event function runs as it. In that case the bindings each function's own service account
+ * needs are printed instead, since the CLI does not grant roles to user-chosen accounts.
+ * Declarative security accounts are only created at release and only get the roles their
+ * codebase declares, so they are told to declare the roles instead.
+ */
+async function obtainEventarcServiceAccountBindings(
+  projectId: string,
+  projectNumber: string,
+  want: backend.Backend,
+  managedAccountRoles: Record<string, string[]>,
+): Promise<iam.Binding[]> {
+  const bindings = await obtainDefaultComputeServiceAgentBindings(projectNumber);
+  const defaultServiceAccount = await unusableDefaultComputeServiceAccount(
+    projectId,
+    projectNumber,
+  );
+  if (!defaultServiceAccount) {
+    return bindings;
+  }
+
+  const eventEndpoints = backend
+    .allEndpoints(want)
+    .filter((endpoint) => endpoint.platform !== "gcfv1" && backend.isEventTriggered(endpoint));
+  const defaultEndpoints = eventEndpoints.filter(
+    (endpoint) =>
+      !endpoint.serviceAccount ||
+      proto.formatServiceAccount(endpoint.serviceAccount, projectId, true) ===
+        defaultServiceAccount,
+  );
+  if (defaultEndpoints.length > 0) {
+    throw new FirebaseError(
+      `The default compute service account ${defaultServiceAccount} is missing or disabled, but these ` +
+        `functions would run as it: ${defaultEndpoints.map((e) => e.id).join(", ")}. ` +
+        "Set a different service account for them.",
+    );
+  }
+
+  const accounts = [
+    ...new Set(
+      eventEndpoints.flatMap((e) =>
+        e.serviceAccount ? [proto.formatServiceAccount(e.serviceAccount, projectId, true)] : [],
+      ),
+    ),
+  ];
+  const userAccounts = accounts.filter((account) => !managedAccountRoles[account]);
+  const managedAccountsMissingRoles = accounts.flatMap((account) => {
+    const declared = managedAccountRoles[account];
+    const missing = [RUN_INVOKER_ROLE, EVENTARC_EVENT_RECEIVER_ROLE].filter(
+      (role) => declared && !declared.includes(role),
+    );
+    return missing.length > 0 ? [{ account, missing }] : [];
+  });
+  if (userAccounts.length === 0 && managedAccountsMissingRoles.length === 0) {
+    return [];
+  }
+
+  utils.logLabeledWarning(
+    "functions",
+    `The default compute service account ${defaultServiceAccount} is missing or disabled, so its ` +
+      "roles were not granted. Your functions' service accounts need these roles to receive events.",
+  );
+  if (userAccounts.length > 0) {
+    const members = userAccounts.map((account) => `serviceAccount:${account}`);
+    iam.printManualIamConfig(
+      [
+        { role: RUN_INVOKER_ROLE, members },
+        { role: EVENTARC_EVENT_RECEIVER_ROLE, members },
+      ],
+      projectId,
+      "functions",
+      "Grant them with these `gcloud` commands:",
+    );
+  }
+  for (const { account, missing } of managedAccountsMissingRoles) {
+    utils.logLabeledWarning(
+      "functions",
+      `${account} is managed by declarative security, so declare its roles in the codebase ` +
+        `that uses it: ${missing.map((role) => `requiresRole("${role}")`).join(", ")}`,
+    );
+  }
+  return [];
+}
+
+/**
  * Returns whether v2 functions must build as their own service accounts, because the default
  * compute service account that GCF builds as is missing or disabled. The CLI does not grant roles
  * to user-chosen accounts, so the commands to grant the build role are printed instead.
@@ -201,19 +309,12 @@ export async function checkBuildServiceAccounts(
   if (v2Endpoints.length === 0) {
     return false;
   }
-  const defaultServiceAccount = await gce.getDefaultServiceAccount(projectNumber);
-  try {
-    const account = await iam.getServiceAccount(projectId, defaultServiceAccount);
-    if (!account.disabled) {
-      return false;
-    }
-  } catch (err: unknown) {
-    if (getErrStatus(err) !== 404) {
-      logger.debug(
-        `Unable to look up default compute service account ${defaultServiceAccount}: ${getErrMsg(err)}`,
-      );
-      return false;
-    }
+  const defaultServiceAccount = await unusableDefaultComputeServiceAccount(
+    projectId,
+    projectNumber,
+  );
+  if (!defaultServiceAccount) {
+    return false;
   }
 
   const defaultEndpoints = v2Endpoints.filter(
@@ -325,6 +426,8 @@ export async function ensureGenkitMonitoringRoles(
  * @param projectNumber project number
  * @param want backend that we want to deploy
  * @param have backend that we have currently deployed
+ * @param dryRun if true, report the roles that would be granted without granting them
+ * @param managedAccountRoles roles each declarative security account's codebase declares
  */
 export async function ensureServiceAgentRoles(
   projectId: string,
@@ -332,6 +435,7 @@ export async function ensureServiceAgentRoles(
   want: backend.Backend,
   have: backend.Backend,
   dryRun?: boolean,
+  managedAccountRoles: Record<string, string[]> = {},
 ): Promise<void> {
   // find new services
   const wantServices = backend.allEndpoints(want).reduce(reduceEventsToServices, []);
@@ -352,7 +456,14 @@ export async function ensureServiceAgentRoles(
   const requiredBindings = [...flattenArray(nestedRequiredBindings)];
   if (haveServices.length === 0) {
     requiredBindings.push(...obtainPubSubServiceAgentBindings(projectNumber));
-    requiredBindings.push(...(await obtainDefaultComputeServiceAgentBindings(projectNumber)));
+    requiredBindings.push(
+      ...(await obtainEventarcServiceAccountBindings(
+        projectId,
+        projectNumber,
+        want,
+        managedAccountRoles,
+      )),
+    );
   }
   if (requiredBindings.length === 0) {
     return;

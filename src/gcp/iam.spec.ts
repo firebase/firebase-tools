@@ -1,9 +1,11 @@
 import { expect } from "chai";
+import * as sinon from "sinon";
 import nock from "../test/helpers/nock";
 
 import { resourceManagerOrigin } from "../api";
 import { FirebaseError } from "../error";
 import * as iam from "./iam";
+import * as utils from "../utils";
 
 const BINDING = {
   role: "some/role",
@@ -119,6 +121,40 @@ describe("iam", () => {
       expect(iam.isRetryableIamError(new FirebaseError("Forbidden", { status: 403 }))).to.be.false;
       expect(iam.isRetryableIamError(new FirebaseError("Server Error", { status: 500 }))).to.be
         .false;
+    });
+  });
+
+  describe("printManualIamConfig", () => {
+    const COMMAND =
+      "`gcloud projects add-iam-policy-binding my-project --member=someuser --role=some/role`";
+    const binding = { role: "some/role", members: ["someuser"] };
+    let bulletStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      bulletStub = sinon.stub(utils, "logLabeledBullet");
+    });
+
+    afterEach(() => {
+      bulletStub.restore();
+    });
+
+    it("should explain the failed update by default", () => {
+      iam.printManualIamConfig([binding], "my-project", "functions");
+
+      expect(bulletStub.args.map((args: unknown[]) => args[1])).to.deep.equal([
+        "Failed to verify the project has the correct IAM bindings for a successful deployment.",
+        "You can either re-run this command as a project owner or manually run the following set of `gcloud` commands:",
+        COMMAND,
+      ]);
+    });
+
+    it("should print the heading in place of the default explanation", () => {
+      iam.printManualIamConfig([binding], "my-project", "functions", "Run these commands:");
+
+      expect(bulletStub.args.map((args: unknown[]) => args[1])).to.deep.equal([
+        "Run these commands:",
+        COMMAND,
+      ]);
     });
   });
 

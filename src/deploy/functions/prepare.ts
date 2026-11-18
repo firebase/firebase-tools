@@ -557,6 +557,7 @@ export async function prepare(
     matchingBackend,
     haveBackend,
     options.dryRun,
+    managedAccountRoles,
   );
   await ensureGenkitMonitoringRoles(
     projectId,
