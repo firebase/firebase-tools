@@ -606,6 +606,7 @@ export interface FirebaseFunctionMetadata {
   functionId: string;
   eventTrigger?: backend.EventTrigger;
   scheduleTrigger?: backend.ScheduleTrigger;
+  blockingTrigger?: backend.BlockingTrigger;
 }
 
 // Partial implementation. A full implementation may require more refactoring.
@@ -671,25 +672,28 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
       ? { eventTrigger: metadata.eventTrigger }
       : metadata.scheduleTrigger
         ? { scheduleTrigger: metadata.scheduleTrigger }
-        : signatureType === "cloudevent"
-          ? {
-              eventTrigger: {
-                eventType: service.annotations?.[TRIGGER_TYPE_ANNOTATION] || "unknown",
-                retry: false,
-              },
-            }
-          : !service.annotations?.[TRIGGER_TYPE_ANNOTATION] ||
-              service.annotations?.[TRIGGER_TYPE_ANNOTATION] === "HTTP_TRIGGER"
-            ? { httpsTrigger: {} }
-            : {
+        : metadata.blockingTrigger
+          ? { blockingTrigger: metadata.blockingTrigger }
+          : signatureType === "cloudevent"
+            ? {
                 eventTrigger: {
                   eventType: service.annotations?.[TRIGGER_TYPE_ANNOTATION] || "unknown",
-                  // TODO: Figure out how to recover retry info for services not created by Firebase.
                   retry: false,
                 },
-              }),
+              }
+            : !service.annotations?.[TRIGGER_TYPE_ANNOTATION] ||
+                service.annotations?.[TRIGGER_TYPE_ANNOTATION] === "HTTP_TRIGGER"
+              ? { httpsTrigger: {} }
+              : {
+                  eventTrigger: {
+                    eventType: service.annotations?.[TRIGGER_TYPE_ANNOTATION] || "unknown",
+                    // TODO: Figure out how to recover retry info for services not created by Firebase.
+                    retry: false,
+                  },
+                }),
   };
   endpoint.runServiceId = svcId;
+  proto.copyIfPresent(endpoint, service, "uri");
   proto.renameIfPresent(endpoint, service.template, "concurrency", "maxInstanceRequestConcurrency");
   proto.renameIfPresent(endpoint, service.labels || {}, "codebase", CODEBASE_LABEL);
   proto.renameIfPresent(endpoint, service.scaling || {}, "minInstances", "minInstanceCount");
@@ -750,6 +754,9 @@ export function serviceFromEndpoint(
       ...(backend.isEventTriggered(endpoint) ? { eventTrigger: endpoint.eventTrigger } : {}),
       ...(backend.isScheduleTriggered(endpoint)
         ? { scheduleTrigger: endpoint.scheduleTrigger }
+        : {}),
+      ...(backend.isBlockingTriggered(endpoint)
+        ? { blockingTrigger: endpoint.blockingTrigger }
         : {}),
     }),
   };

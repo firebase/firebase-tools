@@ -1564,6 +1564,18 @@ describe("Fabricator", () => {
       expect(upsertScheduleV2).to.have.been.calledWith(ep);
     });
 
+    it("registers blocking triggers for Cloud Run functions", async () => {
+      const ep = endpoint(
+        { blockingTrigger: { eventType: v1events.BEFORE_CREATE_EVENT } },
+        { platform: "run" },
+      );
+      const registerBlockingTrigger = sinon.stub(fab, "registerBlockingTrigger");
+      registerBlockingTrigger.resolves();
+
+      await fab.setTrigger(ep);
+      expect(registerBlockingTrigger).to.have.been.calledWith(ep);
+    });
+
     it("sets task queue triggers", async () => {
       const ep = endpoint({
         taskQueueTrigger: {},
@@ -1625,6 +1637,18 @@ describe("Fabricator", () => {
 
       await fab.deleteTrigger(ep);
       expect(deleteScheduleV2).to.have.been.calledWith(ep);
+    });
+
+    it("unregisters blocking triggers for Cloud Run functions", async () => {
+      const ep = endpoint(
+        { blockingTrigger: { eventType: v1events.BEFORE_CREATE_EVENT } },
+        { platform: "run" },
+      );
+      const unregisterBlockingTrigger = sinon.stub(fab, "unregisterBlockingTrigger");
+      unregisterBlockingTrigger.resolves();
+
+      await fab.deleteTrigger(ep);
+      expect(unregisterBlockingTrigger).to.have.been.calledWith(ep);
     });
 
     it("deletes task queue triggers", async () => {
@@ -2591,6 +2615,22 @@ describe("Fabricator", () => {
       expect(ep.uri).to.equal("https://service");
     });
 
+    it("sets blocking triggers to public on creation", async () => {
+      runv2.createService.resolves({ uri: "https://service", name: "service" } as any);
+      run.setInvokerCreate.resolves();
+
+      const ep = endpoint(
+        { blockingTrigger: { eventType: v1events.BEFORE_CREATE_EVENT } },
+        { platform: "run" },
+      );
+      await fab.createRunFunction(ep);
+
+      expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, sinon.match.string, [
+        "public",
+      ]);
+      expect(ep.uri).to.equal("https://service");
+    });
+
     it("creates a Cloud Run service with correct configuration", async () => {
       runv2.createService.resolves({ uri: "https://service", name: "service" } as any);
       run.setInvokerCreate.resolves();
@@ -2709,6 +2749,22 @@ describe("Fabricator", () => {
         `projects/${ep.project}/locations/${ep.region}/services/${ep.id}`,
         [`scheduler@${ep.project}.iam.gserviceaccount.com`],
       );
+      expect(ep.uri).to.equal("https://service");
+    });
+
+    it("sets blocking triggers to public on update", async () => {
+      runv2.updateService.resolves({ uri: "https://service", name: "service" } as any);
+      run.setInvokerUpdate.resolves();
+
+      const ep = endpoint(
+        { blockingTrigger: { eventType: v1events.BEFORE_CREATE_EVENT } },
+        { platform: "run" },
+      );
+      await fab.updateRunFunction({ endpoint: ep });
+
+      expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, sinon.match.string, [
+        "public",
+      ]);
       expect(ep.uri).to.equal("https://service");
     });
 

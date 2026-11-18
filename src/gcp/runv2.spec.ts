@@ -92,6 +92,30 @@ describe("runv2", () => {
       );
     });
 
+    it("should preserve blocking trigger metadata for backend reconstruction", () => {
+      const blockingTrigger: backend.BlockingTrigger = {
+        eventType: "providers/cloud.auth/eventTypes/user.beforeCreate",
+        options: { idToken: true },
+      };
+      const endpoint: backend.Endpoint = { ...BASE_ENDPOINT_RUN, blockingTrigger };
+
+      const service = runv2.serviceFromEndpoint(endpoint, IMAGE_URI);
+      const metadata = JSON.parse(service.annotations![runv2.FIREBASE_FUNCTION_METADTA_ANNOTATION]);
+
+      expect(metadata).to.deep.equal({ functionId: FUNCTION_ID, blockingTrigger });
+      const reconstructed = runv2.endpointFromService({
+        ...service,
+        uri: "https://service-abc-ey.a.run.app",
+      });
+      expect(backend.isBlockingTriggered(reconstructed)).to.be.true;
+      expect(backend.isHttpsTriggered(reconstructed)).to.be.false;
+      if (!backend.isBlockingTriggered(reconstructed)) {
+        throw new Error("Expected a blocking-triggered endpoint");
+      }
+      expect(reconstructed.blockingTrigger).to.deep.equal(blockingTrigger);
+      expect(reconstructed.uri).to.equal("https://service-abc-ey.a.run.app");
+    });
+
     it("should preserve event trigger metadata for backend reconstruction", () => {
       const eventTrigger: backend.EventTrigger = {
         eventType: "google.cloud.firestore.document.v1.written",

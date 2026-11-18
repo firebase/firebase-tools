@@ -1016,6 +1016,13 @@ export class Fabricator {
       await this.executor
         .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
         .catch(rethrowAs(endpoint, "set invoker"));
+    } else if (
+      backend.isBlockingTriggered(endpoint) &&
+      AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType as any)
+    ) {
+      await this.executor
+        .run(() => run.setInvokerCreate(endpoint.project, serviceName, ["public"]))
+        .catch(rethrowAs(endpoint, "set invoker"));
     }
   }
 
@@ -1055,6 +1062,11 @@ export class Fabricator {
       invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
     } else if (backend.isScheduleTriggered(endpoint)) {
       invoker = [await this.scheduleInvoker(endpoint)];
+    } else if (
+      backend.isBlockingTriggered(endpoint) &&
+      AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType as any)
+    ) {
+      invoker = ["public"];
     }
 
     if (invoker) {
@@ -1149,9 +1161,6 @@ export class Fabricator {
       }
       await this.upsertTaskQueue(endpoint);
     } else if (backend.isBlockingTriggered(endpoint)) {
-      if (endpoint.platform === "run") {
-        throw new FirebaseError("Blocking triggers for Cloud Run functions are not supported yet.");
-      }
       await this.registerBlockingTrigger(endpoint);
     }
   }
@@ -1176,9 +1185,6 @@ export class Fabricator {
       }
       await this.disableTaskQueue(endpoint);
     } else if (backend.isBlockingTriggered(endpoint)) {
-      if (endpoint.platform === "run") {
-        throw new FirebaseError("Blocking triggers for Cloud Run functions are not supported yet.");
-      }
       await this.unregisterBlockingTrigger(endpoint);
     }
     // N.B. Like Pub/Sub topics, we don't delete Eventarc channels because we
