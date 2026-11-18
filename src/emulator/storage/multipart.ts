@@ -18,6 +18,7 @@ type MultipartRequestBody = MultipartRequestBodyPart[];
 
 const LINE_SEPARATOR = `\r\n`;
 const LINE_SEPARATOR_BUFFER = Buffer.from(LINE_SEPARATOR);
+const BOUNDARY_REGEX = /(?:^|;)\s*boundary\s*=\s*(?:"([^"]*)"|([^;\s]+))/i;
 
 /**
  * Returns an array of Buffers constructed by splitting a Buffer on a delimiter.
@@ -122,7 +123,7 @@ function parseMultipartRequestBodyPart(bodyPart: Buffer): MultipartRequestBodyPa
 
 /** Extracts the boundary parameter without splitting occurrences inside its value. */
 function getBoundary(contentTypeHeader: string): string | undefined {
-  const match = /(?:^|;)\s*boundary\s*=\s*(?:"([^"]*)"|([^;\s]+))/i.exec(contentTypeHeader);
+  const match = BOUNDARY_REGEX.exec(contentTypeHeader);
   return match?.[1] ?? match?.[2];
 }
 
