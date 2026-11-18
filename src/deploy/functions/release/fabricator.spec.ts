@@ -2268,7 +2268,17 @@ describe("Fabricator", () => {
           runtime: "dart3",
         },
         eventDataContentType: "application/protobuf",
+        retryPolicy: { maxAttempts: 1 },
       });
+    });
+
+    it("leaves Eventarc's default retry policy when retry is enabled", async () => {
+      const ep = firestoreEndpoint();
+      ep.eventTrigger.retry = true;
+
+      const trigger = await fab.eventarcTriggerFromEndpoint(ep);
+
+      expect(trigger.retryPolicy).to.be.undefined;
     });
 
     it("resolves the project's default compute service account", async () => {

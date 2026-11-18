@@ -140,7 +140,7 @@ describe("validate", () => {
       );
     });
 
-    it("rejects unsupported Cloud Run event retry policies", () => {
+    it("allows retry on Cloud Run event functions", () => {
       const ep: backend.Endpoint = {
         ...ENDPOINT_BASE,
         platform: "run",
@@ -150,9 +150,7 @@ describe("validate", () => {
         },
       };
 
-      expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
-        "Retry policies are not supported",
-      );
+      expect(() => validate.endpointsAreValid(backend.of(ep))).to.not.throw();
     });
 
     it("disallows concurrency for GCF gen 1", () => {

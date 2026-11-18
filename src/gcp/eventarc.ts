@@ -42,6 +42,10 @@ export interface CloudRunDestination {
   path?: string;
 }
 
+export interface RetryPolicy {
+  maxAttempts?: number;
+}
+
 export interface Trigger {
   name: string;
   eventFilters: EventFilter[];
@@ -52,6 +56,7 @@ export interface Trigger {
   channel?: string;
   labels?: Record<string, string>;
   eventDataContentType?: string;
+  retryPolicy?: RetryPolicy;
   uid?: string;
   createTime?: string;
   updateTime?: string;
@@ -60,7 +65,7 @@ export interface Trigger {
 
 export type TriggerUpdate = Pick<
   Trigger,
-  "name" | "serviceAccount" | "destination" | "labels" | "eventDataContentType"
+  "name" | "serviceAccount" | "destination" | "labels" | "eventDataContentType" | "retryPolicy"
 >;
 
 interface OperationMetadata {
@@ -165,7 +170,13 @@ export async function createTrigger(trigger: Trigger): Promise<Operation> {
 export async function updateTrigger(trigger: TriggerUpdate): Promise<Operation> {
   const res = await client.patch<TriggerUpdate, Operation>(trigger.name, trigger, {
     queryParams: {
-      updateMask: ["serviceAccount", "destination", "labels", "eventDataContentType"].join(","),
+      updateMask: [
+        "serviceAccount",
+        "destination",
+        "labels",
+        "eventDataContentType",
+        "retryPolicy",
+      ].join(","),
     },
   });
   return res.body;
@@ -219,6 +230,7 @@ export function triggerMatches(existing: Trigger, desired: Trigger): boolean {
     existing.serviceAccount === desired.serviceAccount &&
     destinationMatches &&
     existing.eventDataContentType === desired.eventDataContentType &&
+    existing.retryPolicy?.maxAttempts === desired.retryPolicy?.maxAttempts &&
     Object.entries(desired.labels || {}).every(([key, value]) => existing.labels?.[key] === value)
   );
 }
@@ -233,5 +245,6 @@ export function triggerForCreate(trigger: Trigger): Trigger {
     ...(trigger.channel ? { channel: trigger.channel } : {}),
     ...(trigger.labels ? { labels: trigger.labels } : {}),
     ...(trigger.eventDataContentType ? { eventDataContentType: trigger.eventDataContentType } : {}),
+    ...(trigger.retryPolicy ? { retryPolicy: trigger.retryPolicy } : {}),
   };
 }

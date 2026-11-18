@@ -302,6 +302,9 @@ export function changedTriggerRegion(want: backend.Endpoint, have: backend.Endpo
   if (!backend.isEventTriggered(have)) {
     return false;
   }
+  if (want.platform === "run") {
+    return (want.eventTrigger.region || want.region) !== (have.eventTrigger.region || have.region);
+  }
   return want.eventTrigger.region !== have.eventTrigger.region;
 }
 

@@ -128,6 +128,13 @@ describe("Backend", () => {
           region: "us-central1",
         }),
       ).to.have.length(63);
+      expect(
+        backend.eventarcTriggerIdForFunction({
+          ...ENDPOINT,
+          id: `${"a".repeat(44)}-${"b".repeat(20)}`,
+          region: "us-central1",
+        }),
+      ).to.match(/^firebase-a{44}-[0-9a-f]{8}$/);
     });
 
     it("merge", () => {

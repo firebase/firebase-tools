@@ -577,7 +577,7 @@ export function eventarcTriggerIdForFunction(cloudFunction: TargetIds): string {
     return fullId;
   }
   const hash = crypto.createHash("sha256").update(fullId).digest("hex").slice(0, 8);
-  return `${fullId.slice(0, 54)}-${hash}`;
+  return `${fullId.slice(0, 54).replace(/-+$/, "")}-${hash}`;
 }
 
 /**

@@ -1178,8 +1178,6 @@ export class Fabricator {
   async eventarcTriggerFromEndpoint(
     endpoint: backend.Endpoint & backend.EventTriggered,
   ): Promise<eventarc.Trigger> {
-    const triggerRegion = endpoint.eventTrigger.region || endpoint.region;
-    const triggerId = backend.eventarcTriggerIdForFunction(endpoint);
     const serviceId = endpoint.runServiceId ?? runV2.functionNameToServiceName(endpoint.id);
     const eventFilters: eventarc.EventFilter[] = [
       {
@@ -1202,7 +1200,7 @@ export class Fabricator {
     const serviceAccount = await this.eventarcServiceAccount(endpoint);
 
     return {
-      name: `projects/${endpoint.project}/locations/${triggerRegion}/triggers/${triggerId}`,
+      name: this.eventarcTriggerName(endpoint),
       eventFilters,
       serviceAccount,
       destination: {
@@ -1216,8 +1214,15 @@ export class Fabricator {
         ...(endpoint.runtime ? { runtime: endpoint.runtime } : {}),
       },
       eventDataContentType: "application/protobuf",
+      ...(endpoint.eventTrigger.retry ? {} : { retryPolicy: { maxAttempts: 1 } }),
       ...(endpoint.eventTrigger.channel ? { channel: endpoint.eventTrigger.channel } : {}),
     };
+  }
+
+  eventarcTriggerName(endpoint: backend.Endpoint & backend.EventTriggered): string {
+    const triggerRegion = endpoint.eventTrigger.region || endpoint.region;
+    const triggerId = backend.eventarcTriggerIdForFunction(endpoint);
+    return `projects/${endpoint.project}/locations/${triggerRegion}/triggers/${triggerId}`;
   }
 
   async eventarcServiceAccount(
@@ -1253,7 +1258,7 @@ export class Fabricator {
       );
       try {
         const op = await this.executor.run(() => eventarc.createTrigger(trigger), {
-          retryPredicates: [hasErrorCode(429, 503)],
+          retryPredicates: [hasErrorCode(429, 503), isServiceAccountPropagationError],
         });
         await poller.pollOperation<eventarc.Trigger>({
           ...eventarcPollerOptions,
@@ -1383,13 +1388,13 @@ export class Fabricator {
   }
 
   async deleteEventarcTrigger(endpoint: backend.Endpoint & backend.EventTriggered): Promise<void> {
-    const trigger = await this.eventarcTriggerFromEndpoint(endpoint);
+    const triggerName = this.eventarcTriggerName(endpoint);
     await this.executor
       .run(async () => {
-        if ((await eventarc.getTrigger(trigger.name)) === undefined) {
+        if ((await eventarc.getTrigger(triggerName)) === undefined) {
           return;
         }
-        const op = await eventarc.deleteTrigger(trigger.name);
+        const op = await eventarc.deleteTrigger(triggerName);
         await poller.pollOperation<void>({
           ...eventarcPollerOptions,
           pollerName: `delete-eventarc-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,

@@ -102,7 +102,7 @@ describe("eventarc", () => {
         return true;
       })
       .query({
-        updateMask: "serviceAccount,destination,labels,eventDataContentType",
+        updateMask: "serviceAccount,destination,labels,eventDataContentType,retryPolicy",
       })
       .reply(200, TEST_OPERATION);
 
@@ -169,6 +169,15 @@ describe("eventarc", () => {
           TEST_TRIGGER,
         ),
       ).to.be.true;
+    });
+
+    it("detects retry policy changes", () => {
+      const noRetry: eventarc.Trigger = { ...TEST_TRIGGER, retryPolicy: { maxAttempts: 1 } };
+
+      expect(eventarc.triggerMatches(TEST_TRIGGER, noRetry)).to.be.false;
+      expect(eventarc.triggerMatches(noRetry, TEST_TRIGGER)).to.be.false;
+      expect(eventarc.triggerMatches(noRetry, noRetry)).to.be.true;
+      expect(eventarc.triggerRequiresReplacement(TEST_TRIGGER, noRetry)).to.be.false;
     });
 
     it("does not crash for a non-Cloud Run destination", () => {

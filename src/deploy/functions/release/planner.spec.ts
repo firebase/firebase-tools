@@ -170,6 +170,28 @@ describe("planner", () => {
       });
     }
 
+    it("does not recreate run functions when the trigger region is only made explicit", () => {
+      const original: backend.Endpoint = func("a", "b", {
+        eventTrigger: {
+          eventType: "google.cloud.firestore.document.v1.written",
+          eventFilters: {},
+          retry: false,
+        },
+      });
+      original.platform = "run";
+      const changed: backend.Endpoint = func("a", "b", {
+        eventTrigger: {
+          eventType: "google.cloud.firestore.document.v1.written",
+          eventFilters: {},
+          region: "b",
+          retry: false,
+        },
+      });
+      changed.platform = "run";
+
+      expect(planner.calculateUpdate(changed, original).deleteAndRecreate).to.be.undefined;
+    });
+
     it("knows to upgrade in-place in the general case", () => {
       const v1Function: backend.Endpoint = {
         ...func("a", "b"),

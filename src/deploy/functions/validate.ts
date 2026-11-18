@@ -106,11 +106,6 @@ export function endpointsAreValid(
           `Event type ${ep.eventTrigger.eventType} is not supported for Cloud Run functions yet.`,
         );
       }
-      if (ep.eventTrigger.retry) {
-        throw new FirebaseError(
-          `Retry policies are not supported for Cloud Run event function ${ep.id} yet.`,
-        );
-      }
     }
     const service = serviceForEndpoint(ep);
     if (backend.isBlockingTriggered(ep)) {
