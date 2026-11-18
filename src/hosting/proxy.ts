@@ -69,7 +69,7 @@ export function proxyRequestHandler(
     });
 
     // req.url is just the full path (e.g. /foo?key=value; no origin).
-    const u = new URL(url + req.url);
+    const u = new URL(`${url}${req.url ?? ""}`);
     const c = new Client({ urlPrefix: u.origin, auth: false });
 
     let body: PassThrough | Buffer | undefined;
