@@ -141,11 +141,17 @@ export class AuthBlockingService implements Service {
     endpoint: backend.Endpoint & backend.BlockingTriggered,
   ): Promise<void> {
     const blockingConfig = await identityPlatform.getBlockingFunctionsConfig(endpoint.project);
+    // Create registers a v2 function's cloudfunctions.net URL and update registers its run.app
+    // URL, so a registration pointing at either one belongs to this endpoint.
+    const isThisEndpoint = (trigger?: identityPlatform.BlockingFunctionsEventDetails): boolean =>
+      endpoint.uri === trigger?.functionUri ||
+      (!!endpoint.runServiceUri && endpoint.runServiceUri === trigger?.functionUri);
+    const triggers = blockingConfig.triggers;
     if (
-      endpoint.uri !== blockingConfig.triggers?.beforeCreate?.functionUri &&
-      endpoint.uri !== blockingConfig.triggers?.beforeSignIn?.functionUri &&
-      endpoint.uri !== blockingConfig.triggers?.beforeSendEmail?.functionUri &&
-      endpoint.uri !== blockingConfig.triggers?.beforeSendSms?.functionUri
+      !isThisEndpoint(triggers?.beforeCreate) &&
+      !isThisEndpoint(triggers?.beforeSignIn) &&
+      !isThisEndpoint(triggers?.beforeSendEmail) &&
+      !isThisEndpoint(triggers?.beforeSendSms)
     ) {
       return;
     }
@@ -153,17 +159,17 @@ export class AuthBlockingService implements Service {
     // There is a possibility that the user changed the registration on identity platform,
     // to prevent 400 errors on every create and/or sign in on the app, we will treat
     // the blockingConfig as the source of truth and only delete matching uri's.
-    if (endpoint.uri === blockingConfig.triggers?.beforeCreate?.functionUri) {
-      delete blockingConfig.triggers?.beforeCreate;
+    if (isThisEndpoint(triggers?.beforeCreate)) {
+      delete triggers?.beforeCreate;
     }
-    if (endpoint.uri === blockingConfig.triggers?.beforeSignIn?.functionUri) {
-      delete blockingConfig.triggers?.beforeSignIn;
+    if (isThisEndpoint(triggers?.beforeSignIn)) {
+      delete triggers?.beforeSignIn;
     }
-    if (endpoint.uri === blockingConfig.triggers?.beforeSendEmail?.functionUri) {
-      delete blockingConfig.triggers?.beforeSendEmail;
+    if (isThisEndpoint(triggers?.beforeSendEmail)) {
+      delete triggers?.beforeSendEmail;
     }
-    if (endpoint.uri === blockingConfig.triggers?.beforeSendSms?.functionUri) {
-      delete blockingConfig.triggers?.beforeSendSms;
+    if (isThisEndpoint(triggers?.beforeSendSms)) {
+      delete triggers?.beforeSendSms;
     }
 
     await identityPlatform.setBlockingFunctionsConfig(endpoint.project, blockingConfig);

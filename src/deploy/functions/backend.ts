@@ -412,6 +412,10 @@ export type Endpoint = TargetIds &
     // doing name translations
     runServiceId?: string;
 
+    // Output only. For v2 blocking functions listed from GCF, the run.app URL
+    // of the Cloud Run service, while `uri` holds the cloudfunctions.net URL.
+    runServiceUri?: string;
+
     // State of the endpoint.
     state?: EndpointState;
 
