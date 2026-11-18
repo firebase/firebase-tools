@@ -23,12 +23,18 @@ function filterOnly(list: string[], only = ""): string[] {
 }
 
 export const command = new Command("serve")
-  .description("start a local server for your static assets")
-  .option("-p, --port <port>", "the port on which to listen (default: 5000)", 5000)
-  .option("-o, --host <host>", "the host on which to listen (default: localhost)", "localhost")
+  .description(
+    "serve Firebase Hosting content and HTTP Cloud Functions locally (requires firebase.json; " +
+      "prefer firebase emulators:start for full local emulation)",
+  )
+  .option("-p, --port <port>", "the port on which to listen", 5000)
+  .option("-o, --host <host>", "the host on which to listen", "localhost")
   .option(
     "--only <targets>",
-    "only serve specified targets (valid targets are: " + VALID_TARGETS.join(", ") + ")",
+    "only serve specified targets (valid targets are: " +
+      VALID_TARGETS.join(", ") +
+      "). Each target must be configured in firebase.json. " +
+      "Use firebase emulators:start for Firestore, Realtime Database, and other emulators",
   )
   .option(
     "--except <targets>",
