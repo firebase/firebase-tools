@@ -429,7 +429,7 @@ export class StorageLayer {
       throw new ForbiddenError();
     }
 
-    let items: Array<StoredFileMetadata> = [];
+    const items: Array<StoredFileMetadata> = [];
     const prefixes = new Set<string>();
     for (const [, file] of this._files) {
       if (file.metadata.bucket !== bucketId) {
@@ -461,8 +461,13 @@ export class StorageLayer {
       }
     }
 
-    // Order items by name
-    items.sort((a, b) => {
+    // Like GCS, page through items and prefixes together in name order, so that
+    // maxResults bounds both and a prefix is returned on only one page.
+    let entries: Array<{ name: string; item?: StoredFileMetadata }> = [
+      ...items.map((item) => ({ name: item.name, item })),
+      ...[...prefixes].map((name) => ({ name })),
+    ];
+    entries.sort((a, b) => {
       if (a.name === b.name) {
         return 0;
       } else if (a.name < b.name) {
@@ -472,23 +477,33 @@ export class StorageLayer {
       }
     });
     if (pageToken) {
-      const idx = items.findIndex((v) => v.name === pageToken);
+      const idx = entries.findIndex((v) => v.name === pageToken);
       if (idx !== -1) {
-        items = items.slice(idx);
+        entries = entries.slice(idx);
       }
     }
 
     const maxResults = request.maxResults ?? 1000;
     let nextPageToken = undefined;
-    if (items.length > maxResults) {
-      nextPageToken = items[maxResults].name;
-      items = items.slice(0, maxResults);
+    if (entries.length > maxResults) {
+      nextPageToken = entries[maxResults].name;
+      entries = entries.slice(0, maxResults);
+    }
+
+    const pageItems: Array<StoredFileMetadata> = [];
+    const pagePrefixes: string[] = [];
+    for (const entry of entries) {
+      if (entry.item) {
+        pageItems.push(entry.item);
+      } else {
+        pagePrefixes.push(entry.name);
+      }
     }
 
     return {
       nextPageToken,
-      prefixes: prefixes.size > 0 ? [...prefixes].sort() : undefined,
-      items: items.length > 0 ? items : undefined,
+      prefixes: pagePrefixes.length > 0 ? pagePrefixes : undefined,
+      items: pageItems.length > 0 ? pageItems : undefined,
     };
   }
 
