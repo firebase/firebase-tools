@@ -43,7 +43,7 @@ export const get_report = tool(
       requiresAuth: true,
     },
   },
-  async ({ appId, report, pageSize, filter, granularity }) => {
+  async ({ appId, report, pageSize, filter, filterExpression, granularity }) => {
     const result: CallToolResult = { content: [] };
 
     if (!appId) {
@@ -65,7 +65,7 @@ export const get_report = tool(
     // Everything is OK so fetch report
     try {
       const reportResponse = simplifyReport(
-        await getReport(report, appId, filter, pageSize, granularity),
+        await getReport(report, appId, filter, pageSize, granularity, filterExpression),
       );
       reportResponse.usage =
         reportResponse.groups && reportResponse.groups.length

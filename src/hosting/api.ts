@@ -604,20 +604,6 @@ export async function createSite(
 }
 
 /**
- * Update a Hosting site.
- * @param project project name or number.
- * @param site the site to update.
- * @param fields the fields to update.
- * @return site information.
- */
-export async function updateSite(project: string, site: Site, fields: string[]): Promise<Site> {
-  const res = await apiClient.patch<Site, Site>(`/projects/${project}/sites/${site.name}`, site, {
-    queryParams: { updateMask: fields.join(",") },
-  });
-  return res.body;
-}
-
-/**
  * Delete a Hosting site.
  * @param project project name or number.
  * @param site the site to update.
