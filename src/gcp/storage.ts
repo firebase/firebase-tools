@@ -146,7 +146,7 @@ export interface UpsertBucketRequest {
   baseName: string;
   location: string;
   purposeLabel: string;
-  lifecycle: {
+  lifecycle?: {
     rule: LifecycleRule[];
   };
   autoclass?: Autoclass;
