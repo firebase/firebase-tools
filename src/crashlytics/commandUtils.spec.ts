@@ -231,7 +231,7 @@ describe("crashlytics commandUtils", () => {
         parseEventFilters({ versions: "2.4.0" } as CrashlyticsFilterCommandOptions, androidAppId),
       ).to.throw(
         FirebaseError,
-        `--versions must match pattern 'version (build)'. Use the displayName values from the topVersions report (e.g. "2.4.0 (240)").`,
+        `--versions must match pattern 'version (build)' (e.g. "2.4.0 (240)"). Run 'firebase crashlytics:reports:get --app ${androidAppId} topVersions' to list valid version display names.`,
       );
     });
 

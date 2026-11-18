@@ -101,6 +101,9 @@ export function load(client: CLIClient): CLIClient {
     client.crashlytics.events = {};
     client.crashlytics.events.list = loadCommand("crashlytics-events-list");
     client.crashlytics.events.get = loadCommand("crashlytics-events-get");
+    client.crashlytics.reports = {};
+    client.crashlytics.reports.list = loadCommand("crashlytics-reports-list");
+    client.crashlytics.reports.get = loadCommand("crashlytics-reports-get");
   }
   client.database = {};
   client.database.get = loadCommand("database-get");
