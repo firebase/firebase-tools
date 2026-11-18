@@ -400,6 +400,72 @@ describe("authBlocking", () => {
       expect(setConfig).to.have.been.calledWith("project", newBlockingConfig);
     });
 
+    it("should unregister a v2 beforeCreate endpoint registered with its run.app uri", async () => {
+      const blockingConfig: identityPlatform.BlockingFunctionsConfig = {
+        triggers: {
+          beforeCreate: {
+            functionUri: "https://id-abc123-ue.a.run.app",
+          },
+          beforeSignIn: {
+            functionUri: "beforesignin.url",
+          },
+        },
+        forwardInboundCredentials: {
+          accessToken: true,
+        },
+      };
+      const newBlockingConfig: identityPlatform.BlockingFunctionsConfig = {
+        triggers: {
+          beforeSignIn: {
+            functionUri: "beforesignin.url",
+          },
+        },
+        forwardInboundCredentials: {
+          accessToken: true,
+        },
+      };
+      const ep: backend.Endpoint = {
+        ...BASE_EP,
+        platform: "gcfv2",
+        uri: "https://us-east1-project.cloudfunctions.net/id",
+        runServiceUri: "https://id-abc123-ue.a.run.app",
+        blockingTrigger: {
+          eventType: BEFORE_CREATE_EVENT,
+          options: {},
+        },
+      };
+      getConfig.resolves(blockingConfig);
+      setConfig.resolves(newBlockingConfig);
+
+      await authBlockingService.unregisterTrigger(ep);
+
+      expect(setConfig).to.have.been.calledWith("project", newBlockingConfig);
+    });
+
+    it("should not unregister an endpoint without a uri", async () => {
+      const blockingConfig: identityPlatform.BlockingFunctionsConfig = {
+        triggers: {
+          beforeSignIn: {
+            functionUri: "beforesignin.url",
+          },
+        },
+        forwardInboundCredentials: {},
+      };
+      const ep: backend.Endpoint = {
+        ...BASE_EP,
+        platform: "gcfv2",
+        blockingTrigger: {
+          eventType: BEFORE_CREATE_EVENT,
+          options: {},
+        },
+      };
+      getConfig.resolves(blockingConfig);
+
+      await authBlockingService.unregisterTrigger(ep);
+
+      expect(setConfig).to.not.have.been.called;
+    });
+
     it("should unregister a beforeSignIn endpoint", async () => {
       const blockingConfig: identityPlatform.BlockingFunctionsConfig = {
         triggers: {
