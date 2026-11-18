@@ -70,6 +70,27 @@ describe("runv2", () => {
     client: "cli-firebase",
   };
 
+  describe("task queue trigger metadata", () => {
+    it("round-trips a task queue trigger through the service annotation", () => {
+      const taskQueueTrigger: backend.TaskQueueTrigger = {
+        retryConfig: { maxAttempts: 3, minBackoffSeconds: 60 },
+        rateLimits: { maxConcurrentDispatches: 6 },
+      };
+      const endpoint: backend.Endpoint = { ...BASE_ENDPOINT_RUN, taskQueueTrigger };
+
+      const service = runv2.serviceFromEndpoint(endpoint, IMAGE_URI);
+      const metadata = JSON.parse(service.annotations![runv2.FIREBASE_FUNCTION_METADTA_ANNOTATION]);
+      expect(metadata).to.deep.equal({ functionId: FUNCTION_ID, taskQueueTrigger });
+
+      const reconstructed = runv2.endpointFromService(service);
+      expect(backend.isHttpsTriggered(reconstructed)).to.be.false;
+      if (!backend.isTaskQueueTriggered(reconstructed)) {
+        throw new Error("Expected a task-queue-triggered endpoint");
+      }
+      expect(reconstructed.taskQueueTrigger).to.deep.equal(taskQueueTrigger);
+    });
+  });
+
   describe("serviceFromEndpoint", () => {
     it("should copy a minimal endpoint", () => {
       const endpoint: backend.Endpoint = {

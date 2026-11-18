@@ -1544,6 +1544,15 @@ describe("Fabricator", () => {
       expect(upsertScheduleV2).to.have.been.called;
     });
 
+    it("sets task queue triggers for Cloud Run functions", async () => {
+      const ep = endpoint({ taskQueueTrigger: {} }, { platform: "run" });
+      const upsertTaskQueue = sinon.stub(fab, "upsertTaskQueue");
+      upsertTaskQueue.resolves();
+
+      await fab.setTrigger(ep);
+      expect(upsertTaskQueue).to.have.been.calledWith(ep);
+    });
+
     it("sets task queue triggers", async () => {
       const ep = endpoint({
         taskQueueTrigger: {},
@@ -1593,6 +1602,15 @@ describe("Fabricator", () => {
 
       await fab.deleteTrigger(ep);
       expect(deleteScheduleV2).to.have.been.called;
+    });
+
+    it("deletes task queue triggers for Cloud Run functions", async () => {
+      const ep = endpoint({ taskQueueTrigger: {} }, { platform: "run" });
+      const disableTaskQueue = sinon.stub(fab, "disableTaskQueue");
+      disableTaskQueue.resolves();
+
+      await fab.deleteTrigger(ep);
+      expect(disableTaskQueue).to.have.been.calledWith(ep);
     });
 
     it("deletes task queue triggers", async () => {
@@ -2198,6 +2216,27 @@ describe("Fabricator", () => {
   });
 
   describe("createRunFunction", () => {
+    it("sets the task queue invoker on creation", async () => {
+      runv2.createService.resolves({ uri: "https://service", name: "service" } as any);
+      run.setInvokerCreate.resolves();
+
+      const ep = endpoint({ taskQueueTrigger: { invoker: ["robot@"] } }, { platform: "run" });
+      await fab.createRunFunction(ep);
+
+      expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, sinon.match.string, [
+        "robot@",
+      ]);
+    });
+
+    it("keeps a task queue function private on creation when it has no invoker", async () => {
+      runv2.createService.resolves({ uri: "https://service", name: "service" } as any);
+
+      const ep = endpoint({ taskQueueTrigger: {} }, { platform: "run" });
+      await fab.createRunFunction(ep);
+
+      expect(run.setInvokerCreate).to.not.have.been.called;
+    });
+
     it("creates a Cloud Run service with correct configuration", async () => {
       runv2.createService.resolves({ uri: "https://service", name: "service" } as any);
       run.setInvokerCreate.resolves();
@@ -2279,6 +2318,18 @@ describe("Fabricator", () => {
   });
 
   describe("updateRunFunction", () => {
+    it("sets the task queue invoker on update", async () => {
+      runv2.updateService.resolves({ uri: "https://service", name: "service" } as any);
+      run.setInvokerUpdate.resolves();
+
+      const ep = endpoint({ taskQueueTrigger: { invoker: ["robot@"] } }, { platform: "run" });
+      await fab.updateRunFunction({ endpoint: ep });
+
+      expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, sinon.match.string, [
+        "robot@",
+      ]);
+    });
+
     it("updates a Cloud Run service with correct configuration", async () => {
       runv2.updateService.resolves({ uri: "https://service", name: "service" } as any);
       run.setInvokerUpdate.resolves();
