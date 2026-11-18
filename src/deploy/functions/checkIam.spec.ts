@@ -255,7 +255,7 @@ describe("checkIam", () => {
       expect(setIamStub).to.have.been.calledWith(projectNumber, newIamPolicy, "bindings");
     });
 
-    describe("when the default compute service account does not exist", () => {
+    describe("when the default compute service account is missing", () => {
       const ALERTS_TRIGGER = {
         eventType: "google.firebase.firebasealerts.alerts.v1.published",
         eventFilters: { alertype: "crashlytics.newFatalIssue" },
@@ -299,6 +299,44 @@ describe("checkIam", () => {
           "bindings",
         );
         expect(warnStub).to.have.been.calledWithMatch("functions", DEFAULT_SA);
+      });
+
+      it("should skip the default account's bindings when it is disabled", async () => {
+        getServiceAccountStub.resolves({ email: DEFAULT_SA, disabled: true } as iam.ServiceAccount);
+        setIamStub.resolves({});
+        const printStub = sinon.stub(iam, "printManualIamConfig");
+        const wantFn: backend.Endpoint = {
+          id: "wantFn",
+          entryPoint: "wantFn",
+          platform: "gcfv2",
+          eventTrigger: ALERTS_TRIGGER,
+          serviceAccount: CUSTOM_SA,
+          ...SPEC,
+        };
+
+        await checkIam.ensureServiceAgentRoles(
+          projectId,
+          projectNumber,
+          backend.of(wantFn),
+          backend.empty(),
+        );
+
+        expect(setIamStub).to.have.been.calledOnceWithExactly(
+          projectNumber,
+          { etag: "etag", version: 3, bindings: [BINDING, PUBSUB_TOKEN_CREATOR] },
+          "bindings",
+        );
+        const members = [`serviceAccount:${CUSTOM_SA}`];
+        expect(printStub).to.have.been.calledOnceWithExactly(
+          [
+            { role: checkIam.RUN_INVOKER_ROLE, members },
+            { role: checkIam.EVENTARC_EVENT_RECEIVER_ROLE, members },
+          ],
+          projectId,
+          "functions",
+          "Grant them with these `gcloud` commands:",
+        );
+        expect(warnStub).to.have.been.calledWithMatch("functions", /missing or disabled/);
       });
 
       it("should print the bindings for the functions' service accounts, expanding shorthand", async () => {
@@ -515,7 +553,7 @@ describe("checkIam", () => {
             backend.of(customFn, defaultFn),
             backend.empty(),
           ),
-        ).to.be.rejectedWith(FirebaseError, /does not exist.*defaultFn/);
+        ).to.be.rejectedWith(FirebaseError, /missing or disabled.*defaultFn/);
         expect(setIamStub).to.not.have.been.called;
       });
 
@@ -537,7 +575,7 @@ describe("checkIam", () => {
             backend.of(explicitDefaultFn),
             backend.empty(),
           ),
-        ).to.be.rejectedWith(FirebaseError, /does not exist.*explicitDefaultFn/);
+        ).to.be.rejectedWith(FirebaseError, /missing or disabled.*explicitDefaultFn/);
         expect(printStub).to.not.have.been.called;
         expect(setIamStub).to.not.have.been.called;
       });

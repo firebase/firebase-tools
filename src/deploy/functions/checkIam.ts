@@ -184,7 +184,7 @@ export async function obtainDefaultComputeServiceAgentBindings(
 }
 
 /**
- * Returns the default compute service agent bindings, unless that account does not exist and
+ * Returns the default compute service agent bindings, unless that account is missing or disabled and
  * no v2 event function runs as it. In that case the bindings each function's own service account
  * needs are printed instead, since the CLI does not grant roles to user-chosen accounts.
  * Declarative security accounts are only created at release and only get the roles their
@@ -199,8 +199,10 @@ async function obtainEventarcServiceAccountBindings(
   const bindings = await obtainDefaultComputeServiceAgentBindings(projectNumber);
   const defaultServiceAccount = await gce.getDefaultServiceAccount(projectNumber);
   try {
-    await iam.getServiceAccount(projectId, defaultServiceAccount);
-    return bindings;
+    const account = await iam.getServiceAccount(projectId, defaultServiceAccount);
+    if (!account.disabled) {
+      return bindings;
+    }
   } catch (err: unknown) {
     if (getErrStatus(err) !== 404) {
       return bindings;
@@ -218,7 +220,7 @@ async function obtainEventarcServiceAccountBindings(
   );
   if (defaultEndpoints.length > 0) {
     throw new FirebaseError(
-      `The default compute service account ${defaultServiceAccount} does not exist, but these ` +
+      `The default compute service account ${defaultServiceAccount} is missing or disabled, but these ` +
         `functions would run as it: ${defaultEndpoints.map((e) => e.id).join(", ")}. ` +
         "Set a different service account for them.",
     );
@@ -245,7 +247,7 @@ async function obtainEventarcServiceAccountBindings(
 
   utils.logLabeledWarning(
     "functions",
-    `The default compute service account ${defaultServiceAccount} does not exist, so its ` +
+    `The default compute service account ${defaultServiceAccount} is missing or disabled, so its ` +
       "roles were not granted. Your functions' service accounts need these roles to receive events.",
   );
   if (userAccounts.length > 0) {
