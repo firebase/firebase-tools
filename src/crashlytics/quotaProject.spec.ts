@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import { ClientRequestOptions } from "../apiv2";
+import { ClientRequestOptions, GOOG_USER_PROJECT_HEADER } from "../apiv2";
 import { CRASHLYTICS_API_CLIENT } from "./utils";
 import { getIssue, updateIssue } from "./issues";
 import { batchGetEvents, listEvents } from "./events";
@@ -58,7 +58,7 @@ describe("Crashlytics quota project header", () => {
       expect(requestStub).to.have.been.calledOnce;
       const options = requestStub.firstCall.args[0] as ClientRequestOptions<unknown>;
       const headers = options.headers;
-      expect(headers).to.include({ "x-goog-user-project": projectNumber });
+      expect(headers).to.include({ [GOOG_USER_PROJECT_HEADER]: projectNumber });
     });
   }
 });

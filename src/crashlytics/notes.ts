@@ -1,3 +1,4 @@
+import { GOOG_USER_PROJECT_HEADER } from "../apiv2";
 import { logger } from "../logger";
 import { FirebaseError, getError } from "../error";
 import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
@@ -24,7 +25,7 @@ export async function createNote(appId: string, issueId: string, note: string): 
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-goog-user-project": requestProjectNumber,
+        [GOOG_USER_PROJECT_HEADER]: requestProjectNumber,
       },
       path: `/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}/notes`,
       body: { body: note },
@@ -53,7 +54,7 @@ export async function deleteNote(appId: string, issueId: string, noteId: string)
   await CRASHLYTICS_API_CLIENT.request<void, void>({
     method: "DELETE",
     headers: {
-      "x-goog-user-project": requestProjectNumber,
+      [GOOG_USER_PROJECT_HEADER]: requestProjectNumber,
     },
     path: `/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}/notes/${noteId}`,
     timeout: TIMEOUT,
@@ -79,7 +80,7 @@ export async function listNotes(appId: string, issueId: string, pageSize = 20): 
     method: "GET",
     headers: {
       "Content-Type": "application/json",
-      "x-goog-user-project": requestProjectNumber,
+      [GOOG_USER_PROJECT_HEADER]: requestProjectNumber,
     },
     path: `/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}/notes`,
     queryParams: queryParams,
