@@ -7,7 +7,7 @@ import * as portfinder from "portfinder";
 
 import * as apiv2 from "./apiv2";
 import { configstore } from "./configstore";
-import { FirebaseError, getErrMsg } from "./error";
+import { FirebaseError, getErrMsg, getErrStack } from "./error";
 import * as utils from "./utils";
 import { logger } from "./logger";
 import { input } from "./prompt";
@@ -250,8 +250,8 @@ export function setGlobalDefaultAccount(accountOrEmail: string | Account) {
 }
 
 function open(url: string): void {
-  opn(url).catch((err) => {
-    logger.debug("Unable to open URL: " + err.stack);
+  opn(url).catch((err: unknown) => {
+    logger.debug(`Unable to open URL: ${getErrStack(err)}`);
   });
 }
 
@@ -605,7 +605,17 @@ async function loginWithLocalhost<ResultType>(
   getTokens: (queryCode: string, callbackUrl: string) => Promise<ResultType>,
 ): Promise<ResultType> {
   return new Promise<ResultType>((resolve, reject) => {
-    const server = http.createServer(async (req, res) => {
+    const server = http.createServer((req, res) => {
+      handleCallback(req, res).catch((err: unknown) => {
+        reject(err);
+        server.close();
+      });
+    });
+
+    async function handleCallback(
+      req: http.IncomingMessage,
+      res: http.ServerResponse,
+    ): Promise<void> {
       let searchParams: URLSearchParams;
       try {
         searchParams = new URL(req.url || "", callbackUrl).searchParams;
@@ -634,7 +644,7 @@ async function loginWithLocalhost<ResultType>(
       }
       server.close();
       return;
-    });
+    }
 
     server.listen(port, () => {
       logger.info();

@@ -41,13 +41,8 @@ describe("cloudfunctions", () => {
     status: "ACTIVE",
   };
 
-  before(() => {
-    nock.disableNetConnect();
-  });
-
   after(() => {
     expect(nock.isDone()).to.be.true;
-    nock.enableNetConnect();
   });
 
   describe("functionFromEndpoint", () => {

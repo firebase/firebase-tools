@@ -1,5 +1,4 @@
 import { expect } from "chai";
-import * as fs from "fs";
 import * as fsPromises from "fs/promises";
 import * as crossSpawn from "cross-spawn";
 import * as fsExtra from "fs-extra";
@@ -23,9 +22,7 @@ import {
   isRedirectSupportedByHosting,
   isHeaderSupportedByHosting,
   getNextjsRewritesToUse,
-  usesAppDirRouter,
   usesNextImage,
-  hasUnoptimizedImage,
   isUsingMiddleware,
   isUsingImageOptimization,
   isUsingAppDirectory,
@@ -222,28 +219,6 @@ describe("Next.js utils", () => {
     });
   });
 
-  describe("usesAppDirRouter", () => {
-    let sandbox: sinon.SinonSandbox;
-
-    beforeEach(() => {
-      sandbox = sinon.createSandbox();
-    });
-
-    afterEach(() => {
-      sandbox.restore();
-    });
-
-    it("should return false when app dir doesn't exist", () => {
-      sandbox.stub(fs, "existsSync").returns(false);
-      expect(usesAppDirRouter("")).to.be.false;
-    });
-
-    it("should return true when app dir does exist", () => {
-      sandbox.stub(fs, "existsSync").returns(true);
-      expect(usesAppDirRouter("")).to.be.true;
-    });
-  });
-
   describe("usesNextImage", () => {
     let sandbox: sinon.SinonSandbox;
 
@@ -267,32 +242,6 @@ describe("Next.js utils", () => {
         isNextImageImported: false,
       });
       expect(await usesNextImage("", "")).to.be.false;
-    });
-  });
-
-  describe("hasUnoptimizedImage", () => {
-    let sandbox: sinon.SinonSandbox;
-
-    beforeEach(() => {
-      sandbox = sinon.createSandbox();
-    });
-
-    afterEach(() => {
-      sandbox.restore();
-    });
-
-    it("should return true when images manfiest indicates unoptimized", async () => {
-      sandbox.stub(fsExtra, "readJSON").resolves({
-        images: { unoptimized: true },
-      });
-      expect(await hasUnoptimizedImage("", "")).to.be.true;
-    });
-
-    it("should return true when images manfiest indicates !unoptimized", async () => {
-      sandbox.stub(fsExtra, "readJSON").resolves({
-        images: { unoptimized: false },
-      });
-      expect(await hasUnoptimizedImage("", "")).to.be.false;
     });
   });
 

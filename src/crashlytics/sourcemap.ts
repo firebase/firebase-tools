@@ -56,6 +56,9 @@ interface ListSourceMapsResponse {
 
 export const CONCURRENCY = 25;
 
+const SOURCEMAP_RETENTION_DAYS = 180;
+const ENABLE_AUTOCLASS = true;
+
 // Special directory names used for Angular client-side build assets
 const ANGULAR_DIST_DIR = "dist";
 const ANGULAR_BROWSER_DIR = "browser";
@@ -155,10 +158,13 @@ export async function upsertBucket(
               type: "Delete",
             },
             condition: {
-              age: 30,
+              age: SOURCEMAP_RETENTION_DAYS,
             },
           },
         ],
+      },
+      autoclass: {
+        enabled: ENABLE_AUTOCLASS,
       },
     },
   });
