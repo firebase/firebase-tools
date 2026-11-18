@@ -1,3 +1,4 @@
+- Fixed Storage emulator multipart uploads with boundary values containing `boundary=`, including uploads from `@google-cloud/storage` v9.
 - Updated `@modelcontextprotocol/sdk` to 1.32.2, `undici` to 6.29.1 and `proxy-addr` to 2.0.8 to resolve critical and high severity security advisories.
 - Added support for the Node.js 26 runtime (Preview) for Cloud Functions. (#11393)
 - Fixed `firebase deploy --dry-run` creating a missing Firestore database. A dry run now reports which database a deploy would create, and where. (#11491)

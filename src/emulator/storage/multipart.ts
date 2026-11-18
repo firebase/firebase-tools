@@ -120,6 +120,12 @@ function parseMultipartRequestBodyPart(bodyPart: Buffer): MultipartRequestBodyPa
   return { contentTypeRaw, dataRaw };
 }
 
+/** Extracts the boundary parameter without splitting occurrences inside its value. */
+function getBoundary(contentTypeHeader: string): string | undefined {
+  const match = /(?:^|;)\s*boundary\s*=\s*(?:"([^"]*)"|([^;\s]+))/i.exec(contentTypeHeader);
+  return match?.[1] ?? match?.[2];
+}
+
 /**
  * Parses a multipart form request for a file upload into its parts.
  * @param contentTypeHeader value of ContentType header passed in request.
@@ -143,7 +149,7 @@ export function parseObjectUploadMultipartRequest(
   if (!contentTypeHeader.startsWith("multipart/related")) {
     throw new Error(`Bad content type. ${contentTypeHeader}`);
   }
-  const boundaryId = contentTypeHeader.split("boundary=")[1];
+  const boundaryId = getBoundary(contentTypeHeader);
   if (!boundaryId) {
     throw new Error(`Bad content type. ${contentTypeHeader}`);
   }
@@ -268,7 +274,7 @@ export function parseFormDataMultipartRequest(
   if (!contentTypeHeader.startsWith("multipart/form-data")) {
     throw new Error(`Bad content type. ${contentTypeHeader}`);
   }
-  const boundaryId = contentTypeHeader.split("boundary=")[1]?.split(";")[0]?.trim();
+  const boundaryId = getBoundary(contentTypeHeader);
   if (!boundaryId) {
     throw new Error(`Bad content type. ${contentTypeHeader}`);
   }
