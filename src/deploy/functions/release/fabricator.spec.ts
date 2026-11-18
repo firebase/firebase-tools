@@ -2514,7 +2514,6 @@ describe("Fabricator", () => {
     });
 
     it("deletes an existing Firestore trigger and polls its operation", async () => {
-      eventarc.getTrigger.resolves({ name: "existing-trigger" } as any);
       eventarc.deleteTrigger.resolves({ name: "operations/delete-trigger" } as any);
       poller.pollOperation.resolves();
       const ep = firestoreEndpoint();
@@ -2532,7 +2531,6 @@ describe("Fabricator", () => {
     });
 
     it("deletes a legacy direct Run trigger with unknown event metadata", async () => {
-      eventarc.getTrigger.resolves({ name: "existing-trigger" } as any);
       eventarc.deleteTrigger.resolves({ name: "operations/delete-trigger" } as any);
       poller.pollOperation.resolves();
       const ep = firestoreEndpoint();
@@ -2541,6 +2539,16 @@ describe("Fabricator", () => {
       await fab.deleteTrigger(ep);
 
       expect(eventarc.deleteTrigger).to.have.been.calledOnce;
+    });
+
+    it("treats a missing trigger as already deleted", async () => {
+      eventarc.deleteTrigger.rejects(new FirebaseError("Trigger not found.", { status: 404 }));
+      const ep = firestoreEndpoint();
+
+      await fab.deleteTrigger(ep);
+
+      expect(eventarc.getTrigger).not.to.have.been.called;
+      expect(poller.pollOperation).not.to.have.been.called;
     });
   });
 

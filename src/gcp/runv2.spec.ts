@@ -253,6 +253,16 @@ describe("runv2", () => {
       expect(result.labels?.[runv2.CLIENT_NAME_LABEL]).to.equal("firebase-functions");
     });
 
+    it("should not leave a trailing separator when truncating the deployment-tool label", () => {
+      const endpoint: backend.Endpoint = {
+        ...BASE_ENDPOINT_RUN,
+        httpsTrigger: {},
+        labels: { "deployment-tool": `${"a".repeat(62)}-b` },
+      };
+      const result = runv2.serviceFromEndpoint(endpoint, IMAGE_URI);
+      expect(result.labels?.["deployment-tool"]).to.equal("a".repeat(62));
+    });
+
     it("should expand shorthand service accounts", () => {
       const endpoint: backend.Endpoint = {
         ...BASE_ENDPOINT_RUN,
