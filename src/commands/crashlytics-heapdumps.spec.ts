@@ -7,8 +7,10 @@ import { command as enableCommand } from "./crashlytics-heapdumps-enable";
 import { command as disableCommand } from "./crashlytics-heapdumps-disable";
 import { command as statusCommand } from "./crashlytics-heapdumps-status";
 import * as profilingManager from "../crashlytics/profilingManager";
+import * as appsModule from "../management/apps";
 import * as cloudbilling from "../gcp/cloudbilling";
 import * as promptModule from "../prompt";
+import { logger } from "../logger";
 import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
 
@@ -17,19 +19,31 @@ describe("crashlytics:heapdumps commands", () => {
   const projectNumber = "1234567890";
   const hashedAppId = "abcdef123456";
   const appId = `1:${projectNumber}:android:${hashedAppId}`;
+  const otherProjectAppId = `1:9999999999:android:${hashedAppId}`;
   const bucketName = `firebasecrashlytics-heap-dumps-${hashedAppId}`;
+  const mockAndroidApp: appsModule.AndroidAppMetadata = {
+    name: `projects/${projectId}/androidApps/${appId}`,
+    projectId,
+    appId,
+    platform: appsModule.AppPlatform.ANDROID,
+    packageName: "com.example.app",
+  };
 
   const originalEnableBefores = [...(enableCommand["befores"] || [])];
   const originalDisableBefores = [...(disableCommand["befores"] || [])];
   const originalStatusBefores = [...(statusCommand["befores"] || [])];
+  let originalGlobalNonInteractive: boolean;
 
   beforeEach(() => {
+    originalGlobalNonInteractive = promptModule.isNonInteractive();
     enableCommand["befores"] = [];
     disableCommand["befores"] = [];
     statusCommand["befores"] = [];
+    sinon.stub(appsModule, "listFirebaseApps").resolves([mockAndroidApp]);
   });
 
   afterEach(() => {
+    promptModule.setNonInteractive(originalGlobalNonInteractive);
     enableCommand["befores"] = [...originalEnableBefores];
     disableCommand["befores"] = [...originalDisableBefores];
     statusCommand["befores"] = [...originalStatusBefores];
@@ -81,6 +95,71 @@ describe("crashlytics:heapdumps commands", () => {
       expect(enableCollectionStub).to.not.have.been.called;
     });
 
+    it("should abort in non-interactive mode when --force is omitted", async () => {
+      confirmStub.restore();
+
+      await expect(
+        enableCommand.runner()({
+          project: projectId,
+          app: appId,
+          nonInteractive: true,
+        }),
+      ).to.be.rejectedWith(FirebaseError, "cannot be answered in non-interactive mode");
+
+      expect(enableCollectionStub).to.not.have.been.called;
+    });
+
+    it("should abort when stdin is not a TTY (e.g., piped input) and --force is omitted", async () => {
+      confirmStub.restore();
+      const hadIsTTY = "isTTY" in process.stdin;
+      if (!hadIsTTY) {
+        Object.defineProperty(process.stdin, "isTTY", {
+          value: true,
+          configurable: true,
+          writable: true,
+        });
+      }
+      try {
+        sinon.stub(process.stdin, "isTTY").value(false);
+
+        await expect(
+          enableCommand.runner()({
+            project: projectId,
+            app: appId,
+          }),
+        ).to.be.rejectedWith(FirebaseError, "cannot be answered in non-interactive mode");
+
+        expect(enableCollectionStub).to.not.have.been.called;
+      } finally {
+        sinon.restore();
+        if (!hadIsTTY) {
+          delete (process.stdin as { isTTY?: boolean }).isTTY;
+        }
+      }
+    });
+
+    it("should succeed in non-interactive mode when --force is provided", async () => {
+      confirmStub.restore();
+
+      const result: unknown = await enableCommand.runner()({
+        project: projectId,
+        app: appId,
+        nonInteractive: true,
+        force: true,
+      });
+
+      expect(result).to.deep.equal({
+        appId,
+        bucketName,
+        heapDumpCollectionEnabled: true,
+      });
+      expect(enableCollectionStub).to.have.been.calledOnceWith(
+        projectId,
+        appId,
+        profilingManager.DEFAULT_BUCKET_LOCATION,
+      );
+    });
+
     it("should successfully provision bucket, grant P4SA role, and enable collection", async () => {
       const result: unknown = await enableCommand.runner()({
         project: projectId,
@@ -99,6 +178,46 @@ describe("crashlytics:heapdumps commands", () => {
       expect(enableCollectionStub).to.have.been.calledOnceWith(projectId, appId, "us-central1");
     });
 
+    it("should log the Crashlytics console URL using android:<packageName>/issues instead of GMP appId", async () => {
+      const loggerInfoSpy = sinon.spy(logger, "info");
+
+      await enableCommand.runner()({
+        project: projectId,
+        app: appId,
+        force: true,
+      });
+
+      const loggedMessages = loggerInfoSpy.args.map((args) => args.map(String).join(" "));
+      expect(loggedMessages).to.include(
+        `View collected heap dumps in the Firebase Console: https://console.firebase.google.com/project/${projectId}/crashlytics/app/android:${mockAndroidApp.packageName}/issues`,
+      );
+      expect(loggedMessages.some((msg) => msg.includes(`/crashlytics/app/${appId}`))).to.be.false;
+    });
+
+    it("should fall back to the project Crashlytics console URL if packageName is unavailable", async () => {
+      const loggerInfoSpy = sinon.spy(logger, "info");
+      (appsModule.listFirebaseApps as sinon.SinonStub).resolves([
+        {
+          name: `projects/${projectId}/androidApps/${appId}`,
+          projectId,
+          appId,
+          platform: appsModule.AppPlatform.ANDROID,
+        },
+      ]);
+
+      await enableCommand.runner()({
+        project: projectId,
+        app: appId,
+        force: true,
+      });
+
+      const loggedMessages = loggerInfoSpy.args.map((args) => args.map(String).join(" "));
+      expect(loggedMessages).to.include(
+        `View collected heap dumps in the Firebase Console: https://console.firebase.google.com/project/${projectId}/crashlytics`,
+      );
+      expect(loggedMessages.some((msg) => msg.includes(`/crashlytics/app/${appId}`))).to.be.false;
+    });
+
     it("should default location to DEFAULT_BUCKET_LOCATION when location option is empty", async () => {
       await enableCommand.runner()({
         project: projectId,
@@ -111,6 +230,29 @@ describe("crashlytics:heapdumps commands", () => {
         projectId,
         appId,
         profilingManager.DEFAULT_BUCKET_LOCATION,
+      );
+    });
+
+    it("should render a single default location annotation in --help output", () => {
+      const cli = new program.Command();
+      const client: CLIClient = {
+        cli: cli as unknown as typeof program,
+        errorOut: sinon.stub(),
+      };
+      enableCommand.register(client);
+      const registeredCmd = cli.commands.find(
+        (cmd) => cmd.name() === "crashlytics:heapdumps:enable",
+      );
+      if (!registeredCmd) {
+        expect.fail("Expected crashlytics:heapdumps:enable command to be registered");
+      }
+
+      const helpText = registeredCmd.helpInformation().replace(/\s+/g, " ");
+      expect(helpText).to.include(
+        `--location <location> the location for the Cloud Storage bucket (default: "${profilingManager.DEFAULT_BUCKET_LOCATION}")`,
+      );
+      expect(helpText).to.not.include(
+        `(default: ${profilingManager.DEFAULT_BUCKET_LOCATION}) (default:`,
       );
     });
 
@@ -138,6 +280,23 @@ describe("crashlytics:heapdumps commands", () => {
         FirebaseError,
         "Heap dump collection is only supported for Android apps.",
       );
+    });
+
+    it("should throw before checking billing or provisioning if --app does not belong to --project", async () => {
+      await expect(
+        enableCommand.runner()({
+          project: projectId,
+          app: otherProjectAppId,
+          force: true,
+        }),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        `Android app '${otherProjectAppId}' was not found in project '${projectId}'.`,
+      );
+
+      expect(checkBillingStub).to.not.have.been.called;
+      expect(confirmStub).to.not.have.been.called;
+      expect(enableCollectionStub).to.not.have.been.called;
     });
   });
 
@@ -173,6 +332,20 @@ describe("crashlytics:heapdumps commands", () => {
         }),
       ).to.be.rejectedWith(boom);
     });
+
+    it("should throw without disabling collection if --app does not belong to --project", async () => {
+      await expect(
+        disableCommand.runner()({
+          project: projectId,
+          app: otherProjectAppId,
+        }),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        `Android app '${otherProjectAppId}' was not found in project '${projectId}'.`,
+      );
+
+      expect(disableCollectionStub).to.not.have.been.called;
+    });
   });
 
   describe("crashlytics:heapdumps:status", () => {
@@ -194,6 +367,40 @@ describe("crashlytics:heapdumps commands", () => {
       });
     });
 
+    it("should include heapDumpCollectionEnabled: false when omitted by the API on a disabled app", async () => {
+      const resourceName = `projects/${projectNumber}/apps/${appId}/profilingManagerConfig`;
+      sinon.stub(profilingManager, "getProfilingManagerConfig").resolves({
+        name: resourceName,
+      });
+
+      const result: unknown = await statusCommand.runner()({
+        project: projectId,
+        app: appId,
+      });
+
+      expect(result).to.deep.equal({
+        appId,
+        name: resourceName,
+        heapDumpCollectionEnabled: false,
+      });
+    });
+
+    it("should handle an undefined configuration from the API without throwing", async () => {
+      sinon
+        .stub(profilingManager, "getProfilingManagerConfig")
+        .resolves(undefined as unknown as profilingManager.ProfilingManagerConfig);
+
+      const result: unknown = await statusCommand.runner()({
+        project: projectId,
+        app: appId,
+      });
+
+      expect(result).to.deep.equal({
+        appId,
+        heapDumpCollectionEnabled: false,
+      });
+    });
+
     it("should return the status and configuration when disabled with no bucket", async () => {
       sinon.stub(profilingManager, "getProfilingManagerConfig").resolves({
         bucket: "",
@@ -210,6 +417,22 @@ describe("crashlytics:heapdumps commands", () => {
         bucket: "",
         heapDumpCollectionEnabled: false,
       });
+    });
+
+    it("should throw without fetching status if --app does not belong to --project", async () => {
+      const getConfigStub = sinon.stub(profilingManager, "getProfilingManagerConfig");
+
+      await expect(
+        statusCommand.runner()({
+          project: projectId,
+          app: otherProjectAppId,
+        }),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        `Android app '${otherProjectAppId}' was not found in project '${projectId}'.`,
+      );
+
+      expect(getConfigStub).to.not.have.been.called;
     });
 
     it("should register and run crashlytics.heapdumps commands via command loader", async () => {

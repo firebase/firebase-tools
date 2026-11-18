@@ -1,11 +1,16 @@
 import { FirebaseError, getErrStatus } from "../error";
 import { logger } from "../logger";
-import { logLabeledBullet, logLabeledSuccess } from "../utils";
+import { consoleUrl, logLabeledBullet, logLabeledSuccess, logLabeledWarning } from "../utils";
 import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
 import * as storage from "../gcp/storage";
-import * as resourceManager from "../gcp/resourceManager";
 import * as serviceusage from "../gcp/serviceusage";
-import { AppPlatform, listFirebaseApps, selectAppInteractively } from "../management/apps";
+import {
+  AndroidAppMetadata,
+  AppMetadata,
+  AppPlatform,
+  listFirebaseApps,
+  selectAppInteractively,
+} from "../management/apps";
 
 export const CRASHLYTICS_SERVICE_NAME = "firebasecrashlytics.googleapis.com";
 export const STORAGE_OBJECT_CREATOR_ROLE = "roles/storage.objectCreator";
@@ -26,6 +31,10 @@ export const DEFAULT_LIFECYCLE_RULES: storage.LifecycleRule[] = [
     condition: { age: DEFAULT_FILE_TTL_DAYS },
   },
 ];
+export const DEFAULT_IAM_CONFIGURATION: storage.BucketIamConfiguration = {
+  publicAccessPrevention: "enforced",
+  uniformBucketLevelAccess: { enabled: true },
+};
 
 const ANDROID_APP_ID_REGEX = /^\d+:(\d+):android:([a-fA-F0-9]+)$/;
 const GCS_BUCKET_RESOURCE_PREFIX = "projects/_/buckets/";
@@ -34,6 +43,27 @@ export interface ProfilingManagerConfig {
   name?: string;
   bucket?: string;
   heapDumpCollectionEnabled?: boolean;
+}
+
+export interface ResolvedAndroidApp {
+  appId: string;
+  packageName?: string;
+}
+
+function isAndroidAppMetadata(app: AppMetadata): app is AndroidAppMetadata {
+  return (
+    app.platform === AppPlatform.ANDROID &&
+    "packageName" in app &&
+    typeof app.packageName === "string"
+  );
+}
+
+function toResolvedAndroidApp(app: AppMetadata): ResolvedAndroidApp {
+  const packageName = isAndroidAppMetadata(app) ? app.packageName.trim() : "";
+  return {
+    appId: app.appId,
+    ...(packageName ? { packageName } : {}),
+  };
 }
 
 /**
@@ -70,18 +100,43 @@ export function getCrashlyticsP4sa(projectNumber: string): string {
 }
 
 /**
- * Resolves the Android app ID from options.app, or interactively prompts if multiple exist.
+ * Builds the Firebase Console Crashlytics URL for an Android app.
+ * Uses the legacy `android:<packageName>` client ID expected by the Firebase Console router,
+ * falling back to the project-level Crashlytics page if `packageName` is unavailable.
  */
-export async function resolveAndroidAppId(
+export function getCrashlyticsConsoleUrl(projectId: string, packageName?: string): string {
+  const trimmedPackageName = packageName?.trim();
+  if (!trimmedPackageName) {
+    return consoleUrl(projectId, "/crashlytics");
+  }
+  return consoleUrl(projectId, `/crashlytics/app/android:${trimmedPackageName}/issues`);
+}
+
+/**
+ * Resolves and validates the Android app metadata from options.app against the project,
+ * or interactively prompts if multiple Android apps exist.
+ */
+export async function resolveAndroidApp(
   projectId: string,
   options: { app?: string; nonInteractive?: boolean },
-): Promise<string> {
-  if (options.app) {
-    parseAndroidHashedId(options.app);
-    return options.app;
+): Promise<ResolvedAndroidApp> {
+  const requestedAppId = options.app;
+  if (requestedAppId) {
+    parseAndroidHashedId(requestedAppId);
   }
 
   const apps = await listFirebaseApps(projectId, AppPlatform.ANDROID);
+  if (requestedAppId) {
+    const matchedApp = apps.find((app) => app.appId.toLowerCase() === requestedAppId.toLowerCase());
+    if (!matchedApp) {
+      throw new FirebaseError(
+        `Android app '${requestedAppId}' was not found in project '${projectId}'. ` +
+          "Run 'firebase apps:list ANDROID' to view valid Android app IDs for your project.",
+        { exit: 1 },
+      );
+    }
+    return toResolvedAndroidApp(matchedApp);
+  }
   if (apps.length === 0) {
     throw new FirebaseError(
       `No Android apps found in project '${projectId}'. Heap dump collection is only supported for Android apps.\n` +
@@ -90,7 +145,7 @@ export async function resolveAndroidAppId(
   }
 
   if (apps.length === 1) {
-    return apps[0].appId;
+    return toResolvedAndroidApp(apps[0]);
   }
 
   if (options.nonInteractive) {
@@ -102,7 +157,19 @@ export async function resolveAndroidAppId(
   const selectedApp = await selectAppInteractively(apps, AppPlatform.ANDROID, {
     message: "Select an Android app:",
   });
-  return selectedApp.appId;
+  return toResolvedAndroidApp(selectedApp);
+}
+
+/**
+ * Resolves and validates the Android app ID from options.app against the project,
+ * or interactively prompts if multiple Android apps exist.
+ */
+export async function resolveAndroidAppId(
+  projectId: string,
+  options: { app?: string; nonInteractive?: boolean },
+): Promise<string> {
+  const app = await resolveAndroidApp(projectId, options);
+  return app.appId;
 }
 
 /**
@@ -151,7 +218,8 @@ export async function updateProfilingManagerConfig(
 }
 
 /**
- * Ensures the GCS bucket for heap dumps exists and is configured with CORS and 90-day file TTL.
+ * Ensures the GCS bucket for heap dumps exists and is configured with CORS, 90-day file TTL,
+ * Uniform Bucket-Level Access, and enforced Public Access Prevention.
  * Creates the bucket if it does not already exist.
  * @param projectId Cloud Project ID
  * @param appId GMP App ID
@@ -172,6 +240,12 @@ export async function ensureHeapDumpStorageBucket(
         `Cloud Storage bucket '${bucketName}' already exists and is owned by another project.`,
       );
     }
+    if (bucket.location && bucket.location.trim().toLowerCase() !== location.trim().toLowerCase()) {
+      logLabeledWarning(
+        "crashlytics",
+        `Cloud Storage bucket '${bucketName}' already exists in ${bucket.location}; its location cannot be changed to '${location}' and will remain ${bucket.location}.`,
+      );
+    }
     const patchPayload: Partial<storage.BucketResponse> = {};
     const hasConsoleCors = bucket.cors?.some((rule) =>
       DEFAULT_CORS_ORIGINS.every((origin) => rule.origin?.includes(origin)),
@@ -185,6 +259,14 @@ export async function ensureHeapDumpStorageBucket(
     if (!hasDeleteLifecycle) {
       patchPayload.lifecycle = {
         rule: [...(bucket.lifecycle?.rule ?? []), ...DEFAULT_LIFECYCLE_RULES],
+      };
+    }
+    const needsUbla = !bucket.iamConfiguration?.uniformBucketLevelAccess?.enabled;
+    const needsPap = bucket.iamConfiguration?.publicAccessPrevention !== "enforced";
+    if (needsUbla || needsPap) {
+      patchPayload.iamConfiguration = {
+        ...(needsPap ? { publicAccessPrevention: "enforced" } : {}),
+        ...(needsUbla ? { uniformBucketLevelAccess: { enabled: true } } : {}),
       };
     }
     if (Object.keys(patchPayload).length > 0) {
@@ -202,27 +284,24 @@ export async function ensureHeapDumpStorageBucket(
   }
 
   logger.debug(`[crashlytics] Creating GCS bucket ${bucketName} in ${location}...`);
-  await storage.createBucket(
-    projectId,
-    {
-      name: bucketName,
-      location,
-      cors: DEFAULT_CORS_RULES,
-      lifecycle: { rule: DEFAULT_LIFECYCLE_RULES },
-    },
-    true /* projectPrivate */,
-  );
+  await storage.createBucket(projectId, {
+    name: bucketName,
+    location,
+    cors: DEFAULT_CORS_RULES,
+    lifecycle: { rule: DEFAULT_LIFECYCLE_RULES },
+    iamConfiguration: DEFAULT_IAM_CONFIGURATION,
+  });
   return bucketName;
 }
 
 /**
- * Generates the Crashlytics service identity and ensures the P4SA has the roles/storage.objectCreator role.
- * @param projectId Cloud Project ID
+ * Generates the Crashlytics service identity and grants roles/storage.objectCreator on the heap dump bucket.
  * @param projectNumber Cloud Project Number
+ * @param bucketName Target Cloud Storage bucket name
  */
 export async function ensureHeapDumpP4saRole(
-  projectId: string,
   projectNumber: string,
+  bucketName: string,
 ): Promise<void> {
   await serviceusage.generateServiceIdentityAndPoll(
     projectNumber,
@@ -230,21 +309,12 @@ export async function ensureHeapDumpP4saRole(
     "crashlytics",
   );
   const p4saEmail = getCrashlyticsP4sa(projectNumber);
-  const hasRole = await resourceManager.serviceAccountHasRoles(
-    projectId,
-    p4saEmail,
-    [STORAGE_OBJECT_CREATOR_ROLE],
-    true /* skipAccountLookup */,
+  logger.debug(
+    `[crashlytics] Ensuring ${STORAGE_OBJECT_CREATOR_ROLE} on bucket ${bucketName} for ${p4saEmail}...`,
   );
-  if (!hasRole) {
-    logger.debug(`[crashlytics] Adding ${STORAGE_OBJECT_CREATOR_ROLE} to ${p4saEmail}...`);
-    await resourceManager.addServiceAccountToRoles(
-      projectId,
-      p4saEmail,
-      [STORAGE_OBJECT_CREATOR_ROLE],
-      true /* skipAccountLookup */,
-    );
-  }
+  await storage.addServiceAccountToBucketRoles(bucketName, p4saEmail, [
+    STORAGE_OBJECT_CREATOR_ROLE,
+  ]);
 }
 
 /**
@@ -263,7 +333,7 @@ export async function enableHeapDumpCollection(
   logLabeledBullet("crashlytics", "Configuring Google Cloud Storage bucket...");
   const bucketName = await ensureHeapDumpStorageBucket(projectId, appId, location);
   logLabeledBullet("crashlytics", "Configuring service agent permissions...");
-  await ensureHeapDumpP4saRole(projectId, projectNumber);
+  await ensureHeapDumpP4saRole(projectNumber, bucketName);
   logLabeledBullet("crashlytics", "Enabling Crashlytics heap dump collection...");
   await updateProfilingManagerConfig(
     appId,

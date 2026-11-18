@@ -118,7 +118,6 @@ async function pollCheckEnabled(
   pollRetries = 0,
 ): Promise<void> {
   if (pollRetries > POLL_SETTINGS.pollsBeforeRetry) {
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
     return enableApiWithRetries(projectId, apiName, prefix, silent, enablementRetries + 1);
   }
 

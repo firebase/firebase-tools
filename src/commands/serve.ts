@@ -65,7 +65,7 @@ export const command = new Command("serve")
     if (options.config) {
       logger.info();
       logger.info(
-        clc.bold(clc.white("===") + " Serving from '" + options.config.projectDir + "'..."),
+        clc.bold(`${clc.white("===")} Serving from '${String(options.config.projectDir)}'...`),
       );
       logger.info();
     } else {
