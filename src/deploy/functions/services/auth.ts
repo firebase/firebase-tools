@@ -140,12 +140,15 @@ export class AuthBlockingService implements Service {
   private async unregisterTriggerLocked(
     endpoint: backend.Endpoint & backend.BlockingTriggered,
   ): Promise<void> {
-    const blockingConfig = await identityPlatform.getBlockingFunctionsConfig(endpoint.project);
     // A 2nd gen function is registered with its cloudfunctions.net URL on create but with its
     // run.app URL on update, so a function may be registered under either one.
     const endpointUris = new Set(
       [endpoint.uri, endpoint.runServiceUri].filter((uri): uri is string => !!uri),
     );
+    if (endpointUris.size === 0) {
+      return;
+    }
+    const blockingConfig = await identityPlatform.getBlockingFunctionsConfig(endpoint.project);
     const isEndpointUri = (functionUri?: string): boolean =>
       !!functionUri && endpointUris.has(functionUri);
     if (
