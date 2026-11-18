@@ -67,7 +67,7 @@ export class StorageEmulator implements EmulatorInstance {
     this._rulesRuntime = new StorageRulesRuntime();
     this._rulesManager = this.createRulesManager(this.args.rules);
     this._cloudFunctions = new StorageCloudFunctions(args.projectId);
-    this._persistence = new Persistence(this.getPersistenceTmpDir());
+    this._persistence = new Persistence(this.persistenceTmpDir);
     this._uploadService = new UploadService(this._persistence);
 
     const createStorageLayer = (rulesValidator: FirebaseRulesValidator): StorageLayer => {
@@ -110,7 +110,7 @@ export class StorageEmulator implements EmulatorInstance {
   reset(): void {
     this._files.clear();
     this._buckets.clear();
-    this._persistence.reset(this.getPersistenceTmpDir());
+    this._persistence.reset(this.persistenceTmpDir);
     this._uploadService.reset();
   }
 
@@ -161,9 +161,5 @@ export class StorageEmulator implements EmulatorInstance {
     await this._rulesManager.stop();
     this._rulesManager = this.createRulesManager(rules);
     return this._rulesManager.start();
-  }
-
-  private getPersistenceTmpDir(): string {
-    return this.persistenceTmpDir;
   }
 }
