@@ -10,7 +10,11 @@ import * as utils from "../utils";
 import { FirebaseError } from "../error";
 
 export const command = new Command("functions:config:unset [keys...]")
-  .description("unset environment config at the specified path(s)")
+  .description(
+    "[DEPRECATED] unset legacy functions.config() environment config at the specified path(s). " +
+      'Disabled by default; run "firebase experiments:enable legacyRuntimeConfigCommands" to use. ' +
+      'Migrate with "firebase functions:config:export".',
+  )
   .before(functionsConfig.ensureLegacyRuntimeConfigCommandsEnabled)
   .before(requirePermissions, [
     "runtimeconfig.configs.list",
