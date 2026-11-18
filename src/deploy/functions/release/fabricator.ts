@@ -1018,7 +1018,7 @@ export class Fabricator {
         .catch(rethrowAs(endpoint, "set invoker"));
     } else if (
       backend.isBlockingTriggered(endpoint) &&
-      AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType as any)
+      (AUTH_BLOCKING_EVENTS as readonly string[]).includes(endpoint.blockingTrigger.eventType)
     ) {
       await this.executor
         .run(() => run.setInvokerCreate(endpoint.project, serviceName, ["public"]))
@@ -1064,7 +1064,7 @@ export class Fabricator {
       invoker = [await this.scheduleInvoker(endpoint)];
     } else if (
       backend.isBlockingTriggered(endpoint) &&
-      AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType as any)
+      (AUTH_BLOCKING_EVENTS as readonly string[]).includes(endpoint.blockingTrigger.eventType)
     ) {
       invoker = ["public"];
     }
