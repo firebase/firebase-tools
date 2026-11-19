@@ -1,0 +1,1 @@
+- Fixed an issue where `ext:dev:undeprecate` did not accept the `-f` or `--force` flag to skip confirmation prompts.
