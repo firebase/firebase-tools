@@ -334,9 +334,11 @@ describe("RuntimeWorker.isSocketReady", () => {
   // https://github.com/firebase/firebase-tools/issues/8774
   let server: http.Server;
   let requests: number;
+  let tempDirs: string[];
 
   beforeEach(() => {
     requests = 0;
+    tempDirs = [];
     server = http.createServer((req, res) => {
       requests++;
       res.end();
@@ -345,6 +347,9 @@ describe("RuntimeWorker.isSocketReady", () => {
 
   afterEach(async () => {
     await new Promise((resolve) => server.close(resolve));
+    for (const dir of tempDirs) {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it("becomes ready over TCP without sending a request to the runtime", async () => {
@@ -360,10 +365,9 @@ describe("RuntimeWorker.isSocketReady", () => {
   });
 
   it("becomes ready over a Unix socket without sending a request to the runtime", async () => {
-    const socketPath = path.join(
-      fs.mkdtempSync(path.join(os.tmpdir(), "fire-emu-")),
-      "runtime.sock",
-    );
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "fire-emu-"));
+    tempDirs.push(tempDir);
+    const socketPath = path.join(tempDir, "runtime.sock");
     await new Promise<void>((resolve) => server.listen(socketPath, resolve));
     const runtime = new MockRuntimeInstance();
     runtime.conn = new IPCConn(socketPath);

@@ -251,7 +251,7 @@ export class RuntimeWorker {
         ? net.connect({ path: socketPath })
         : net.connect({ host: host ?? undefined, port: Number(port) });
       socket.once("connect", () => {
-        socket.end();
+        socket.destroy();
         // Set the worker state to IDLE for new work
         this.readyForWork();
         resolve();
