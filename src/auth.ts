@@ -7,7 +7,7 @@ import * as portfinder from "portfinder";
 
 import * as apiv2 from "./apiv2";
 import { configstore } from "./configstore";
-import { FirebaseError, getErrMsg } from "./error";
+import { FirebaseError, getErrMsg, getErrStack } from "./error";
 import * as utils from "./utils";
 import { logger } from "./logger";
 import { input } from "./prompt";
@@ -250,8 +250,8 @@ export function setGlobalDefaultAccount(accountOrEmail: string | Account) {
 }
 
 function open(url: string): void {
-  opn(url).catch((err) => {
-    logger.debug("Unable to open URL: " + err.stack);
+  opn(url).catch((err: unknown) => {
+    logger.debug(`Unable to open URL: ${getErrStack(err)}`);
   });
 }
 

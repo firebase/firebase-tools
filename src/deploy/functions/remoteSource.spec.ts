@@ -70,7 +70,7 @@ describe("remoteSource", () => {
           const entryPath = topLevelDir ? path.join(topLevelDir, filePath) : filePath;
           archive.append(content, { name: entryPath });
         }
-        archive.finalize();
+        archive.finalize().catch(reject);
       });
     }
 
