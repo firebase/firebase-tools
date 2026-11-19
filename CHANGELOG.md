@@ -1,0 +1,1 @@
+- Added `-f` and `--force` to `remoteconfig:experiments:delete` and `remoteconfig:rollouts:delete`, and fixed an issue where `remoteconfig:get --output` crashed when no default template path was configured in `firebase.json`.

@@ -93,6 +93,10 @@ export interface RemoteConfigUser {
 export interface RemoteConfigExperiment {
   name: string;
   definition: ExperimentDefinition;
+  /**
+   * Lifecycle state of the experiment, as returned by the Remote Config API:
+   * `STATE_UNSPECIFIED`, `PENDING`, `RUNNING`, `DONE`, or `EXPIRED`.
+   */
   state: string;
   startTime: string;
   endTime: string;
@@ -147,7 +151,10 @@ interface ExperimentCustomObjectiveDetails {
   countType: string;
 }
 
-/** Interface representing an experiment variant. */
+/**
+ * Interface representing an experiment variant. Variants only carry a name and a
+ * traffic weight; parameter values are defined in the Remote Config template.
+ */
 interface ExperimentVariant {
   name: string;
   weight: number;

@@ -10,13 +10,13 @@ import { needProjectId } from "../projectUtils";
 
 export const command = new Command("remoteconfig:rollback")
   .description(
-    "roll back a project's published Remote Config template to the one specified by the provided version number",
+    "roll back a project's published Remote Config template to a previous version (by default, the version immediately before the latest)",
   )
   .before(requireAuth)
   .before(requirePermissions, ["cloudconfig.configs.get", "cloudconfig.configs.update"])
   .option(
     "-v, --version-number <versionNumber>",
-    "rollback to the specified version of the template",
+    "roll back to the specified version of the template (default: the latest published version minus one)",
   )
   .withForce()
   .action(async (options) => {
@@ -33,9 +33,7 @@ export const command = new Command("remoteconfig:rollback")
     }
     if (targetVersion <= 0) {
       throw new FirebaseError(
-        `Failed to rollback Firebase Remote Config template for project to version` +
-          targetVersion +
-          `. ` +
+        `Failed to rollback Firebase Remote Config template for project to version ${targetVersion}. ` +
           `Invalid Version Number`,
       );
     }
