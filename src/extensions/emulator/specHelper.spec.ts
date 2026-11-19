@@ -132,6 +132,22 @@ describe("getRuntime", () => {
     expect(specHelper.getRuntime([r1, r2])).to.equal("nodejs14");
   });
 
+  it("chooses the latest runtime even if it is not GA", () => {
+    const r1 = {
+      ...testResource,
+      properties: {
+        runtime: "nodejs24" as const,
+      },
+    };
+    const r2 = {
+      ...testResource,
+      properties: {
+        runtime: "nodejs26" as const,
+      },
+    };
+    expect(specHelper.getRuntime([r1, r2])).to.equal("nodejs26");
+  });
+
   it("returns default runtime if none specified", () => {
     const r1 = {
       ...testResource,
