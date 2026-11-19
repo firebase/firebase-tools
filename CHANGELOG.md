@@ -1,0 +1,1 @@
+- Added support for TOTP second factors in the Auth Emulator. (#6224)
