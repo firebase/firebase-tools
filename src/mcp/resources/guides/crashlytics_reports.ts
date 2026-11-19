@@ -41,6 +41,7 @@ Report responses are grouped by one of the following dimensions (or cover the en
   - mobile device type (mobile only)
   - browser (web only)
   - error type (web only)
+  - custom key (via \`topCustomKeys\`, web only)
 
 ### Time Granularity
 
@@ -55,6 +56,7 @@ The \`granularity\` parameter controls how metrics are bucketed over the request
 When setting report filters adhere to the following instructions.
 
   * Issue Filtering:
+    * \`filter.issueId\` is required for the \`topVariants\`, \`topBrowsers\`, and \`topCustomKeys\` reports (as well as \`crashlytics_list_events\`), not supported for \`topIssues\`, and optional for all other reports.
     * For mobile apps, use the \`issueErrorTypes\` field to focus on events of different fatalities:
       * FATAL: native crashes, which caused the app to exit.
       * NON_FATAL: uncaught or manually reported exceptions, which did not crash the app.
@@ -71,6 +73,24 @@ When setting report filters adhere to the following instructions.
       * Device: 'manufacturer (device)'
       * Operating System: 'os (version)'
       * App Version: 'version (build)'
+
+### Custom Keys
+
+  * **\`topCustomKeys\` Report (web only):**
+    * Groups event counts by custom key-value pairs (\`customAttribute.key\` and \`customAttribute.value\`) attached to events for an issue.
+    * Requires \`filter.issueId\` to be set to the target issue ID.
+    * On mobile apps, inspect custom keys on sample events via \`crashlytics_batch_get_events\` or \`crashlytics_list_events\` instead.
+
+  * **Custom-Key Filtering (\`filterExpression\`):**
+    * Filter events by custom keys using AIP-160 syntax on \`custom_keys.<key>\`:
+      * Exact value match: \`custom_keys.env = "prod"\`
+      * Key presence (any value): \`custom_keys.experiment_id:*\`
+      * \`AND\` across different keys: \`custom_keys.env = "prod" AND custom_keys.role = "admin"\`
+      * \`OR\` within a single key: \`custom_keys.env = "prod" OR custom_keys.env = "staging"\` (\`OR\` is only supported between values of the same key)
+    * **Platform & Report Support:**
+      * For \`crashlytics_get_report\`, \`filterExpression\` is **only supported on web apps** (except \`topIssues\`, which does not support \`filterExpression\`); check the report's \`usage\` description to see whether a report supports \`filterExpression\`.
+      * For \`crashlytics_list_events\`, \`filterExpression\` is supported across platforms (and \`filter.issueId\` is always required).
+      * Web reports do not include crash-free percentage metrics (\`crashFreeUsersPercentage\` and \`crashFreeSessionsPercentage\` are mobile only).
 
 ### How to Display Issues
 
