@@ -1,0 +1,1 @@
+- Fixed the CLI exiting with "An unexpected error has occurred." and exit code 2 after a successful command when `firebase-debug.log` could not be deleted, such as a Docker bind mount or a read-only directory. (#5177)

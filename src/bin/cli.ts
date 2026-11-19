@@ -57,6 +57,22 @@ export function loadAllCommands(client: Record<string, unknown>): void {
   loadAll(client);
 }
 
+/**
+ * Deletes the debug log after a run that didn't fail.
+ */
+export function removeDebugLog(logFilename: string, code: number): void {
+  if (process.env.DEBUG || code >= 2 || !fsutils.fileExistsSync(logFilename)) {
+    return;
+  }
+  try {
+    fs.unlinkSync(logFilename);
+  } catch {
+    // This runs in the exit handler, where a throw turns a successful command into
+    // "An unexpected error has occurred." and exit code 2. The file can be impossible
+    // to delete (a Docker bind mount, a read-only directory), and leaving it is harmless.
+  }
+}
+
 export function cli(pkg: any) {
   const updateNotifier = updateNotifierPkg({ pkg });
 
@@ -98,9 +114,7 @@ export function cli(pkg: any) {
 
   process.on("exit", (code) => {
     code = typeof process.exitCode === "number" ? process.exitCode : code;
-    if (!process.env.DEBUG && code < 2 && fsutils.fileExistsSync(logFilename)) {
-      fs.unlinkSync(logFilename);
-    }
+    removeDebugLog(logFilename, code);
 
     if (code > 0 && process.stdout.isTTY) {
       const lastError = configstore.get("lastError") || 0;
