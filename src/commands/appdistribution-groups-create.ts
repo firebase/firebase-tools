@@ -5,7 +5,11 @@ import { AppDistributionClient } from "../appdistribution/client";
 import { getProjectName } from "../appdistribution/options-parser-util";
 
 export const command = new Command("appdistribution:groups:create <displayName> [alias]")
-  .description("create an App Distribution group")
+  .description(
+    "create an App Distribution tester group with a human-readable <displayName> and an optional " +
+      "[alias] (the group's unique ID, used by other appdistribution commands and flags); " +
+      "if [alias] is omitted, one is generated automatically and printed on success",
+  )
   .alias("appdistribution:group:create")
   .before(requireAuth)
   .action(async (displayName: string, alias?: string, options?: any) => {
