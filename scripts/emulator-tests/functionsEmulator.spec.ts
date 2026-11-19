@@ -8,6 +8,7 @@ import * as express from "express";
 import * as sinon from "sinon";
 import * as supertest from "supertest";
 import * as winston from "winston";
+// eslint-disable-next-line brikke/no-undeclared-imports
 import * as logform from "logform";
 
 import { EmulatedTriggerDefinition } from "../../src/emulator/functionsEmulatorShared";
@@ -697,6 +698,7 @@ describe("FunctionsEmulator", function () {
                   databaseHost: process.env.FIREBASE_DATABASE_EMULATOR_HOST,
                   firestoreHost: process.env.FIRESTORE_EMULATOR_HOST,
                   authHost: process.env.FIREBASE_AUTH_EMULATOR_HOST,
+                  region: process.env.FUNCTION_REGION,
                 });
               },
             ),
@@ -710,6 +712,7 @@ describe("FunctionsEmulator", function () {
             expect(res.body.databaseHost).to.eql(`${database.host}:${database.port}`);
             expect(res.body.firestoreHost).to.eql(`${firestore.host}:${firestore.port}`);
             expect(res.body.authHost).to.eql(`${auth.host}:${auth.port}`);
+            expect(res.body.region).to.eql("us-central1");
           });
       }).timeout(TIMEOUT_MED);
 
