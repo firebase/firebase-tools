@@ -1,0 +1,1 @@
+- Fixed the Cloud Tasks emulator making one more attempt than `retryConfig.maxAttempts`, and treating `maxAttempts: -1` as a single attempt instead of unlimited.
