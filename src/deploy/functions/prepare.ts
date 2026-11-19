@@ -41,7 +41,11 @@ import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import { needProjectId, needProjectNumber } from "../../projectUtils";
 import { logger } from "../../logger";
 import { ensureTriggerRegions } from "./triggerRegionHelper";
-import { ensureServiceAgentRoles, ensureGenkitMonitoringRoles } from "./checkIam";
+import {
+  checkBuildServiceAccounts,
+  ensureServiceAgentRoles,
+  ensureGenkitMonitoringRoles,
+} from "./checkIam";
 import { FirebaseError, getErrStack } from "../../error";
 
 import {
@@ -541,6 +545,12 @@ export async function prepare(
       managedAccountRoles[managedSA] = wantBackend.requiredRoles ?? [];
     }
   }
+  context.buildWithRuntimeServiceAccount = await checkBuildServiceAccounts(
+    projectId,
+    projectNumber,
+    matchingBackend,
+    managedAccountRoles,
+  );
   await ensureServiceAgentRoles(
     projectId,
     projectNumber,

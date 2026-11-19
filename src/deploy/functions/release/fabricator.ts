@@ -63,6 +63,10 @@ const eventarcPollerOptions: Omit<poller.OperationPollerOptions, "operationResou
 
 const CLOUD_RUN_RESOURCE_EXHAUSTED_CODE = 8;
 
+// IAM has no API that reports when a grant has propagated, and Cloud Build fails rather than
+// retrying when its service account can't yet read the source bucket.
+export const MANAGED_ROLE_PROPAGATION_WAIT_MS = 2 * 60 * 1_000;
+
 import * as iam from "../../../gcp/iam";
 import * as resourcemanager from "../../../gcp/resourceManager";
 
@@ -74,6 +78,7 @@ export interface FabricatorArgs {
   sources: Record<string, args.Source>;
   projectNumber: string;
   projectId: string;
+  buildWithRuntimeServiceAccount?: boolean;
 }
 
 const rethrowAs =
@@ -104,6 +109,7 @@ export class Fabricator {
   appEngineLocation: string;
   projectNumber: string;
   projectId: string;
+  buildWithRuntimeServiceAccount: boolean;
 
   constructor(args: FabricatorArgs) {
     this.executor = args.executor;
@@ -113,6 +119,7 @@ export class Fabricator {
     this.appEngineLocation = args.appEngineLocation;
     this.projectNumber = args.projectNumber;
     this.projectId = args.projectId;
+    this.buildWithRuntimeServiceAccount = !!args.buildWithRuntimeServiceAccount;
   }
 
   async grantNewRoles(plan: planner.CodebasePlan, codebase: string): Promise<void> {
@@ -260,6 +267,14 @@ export class Fabricator {
     );
     await Promise.all(secretAccessPromises);
 
+    if (this.buildsAsManagedAccountWithNewRoles(plan)) {
+      utils.logLabeledBullet(
+        "functions",
+        `Waiting ${MANAGED_ROLE_PROPAGATION_WAIT_MS / 1_000}s for new IAM roles to take effect before building as the managed service account...`,
+      );
+      await utils.sleep(MANAGED_ROLE_PROPAGATION_WAIT_MS);
+    }
+
     // Accumulate all regional changesets across all codebases
     const allChangesets: planner.Changeset[] = [];
     for (const codebasePlan of Object.values(plan)) {
@@ -367,6 +382,24 @@ export class Fabricator {
 
     summary.totalTime = timer.stop();
     return summary;
+  }
+
+  private buildsAsManagedAccountWithNewRoles(plan: planner.DeploymentPlan): boolean {
+    if (!this.buildWithRuntimeServiceAccount) {
+      return false;
+    }
+    return Object.values(plan).some((codebasePlan) => {
+      if (!codebasePlan.serviceAccountToCreate && !codebasePlan.rolesToAdd?.length) {
+        return false;
+      }
+      return Object.values(codebasePlan.regionalChangesets).some((changes) =>
+        [...changes.endpointsToCreate, ...changes.endpointsToUpdate.map((u) => u.endpoint)].some(
+          (endpoint) =>
+            endpoint.platform === "gcfv2" &&
+            endpoint.serviceAccount === codebasePlan.managedServiceAccount,
+        ),
+      );
+    });
   }
 
   private async cleanupUnusedServiceAccounts(
@@ -592,6 +625,18 @@ export class Fabricator {
     }
   }
 
+  /**
+   * GCF v2 builds run as the default compute service account unless buildConfig.serviceAccount
+   * is set. Prepare decides whether that account is unusable, since runtime accounts often lack
+   * build permissions.
+   */
+  private setBuildServiceAccount(apiFunction: gcfV2.InputCloudFunction): void {
+    const email = apiFunction.serviceConfig.serviceAccountEmail;
+    if (this.buildWithRuntimeServiceAccount && email) {
+      apiFunction.buildConfig.serviceAccount = `projects/-/serviceAccounts/${email}`;
+    }
+  }
+
   async createV2Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
     const storageSource = this.sources[endpoint.codebase!]?.storage;
     if (!storageSource) {
@@ -599,6 +644,7 @@ export class Fabricator {
       throw new Error("Precondition failed");
     }
     const apiFunction = gcfV2.functionFromEndpoint({ ...endpoint, source: { storageSource } });
+    this.setBuildServiceAccount(apiFunction);
 
     // N.B. As of GCFv2 private preview GCF no longer creates Pub/Sub topics
     // for Pub/Sub event handlers. This may change, at which point this code
@@ -830,6 +876,7 @@ export class Fabricator {
       throw new Error("Precondition failed");
     }
     const apiFunction = gcfV2.functionFromEndpoint({ ...endpoint, source: { storageSource } });
+    this.setBuildServiceAccount(apiFunction);
 
     // N.B. As of GCFv2 private preview the API chokes on any update call that
     // includes the pub/sub topic even if that topic is unchanged.

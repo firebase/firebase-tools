@@ -3,6 +3,7 @@
 - Added support for the Node.js 26 runtime (Preview) for Cloud Functions. (#11393)
 - Fixed `firebase deploy --dry-run` creating a missing Firestore database. A dry run now reports which database a deploy would create, and where. (#11491)
 - Added an optional `filterExpression` parameter to the Crashlytics MCP `get_report` tool to filter reports by custom keys.
+- Fixed v2 function deploys with a custom `serviceAccount` failing when the default compute service account is deleted or disabled. The build now runs as the custom service account in that case. (#8841)
 - Fixed 2nd gen functions staying uncallable after their first deploy failed, because later deploys never set the invoker. (#8984)
 - Updated Pub/Sub emulator to version 0.8.38.
 - Fixed `crashlytics:heapdumps` commands accepting `--app` IDs that do not belong to the target Firebase project.

@@ -26,6 +26,7 @@ import { deepCopy } from "@angular-devkit/core";
 import * as gce from "../../../gcp/computeEngine";
 import * as iam from "../../../gcp/iam";
 import * as resourcemanager from "../../../gcp/resourceManager";
+import * as utils from "../../../utils";
 
 describe("Fabricator", () => {
   // Stub all GCP APIs to make sure this test is hermetic
@@ -949,6 +950,70 @@ describe("Fabricator", () => {
 
       await fab.createV2Function(ep, new scraper.SourceTokenScraper());
       expect(run.setInvokerCreate).to.not.have.been.called;
+    });
+  });
+
+  describe("build service account", () => {
+    beforeEach(() => {
+      gcfv2.createFunction.resolves({ name: "op", done: false });
+      gcfv2.updateFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+    });
+
+    const v2Endpoint = (serviceAccount?: string | null): backend.Endpoint =>
+      endpoint(
+        { eventTrigger: { eventType: "event", eventFilters: {}, retry: false } },
+        {
+          platform: "gcfv2",
+          project: "project",
+          ...(serviceAccount !== undefined ? { serviceAccount } : {}),
+        },
+      );
+
+    it("leaves the build service account unset by default", async () => {
+      await fab.createV2Function(v2Endpoint("sa@"), new scraper.SourceTokenScraper());
+
+      const fn = gcfv2.createFunction.lastCall.args[0];
+      expect(fn.serviceConfig.serviceAccountEmail).to.equal("sa@project.iam.gserviceaccount.com");
+      expect(fn.buildConfig).to.not.have.property("serviceAccount");
+    });
+
+    it("builds as the runtime service account on create when prepare asks for it", async () => {
+      fab = new fabricator.Fabricator({ ...ctorArgs, buildWithRuntimeServiceAccount: true });
+
+      await fab.createV2Function(
+        v2Endpoint("sa@other-project.iam.gserviceaccount.com"),
+        new scraper.SourceTokenScraper(),
+      );
+
+      expect(gcfv2.createFunction.lastCall.args[0].buildConfig.serviceAccount).to.equal(
+        "projects/-/serviceAccounts/sa@other-project.iam.gserviceaccount.com",
+      );
+    });
+
+    it("builds as the runtime service account on update when prepare asks for it", async () => {
+      fab = new fabricator.Fabricator({ ...ctorArgs, buildWithRuntimeServiceAccount: true });
+      const ep = endpoint(
+        { httpsTrigger: {} },
+        { platform: "gcfv2", project: "project", serviceAccount: "sa@" },
+      );
+
+      await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
+
+      expect(gcfv2.updateFunction.lastCall.args[0].buildConfig.serviceAccount).to.equal(
+        "projects/-/serviceAccounts/sa@project.iam.gserviceaccount.com",
+      );
+    });
+
+    it("leaves the build service account unset without a runtime service account", async () => {
+      fab = new fabricator.Fabricator({ ...ctorArgs, buildWithRuntimeServiceAccount: true });
+
+      await fab.createV2Function(v2Endpoint(), new scraper.SourceTokenScraper());
+      await fab.createV2Function(v2Endpoint(null), new scraper.SourceTokenScraper());
+
+      for (const call of gcfv2.createFunction.getCalls()) {
+        expect(call.args[0].buildConfig).to.not.have.property("serviceAccount");
+      }
     });
   });
 
@@ -2520,6 +2585,106 @@ describe("Fabricator", () => {
         "test-project",
         "firebase-fn-123@my-proj.iam.gserviceaccount.com",
       );
+    });
+
+    describe("waiting for managed account roles before building", () => {
+      const managedSA = "firebase-fn-123@my-proj.iam.gserviceaccount.com";
+      let sleepStub: sinon.SinonStub;
+      let applyUpsertsStub: sinon.SinonStub;
+
+      function managedPlan(
+        ep: backend.Endpoint,
+        changes: { serviceAccountToCreate?: string; rolesToAdd?: string[] } = {},
+        toUpdate = false,
+      ): planner.DeploymentPlan {
+        return {
+          default: {
+            plannedBackend: backend.of(ep),
+            regionalChangesets: {
+              "us-central1": {
+                endpointsToCreate: toUpdate ? [] : [ep],
+                endpointsToUpdate: toUpdate ? [{ endpoint: ep }] : [],
+                endpointsToDelete: [],
+                endpointsToSkip: [],
+              },
+            },
+            managedServiceAccount: managedSA,
+            serviceAccountToCreate: managedSA,
+            rolesToAdd: ["roles/cloudbuild.builds.builder"],
+            ...changes,
+          },
+        };
+      }
+
+      beforeEach(() => {
+        sleepStub = sinon.stub(utils, "sleep").resolves();
+        fab = new fabricator.Fabricator({ ...ctorArgs, buildWithRuntimeServiceAccount: true });
+        applyUpsertsStub = sinon.stub(fab, "applyUpserts").callsFake(async () => {
+          expect(sleepStub).to.have.been.calledOnceWithExactly(
+            fabricator.MANAGED_ROLE_PROPAGATION_WAIT_MS,
+          );
+          return [];
+        });
+      });
+
+      const v2ManagedEndpoint = (): backend.Endpoint =>
+        endpoint({ httpsTrigger: {} }, { platform: "gcfv2", serviceAccount: managedSA });
+
+      it("waits before creating functions that build as a new managed account", async () => {
+        await fab.applyPlan(managedPlan(v2ManagedEndpoint()));
+
+        expect(applyUpsertsStub).to.have.been.calledOnce;
+        expect(sleepStub).to.have.been.calledBefore(applyUpsertsStub);
+      });
+
+      it("waits before updating functions when an existing managed account gains roles", async () => {
+        await fab.applyPlan(
+          managedPlan(v2ManagedEndpoint(), { serviceAccountToCreate: undefined }, true),
+        );
+
+        expect(sleepStub).to.have.been.calledBefore(applyUpsertsStub);
+      });
+
+      it("does not wait when functions build as the default account", async () => {
+        fab = new fabricator.Fabricator(ctorArgs);
+        const upserts = sinon.stub(fab, "applyUpserts").resolves([]);
+
+        await fab.applyPlan(managedPlan(v2ManagedEndpoint()));
+
+        expect(upserts).to.have.been.calledOnce;
+        expect(sleepStub).to.not.have.been.called;
+      });
+
+      it("does not wait when the managed account's roles are unchanged", async () => {
+        applyUpsertsStub.resolves([]);
+
+        await fab.applyPlan(
+          managedPlan(v2ManagedEndpoint(), { serviceAccountToCreate: undefined, rolesToAdd: [] }),
+        );
+
+        expect(sleepStub).to.not.have.been.called;
+      });
+
+      it("does not wait for functions that build as a different account", async () => {
+        applyUpsertsStub.resolves([]);
+        const ep = endpoint(
+          { httpsTrigger: {} },
+          { platform: "gcfv2", serviceAccount: "custom@my-proj.iam.gserviceaccount.com" },
+        );
+
+        await fab.applyPlan(managedPlan(ep));
+
+        expect(sleepStub).to.not.have.been.called;
+      });
+
+      it("does not wait for GCFv1 functions", async () => {
+        applyUpsertsStub.resolves([]);
+        const ep = endpoint({ httpsTrigger: {} }, { serviceAccount: managedSA });
+
+        await fab.applyPlan(managedPlan(ep));
+
+        expect(sleepStub).to.not.have.been.called;
+      });
     });
   });
 });

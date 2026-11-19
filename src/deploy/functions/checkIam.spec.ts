@@ -640,6 +640,197 @@ describe("checkIam", () => {
     });
   });
 
+  describe("checkBuildServiceAccounts", () => {
+    const defaultServiceAccount = DEFAULT_SA;
+    let logLabeledBulletStub: sinon.SinonStub;
+    let logLabeledWarningStub: sinon.SinonStub;
+
+    const fn = (
+      id: string,
+      serviceAccount?: string,
+      platform: backend.Endpoint["platform"] = "gcfv2",
+    ): backend.Endpoint => ({
+      id,
+      entryPoint: id,
+      platform,
+      httpsTrigger: {},
+      ...SPEC,
+      ...(serviceAccount ? { serviceAccount } : {}),
+    });
+
+    beforeEach(() => {
+      logLabeledBulletStub = sinon.stub(utils, "logLabeledBullet");
+      logLabeledWarningStub = sinon.stub(utils, "logLabeledWarning");
+    });
+
+    it("does not look up the default account without v2 functions", async () => {
+      const result = await checkIam.checkBuildServiceAccounts(
+        projectId,
+        projectNumber,
+        backend.of(fn("v1", undefined, "gcfv1")),
+      );
+
+      expect(result).to.be.false;
+      expect(getServiceAccountStub).to.not.have.been.called;
+    });
+
+    it("keeps the default build account when it exists", async () => {
+      const result = await checkIam.checkBuildServiceAccounts(
+        projectId,
+        projectNumber,
+        backend.of(fn("a")),
+      );
+
+      expect(result).to.be.false;
+      expect(getServiceAccountStub).to.have.been.calledOnceWithExactly(
+        projectId,
+        defaultServiceAccount,
+      );
+      expect(logLabeledWarningStub).to.not.have.been.called;
+      expect(logLabeledBulletStub).to.not.have.been.called;
+    });
+
+    it("keeps the default build account when the lookup fails with a non-404 error", async () => {
+      getServiceAccountStub.rejects(new FirebaseError("Forbidden", { status: 403 }));
+
+      const result = await checkIam.checkBuildServiceAccounts(
+        projectId,
+        projectNumber,
+        backend.of(fn("a")),
+      );
+
+      expect(result).to.be.false;
+      expect(logLabeledWarningStub).to.not.have.been.called;
+    });
+
+    for (const [state, setup] of [
+      [
+        "missing",
+        () => getServiceAccountStub.rejects(new FirebaseError("Not found", { status: 404 })),
+      ],
+      ["disabled", () => getServiceAccountStub.resolves({ disabled: true } as iam.ServiceAccount)],
+    ] as const) {
+      it(`builds as the runtime accounts and prints the build role commands when the default account is ${state}`, async () => {
+        setup();
+
+        const result = await checkIam.checkBuildServiceAccounts(
+          projectId,
+          projectNumber,
+          backend.of(
+            fn("a", "sa@"),
+            fn("b", `sa@${projectId}.iam.gserviceaccount.com`),
+            fn("c", "other@other-project.iam.gserviceaccount.com"),
+            fn("v1", undefined, "gcfv1"),
+          ),
+        );
+
+        expect(result).to.be.true;
+        expect(logLabeledWarningStub).to.have.been.calledOnce;
+        expect(logLabeledBulletStub.args).to.deep.equal([
+          ["functions", "Grant it with these `gcloud` commands if you have not already:", "warn"],
+          [
+            "functions",
+            `\`gcloud projects add-iam-policy-binding ${projectId} ` +
+              `--member=serviceAccount:sa@${projectId}.iam.gserviceaccount.com ` +
+              `--role=${checkIam.CLOUD_BUILD_BUILDER_ROLE}\``,
+            "warn",
+          ],
+          [
+            "functions",
+            `\`gcloud projects add-iam-policy-binding ${projectId} ` +
+              "--member=serviceAccount:other@other-project.iam.gserviceaccount.com " +
+              `--role=${checkIam.CLOUD_BUILD_BUILDER_ROLE}\``,
+            "warn",
+          ],
+        ]);
+      });
+    }
+
+    it("throws for functions that would build as the missing default account", async () => {
+      getServiceAccountStub.rejects(new FirebaseError("Not found", { status: 404 }));
+
+      await expect(
+        checkIam.checkBuildServiceAccounts(
+          projectId,
+          projectNumber,
+          backend.of(fn("custom", "sa@"), fn("unset"), fn("explicit", defaultServiceAccount)),
+        ),
+      ).to.be.rejectedWith(FirebaseError, /would build as it: unset, explicit\./);
+      expect(logLabeledBulletStub).to.not.have.been.called;
+    });
+
+    describe("with a declarative security managed account", () => {
+      const managedSA = `firebase-fn-1234567890@${projectId}.iam.gserviceaccount.com`;
+      const requiresRoleWarning =
+        `${managedSA} is managed by declarative security, so declare its roles in the ` +
+        `codebase that uses it: requiresRole("${checkIam.CLOUD_BUILD_BUILDER_ROLE}")`;
+
+      beforeEach(() => {
+        getServiceAccountStub.rejects(new FirebaseError("Not found", { status: 404 }));
+      });
+
+      it("suggests requiresRole for the managed account and gcloud for the others", async () => {
+        const result = await checkIam.checkBuildServiceAccounts(
+          projectId,
+          projectNumber,
+          backend.of(fn("managed", managedSA), fn("custom", "sa@")),
+          { [managedSA]: ["roles/datastore.user"] },
+        );
+
+        expect(result).to.be.true;
+        expect(logLabeledBulletStub.args).to.deep.equal([
+          ["functions", "Grant it with these `gcloud` commands if you have not already:", "warn"],
+          [
+            "functions",
+            `\`gcloud projects add-iam-policy-binding ${projectId} ` +
+              `--member=serviceAccount:sa@${projectId}.iam.gserviceaccount.com ` +
+              `--role=${checkIam.CLOUD_BUILD_BUILDER_ROLE}\``,
+            "warn",
+          ],
+        ]);
+        expect(logLabeledWarningStub).to.have.been.calledTwice;
+        expect(logLabeledWarningStub.secondCall.args).to.deep.equal([
+          "functions",
+          requiresRoleWarning,
+        ]);
+      });
+
+      it("does not suggest the role when the codebase declares it", async () => {
+        const result = await checkIam.checkBuildServiceAccounts(
+          projectId,
+          projectNumber,
+          backend.of(fn("managed", managedSA)),
+          { [managedSA]: [checkIam.CLOUD_BUILD_BUILDER_ROLE] },
+        );
+
+        expect(result).to.be.true;
+        expect(logLabeledBulletStub).to.not.have.been.called;
+        expect(logLabeledWarningStub).to.have.been.calledOnce;
+        expect(logLabeledWarningStub.firstCall.args[1]).to.include(defaultServiceAccount);
+      });
+
+      it("treats a firebase-fn- account that declarative security does not manage as a user account", async () => {
+        const result = await checkIam.checkBuildServiceAccounts(
+          projectId,
+          projectNumber,
+          backend.of(fn("managed", managedSA)),
+        );
+
+        expect(result).to.be.true;
+        expect(logLabeledBulletStub.args).to.deep.equal([
+          ["functions", "Grant it with these `gcloud` commands if you have not already:", "warn"],
+          [
+            "functions",
+            `\`gcloud projects add-iam-policy-binding ${projectId} ` +
+              `--member=serviceAccount:${managedSA} --role=${checkIam.CLOUD_BUILD_BUILDER_ROLE}\``,
+            "warn",
+          ],
+        ]);
+        expect(logLabeledWarningStub).to.have.been.calledOnce;
+      });
+    });
+  });
+
   describe("ensureGenkitMonitoringRoles", () => {
     it("should return early if we do not have new endpoints", async () => {
       const fn1: backend.Endpoint = {

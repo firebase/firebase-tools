@@ -54,6 +54,7 @@ export interface BuildConfig {
   source: Source;
   sourceToken?: string;
   environmentVariables: Record<string, string>;
+  serviceAccount?: string | null;
 
   // Output only
   build?: string;
