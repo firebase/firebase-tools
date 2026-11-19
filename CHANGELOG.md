@@ -1,0 +1,1 @@
+- Fixed `firebase deploy --non-interactive` failing for Functions params that have a default; non-interactive deploys now use the default. (#11523)
