@@ -1,0 +1,1 @@
+- Fixed `firestore:databases:update` failing with "Not found" when the update operation has not completed yet. The command now sends an explicit update mask and prints how to monitor in-progress updates with `firestore:operations:describe`. With `--json`, the in-progress operation is printed instead of the database.
