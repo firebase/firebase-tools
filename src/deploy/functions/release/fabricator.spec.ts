@@ -1073,6 +1073,41 @@ describe("Fabricator", () => {
       expect(run.setInvokerUpdate).to.not.have.been.called;
     });
 
+    it("sets the create-time public invoker when finishing a failed create", async () => {
+      gcfv2.updateFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      run.setInvokerCreate.resolves();
+      const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
+
+      await fab.updateV2Function(ep, new scraper.SourceTokenScraper(), true);
+      expect(run.setInvokerCreate).to.have.been.calledOnceWithExactly(ep.project, "service", [
+        "public",
+      ]);
+      expect(run.setInvokerUpdate).to.not.have.been.called;
+    });
+
+    it("leaves a private function private when finishing a failed create", async () => {
+      gcfv2.updateFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      const ep = endpoint({ httpsTrigger: { invoker: ["private"] } }, { platform: "gcfv2" });
+
+      await fab.updateV2Function(ep, new scraper.SourceTokenScraper(), true);
+      expect(run.setInvokerCreate).to.not.have.been.called;
+      expect(run.setInvokerUpdate).to.not.have.been.called;
+    });
+
+    it("makes a callable public when finishing a failed create", async () => {
+      gcfv2.updateFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      run.setInvokerCreate.resolves();
+      const ep = endpoint({ callableTrigger: {} }, { platform: "gcfv2" });
+
+      await fab.updateV2Function(ep, new scraper.SourceTokenScraper(), true);
+      expect(run.setInvokerCreate).to.have.been.calledOnceWithExactly(ep.project, "service", [
+        "public",
+      ]);
+    });
+
     it("updates invoker to public on Node updates when explicitly null", async () => {
       gcfv2.updateFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
@@ -1283,6 +1318,59 @@ describe("Fabricator", () => {
         reporter.DeploymentError,
         "delete schedule",
       );
+    });
+
+    describe("when Cloud Scheduler rejects the region", () => {
+      const northEp = { ...ep, project: "project", region: "europe-north1" };
+      const invalidLocation = new FirebaseError(
+        "Location 'europe-north1' is not a valid location. Use ListLocations to list valid locations.",
+        { status: 400 },
+      );
+
+      it("ignores the 400 when Cloud Scheduler does not support the region", async () => {
+        scheduler.deleteJob.rejects(invalidLocation);
+        scheduler.listLocations.resolves(["us-central1", "europe-west9"]);
+
+        await expect(fab.deleteScheduleV2(northEp)).to.eventually.be.fulfilled;
+        expect(scheduler.listLocations).to.have.been.calledOnceWithExactly("project");
+      });
+
+      it("wraps the 400 when Cloud Scheduler supports the region", async () => {
+        scheduler.deleteJob.rejects(invalidLocation);
+        scheduler.listLocations.resolves(["us-central1", "europe-north1"]);
+
+        await expect(fab.deleteScheduleV2(northEp)).to.eventually.be.rejectedWith(
+          reporter.DeploymentError,
+          "delete schedule",
+        );
+      });
+
+      it("wraps the 400 when the regions can't be listed", async () => {
+        scheduler.deleteJob.rejects(invalidLocation);
+        scheduler.listLocations.rejects(new FirebaseError("Permission denied.", { status: 403 }));
+
+        await expect(fab.deleteScheduleV2(northEp)).to.eventually.be.rejectedWith(
+          reporter.DeploymentError,
+          "delete schedule",
+        );
+      });
+
+      it("wraps the 400 when no regions are listed", async () => {
+        scheduler.deleteJob.rejects(invalidLocation);
+        scheduler.listLocations.resolves([]);
+
+        await expect(fab.deleteScheduleV2(northEp)).to.eventually.be.rejectedWith(
+          reporter.DeploymentError,
+          "delete schedule",
+        );
+      });
+
+      it("does not list regions for errors other than 400", async () => {
+        scheduler.deleteJob.rejects(new FirebaseError("Permission denied.", { status: 403 }));
+
+        await expect(fab.deleteScheduleV2(northEp)).to.eventually.be.rejected;
+        expect(scheduler.listLocations).to.not.have.been.called;
+      });
     });
   });
 
@@ -1600,6 +1688,21 @@ describe("Fabricator", () => {
       expect(updateV2Function).is.calledOnce;
       expect(setTrigger).is.calledOnce;
       expect(setTrigger).is.calledAfter(updateV2Function);
+    });
+
+    it("tells updateV2Function when it is finishing a failed create", async () => {
+      const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
+      sinon.stub(fab, "setTrigger").resolves();
+      const updateV2Function = sinon.stub(fab, "updateV2Function");
+      updateV2Function.resolves();
+      const scraperV2 = new scraper.SourceTokenScraper();
+
+      await fab.updateEndpoint(
+        { endpoint: ep, failedCreate: true },
+        new scraper.SourceTokenScraper(),
+        scraperV2,
+      );
+      expect(updateV2Function).to.have.been.calledOnceWithExactly(ep, scraperV2, true);
     });
 
     it("aborts for failures midway", async () => {
