@@ -8,7 +8,9 @@ import { FirestoreOptions } from "../firestore/options";
 import { PrettyPrint } from "../firestore/pretty-print";
 
 export const command = new Command("firestore:databases:get [database]")
-  .description("get information about a Cloud Firestore database")
+  .description(
+    "get information about a Cloud Firestore database ([database] defaults to '(default)' if omitted; use --json to return the full database metadata)",
+  )
   .before(requirePermissions, ["datastore.databases.get"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
   .action(async (database: string, options: FirestoreOptions) => {

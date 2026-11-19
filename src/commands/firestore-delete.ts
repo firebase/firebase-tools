@@ -67,19 +67,26 @@ function confirmationMessage(deleteOp: FirestoreDelete, options: FirestoreOption
 }
 
 export const command = new Command("firestore:delete [path]")
-  .description("delete data from a Cloud Firestore database")
+  .description(
+    "delete a document or collection at [path] from a Cloud Firestore database. " +
+      "[path] is required unless --all-collections is passed. Deleting a collection, " +
+      "or a document that has subcollections, requires either -r or --shallow",
+  )
   .option(
     "-r, --recursive",
-    "if set, recursively delete all documents and subcollections at and under the " +
-      "specified level. May not be passed along with --shallow",
+    "recursively delete all documents and subcollections at and under [path]. " +
+      "May not be passed along with --shallow",
   )
   .option(
     "--shallow",
-    "delete only documents at the specified level and ignore documents in " +
-      "subcollections. This action can potentially orphan documents nested in " +
-      "subcollections. May not be passed along with -r",
+    "delete only documents at [path] and ignore documents in subcollections. " +
+      "This action can potentially orphan documents nested in subcollections. " +
+      "May not be passed along with -r",
   )
-  .option("--all-collections", "deletes all collections and documents in the Firestore database")
+  .option(
+    "--all-collections",
+    "delete all collections and documents in the Firestore database (no [path] needed)",
+  )
   .withForce()
   .option(
     "--database <databaseId>",
@@ -90,7 +97,10 @@ export const command = new Command("firestore:delete [path]")
   .action(async (path: string | undefined, options: FirestoreOptions) => {
     // Guarantee path
     if (!path && !options.allCollections) {
-      return utils.reject("Must specify a path.", { exit: 1 });
+      return utils.reject(
+        "Must specify a document or collection path, or pass --all-collections to delete the entire database.",
+        { exit: 1 },
+      );
     }
 
     if (!options.database) {
