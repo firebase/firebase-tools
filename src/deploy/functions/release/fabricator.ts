@@ -1011,7 +1011,7 @@ export class Fabricator {
       // Like HTTPS triggers, taskQueueTriggers have an invoker, but unlike HTTPS they don't default
       // public.
       const invoker = endpoint.taskQueueTrigger.invoker;
-      if (invoker && !invoker.includes("private")) {
+      if (invoker && invoker.length > 0 && !invoker.includes("private")) {
         await this.executor
           .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
           .catch(rethrowAs(endpoint, "set invoker"));
@@ -1053,7 +1053,10 @@ export class Fabricator {
     if (backend.isHttpsTriggered(endpoint)) {
       invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
     } else if (backend.isTaskQueueTriggered(endpoint)) {
-      invoker = endpoint.taskQueueTrigger.invoker === null ? [] : endpoint.taskQueueTrigger.invoker;
+      invoker =
+        endpoint.taskQueueTrigger.invoker === null
+          ? ["private"]
+          : endpoint.taskQueueTrigger.invoker;
     }
 
     if (invoker) {

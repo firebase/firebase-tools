@@ -2228,6 +2228,15 @@ describe("Fabricator", () => {
       ]);
     });
 
+    it("does not set an empty task queue invoker on creation", async () => {
+      runv2.createService.resolves({ uri: "https://service", name: "service" } as any);
+
+      const ep = endpoint({ taskQueueTrigger: { invoker: [] } }, { platform: "run" });
+      await fab.createRunFunction(ep);
+
+      expect(run.setInvokerCreate).to.not.have.been.called;
+    });
+
     it("keeps a task queue function private on creation when it has no invoker", async () => {
       runv2.createService.resolves({ uri: "https://service", name: "service" } as any);
 
@@ -2318,6 +2327,18 @@ describe("Fabricator", () => {
   });
 
   describe("updateRunFunction", () => {
+    it("resets a null task queue invoker to private on update", async () => {
+      runv2.updateService.resolves({ uri: "https://service", name: "service" } as any);
+      run.setInvokerUpdate.resolves();
+
+      const ep = endpoint({ taskQueueTrigger: { invoker: null } }, { platform: "run" });
+      await fab.updateRunFunction({ endpoint: ep });
+
+      expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, sinon.match.string, [
+        "private",
+      ]);
+    });
+
     it("sets the task queue invoker on update", async () => {
       runv2.updateService.resolves({ uri: "https://service", name: "service" } as any);
       run.setInvokerUpdate.resolves();
