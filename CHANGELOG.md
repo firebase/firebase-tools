@@ -1,0 +1,1 @@
+- Fixed the Functions emulator running Python HTTP functions twice on their first request: the readiness check no longer sends an HTTP request to the runtime. (#8774)
