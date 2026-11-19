@@ -63,6 +63,10 @@ const eventarcPollerOptions: Omit<poller.OperationPollerOptions, "operationResou
 
 const CLOUD_RUN_RESOURCE_EXHAUSTED_CODE = 8;
 
+// IAM has no API that reports when a grant has propagated, and Cloud Build fails rather than
+// retrying when its service account can't yet read the source bucket.
+export const MANAGED_ROLE_PROPAGATION_WAIT_MS = 2 * 60 * 1_000;
+
 import * as iam from "../../../gcp/iam";
 import * as resourcemanager from "../../../gcp/resourceManager";
 
@@ -263,6 +267,14 @@ export class Fabricator {
     );
     await Promise.all(secretAccessPromises);
 
+    if (this.buildsAsManagedAccountWithNewRoles(plan)) {
+      utils.logLabeledBullet(
+        "functions",
+        `Waiting ${MANAGED_ROLE_PROPAGATION_WAIT_MS / 1_000}s for new IAM roles to take effect before building as the managed service account...`,
+      );
+      await utils.sleep(MANAGED_ROLE_PROPAGATION_WAIT_MS);
+    }
+
     // Accumulate all regional changesets across all codebases
     const allChangesets: planner.Changeset[] = [];
     for (const codebasePlan of Object.values(plan)) {
@@ -370,6 +382,24 @@ export class Fabricator {
 
     summary.totalTime = timer.stop();
     return summary;
+  }
+
+  private buildsAsManagedAccountWithNewRoles(plan: planner.DeploymentPlan): boolean {
+    if (!this.buildWithRuntimeServiceAccount) {
+      return false;
+    }
+    return Object.values(plan).some((codebasePlan) => {
+      if (!codebasePlan.serviceAccountToCreate && !codebasePlan.rolesToAdd?.length) {
+        return false;
+      }
+      return Object.values(codebasePlan.regionalChangesets).some((changes) =>
+        [...changes.endpointsToCreate, ...changes.endpointsToUpdate.map((u) => u.endpoint)].some(
+          (endpoint) =>
+            endpoint.platform === "gcfv2" &&
+            endpoint.serviceAccount === codebasePlan.managedServiceAccount,
+        ),
+      );
+    });
   }
 
   private async cleanupUnusedServiceAccounts(
