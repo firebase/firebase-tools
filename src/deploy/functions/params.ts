@@ -403,7 +403,8 @@ export interface ResolveParamOpts {
  * - a reference to a secret in Cloud Secret Manager, which we validate the existence of and prompt for if missing
  * - a literal value of the same type already defined in one of the .env files with key == param name
  * - the value returned by interactively prompting the user
- *   - it is an error to have params that need to be prompted if the CLI is running in non-interactive mode
+ *   - in non-interactive mode, a param with a default resolves to that default instead (after the same
+ *     validation checks), and it is an error for a param to have neither a dotenv value nor a default
  *   - the default value of the prompt comes from the SDK via param.default, which may be a literal value or a CEL expression
  *   - if the default CEL expression is not resolvable--it depends on a param whose value is not yet known--we throw an error
  *   - yes, this means that the same set of params may or may not throw depending on the order the SDK provides them to us in
@@ -448,15 +449,24 @@ export async function resolveParams(
     logger.info(`Prompting for parameters for codebase ${clc.bold(codebase)}:`);
   }
   // In non-interactive mode a param with a default resolves to that default;
-  // only params without one need a value from a dotenv file.
-  const missingInNonInteractive: string[] = [];
+  // only params without one need a value from a dotenv file. Report those
+  // before resolving any default, since a default may depend on one of them.
+  if (nonInteractive) {
+    const missing = needPrompt.filter(
+      (param) => (param as Exclude<Param, SecretParam>).default === undefined,
+    );
+    if (missing.length > 0) {
+      const envNames = missing.map((p) => p.name).join(", ");
+      throw new FirebaseError(
+        `In non-interactive mode but have no value for the following environment variables: ${envNames}\n` +
+          "To continue, either run `firebase deploy` with an interactive terminal, or add values to a dotenv file. " +
+          "For information regarding how to use dotenv files, see https://firebase.google.com/docs/functions/config-env",
+      );
+    }
+  }
   for (const param of needPrompt) {
     const promptable = param as Exclude<Param, SecretParam>;
     let paramDefault: RawParamValue | undefined = promptable.default;
-    if (nonInteractive && paramDefault === undefined) {
-      missingInNonInteractive.push(param.name);
-      continue;
-    }
     if (paramDefault && isCelExpression(paramDefault)) {
       paramDefault = resolveDefaultCEL(param.type, paramDefault, paramValues);
     }
@@ -466,21 +476,56 @@ export async function resolveParams(
       );
     }
     if (nonInteractive) {
+      checkNonInteractiveDefault(promptable, paramDefault as RawParamValue);
       paramValues[param.name] = paramValueFromDefault(promptable, paramDefault as RawParamValue);
       continue;
     }
     paramValues[param.name] = await promptParam(param, firebaseConfig.projectId, paramDefault);
   }
-  if (missingInNonInteractive.length > 0) {
-    const envNames = missingInNonInteractive.join(", ");
-    throw new FirebaseError(
-      `In non-interactive mode but have no value for the following environment variables: ${envNames}\n` +
-        "To continue, either run `firebase deploy` with an interactive terminal, or add values to a dotenv file. " +
-        "For information regarding how to use dotenv files, see https://firebase.google.com/docs/functions/config-env",
-    );
-  }
 
   return { paramValues: paramValues, secretRefs: secretRefs };
+}
+
+/**
+ * Applies the input checks the interactive prompt would (`validationRegex`
+ * and `nonEmpty`) to a default used in non-interactive mode, where the user
+ * can't be asked to try again.
+ */
+function checkNonInteractiveDefault(
+  param: Exclude<Param, SecretParam>,
+  resolvedDefault: RawParamValue,
+): void {
+  const input = param.input as ParamInput<unknown> | undefined;
+  if (!input) {
+    return;
+  }
+  if (isMultiSelectInput(input)) {
+    if (input.multiSelect.nonEmpty && (resolvedDefault as string[]).length === 0) {
+      throw new FirebaseError(
+        `In non-interactive mode, the default value for ${param.name} is empty, but a value is required.`,
+      );
+    }
+    return;
+  }
+  if (!isTextInput(input)) {
+    return;
+  }
+  const text =
+    param.type === "list"
+      ? (resolvedDefault as string[]).join(param.delimiter ?? ",")
+      : String(resolvedDefault);
+  if (input.text.validationRegex && !new RegExp(input.text.validationRegex).test(text)) {
+    throw new FirebaseError(
+      `In non-interactive mode, the default value for ${param.name} is not valid: ` +
+        (input.text.validationErrorMessage ||
+          `"${text}" does not match ${input.text.validationRegex}`),
+    );
+  }
+  if (input.text.nonEmpty && text === "") {
+    throw new FirebaseError(
+      `In non-interactive mode, the default value for ${param.name} is empty, but a value is required.`,
+    );
+  }
 }
 
 /**
@@ -613,7 +658,8 @@ async function ensureSecret(
  * Functions params are defined by the output of the Functions SDK, but their value is not set until deploy-time.
  *
  * For most param types, we check the contents of the dotenv files first for a matching key, then interactively prompt the user.
- * When the CLI is running in non-interactive mode or with the --force argument, it is an error for a param to be undefined in dotenvs.
+ * In non-interactive mode a param with a default isn't prompted for (see resolveParams); it is an error for a param to
+ * have neither a dotenv value nor a default.
  */
 async function promptParam(
   param: Param,

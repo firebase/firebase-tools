@@ -548,6 +548,86 @@ describe("resolveParams", () => {
       );
     });
 
+    it("reports a missing param before resolving a default that refers to it", async () => {
+      const paramsToResolve: params.Param[] = [
+        { name: "API_HOST", type: "string" },
+        { name: "URL", type: "string", default: "{{ params.API_HOST }}" },
+      ];
+
+      await expect(
+        params.resolveParams({
+          params: paramsToResolve,
+          firebaseConfig: fakeConfig,
+          userEnvs: {},
+          codebase: "default",
+          nonInteractive: true,
+        }),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        /no value for the following environment variables: API_HOST\n/,
+      );
+    });
+
+    it("rejects a default that fails its validationRegex", async () => {
+      const paramsToResolve: params.Param[] = [
+        {
+          name: "REGION",
+          type: "string",
+          default: "mars-central1",
+          input: {
+            text: { validationRegex: "^us-", validationErrorMessage: "Region must be in the US" },
+          },
+        },
+      ];
+
+      await expect(
+        params.resolveParams({
+          params: paramsToResolve,
+          firebaseConfig: fakeConfig,
+          userEnvs: {},
+          codebase: "default",
+          nonInteractive: true,
+        }),
+      ).to.be.rejectedWith(FirebaseError, /REGION is not valid: Region must be in the US/);
+    });
+
+    it("rejects an empty default for a nonEmpty param", async () => {
+      const paramsToResolve: params.Param[] = [
+        { name: "GREETING", type: "string", default: "", input: { text: { nonEmpty: true } } },
+      ];
+
+      await expect(
+        params.resolveParams({
+          params: paramsToResolve,
+          firebaseConfig: fakeConfig,
+          userEnvs: {},
+          codebase: "default",
+          nonInteractive: true,
+        }),
+      ).to.be.rejectedWith(FirebaseError, /GREETING is empty, but a value is required/);
+    });
+
+    it("accepts a default that passes its validationRegex", async () => {
+      const { paramValues } = await params.resolveParams({
+        params: [
+          {
+            name: "REGION",
+            type: "string",
+            default: "us-central1",
+            input: { text: { validationRegex: "^us-" } },
+          },
+        ],
+        firebaseConfig: fakeConfig,
+        userEnvs: {},
+        codebase: "default",
+        nonInteractive: true,
+      });
+
+      expect(paramValues.REGION).to.deep.equal(
+        new params.ParamValue("us-central1", false, { string: true }),
+      );
+    });
+
     it("only reports the params that have no default", async () => {
       const paramsToResolve: params.Param[] = [
         { name: "GREETING", default: "hello", type: "string" },
