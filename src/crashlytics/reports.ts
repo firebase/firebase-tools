@@ -1,3 +1,4 @@
+import { GOOG_USER_PROJECT_HEADER } from "../apiv2";
 import { z } from "zod";
 import { cloneDeep } from "lodash";
 import { logger } from "../logger";
@@ -72,6 +73,7 @@ export async function listReports(appId: string): Promise<ListReportsResponse> {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
+      [GOOG_USER_PROJECT_HEADER]: requestProjectNumber,
     },
     path: `/projects/${requestProjectNumber}/apps/${appId}/reports`,
     timeout: TIMEOUT,
@@ -136,6 +138,7 @@ export async function getReport(
     method: "GET",
     headers: {
       "Content-Type": "application/json",
+      [GOOG_USER_PROJECT_HEADER]: requestProjectNumber,
     },
     path: `/projects/${requestProjectNumber}/apps/${appId}/reports/${reportName}`,
     queryParams: queryParams,

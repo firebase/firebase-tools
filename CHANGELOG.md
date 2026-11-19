@@ -1,0 +1,1 @@
+- Fixed Crashlytics MCP tools failing with "requires a quota project" when signed in with user credentials, by sending the app's project as `x-goog-user-project`. (#11545)

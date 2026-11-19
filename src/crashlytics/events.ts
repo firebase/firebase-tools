@@ -1,3 +1,4 @@
+import { GOOG_USER_PROJECT_HEADER } from "../apiv2";
 import { dump, DumpOptions } from "js-yaml";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
@@ -55,6 +56,7 @@ export async function listEvents(
     method: "GET",
     headers: {
       "Content-Type": "application/json",
+      [GOOG_USER_PROJECT_HEADER]: requestProjectNumber,
     },
     path: `/projects/${requestProjectNumber}/apps/${appId}/events`,
     queryParams: queryParams,
@@ -116,6 +118,7 @@ export async function batchGetEvents(
     method: "GET",
     headers: {
       "Content-Type": "application/json",
+      [GOOG_USER_PROJECT_HEADER]: requestProjectNumber,
     },
     path: `/projects/${requestProjectNumber}/apps/${appId}/events:batchGet`,
     queryParams: queryParams,
