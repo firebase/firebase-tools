@@ -9,7 +9,7 @@ export async function askInstallDependencies(setup: any, config: any): Promise<v
   });
   if (setup.npm) {
     try {
-      await wrapSpawn("npm", ["install"], config.projectDir + `/${setup.source}`);
+      await wrapSpawn("npm", ["install"], `${String(config.projectDir)}/${setup.source}`);
     } catch (e) {
       logger.info();
       logger.error("NPM install failed, continuing with Firebase initialization...");

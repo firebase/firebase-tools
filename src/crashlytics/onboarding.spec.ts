@@ -31,14 +31,6 @@ describe("onboarding", () => {
   let requireAuthStub: sinon.SinonStub;
   let isEnabledStub: sinon.SinonStub;
 
-  before(() => {
-    nock.disableNetConnect();
-  });
-
-  after(() => {
-    nock.enableNetConnect();
-  });
-
   beforeEach(() => {
     checkBillingStub = sinon.stub(cloudbilling, "checkBillingEnabled").resolves(true);
     ensureStub = sinon.stub(ensureApiEnabled, "ensure").resolves();
@@ -46,7 +38,6 @@ describe("onboarding", () => {
     configStub = sinon.stub(firebasetelemetry, "createOrUpdateTelemetryConfig").resolves({
       name: "projects/test-project/locations/global/configs/1-123-web-456",
       appId: "1:123:web:456",
-      logBucket: "projects/test-project/locations/global/buckets/firebase-telemetry",
       samplingRate: 1,
       enablementState: "ENABLED",
     });
@@ -120,12 +111,7 @@ describe("onboarding", () => {
       false,
     );
     expect(provisionTraceStub).to.have.been.calledWith("test-project");
-    expect(configStub).to.have.been.calledWith(
-      "test-project",
-      "1:123:web:456",
-      "projects/test-project/locations/global/buckets/firebase-telemetry",
-      1,
-    );
+    expect(configStub).to.have.been.calledWith("test-project", "1:123:web:456", 1);
     expect(updateAppApiKeyRestrictionStub).to.have.been.calledWith({
       apiKey: "fake-api-key-123",
       service: onboarding.CLIENT_TELEMETRY_SERVICE,
@@ -342,12 +328,7 @@ describe("onboarding", () => {
       false,
     );
     expect(provisionTraceStub).to.have.been.calledWith("test-project");
-    expect(configStub).to.have.been.calledWith(
-      "test-project",
-      "1:123:web:456",
-      "projects/test-project/locations/global/buckets/firebase-telemetry",
-      1,
-    );
+    expect(configStub).to.have.been.calledWith("test-project", "1:123:web:456", 1);
     expect(updateAppApiKeyRestrictionStub).to.not.have.been.called;
     expect(logLabeledWarningStub).to.have.been.calledWith(
       "crashlytics",

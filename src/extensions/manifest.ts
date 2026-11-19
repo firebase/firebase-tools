@@ -22,6 +22,7 @@ export const ENV_DIRECTORY = "extensions";
  *
  * @param specs a list of InstanceSpec to write to the manifest
  * @param config existing config in firebase.json
+ * @param options options for writing to the manifest
  * @param options.nonInteractive will try to do the job without asking for user input.
  * @param options.force only when this flag is true this will overwrite existing .env files
  * @param allowOverwrite allows overwriting the entire manifest with the new specs

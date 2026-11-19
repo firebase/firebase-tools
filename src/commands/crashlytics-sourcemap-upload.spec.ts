@@ -83,6 +83,7 @@ describe("crashlytics:sourcemap:upload", () => {
     const args = gcsMock.upsertBucket.firstCall.args;
     expect(args[0].req.baseName).to.equal("firebasecrashlytics-sourcemaps-12345-us-central1");
     expect(args[0].req.location).to.equal("US-CENTRAL1");
+    expect(args[0].req.autoclass).to.deep.equal({ enabled: true });
   });
 
   it("should create a custom cloud storage bucket", async () => {
@@ -97,6 +98,7 @@ describe("crashlytics:sourcemap:upload", () => {
       "firebasecrashlytics-sourcemaps-12345-a-different-location",
     );
     expect(args[0].req.location).to.equal("A-DIFFERENT-LOCATION");
+    expect(args[0].req.autoclass).to.deep.equal({ enabled: true });
   });
 
   it("should throw an error if the mapping file path is invalid", async () => {

@@ -14,9 +14,6 @@ import { logger } from "../logger";
 import { checkbox } from "../prompt";
 import { requireAuth } from "../requireAuth";
 
-export const CRASHLYTICS_TELEMETRY_BUCKET_ID = "firebase-telemetry";
-export const CRASHLYTICS_TELEMETRY_SINK_ID = "firebase-telemetry-routing";
-export const CRASHLYTICS_TELEMETRY_RESOURCE_TYPE = "firebasetelemetry.googleapis.com/App";
 export const CRASHLYTICS_TELEMETRY_SERVICE = "firebasetelemetry.googleapis.com";
 export const CRASHLYTICS_TELEMETRY_ADMIN_SERVICE = "firebasetelemetryadmin.googleapis.com";
 export const CRASHLYTICS_SERVICE = "firebasecrashlytics.googleapis.com";
@@ -115,12 +112,7 @@ export async function setupCrashlyticsWeb(
   }
 
   logLabeledBullet("crashlytics", "Configuring Crashlytics telemetry for web app...");
-  const config = await createOrUpdateTelemetryConfig(
-    projectId,
-    appId,
-    `projects/${projectId}/locations/global/buckets/${CRASHLYTICS_TELEMETRY_BUCKET_ID}`,
-    1,
-  );
+  const config = await createOrUpdateTelemetryConfig(projectId, appId, 1);
   logLabeledSuccess("crashlytics", "Crashlytics telemetry configured successfully.");
 
   if (options.nonInteractive) {
