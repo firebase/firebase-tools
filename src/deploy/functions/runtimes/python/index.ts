@@ -80,6 +80,8 @@ export function getPythonBinary(
     return "python3.13";
   } else if (runtime === "python314") {
     return "python3.14";
+  } else if (runtime === "python315") {
+    return "python3.15";
   }
   assertExhaustive(runtime, `Unhandled python runtime ${runtime as string}`);
 }

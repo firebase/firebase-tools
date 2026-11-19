@@ -158,7 +158,7 @@ describe("functions", () => {
             source: TEST_SOURCE_DEFAULT,
             codebase: TEST_CODEBASE_DEFAULT,
             ignore: ["venv", ".git", "firebase-debug.log", "firebase-debug.*.log", "*.local"],
-            runtime: "python314",
+            runtime: "python315",
             disallowLegacyRuntimeConfig: true,
           });
           expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.have.members([

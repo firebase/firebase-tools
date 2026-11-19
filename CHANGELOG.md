@@ -1,0 +1,1 @@
+- Added support for the Python 3.15 runtime for Cloud Functions.

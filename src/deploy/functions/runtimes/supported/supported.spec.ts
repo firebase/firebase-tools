@@ -22,6 +22,10 @@ describe("supported runtimes", () => {
     expect(supported.latest("dart")).to.equal("dart3");
   });
 
+  it("returns Python 3.15 as the latest Python runtime", () => {
+    expect(supported.latest("python")).to.equal("python315");
+  });
+
   it("identifies decommissioned runtimes", () => {
     expect(supported.isDecommissioned("nodejs8")).to.be.true;
   });

@@ -131,6 +131,12 @@ export const RUNTIMES = runtimes({
     deprecationDate: "2030-10-10",
     decommissionDate: "2031-04-10",
   },
+  python315: {
+    friendly: "Python 3.15",
+    status: "GA",
+    deprecationDate: "2031-10-10",
+    decommissionDate: "2032-04-10",
+  },
   dart3: {
     friendly: "Dart 3",
     status: "experimental",
