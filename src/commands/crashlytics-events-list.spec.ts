@@ -47,7 +47,7 @@ describe("crashlytics:events:list", () => {
     for (const app of [appId, "1:1234567890:web:abcdef", "1:1234567890:macos:abcdef"]) {
       await expect(command.runner()({ app })).to.be.rejectedWith(
         FirebaseError,
-        "Must specify '--issue-id <id>' to list events.",
+        `Must specify '--issue-id <id>' to list events. Run 'firebase crashlytics:reports:get --app ${app} topIssues' to find issue IDs.`,
       );
     }
     await expect(command.runner()({ app: appId, variantId: "variant_1" })).to.be.rejectedWith(
