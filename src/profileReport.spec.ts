@@ -4,7 +4,7 @@ import * as stream from "stream";
 import { extractJSON, extractReadableIndex, formatNumber, ProfileReport } from "./profileReport";
 import { SAMPLE_INPUT_PATH, SAMPLE_OUTPUT_PATH } from "./test/fixtures/profiler-data";
 
-function combinerFunc(obj1: any, obj2: any): any {
+function combinerFunc(obj1: { count: number }, obj2: { count: number }): { count: number } {
   return { count: obj1.count + obj2.count };
 }
 

@@ -184,6 +184,7 @@ function validateRequiredParameters(options: any): any {
     return { valid: true };
   }
   const hashAlgo = options.hashAlgo.toUpperCase();
+  const hashAlgoName = String(options.hashAlgo);
   let roundsNum;
   switch (hashAlgo) {
     case "HMAC_SHA512":
@@ -192,7 +193,7 @@ function validateRequiredParameters(options: any): any {
     case "HMAC_MD5":
       if (!options.hashKey || options.hashKey === "") {
         throw new FirebaseError(
-          "Must provide hash key(base64 encoded) for hash algorithm " + options.hashAlgo,
+          "Must provide hash key(base64 encoded) for hash algorithm " + hashAlgoName,
         );
       }
       return { hashAlgo: hashAlgo, hashKey: options.hashKey, valid: true };
@@ -215,26 +216,26 @@ function validateRequiredParameters(options: any): any {
       roundsNum = parseInt(options.rounds, 10);
       if (isNaN(roundsNum) || roundsNum < 0 || roundsNum > 120000) {
         throw new FirebaseError(
-          "Must provide valid rounds(0..120000) for hash algorithm " + options.hashAlgo,
+          "Must provide valid rounds(0..120000) for hash algorithm " + hashAlgoName,
         );
       }
       return { hashAlgo: hashAlgo, rounds: options.rounds, valid: true };
     case "SCRYPT": {
       if (!options.hashKey || options.hashKey === "") {
         throw new FirebaseError(
-          "Must provide hash key(base64 encoded) for hash algorithm " + options.hashAlgo,
+          "Must provide hash key(base64 encoded) for hash algorithm " + hashAlgoName,
         );
       }
       roundsNum = parseInt(options.rounds, 10);
       if (isNaN(roundsNum) || roundsNum <= 0 || roundsNum > 8) {
         throw new FirebaseError(
-          "Must provide valid rounds(1..8) for hash algorithm " + options.hashAlgo,
+          "Must provide valid rounds(1..8) for hash algorithm " + hashAlgoName,
         );
       }
       const memCost = parseInt(options.memCost, 10);
       if (isNaN(memCost) || memCost <= 0 || memCost > 14) {
         throw new FirebaseError(
-          "Must provide valid memory cost(1..14) for hash algorithm " + options.hashAlgo,
+          "Must provide valid memory cost(1..14) for hash algorithm " + hashAlgoName,
         );
       }
       let saltSeparator = "";
@@ -321,7 +322,7 @@ export function validateUserJson(userJson: any): { error?: string } {
 }
 
 async function sendRequest(projectId: string, userList: any[], hashOptions: any): Promise<void> {
-  logger.info("Starting importing " + userList.length + " account(s).");
+  logger.info(`Starting importing ${userList.length} account(s).`);
   const postData = genUploadAccountPostBody(projectId, userList, hashOptions);
   return apiClient
     .post<any, any>("/identitytoolkit/v3/relyingparty/uploadAccount", postData, {
