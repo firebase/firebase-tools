@@ -1,6 +1,7 @@
 ## NEXT
 
 ## 2.4.5
+
 - Update internal `firebase-tools` dependency to 15.36.0
 
 ## 2.4.4
