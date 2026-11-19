@@ -21,8 +21,8 @@ export const list_events = tool(
   "crashlytics",
   {
     name: "list_events",
-    description: `Use this to list the most recent events matching the given filters, including custom key filter expressions.
-      Can be used to fetch sample crashes and exceptions for an issue,
+    description: `Use this to list the most recent events matching the given filters, including custom-key filters via 'filterExpression'.
+      Requires 'filter.issueId'. Can be used to fetch sample crashes and exceptions for an issue,
       which will include stack traces and other data useful for debugging.`,
     humanReadableDescription:
       "List recent crash and exception events matching specified filters for an issue.",
@@ -47,11 +47,11 @@ export const list_events = tool(
       result.content.push({ type: "text", text: "Must specify 'appId' parameter" });
       result.content.push({ type: "text", text: forceAppIdGuide });
     }
-    if (!filter || (!filter.issueId && !filter.issueVariantId)) {
+    if (!filter || !filter.issueId) {
       result.isError = true;
       result.content.push({
         type: "text",
-        text: `Must specify 'filter.issueId' or 'filter.issueVariantId' parameters.`,
+        text: `Must specify 'filter.issueId' parameter.`,
       });
     } else {
       try {

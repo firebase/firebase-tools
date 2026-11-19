@@ -1,0 +1,1 @@
+- Changed the Crashlytics MCP `list_events` tool to require `filter.issueId`, and added custom-key guidance to the Crashlytics MCP tools and reports guide.
