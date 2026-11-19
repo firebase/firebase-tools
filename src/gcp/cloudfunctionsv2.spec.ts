@@ -7,6 +7,7 @@ import * as events from "../functions/events";
 import * as projectConfig from "../functions/projectConfig";
 import { BLOCKING_LABEL, CODEBASE_LABEL, HASH_LABEL } from "../functions/constants";
 import { functionsV2Origin } from "../api";
+import { FirebaseError } from "../error";
 
 describe("cloudfunctionsv2", () => {
   const FUNCTION_NAME: backend.TargetIds = {
@@ -901,6 +902,24 @@ describe("cloudfunctionsv2", () => {
         }),
       ).to.deep.equal(expectedEndpoint);
     });
+
+    it("should copy upgradeInfo", () => {
+      const upgradeInfo: cloudfunctionsv2.UpgradeInfo = {
+        upgradeState: "SETUP_FUNCTION_UPGRADE_CONFIG_SUCCESSFUL",
+      };
+      expect(
+        cloudfunctionsv2.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION_V2,
+          upgradeInfo,
+        }),
+      ).to.deep.equal({
+        ...ENDPOINT,
+        platform: "gcfv2",
+        uri: GCF_URL,
+        httpsTrigger: {},
+        upgradeInfo,
+      });
+    });
   });
 
   describe("createFunction", () => {
@@ -967,4 +986,109 @@ describe("cloudfunctionsv2", () => {
       expect(scope.isDone()).to.be.true;
     });
   });
+
+  describe("setupFunctionUpgradeConfig", () => {
+    const functionName = "projects/project/locations/region/functions/id";
+    const endpointPath = `/v2/${functionName}:setupFunctionUpgradeConfig`;
+
+    it("should issue POST with empty body when options are omitted", async () => {
+      const scope = nock(functionsV2Origin())
+        .post(endpointPath, {})
+        .reply(200, { name: "operations/setup123", done: false });
+
+      const op = await cloudfunctionsv2.setupFunctionUpgradeConfig(functionName);
+      expect(op).to.deep.equal({ name: "operations/setup123", done: false });
+      expect(scope.isDone()).to.be.true;
+    });
+
+    it("should include triggerServiceAccount and buildConfigOverrides when provided", async () => {
+      const scope = nock(functionsV2Origin())
+        .post(endpointPath, {
+          triggerServiceAccount: "sa@project.iam.gserviceaccount.com",
+          buildConfigOverrides: { runtime: "nodejs22" },
+        })
+        .reply(200, { name: "operations/setup123", done: false });
+
+      const op = await cloudfunctionsv2.setupFunctionUpgradeConfig(functionName, {
+        triggerServiceAccount: "sa@project.iam.gserviceaccount.com",
+        buildConfigOverrides: { runtime: "nodejs22" },
+      });
+      expect(op).to.deep.equal({ name: "operations/setup123", done: false });
+      expect(scope.isDone()).to.be.true;
+    });
+
+    it("should wrap API errors in FirebaseError while preserving HTTP status", async () => {
+      const scope = nock(functionsV2Origin())
+        .post(endpointPath, {})
+        .reply(429, { error: { message: "Quota exceeded" } });
+
+      const err = (await expect(
+        cloudfunctionsv2.setupFunctionUpgradeConfig(functionName),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        `Failed to setup upgrade config for function ${functionName}`,
+      )) as FirebaseError;
+      expect(err.status).to.equal(429);
+      expect(err.original).to.be.instanceOf(FirebaseError);
+      expect(err.context).to.deep.equal({ function: functionName });
+      expect(scope.isDone()).to.be.true;
+    });
+  });
+
+  for (const { method, action, opName, errorVerb } of [
+    {
+      method: cloudfunctionsv2.redirectFunctionUpgradeTraffic,
+      action: "redirectFunctionUpgradeTraffic",
+      opName: "operations/redirect123",
+      errorVerb: "redirect upgrade traffic",
+    },
+    {
+      method: cloudfunctionsv2.rollbackFunctionUpgradeTraffic,
+      action: "rollbackFunctionUpgradeTraffic",
+      opName: "operations/rollback123",
+      errorVerb: "rollback upgrade traffic",
+    },
+    {
+      method: cloudfunctionsv2.commitFunctionUpgradeAsGen2,
+      action: "commitFunctionUpgradeAsGen2",
+      opName: "operations/commit123",
+      errorVerb: "commit upgrade as Gen 2",
+    },
+    {
+      method: cloudfunctionsv2.abortFunctionUpgrade,
+      action: "abortFunctionUpgrade",
+      opName: "operations/abort123",
+      errorVerb: "abort upgrade",
+    },
+  ]) {
+    describe(action, () => {
+      const functionName = "projects/project/locations/region/functions/id";
+      const endpointPath = `/v2/${functionName}:${action}`;
+
+      it(`should issue POST to ${action}`, async () => {
+        const scope = nock(functionsV2Origin())
+          .post(endpointPath, {})
+          .reply(200, { name: opName, done: false });
+
+        const op = await method(functionName);
+        expect(op).to.deep.equal({ name: opName, done: false });
+        expect(scope.isDone()).to.be.true;
+      });
+
+      it("should wrap API errors in FirebaseError while preserving HTTP status", async () => {
+        const scope = nock(functionsV2Origin())
+          .post(endpointPath, {})
+          .reply(503, { error: { message: "Service unavailable" } });
+
+        const err = (await expect(method(functionName)).to.be.rejectedWith(
+          FirebaseError,
+          `Failed to ${errorVerb} for function ${functionName}`,
+        )) as FirebaseError;
+        expect(err.status).to.equal(503);
+        expect(err.original).to.be.instanceOf(FirebaseError);
+        expect(err.context).to.deep.equal({ function: functionName });
+        expect(scope.isDone()).to.be.true;
+      });
+    });
+  }
 });

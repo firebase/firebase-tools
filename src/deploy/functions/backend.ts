@@ -419,6 +419,9 @@ export type Endpoint = TargetIds &
     baseImageUri?: string;
     command?: string[];
     args?: string[];
+
+    // Upgrade metadata for functions undergoing V1 to V2 migration.
+    upgradeInfo?: gcfV2.UpgradeInfo;
   };
 
 export interface RequiredAPI {
