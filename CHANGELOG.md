@@ -1,0 +1,1 @@
+- Fixed the Storage emulator deleting the files of other running Storage emulators when it stops. (#11284)
