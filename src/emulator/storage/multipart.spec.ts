@@ -29,6 +29,22 @@ hello there!
       expect(dataRaw.toString()).to.equal("hello there!\n");
     });
 
+    for (const suffix of ["", "; charset=utf-8"]) {
+      it(`preserves boundary= inside a quoted upload boundary${suffix}`, () => {
+        const boundary = "===============storage_multipart_boundary==";
+        const body = Buffer.from(
+          BODY.toString().split("b1d5b2e3-1845-4338-9400-6ac07ce53c1e").join(boundary),
+        );
+        const { metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(
+          `multipart/related; boundary="${boundary}"${suffix}`,
+          body,
+        );
+
+        expect(metadataRaw).to.equal('{"contentType":"text/plain"}');
+        expect(dataRaw.toString()).to.equal("hello there!\n");
+      });
+    }
+
     it("parses an upload object multipart request with non utf-8 data successfully", () => {
       const bodyPart1 = Buffer.from(`--b1d5b2e3-1845-4338-9400-6ac07ce53c1e\r
 Content-Type: application/json\r
@@ -194,6 +210,23 @@ Content-Type: image/png\r
       expect(filePart.filename).to.equal("image.png");
       expect(filePart.contentType).to.equal("image/png");
       expect(filePart.data.byteLength).to.equal(imageContent.byteLength);
+    });
+
+    it("preserves boundary= inside a quoted form data boundary", () => {
+      const nestedBoundary = "===============storage_multipart_boundary==";
+      const body = Buffer.concat([
+        Buffer.from(startBuffer.toString().split(boundary).join(nestedBoundary)),
+        imageContent,
+        Buffer.from(endBuffer.toString().split(boundary).join(nestedBoundary)),
+      ]);
+      const parts = parseFormDataMultipartRequest(
+        `multipart/form-data; boundary="${nestedBoundary}"; charset=utf-8`,
+        body,
+      );
+
+      expect(parts.length).to.equal(4);
+      const filePart = parts.find((p) => p.name === "file") as MultipartFile;
+      expect(filePart.data.equals(imageContent)).to.be.true;
     });
 
     it("fails to parse a form data multipart request when file part is missing name", () => {

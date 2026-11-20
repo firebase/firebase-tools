@@ -1,0 +1,1 @@
+- Fixed Storage emulator multipart uploads with boundary values containing `boundary=`, including uploads from `@google-cloud/storage` v9.
