@@ -1,5 +1,8 @@
 import { expect } from "chai";
+import * as childProcess from "child_process";
+import { EventEmitter } from "events";
 import * as path from "path";
+import { PassThrough } from "stream";
 import * as sinon from "sinon";
 import * as fs from "fs-extra";
 
@@ -129,15 +132,33 @@ describe("downloadDetails", () => {
 
       expect(cmd.shell).to.be.false;
       expect(cmd.binary).to.equal(commandUtils.getJavaBinary());
-      expect(cmd.args.slice(0, 4)).to.deep.equal([
+      expect(cmd.args.slice(0, 6)).to.deep.equal([
+        "-XX:+IgnoreUnrecognizedVMOptions",
+        "-XX:UseAVX=2",
         "-Duser.language=en",
         "-Xmx512m",
         "-Dfoo=bar",
         "-jar",
       ]);
-      expect(cmd.args[4].endsWith(expectedJarSuffix)).to.be.true;
+      expect(cmd.args[6].endsWith(expectedJarSuffix)).to.be.true;
       expect(cmd.args).to.include("--port=8085");
       expect(cmd.args).to.include("--host=127.0.0.1");
+    });
+
+    it("should prepend defensive JVM options for database, firestore, and storage emulators", () => {
+      sandbox.stub(utils, "isRunningInWSL").returns(false);
+      for (const emulator of [
+        Emulators.DATABASE,
+        Emulators.FIRESTORE,
+        Emulators.STORAGE,
+      ] as const) {
+        const cmd = downloadableEmulators._getCommand(emulator, {});
+        expect(cmd.args.slice(0, 2)).to.deep.equal([
+          "-XX:+IgnoreUnrecognizedVMOptions",
+          "-XX:UseAVX=2",
+        ]);
+        expect(cmd.args).to.include("-jar");
+      }
     });
 
     it("should respect PUBSUB_EMULATOR_BINARY_PATH and keep shell: true on Windows", () => {
@@ -167,6 +188,76 @@ describe("downloadDetails", () => {
 
     it("should not enforce the Java 21 gate on Pub/Sub via requiresJava", () => {
       expect(downloadableEmulators.requiresJava(Emulators.PUBSUB)).to.be.false;
+    });
+  });
+
+  describe("start", () => {
+    afterEach(() => {
+      for (const emulator of [Emulators.PUBSUB, Emulators.FIRESTORE] as const) {
+        const details = downloadableEmulators.get(emulator);
+        details.instance = null;
+        details.stdout = null;
+      }
+    });
+
+    function stubSpawn(): sinon.SinonStub {
+      sandbox.stub(fs, "existsSync").returns(true);
+      sandbox.stub(fs, "createWriteStream").returns(new PassThrough() as unknown as fs.WriteStream);
+      const fakeChild = new EventEmitter() as childProcess.ChildProcess;
+      fakeChild.stdout = new PassThrough();
+      fakeChild.stderr = new PassThrough();
+      return sandbox.stub(childProcess, "spawn").returns(fakeChild);
+    }
+
+    it("should pass defensive JVM options via CLOUD_PUBSUB_EMULATOR_OPTS when starting Pub/Sub via wrapper script", async () => {
+      sandbox.stub(utils, "IS_WINDOWS").value(false);
+      const envCopy: Record<string, string | undefined> = { ...process.env };
+      delete envCopy.PUBSUB_EMULATOR_BINARY_PATH;
+      delete envCopy.CLOUD_PUBSUB_EMULATOR_OPTS;
+      sandbox.stub(process, "env").value(envCopy);
+      const spawnStub = stubSpawn();
+
+      await downloadableEmulators.start(Emulators.PUBSUB, {});
+
+      const spawnOpts = spawnStub.firstCall.args[2] as childProcess.SpawnOptions;
+      expect(spawnOpts.env?.CLOUD_PUBSUB_EMULATOR_OPTS).to.equal(
+        "-XX:+IgnoreUnrecognizedVMOptions -XX:UseAVX=2",
+      );
+    });
+
+    it("should prepend defensive JVM options ahead of existing CLOUD_PUBSUB_EMULATOR_OPTS", async () => {
+      sandbox.stub(utils, "IS_WINDOWS").value(false);
+      const envCopy: Record<string, string | undefined> = {
+        ...process.env,
+        CLOUD_PUBSUB_EMULATOR_OPTS: "-Xmx512m",
+      };
+      delete envCopy.PUBSUB_EMULATOR_BINARY_PATH;
+      sandbox.stub(process, "env").value(envCopy);
+      const spawnStub = stubSpawn();
+
+      await downloadableEmulators.start(Emulators.PUBSUB, {});
+
+      const spawnOpts = spawnStub.firstCall.args[2] as childProcess.SpawnOptions;
+      expect(spawnOpts.env?.CLOUD_PUBSUB_EMULATOR_OPTS).to.equal(
+        "-XX:+IgnoreUnrecognizedVMOptions -XX:UseAVX=2 -Xmx512m",
+      );
+    });
+
+    it("should not set CLOUD_PUBSUB_EMULATOR_OPTS when spawning direct Java emulators", async () => {
+      const envCopy: Record<string, string | undefined> = { ...process.env };
+      delete envCopy.CLOUD_PUBSUB_EMULATOR_OPTS;
+      sandbox.stub(process, "env").value(envCopy);
+      const spawnStub = stubSpawn();
+
+      await downloadableEmulators.start(Emulators.FIRESTORE, {});
+
+      const spawnArgs = spawnStub.firstCall.args[1] as string[];
+      const spawnOpts = spawnStub.firstCall.args[2] as childProcess.SpawnOptions;
+      expect(spawnArgs.slice(0, 2)).to.deep.equal([
+        "-XX:+IgnoreUnrecognizedVMOptions",
+        "-XX:UseAVX=2",
+      ]);
+      expect(spawnOpts.env?.CLOUD_PUBSUB_EMULATOR_OPTS).to.be.undefined;
     });
   });
 });
