@@ -1,0 +1,1 @@
+- Added the uploaded release, including its URLs and updated release notes, to the `result` field of `appdistribution:distribute --json` output.
