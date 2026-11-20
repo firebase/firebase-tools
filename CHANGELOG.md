@@ -1,0 +1,1 @@
+- Updated Firebase Hosting custom domain lookup to use the public `/customDomains` API endpoint instead of `/domains`.
