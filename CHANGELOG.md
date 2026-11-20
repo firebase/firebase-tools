@@ -1,0 +1,1 @@
+- Fixed deleting a 2nd gen auth blocking function leaving its Identity Platform trigger registered when the function had been updated since its first deploy. (#11532)

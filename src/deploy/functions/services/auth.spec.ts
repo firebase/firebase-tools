@@ -3,7 +3,11 @@ import * as backend from "../backend";
 import * as identityPlatform from "../../../gcp/identityPlatform";
 import * as sinon from "sinon";
 import { expect } from "chai";
-import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../../functions/events/v1";
+import {
+  BEFORE_CREATE_EVENT,
+  BEFORE_SEND_SMS_EVENT,
+  BEFORE_SIGN_IN_EVENT,
+} from "../../../functions/events/v1";
 
 const BASE_EP = {
   id: "id",
@@ -484,6 +488,77 @@ describe("authBlocking", () => {
       await authBlockingService.unregisterTrigger(ep);
 
       expect(setConfig).to.have.been.calledWith("project", newBlockingConfig);
+    });
+
+    describe("v2 endpoint with both function URLs", () => {
+      const GCF_URL = "https://region-project.cloudfunctions.net/id";
+      const RUN_URI = "https://id-nonce-uc.a.run.app";
+      const v2Ep: backend.Endpoint = {
+        ...BASE_EP,
+        platform: "gcfv2",
+        uri: GCF_URL,
+        runServiceUri: RUN_URI,
+        blockingTrigger: {
+          eventType: BEFORE_SEND_SMS_EVENT,
+        },
+      };
+
+      it("should unregister a trigger registered to the run.app URL", async () => {
+        getConfig.resolves({
+          triggers: {
+            beforeCreate: { functionUri: "other.url" },
+            beforeSendSms: { functionUri: RUN_URI },
+          },
+          forwardInboundCredentials: {},
+        });
+        setConfig.resolves({});
+
+        await authBlockingService.unregisterTrigger(v2Ep);
+
+        expect(setConfig).to.have.been.calledOnceWithExactly("project", {
+          triggers: { beforeCreate: { functionUri: "other.url" } },
+          forwardInboundCredentials: {},
+        });
+      });
+
+      it("should unregister a trigger registered to the cloudfunctions.net URL", async () => {
+        getConfig.resolves({
+          triggers: { beforeSendSms: { functionUri: GCF_URL } },
+          forwardInboundCredentials: {},
+        });
+        setConfig.resolves({});
+
+        await authBlockingService.unregisterTrigger(v2Ep);
+
+        expect(setConfig).to.have.been.calledOnceWithExactly("project", {
+          triggers: {},
+          forwardInboundCredentials: {},
+        });
+      });
+
+      it("should not update the config when the trigger points at an unrelated URL", async () => {
+        getConfig.resolves({
+          triggers: { beforeSendSms: { functionUri: "https://other-nonce-uc.a.run.app" } },
+          forwardInboundCredentials: {},
+        });
+
+        await authBlockingService.unregisterTrigger(v2Ep);
+
+        expect(setConfig).to.not.have.been.called;
+      });
+
+      it("should not match a run.app registration when runServiceUri is absent", async () => {
+        getConfig.resolves({
+          triggers: { beforeSendSms: { functionUri: RUN_URI } },
+          forwardInboundCredentials: {},
+        });
+        const withoutRunUri: backend.Endpoint = { ...v2Ep };
+        delete withoutRunUri.runServiceUri;
+
+        await authBlockingService.unregisterTrigger(withoutRunUri);
+
+        expect(setConfig).to.not.have.been.called;
+      });
     });
   });
 });

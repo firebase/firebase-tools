@@ -802,6 +802,9 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
     } else {
       endpoint.runServiceId = utils.last(serviceName.split("/"));
     }
+    if (backend.isBlockingTriggered(endpoint)) {
+      proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "runServiceUri", "uri");
+    }
   }
   proto.renameIfPresent(endpoint, gcfFunction, "uri", "url");
   endpoint.codebase = gcfFunction.labels?.[CODEBASE_LABEL] || projectConfig.DEFAULT_CODEBASE;

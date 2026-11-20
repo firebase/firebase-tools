@@ -726,6 +726,7 @@ describe("cloudfunctionsv2", () => {
         },
         platform: "gcfv2",
         uri: GCF_URL,
+        runServiceUri: RUN_URI,
         labels: { "deployment-blocking": "before-create" },
       });
     });
@@ -743,8 +744,19 @@ describe("cloudfunctionsv2", () => {
         },
         platform: "gcfv2",
         uri: GCF_URL,
+        runServiceUri: RUN_URI,
         labels: { "deployment-blocking": "before-sign-in" },
       });
+    });
+
+    it("should keep the run.app URL of a blocking function", () => {
+      const ep = cloudfunctionsv2.endpointFromFunction({
+        ...HAVE_CLOUD_FUNCTION_V2,
+        labels: { "deployment-blocking": "before-send-sms" },
+      });
+
+      expect(ep.uri).to.equal(GCF_URL);
+      expect(ep.runServiceUri).to.equal(RUN_URI);
     });
 
     it("should copy optional fields", () => {
