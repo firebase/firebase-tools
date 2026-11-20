@@ -1097,6 +1097,46 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
     "google.com",
   );
 
+  it("should retain email after deleting password provider", async () => {
+    const email = "alice@example.com";
+    const { idToken } = await registerUser(authApi(), { email, password: "notasecret" });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, deleteProvider: ["password"] })
+      .then((res) => expectStatusCode(200, res));
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
+      .query({ key: "fake-api-key" })
+      .send({ email, password: "notasecret" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.equal("EMAIL_EXISTS");
+      });
+  });
+
+  it("should remove password provider after email-link sign-in when deleting password provider", async () => {
+    const email = "alice@example.com";
+    const { idToken: idToken1 } = await registerUser(authApi(), { email, password: "notasecret" });
+
+    // Link email-link sign-in to the same account so emailLinkSignin is set.
+    const { idToken: idToken2 } = await signInWithEmailLink(authApi(), email, idToken1);
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .query({ key: "fake-api-key" })
+      .send({ idToken: idToken2, deleteProvider: ["password"] })
+      .then((res) => expectStatusCode(200, res));
+
+    const userInfo = await getAccountInfoByIdToken(authApi(), idToken2);
+    const providerIds = (userInfo.providerUserInfo ?? []).map(
+      (p: ProviderUserInfo) => p.providerId,
+    );
+    expect(providerIds).not.to.include(PROVIDER_PASSWORD);
+  });
+
   it("should update user by localId when authenticated", async () => {
     const { localId } = await registerUser(authApi(), {
       email: "foo@example.com",
