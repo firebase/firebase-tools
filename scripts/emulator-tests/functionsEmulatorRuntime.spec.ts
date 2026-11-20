@@ -54,22 +54,29 @@ async function isSocketReady(socketPath: string): Promise<void> {
 }
 
 async function waitForSocketReady(socketPath: string): Promise<void> {
-  const timeout = new Promise<never>((resolve, reject) => {
-    setTimeout(() => {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
       reject(new Error("Timeout - runtime server not ready"));
     }, 10_000);
   });
-  while (true) {
-    try {
-      await Promise.race([isSocketReady(socketPath), timeout]);
-      break;
-    } catch (err: any) {
-      // Allow us to wait until the server is listening.
-      if (["ECONNREFUSED", "ENOENT"].includes(err?.code)) {
-        await sleep(100);
-        continue;
+  try {
+    while (true) {
+      try {
+        await Promise.race([isSocketReady(socketPath), timeout]);
+        break;
+      } catch (err: unknown) {
+        // Allow us to wait until the server is listening.
+        if (["ECONNREFUSED", "ENOENT"].includes((err as { code?: string })?.code ?? "")) {
+          await sleep(100);
+          continue;
+        }
+        throw err;
       }
-      throw err;
+    }
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
     }
   }
 }
