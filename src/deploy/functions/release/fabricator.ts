@@ -1007,6 +1007,15 @@ export class Fabricator {
       await this.executor
         .run(() => run.setInvokerCreate(endpoint.project, serviceName, ["public"]))
         .catch(rethrowAs(endpoint, "set invoker"));
+    } else if (backend.isTaskQueueTriggered(endpoint)) {
+      // Like HTTPS triggers, taskQueueTriggers have an invoker, but unlike HTTPS they don't default
+      // public.
+      const invoker = endpoint.taskQueueTrigger.invoker;
+      if (invoker && invoker.length > 0 && !invoker.includes("private")) {
+        await this.executor
+          .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
+          .catch(rethrowAs(endpoint, "set invoker"));
+      }
     }
   }
 
@@ -1043,6 +1052,11 @@ export class Fabricator {
     let invoker: string[] | undefined;
     if (backend.isHttpsTriggered(endpoint)) {
       invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
+    } else if (backend.isTaskQueueTriggered(endpoint)) {
+      invoker =
+        endpoint.taskQueueTrigger.invoker === null
+          ? ["private"]
+          : endpoint.taskQueueTrigger.invoker;
     }
 
     if (invoker) {
@@ -1112,11 +1126,6 @@ export class Fabricator {
       }
       assertExhaustive(endpoint.platform);
     } else if (backend.isTaskQueueTriggered(endpoint)) {
-      if (endpoint.platform === "run") {
-        throw new FirebaseError(
-          "Task Queue triggers for Cloud Run functions are not supported yet.",
-        );
-      }
       await this.upsertTaskQueue(endpoint);
     } else if (backend.isBlockingTriggered(endpoint)) {
       if (endpoint.platform === "run") {
@@ -1139,11 +1148,6 @@ export class Fabricator {
       }
       assertExhaustive(endpoint.platform);
     } else if (backend.isTaskQueueTriggered(endpoint)) {
-      if (endpoint.platform === "run") {
-        throw new FirebaseError(
-          "Task Queue triggers for Cloud Run functions are not supported yet.",
-        );
-      }
       await this.disableTaskQueue(endpoint);
     } else if (backend.isBlockingTriggered(endpoint)) {
       if (endpoint.platform === "run") {

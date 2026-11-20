@@ -1,0 +1,1 @@
+- Added support for deploying task queue triggers (`onTaskDispatched`) for Cloud Run functions.
