@@ -412,6 +412,10 @@ export type Endpoint = TargetIds &
     // doing name translations
     runServiceId?: string;
 
+    // Output only. For v2 functions, the run.app URI of the run service. Auth blocking triggers
+    // may be registered with this URI instead of uri.
+    runServiceUri?: string;
+
     // State of the endpoint.
     state?: EndpointState;
 

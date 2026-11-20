@@ -1,0 +1,1 @@
+- Fixed deleting a 2nd gen auth blocking function leaving it registered in Identity Platform after it was updated, which made every sign-up or sign-in fail.
