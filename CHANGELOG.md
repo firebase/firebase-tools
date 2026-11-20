@@ -1,0 +1,1 @@
+- Deprecated Java versions below 25. Support will be dropped in Firebase CLI v16. Please upgrade to Java version 25 or above to continue using the emulators.
