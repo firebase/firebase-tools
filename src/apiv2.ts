@@ -95,6 +95,8 @@ interface ClientHandlingOptions {
   retryMinTimeout?: number;
   /** Maximum timeout between retries. Defaults to 5s. */
   retryMaxTimeout?: number;
+  /** Set to false to disable the premature-close keep-alive retry for this request. Defaults to true. */
+  retryOnPrematureClose?: boolean;
 }
 
 export type ClientRequestOptions<T> = RequestOptions<T> & ClientVerbOptions;
@@ -582,7 +584,8 @@ export class Client {
             !disabledKeepAlive &&
             bodyReplayable &&
             !proxyURIFromEnv() &&
-            isPrematureCloseError(err)
+            isPrematureCloseError(err) &&
+            options.retryOnPrematureClose !== false
           ) {
             disabledKeepAlive = true;
             fetchOptions.agent = noKeepAliveAgent;

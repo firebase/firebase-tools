@@ -321,7 +321,7 @@ export async function createFunction(cloudFunction: InputCloudFunction): Promise
     const res = await client.post<typeof cloudFunction, Operation>(
       components.join("/"),
       cloudFunction,
-      { queryParams: { functionId } },
+      { queryParams: { functionId }, retryOnPrematureClose: false },
     );
     return res.body;
   } catch (err: any) {
@@ -402,7 +402,7 @@ export async function updateFunction(cloudFunction: InputCloudFunction): Promise
     const res = await client.patch<typeof cloudFunction, Operation>(
       cloudFunction.name,
       cloudFunction,
-      { queryParams },
+      { queryParams, retryOnPrematureClose: false },
     );
     return res.body;
   } catch (err: any) {
@@ -416,7 +416,7 @@ export async function updateFunction(cloudFunction: InputCloudFunction): Promise
  */
 export async function deleteFunction(cloudFunction: string): Promise<Operation> {
   try {
-    const res = await client.delete<Operation>(cloudFunction);
+    const res = await client.delete<Operation>(cloudFunction, { retryOnPrematureClose: false });
     return res.body;
   } catch (err: any) {
     throw functionsOpLogReject({ name: cloudFunction } as InputCloudFunction, "update", err);
