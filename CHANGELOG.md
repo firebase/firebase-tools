@@ -1,0 +1,2 @@
+- Added support for deploying scheduled Dart functions (`onSchedule`) to Cloud Run.
+- Added support for deploying Auth blocking triggers (`beforeUserCreated`, `beforeUserSignedIn`, ...) for Dart Cloud Run functions.
