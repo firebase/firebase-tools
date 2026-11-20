@@ -1,0 +1,1 @@
+- Fixed 2nd gen event function deploys failing when the default compute service account was deleted, even though every function sets its own service account. (#10507)
