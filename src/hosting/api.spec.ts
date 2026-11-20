@@ -881,6 +881,37 @@ describe("hosting", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should ignore custom domains with missing or empty names", async () => {
+      nock(hostingApiOrigin())
+        .get(SITE_CUSTOM_DOMAINS_API)
+        .reply(200, {
+          customDomains: [
+            LIST_CUSTOM_DOMAINS_BODY[0],
+            {},
+            { name: null },
+            { name: "" },
+            { name: `projects/${PROJECT_ID}/sites/${SITE}/customDomains/` },
+          ],
+        });
+
+      const GET_SITE_BODY = {
+        name: `projects/${PROJECT_ID}/sites/${SITE}`,
+        defaultUrl: "https://default.example.net",
+        type: "DEFAULT_SITE",
+      };
+      nock(hostingApiOrigin())
+        .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`)
+        .reply(200, GET_SITE_BODY);
+
+      expect(await hostingApi.getAllSiteDomains(PROJECT_ID, SITE)).to.have.members([
+        CUSTOM_DOMAIN_NAMES[0],
+        "default.example.net",
+        `${SITE}.web.app`,
+        `${SITE}.firebaseapp.com`,
+      ]);
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("should throw an error if the site doesn't exist", async () => {
       nock(hostingApiOrigin()).get(SITE_CUSTOM_DOMAINS_API).reply(404, {});
       nock(hostingApiOrigin()).get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`).reply(404, {});

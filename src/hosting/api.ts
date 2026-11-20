@@ -795,7 +795,7 @@ export async function getAllSiteDomains(projectId: string, siteId: string): Prom
 
   const defaultDomainWithoutHttp = defaultDomain.defaultUrl.replace(/^https?:\/\//, "");
   const customDomainNames = customDomains
-    .map(({ name }) => name.split("/").pop())
+    .map(({ name }) => name?.split("/").pop())
     .filter((domain): domain is string => Boolean(domain));
 
   const allSiteDomains = new Set([
