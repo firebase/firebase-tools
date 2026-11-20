@@ -4,7 +4,7 @@ import * as utils from "../utils";
 import { FunctionsEmulator } from "./functionsEmulator";
 import { EmulatedTriggerDefinition } from "./functionsEmulatorShared";
 import { logger } from "../logger";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
 import { CloudEvent, EventOptions, LegacyEvent } from "./events/types";
 
 interface FunctionsShellController {
@@ -106,6 +106,8 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
     } else {
       body = this.createCloudEvent(eventTrigger, data, opts);
     }
-    this.emu.sendRequest(trigger, body);
+    this.emu.sendRequest(trigger, body).catch((err: unknown) => {
+      logger.error(`shell:${trigger.name}: ${getErrMsg(err)}`);
+    });
   }
 }

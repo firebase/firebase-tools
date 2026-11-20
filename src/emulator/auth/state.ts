@@ -93,7 +93,8 @@ export abstract class ProjectState {
     const user = this.updateUserByLocalId(localId, props, {
       upsertProviders: props.providerUserInfo,
     });
-    this.authCloudFunction.dispatch("create", user);
+    // Fire-and-forget: dispatch() catches and logs its own failures.
+    void this.authCloudFunction.dispatch("create", user);
     return user;
   }
 
@@ -128,7 +129,8 @@ export abstract class ProjectState {
   deleteUser(user: UserInfo): void {
     this.users.delete(user.localId);
     this.removeUserFromIndex(user);
-    this.authCloudFunction.dispatch("delete", user);
+    // Fire-and-forget: dispatch() catches and logs its own failures.
+    void this.authCloudFunction.dispatch("delete", user);
   }
 
   updateUserByLocalId(

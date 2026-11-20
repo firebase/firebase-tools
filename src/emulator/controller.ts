@@ -386,7 +386,8 @@ export async function startAll(
     const filteredExtensionsBackends =
       extensionEmulator.filterUnemulatedTriggers(extensionsBackends);
     emulatableBackends.push(...filteredExtensionsBackends);
-    trackGA4("extensions_emulated", {
+    // Fire-and-forget telemetry.
+    void trackGA4("extensions_emulated", {
       number_of_extensions_emulated: filteredExtensionsBackends.length,
       number_of_extensions_ignored: extensionsBackends.length - filteredExtensionsBackends.length,
     });
