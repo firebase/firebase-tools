@@ -1,7 +1,10 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
 
-import { loadAllCommands } from "./cli";
+import { loadAllCommands, removeDebugLog } from "./cli";
 
 interface MockCommand {
   (): void;
@@ -66,5 +69,50 @@ describe("cli loadAllCommands", () => {
     expect(open.load.calledOnce).to.be.true;
     expect(cliCommand.load.called, "cli subtree skipped").to.be.false;
     expect(arrayCommand.load.called, "array entries skipped").to.be.false;
+  });
+});
+
+describe("cli removeDebugLog", () => {
+  const originalDebug = process.env.DEBUG;
+  let tmpDir: string;
+  let logFile: string;
+
+  beforeEach(() => {
+    delete process.env.DEBUG;
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "firebase-cli-test-"));
+    logFile = path.join(tmpDir, "firebase-debug.log");
+    fs.writeFileSync(logFile, "log");
+  });
+
+  afterEach(() => {
+    sinon.restore();
+    if (originalDebug !== undefined) {
+      process.env.DEBUG = originalDebug;
+    } else {
+      delete process.env.DEBUG;
+    }
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("deletes the debug log when the command did not fail", () => {
+    removeDebugLog(logFile, 0);
+
+    expect(fs.existsSync(logFile)).to.be.false;
+  });
+
+  it("keeps the debug log when the command failed", () => {
+    removeDebugLog(logFile, 2);
+
+    expect(fs.existsSync(logFile)).to.be.true;
+  });
+
+  it("does not throw when the debug log cannot be deleted", () => {
+    const err = Object.assign(new Error(`EBUSY: resource busy or locked, unlink '${logFile}'`), {
+      code: "EBUSY",
+    });
+    const unlinkSync = sinon.stub(fs, "unlinkSync").throws(err);
+
+    expect(() => removeDebugLog(logFile, 0)).not.to.throw();
+    expect(unlinkSync.calledOnceWith(logFile)).to.be.true;
   });
 });
