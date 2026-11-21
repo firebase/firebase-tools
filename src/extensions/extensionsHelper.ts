@@ -203,7 +203,7 @@ export async function substituteSecretParams(
 /**
  * Sets params equal to defaults given in extension.yaml if not already set in .env file.
  * @param paramVars JSON object of params to values parsed from .env file
- * @param paramSpec information on params parsed from extension.yaml
+ * @param paramSpecs information on params parsed from extension.yaml
  * @return JSON object of params
  */
 export function populateDefaultParams(
@@ -415,6 +415,7 @@ export async function promptForExtensionRoot(defaultRoot: string): Promise<strin
 
 /**
  * Prompts for the extension version's release stage.
+ * @param args options for prompting the release stage
  * @param args.versionByStage map from stage to the next version to upload
  * @param args.autoReview whether the stable version will be automatically sent for review on upload
  * @param args.allowStable whether to allow stable versions
@@ -505,7 +506,7 @@ async function archiveAndUploadSource(extPath: string, bucketName: string): Prom
 /**
  * Gets a list of the next version to upload by release stage.
  * @param extensionRef the ref of the extension
- * @param version the new version of the extension
+ * @param newVersion the new version of the extension
  */
 export async function getNextVersionByStage(
   extensionRef: string,
@@ -544,7 +545,7 @@ export async function getNextVersionByStage(
 /**
  * Validates the extension spec.
  * @param rootDirectory the directory with the extension source
- * @param extensionRef the ref of the extension
+ * @param extensionId the ID of the extension
  */
 async function validateExtensionSpec(
   rootDirectory: string,
@@ -730,6 +731,7 @@ async function fetchExtensionSource(
 
 /**
  * Uploads an extension version from a GitHub repo.
+ * @param args options for uploading the extension version
  * @param args.publisherId the ID of the Publisher this Extension will be published under
  * @param args.extensionId the ID of the Extension to be published
  * @param args.repoUri the URI of the repo where this Extension's source exists
@@ -880,6 +882,7 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
 
 /**
  * Uploads an extension version from local source.
+ * @param args options for uploading the extension version
  * @param args.publisherId the ID of the Publisher this Extension will be published under
  * @param args.extensionId the ID of the Extension to be published
  * @param args.rootDirectory the root directory that contains this Extension's source
@@ -1057,6 +1060,7 @@ export function getPublisherProjectFromName(publisherName: string): number {
 
 /**
  * Displays the release notes and confirmation message for the extension to be uploaded.
+ * @param args options for displaying release notes
  * @param args.extensionRef the ref of the extension
  * @param args.newVersion the new version of the extension
  * @param args.autoReview the autoreview
