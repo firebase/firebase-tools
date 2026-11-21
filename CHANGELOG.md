@@ -1,3 +1,4 @@
+- Fixed CPU not being recalculated when an existing 2nd gen function's memory changes without an explicit `cpu`, which caused deploys above 4GiB to fail. (#11492)
 - Fixed `crashlytics:heapdumps` commands accepting `--app` IDs that do not belong to the target Firebase project.
 - Fixed `crashlytics:heapdumps:enable` bypassing the confirmation prompt without `--force` in non-interactive environments.
 - Warned when `crashlytics:heapdumps:enable` reuses an existing Cloud Storage bucket whose location differs from `--location` instead of silently ignoring the requested location.

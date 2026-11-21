@@ -1227,6 +1227,42 @@ describe("prepare", () => {
       expect(want.cpu).to.equal(4);
     });
 
+    it("preserves custom CPU when memory is omitted and copied from existing function", () => {
+      const have: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+        availableMemoryMb: 512,
+        cpu: 4,
+      };
+      const want: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+      };
+
+      prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* useDotEnv= */ false);
+      prepare.resolveCpuAndConcurrency(backend.of(want));
+      expect(want.availableMemoryMb).to.equal(512);
+      expect(want.cpu).to.equal(4);
+    });
+
+    it("recalculates CPU to 2 when 512MiB is raised to 4GiB without explicit CPU", () => {
+      const have: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+        availableMemoryMb: 512,
+        cpu: 1,
+      };
+      const want: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+        availableMemoryMb: 4096,
+      };
+
+      prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* useDotEnv= */ false);
+      prepare.resolveCpuAndConcurrency(backend.of(want));
+      expect(want.cpu).to.equal(2);
+    });
+
     it("defaults timeout to 60 for run platform functions", () => {
       const want: backend.Endpoint = {
         ...ENDPOINT_BASE,
