@@ -299,7 +299,13 @@ export class EmulatorLog {
   }
 
   toString(): string {
-    return this.toStringCore();
+    return JSON.stringify({
+      timestamp: this.timestamp,
+      level: this.level,
+      text: this.text,
+      data: this.data,
+      type: this.type,
+    });
   }
 
   /**
@@ -344,16 +350,6 @@ export class EmulatorLog {
         "subprocess.send() is undefined, cannot communicate with Functions Runtime.",
       );
     }
-  }
-
-  private toStringCore(): string {
-    return JSON.stringify({
-      timestamp: this.timestamp,
-      level: this.level,
-      text: this.text,
-      data: this.data,
-      type: this.type,
-    });
   }
 }
 
