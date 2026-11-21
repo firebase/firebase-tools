@@ -355,7 +355,8 @@ export class FirebaseMcpServer {
   }
 
   async mcpListTools(): Promise<ListToolsResult> {
-    await Promise.all([this.detectActiveFeatures(), this.detectProjectRoot()]);
+    await this.detectProjectRoot();
+    await this.detectActiveFeatures();
     const hasActiveProject = !!(await this.getProjectId());
     await this.trackGA4("mcp_list_tools");
     const skipAutoAuthForStudio = isFirebaseStudio();
@@ -433,7 +434,8 @@ export class FirebaseMcpServer {
   }
 
   async mcpListPrompts(): Promise<ListPromptsResult> {
-    await Promise.all([this.detectActiveFeatures(), this.detectProjectRoot()]);
+    await this.detectProjectRoot();
+    await this.detectActiveFeatures();
     const hasActiveProject = !!(await this.getProjectId());
     await this.trackGA4("mcp_list_prompts");
     const skipAutoAuthForStudio = isFirebaseStudio();

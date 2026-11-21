@@ -1,4 +1,5 @@
 import { McpContext } from "../../types";
+import { getProjectDir } from "../../util";
 import { getPlatformsFromFolder, Platform, detectFiles } from "../../../appUtils";
 import * as fs from "fs-extra";
 import * as path from "path";
@@ -12,9 +13,12 @@ export async function isCrashlyticsAvailable(ctx: McpContext): Promise<boolean> 
   return await isCrashlyticsInstalled(ctx);
 }
 
+const CRASHLYTICS_GRADLE_PATTERN =
+  /(firebase-crashlytics|firebase\.crashlytics|com\.google\.firebase\.crashlytics)/;
+
 async function isCrashlyticsInstalled(ctx: McpContext): Promise<boolean> {
   const host = ctx.host;
-  const projectDir = ctx.config.projectDir;
+  const projectDir = getProjectDir(ctx);
   const platforms = await getPlatformsFromFolder(projectDir);
 
   // If this is not a supported platform, then Crashlytics will not be present
@@ -22,6 +26,7 @@ async function isCrashlyticsInstalled(ctx: McpContext): Promise<boolean> {
     !platforms.includes(Platform.FLUTTER) &&
     !platforms.includes(Platform.ANDROID) &&
     !platforms.includes(Platform.IOS) &&
+    !platforms.includes(Platform.UNITY) &&
     !platforms.includes(Platform.WEB)
   ) {
     host.logger.debug("Found no supported Crashlytics platforms.");
@@ -30,6 +35,10 @@ async function isCrashlyticsInstalled(ctx: McpContext): Promise<boolean> {
 
   if (platforms.includes(Platform.FLUTTER) && (await flutterAppUsesCrashlytics(projectDir))) {
     host.logger.debug("Found Flutter app using Crashlytics");
+    return true;
+  }
+  if (platforms.includes(Platform.UNITY) && (await unityAppUsesCrashlytics(projectDir))) {
+    host.logger.debug("Found Unity app using Crashlytics");
     return true;
   }
   if (platforms.includes(Platform.ANDROID) && (await androidAppUsesCrashlytics(projectDir))) {
@@ -56,12 +65,14 @@ async function isCrashlyticsInstalled(ctx: McpContext): Promise<boolean> {
 
 async function androidAppUsesCrashlytics(appPath: string): Promise<boolean> {
   const buildGradleFiles = await detectFiles(appPath, "build.gradle*");
-  const crashlyticsPattern =
-    /(firebase-crashlytics|firebase\.crashlytics|com\.google\.firebase\.crashlytics)/;
   for (const file of buildGradleFiles) {
-    const content = await fs.readFile(path.join(appPath, file), "utf8");
-    if (crashlyticsPattern.test(content)) {
-      return true;
+    try {
+      const content = await fs.readFile(path.join(appPath, file), "utf8");
+      if (CRASHLYTICS_GRADLE_PATTERN.test(content)) {
+        return true;
+      }
+    } catch {
+      // Ignore unreadable files
     }
   }
   return false;
@@ -75,22 +86,66 @@ async function iosAppUsesCrashlytics(appPath: string): Promise<boolean> {
 
   const files = fileArrays.flat();
   for (const file of files) {
-    const content = await fs.readFile(path.join(appPath, file), "utf8");
-    if (content.includes("Crashlytics")) {
-      return true;
+    try {
+      const content = await fs.readFile(path.join(appPath, file), "utf8");
+      if (content.includes("Crashlytics")) {
+        return true;
+      }
+    } catch {
+      // Ignore unreadable files
     }
   }
   return false;
 }
 
 async function flutterAppUsesCrashlytics(appPath: string): Promise<boolean> {
-  const pubspecFiles = await detectFiles(appPath, "pubspec.yaml");
+  const pubspecFiles = await detectFiles(appPath, "pubspec.{yaml,lock}");
   for (const file of pubspecFiles) {
-    const content = await fs.readFile(path.join(appPath, file), "utf8");
-    if (content.includes("firebase_crashlytics")) {
-      return true;
+    try {
+      const content = await fs.readFile(path.join(appPath, file), "utf8");
+      if (content.includes("firebase_crashlytics")) {
+        return true;
+      }
+    } catch {
+      // Ignore unreadable files
     }
   }
+  return false;
+}
+
+async function unityAppUsesCrashlytics(appPath: string): Promise<boolean> {
+  const upmFiles = await detectFiles(appPath, "Packages/{manifest.json,packages-lock.json}");
+  for (const file of upmFiles) {
+    try {
+      const content = await fs.readFile(path.join(appPath, file), "utf8");
+      if (content.includes("com.google.firebase.crashlytics")) {
+        return true;
+      }
+    } catch {
+      // Ignore unreadable files
+    }
+  }
+
+  const sdkFiles = await detectFiles(
+    appPath,
+    "{*CrashlyticsDependencies.xml,GoogleDependency*Crashlytics*.xml,Firebase.Crashlytics.dll,com.google.firebase.crashlytics*.tgz}",
+  );
+  if (sdkFiles.length > 0) {
+    return true;
+  }
+
+  const gradleFiles = await detectFiles(appPath, "*.gradle*");
+  for (const file of gradleFiles) {
+    try {
+      const content = await fs.readFile(path.join(appPath, file), "utf8");
+      if (CRASHLYTICS_GRADLE_PATTERN.test(content)) {
+        return true;
+      }
+    } catch {
+      // Ignore unreadable files
+    }
+  }
+
   return false;
 }
 

@@ -85,6 +85,12 @@ export async function getPlatform(appDir: string, config: Config) {
 Please follow the link below to set up firebase for your Flutter app:
 https://firebase.google.com/docs/flutter/setup
     `);
+  } else if (targetPlatform === Platform.UNITY) {
+    logWarning(`Detected ${targetPlatform} app in directory ${appDir}`);
+    throw new FirebaseError(`Unity is not supported by apps:configure.
+Please follow the link below to set up firebase for your Unity app:
+https://firebase.google.com/docs/unity/setup
+    `);
   } else {
     logSuccess(`Detected ${targetPlatform} app in directory ${appDir}`);
   }
