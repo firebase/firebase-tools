@@ -5,7 +5,6 @@
  *
  * We can't import some of them because they are marked "internal".
  */
-import { Resource } from "firebase-functions";
 import * as express from "express";
 
 /**
@@ -20,20 +19,6 @@ export interface LegacyEvent {
   timestamp?: string;
   params?: { [option: string]: any };
   auth?: AuthMode;
-}
-
-/**
- * Wire format for v1beta2 Eventflow (and likely v1).
- * Used by PubSub, RTDB, and some other services.
- */
-export interface Event {
-  context: {
-    eventId: string;
-    timestamp: string;
-    eventType: string;
-    resource: Resource;
-  };
-  data: any;
 }
 
 /**
