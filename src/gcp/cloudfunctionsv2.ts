@@ -330,19 +330,6 @@ export async function createFunction(cloudFunction: InputCloudFunction): Promise
 }
 
 /**
- * Gets the definition of a Cloud Function
- */
-export async function getFunction(
-  projectId: string,
-  location: string,
-  functionId: string,
-): Promise<OutputCloudFunction> {
-  const name = `projects/${projectId}/locations/${location}/functions/${functionId}`;
-  const res = await client.get<OutputCloudFunction>(name);
-  return res.body;
-}
-
-/**
  *  List all functions in all regions
  *  Customers should generally use backend.existingBackend and backend.checkAvailability.
  */

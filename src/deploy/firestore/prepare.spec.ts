@@ -9,11 +9,13 @@ import * as ensureApiEnabled from "../../ensureApiEnabled";
 import * as fsConfig from "../../firestore/fsConfig";
 import * as loadCJSON from "../../loadCJSON";
 import { RulesDeploy } from "../../rulesDeploy";
+import * as utils from "../../utils";
 
 describe("firestore prepare", () => {
   let sandbox: sinon.SinonSandbox;
   let getDatabaseStub: sinon.SinonStub;
   let createDatabaseStub: sinon.SinonStub;
+  let compileStub: sinon.SinonStub;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
@@ -22,7 +24,7 @@ describe("firestore prepare", () => {
     sandbox.stub(ensureApiEnabled, "ensure").resolves();
     sandbox.stub(loadCJSON, "loadCJSON").returns({});
     sandbox.stub(RulesDeploy.prototype, "addFile").returns();
-    sandbox.stub(RulesDeploy.prototype, "compile").resolves();
+    compileStub = sandbox.stub(RulesDeploy.prototype, "compile").resolves();
     sandbox.stub(fsConfig, "getFirestoreConfig").returns([
       {
         database: "test-db",
@@ -155,6 +157,101 @@ describe("firestore prepare", () => {
         FirebaseError,
         "dataAccessMode can only be specified for enterprise edition databases.",
       );
+    });
+  });
+
+  describe("dry run", () => {
+    const projectId = "test-project";
+    let logWarningStub: sinon.SinonStub;
+
+    function dryRunOptions(firestore: Record<string, unknown>, dryRun = true): Options {
+      return {
+        projectId,
+        dryRun,
+        config: {
+          path: (p: string) => p,
+          data: { firestore },
+        },
+      } as unknown as Options;
+    }
+
+    beforeEach(() => {
+      logWarningStub = sandbox.stub(utils, "logLabeledWarning");
+    });
+
+    it("should not create a missing database and should say where a deploy would create it", async () => {
+      getDatabaseStub.rejects({ status: 404 });
+
+      await prepare({ projectId }, dryRunOptions({ database: "test-db" }));
+
+      expect(createDatabaseStub).to.not.have.been.called;
+      expect(logWarningStub).to.have.been.calledOnce;
+      const message = logWarningStub.firstCall.args[1] as string;
+      expect(message).to.include("test-db");
+      expect(message).to.include("nam5");
+      expect(message).to.include("the default, because firebase.json sets no location");
+      expect(compileStub).to.have.been.calledOnce;
+    });
+
+    it("should report the location from firebase.json", async () => {
+      getDatabaseStub.rejects({ status: 404 });
+
+      await prepare({ projectId }, dryRunOptions({ database: "test-db", location: "eur3" }));
+
+      expect(createDatabaseStub).to.not.have.been.called;
+      const message = logWarningStub.firstCall.args[1] as string;
+      expect(message).to.include("eur3");
+      expect(message).to.not.include("the default");
+    });
+
+    it("should not warn when the database already exists", async () => {
+      getDatabaseStub.resolves({});
+
+      await prepare({ projectId }, dryRunOptions({ database: "test-db" }));
+
+      expect(createDatabaseStub).to.not.have.been.called;
+      expect(logWarningStub).to.not.have.been.called;
+    });
+
+    it("should warn instead of failing when rules cannot be checked because no database exists", async () => {
+      getDatabaseStub.rejects({ status: 404 });
+      compileStub.rejects(new FirebaseError("permission denied", { status: 403 }));
+
+      await prepare({ projectId }, dryRunOptions({ database: "test-db" }));
+
+      expect(createDatabaseStub).to.not.have.been.called;
+      expect(logWarningStub).to.have.been.calledTwice;
+      expect(logWarningStub.secondCall.args[1]).to.include("Could not check the rules");
+    });
+
+    it("should still fail on rules compilation errors when no database exists", async () => {
+      getDatabaseStub.rejects({ status: 404 });
+      compileStub.rejects(new FirebaseError("Compilation error in firestore.rules", { exit: 1 }));
+
+      await expect(
+        prepare({ projectId }, dryRunOptions({ database: "test-db" })),
+      ).to.be.rejectedWith(FirebaseError, "Compilation error in firestore.rules");
+    });
+
+    it("should still fail on a 403 from the rules check when the database exists", async () => {
+      getDatabaseStub.resolves({});
+      compileStub.rejects(new FirebaseError("permission denied", { status: 403 }));
+
+      await expect(
+        prepare({ projectId }, dryRunOptions({ database: "test-db" })),
+      ).to.be.rejectedWith(FirebaseError, "permission denied");
+    });
+
+    it("should still create a missing database when it is not a dry run", async () => {
+      getDatabaseStub.rejects({ status: 404 });
+      createDatabaseStub.resolves();
+
+      await prepare({ projectId }, dryRunOptions({ database: "test-db" }, false));
+
+      expect(createDatabaseStub).to.have.been.calledOnce;
+      const req = createDatabaseStub.firstCall.args[0] as types.CreateDatabaseReq;
+      expect(req.locationId).to.equal("nam5");
+      expect(logWarningStub).to.not.have.been.called;
     });
   });
 });

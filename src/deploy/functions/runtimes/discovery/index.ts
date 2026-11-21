@@ -162,7 +162,7 @@ export async function detectFromOutputPath(
       stderrBuffer += chunk.toString();
     });
 
-    childProcess.on("exit", async (code: number | null) => {
+    const onExit = async (code: number | null): Promise<void> => {
       if (!resolved) {
         clearTimeout(timer);
         resolved = true;
@@ -192,6 +192,11 @@ export async function detectFromOutputPath(
           }
         }
       }
+    };
+
+    // onExit catches and routes all outcomes and errors to resolve or reject
+    childProcess.on("exit", (code: number | null) => {
+      void onExit(code);
     });
 
     childProcess.on("error", (err: Error) => {

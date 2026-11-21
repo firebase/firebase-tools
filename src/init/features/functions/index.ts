@@ -234,7 +234,7 @@ async function languageSetup(setup: any): Promise<void> {
 export async function actuate(setup: any, config: Config): Promise<void> {
   // During genkit setup, always select TypeScript here.
   if (setup.languageOverride) {
-    return require("./" + setup.languageOverride).setup(setup, config);
+    return require(`./${String(setup.languageOverride)}`).setup(setup, config);
   }
-  return require("./" + setup.functions.languageChoice).setup(setup, config);
+  return require(`./${String(setup.functions.languageChoice)}`).setup(setup, config);
 }

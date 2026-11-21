@@ -29,6 +29,9 @@ import { ensureAuthEventarcTriggerRegion } from "./authEventarc";
 /** A standard void No Op */
 export const noop = (): Promise<void> => Promise.resolve();
 
+/** A synchronous No Op, for hooks such as validateTrigger that return void */
+export const syncNoop = (): void => undefined;
+
 /** A No Op that's useful for Services that don't have specific bindings but should still try to set default bindings */
 export const noopProjectBindings = (): Promise<Array<iam.Binding>> => Promise.resolve([]);
 
@@ -73,7 +76,7 @@ const noOpService: Service = {
   name: "noop",
   api: "",
   ensureTriggerRegion: noop,
-  validateTrigger: noop,
+  validateTrigger: syncNoop,
   registerTrigger: noop,
   unregisterTrigger: noop,
   getDefaultRegion: () => Promise.resolve(FALLBACK_DEPLOYMENT_REGION),
@@ -85,7 +88,7 @@ const pubSubService: Service = {
   api: "pubsub.googleapis.com",
   requiredProjectBindings: noopProjectBindings,
   ensureTriggerRegion: noop,
-  validateTrigger: noop,
+  validateTrigger: syncNoop,
   registerTrigger: noop,
   unregisterTrigger: noop,
   getDefaultRegion: () => Promise.resolve(DEFAULT_GLOBAL_TRIGGER_REGION),
@@ -97,7 +100,7 @@ const storageService: Service = {
   api: "storage.googleapis.com",
   requiredProjectBindings: obtainStorageBindings,
   ensureTriggerRegion: ensureStorageTriggerRegion,
-  validateTrigger: noop,
+  validateTrigger: syncNoop,
   registerTrigger: noop,
   unregisterTrigger: noop,
   getDefaultRegion: ensureStorageDefaultRegion,
@@ -109,7 +112,7 @@ const firebaseAlertsService: Service = {
   api: "firebasealerts.googleapis.com",
   requiredProjectBindings: noopProjectBindings,
   ensureTriggerRegion: ensureFirebaseAlertsTriggerRegion,
-  validateTrigger: noop,
+  validateTrigger: syncNoop,
   registerTrigger: noop,
   unregisterTrigger: noop,
   getDefaultRegion: () => Promise.resolve(DEFAULT_GLOBAL_TRIGGER_REGION),
@@ -125,7 +128,7 @@ const databaseService: Service = {
   api: "firebasedatabase.googleapis.com",
   requiredProjectBindings: noopProjectBindings,
   ensureTriggerRegion: ensureDatabaseTriggerRegion,
-  validateTrigger: noop,
+  validateTrigger: syncNoop,
   registerTrigger: noop,
   unregisterTrigger: noop,
   getDefaultRegion: ensureDatabaseDefaultRegion,
@@ -137,7 +140,7 @@ const remoteConfigService: Service = {
   api: "firebaseremoteconfig.googleapis.com",
   requiredProjectBindings: noopProjectBindings,
   ensureTriggerRegion: ensureRemoteConfigTriggerRegion,
-  validateTrigger: noop,
+  validateTrigger: syncNoop,
   registerTrigger: noop,
   unregisterTrigger: noop,
   getDefaultRegion: () => Promise.resolve(DEFAULT_GLOBAL_TRIGGER_REGION),
@@ -149,7 +152,7 @@ const testLabService: Service = {
   api: "testing.googleapis.com",
   requiredProjectBindings: noopProjectBindings,
   ensureTriggerRegion: ensureTestLabTriggerRegion,
-  validateTrigger: noop,
+  validateTrigger: syncNoop,
   registerTrigger: noop,
   unregisterTrigger: noop,
   getDefaultRegion: () => Promise.resolve(DEFAULT_GLOBAL_TRIGGER_REGION),
@@ -161,7 +164,7 @@ const firestoreService: Service = {
   api: "firestore.googleapis.com",
   requiredProjectBindings: noopProjectBindings,
   ensureTriggerRegion: ensureFirestoreTriggerRegion,
-  validateTrigger: noop,
+  validateTrigger: syncNoop,
   registerTrigger: noop,
   unregisterTrigger: noop,
   getDefaultRegion: ensureFirestoreDefaultRegion,
@@ -173,7 +176,7 @@ const dataconnectService: Service = {
   api: "firebasedataconnect.googleapis.com",
   requiredProjectBindings: noopProjectBindings,
   ensureTriggerRegion: ensureDataConnectTriggerRegion,
-  validateTrigger: noop,
+  validateTrigger: syncNoop,
   registerTrigger: noop,
   unregisterTrigger: noop,
   getDefaultRegion: ensureDataConnectDefaultRegion,
@@ -185,7 +188,7 @@ const authEventarcService: Service = {
   api: "eventarc.googleapis.com",
   requiredProjectBindings: noopProjectBindings,
   ensureTriggerRegion: ensureAuthEventarcTriggerRegion,
-  validateTrigger: noop,
+  validateTrigger: syncNoop,
   registerTrigger: noop,
   unregisterTrigger: noop,
   getDefaultRegion: () => Promise.resolve(DEFAULT_GLOBAL_TRIGGER_REGION),

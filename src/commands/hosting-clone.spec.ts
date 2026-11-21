@@ -2,9 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import { command } from "./hosting-clone";
-import { hostingApiOrigin } from "../api";
 import { configstore } from "../configstore";
-import * as ensureApiEnabledModule from "../ensureApiEnabled";
 import * as hostingApi from "../hosting/api";
 
 describe("hosting:clone", () => {
@@ -37,7 +35,7 @@ describe("hosting:clone", () => {
     cloneVersionStub = sinon.stub(hostingApi, "cloneVersion");
     createReleaseStub = sinon.stub(hostingApi, "createRelease");
     addAuthDomainsStub = sinon.stub(hostingApi, "addAuthDomains");
-    ensureApiStub = sinon.stub(ensureApiEnabledModule, "ensure").resolves();
+    ensureApiStub = sinon.stub(hostingApi, "ensureApiEnabled").resolves();
   });
 
   afterEach(() => {
@@ -84,12 +82,7 @@ describe("hosting:clone", () => {
       TARGET_CHANNEL_ID,
       `projects/${PROJECT_ID}/sites/${TARGET_SITE}/versions/v1-cloned`,
     );
-    expect(ensureApiStub).to.have.been.calledOnceWith(
-      PROJECT_ID,
-      hostingApiOrigin(),
-      "hosting",
-      true,
-    );
+    expect(ensureApiStub).to.have.been.calledOnceWith(PROJECT_ID);
 
     // Verify '-' was never used in any call
     for (const call of getChannelStub.getCalls()) {
@@ -148,18 +141,8 @@ describe("hosting:clone", () => {
       TARGET_CHANNEL_ID,
       `projects/${TARGET_PROJECT}/sites/${TARGET_SITE}/versions/v1-cloned`,
     );
-    expect(ensureApiStub).to.have.been.calledWith(
-      SOURCE_PROJECT,
-      hostingApiOrigin(),
-      "hosting",
-      true,
-    );
-    expect(ensureApiStub).to.have.been.calledWith(
-      TARGET_PROJECT,
-      hostingApiOrigin(),
-      "hosting",
-      true,
-    );
+    expect(ensureApiStub).to.have.been.calledWith(SOURCE_PROJECT);
+    expect(ensureApiStub).to.have.been.calledWith(TARGET_PROJECT);
   });
 
   it("should clone from site@version source without using '-'", async () => {
