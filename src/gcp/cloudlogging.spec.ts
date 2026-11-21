@@ -6,14 +6,6 @@ import { FirebaseError } from "../error";
 import { cloudloggingOrigin } from "../api";
 
 describe("cloudlogging", () => {
-  before(() => {
-    nock.disableNetConnect();
-  });
-
-  after(() => {
-    nock.enableNetConnect();
-  });
-
   afterEach(() => {
     nock.cleanAll();
   });

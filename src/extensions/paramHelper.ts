@@ -78,9 +78,12 @@ export function setNewDefaults(params: Param[], newDefaults: { [key: string]: st
 /**
  * Gets params from the user
  * or prompting the user for each param.
- * @param projectId the id of the project in use
- * @param paramSpecs a list of params, ie. extensionSpec.params
- * @param envFilePath a path to an env file containing param values
+ * @param args options for getting params
+ * @param args.projectId the id of the project in use
+ * @param args.instanceId the id of the extension instance
+ * @param args.paramSpecs a list of params, ie. extensionSpec.params
+ * @param args.nonInteractive whether to fail instead of prompting for input
+ * @param args.reconfiguring whether the extension is being reconfigured
  * @throws FirebaseError if an invalid env file is passed in
  */
 export async function getParams(args: {
@@ -133,9 +136,12 @@ export async function getParamsForUpdate(args: {
  * Displays params that exist in spec but not newSpec,
  * and then prompts user for any params in newSpec that are not in spec.
  *
- * @param spec A current extensionSpec
- * @param newSpec A extensionSpec to compare to
- * @param currentParams A set of current params and their values
+ * @param args options for prompting for new params
+ * @param args.spec A current extensionSpec
+ * @param args.newSpec A extensionSpec to compare to
+ * @param args.currentParams A set of current params and their values
+ * @param args.projectId the id of the project in use
+ * @param args.instanceId the id of the extension instance
  */
 export async function promptForNewParams(args: {
   spec: ExtensionSpec;

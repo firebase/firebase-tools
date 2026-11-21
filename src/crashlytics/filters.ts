@@ -79,7 +79,7 @@ export const FilterExpressionSchema = z
   .string()
   .optional()
   .describe(
-    `An AIP-160 filter expression for custom keys (e.g. 'custom_keys.env = "prod"', 'custom_keys.experiment_id:*', or combined with 'AND' across different keys and 'OR' across values of one key).`,
+    `An AIP-160 filter expression for custom keys (e.g. 'custom_keys.env = "prod"', 'custom_keys.experiment_id:*', or combined with 'AND' across different keys and 'OR' across values of one key). For reports, only supported on web apps; check the report's usage to see whether it supports filter_expression.`,
   );
 
 // Most models seem to understand the flattened, camelCase representation better.

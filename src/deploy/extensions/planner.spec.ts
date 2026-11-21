@@ -86,9 +86,9 @@ describe("Extensions Deployment Planner", () => {
     ];
 
     for (const c of cases) {
-      it(c.description, () => {
+      it(c.description, async () => {
         if (!c.err) {
-          expect(
+          await expect(
             planner.resolveVersion(
               {
                 publisherId: "test",
@@ -99,7 +99,7 @@ describe("Extensions Deployment Planner", () => {
             ),
           ).to.eventually.equal(c.out);
         } else {
-          expect(
+          await expect(
             planner.resolveVersion(
               {
                 publisherId: "test",
