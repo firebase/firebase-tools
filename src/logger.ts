@@ -295,8 +295,8 @@ export function useFileLogger(logFile?: string): string {
 /**
  * Sets up logging to the command line.
  */
-export function useConsoleLoggers(): void {
-  if (process.env.DEBUG) {
+export function useConsoleLoggers(debug = !!process.env.DEBUG): void {
+  if (debug) {
     logger.add(
       new winston.transports.Console({
         level: "debug",
