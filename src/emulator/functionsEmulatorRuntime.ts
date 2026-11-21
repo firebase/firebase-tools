@@ -2,6 +2,7 @@ import { CloudFunction, DeploymentOptions } from "firebase-functions";
 import * as express from "express";
 import * as path from "path";
 import * as admin from "firebase-admin";
+import type { App } from "firebase-admin/app";
 import * as bodyParser from "body-parser";
 import { pathToFileURL, URL } from "url";
 import * as _ from "lodash";
@@ -469,7 +470,7 @@ async function initializeFirebaseAdminStubs(): Promise<void> {
         opts: defaultAppOptions,
       }).log();
 
-      const defaultApp: admin.app.App = makeProxiedFirebaseApp(
+      const defaultApp: App = makeProxiedFirebaseApp(
         adminModuleTarget.initializeApp(defaultAppOptions),
       );
       logDebug("initializeApp(DEFAULT)", defaultAppOptions);
@@ -490,10 +491,11 @@ async function initializeFirebaseAdminStubs(): Promise<void> {
           // Between firebase-admin versions 9.3.0 and 9.4.2 (inclusive) we used the
           // "auth.setJwtVerificationEnabled" hack to disable JWT verification while emulating.
           // See: https://github.com/firebase/firebase-admin-node/pull/1148
-          const auth = defaultApp.auth();
-          if (typeof (auth as any).setJwtVerificationEnabled === "function") {
+          const auth =
+            typeof (defaultApp as any).auth === "function" ? (defaultApp as any).auth() : undefined;
+          if (typeof auth?.setJwtVerificationEnabled === "function") {
             logDebug("auth.setJwtVerificationEnabled(false)", {});
-            (auth as any).setJwtVerificationEnabled(false);
+            auth.setJwtVerificationEnabled(false);
           } else {
             logDebug("auth.setJwtVerificationEnabled not available", {});
           }
@@ -533,8 +535,8 @@ async function initializeFirebaseAdminStubs(): Promise<void> {
   });
 }
 
-function makeProxiedFirebaseApp(original: admin.app.App): admin.app.App {
-  const appProxy = new Proxied<admin.app.App>(original);
+function makeProxiedFirebaseApp(original: App): App {
+  const appProxy = new Proxied<App>(original);
   return appProxy
     .when("firestore", (target: any) => {
       warnAboutFirestoreProd();

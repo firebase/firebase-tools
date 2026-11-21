@@ -8,7 +8,7 @@ import * as fs from "fs-extra";
 import * as path from "path";
 
 import { detectProjectRoot } from "./detectProjectRoot";
-import { FirebaseError } from "./error";
+import { FirebaseError, getErrMsg } from "./error";
 import * as fsutils from "./fsutils";
 import { confirm } from "./prompt";
 import { resolveProjectPath } from "./projectPath";
@@ -371,7 +371,7 @@ export class Config {
 
         return new Config(data, options);
       } catch (e: any) {
-        throw new FirebaseError(`There was an error loading ${filename}:\n\n` + e.message, {
+        throw new FirebaseError(`There was an error loading ${filename}:\n\n${getErrMsg(e)}`, {
           exit: 1,
         });
       }

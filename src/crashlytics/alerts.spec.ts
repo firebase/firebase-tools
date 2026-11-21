@@ -39,14 +39,6 @@ describe("crashlytics alerts", () => {
     userLabels: { [FIREBASE_CHANNEL_LABEL]: "true" },
   };
 
-  before(() => {
-    nock.disableNetConnect();
-  });
-
-  after(() => {
-    nock.enableNetConnect();
-  });
-
   afterEach(() => {
     nock.cleanAll();
   });
