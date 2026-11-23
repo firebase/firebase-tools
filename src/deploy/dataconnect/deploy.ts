@@ -22,7 +22,7 @@ export default async function (context: Context, options: Options): Promise<void
     throw new Error("dataconnect.prepare must be run before dataconnect.deploy");
   }
   const projectId = needProjectId(options);
-  const serviceInfos = dataconnect.serviceInfos as ServiceInfo[];
+  const serviceInfos = dataconnect.serviceInfos;
   const services = await client.listAllServices(projectId);
   const filters = dataconnect.filters;
 

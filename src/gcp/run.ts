@@ -363,7 +363,7 @@ export async function fetchServiceLogs(projectId: string, serviceId: string): Pr
   } catch (err: any) {
     throw new FirebaseError(`Failed to fetch logs for Cloud Run service ${serviceId}`, {
       original: err,
-      status: (err as any)?.context?.response?.statusCode,
+      status: err?.context?.response?.statusCode,
     });
   }
 }

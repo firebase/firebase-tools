@@ -7,6 +7,8 @@ import {
   parseAndroidHashedId,
   createBucketName,
   getCrashlyticsP4sa,
+  getCrashlyticsConsoleUrl,
+  resolveAndroidApp,
   resolveAndroidAppId,
   getProfilingManagerConfig,
   updateProfilingManagerConfig,
@@ -18,14 +20,15 @@ import {
   STORAGE_OBJECT_CREATOR_ROLE,
   DEFAULT_CORS_RULES,
   DEFAULT_LIFECYCLE_RULES,
+  DEFAULT_IAM_CONFIGURATION,
 } from "./profilingManager";
 import { FirebaseError } from "../error";
 import { crashlyticsApiOrigin } from "../api";
 import * as storage from "../gcp/storage";
-import * as resourceManager from "../gcp/resourceManager";
 import * as serviceusage from "../gcp/serviceusage";
 import * as appsModule from "../management/apps";
 import { Policy } from "../gcp/iam";
+import * as utils from "../utils";
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;
@@ -35,7 +38,9 @@ describe("profilingManager", () => {
   const hashedAppId = "abcdef123456";
   const appId = `1:${projectNumber}:android:${hashedAppId}`;
   const expectedBucketName = `firebasecrashlytics-heap-dumps-${hashedAppId}`;
+  const expectedBucketResourceName = `projects/_/buckets/${expectedBucketName}`;
   const projectId = "my-test-project";
+  const resourcePath = `/v1alpha/projects/${projectNumber}/apps/${appId}/profilingManagerConfig`;
 
   afterEach(() => {
     nock.cleanAll();
@@ -76,19 +81,128 @@ describe("profilingManager", () => {
     });
   });
 
+  describe("getCrashlyticsConsoleUrl", () => {
+    it("should format the Crashlytics issues URL with android:<packageName>", () => {
+      expect(getCrashlyticsConsoleUrl("appmon-otel-test", "dev.firebase.loadingspinner")).to.equal(
+        "https://console.firebase.google.com/project/appmon-otel-test/crashlytics/app/android:dev.firebase.loadingspinner/issues",
+      );
+    });
+
+    it("should fall back to the project Crashlytics page when packageName is omitted or blank", () => {
+      expect(getCrashlyticsConsoleUrl(projectId)).to.equal(
+        `https://console.firebase.google.com/project/${projectId}/crashlytics`,
+      );
+      expect(getCrashlyticsConsoleUrl(projectId, "   ")).to.equal(
+        `https://console.firebase.google.com/project/${projectId}/crashlytics`,
+      );
+    });
+  });
+
+  describe("resolveAndroidApp", () => {
+    const mockAndroidApp: appsModule.AndroidAppMetadata = {
+      name: `projects/${projectId}/androidApps/${appId}`,
+      projectId,
+      appId,
+      platform: appsModule.AppPlatform.ANDROID,
+      packageName: "com.example.app",
+    };
+
+    it("should return canonical appId and packageName when --app is provided", async () => {
+      sinon.stub(appsModule, "listFirebaseApps").resolves([mockAndroidApp]);
+      const upperAppId = `1:${projectNumber}:android:${hashedAppId.toUpperCase()}`;
+
+      const result = await resolveAndroidApp(projectId, { app: upperAppId });
+
+      expect(result).to.deep.equal({
+        appId,
+        packageName: "com.example.app",
+      });
+    });
+
+    it("should return appId and packageName when a single Android app exists in the project", async () => {
+      sinon.stub(appsModule, "listFirebaseApps").resolves([mockAndroidApp]);
+
+      const result = await resolveAndroidApp(projectId, {});
+
+      expect(result).to.deep.equal({
+        appId,
+        packageName: "com.example.app",
+      });
+    });
+
+    it("should omit packageName when absent on returned AppMetadata", async () => {
+      sinon.stub(appsModule, "listFirebaseApps").resolves([
+        {
+          name: `projects/${projectId}/androidApps/${appId}`,
+          projectId,
+          appId,
+          platform: appsModule.AppPlatform.ANDROID,
+        },
+      ]);
+
+      const result = await resolveAndroidApp(projectId, {});
+
+      expect(result).to.deep.equal({ appId });
+    });
+  });
+
   describe("resolveAndroidAppId", () => {
-    it("should return the explicitly provided valid Android app ID", async () => {
+    const mockAndroidApp: appsModule.AndroidAppMetadata = {
+      name: `projects/${projectId}/androidApps/${appId}`,
+      projectId,
+      appId,
+      platform: appsModule.AppPlatform.ANDROID,
+      packageName: "com.example.app",
+    };
+
+    it("should return the explicitly provided valid Android app ID when it belongs to the project", async () => {
+      const listAppsStub = sinon.stub(appsModule, "listFirebaseApps").resolves([mockAndroidApp]);
+
       const result = await resolveAndroidAppId(projectId, { app: appId });
+
+      expect(result).to.equal(appId);
+      expect(listAppsStub).to.have.been.calledOnceWith(projectId, appsModule.AppPlatform.ANDROID);
+    });
+
+    it("should match --app case-insensitively and return the canonical Firebase app ID", async () => {
+      sinon.stub(appsModule, "listFirebaseApps").resolves([mockAndroidApp]);
+      const upperAppId = `1:${projectNumber}:android:${hashedAppId.toUpperCase()}`;
+
+      const result = await resolveAndroidAppId(projectId, { app: upperAppId });
+
       expect(result).to.equal(appId);
     });
 
-    it("should throw a FirebaseError when an invalid or non-Android app ID is provided", async () => {
+    it("should throw a FirebaseError when the provided Android app ID belongs to a different project", async () => {
+      const otherProjectAppId = "1:9999999999:android:dba41e8917c618732010d1";
+      sinon.stub(appsModule, "listFirebaseApps").resolves([mockAndroidApp]);
+
+      await expect(resolveAndroidAppId(projectId, { app: otherProjectAppId })).to.be.rejectedWith(
+        FirebaseError,
+        `Android app '${otherProjectAppId}' was not found in project '${projectId}'.`,
+      );
+    });
+
+    it("should throw a FirebaseError when the provided Android app ID does not exist in the project", async () => {
+      const fabricatedAppId = `1:${projectNumber}:android:ffffffffffffffff`;
+      sinon.stub(appsModule, "listFirebaseApps").resolves([mockAndroidApp]);
+
+      await expect(resolveAndroidAppId(projectId, { app: fabricatedAppId })).to.be.rejectedWith(
+        FirebaseError,
+        `Android app '${fabricatedAppId}' was not found in project '${projectId}'.`,
+      );
+    });
+
+    it("should throw a FirebaseError before listing apps when an invalid or non-Android app ID is provided", async () => {
+      const listAppsStub = sinon.stub(appsModule, "listFirebaseApps");
+
       await expect(
         resolveAndroidAppId(projectId, { app: `1:${projectNumber}:ios:${hashedAppId}` }),
       ).to.be.rejectedWith(
         FirebaseError,
         "Heap dump collection is only supported for Android apps.",
       );
+      expect(listAppsStub).to.not.have.been.called;
     });
 
     it("should throw a FirebaseError when no Android apps exist in the project", async () => {
@@ -175,34 +289,23 @@ describe("profilingManager", () => {
   describe("getProfilingManagerConfig", () => {
     it("should return the configuration on successful response", async () => {
       const mockResponse = {
-        configuration: {
-          gcsBucket: expectedBucketName,
-          heapDumpCollectionEnabled: true,
-        },
+        name: `projects/${projectNumber}/apps/${appId}/profilingManagerConfig`,
+        bucket: expectedBucketResourceName,
+        heapDumpCollectionEnabled: true,
       };
 
-      nock(crashlyticsApiOrigin())
-        .get(`/v1/projects/${projectNumber}/apps/${appId}/appconfig:profilingManager`)
-        .reply(200, mockResponse);
+      nock(crashlyticsApiOrigin()).get(resourcePath).reply(200, mockResponse);
 
       const result = await getProfilingManagerConfig(appId);
-      expect(result).to.deep.equal({
-        gcsBucket: expectedBucketName,
-        heapDumpCollectionEnabled: true,
-      });
+      expect(result).to.deep.equal(mockResponse);
       expect(nock.isDone()).to.be.true;
     });
 
-    it("should return default values when configuration is empty", async () => {
-      nock(crashlyticsApiOrigin())
-        .get(`/v1/projects/${projectNumber}/apps/${appId}/appconfig:profilingManager`)
-        .reply(200, {});
+    it("should return empty object when configuration is empty", async () => {
+      nock(crashlyticsApiOrigin()).get(resourcePath).reply(200, {});
 
       const result = await getProfilingManagerConfig(appId);
-      expect(result).to.deep.equal({
-        gcsBucket: "",
-        heapDumpCollectionEnabled: false,
-      });
+      expect(result).to.deep.equal({});
       expect(nock.isDone()).to.be.true;
     });
 
@@ -215,49 +318,64 @@ describe("profilingManager", () => {
   });
 
   describe("updateProfilingManagerConfig", () => {
-    it("should send the update request successfully", async () => {
+    it("should send the PATCH update request with field mask successfully", async () => {
       nock(crashlyticsApiOrigin())
-        .post(`/v1/projects/${projectNumber}/apps/${appId}/appconfig:profilingManager`, {
-          projectNumber,
-          gmpAppId: appId,
-          configuration: {
-            gcsBucket: expectedBucketName,
-            heapDumpCollectionEnabled: true,
-          },
+        .patch(resourcePath, {
+          bucket: expectedBucketResourceName,
+          heapDumpCollectionEnabled: true,
         })
-        .reply(200, {});
+        .query({ updateMask: "bucket,heapDumpCollectionEnabled" })
+        .reply(200, {
+          name: `projects/${projectNumber}/apps/${appId}/profilingManagerConfig`,
+          bucket: expectedBucketResourceName,
+          heapDumpCollectionEnabled: true,
+        });
 
-      await updateProfilingManagerConfig(appId, {
-        gcsBucket: expectedBucketName,
-        heapDumpCollectionEnabled: true,
-      });
+      await updateProfilingManagerConfig(
+        appId,
+        {
+          bucket: expectedBucketResourceName,
+          heapDumpCollectionEnabled: true,
+        },
+        "bucket,heapDumpCollectionEnabled",
+      );
 
       expect(nock.isDone()).to.be.true;
     });
 
-    it("should default empty configuration fields when omitted", async () => {
+    it("should send partial updateMask when updating only heapDumpCollectionEnabled", async () => {
       nock(crashlyticsApiOrigin())
-        .post(`/v1/projects/${projectNumber}/apps/${appId}/appconfig:profilingManager`, {
-          projectNumber,
-          gmpAppId: appId,
-          configuration: {
-            gcsBucket: "",
-            heapDumpCollectionEnabled: false,
-          },
+        .patch(resourcePath, {
+          heapDumpCollectionEnabled: false,
         })
-        .reply(200, {});
+        .query({ updateMask: "heapDumpCollectionEnabled" })
+        .reply(200, {
+          name: `projects/${projectNumber}/apps/${appId}/profilingManagerConfig`,
+          bucket: expectedBucketResourceName,
+          heapDumpCollectionEnabled: false,
+        });
 
-      await updateProfilingManagerConfig(appId, {});
+      await updateProfilingManagerConfig(
+        appId,
+        {
+          heapDumpCollectionEnabled: false,
+        },
+        "heapDumpCollectionEnabled",
+      );
 
       expect(nock.isDone()).to.be.true;
     });
 
     it("should throw a FirebaseError if the appId is invalid", async () => {
       await expect(
-        updateProfilingManagerConfig("invalid-app", {
-          gcsBucket: expectedBucketName,
-          heapDumpCollectionEnabled: true,
-        }),
+        updateProfilingManagerConfig(
+          "invalid-app",
+          {
+            bucket: expectedBucketResourceName,
+            heapDumpCollectionEnabled: true,
+          },
+          "bucket,heapDumpCollectionEnabled",
+        ),
       ).to.be.rejectedWith(FirebaseError, "Unable to get the projectId from the AppId.");
     });
   });
@@ -267,7 +385,7 @@ describe("profilingManager", () => {
       rule: DEFAULT_LIFECYCLE_RULES,
     };
 
-    it("should create a new bucket with CORS and 90-day TTL when it does not exist", async () => {
+    it("should create a new bucket with CORS, 90-day TTL, UBLA, and enforced PAP when it does not exist", async () => {
       const notFoundError = new FirebaseError("Not found", { status: 404 });
       const getBucketStub = sinon.stub(storage, "getBucket").rejects(notFoundError);
       const createBucketStub = sinon
@@ -278,16 +396,13 @@ describe("profilingManager", () => {
 
       expect(result).to.equal(expectedBucketName);
       expect(getBucketStub).to.have.been.calledWith(expectedBucketName);
-      expect(createBucketStub).to.have.been.calledWith(
-        projectId,
-        {
-          name: expectedBucketName,
-          location: "us-central1",
-          cors: DEFAULT_CORS_RULES,
-          lifecycle: expectedLifecycle,
-        },
-        true,
-      );
+      expect(createBucketStub).to.have.been.calledOnceWithExactly(projectId, {
+        name: expectedBucketName,
+        location: "us-central1",
+        cors: DEFAULT_CORS_RULES,
+        lifecycle: expectedLifecycle,
+        iamConfiguration: DEFAULT_IAM_CONFIGURATION,
+      });
     });
 
     it("should rethrow non-404 errors from getBucket", async () => {
@@ -299,6 +414,76 @@ describe("profilingManager", () => {
         forbiddenError,
       );
       expect(createBucketStub).to.not.have.been.called;
+    });
+
+    it("should warn and reuse existing bucket when requested location differs from existing bucket location", async () => {
+      sinon.stub(storage, "getBucket").resolves({
+        name: expectedBucketName,
+        projectNumber,
+        location: "US-CENTRAL1",
+        cors: DEFAULT_CORS_RULES,
+        lifecycle: expectedLifecycle,
+        iamConfiguration: DEFAULT_IAM_CONFIGURATION,
+      } as unknown as storage.BucketResponse);
+      const patchBucketStub = sinon.stub(storage, "patchBucket");
+      const createBucketStub = sinon.stub(storage, "createBucket");
+      const logWarningStub = sinon.stub(utils, "logLabeledWarning");
+
+      const result = await ensureHeapDumpStorageBucket(projectId, appId, "europe-west1");
+
+      expect(result).to.equal(expectedBucketName);
+      expect(patchBucketStub).to.not.have.been.called;
+      expect(createBucketStub).to.not.have.been.called;
+      expect(logWarningStub).to.have.been.calledOnceWith(
+        "crashlytics",
+        sinon.match(
+          (msg: string) =>
+            msg.includes("US-CENTRAL1") &&
+            msg.includes("europe-west1") &&
+            msg.includes("cannot be changed"),
+        ),
+      );
+    });
+
+    it("should warn when default location differs from existing bucket location", async () => {
+      sinon.stub(storage, "getBucket").resolves({
+        name: expectedBucketName,
+        projectNumber,
+        location: "US-CENTRAL1",
+        cors: DEFAULT_CORS_RULES,
+        lifecycle: expectedLifecycle,
+        iamConfiguration: DEFAULT_IAM_CONFIGURATION,
+      } as unknown as storage.BucketResponse);
+      sinon.stub(storage, "patchBucket");
+      sinon.stub(storage, "createBucket");
+      const logWarningStub = sinon.stub(utils, "logLabeledWarning");
+
+      const result = await ensureHeapDumpStorageBucket(projectId, appId);
+
+      expect(result).to.equal(expectedBucketName);
+      expect(logWarningStub).to.have.been.calledOnceWith(
+        "crashlytics",
+        sinon.match((msg: string) => msg.includes("US-CENTRAL1") && msg.includes("us-east1")),
+      );
+    });
+
+    it("should not warn when existing bucket location matches requested location case-insensitively", async () => {
+      sinon.stub(storage, "getBucket").resolves({
+        name: expectedBucketName,
+        projectNumber,
+        location: "US-EAST1",
+        cors: DEFAULT_CORS_RULES,
+        lifecycle: expectedLifecycle,
+        iamConfiguration: DEFAULT_IAM_CONFIGURATION,
+      } as unknown as storage.BucketResponse);
+      sinon.stub(storage, "patchBucket");
+      sinon.stub(storage, "createBucket");
+      const logWarningStub = sinon.stub(utils, "logLabeledWarning");
+
+      const result = await ensureHeapDumpStorageBucket(projectId, appId, "us-east1");
+
+      expect(result).to.equal(expectedBucketName);
+      expect(logWarningStub).to.not.have.been.called;
     });
 
     it("should throw a FirebaseError if the bucket is owned by another project", async () => {
@@ -315,7 +500,7 @@ describe("profilingManager", () => {
       expect(patchBucketStub).to.not.have.been.called;
     });
 
-    it("should patch CORS and lifecycle if bucket exists without either configuration", async () => {
+    it("should patch CORS, lifecycle, and iamConfiguration if bucket exists without required settings", async () => {
       sinon.stub(storage, "getBucket").resolves({
         name: expectedBucketName,
         projectNumber,
@@ -331,6 +516,7 @@ describe("profilingManager", () => {
       expect(patchBucketStub).to.have.been.calledWith(expectedBucketName, {
         cors: DEFAULT_CORS_RULES,
         lifecycle: expectedLifecycle,
+        iamConfiguration: DEFAULT_IAM_CONFIGURATION,
       });
       expect(createBucketStub).to.not.have.been.called;
     });
@@ -346,6 +532,7 @@ describe("profilingManager", () => {
         projectNumber,
         cors: [existingCors],
         lifecycle: { rule: [existingLifecycleRule] },
+        iamConfiguration: DEFAULT_IAM_CONFIGURATION,
       } as unknown as storage.BucketResponse);
       const patchBucketStub = sinon
         .stub(storage, "patchBucket")
@@ -360,11 +547,16 @@ describe("profilingManager", () => {
       });
     });
 
-    it("should patch only lifecycle if bucket exists with CORS but without lifecycle", async () => {
+    it("should patch only missing publicAccessPrevention when UBLA, CORS, and lifecycle are already configured", async () => {
       sinon.stub(storage, "getBucket").resolves({
         name: expectedBucketName,
         projectNumber,
         cors: DEFAULT_CORS_RULES,
+        lifecycle: expectedLifecycle,
+        iamConfiguration: {
+          publicAccessPrevention: "inherited",
+          uniformBucketLevelAccess: { enabled: true },
+        },
       } as unknown as storage.BucketResponse);
       const patchBucketStub = sinon
         .stub(storage, "patchBucket")
@@ -375,17 +567,18 @@ describe("profilingManager", () => {
 
       expect(result).to.equal(expectedBucketName);
       expect(patchBucketStub).to.have.been.calledWith(expectedBucketName, {
-        lifecycle: expectedLifecycle,
+        iamConfiguration: { publicAccessPrevention: "enforced" },
       });
       expect(createBucketStub).to.not.have.been.called;
     });
 
-    it("should do nothing if bucket exists with both CORS and lifecycle configuration", async () => {
+    it("should do nothing if bucket exists with CORS, lifecycle, UBLA, and enforced PAP", async () => {
       sinon.stub(storage, "getBucket").resolves({
         name: expectedBucketName,
         projectNumber,
         cors: DEFAULT_CORS_RULES,
         lifecycle: expectedLifecycle,
+        iamConfiguration: DEFAULT_IAM_CONFIGURATION,
       } as unknown as storage.BucketResponse);
       const patchBucketStub = sinon.stub(storage, "patchBucket");
       const createBucketStub = sinon.stub(storage, "createBucket");
@@ -399,95 +592,75 @@ describe("profilingManager", () => {
   });
 
   describe("ensureHeapDumpP4saRole", () => {
-    it("should generate service identity and add the role if the P4SA does not currently have it", async () => {
+    it("should generate service identity and scope roles/storage.objectCreator to the target bucket", async () => {
       const p4saEmail = getCrashlyticsP4sa(projectNumber);
       const generateIdentityStub = sinon
         .stub(serviceusage, "generateServiceIdentityAndPoll")
         .resolves();
-      sinon.stub(resourceManager, "serviceAccountHasRoles").resolves(false);
-      const addRoleStub = sinon
-        .stub(resourceManager, "addServiceAccountToRoles")
+      const addBucketRoleStub = sinon
+        .stub(storage, "addServiceAccountToBucketRoles")
         .resolves({} as Policy);
 
-      await ensureHeapDumpP4saRole(projectId, projectNumber);
+      await ensureHeapDumpP4saRole(projectNumber, expectedBucketName);
 
       expect(generateIdentityStub).to.have.been.calledOnceWith(
         projectNumber,
         CRASHLYTICS_SERVICE_NAME,
         "crashlytics",
       );
-      expect(addRoleStub).to.have.been.calledWith(
-        projectId,
-        p4saEmail,
-        [STORAGE_OBJECT_CREATOR_ROLE],
-        true,
-      );
-    });
-
-    it("should not add the role if the P4SA already has it", async () => {
-      const generateIdentityStub = sinon
-        .stub(serviceusage, "generateServiceIdentityAndPoll")
-        .resolves();
-      sinon.stub(resourceManager, "serviceAccountHasRoles").resolves(true);
-      const addRoleStub = sinon.stub(resourceManager, "addServiceAccountToRoles");
-
-      await ensureHeapDumpP4saRole(projectId, projectNumber);
-
-      expect(generateIdentityStub).to.have.been.calledOnceWith(
-        projectNumber,
-        CRASHLYTICS_SERVICE_NAME,
-        "crashlytics",
-      );
-      expect(addRoleStub).to.not.have.been.called;
+      expect(addBucketRoleStub).to.have.been.calledOnceWithExactly(expectedBucketName, p4saEmail, [
+        STORAGE_OBJECT_CREATOR_ROLE,
+      ]);
     });
   });
 
   describe("enableHeapDumpCollection & disableHeapDumpCollection", () => {
-    it("should orchestrate bucket provisioning, P4SA role setup, and config enablement", async () => {
+    it("should orchestrate bucket provisioning, bucket-scoped P4SA role setup, and config enablement", async () => {
       sinon.stub(storage, "getBucket").resolves({
         name: expectedBucketName,
         projectNumber,
         cors: DEFAULT_CORS_RULES,
         lifecycle: { rule: DEFAULT_LIFECYCLE_RULES },
+        iamConfiguration: DEFAULT_IAM_CONFIGURATION,
       } as unknown as storage.BucketResponse);
       sinon.stub(serviceusage, "generateServiceIdentityAndPoll").resolves();
-      sinon.stub(resourceManager, "serviceAccountHasRoles").resolves(true);
+      const addBucketRoleStub = sinon
+        .stub(storage, "addServiceAccountToBucketRoles")
+        .resolves({} as Policy);
       nock(crashlyticsApiOrigin())
-        .post(`/v1/projects/${projectNumber}/apps/${appId}/appconfig:profilingManager`, {
-          projectNumber,
-          gmpAppId: appId,
-          configuration: {
-            gcsBucket: expectedBucketName,
-            heapDumpCollectionEnabled: true,
-          },
+        .patch(resourcePath, {
+          bucket: expectedBucketResourceName,
+          heapDumpCollectionEnabled: true,
         })
-        .reply(200, {});
+        .query({ updateMask: "bucket,heapDumpCollectionEnabled" })
+        .reply(200, {
+          name: `projects/${projectNumber}/apps/${appId}/profilingManagerConfig`,
+          bucket: expectedBucketResourceName,
+          heapDumpCollectionEnabled: true,
+        });
 
       const result = await enableHeapDumpCollection(projectId, appId);
 
       expect(result).to.equal(expectedBucketName);
+      expect(addBucketRoleStub).to.have.been.calledOnceWithExactly(
+        expectedBucketName,
+        getCrashlyticsP4sa(projectNumber),
+        [STORAGE_OBJECT_CREATOR_ROLE],
+      );
       expect(nock.isDone()).to.be.true;
     });
 
-    it("should preserve existing bucket name and disable heap dump collection", async () => {
+    it("should disable heap dump collection via partial updateMask while preserving bucket", async () => {
       nock(crashlyticsApiOrigin())
-        .get(`/v1/projects/${projectNumber}/apps/${appId}/appconfig:profilingManager`)
-        .reply(200, {
-          configuration: {
-            gcsBucket: expectedBucketName,
-            heapDumpCollectionEnabled: true,
-          },
-        });
-      nock(crashlyticsApiOrigin())
-        .post(`/v1/projects/${projectNumber}/apps/${appId}/appconfig:profilingManager`, {
-          projectNumber,
-          gmpAppId: appId,
-          configuration: {
-            gcsBucket: expectedBucketName,
-            heapDumpCollectionEnabled: false,
-          },
+        .patch(resourcePath, {
+          heapDumpCollectionEnabled: false,
         })
-        .reply(200, {});
+        .query({ updateMask: "heapDumpCollectionEnabled" })
+        .reply(200, {
+          name: `projects/${projectNumber}/apps/${appId}/profilingManagerConfig`,
+          bucket: expectedBucketResourceName,
+          heapDumpCollectionEnabled: false,
+        });
 
       await disableHeapDumpCollection(appId);
 

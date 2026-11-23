@@ -23,6 +23,7 @@ export const ENV_DIRECTORY = "extensions";
  *
  * @param specs a list of InstanceSpec to write to the manifest
  * @param config existing config in firebase.json
+ * @param options options for writing to the manifest
  * @param options.nonInteractive will try to do the job without asking for user input.
  * @param options.force only when this flag is true this will overwrite existing .env files
  * @param allowOverwrite allows overwriting the entire manifest with the new specs
@@ -31,7 +32,7 @@ export async function writeToManifest(
   specs: ManifestInstanceSpec[],
   config: Config,
   options: { nonInteractive: boolean; force: boolean },
-  allowOverwrite: boolean = false,
+  allowOverwrite = false,
 ): Promise<void> {
   if (
     config.has("extensions") &&
@@ -209,7 +210,7 @@ export function writeExtensionsToFirebaseJson(specs: ManifestInstanceSpec[], con
   for (const s of specs) {
     let target;
     if (s.ref) {
-      target = refs.toExtensionVersionRef(s.ref!);
+      target = refs.toExtensionVersionRef(s.ref);
     } else if (s.localPath) {
       target = s.localPath;
     } else {

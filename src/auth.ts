@@ -4,11 +4,10 @@ import * as http from "http";
 import * as jwt from "jsonwebtoken";
 import * as opn from "open";
 import * as portfinder from "portfinder";
-import * as url from "url";
 
 import * as apiv2 from "./apiv2";
 import { configstore } from "./configstore";
-import { FirebaseError, getErrMsg } from "./error";
+import { FirebaseError, getErrMsg, getErrStack } from "./error";
 import * as utils from "./utils";
 import { logger } from "./logger";
 import { input } from "./prompt";
@@ -251,8 +250,8 @@ export function setGlobalDefaultAccount(accountOrEmail: string | Account) {
 }
 
 function open(url: string): void {
-  opn(url).catch((err) => {
-    logger.debug("Unable to open URL: " + err.stack);
+  opn(url).catch((err: unknown) => {
+    logger.debug(`Unable to open URL: ${getErrStack(err)}`);
   });
 }
 
@@ -606,12 +605,27 @@ async function loginWithLocalhost<ResultType>(
   getTokens: (queryCode: string, callbackUrl: string) => Promise<ResultType>,
 ): Promise<ResultType> {
   return new Promise<ResultType>((resolve, reject) => {
-    const server = http.createServer(async (req, res) => {
-      const query = url.parse(`${req.url}`, true).query || {};
-      const queryState = query.state;
-      const queryCode = query.code;
+    const server = http.createServer((req, res) => {
+      handleCallback(req, res).catch((err: unknown) => {
+        reject(err);
+        server.close();
+      });
+    });
 
-      if (queryState !== _nonce || typeof queryCode !== "string") {
+    async function handleCallback(
+      req: http.IncomingMessage,
+      res: http.ServerResponse,
+    ): Promise<void> {
+      let searchParams: URLSearchParams;
+      try {
+        searchParams = new URL(req.url || "", callbackUrl).searchParams;
+      } catch {
+        searchParams = new URLSearchParams();
+      }
+      const queryState = searchParams.get("state");
+      const queryCode = searchParams.get("code");
+
+      if (queryState !== _nonce || !queryCode) {
         const html = await readTemplate("loginFailure.html");
         respondHtml(req, res, 400, html);
         reject(new FirebaseError("Unexpected error while logging in"));
@@ -630,7 +644,7 @@ async function loginWithLocalhost<ResultType>(
       }
       server.close();
       return;
-    });
+    }
 
     server.listen(port, () => {
       logger.info();
@@ -821,7 +835,7 @@ async function refreshTokens(
       updateAccount(account);
     }
 
-    return lastAccessToken!;
+    return lastAccessToken;
   } catch (err: any) {
     if (err?.context?.body?.error === "invalid_scope") {
       throw new FirebaseError(

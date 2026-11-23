@@ -27,19 +27,51 @@ export interface PubsubEmulatorArgs {
   auto_download?: boolean;
 }
 
+export const SUBSCRIPTION_CLOSE_TIMEOUT_MS = 2000;
+
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  timeoutMessage: string,
+): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        reject(new Error(timeoutMessage));
+      }, timeoutMs);
+      timer.unref?.();
+    });
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timer !== undefined) {
+      clearTimeout(timer);
+    }
+  }
+}
+
+export interface PubsubSubscription {
+  readonly name: string;
+  close(): Promise<void>;
+}
+
+export interface PubsubClient {
+  close(): Promise<void>;
+}
+
 interface Trigger {
   triggerKey: string;
   signatureType: SignatureType;
 }
 
 export class PubsubEmulator implements EmulatorInstance {
-  private _pubsub: PubSub | undefined;
+  _pubsub?: PubsubClient;
 
   // Map of topic name to a list of functions to trigger
   triggersForTopic: Map<string, Trigger[]>;
 
   // Map of topic name to a PubSub subscription object
-  subscriptionForTopic: Map<string, Subscription>;
+  subscriptionForTopic: Map<string, PubsubSubscription>;
 
   // Client for communicating with the Functions Emulator
   private client?: Client;
@@ -53,7 +85,7 @@ export class PubsubEmulator implements EmulatorInstance {
         projectId: this.args.projectId,
       });
     }
-    return this._pubsub;
+    return this._pubsub as PubSub;
   }
 
   constructor(private args: PubsubEmulatorArgs) {
@@ -71,12 +103,67 @@ export class PubsubEmulator implements EmulatorInstance {
 
   async stop(): Promise<void> {
     try {
-      await downloadableEmulators.stop(Emulators.PUBSUB);
-    } catch (e: unknown) {
-      this.logger.logLabeled("DEBUG", "pubsub", JSON.stringify(e));
-      if (process.platform !== "win32") {
-        const buffer = execSync(PUBSUB_KILL_COMMAND);
-        this.logger.logLabeled("DEBUG", "pubsub", "Pubsub kill output: " + JSON.stringify(buffer));
+      const closePromises = Array.from(this.subscriptionForTopic.values()).map(async (sub) => {
+        try {
+          await withTimeout(
+            sub.close(),
+            SUBSCRIPTION_CLOSE_TIMEOUT_MS,
+            "Timed out waiting " +
+              SUBSCRIPTION_CLOSE_TIMEOUT_MS +
+              "ms for subscription " +
+              sub.name +
+              " to close",
+          );
+        } catch (err: unknown) {
+          this.logger.logLabeled(
+            "DEBUG",
+            "pubsub",
+            "Failed to close subscription " +
+              sub.name +
+              ": " +
+              (err instanceof Error ? err.message : String(err)),
+          );
+        }
+      });
+      await Promise.all(closePromises);
+      this.subscriptionForTopic.clear();
+      this.triggersForTopic.clear();
+
+      if (this._pubsub) {
+        try {
+          await withTimeout(
+            this._pubsub.close(),
+            SUBSCRIPTION_CLOSE_TIMEOUT_MS,
+            "Timed out waiting " + SUBSCRIPTION_CLOSE_TIMEOUT_MS + "ms for pubsub client to close",
+          );
+        } catch (err: unknown) {
+          this.logger.logLabeled(
+            "DEBUG",
+            "pubsub",
+            "Failed to close pubsub client: " + (err instanceof Error ? err.message : String(err)),
+          );
+        }
+        this._pubsub = undefined;
+      }
+    } catch (err: unknown) {
+      this.logger.logLabeled(
+        "DEBUG",
+        "pubsub",
+        "Error during pubsub client cleanup: " + (err instanceof Error ? err.message : String(err)),
+      );
+    } finally {
+      try {
+        await downloadableEmulators.stop(Emulators.PUBSUB);
+      } catch (e: unknown) {
+        this.logger.logLabeled("DEBUG", "pubsub", e instanceof Error ? e.message : String(e));
+        if (process.platform !== "win32") {
+          const buffer = execSync(PUBSUB_KILL_COMMAND);
+          this.logger.logLabeled(
+            "DEBUG",
+            "pubsub",
+            "Pubsub kill output: " + JSON.stringify(buffer),
+          );
+        }
       }
     }
   }
@@ -97,7 +184,7 @@ export class PubsubEmulator implements EmulatorInstance {
     return Emulators.PUBSUB;
   }
 
-  private async maybeCreateTopicAndSub(topicName: string): Promise<Subscription> {
+  async maybeCreateTopicAndSub(topicName: string): Promise<PubsubSubscription> {
     const topic = this.pubsub.topic(topicName);
     try {
       this.logger.logLabeled("DEBUG", "pubsub", `Creating topic: ${topicName}`);
@@ -133,27 +220,30 @@ export class PubsubEmulator implements EmulatorInstance {
     return sub;
   }
 
-  async addTrigger(topicName: string, triggerKey: string, signatureType: SignatureType) {
+  async addTrigger(
+    topicName: string,
+    triggerKey: string,
+    signatureType: SignatureType,
+  ): Promise<void> {
     this.logger.logLabeled(
       "DEBUG",
       "pubsub",
       `addTrigger(${topicName}, ${triggerKey}, ${signatureType})`,
     );
 
-    const sub = await this.maybeCreateTopicAndSub(topicName);
-
     const triggers = this.triggersForTopic.get(topicName) || [];
-    if (
-      triggers.some((t) => t.triggerKey === triggerKey) &&
-      this.subscriptionForTopic.has(topicName)
-    ) {
+    if (triggers.some((t) => t.triggerKey === triggerKey)) {
       this.logger.logLabeled("DEBUG", "pubsub", "Trigger already exists");
       return;
     }
 
+    if (!this.subscriptionForTopic.has(topicName)) {
+      const sub = await this.maybeCreateTopicAndSub(topicName);
+      this.subscriptionForTopic.set(topicName, sub);
+    }
+
     triggers.push({ triggerKey, signatureType });
     this.triggersForTopic.set(topicName, triggers);
-    this.subscriptionForTopic.set(topicName, sub);
   }
 
   private ensureFunctionsClient() {

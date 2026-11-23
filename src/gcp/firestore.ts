@@ -174,7 +174,7 @@ export async function getDatabase(
  */
 export function listCollectionIds(
   project: string,
-  databaseId: string = "(default)",
+  databaseId = "(default)",
   emulatorUrl?: string,
 ): Promise<string[]> {
   const apiClient = getClient(emulatorUrl);
@@ -198,7 +198,7 @@ export function listCollectionIds(
 export async function getDocuments(
   project: string,
   paths: string[],
-  databaseId: string = "(default)",
+  databaseId = "(default)",
   emulatorUrl?: string,
 ): Promise<{ documents: FirestoreDocument[]; missing: string[] }> {
   const apiClient = getClient(emulatorUrl);
@@ -223,7 +223,7 @@ export async function getDocuments(
 export async function queryCollection(
   project: string,
   structuredQuery: StructuredQuery,
-  databaseId: string = "(default)",
+  databaseId = "(default)",
   emulatorUrl?: string,
 ): Promise<{ documents: FirestoreDocument[] }> {
   const apiClient = getClient(emulatorUrl);
@@ -283,7 +283,7 @@ export async function deleteDocument(doc: any, emulatorUrl?: string): Promise<an
 export async function deleteDocuments(
   project: string,
   docs: any[],
-  databaseId: string = "(default)",
+  databaseId = "(default)",
   emulatorUrl?: string,
 ): Promise<number> {
   const apiClient = getClient(emulatorUrl);

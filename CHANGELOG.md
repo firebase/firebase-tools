@@ -1,3 +1,3 @@
-- Ensured the Firebase Hosting API is enabled before deploying and running other Hosting commands.
+- Added defensive JVM flags (`-XX:+IgnoreUnrecognizedVMOptions -XX:UseAVX=2`) when starting Java-based emulators to mitigate CVE-2026-114938 on unpatched OpenJDK 17.0.6+ runtimes.
+- Updated Firebase Hosting custom domain lookup to use the public `/customDomains` API endpoint instead of `/domains`.
 - Fixed `.env` values written by the CLI for function params and extensions being truncated at `#`, trimmed, or split across lines when read back.
-- Fixed an issue where the Firebase MCP server always suggested `npx firebase-tools@latest` even when the `firebase` CLI was installed.

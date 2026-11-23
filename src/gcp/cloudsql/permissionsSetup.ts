@@ -105,7 +105,7 @@ export async function setupSQLPermissions(
   databaseId: string,
   schemaInfo: SchemaMetadata,
   options: Options,
-  silent: boolean = false,
+  silent = false,
 ): Promise<SchemaSetupStatus.BrownField | SchemaSetupStatus.GreenField> {
   const logFn = silent
     ? logger.debug
@@ -325,7 +325,7 @@ export async function setupBrownfieldAsGreenfield(
   databaseId: string,
   schemaInfo: SchemaMetadata,
   options: Options,
-  silent: boolean = false,
+  silent = false,
 ) {
   const schema = schemaInfo.name;
 
@@ -377,7 +377,7 @@ export async function brownfieldSqlSetup(
   databaseId: string,
   schemaInfo: SchemaMetadata,
   options: Options,
-  silent: boolean = false,
+  silent = false,
 ) {
   const schema = schemaInfo.name;
 

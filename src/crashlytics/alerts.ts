@@ -54,6 +54,7 @@ export async function generateAlertPolicy(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "x-goog-user-project": projectId,
       },
       path: `/projects/${projectId}/apps/${appId}:generateAlertPolicy`,
       body: { alertType },
@@ -189,7 +190,7 @@ export async function enableAlerts(
       exit: 1,
     });
   }
-  const results = await Promise.allSettled(
+  return await Promise.all(
     alertTypes.map(async (alertType) => {
       const { policy } = await enableAlert(projectId, appId, alertType, {
         channelName,
@@ -197,13 +198,4 @@ export async function enableAlerts(
       return policy;
     }),
   );
-  const policies: AlertPolicy[] = [];
-  for (const res of results) {
-    if (res.status === "fulfilled") {
-      policies.push(res.value);
-    } else {
-      logger.debug(`[crashlytics] Failed to enable alert: ${getErrMsg(res.reason)}`);
-    }
-  }
-  return policies;
 }

@@ -11,24 +11,12 @@ that the functionality might change in backward-incompatible ways. A preview
 release is not subject to any SLA or deprecation policy and may receive limited
 or no support.
 
-Caution: For Nuxt developers, new participation in the {{hosting}}
+Caution: For Nuxt developers, new participation in the Hosting
 frameworks experiment has been closed permanently. If you're already using the
 frameworks experiment in the Firebase CLI, we recommend "graduating" to
-{{app_hosting}}. With {{app_hosting}}, you'll have a unified solution to manage
+App Hosting. With App Hosting, you'll have a unified solution to manage
 everything from CDN to server-side rendering, along with improved GitHub
 integration.
-
-## Before you begin
-
-Before you get started deploying your app to Firebase,
-review the following requirements and options:
-
-- Firebase CLI version 12.1.0 or later. Make sure to
-  [install the CLI](https://firebase.google.com/docs/cli#install_the_firebase_cli)
-  using your preferred method.
-- Optional: Billing enabled on your Firebase project
-  (required if you plan to use SSR)
-- An existing Nuxt (version 3+) project. You can create one with `npx nuxi@latest init <project-name>`.
 
 
 ## Deployment

@@ -12,7 +12,11 @@ firebase setup:emulators:storage
 
 # Ensure Puppeteer browser is installed for conformance tests
 if [ -z "$PUPPETEER_EXECUTABLE_PATH" ]; then
-  node node_modules/puppeteer/install.js
+  if [ -f node_modules/puppeteer/install.mjs ]; then
+    node node_modules/puppeteer/install.mjs
+  elif [ -f node_modules/puppeteer/install.js ]; then
+    node node_modules/puppeteer/install.js
+  fi
 fi
 
 # Determine port check method once globally.
@@ -50,20 +54,20 @@ wait_for_emulators_shutdown() {
   done
 }
 
-mocha scripts/storage-emulator-integration/internal/tests.ts
+mocha --exit scripts/storage-emulator-integration/internal/tests.ts
 
 wait_for_emulators_shutdown
 
-mocha scripts/storage-emulator-integration/rules/*.test.ts
+mocha --exit scripts/storage-emulator-integration/rules/*.test.ts
 
 wait_for_emulators_shutdown
 
-mocha scripts/storage-emulator-integration/import/tests.ts
+mocha --exit scripts/storage-emulator-integration/import/tests.ts
 
 wait_for_emulators_shutdown
 
-mocha scripts/storage-emulator-integration/multiple-targets/tests.ts
+mocha --exit scripts/storage-emulator-integration/multiple-targets/tests.ts
 
 wait_for_emulators_shutdown
 
-mocha scripts/storage-emulator-integration/conformance/*.test.ts
+mocha --exit scripts/storage-emulator-integration/conformance/*.test.ts

@@ -14,6 +14,7 @@ module.exports = {
   rules: {
     "jsdoc/newline-after-description": "off",
     "jsdoc/require-jsdoc": ["warn", { publicOnly: true }],
+    "no-constant-condition": ["error", { checkLoops: false }], // Allow intentional `while (true)` and `do ... while (true)` loops.
     "no-restricted-globals": ["error", "name", "length"],
     "prefer-arrow-callback": "error",
     "prettier/prettier": "error",
@@ -30,7 +31,6 @@ module.exports = {
         ],
       },
     ],
-    "no-useless-escape": "warn", // TODO(bkendall): remove, allow to error.
   },
   overrides: [
     {
@@ -52,23 +52,15 @@ module.exports = {
         camelcase: ["error", { properties: "never" }], // snake_case allowed in properties iif to satisfy an external contract / style
 
         "@typescript-eslint/explicit-function-return-type": ["warn", { allowExpressions: true }], // TODO(bkendall): SET to error.
-        "@typescript-eslint/no-extra-non-null-assertion": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-floating-promises": "warn", // TODO(bkendall): remove, allow to error.
-        "@typescript-eslint/no-inferrable-types": "warn", // TODO(bkendall): remove, allow to error.
-        "@typescript-eslint/no-misused-promises": "warn", // TODO(bkendall): remove, allow to error.
-        "@typescript-eslint/no-unnecessary-type-assertion": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-unsafe-argument": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-unsafe-assignment": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-unsafe-call": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-unsafe-member-access": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-unsafe-return": "warn", // TODO(bkendall): remove, allow to error.
-        "@typescript-eslint/no-use-before-define": ["warn", { functions: false, typedefs: false }], // TODO(bkendall): change to error.
         "@typescript-eslint/no-var-requires": "warn", // TODO(bkendall): remove, allow to error.
-        "@typescript-eslint/prefer-regexp-exec": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/restrict-plus-operands": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/restrict-template-expressions": "warn", // TODO(bkendall): remove, allow to error.
-        "no-constant-condition": "warn", // TODO(bkendall): remove, allow to error.
-        "no-fallthrough": "warn", // TODO(bkendall): remove, allow to error.
       },
     },
     {
@@ -84,10 +76,8 @@ module.exports = {
         "@typescript-eslint/no-unsafe-call": "off",
         "@typescript-eslint/no-unsafe-member-access": "off",
         "@typescript-eslint/no-unsafe-return": "off",
-        "@typescript-eslint/no-use-before-define": "off",
         "@typescript-eslint/no-var-requires": "off",
         "@typescript-eslint/prefer-includes": "off",
-        "@typescript-eslint/prefer-regexp-exec": "off",
         "@typescript-eslint/restrict-plus-operands": "off",
         "@typescript-eslint/restrict-template-expressions": "off",
         "@typescript-eslint/unbound-method": "off",
@@ -101,7 +91,17 @@ module.exports = {
       env: {
         mocha: true,
       },
-      rules: {},
+      rules: {
+        "no-restricted-syntax": [
+          "error",
+          {
+            selector:
+              "CallExpression[callee.object.name='nock'][callee.property.name='enableNetConnect'][arguments.length=0]",
+            message:
+              "Unscoped nock.enableNetConnect() is prohibited in unit tests. Net-connect policies are managed globally by mocha-bootstrap.js. If specific host matching is required, provide an explicit host matcher argument.",
+          },
+        ],
+      },
     },
     {
       files: ["src/mcp/tools/**/*.ts", "src/mcp/prompts/**/*.ts", "src/mcp/resources/**/*.ts"],

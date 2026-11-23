@@ -532,7 +532,9 @@ async function ensureSecret(
     const promptMessage = `Enter ${secretParam.format === "json" ? "a JSON value" : "a value"} for ${label}:`;
     const secretValue = await password({
       message: promptMessage,
+      validate: (val: string) => (val !== "" ? true : "Secrets cannot have an empty value."),
     });
+
     if (secretParam.format === "json") {
       validateJsonSecret(secretParam.name, secretValue);
     }

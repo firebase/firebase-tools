@@ -82,7 +82,7 @@ export class HubExport {
     if (!fs.existsSync(metadataPath)) {
       return undefined;
     }
-    let mdString: string = "";
+    let mdString = "";
     try {
       mdString = fs.readFileSync(metadataPath, "utf8").toString();
       return JSON.parse(mdString) as ExportMetadata;
@@ -178,7 +178,7 @@ export class HubExport {
     const firestoreExportBody = {
       database: `projects/${this.projectId}/databases/(default)`,
       export_directory: this.tmpDir,
-      export_name: metadata.firestore!!.path,
+      export_name: metadata.firestore!.path,
     };
 
     await EmulatorRegistry.client(Emulators.FIRESTORE).post(

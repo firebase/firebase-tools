@@ -12,8 +12,16 @@ import { Account } from "../types/auth";
 import { logger } from "../logger";
 import { trackEmulator } from "../track";
 import { Constants } from "./constants";
-import { EmulatorInfo, EmulatorInstance, Emulators, FunctionsExecutionMode } from "./types";
+import { IPV4_LOOPBACK, IPV4_UNSPECIFIED, IPV6_LOOPBACK, IPV6_UNSPECIFIED } from "./dns";
+import {
+  EmulatorInfo,
+  EmulatorInstance,
+  Emulators,
+  FunctionsExecutionMode,
+  ListenSpec,
+} from "./types";
 import * as chokidar from "chokidar";
+import * as minimatch from "minimatch";
 import * as portfinder from "portfinder";
 
 import * as spawn from "cross-spawn";
@@ -41,7 +49,7 @@ import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 import { RuntimeWorker, RuntimeWorkerPool } from "./functionsRuntimeWorker";
 import { PubsubEmulator } from "./pubsubEmulator";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
 import { WorkQueue, Work } from "./workQueue";
 import { allSettled, connectableHostname, createDestroyer, debounce, randomInt } from "../utils";
 import {
@@ -186,6 +194,93 @@ interface EmulatedTriggerRecord {
   ignored: boolean;
 
   url?: string;
+}
+
+export function createIgnoredFilter(ignore?: string[]): chokidar.Matcher[] {
+  const ignored: chokidar.Matcher[] = [
+    /(^|[/\\])\../, // Ignore hidden files/dirs (covers .dart_tool, .git, etc.)
+    /.+\.log/, // Ignore log files
+    /.+?[\\/]node_modules[\\/].+?/, // Ignore node_modules
+    /.+?[\\/]venv[\\/].+?/, // Ignore venv
+  ];
+  if (ignore) {
+    const minimatchInstances = ignore.map((pattern) => {
+      const p = pattern.startsWith("**/") ? pattern : `**/${pattern}`;
+      return new minimatch.Minimatch(p, { dot: true });
+    });
+    ignored.push((filePath: string) => {
+      const normalized = filePath.replace(/\\/g, "/");
+      return minimatchInstances.some((m) => m.match(normalized));
+    });
+  }
+  return ignored;
+}
+
+const LOOPBACK_AND_WILDCARD_HOSTS: readonly string[] = [
+  "localhost",
+  IPV4_LOOPBACK.address,
+  IPV6_LOOPBACK.address,
+  IPV4_UNSPECIFIED.address,
+  IPV6_UNSPECIFIED.address,
+];
+
+function addOrigin(
+  origins: Set<string>,
+  options: { protocol: "http" | "https"; host: string; port?: number },
+): void {
+  const { protocol, host, port } = options;
+  const formattedHost = host.includes(":") && !host.startsWith("[") ? `[${host}]` : host;
+  const portSuffix = port !== undefined ? `:${port}` : "";
+  try {
+    origins.add(new URL(`${protocol}://${formattedHost}${portSuffix}`).origin);
+  } catch {
+    // Ignore malformed hostnames from environment configuration.
+  }
+}
+
+/**
+ * Returns the browser origins allowed to make cross-origin requests to
+ * Emulator UI-only endpoints (such as GET /backends).
+ */
+export function getAllowedEmulatorUIOrigins(): string[] {
+  const uiInfo = EmulatorRegistry.getInfo(Emulators.UI);
+  if (!uiInfo) {
+    return [];
+  }
+
+  const origins = new Set<string>();
+  const specs: readonly ListenSpec[] = uiInfo.listen?.length
+    ? uiInfo.listen
+    : [
+        {
+          address: uiInfo.host,
+          port: uiInfo.port,
+          family: uiInfo.host.includes(":") ? "IPv6" : "IPv4",
+        },
+      ];
+
+  for (const spec of specs) {
+    const { address, port } = spec;
+    if (LOOPBACK_AND_WILDCARD_HOSTS.includes(address)) {
+      addOrigin(origins, { protocol: "http", host: "localhost", port });
+      addOrigin(origins, { protocol: "http", host: IPV4_LOOPBACK.address, port });
+      addOrigin(origins, { protocol: "http", host: IPV6_LOOPBACK.address, port });
+    } else {
+      addOrigin(origins, { protocol: "http", host: address, port });
+    }
+
+    if (process.env.WEB_HOST) {
+      addOrigin(origins, { protocol: "https", host: `${port}-${process.env.WEB_HOST}` });
+    }
+    if (process.env.CODESPACE_NAME && process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN) {
+      addOrigin(origins, {
+        protocol: "https",
+        host: `${process.env.CODESPACE_NAME}-${port}.${process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}`,
+      });
+    }
+  }
+
+  return Array.from(origins);
 }
 
 export class FunctionsEmulator implements EmulatorInstance {
@@ -389,6 +484,24 @@ export class FunctionsEmulator implements EmulatorInstance {
       res.json({ status: "multicast_acknowledged" });
     };
 
+    const rejectDisallowedBackendsOrigin: express.RequestHandler = (req, res, next) => {
+      const origin = req.headers.origin;
+      if (origin && !getAllowedEmulatorUIOrigins().includes(origin)) {
+        res.status(403).json({
+          message: `/backends cannot be accessed by external callers.`,
+        });
+        return;
+      }
+      next();
+    };
+
+    const listBackendsCors = cors({
+      origin: (origin, callback) => {
+        // Non-browser callers omit Origin; allowed Origins already passed rejectDisallowedBackendsOrigin.
+        callback(null, Boolean(origin));
+      },
+    });
+
     const listBackendsHandler: express.RequestHandler = (req, res) => {
       res.json({ backends: this.getBackendInfo() });
     };
@@ -396,7 +509,13 @@ export class FunctionsEmulator implements EmulatorInstance {
     // The ordering here is important. The longer routes (background)
     // need to be registered first otherwise the HTTP functions consume
     // all events.
-    hub.get(listBackendsRoute, cors({ origin: true }), listBackendsHandler); // This route needs CORS so the Emulator UI can call it.
+    hub.options(listBackendsRoute, rejectDisallowedBackendsOrigin, listBackendsCors);
+    hub.get(
+      listBackendsRoute,
+      rejectDisallowedBackendsOrigin,
+      listBackendsCors,
+      listBackendsHandler,
+    ); // This route needs CORS so the Emulator UI can call it.
     hub.post(backgroundFunctionRoute, dataMiddleware, httpsHandler);
     hub.post(multicastFunctionRoute, dataMiddleware, multicastHandler);
     hub.all(httpsFunctionRoutes, dataMiddleware, httpsHandler);
@@ -513,7 +632,15 @@ export class FunctionsEmulator implements EmulatorInstance {
           "functions",
           `Starting build_runner watch for Dart functions...`,
         );
-        const debouncedLoadTriggers = debounce(() => this.loadTriggers(backend), 1000);
+        const debouncedLoadTriggers = debounce(() => {
+          this.loadTriggers(backend).catch((err: unknown) =>
+            this.logger.logLabeled(
+              "WARN",
+              "functions",
+              `Failed to reload triggers: ${getErrMsg(err)}`,
+            ),
+          );
+        }, 1000);
         const cleanup = await delegate.watch(() => {
           this.logger.log("DEBUG", "build_runner rebuilt, reloading triggers");
           debouncedLoadTriggers();
@@ -522,22 +649,24 @@ export class FunctionsEmulator implements EmulatorInstance {
         this.logger.logLabeled("SUCCESS", "functions", `build_runner initial build completed`);
       } else {
         const watcher = chokidar.watch(backend.functionsDir, {
-          ignored: [
-            /(^|[\/\\])\../, // Ignore hidden files/dirs (covers .dart_tool, .git, etc.)
-            /.+\.log/, // Ignore log files
-            /.+?[\\\/]node_modules[\\\/].+?/, // Ignore node_modules
-            /.+?[\\\/]venv[\\\/].+?/, // Ignore venv
-            ...(backend.ignore?.map((i) => `**/${i}`) ?? []),
-          ],
+          ignored: createIgnoredFilter(backend.ignore),
           persistent: true,
         });
 
         this.watchers.push(watcher);
 
-        const debouncedLoadTriggers = debounce(() => this.loadTriggers(backend), 1000);
+        const debouncedLoadTriggers = debounce(() => {
+          this.loadTriggers(backend).catch((err: unknown) =>
+            this.logger.logLabeled(
+              "WARN",
+              "functions",
+              `Failed to reload triggers: ${getErrMsg(err)}`,
+            ),
+          );
+        }, 1000);
         watcher.on("change", (filePath) => {
           this.logger.log("DEBUG", `File ${filePath} changed, reloading triggers`);
-          return debouncedLoadTriggers();
+          debouncedLoadTriggers();
         });
       }
     }
@@ -1933,7 +2062,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     // req.url = /:projectId/:region/:trigger_name/*
     const url = new URL(`${req.protocol}://${req.hostname}${req.url}`);
     let path = `${url.pathname}${url.search}`.replace(
-      new RegExp(`\/${this.args.projectId}\/[^\/]*\/${req.params.trigger_name}\/?`),
+      new RegExp(`/${this.args.projectId}/[^/]*/${req.params.trigger_name}/?`),
       "/",
     );
 

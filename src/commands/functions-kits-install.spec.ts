@@ -20,7 +20,6 @@ describe("functions:kits:install", () => {
     sinon.stub(command, "prepare").resolves();
     assertEnabledStub = sinon.stub(experiments, "assertEnabled");
     installKitOrInstanceStub = sinon.stub(kits, "installKitOrInstance").resolves({
-      action: "installedKit",
       kitId: "firestore-bigquery-export",
       instanceId: "firestore-bigquery-export",
     });

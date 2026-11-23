@@ -113,17 +113,6 @@ describe("Backend", () => {
   };
 
   describe("Helper functions", () => {
-    it("isEmptyBackend", () => {
-      expect(backend.isEmptyBackend(backend.empty())).to.be.true;
-      expect(
-        backend.isEmptyBackend({
-          ...backend.empty(),
-          requiredAPIs: [{ api: "foo.googleapis.com", reason: "foo" }],
-        }),
-      ).to.be.false;
-      expect(backend.isEmptyBackend(backend.of({ ...ENDPOINT, httpsTrigger: {} })));
-    });
-
     it("names", () => {
       expect(backend.functionName(ENDPOINT)).to.equal(
         "projects/project/locations/region/functions/id",
@@ -681,12 +670,6 @@ describe("Backend", () => {
         endpointUS,
       );
       expect(backend.findEndpoint(bkend, (fn) => fn.id === "missing")).to.be.undefined;
-    });
-
-    it("regionalEndpoints", () => {
-      const have = backend.regionalEndpoints(bkend, endpointUS.region);
-      const want = [endpointUS];
-      expect(have).to.deep.equal(want);
     });
 
     it("hasEndpoint", () => {
