@@ -87,10 +87,9 @@ const CHARACTERS_TO_ESCAPE_SEQUENCES: Record<string, string> = {
   "\t": "\\t",
   "\v": "\\v",
   "\\": "\\\\",
-  "'": "\\'",
   '"': '\\"',
 };
-const ALL_ESCAPABLE_CHARACTERS_RE = /[\n\r\t\v\\'"]/g;
+const ALL_ESCAPABLE_CHARACTERS_RE = /[\n\r\t\v\\"]/g;
 
 interface ParseResult {
   envs: Record<string, string>;
@@ -410,8 +409,9 @@ export function formatUserEnvForWrite(key: string, value: string): string {
     ALL_ESCAPABLE_CHARACTERS_RE,
     (match) => CHARACTERS_TO_ESCAPE_SEQUENCES[match],
   );
-  // Unquoted values end at "#" and lose surrounding whitespace when parsed.
-  if (escapedValue !== value || /#|^\s|\s$/.test(value)) {
+  // Unquoted values end at "#", lose surrounding whitespace, and can be mistaken for single-quoted
+  // values when parsed. "'" is left unescaped because most dotenv parsers keep "\'" literally.
+  if (escapedValue !== value || /[#']|^\s|\s$/.test(value)) {
     return `${key}="${escapedValue}"`;
   }
   return `${key}=${escapedValue}`;

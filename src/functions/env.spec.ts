@@ -648,6 +648,9 @@ FOO=foo
           HASH: "https://example.com/#/home",
           LEADING_SPACE: "  foo",
           TRAILING_SPACE: "foo  ",
+          SINGLE_QUOTED: "'foo'",
+          LEADING_QUOTE: "'foo",
+          TRAILING_QUOTE: "foo'",
         },
         {
           projectId: "project",
@@ -667,6 +670,22 @@ FOO=foo
       expect(envs["TRAILING_SPACE"]).to.equal("foo  ");
       expect(envs["TRAILING_BACKSLASH"]).to.equal("C:\\foo\\");
       expect(envs["COLOR"]).to.equal("#ff0000");
+      expect(envs["SINGLE_QUOTED"]).to.equal("'foo'");
+      expect(envs["LEADING_QUOTE"]).to.equal("'foo");
+      expect(envs["TRAILING_QUOTE"]).to.equal("foo'");
+    });
+
+    it("writes single quotes without escaping them", () => {
+      env.writeUserEnvs(
+        { FOO: "it's" },
+        {
+          projectId: "project",
+          projectAlias: "alias",
+          projectDir: projectTmpdir,
+          functionsSource: tmpdir,
+        },
+      );
+      expect(fs.readFileSync(path.join(tmpdir, ".env.project"), "utf8")).to.equal('FOO="it\'s"\n');
     });
 
     it("shouldn't write anything if any of the keys fails key format validation", () => {
