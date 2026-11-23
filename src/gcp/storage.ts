@@ -735,3 +735,30 @@ export async function addServiceAccountToBucketRoles(
     },
   );
 }
+
+/**
+ * Deletes an empty storage bucket on GCP.
+ * Ref: https://cloud.google.com/storage/docs/json_api/v1/buckets/delete
+ * @param bucketName name of the storage bucket
+ */
+export async function deleteBucket(bucketName: string): Promise<void> {
+  try {
+    const localAPIClient = new Client({ urlPrefix: storageOrigin() });
+    await localAPIClient.delete(`/storage/v1/b/${bucketName}`);
+  } catch (err: unknown) {
+    const error = getError(err);
+    const detail = extractApiErrorMessage(err) || error.message;
+    throw new FirebaseError(
+      detail
+        ? `Failed to delete the storage bucket: ${detail}`
+        : "Failed to delete the storage bucket",
+      {
+        original: error,
+        status: getErrStatus(err),
+        context: isObject(err) ? err.context : undefined,
+        children: isObject(err) && Array.isArray(err.children) ? err.children : undefined,
+        exit: isObject(err) && typeof err.exit === "number" ? err.exit : undefined,
+      },
+    );
+  }
+}
