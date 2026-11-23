@@ -13,6 +13,7 @@ import * as promptModule from "../prompt";
 import { logger } from "../logger";
 import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
+import * as utils from "../utils";
 
 describe("crashlytics:heapdumps commands", () => {
   const projectId = "test-project";
@@ -59,13 +60,23 @@ describe("crashlytics:heapdumps commands", () => {
   describe("crashlytics:heapdumps:enable", () => {
     let checkBillingStub: sinon.SinonStub;
     let enableCollectionStub: sinon.SinonStub;
+    let getConfigStub: sinon.SinonStub;
+    let inspectBucketStub: sinon.SinonStub;
     let confirmStub: sinon.SinonStub;
 
     beforeEach(() => {
       checkBillingStub = sinon.stub(cloudbilling, "checkBillingEnabled").resolves(true);
-      enableCollectionStub = sinon
-        .stub(profilingManager, "enableHeapDumpCollection")
-        .resolves(bucketName);
+      enableCollectionStub = sinon.stub(profilingManager, "enableHeapDumpCollection").resolves({
+        bucketName,
+        exists: true,
+        location: "US-EAST1",
+        fileTtlDays: profilingManager.DEFAULT_FILE_TTL_DAYS,
+      });
+      getConfigStub = sinon.stub(profilingManager, "getProfilingManagerConfig").resolves(undefined);
+      inspectBucketStub = sinon.stub(profilingManager, "inspectHeapDumpBucket").resolves({
+        bucketName,
+        exists: false,
+      });
       confirmStub = sinon.stub(promptModule, "confirm").resolves(true);
     });
 
@@ -89,13 +100,66 @@ describe("crashlytics:heapdumps commands", () => {
       const result: unknown = await enableCommand.runner()({
         project: projectId,
         app: appId,
+        interactive: true,
       });
 
       expect(result).to.be.undefined;
+      expect(inspectBucketStub).to.have.been.calledOnceWith(bucketName);
       expect(enableCollectionStub).to.not.have.been.called;
     });
 
-    it("should abort in non-interactive mode when --force is omitted", async () => {
+    it("should display existing bucket name, actual location, and custom TTL in interactive prompt", async () => {
+      const suffixedBucket = `${bucketName}-a1b2c3`;
+      getConfigStub.resolves({
+        bucket: `projects/_/buckets/${suffixedBucket}`,
+        heapDumpCollectionEnabled: false,
+      });
+      inspectBucketStub.resolves({
+        bucketName: suffixedBucket,
+        exists: true,
+        location: "US-CENTRAL1",
+        fileTtlDays: 30,
+      });
+      enableCollectionStub.resolves({
+        bucketName: suffixedBucket,
+        exists: true,
+        location: "US-CENTRAL1",
+        fileTtlDays: 30,
+      });
+      const loggerInfoSpy = sinon.spy(logger, "info");
+
+      const result: unknown = await enableCommand.runner()({
+        project: projectId,
+        app: appId,
+        interactive: true,
+      });
+
+      expect(confirmStub).to.have.been.calledOnceWith(
+        sinon.match({
+          message: `Enable Crashlytics heap dump collection for ${appId} using existing Cloud Storage bucket '${suffixedBucket}' in US-CENTRAL1 (with 30-day file TTL)?`,
+        }),
+      );
+      expect(enableCollectionStub).to.have.been.calledOnceWith(
+        projectId,
+        appId,
+        undefined,
+        suffixedBucket,
+      );
+      expect(result).to.deep.equal({
+        appId,
+        bucketName: suffixedBucket,
+        location: "US-CENTRAL1",
+        fileTtlDays: 30,
+        heapDumpCollectionEnabled: true,
+      });
+      const loggedMessages = loggerInfoSpy.args.map((args) => args.map(String).join(" "));
+      expect(loggedMessages.some((msg) => msg.includes(suffixedBucket))).to.be.true;
+      expect(loggedMessages.some((msg) => msg.includes("US-CENTRAL1"))).to.be.true;
+      expect(loggedMessages.some((msg) => msg.includes("30 days"))).to.be.true;
+      expect(loggedMessages.some((msg) => msg.includes("90 days"))).to.be.false;
+    });
+
+    it("should abort in non-interactive mode with actionable --force guidance when --force is omitted", async () => {
       confirmStub.restore();
 
       await expect(
@@ -104,8 +168,10 @@ describe("crashlytics:heapdumps commands", () => {
           app: appId,
           nonInteractive: true,
         }),
-      ).to.be.rejectedWith(FirebaseError, "cannot be answered in non-interactive mode");
+      ).to.be.rejectedWith(FirebaseError, "Re-run with '--force'");
 
+      expect(getConfigStub).to.not.have.been.called;
+      expect(inspectBucketStub).to.not.have.been.called;
       expect(enableCollectionStub).to.not.have.been.called;
     });
 
@@ -127,8 +193,10 @@ describe("crashlytics:heapdumps commands", () => {
             project: projectId,
             app: appId,
           }),
-        ).to.be.rejectedWith(FirebaseError, "cannot be answered in non-interactive mode");
+        ).to.be.rejectedWith(FirebaseError, "Re-run with '--force'");
 
+        expect(getConfigStub).to.not.have.been.called;
+        expect(inspectBucketStub).to.not.have.been.called;
         expect(enableCollectionStub).to.not.have.been.called;
       } finally {
         sinon.restore();
@@ -151,16 +219,28 @@ describe("crashlytics:heapdumps commands", () => {
       expect(result).to.deep.equal({
         appId,
         bucketName,
+        location: "US-EAST1",
+        fileTtlDays: profilingManager.DEFAULT_FILE_TTL_DAYS,
         heapDumpCollectionEnabled: true,
       });
+      expect(getConfigStub).to.not.have.been.called;
+      expect(inspectBucketStub).to.not.have.been.called;
       expect(enableCollectionStub).to.have.been.calledOnceWith(
         projectId,
         appId,
-        profilingManager.DEFAULT_BUCKET_LOCATION,
+        undefined,
+        undefined,
       );
     });
 
     it("should successfully provision bucket, grant P4SA role, and enable collection", async () => {
+      enableCollectionStub.resolves({
+        bucketName,
+        exists: true,
+        location: "US-CENTRAL1",
+        fileTtlDays: profilingManager.DEFAULT_FILE_TTL_DAYS,
+      });
+
       const result: unknown = await enableCommand.runner()({
         project: projectId,
         app: appId,
@@ -171,11 +251,18 @@ describe("crashlytics:heapdumps commands", () => {
       expect(result).to.deep.equal({
         appId,
         bucketName,
+        location: "US-CENTRAL1",
+        fileTtlDays: profilingManager.DEFAULT_FILE_TTL_DAYS,
         heapDumpCollectionEnabled: true,
       });
 
       expect(checkBillingStub).to.have.been.calledWith(projectId);
-      expect(enableCollectionStub).to.have.been.calledOnceWith(projectId, appId, "us-central1");
+      expect(enableCollectionStub).to.have.been.calledOnceWith(
+        projectId,
+        appId,
+        "us-central1",
+        undefined,
+      );
     });
 
     it("should log the Crashlytics console URL using android:<packageName>/issues instead of GMP appId", async () => {
@@ -218,7 +305,7 @@ describe("crashlytics:heapdumps commands", () => {
       expect(loggedMessages.some((msg) => msg.includes(`/crashlytics/app/${appId}`))).to.be.false;
     });
 
-    it("should default location to DEFAULT_BUCKET_LOCATION when location option is empty", async () => {
+    it("should treat empty location option as unspecified", async () => {
       await enableCommand.runner()({
         project: projectId,
         app: appId,
@@ -229,7 +316,8 @@ describe("crashlytics:heapdumps commands", () => {
       expect(enableCollectionStub).to.have.been.calledOnceWith(
         projectId,
         appId,
-        profilingManager.DEFAULT_BUCKET_LOCATION,
+        undefined,
+        undefined,
       );
     });
 
@@ -349,11 +437,29 @@ describe("crashlytics:heapdumps commands", () => {
   });
 
   describe("crashlytics:heapdumps:status", () => {
-    it("should return the status and configuration when enabled", async () => {
+    let inspectBucketStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      inspectBucketStub = sinon.stub(profilingManager, "inspectHeapDumpBucket").resolves({
+        bucketName,
+        exists: true,
+        location: "US-EAST1",
+        fileTtlDays: profilingManager.DEFAULT_FILE_TTL_DAYS,
+      });
+    });
+
+    it("should strip projects/_/buckets/ prefix and include live location and custom TTL", async () => {
       sinon.stub(profilingManager, "getProfilingManagerConfig").resolves({
-        bucket: bucketName,
+        bucket: `projects/_/buckets/${bucketName}`,
         heapDumpCollectionEnabled: true,
       });
+      inspectBucketStub.resolves({
+        bucketName,
+        exists: true,
+        location: "US-CENTRAL1",
+        fileTtlDays: 30,
+      });
+      const loggerInfoSpy = sinon.spy(logger, "info");
 
       const result: unknown = await statusCommand.runner()({
         project: projectId,
@@ -362,9 +468,77 @@ describe("crashlytics:heapdumps commands", () => {
 
       expect(result).to.deep.equal({
         appId,
-        bucket: bucketName,
+        bucketName,
+        bucketExists: true,
+        location: "US-CENTRAL1",
+        fileTtlDays: 30,
         heapDumpCollectionEnabled: true,
       });
+      expect(inspectBucketStub).to.have.been.calledOnceWith(bucketName);
+      const output = loggerInfoSpy.args.map((args) => args.map(String).join(" ")).join("\n");
+      expect(output).to.include(bucketName);
+      expect(output).to.not.include("projects/_/buckets/");
+      expect(output).to.include("US-CENTRAL1");
+      expect(output).to.include("30 days");
+    });
+
+    it("should warn and report bucketExists: false when the configured bucket has been deleted", async () => {
+      sinon.stub(profilingManager, "getProfilingManagerConfig").resolves({
+        bucket: `projects/_/buckets/${bucketName}`,
+        heapDumpCollectionEnabled: true,
+      });
+      inspectBucketStub.resolves({
+        bucketName,
+        exists: false,
+      });
+      const logWarningStub = sinon.stub(utils, "logLabeledWarning");
+      const loggerInfoSpy = sinon.spy(logger, "info");
+
+      const result: unknown = await statusCommand.runner()({
+        project: projectId,
+        app: appId,
+      });
+
+      expect(result).to.deep.equal({
+        appId,
+        bucketName,
+        bucketExists: false,
+        heapDumpCollectionEnabled: true,
+      });
+      expect(logWarningStub).to.have.been.calledOnceWith(
+        "crashlytics",
+        sinon.match((msg: string) => msg.includes(bucketName) && msg.includes("not found")),
+      );
+      const output = loggerInfoSpy.args.map((args) => args.map(String).join(" ")).join("\n");
+      expect(output).to.include("Enabled (bucket missing)");
+      expect(output).to.include("(not found)");
+    });
+
+    it("should warn without failing when GCS metadata cannot be inspected (e.g., 403)", async () => {
+      sinon.stub(profilingManager, "getProfilingManagerConfig").resolves({
+        bucket: `projects/_/buckets/${bucketName}`,
+        heapDumpCollectionEnabled: true,
+      });
+      inspectBucketStub.resolves({
+        bucketName,
+        warning: "Failed to obtain the storage bucket: Permission denied",
+      });
+      const logWarningStub = sinon.stub(utils, "logLabeledWarning");
+
+      const result: unknown = await statusCommand.runner()({
+        project: projectId,
+        app: appId,
+      });
+
+      expect(result).to.deep.equal({
+        appId,
+        bucketName,
+        heapDumpCollectionEnabled: true,
+      });
+      expect(logWarningStub).to.have.been.calledOnceWith(
+        "crashlytics",
+        sinon.match((msg: string) => msg.includes("Permission denied")),
+      );
     });
 
     it("should include heapDumpCollectionEnabled: false when omitted by the API on a disabled app", async () => {
@@ -383,12 +557,11 @@ describe("crashlytics:heapdumps commands", () => {
         name: resourceName,
         heapDumpCollectionEnabled: false,
       });
+      expect(inspectBucketStub).to.not.have.been.called;
     });
 
-    it("should handle an undefined configuration from the API without throwing", async () => {
-      sinon
-        .stub(profilingManager, "getProfilingManagerConfig")
-        .resolves(undefined as unknown as profilingManager.ProfilingManagerConfig);
+    it("should handle an unconfigured app (undefined from getProfilingManagerConfig on 404) as disabled", async () => {
+      sinon.stub(profilingManager, "getProfilingManagerConfig").resolves(undefined);
 
       const result: unknown = await statusCommand.runner()({
         project: projectId,
@@ -399,6 +572,20 @@ describe("crashlytics:heapdumps commands", () => {
         appId,
         heapDumpCollectionEnabled: false,
       });
+      expect(inspectBucketStub).to.not.have.been.called;
+    });
+
+    it("should rethrow non-404 errors from getProfilingManagerConfig", async () => {
+      const forbiddenError = new FirebaseError("Forbidden", { status: 403 });
+      sinon.stub(profilingManager, "getProfilingManagerConfig").rejects(forbiddenError);
+
+      await expect(
+        statusCommand.runner()({
+          project: projectId,
+          app: appId,
+        }),
+      ).to.be.rejectedWith(forbiddenError);
+      expect(inspectBucketStub).to.not.have.been.called;
     });
 
     it("should return the status and configuration when disabled with no bucket", async () => {
@@ -414,9 +601,9 @@ describe("crashlytics:heapdumps commands", () => {
 
       expect(result).to.deep.equal({
         appId,
-        bucket: "",
         heapDumpCollectionEnabled: false,
       });
+      expect(inspectBucketStub).to.not.have.been.called;
     });
 
     it("should throw without fetching status if --app does not belong to --project", async () => {
@@ -437,7 +624,7 @@ describe("crashlytics:heapdumps commands", () => {
 
     it("should register and run crashlytics.heapdumps commands via command loader", async () => {
       sinon.stub(profilingManager, "getProfilingManagerConfig").resolves({
-        bucket: bucketName,
+        bucket: `projects/_/buckets/${bucketName}`,
         heapDumpCollectionEnabled: true,
       });
 
@@ -462,7 +649,10 @@ describe("crashlytics:heapdumps commands", () => {
 
       expect(result).to.deep.equal({
         appId,
-        bucket: bucketName,
+        bucketName,
+        bucketExists: true,
+        location: "US-EAST1",
+        fileTtlDays: profilingManager.DEFAULT_FILE_TTL_DAYS,
         heapDumpCollectionEnabled: true,
       });
     });

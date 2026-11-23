@@ -6,6 +6,9 @@ import * as chaiAsPromised from "chai-as-promised";
 import {
   parseAndroidHashedId,
   createBucketName,
+  parseBucketName,
+  extractFileTtlDays,
+  inspectHeapDumpBucket,
   getCrashlyticsP4sa,
   getCrashlyticsConsoleUrl,
   resolveAndroidApp,
@@ -18,6 +21,8 @@ import {
   disableHeapDumpCollection,
   CRASHLYTICS_SERVICE_NAME,
   STORAGE_OBJECT_CREATOR_ROLE,
+  DEFAULT_BUCKET_LOCATION,
+  DEFAULT_FILE_TTL_DAYS,
   DEFAULT_CORS_RULES,
   DEFAULT_LIFECYCLE_RULES,
   DEFAULT_IAM_CONFIGURATION,
@@ -309,11 +314,85 @@ describe("profilingManager", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should return undefined when configuration does not exist yet (404)", async () => {
+      nock(crashlyticsApiOrigin())
+        .get(resourcePath)
+        .reply(404, { error: { code: 404, message: "Not found" } });
+
+      const result = await getProfilingManagerConfig(appId);
+      expect(result).to.be.undefined;
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should rethrow non-404 API errors", async () => {
+      nock(crashlyticsApiOrigin())
+        .get(resourcePath)
+        .reply(403, { error: { code: 403, message: "Permission denied" } });
+
+      await expect(getProfilingManagerConfig(appId)).to.be.rejectedWith(FirebaseError);
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("should throw a FirebaseError if the appId is invalid", async () => {
       await expect(getProfilingManagerConfig("invalid-app")).to.be.rejectedWith(
         FirebaseError,
         "Unable to get the projectId from the AppId.",
       );
+    });
+  });
+
+  describe("parseBucketName, extractFileTtlDays & inspectHeapDumpBucket", () => {
+    it("should strip the projects/_/buckets/ prefix and preserve bare bucket names", () => {
+      expect(parseBucketName(expectedBucketResourceName)).to.equal(expectedBucketName);
+      expect(parseBucketName(expectedBucketName)).to.equal(expectedBucketName);
+      expect(parseBucketName("  projects/_/buckets/custom-bucket-a1b2c3  ")).to.equal(
+        "custom-bucket-a1b2c3",
+      );
+      expect(parseBucketName("")).to.be.undefined;
+      expect(parseBucketName("projects/_/buckets/")).to.be.undefined;
+      expect(parseBucketName(undefined)).to.be.undefined;
+    });
+
+    it("should extract minimum live Delete lifecycle age or undefined when absent", () => {
+      expect(
+        extractFileTtlDays({
+          lifecycle: {
+            rule: [
+              { action: { type: "Delete" }, condition: { age: 90 } },
+              { action: { type: "Delete" }, condition: { age: 30 } },
+              { action: { type: "Delete" }, condition: { age: 7, isLive: false } },
+              { action: { type: "SetStorageClass" }, condition: { age: 14 } },
+            ],
+          },
+        } as unknown as storage.BucketResponse),
+      ).to.equal(30);
+      expect(extractFileTtlDays(undefined)).to.be.undefined;
+    });
+
+    it("should inspect live bucket metadata, 404 missing buckets, and non-404 warnings", async () => {
+      const getBucketStub = sinon.stub(storage, "getBucket");
+      getBucketStub.onFirstCall().resolves({
+        name: expectedBucketName,
+        location: "US-CENTRAL1",
+        lifecycle: { rule: [{ action: { type: "Delete" }, condition: { age: 30 } }] },
+      } as unknown as storage.BucketResponse);
+      getBucketStub.onSecondCall().rejects(new FirebaseError("Not found", { status: 404 }));
+      getBucketStub.onThirdCall().rejects(new FirebaseError("Permission denied", { status: 403 }));
+
+      expect(await inspectHeapDumpBucket(expectedBucketResourceName)).to.deep.equal({
+        bucketName: expectedBucketName,
+        exists: true,
+        location: "US-CENTRAL1",
+        fileTtlDays: 30,
+      });
+      expect(await inspectHeapDumpBucket(expectedBucketName)).to.deep.equal({
+        bucketName: expectedBucketName,
+        exists: false,
+      });
+      expect(await inspectHeapDumpBucket(expectedBucketName)).to.deep.equal({
+        bucketName: expectedBucketName,
+        warning: "Permission denied",
+      });
     });
   });
 
@@ -388,17 +467,51 @@ describe("profilingManager", () => {
     it("should create a new bucket with CORS, 90-day TTL, UBLA, and enforced PAP when it does not exist", async () => {
       const notFoundError = new FirebaseError("Not found", { status: 404 });
       const getBucketStub = sinon.stub(storage, "getBucket").rejects(notFoundError);
-      const createBucketStub = sinon
-        .stub(storage, "createBucket")
-        .resolves({} as storage.BucketResponse);
+      const createBucketStub = sinon.stub(storage, "createBucket").resolves({
+        name: expectedBucketName,
+        location: "US-CENTRAL1",
+        lifecycle: expectedLifecycle,
+      } as unknown as storage.BucketResponse);
 
       const result = await ensureHeapDumpStorageBucket(projectId, appId, "us-central1");
 
-      expect(result).to.equal(expectedBucketName);
+      expect(result).to.deep.equal({
+        bucketName: expectedBucketName,
+        exists: true,
+        location: "US-CENTRAL1",
+        fileTtlDays: DEFAULT_FILE_TTL_DAYS,
+        created: true,
+      });
       expect(getBucketStub).to.have.been.calledWith(expectedBucketName);
       expect(createBucketStub).to.have.been.calledOnceWithExactly(projectId, {
         name: expectedBucketName,
         location: "us-central1",
+        cors: DEFAULT_CORS_RULES,
+        lifecycle: expectedLifecycle,
+        iamConfiguration: DEFAULT_IAM_CONFIGURATION,
+      });
+    });
+
+    it("should default to DEFAULT_BUCKET_LOCATION when creating a new bucket with location omitted", async () => {
+      sinon.stub(storage, "getBucket").rejects(new FirebaseError("Not found", { status: 404 }));
+      const createBucketStub = sinon.stub(storage, "createBucket").resolves({
+        name: expectedBucketName,
+        location: "US-EAST1",
+        lifecycle: expectedLifecycle,
+      } as unknown as storage.BucketResponse);
+
+      const result = await ensureHeapDumpStorageBucket(projectId, appId);
+
+      expect(result).to.deep.equal({
+        bucketName: expectedBucketName,
+        exists: true,
+        location: "US-EAST1",
+        fileTtlDays: DEFAULT_FILE_TTL_DAYS,
+        created: true,
+      });
+      expect(createBucketStub).to.have.been.calledOnceWithExactly(projectId, {
+        name: expectedBucketName,
+        location: DEFAULT_BUCKET_LOCATION,
         cors: DEFAULT_CORS_RULES,
         lifecycle: expectedLifecycle,
         iamConfiguration: DEFAULT_IAM_CONFIGURATION,
@@ -416,7 +529,7 @@ describe("profilingManager", () => {
       expect(createBucketStub).to.not.have.been.called;
     });
 
-    it("should warn and reuse existing bucket when requested location differs from existing bucket location", async () => {
+    it("should warn and reuse existing bucket when explicit location differs from existing bucket location", async () => {
       sinon.stub(storage, "getBucket").resolves({
         name: expectedBucketName,
         projectNumber,
@@ -431,7 +544,13 @@ describe("profilingManager", () => {
 
       const result = await ensureHeapDumpStorageBucket(projectId, appId, "europe-west1");
 
-      expect(result).to.equal(expectedBucketName);
+      expect(result).to.deep.equal({
+        bucketName: expectedBucketName,
+        exists: true,
+        location: "US-CENTRAL1",
+        fileTtlDays: DEFAULT_FILE_TTL_DAYS,
+        created: false,
+      });
       expect(patchBucketStub).to.not.have.been.called;
       expect(createBucketStub).to.not.have.been.called;
       expect(logWarningStub).to.have.been.calledOnceWith(
@@ -445,13 +564,13 @@ describe("profilingManager", () => {
       );
     });
 
-    it("should warn when default location differs from existing bucket location", async () => {
+    it("should not warn when location is omitted and existing bucket is in a non-default region", async () => {
       sinon.stub(storage, "getBucket").resolves({
         name: expectedBucketName,
         projectNumber,
         location: "US-CENTRAL1",
         cors: DEFAULT_CORS_RULES,
-        lifecycle: expectedLifecycle,
+        lifecycle: { rule: [{ action: { type: "Delete" }, condition: { age: 30 } }] },
         iamConfiguration: DEFAULT_IAM_CONFIGURATION,
       } as unknown as storage.BucketResponse);
       sinon.stub(storage, "patchBucket");
@@ -460,14 +579,17 @@ describe("profilingManager", () => {
 
       const result = await ensureHeapDumpStorageBucket(projectId, appId);
 
-      expect(result).to.equal(expectedBucketName);
-      expect(logWarningStub).to.have.been.calledOnceWith(
-        "crashlytics",
-        sinon.match((msg: string) => msg.includes("US-CENTRAL1") && msg.includes("us-east1")),
-      );
+      expect(result).to.deep.equal({
+        bucketName: expectedBucketName,
+        exists: true,
+        location: "US-CENTRAL1",
+        fileTtlDays: 30,
+        created: false,
+      });
+      expect(logWarningStub).to.not.have.been.called;
     });
 
-    it("should not warn when existing bucket location matches requested location case-insensitively", async () => {
+    it("should not warn when existing bucket location matches explicit location case-insensitively", async () => {
       sinon.stub(storage, "getBucket").resolves({
         name: expectedBucketName,
         projectNumber,
@@ -482,8 +604,44 @@ describe("profilingManager", () => {
 
       const result = await ensureHeapDumpStorageBucket(projectId, appId, "us-east1");
 
-      expect(result).to.equal(expectedBucketName);
+      expect(result).to.deep.equal({
+        bucketName: expectedBucketName,
+        exists: true,
+        location: "US-EAST1",
+        fileTtlDays: DEFAULT_FILE_TTL_DAYS,
+        created: false,
+      });
       expect(logWarningStub).to.not.have.been.called;
+    });
+
+    it("should reuse an existing Console conflict-suffixed bucket name when provided", async () => {
+      const suffixedBucket = `${expectedBucketName}-a1b2c3`;
+      const getBucketStub = sinon.stub(storage, "getBucket").resolves({
+        name: suffixedBucket,
+        projectNumber,
+        location: "US-EAST1",
+        cors: DEFAULT_CORS_RULES,
+        lifecycle: expectedLifecycle,
+        iamConfiguration: DEFAULT_IAM_CONFIGURATION,
+      } as unknown as storage.BucketResponse);
+      const createBucketStub = sinon.stub(storage, "createBucket");
+
+      const result = await ensureHeapDumpStorageBucket(
+        projectId,
+        appId,
+        undefined,
+        `projects/_/buckets/${suffixedBucket}`,
+      );
+
+      expect(result).to.deep.equal({
+        bucketName: suffixedBucket,
+        exists: true,
+        location: "US-EAST1",
+        fileTtlDays: DEFAULT_FILE_TTL_DAYS,
+        created: false,
+      });
+      expect(getBucketStub).to.have.been.calledOnceWith(suffixedBucket);
+      expect(createBucketStub).to.not.have.been.called;
     });
 
     it("should throw a FirebaseError if the bucket is owned by another project", async () => {
@@ -512,7 +670,12 @@ describe("profilingManager", () => {
 
       const result = await ensureHeapDumpStorageBucket(projectId, appId);
 
-      expect(result).to.equal(expectedBucketName);
+      expect(result).to.deep.equal({
+        bucketName: expectedBucketName,
+        exists: true,
+        fileTtlDays: DEFAULT_FILE_TTL_DAYS,
+        created: false,
+      });
       expect(patchBucketStub).to.have.been.calledWith(expectedBucketName, {
         cors: DEFAULT_CORS_RULES,
         lifecycle: expectedLifecycle,
@@ -540,7 +703,12 @@ describe("profilingManager", () => {
 
       const result = await ensureHeapDumpStorageBucket(projectId, appId);
 
-      expect(result).to.equal(expectedBucketName);
+      expect(result).to.deep.equal({
+        bucketName: expectedBucketName,
+        exists: true,
+        fileTtlDays: DEFAULT_FILE_TTL_DAYS,
+        created: false,
+      });
       expect(patchBucketStub).to.have.been.calledWith(expectedBucketName, {
         cors: [existingCors, ...DEFAULT_CORS_RULES],
         lifecycle: { rule: [existingLifecycleRule, ...DEFAULT_LIFECYCLE_RULES] },
@@ -565,7 +733,12 @@ describe("profilingManager", () => {
 
       const result = await ensureHeapDumpStorageBucket(projectId, appId);
 
-      expect(result).to.equal(expectedBucketName);
+      expect(result).to.deep.equal({
+        bucketName: expectedBucketName,
+        exists: true,
+        fileTtlDays: DEFAULT_FILE_TTL_DAYS,
+        created: false,
+      });
       expect(patchBucketStub).to.have.been.calledWith(expectedBucketName, {
         iamConfiguration: { publicAccessPrevention: "enforced" },
       });
@@ -576,6 +749,7 @@ describe("profilingManager", () => {
       sinon.stub(storage, "getBucket").resolves({
         name: expectedBucketName,
         projectNumber,
+        location: "US-EAST1",
         cors: DEFAULT_CORS_RULES,
         lifecycle: expectedLifecycle,
         iamConfiguration: DEFAULT_IAM_CONFIGURATION,
@@ -585,7 +759,13 @@ describe("profilingManager", () => {
 
       const result = await ensureHeapDumpStorageBucket(projectId, appId);
 
-      expect(result).to.equal(expectedBucketName);
+      expect(result).to.deep.equal({
+        bucketName: expectedBucketName,
+        exists: true,
+        location: "US-EAST1",
+        fileTtlDays: DEFAULT_FILE_TTL_DAYS,
+        created: false,
+      });
       expect(patchBucketStub).to.not.have.been.called;
       expect(createBucketStub).to.not.have.been.called;
     });
@@ -616,9 +796,11 @@ describe("profilingManager", () => {
 
   describe("enableHeapDumpCollection & disableHeapDumpCollection", () => {
     it("should orchestrate bucket provisioning, bucket-scoped P4SA role setup, and config enablement", async () => {
+      nock(crashlyticsApiOrigin()).get(resourcePath).reply(404, {});
       sinon.stub(storage, "getBucket").resolves({
         name: expectedBucketName,
         projectNumber,
+        location: "US-EAST1",
         cors: DEFAULT_CORS_RULES,
         lifecycle: { rule: DEFAULT_LIFECYCLE_RULES },
         iamConfiguration: DEFAULT_IAM_CONFIGURATION,
@@ -641,12 +823,127 @@ describe("profilingManager", () => {
 
       const result = await enableHeapDumpCollection(projectId, appId);
 
-      expect(result).to.equal(expectedBucketName);
+      expect(result).to.deep.equal({
+        bucketName: expectedBucketName,
+        exists: true,
+        location: "US-EAST1",
+        fileTtlDays: DEFAULT_FILE_TTL_DAYS,
+      });
       expect(addBucketRoleStub).to.have.been.calledOnceWithExactly(
         expectedBucketName,
         getCrashlyticsP4sa(projectNumber),
         [STORAGE_OBJECT_CREATOR_ROLE],
       );
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should reuse an existing Console conflict-suffixed bucket from ProfilingManagerConfig", async () => {
+      const suffixedBucketName = `${expectedBucketName}-x1y2z3`;
+      const suffixedResourceName = `projects/_/buckets/${suffixedBucketName}`;
+      nock(crashlyticsApiOrigin()).get(resourcePath).reply(200, {
+        bucket: suffixedResourceName,
+        heapDumpCollectionEnabled: false,
+      });
+      const getBucketStub = sinon.stub(storage, "getBucket").resolves({
+        name: suffixedBucketName,
+        projectNumber,
+        location: "US-CENTRAL1",
+        cors: DEFAULT_CORS_RULES,
+        lifecycle: { rule: [{ action: { type: "Delete" }, condition: { age: 30 } }] },
+        iamConfiguration: DEFAULT_IAM_CONFIGURATION,
+      } as unknown as storage.BucketResponse);
+      sinon.stub(serviceusage, "generateServiceIdentityAndPoll").resolves();
+      sinon.stub(storage, "addServiceAccountToBucketRoles").resolves({} as Policy);
+      nock(crashlyticsApiOrigin())
+        .patch(resourcePath, {
+          bucket: suffixedResourceName,
+          heapDumpCollectionEnabled: true,
+        })
+        .query({ updateMask: "bucket,heapDumpCollectionEnabled" })
+        .reply(200, {
+          bucket: suffixedResourceName,
+          heapDumpCollectionEnabled: true,
+        });
+
+      const result = await enableHeapDumpCollection(projectId, appId);
+
+      expect(result).to.deep.equal({
+        bucketName: suffixedBucketName,
+        exists: true,
+        location: "US-CENTRAL1",
+        fileTtlDays: 30,
+      });
+      expect(getBucketStub).to.have.been.calledOnceWith(suffixedBucketName);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should skip re-fetching ProfilingManagerConfig when existingBucketName is already resolved", async () => {
+      const suffixedBucketName = `${expectedBucketName}-x1y2z3`;
+      const suffixedResourceName = `projects/_/buckets/${suffixedBucketName}`;
+      sinon.stub(storage, "getBucket").resolves({
+        name: suffixedBucketName,
+        projectNumber,
+        location: "US-EAST1",
+        cors: DEFAULT_CORS_RULES,
+        lifecycle: { rule: DEFAULT_LIFECYCLE_RULES },
+        iamConfiguration: DEFAULT_IAM_CONFIGURATION,
+      } as unknown as storage.BucketResponse);
+      sinon.stub(serviceusage, "generateServiceIdentityAndPoll").resolves();
+      sinon.stub(storage, "addServiceAccountToBucketRoles").resolves({} as Policy);
+      nock(crashlyticsApiOrigin())
+        .patch(resourcePath, {
+          bucket: suffixedResourceName,
+          heapDumpCollectionEnabled: true,
+        })
+        .query({ updateMask: "bucket,heapDumpCollectionEnabled" })
+        .reply(200, {
+          bucket: suffixedResourceName,
+          heapDumpCollectionEnabled: true,
+        });
+
+      const result = await enableHeapDumpCollection(
+        projectId,
+        appId,
+        undefined,
+        suffixedBucketName,
+      );
+
+      expect(result.bucketName).to.equal(suffixedBucketName);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should clean up a newly created bucket when P4SA IAM setup fails and preserve pre-existing buckets", async () => {
+      const iamError = new FirebaseError("IAM failure", { status: 403 });
+      nock(crashlyticsApiOrigin()).get(resourcePath).reply(404, {});
+      const getBucketStub = sinon
+        .stub(storage, "getBucket")
+        .rejects(new FirebaseError("Not found", { status: 404 }));
+      sinon.stub(storage, "createBucket").resolves({
+        name: expectedBucketName,
+        location: "US-EAST1",
+        lifecycle: { rule: DEFAULT_LIFECYCLE_RULES },
+      } as unknown as storage.BucketResponse);
+      sinon.stub(serviceusage, "generateServiceIdentityAndPoll").resolves();
+      sinon.stub(storage, "addServiceAccountToBucketRoles").rejects(iamError);
+      const deleteBucketStub = sinon.stub(storage, "deleteBucket").resolves();
+
+      await expect(enableHeapDumpCollection(projectId, appId)).to.be.rejectedWith(iamError);
+      expect(deleteBucketStub).to.have.been.calledOnceWith(expectedBucketName);
+
+      // Pre-existing bucket should never be deleted on failure.
+      deleteBucketStub.resetHistory();
+      nock(crashlyticsApiOrigin()).get(resourcePath).reply(200, {});
+      getBucketStub.resolves({
+        name: expectedBucketName,
+        projectNumber,
+        location: "US-EAST1",
+        cors: DEFAULT_CORS_RULES,
+        lifecycle: { rule: DEFAULT_LIFECYCLE_RULES },
+        iamConfiguration: DEFAULT_IAM_CONFIGURATION,
+      } as unknown as storage.BucketResponse);
+
+      await expect(enableHeapDumpCollection(projectId, appId)).to.be.rejectedWith(iamError);
+      expect(deleteBucketStub).to.not.have.been.called;
       expect(nock.isDone()).to.be.true;
     });
 

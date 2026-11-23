@@ -1,4 +1,4 @@
-import { FirebaseError, getErrStatus } from "../error";
+import { FirebaseError, getErrMsg, getErrStatus } from "../error";
 import { logger } from "../logger";
 import { consoleUrl, logLabeledBullet, logLabeledSuccess, logLabeledWarning } from "../utils";
 import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
@@ -50,6 +50,14 @@ export interface ResolvedAndroidApp {
   packageName?: string;
 }
 
+export interface HeapDumpBucketInfo {
+  bucketName: string;
+  exists?: boolean;
+  location?: string;
+  fileTtlDays?: number;
+  warning?: string;
+}
+
 function isAndroidAppMetadata(app: AppMetadata): app is AndroidAppMetadata {
   return (
     app.platform === AppPlatform.ANDROID &&
@@ -63,6 +71,20 @@ function toResolvedAndroidApp(app: AppMetadata): ResolvedAndroidApp {
   return {
     appId: app.appId,
     ...(packageName ? { packageName } : {}),
+  };
+}
+
+function toBucketInfo(
+  bucketName: string,
+  bucket?: storage.BucketResponse,
+  fallbackTtlDays?: number,
+): HeapDumpBucketInfo {
+  const fileTtlDays = extractFileTtlDays(bucket) ?? fallbackTtlDays;
+  return {
+    bucketName,
+    exists: true,
+    ...(bucket?.location ? { location: bucket.location } : {}),
+    ...(fileTtlDays !== undefined ? { fileTtlDays } : {}),
   };
 }
 
@@ -89,6 +111,37 @@ export function parseAndroidHashedId(appId: string): string {
  */
 export function createBucketName(appId: string): string {
   return `${HEAP_DUMP_BUCKET_PREFIX}${parseAndroidHashedId(appId)}`;
+}
+
+/**
+ * Extracts the bare Cloud Storage bucket name from a Profiling Manager bucket resource string
+ * (e.g., `projects/_/buckets/my-bucket` -> `my-bucket`).
+ */
+export function parseBucketName(bucket?: string): string | undefined {
+  const trimmed = bucket?.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  if (trimmed.startsWith(GCS_BUCKET_RESOURCE_PREFIX)) {
+    return trimmed.slice(GCS_BUCKET_RESOURCE_PREFIX.length).trim() || undefined;
+  }
+  return trimmed;
+}
+
+/**
+ * Extracts the effective file TTL in days from a GCS bucket's live Delete lifecycle rules.
+ */
+export function extractFileTtlDays(bucket?: storage.BucketResponse): number | undefined {
+  const ages =
+    bucket?.lifecycle?.rule
+      ?.filter(
+        (rule) =>
+          rule.action?.type === "Delete" &&
+          rule.condition?.isLive !== false &&
+          typeof rule.condition?.age === "number",
+      )
+      .map((rule) => rule.condition.age as number) ?? [];
+  return ages.length > 0 ? Math.min(...ages) : undefined;
 }
 
 /**
@@ -173,21 +226,31 @@ export async function resolveAndroidAppId(
 }
 
 /**
- * Fetches the Crashlytics Profiling Manager configuration for an app.
+ * Fetches the Crashlytics Profiling Manager configuration for an app, returning `undefined`
+ * if heap dump collection has never been configured (HTTP 404).
  * @param appId GMP App ID
  */
-export async function getProfilingManagerConfig(appId: string): Promise<ProfilingManagerConfig> {
+export async function getProfilingManagerConfig(
+  appId: string,
+): Promise<ProfilingManagerConfig | undefined> {
   const projectNumber = parseProjectNumber(appId);
   logger.debug(`[crashlytics] getProfilingManagerConfig called with appId: ${appId}`);
-  const response = await CRASHLYTICS_API_CLIENT.request<void, ProfilingManagerConfig>({
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    path: `/projects/${projectNumber}/apps/${appId}/profilingManagerConfig`,
-    timeout: TIMEOUT,
-  });
-  return response.body;
+  try {
+    const response = await CRASHLYTICS_API_CLIENT.request<void, ProfilingManagerConfig>({
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      path: `/projects/${projectNumber}/apps/${appId}/profilingManagerConfig`,
+      timeout: TIMEOUT,
+    });
+    return response.body;
+  } catch (err: unknown) {
+    if (getErrStatus(err) === 404) {
+      return undefined;
+    }
+    throw err;
+  }
 }
 
 /**
@@ -218,32 +281,56 @@ export async function updateProfilingManagerConfig(
 }
 
 /**
- * Ensures the GCS bucket for heap dumps exists and is configured with CORS, 90-day file TTL,
+ * Fetches live GCS metadata for a heap dump bucket, reporting missing buckets (404)
+ * or non-fatal inspection warnings (e.g. 403) without throwing.
+ */
+export async function inspectHeapDumpBucket(bucketName: string): Promise<HeapDumpBucketInfo> {
+  const bareName = parseBucketName(bucketName) ?? bucketName;
+  try {
+    const bucket = await storage.getBucket(bareName);
+    return toBucketInfo(bareName, bucket);
+  } catch (err: unknown) {
+    if (getErrStatus(err) === 404) {
+      return { bucketName: bareName, exists: false };
+    }
+    return { bucketName: bareName, warning: getErrMsg(err) };
+  }
+}
+
+/**
+ * Ensures the GCS bucket for heap dumps exists and is configured with CORS, file TTL,
  * Uniform Bucket-Level Access, and enforced Public Access Prevention.
  * Creates the bucket if it does not already exist.
  * @param projectId Cloud Project ID
  * @param appId GMP App ID
- * @param location Bucket location / region
+ * @param explicitLocation Explicitly requested bucket location / region (omitted if unspecified)
+ * @param existingBucketName Existing configured bucket name to reuse (e.g., Console conflict-suffixed bucket)
  */
 export async function ensureHeapDumpStorageBucket(
   projectId: string,
   appId: string,
-  location: string = DEFAULT_BUCKET_LOCATION,
-): Promise<string> {
-  const bucketName = createBucketName(appId);
+  explicitLocation?: string,
+  existingBucketName?: string,
+): Promise<HeapDumpBucketInfo & { created: boolean }> {
+  const normalizedLocation = explicitLocation?.trim() || undefined;
+  const bucketName = parseBucketName(existingBucketName) || createBucketName(appId);
   const projectNumber = parseProjectNumber(appId);
 
   try {
-    const bucket = await storage.getBucket(bucketName);
+    let bucket = await storage.getBucket(bucketName);
     if (bucket.projectNumber && String(bucket.projectNumber) !== projectNumber) {
       throw new FirebaseError(
         `Cloud Storage bucket '${bucketName}' already exists and is owned by another project.`,
       );
     }
-    if (bucket.location && bucket.location.trim().toLowerCase() !== location.trim().toLowerCase()) {
+    if (
+      normalizedLocation &&
+      bucket.location &&
+      bucket.location.trim().toLowerCase() !== normalizedLocation.toLowerCase()
+    ) {
       logLabeledWarning(
         "crashlytics",
-        `Cloud Storage bucket '${bucketName}' already exists in ${bucket.location}; its location cannot be changed to '${location}' and will remain ${bucket.location}.`,
+        `Cloud Storage bucket '${bucketName}' already exists in ${bucket.location}; its location cannot be changed to '${normalizedLocation}' and will remain ${bucket.location}.`,
       );
     }
     const patchPayload: Partial<storage.BucketResponse> = {};
@@ -273,25 +360,39 @@ export async function ensureHeapDumpStorageBucket(
       logger.debug(
         `[crashlytics] Bucket ${bucketName} found without full configuration. Patching ${Object.keys(patchPayload).join(", ")}.`,
       );
-      await storage.patchBucket(bucketName, patchPayload);
+      const patchedBucket = await storage.patchBucket(bucketName, patchPayload);
+      if (patchedBucket && Object.keys(patchedBucket).length > 0) {
+        bucket = patchedBucket;
+      }
     }
-    return bucketName;
+    return {
+      ...toBucketInfo(
+        bucketName,
+        bucket,
+        patchPayload.lifecycle ? DEFAULT_FILE_TTL_DAYS : undefined,
+      ),
+      created: false,
+    };
   } catch (err: unknown) {
-    const status = getErrStatus(err);
-    if (status !== 404) {
+    if (getErrStatus(err) !== 404) {
       throw err;
     }
   }
 
-  logger.debug(`[crashlytics] Creating GCS bucket ${bucketName} in ${location}...`);
-  await storage.createBucket(projectId, {
+  const createLocation = normalizedLocation || DEFAULT_BUCKET_LOCATION;
+  logger.debug(`[crashlytics] Creating GCS bucket ${bucketName} in ${createLocation}...`);
+  const createdBucket = await storage.createBucket(projectId, {
     name: bucketName,
-    location,
+    location: createLocation,
     cors: DEFAULT_CORS_RULES,
     lifecycle: { rule: DEFAULT_LIFECYCLE_RULES },
     iamConfiguration: DEFAULT_IAM_CONFIGURATION,
   });
-  return bucketName;
+  return {
+    ...toBucketInfo(bucketName, createdBucket, DEFAULT_FILE_TTL_DAYS),
+    location: createdBucket?.location || createLocation,
+    created: true,
+  };
 }
 
 /**
@@ -322,29 +423,56 @@ export async function ensureHeapDumpP4saRole(
  * and enables heap dump collection for the specified Android app.
  * @param projectId Cloud Project ID
  * @param appId GMP App ID
- * @param location Bucket location / region
+ * @param explicitLocation Explicitly requested bucket location / region (defaults to DEFAULT_BUCKET_LOCATION for new buckets)
+ * @param existingBucketName Optional pre-resolved configured bucket name to avoid re-fetching config
  */
 export async function enableHeapDumpCollection(
   projectId: string,
   appId: string,
-  location: string = DEFAULT_BUCKET_LOCATION,
-): Promise<string> {
+  explicitLocation?: string,
+  existingBucketName?: string,
+): Promise<HeapDumpBucketInfo> {
   const projectNumber = parseProjectNumber(appId);
+  const configuredBucketName =
+    parseBucketName(existingBucketName) ??
+    parseBucketName((await getProfilingManagerConfig(appId))?.bucket);
+
   logLabeledBullet("crashlytics", "Configuring Google Cloud Storage bucket...");
-  const bucketName = await ensureHeapDumpStorageBucket(projectId, appId, location);
-  logLabeledBullet("crashlytics", "Configuring service agent permissions...");
-  await ensureHeapDumpP4saRole(projectNumber, bucketName);
-  logLabeledBullet("crashlytics", "Enabling Crashlytics heap dump collection...");
-  await updateProfilingManagerConfig(
+  const { created, ...bucketInfo } = await ensureHeapDumpStorageBucket(
+    projectId,
     appId,
-    {
-      bucket: `${GCS_BUCKET_RESOURCE_PREFIX}${bucketName}`,
-      heapDumpCollectionEnabled: true,
-    },
-    "bucket,heapDumpCollectionEnabled",
+    explicitLocation,
+    configuredBucketName,
   );
+  try {
+    logLabeledBullet("crashlytics", "Configuring service agent permissions...");
+    await ensureHeapDumpP4saRole(projectNumber, bucketInfo.bucketName);
+    logLabeledBullet("crashlytics", "Enabling Crashlytics heap dump collection...");
+    await updateProfilingManagerConfig(
+      appId,
+      {
+        bucket: `${GCS_BUCKET_RESOURCE_PREFIX}${bucketInfo.bucketName}`,
+        heapDumpCollectionEnabled: true,
+      },
+      "bucket,heapDumpCollectionEnabled",
+    );
+  } catch (err: unknown) {
+    if (created) {
+      logger.debug(
+        `[crashlytics] Setup failed after creating bucket ${bucketInfo.bucketName}; cleaning up newly created bucket...`,
+      );
+      try {
+        await storage.deleteBucket(bucketInfo.bucketName);
+      } catch (cleanupErr: unknown) {
+        logger.debug(
+          `[crashlytics] Failed to clean up newly created bucket ${bucketInfo.bucketName}: ${getErrMsg(cleanupErr)}`,
+        );
+      }
+    }
+    throw err;
+  }
   logLabeledSuccess("crashlytics", "Successfully enabled Crashlytics heap dump collection!");
-  return bucketName;
+  return bucketInfo;
 }
 
 /**

@@ -708,4 +708,51 @@ describe("storage", () => {
       expect(setPolicyStub).to.be.calledTwice;
     });
   });
+
+  describe("deleteBucket", () => {
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it("should DELETE the bucket resource on success", async () => {
+      const deleteStub = sinon.stub(Client.prototype, "delete").resolves({
+        status: 204,
+        response: new Response(),
+        body: {},
+      });
+
+      await storage.deleteBucket("my-bucket");
+
+      expect(deleteStub).to.be.calledOnceWith("/storage/v1/b/my-bucket");
+    });
+
+    it("should throw FirebaseError with status, GCS error details, and preserved metadata when delete fails", async () => {
+      const errorContext = {
+        body: {
+          error: {
+            code: 409,
+            message: "The bucket you tried to delete is not empty.",
+          },
+        },
+      };
+      const apiError = new FirebaseError("Conflict", {
+        status: 409,
+        context: errorContext,
+      });
+      sinon.stub(Client.prototype, "delete").rejects(apiError);
+
+      try {
+        await storage.deleteBucket("my-bucket");
+        expect.fail("Expected deleteBucket to throw");
+      } catch (err: unknown) {
+        expect(err).to.be.instanceOf(FirebaseError);
+        const fbErr = err as FirebaseError;
+        expect(fbErr.message).to.equal(
+          "Failed to delete the storage bucket: The bucket you tried to delete is not empty.",
+        );
+        expect(fbErr.status).to.equal(409);
+        expect(fbErr.context).to.deep.equal(errorContext);
+      }
+    });
+  });
 });
