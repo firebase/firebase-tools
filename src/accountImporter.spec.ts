@@ -188,6 +188,21 @@ describe("accountImporter", () => {
       ).to.have.property("error");
     });
 
+    it("should reject when passwordHash or salt is not a string", () => {
+      expect(
+        validateUserJson({
+          localId: "123",
+          passwordHash: 12345,
+        }),
+      ).to.have.property("error");
+      expect(
+        validateUserJson({
+          localId: "123",
+          salt: true,
+        }),
+      ).to.have.property("error");
+    });
+
     it("should not reject when mfaInfo is present in user json", () => {
       expect(
         validateUserJson({

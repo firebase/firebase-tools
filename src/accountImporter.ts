@@ -43,7 +43,10 @@ const ALLOWED_PROVIDER_IDS = [
   "yahoo.com",
 ];
 
-function isValidBase64(str: string): boolean {
+function isValidBase64(str: unknown): boolean {
+  if (typeof str !== "string") {
+    return false;
+  }
   // Accept both standard (RFC 4648 §4) and URL-safe (RFC 4648 §5) Base64,
   // since Admin SDK listUsers returns URL-safe Base64 and genUploadAccountPostBody
   // converts values to web-safe Base64 before uploading.
