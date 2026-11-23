@@ -43,14 +43,22 @@ const ALLOWED_PROVIDER_IDS = [
   "yahoo.com",
 ];
 
-function isValidBase64(str: string): boolean {
-  const expected = Buffer.from(str, "base64").toString("base64");
+function isValidBase64(str: unknown): boolean {
+  if (typeof str !== "string") {
+    return false;
+  }
+  // Accept both standard (RFC 4648 §4) and URL-safe (RFC 4648 §5) Base64,
+  // since Admin SDK listUsers returns URL-safe Base64 and genUploadAccountPostBody
+  // converts values to web-safe Base64 before uploading.
+  const normalized = str.replace(/-/g, "+").replace(/_/g, "/");
+  const expected = Buffer.from(normalized, "base64").toString("base64");
   // Buffer automatically pads with '=' character,
   // but input string might not have padding.
-  if (str.length < expected.length && !str.endsWith("=")) {
-    str += "=".repeat(expected.length - str.length);
-  }
-  return expected === str;
+  const padded =
+    normalized.length < expected.length && !normalized.endsWith("=")
+      ? normalized + "=".repeat(expected.length - normalized.length)
+      : normalized;
+  return expected === padded;
 }
 
 function toWebSafeBase64(data: string): string {

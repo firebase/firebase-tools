@@ -21,6 +21,24 @@ describe("accountImporter", () => {
         transArrayToUser(["123", undefined, undefined, "Jlf7onfLbzqPNFP/1pqhx6fQF/w="]),
       ).to.not.have.property("error");
     });
+
+    it("should not reject when passwordHash and salt are valid URL-safe base64", () => {
+      expect(
+        transArrayToUser([
+          "123",
+          undefined,
+          undefined,
+          "Jlf7onfLbzqPNFP_1pqhx6fQF_w=",
+          "s-3VvUAzzY4jgA==",
+        ]),
+      ).to.not.have.property("error");
+    });
+
+    it("should reject when salt is invalid base64", () => {
+      expect(
+        transArrayToUser(["123", undefined, undefined, undefined, "not!base64"]),
+      ).to.have.property("error");
+    });
   });
 
   describe("validateOptions", () => {
@@ -139,6 +157,50 @@ describe("accountImporter", () => {
           passwordHash: "Jlf7onfLbzqPNFP/1pqhx6fQF/w=",
         }),
       ).to.not.have.property("error");
+    });
+
+    it("should not reject when passwordHash and salt are valid URL-safe base64", () => {
+      expect(
+        validateUserJson({
+          localId: "123",
+          passwordHash: "Jlf7onfLbzqPNFP_1pqhx6fQF_w=",
+          salt: "s-3VvUAzzY4jgA==",
+        }),
+      ).to.not.have.property("error");
+    });
+
+    it("should not reject when passwordHash and salt are unpadded URL-safe base64", () => {
+      expect(
+        validateUserJson({
+          localId: "123",
+          passwordHash: "Jlf7onfLbzqPNFP_1pqhx6fQF_w",
+          salt: "s-3VvUAzzY4jgA",
+        }),
+      ).to.not.have.property("error");
+    });
+
+    it("should reject when salt is invalid base64", () => {
+      expect(
+        validateUserJson({
+          localId: "123",
+          salt: "s-3VvUAzzY4jgA=",
+        }),
+      ).to.have.property("error");
+    });
+
+    it("should reject when passwordHash or salt is not a string", () => {
+      expect(
+        validateUserJson({
+          localId: "123",
+          passwordHash: 12345,
+        }),
+      ).to.have.property("error");
+      expect(
+        validateUserJson({
+          localId: "123",
+          salt: true,
+        }),
+      ).to.have.property("error");
     });
 
     it("should not reject when mfaInfo is present in user json", () => {
