@@ -1,25 +1,46 @@
-FROM node:24.16-alpine AS app-env
+FROM us-docker.pkg.dev/artifact-foundry-prod/docker-3p-trusted/node:24-trixie-slim AS app-env
 
-# Make sure to get the latest version of npm before doing anything else, to avoid vulnerabilities in npm's bundled dependencies.
-RUN npm install -g npm@latest
+# Upgrade global npm from Airlock to avoid vulnerabilities in npm's bundled
+# dependencies (e.g., glob/minimatch) without pulling from public npmjs.org.
+RUN --mount=type=secret,id=airlock_token \
+    set -e && \
+    AIRLOCK_TOKEN="$(cat /run/secrets/airlock_token)" && \
+    printf "registry=https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/\n//us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/:always-auth=true\n//us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/:_authToken=%s\n" "${AIRLOCK_TOKEN}" > /tmp/.npmrc && \
+    npm --userconfig=/tmp/.npmrc install -g npm@latest && \
+    rm -f /tmp/.npmrc
 
-# Install Python (for Cloud Functions) and Java (for emulators) and pre-cache emulator dependencies.
-RUN apk update && \
-    apk add --no-cache python3 openjdk21-jre-headless bash && \
-    apk upgrade && \
-    wget https://bootstrap.pypa.io/get-pip.py && \
-    python3 get-pip.py --no-cache-dir --break-system-packages && \
-    rm get-pip.py && \
-    rm -rf /usr/lib/python*/ensurepip && \
-    rm -rf /var/cache/apk/*
-
+# Install Python (for Cloud Functions) and Java 21 (for emulators) from Airlock APT.
+RUN --mount=type=secret,id=airlock_token \
+    set -e && \
+    export DEBIAN_FRONTEND=noninteractive && \
+    AIRLOCK_TOKEN="$(cat /run/secrets/airlock_token)" && \
+    printf "machine us-apt.pkg.dev login oauth2accesstoken password %s\n" "${AIRLOCK_TOKEN}" > /etc/apt/auth.conf && \
+    chmod 600 /etc/apt/auth.conf && \
+    rm -f /etc/apt/sources.list /etc/apt/sources.list.d/* && \
+    printf "deb [trusted=yes] https://us-apt.pkg.dev/projects/artifact-foundry-prod standard-debian-trixie-3p-l1 main\ndeb [trusted=yes] https://us-apt.pkg.dev/remote/artifact-foundry-prod/debian-3p-remote-trixie trixie main\ndeb [trusted=yes] https://us-apt.pkg.dev/remote/artifact-foundry-prod/debian-3p-remote-trixie-security trixie-security main\n" > /etc/apt/sources.list.d/airlock.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        python3 \
+        python3-pip \
+        openjdk-21-jre-headless \
+        bash && \
+    apt-get upgrade -y && \
+    apt-get clean && \
+    rm -rf /etc/apt/auth.conf /etc/apt/sources.list.d/airlock.list /var/lib/apt/lists/*
 
 RUN mkdir -p /usr/local/node_packages/
 COPY package.json /usr/local/node_packages/
 COPY package-lock.json /usr/local/node_packages/
 
 WORKDIR /usr/local/node_packages/
-RUN npm install && npm update
+RUN --mount=type=secret,id=airlock_token \
+    set -e && \
+    AIRLOCK_TOKEN="$(cat /run/secrets/airlock_token)" && \
+    printf "registry=https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/\n//us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/:always-auth=true\n//us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/:_authToken=%s\n" "${AIRLOCK_TOKEN}" > /tmp/.npmrc && \
+    npm --userconfig=/tmp/.npmrc install --registry=https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/ && \
+    npm --userconfig=/tmp/.npmrc update --registry=https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/ && \
+    rm -f /tmp/.npmrc
 RUN chmod -R 755 /usr/local/node_packages /usr/local/lib/node_modules
 ENV PATH="/usr/local/node_packages/node_modules/.bin:${PATH}"
 

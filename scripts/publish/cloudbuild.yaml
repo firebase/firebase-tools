@@ -181,14 +181,25 @@ steps:
           echo "Skipping for preview version."
         fi
 
+  # Mint short-lived Artifact Registry token for Airlock APT/npm pulls during Docker build.
+  - id: "get-airlock-token"
+    name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - "gcloud auth print-access-token > /workspace/.airlock_token"
+
   # Build and publish the Firebase docker image to staging
   - id: "docker-build-push-staging"
     name: "gcr.io/cloud-builders/docker"
     entrypoint: "bash"
+    env:
+      - "DOCKER_BUILDKIT=1"
     args:
       - "-c"
       - |
         set -e
+        trap 'rm -f /workspace/.airlock_token' EXIT
         VERSION_NUM="$$(cat /workspace/version_number.txt)"
         STAGING_REPO="us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/staging/firebase"
         if [ "${_VERSION}" = "preview" ]; then
@@ -199,6 +210,7 @@ steps:
         fi
         echo "Building Docker image for version $${VERSION_NUM}..."
         docker build \
+          --secret id=airlock_token,src=/workspace/.airlock_token \
           -t "$${STAGING_REPO}:$${VERSION_NUM}" \
           -t "$${STAGING_REPO}:$${EXTRA_TAG}" \
           -t "$${STAGING_REPO}:$BUILD_ID" \
@@ -212,6 +224,32 @@ steps:
         else
           echo "Preview build: leaving the staging 'latest' tag untouched."
         fi
+
+  # Emit MOSS Control #10 (dependency location) attestation for the built image.
+  - id: "secure-content-scan"
+    name: "us-central1-docker.pkg.dev/louhi-prod-1/louhi-helper/louhi-helper-v2"
+    args:
+      - "secure_content_scan"
+      - "--directory"
+      - "./firebase-docker-image"
+      - "--allowed_prefixes"
+      - "us-docker.pkg.dev/artifact-foundry-prod/"
+      - "docker.pkg.dev/artifact-foundry-prod/"
+      - "npm.pkg.dev/artifact-foundry-prod/"
+      - "python.pkg.dev/artifact-foundry-prod/"
+      - "maven.pkg.dev/artifact-foundry-prod/"
+      - "apt.pkg.dev/projects/artifact-foundry-prod"
+      - "https://us-apt.pkg.dev/projects/artifact-foundry-prod"
+      - "apt.pkg.dev/remote/artifact-foundry-prod"
+      - "docker.pkg.dev/artifacts-downloads/namespaces/artifact-foundry-prod"
+      - "npm.pkg.dev/artifacts-downloads/namespaces/artifact-foundry-prod"
+      - "python.pkg.dev/artifacts-downloads/namespaces/artifact-foundry-prod"
+      - "maven.pkg.dev/artifacts-downloads/namespaces/artifact-foundry-prod"
+      - "apt.pkg.dev/artifacts-downloads/namespaces/artifact-foundry-prod"
+    results:
+      - name: "allowed_uri_prefix"
+        attestationContent: "allowed_uri_prefix"
+        attestationType: "https://bcid.corp.google.com/build-content-restrictions/v0.1"
 
 images:
   - "us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/staging/firebase:$BUILD_ID"
