@@ -1,10 +1,8 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
 import nock from "../test/helpers/nock";
 
 import { resourceManagerOrigin } from "../api";
 import { FirebaseError } from "../error";
-import * as utils from "../utils";
 import * as iam from "./iam";
 
 const BINDING = {
@@ -207,78 +205,6 @@ describe("iam", () => {
           displayName: DISPLAY_NAME,
         });
         expect(nock.isDone()).to.be.true;
-      });
-
-      describe("quota retries", () => {
-        const QUOTA_ERROR = {
-          error: {
-            code: 429,
-            message: `A quota has been reached for project number 123: Service accounts created per minute per project.`,
-            status: "RESOURCE_EXHAUSTED",
-          },
-        };
-        const origRetryWithBackoff = utils.retryWithBackoff;
-        let retryStub: sinon.SinonStub;
-
-        beforeEach(() => {
-          retryStub = sinon
-            .stub(utils, "retryWithBackoff")
-            .callsFake((fn, opts) => origRetryWithBackoff(fn, { ...opts, delay: 1, maxDelay: 5 }));
-        });
-
-        afterEach(() => {
-          sinon.restore();
-        });
-
-        it("should retry and succeed when creation hits the per-minute quota", async () => {
-          nock("https://iam.googleapis.com")
-            .post(`/v1/projects/${PROJECT_ID}/serviceAccounts`)
-            .reply(429, QUOTA_ERROR)
-            .post(`/v1/projects/${PROJECT_ID}/serviceAccounts`)
-            .reply(200, { email: EMAIL });
-
-          const account = await iam.createServiceAccount(
-            PROJECT_ID,
-            ACCOUNT_ID,
-            DESCRIPTION,
-            DISPLAY_NAME,
-          );
-
-          expect(account.email).to.equal(EMAIL);
-          expect(nock.isDone()).to.be.true;
-        });
-
-        it("should wait out a one-minute quota window before giving up", async () => {
-          for (let i = 0; i < 7; i++) {
-            nock("https://iam.googleapis.com")
-              .post(`/v1/projects/${PROJECT_ID}/serviceAccounts`)
-              .reply(429, QUOTA_ERROR);
-          }
-
-          await expect(
-            iam.createServiceAccount(PROJECT_ID, ACCOUNT_ID, DESCRIPTION, DISPLAY_NAME),
-          ).to.be.rejectedWith(FirebaseError, /Service accounts created per minute per project/);
-          expect(retryStub).to.have.been.calledOnceWith(
-            sinon.match.func,
-            sinon.match({ retries: 6, delay: 5000, maxDelay: 60000 }),
-          );
-          expect(nock.isDone()).to.be.true;
-        });
-
-        it("should not retry a permission error", async () => {
-          nock("https://iam.googleapis.com")
-            .post(`/v1/projects/${PROJECT_ID}/serviceAccounts`)
-            .reply(403, {
-              error: { code: 403, message: "Permission denied", status: "PERMISSION_DENIED" },
-            })
-            .post(`/v1/projects/${PROJECT_ID}/serviceAccounts`)
-            .reply(200, { email: EMAIL });
-
-          await expect(
-            iam.createServiceAccount(PROJECT_ID, ACCOUNT_ID, DESCRIPTION, DISPLAY_NAME),
-          ).to.be.rejectedWith(FirebaseError, /Permission denied/);
-          expect(nock.isDone()).to.be.false;
-        });
       });
     });
 

@@ -123,12 +123,36 @@ export class Fabricator {
         `Creating managed service account ${plan.serviceAccountToCreate}...`,
       );
       const saName = plan.serviceAccountToCreate.split("@")[0];
+      let warnedQuota = false;
       try {
-        await iam.createServiceAccount(
-          this.projectId,
-          saName,
-          `Managed by Firebase CLI for codebase ${codebase}`,
-          `Firebase Functions ${codebase}`,
+        // IAM limits service account creations per minute per project, so the backoff must
+        // outlast a one-minute window. Other 429s, such as the total account cap, do not reset.
+        await utils.retryWithBackoff(
+          () =>
+            iam.createServiceAccount(
+              this.projectId,
+              saName,
+              `Managed by Firebase CLI for codebase ${codebase}`,
+              `Firebase Functions ${codebase}`,
+            ),
+          {
+            retries: 6,
+            delay: 5000,
+            maxDelay: 60000,
+            retryPredicate: (err) => {
+              if (getErrStatus(err) !== 429 || !/per minute/i.test(getErrMsg(err))) {
+                return false;
+              }
+              if (!warnedQuota) {
+                utils.logLabeledWarning(
+                  "functions",
+                  "Reached the IAM quota for service accounts created per minute. Retrying for up to 3 minutes...",
+                );
+                warnedQuota = true;
+              }
+              return true;
+            },
+          },
         );
         createdSA = true;
       } catch (e) {

@@ -26,6 +26,7 @@ import { deepCopy } from "@angular-devkit/core";
 import * as gce from "../../../gcp/computeEngine";
 import * as iam from "../../../gcp/iam";
 import * as resourcemanager from "../../../gcp/resourceManager";
+import * as utils from "../../../utils";
 
 describe("Fabricator", () => {
   // Stub all GCP APIs to make sure this test is hermetic
@@ -2474,8 +2475,35 @@ describe("Fabricator", () => {
       const permissionError = new FirebaseError("HTTP Error: 403, Permission denied", {
         status: 403,
       });
+      const accountCapError = new FirebaseError(
+        "HTTP Error: 429, Maximum number of service accounts on project reached.",
+        { status: 429 },
+      );
+      const origRetryWithBackoff = utils.retryWithBackoff;
+      let retryStub: sinon.SinonStub;
+      let warningStub: sinon.SinonStub;
 
-      it("should report a service account quota error instead of a permissions error", async () => {
+      beforeEach(() => {
+        retryStub = sinon
+          .stub(utils, "retryWithBackoff")
+          .callsFake((fn, opts) => origRetryWithBackoff(fn, { ...opts, delay: 1, maxDelay: 5 }));
+        warningStub = sinon.stub(utils, "logLabeledWarning");
+      });
+
+      it("should retry service account creation when the per-minute quota is reached", async () => {
+        createServiceAccountStub.onFirstCall().rejects(quotaError);
+        createServiceAccountStub.onSecondCall().rejects(quotaError);
+        createServiceAccountStub.onThirdCall().resolves();
+
+        await fab.grantNewRoles(plan, "default");
+
+        expect(createServiceAccountStub).to.have.been.calledThrice;
+        expect(addServiceAccountRolesStub).to.have.been.calledOnce;
+        expect(warningStub).to.have.been.calledOnce;
+        expect(warningStub.firstCall.args[1]).to.include("per minute");
+      });
+
+      it("should wait out a one-minute quota window before giving up", async () => {
         createServiceAccountStub.rejects(quotaError);
 
         const err = await fab.grantNewRoles(plan, "default").catch((e: FirebaseError) => e);
@@ -2483,6 +2511,22 @@ describe("Fabricator", () => {
         expect(err).to.be.instanceOf(FirebaseError);
         expect(err?.message).to.include("Service accounts created per minute per project");
         expect(err?.message).not.to.include("you do not have permissions");
+        expect(createServiceAccountStub.callCount).to.equal(7);
+        expect(retryStub.firstCall.args[1]).to.deep.include({
+          retries: 6,
+          delay: 5000,
+          maxDelay: 60000,
+        });
+      });
+
+      it("should not retry a 429 that is not the per-minute quota", async () => {
+        createServiceAccountStub.rejects(accountCapError);
+
+        const err = await fab.grantNewRoles(plan, "default").catch((e: FirebaseError) => e);
+
+        expect(err?.message).to.include("Maximum number of service accounts");
+        expect(createServiceAccountStub).to.have.been.calledOnce;
+        expect(warningStub).not.to.have.been.called;
       });
 
       it("should report a permissions error when service account creation is denied", async () => {
@@ -2492,15 +2536,20 @@ describe("Fabricator", () => {
           FirebaseError,
           "Cannot enable declarative security because you do not have permissions necessary to create the service account",
         );
+        expect(createServiceAccountStub).to.have.been.calledOnce;
       });
 
       it("should report the real error when granting roles fails for a reason other than permissions", async () => {
-        addServiceAccountRolesStub.rejects(quotaError);
+        addServiceAccountRolesStub.rejects(
+          new FirebaseError("HTTP Error: 400, Service account firebase-fn-123 does not exist.", {
+            status: 400,
+          }),
+        );
 
         const err = await fab.grantNewRoles(plan, "default").catch((e: FirebaseError) => e);
 
         expect(err).to.be.instanceOf(FirebaseError);
-        expect(err?.message).to.include("Service accounts created per minute per project");
+        expect(err?.message).to.include("does not exist");
         expect(err?.message).not.to.include("you do not have access");
       });
 
