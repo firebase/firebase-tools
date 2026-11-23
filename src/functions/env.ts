@@ -61,7 +61,7 @@ const LINE_RE = new RegExp(
   "\\s*=[\\f\\t\\v]*" +              //   separator (=)
   "(" +                      //   begin optional value
   "\\s*'(?:\\\\'|[^'])*'|" + //     single quoted or
-  '\\s*"(?:\\\\"|[^"])*"|' + //     double quoted or
+  '\\s*"(?:\\\\.|[^"\\\\])*"|' + //     double quoted or
   "[^#\\r\\n]*" +           //     unquoted
   ")?" +                     //   end optional value
   "\\s*" +                   //   trailing whitespaces
@@ -87,10 +87,9 @@ const CHARACTERS_TO_ESCAPE_SEQUENCES: Record<string, string> = {
   "\t": "\\t",
   "\v": "\\v",
   "\\": "\\\\",
-  "'": "\\'",
   '"': '\\"',
 };
-const ALL_ESCAPABLE_CHARACTERS_RE = /[\n\r\t\v\\'"]/g;
+const ALL_ESCAPABLE_CHARACTERS_RE = /[\n\r\t\v\\"]/g;
 
 interface ParseResult {
   envs: Record<string, string>;
@@ -359,11 +358,12 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
     clc.cyan(clc.bold("functions: ")) +
       `Writing new parameter values to disk: ${relativeTargetEnvFilePath}`,
   );
-  let lines = "";
+  const existing = fs.readFileSync(targetEnvFilePath, "utf8");
+  let lines = existing && !existing.endsWith("\n") ? "\n" : "";
   for (const k of Object.keys(toWrite)) {
-    lines += formatUserEnvForWrite(k, toWrite[k]);
+    lines += `${formatUserEnvForWrite(k, toWrite[k])}\n`;
   }
-  fs.appendFileSync(path.join(configDir, targetEnvFile), lines);
+  fs.appendFileSync(targetEnvFilePath, lines);
 }
 
 /**
@@ -401,15 +401,20 @@ export function checkForDuplicateKeys(
   }
 }
 
-function formatUserEnvForWrite(key: string, value: string): string {
+/**
+ * Formats a single key, value pair as a dotenv line (without a trailing newline) that parse() reads back unchanged.
+ */
+export function formatUserEnvForWrite(key: string, value: string): string {
   const escapedValue = value.replace(
     ALL_ESCAPABLE_CHARACTERS_RE,
     (match) => CHARACTERS_TO_ESCAPE_SEQUENCES[match],
   );
-  if (escapedValue !== value) {
-    return `${key}="${escapedValue}"\n`;
+  // Unquoted values end at "#", lose surrounding whitespace, and can be mistaken for single-quoted
+  // values when parsed. "'" is left unescaped because most dotenv parsers keep "\'" literally.
+  if (escapedValue !== value || /[#']|^\s|\s$/.test(value)) {
+    return `${key}="${escapedValue}"`;
   }
-  return `${key}=${escapedValue}\n`;
+  return `${key}=${escapedValue}`;
 }
 
 /**

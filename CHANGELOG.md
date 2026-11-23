@@ -1,2 +1,3 @@
 - Added defensive JVM flags (`-XX:+IgnoreUnrecognizedVMOptions -XX:UseAVX=2`) when starting Java-based emulators to mitigate CVE-2026-114938 on unpatched OpenJDK 17.0.6+ runtimes.
 - Updated Firebase Hosting custom domain lookup to use the public `/customDomains` API endpoint instead of `/domains`.
+- Fixed `.env` values written by the CLI for function params and extensions being truncated at `#`, trimmed, split across lines, or joined to the previous line when read back.
