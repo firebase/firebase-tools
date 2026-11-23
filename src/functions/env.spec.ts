@@ -165,6 +165,11 @@ BAR=bar`,
         want: { FOO: "foo#bar" },
       },
       {
+        description: "should end a double quoted value that ends in an escaped backslash",
+        input: 'FOO="C:\\\\foo\\\\"\nBAR="#bar"',
+        want: { FOO: "C:\\foo\\", BAR: "#bar" },
+      },
+      {
         description: "should ignore leading/trailing spaces before the separator (unquoted)",
         input: "FOO   =      foo",
         want: { FOO: "foo" },
@@ -600,6 +605,8 @@ FOO=foo
     it("quotes values that parse() would otherwise truncate or trim", () => {
       env.writeUserEnvs(
         {
+          TRAILING_BACKSLASH: "C:\\foo\\",
+          COLOR: "#ff0000",
           HASH: "https://example.com/#/home",
           LEADING_SPACE: "  foo",
           TRAILING_SPACE: "foo  ",
@@ -620,6 +627,8 @@ FOO=foo
       expect(envs["HASH"]).to.equal("https://example.com/#/home");
       expect(envs["LEADING_SPACE"]).to.equal("  foo");
       expect(envs["TRAILING_SPACE"]).to.equal("foo  ");
+      expect(envs["TRAILING_BACKSLASH"]).to.equal("C:\\foo\\");
+      expect(envs["COLOR"]).to.equal("#ff0000");
     });
 
     it("shouldn't write anything if any of the keys fails key format validation", () => {

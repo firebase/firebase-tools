@@ -61,7 +61,7 @@ const LINE_RE = new RegExp(
   "\\s*=[\\f\\t\\v]*" +              //   separator (=)
   "(" +                      //   begin optional value
   "\\s*'(?:\\\\'|[^'])*'|" + //     single quoted or
-  '\\s*"(?:\\\\"|[^"])*"|' + //     double quoted or
+  '\\s*"(?:\\\\.|[^"\\\\])*"|' + //     double quoted or
   "[^#\\r\\n]*" +           //     unquoted
   ")?" +                     //   end optional value
   "\\s*" +                   //   trailing whitespaces
