@@ -350,12 +350,7 @@ export async function getBucket(bucketName: string): Promise<BucketResponse> {
     const result = await localAPIClient.get<BucketResponse>(`/storage/v1/b/${bucketName}`);
     return result.body;
   } catch (err: unknown) {
-    const error = getError(err);
-    logger.debug(error);
-    throw new FirebaseError("Failed to obtain the storage bucket", {
-      original: error,
-      status: getErrStatus(err),
-    });
+    throw toStorageError("Failed to obtain the storage bucket", err);
   }
 }
 
@@ -376,6 +371,16 @@ function extractApiErrorMessage(err: unknown): string | undefined {
     return apiError.message.trim();
   }
   return undefined;
+}
+
+function toStorageError(baseMessage: string, err: unknown): FirebaseError {
+  const error = getError(err);
+  logger.debug(error);
+  const detail = extractApiErrorMessage(err) || error.message;
+  return new FirebaseError(detail ? `${baseMessage}: ${detail}` : baseMessage, {
+    original: error,
+    status: getErrStatus(err),
+  });
 }
 
 /**
@@ -409,18 +414,7 @@ export async function createBucket(
     );
     return result.body;
   } catch (err: unknown) {
-    const error = getError(err);
-    logger.debug(error);
-    const detail = extractApiErrorMessage(err) || error.message;
-    throw new FirebaseError(
-      detail
-        ? `Failed to create the storage bucket: ${detail}`
-        : "Failed to create the storage bucket",
-      {
-        original: error,
-        status: getErrStatus(err),
-      },
-    );
+    throw toStorageError("Failed to create the storage bucket", err);
   }
 }
 
@@ -453,12 +447,21 @@ export async function patchBucket(
     );
     return result.body;
   } catch (err: unknown) {
-    const error = getError(err);
-    logger.debug(error);
-    throw new FirebaseError("Failed to patch the storage bucket", {
-      original: error,
-      status: getErrStatus(err),
-    });
+    throw toStorageError("Failed to patch the storage bucket", err);
+  }
+}
+
+/**
+ * Deletes an empty storage bucket on GCP.
+ * Ref: https://cloud.google.com/storage/docs/json_api/v1/buckets/delete
+ * @param bucketName name of the storage bucket
+ */
+export async function deleteBucket(bucketName: string): Promise<void> {
+  try {
+    const localAPIClient = new Client({ urlPrefix: storageOrigin() });
+    await localAPIClient.delete(`/storage/v1/b/${bucketName}`);
+  } catch (err: unknown) {
+    throw toStorageError("Failed to delete the storage bucket", err);
   }
 }
 
@@ -669,12 +672,7 @@ export async function getBucketIamPolicy(bucketName: string): Promise<Policy> {
     });
     return response.body;
   } catch (err: unknown) {
-    const error = getError(err);
-    logger.debug(error);
-    throw new FirebaseError("Failed to get the storage bucket IAM policy", {
-      original: error,
-      status: getErrStatus(err),
-    });
+    throw toStorageError("Failed to get the storage bucket IAM policy", err);
   }
 }
 
@@ -691,12 +689,7 @@ export async function setBucketIamPolicy(bucketName: string, policy: Policy): Pr
     );
     return response.body;
   } catch (err: unknown) {
-    const error = getError(err);
-    logger.debug(error);
-    throw new FirebaseError("Failed to set the storage bucket IAM policy", {
-      original: error,
-      status: getErrStatus(err),
-    });
+    throw toStorageError("Failed to set the storage bucket IAM policy", err);
   }
 }
 
