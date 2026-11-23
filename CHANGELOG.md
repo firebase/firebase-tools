@@ -1,2 +1,3 @@
+- Fixed Cloud Run v2 function deployments (such as Dart functions) failing with an invalid argument error by using `service.ingress` instead of the unsupported `run.googleapis.com/ingress` annotation.
 - Added defensive JVM flags (`-XX:+IgnoreUnrecognizedVMOptions -XX:UseAVX=2`) when starting Java-based emulators to mitigate CVE-2026-114938 on unpatched OpenJDK 17.0.6+ runtimes.
 - Updated Firebase Hosting custom domain lookup to use the public `/customDomains` API endpoint instead of `/domains`.
