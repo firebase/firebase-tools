@@ -359,11 +359,12 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
     clc.cyan(clc.bold("functions: ")) +
       `Writing new parameter values to disk: ${relativeTargetEnvFilePath}`,
   );
-  let lines = "";
+  const existing = fs.readFileSync(targetEnvFilePath, "utf8");
+  let lines = existing && !existing.endsWith("\n") ? "\n" : "";
   for (const k of Object.keys(toWrite)) {
     lines += `${formatUserEnvForWrite(k, toWrite[k])}\n`;
   }
-  fs.appendFileSync(path.join(configDir, targetEnvFile), lines);
+  fs.appendFileSync(targetEnvFilePath, lines);
 }
 
 /**

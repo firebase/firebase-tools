@@ -557,6 +557,44 @@ FOO=foo
       ).to.equal("bar");
     });
 
+    it("starts a new line when the existing .env.projectId does not end in a newline", () => {
+      createEnvFiles(tmpdir, {
+        [".env.project"]: "FOO=foo",
+      });
+      env.writeUserEnvs(
+        { HASH: "a#b" },
+        {
+          projectId: "project",
+          projectAlias: "alias",
+          projectDir: projectTmpdir,
+          functionsSource: tmpdir,
+        },
+      );
+      expect(fs.readFileSync(path.join(tmpdir, ".env.project"), "utf8")).to.equal(
+        'FOO=foo\nHASH="a#b"\n',
+      );
+    });
+
+    for (const existing of ["", "FOO=foo\n", "FOO=foo\r\n"]) {
+      it(`appends without a blank line to an existing .env.projectId of ${JSON.stringify(existing)}`, () => {
+        createEnvFiles(tmpdir, {
+          [".env.project"]: existing,
+        });
+        env.writeUserEnvs(
+          { BAR: "bar" },
+          {
+            projectId: "project",
+            projectAlias: "alias",
+            projectDir: projectTmpdir,
+            functionsSource: tmpdir,
+          },
+        );
+        expect(fs.readFileSync(path.join(tmpdir, ".env.project"), "utf8")).to.equal(
+          `${existing}BAR=bar\n`,
+        );
+      });
+    }
+
     it("writes multiple keys at once", () => {
       env.writeUserEnvs(
         { FOO: "foo", BAR: "bar" },
