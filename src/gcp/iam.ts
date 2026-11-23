@@ -72,19 +72,30 @@ export async function createServiceAccount(
   description: string,
   displayName: string,
 ): Promise<ServiceAccount> {
-  const response = await apiClient.post<
-    { accountId: string; serviceAccount: { displayName: string; description: string } },
-    ServiceAccount
-  >(
-    `/projects/${projectId}/serviceAccounts`,
+  // IAM limits service account creations per minute per project, so the backoff must outlast a
+  // one-minute window (5s doubling to a 60s cap, about 3 minutes in total).
+  const response = await utils.retryWithBackoff(
+    () =>
+      apiClient.post<
+        { accountId: string; serviceAccount: { displayName: string; description: string } },
+        ServiceAccount
+      >(
+        `/projects/${projectId}/serviceAccounts`,
+        {
+          accountId,
+          serviceAccount: {
+            displayName,
+            description,
+          },
+        },
+        { skipLog: { resBody: true } },
+      ),
     {
-      accountId,
-      serviceAccount: {
-        displayName,
-        description,
-      },
+      retries: 6,
+      delay: 5000,
+      maxDelay: 60000,
+      retryPredicate: (err) => getErrStatus(err) === 429,
     },
-    { skipLog: { resBody: true } },
   );
   return response.body;
 }

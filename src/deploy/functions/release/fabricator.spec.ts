@@ -2459,6 +2459,61 @@ describe("Fabricator", () => {
       );
     });
 
+    describe("grantNewRoles errors", () => {
+      const plan: planner.CodebasePlan = {
+        plannedBackend: backend.empty(),
+        regionalChangesets: {},
+        serviceAccountToCreate: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        managedServiceAccount: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        rolesToAdd: ["roles/viewer"],
+      };
+      const quotaError = new FirebaseError(
+        "HTTP Error: 429, A quota has been reached for project number 123: Service accounts created per minute per project.",
+        { status: 429 },
+      );
+      const permissionError = new FirebaseError("HTTP Error: 403, Permission denied", {
+        status: 403,
+      });
+
+      it("should report a service account quota error instead of a permissions error", async () => {
+        createServiceAccountStub.rejects(quotaError);
+
+        const err = await fab.grantNewRoles(plan, "default").catch((e: FirebaseError) => e);
+
+        expect(err).to.be.instanceOf(FirebaseError);
+        expect(err?.message).to.include("Service accounts created per minute per project");
+        expect(err?.message).not.to.include("you do not have permissions");
+      });
+
+      it("should report a permissions error when service account creation is denied", async () => {
+        createServiceAccountStub.rejects(permissionError);
+
+        await expect(fab.grantNewRoles(plan, "default")).to.be.rejectedWith(
+          FirebaseError,
+          "Cannot enable declarative security because you do not have permissions necessary to create the service account",
+        );
+      });
+
+      it("should report the real error when granting roles fails for a reason other than permissions", async () => {
+        addServiceAccountRolesStub.rejects(quotaError);
+
+        const err = await fab.grantNewRoles(plan, "default").catch((e: FirebaseError) => e);
+
+        expect(err).to.be.instanceOf(FirebaseError);
+        expect(err?.message).to.include("Service accounts created per minute per project");
+        expect(err?.message).not.to.include("you do not have access");
+      });
+
+      it("should report a permissions error when granting roles is denied", async () => {
+        addServiceAccountRolesStub.rejects(permissionError);
+
+        await expect(fab.grantNewRoles(plan, "default")).to.be.rejectedWith(
+          FirebaseError,
+          "you do not have access to see what has changed",
+        );
+      });
+    });
+
     it("should clean up newly created SA if role assignment fails in grantNewRoles", async () => {
       addServiceAccountRolesStub.rejects(new Error("Permission denied"));
 

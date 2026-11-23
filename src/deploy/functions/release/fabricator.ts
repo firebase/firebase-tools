@@ -8,7 +8,7 @@ import {
   parseErrorCode,
 } from "./executor";
 import * as ensure from "../ensure";
-import { FirebaseError, getErrMsg, getError, getErrStack } from "../../../error";
+import { FirebaseError, getErrMsg, getErrStatus, getError, getErrStack } from "../../../error";
 
 import { SourceTokenScraper } from "./sourceTokenScraper";
 import { Timer } from "./timer";
@@ -132,6 +132,12 @@ export class Fabricator {
         );
         createdSA = true;
       } catch (e) {
+        if (getErrStatus(e) !== 403) {
+          throw new FirebaseError(
+            `Failed to create managed service account ${plan.serviceAccountToCreate}: ${getErrMsg(e)}`,
+            { original: e as Error },
+          );
+        }
         throw new FirebaseError(
           "Cannot enable declarative security because you do not have permissions necessary to create the service account. Please ask an IAM administrator to perform the next deploy.",
           { original: e as Error },
@@ -162,6 +168,12 @@ export class Fabricator {
               cleanupErr,
             );
           }
+        }
+        if (getErrStatus(e) !== 403) {
+          throw new FirebaseError(
+            `Failed to grant IAM roles to ${plan.managedServiceAccount}: ${getErrMsg(e)}`,
+            { original: e as Error },
+          );
         }
         throw new FirebaseError(
           "The declarative security roles for this codebase have changed, but you do not have access to see what has changed. Please ask an IAM administrator to perform the next deploy.",
