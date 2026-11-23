@@ -412,17 +412,21 @@ describe("storage", () => {
       expect(getStub).to.be.calledOnceWith("/storage/v1/b/my-bucket");
     });
 
-    it("should throw FirebaseError with status and GCS error details when request fails", async () => {
-      const apiError = new FirebaseError("Not Found", {
-        status: 404,
-        context: {
-          body: {
-            error: {
-              code: 404,
-              message: "The specified bucket does not exist.",
-            },
+    it("should throw FirebaseError with status, GCS error details, and preserved metadata when request fails", async () => {
+      const errorContext = {
+        body: {
+          error: {
+            code: 404,
+            message: "The specified bucket does not exist.",
           },
         },
+      };
+      const childErr = new Error("child");
+      const apiError = new FirebaseError("Not Found", {
+        status: 404,
+        context: errorContext,
+        children: [childErr],
+        exit: 2,
       });
       sinon.stub(Client.prototype, "get").rejects(apiError);
 
@@ -431,10 +435,15 @@ describe("storage", () => {
         expect.fail("Expected getBucket to throw");
       } catch (err: unknown) {
         expect(err).to.be.instanceOf(FirebaseError);
-        expect((err as FirebaseError).message).to.equal(
+        const fbErr = err as FirebaseError;
+        expect(fbErr.message).to.equal(
           "Failed to obtain the storage bucket: The specified bucket does not exist.",
         );
-        expect((err as FirebaseError).status).to.equal(404);
+        expect(fbErr.status).to.equal(404);
+        expect(fbErr.original).to.equal(apiError);
+        expect(fbErr.context).to.deep.equal(errorContext);
+        expect(fbErr.children).to.deep.equal([childErr]);
+        expect(fbErr.exit).to.equal(2);
       }
     });
 

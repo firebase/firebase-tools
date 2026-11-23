@@ -380,6 +380,9 @@ function toStorageError(baseMessage: string, err: unknown): FirebaseError {
   return new FirebaseError(detail ? `${baseMessage}: ${detail}` : baseMessage, {
     original: error,
     status: getErrStatus(err),
+    context: isObject(err) ? err.context : undefined,
+    children: isObject(err) && Array.isArray(err.children) ? err.children : undefined,
+    exit: isObject(err) && typeof err.exit === "number" ? err.exit : undefined,
   });
 }
 
