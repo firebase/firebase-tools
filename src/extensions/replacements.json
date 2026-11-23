@@ -342,7 +342,8 @@
       "extensionRepositoryUrl": "https://github.com/FlywheelStudio/pushfire-libs-firebase-extension/tree/main/README.md"
     },
     "revenuecat/firestore-revenuecat-purchases": {
-      "status": "PENDING_PUBLISHER",
+      "status": "REPLACEMENT_AVAILABLE",
+      "npmPackage": "@revenuecat/firestore-revenuecat-purchases",
       "extensionRepositoryUrl": "https://github.com/RevenueCat/firestore-revenuecat-purchases/tree/main/README.md"
     },
     "rowy/firestore-user-document": {
