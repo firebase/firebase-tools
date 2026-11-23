@@ -20,6 +20,7 @@ import * as serviceusage from "../../gcp/serviceusage";
 import * as prompt from "../../prompt";
 import * as iam from "../../gcp/iam";
 import * as resourcemanager from "../../gcp/resourceManager";
+import * as scheduler from "../../gcp/cloudscheduler";
 import { RuntimeDelegate } from "./runtimes";
 import { FirebaseError } from "../../error";
 import { Options } from "../../options";
@@ -30,6 +31,10 @@ import * as functionsEnv from "../../functions/env";
 import * as ensure from "./ensure";
 import * as functionsConfig from "../../functionsConfig";
 import * as args from "./args";
+import * as projectUtils from "../../projectUtils";
+import * as prepareFunctionsUpload from "./prepareFunctionsUpload";
+import * as prompts from "./prompts";
+import { DeployOptions } from "..";
 
 describe("partition env helper", () => {
   it("splits a Record into two based on which keys begin with FIREBASE_SECRET_REF", () => {
@@ -1307,6 +1312,145 @@ describe("prepare", () => {
       expect(endpoint2InBackend1.targetedByOnly).to.be.false;
       expect(endpoint1InBackend1.targetedByOnly).to.be.true;
       expect(endpoint2InBackend2.targetedByOnly).to.be.false;
+    });
+  });
+
+  describe("ensureScheduleRegionsSupported", () => {
+    let listLocationsStub: sinon.SinonStub;
+
+    const scheduled = (
+      id: string,
+      region: string,
+      platform: backend.FunctionsPlatform = "gcfv2",
+    ): backend.Endpoint =>
+      ({
+        ...ENDPOINT_BASE,
+        id,
+        region,
+        platform,
+        scheduleTrigger: { schedule: "every 5 minutes" },
+      }) as backend.Endpoint;
+
+    beforeEach(() => {
+      listLocationsStub = sinon
+        .stub(scheduler, "listLocations")
+        .resolves(["us-central1", "europe-west9"]);
+    });
+
+    afterEach(() => {
+      listLocationsStub.restore();
+    });
+
+    it("rejects scheduled functions in regions without Cloud Scheduler", async () => {
+      const want = backend.of(
+        scheduled("ok", "europe-west9"),
+        scheduled("north", "europe-north1"),
+        scheduled("south", "us-east5"),
+      );
+
+      await expect(prepare.ensureScheduleRegionsSupported("project", want)).to.be.rejectedWith(
+        FirebaseError,
+        "Cloud Scheduler is not available in the region of these scheduled functions: " +
+          "north(europe-north1), south(us-east5). " +
+          "Deploy them to a region that supports Cloud Scheduler: europe-west9, us-central1.",
+      );
+      expect(listLocationsStub).to.have.been.calledOnceWithExactly("project");
+    });
+
+    it("allows scheduled functions in supported regions", async () => {
+      const want = backend.of(scheduled("ok", "europe-west9"), scheduled("ok2", "us-central1"));
+
+      await expect(prepare.ensureScheduleRegionsSupported("project", want)).to.be.fulfilled;
+    });
+
+    it("ignores 1st gen scheduled functions", async () => {
+      const want = backend.of(scheduled("v1", "europe-north1", "gcfv1"));
+
+      await expect(prepare.ensureScheduleRegionsSupported("project", want)).to.be.fulfilled;
+      expect(listLocationsStub).to.not.have.been.called;
+    });
+
+    it("does not list regions when there are no scheduled functions", async () => {
+      const want = backend.of({ ...ENDPOINT, region: "europe-north1" });
+
+      await expect(prepare.ensureScheduleRegionsSupported("project", want)).to.be.fulfilled;
+      expect(listLocationsStub).to.not.have.been.called;
+    });
+
+    it("allows the deploy when no regions are listed", async () => {
+      listLocationsStub.resolves([]);
+      const want = backend.of(scheduled("north", "europe-north1"));
+
+      await expect(prepare.ensureScheduleRegionsSupported("project", want)).to.be.fulfilled;
+    });
+
+    it("allows the deploy when the regions can't be listed", async () => {
+      listLocationsStub.rejects(new FirebaseError("Permission denied.", { status: 403 }));
+      const want = backend.of(scheduled("north", "europe-north1"));
+
+      await expect(prepare.ensureScheduleRegionsSupported("project", want)).to.be.fulfilled;
+    });
+
+    describe("prepare", () => {
+      let sandbox: sinon.SinonSandbox;
+      let promptForFailurePoliciesStub: sinon.SinonStub;
+
+      beforeEach(() => {
+        sandbox = sinon.createSandbox();
+        sandbox.stub(projectUtils, "needProjectNumber").resolves("123");
+        sandbox.stub(ensureApiEnabled, "ensure").resolves();
+        sandbox
+          .stub(ensureApiEnabled, "check")
+          .callsFake((_, apiOrigin) => Promise.resolve(!apiOrigin.includes("runtimeconfig")));
+        sandbox.stub(ensure, "cloudBuildEnabled").resolves();
+        sandbox.stub(functionsConfig, "getFirebaseConfig").resolves({ projectId: "project" });
+        sandbox.stub(serviceusage, "generateServiceIdentity").resolves();
+        sandbox.stub(backend, "existingBackend").resolves(backend.empty());
+        sandbox.stub(prepareFunctionsUpload, "prepareFunctionsUpload").resolves(undefined);
+        promptForFailurePoliciesStub = sandbox.stub(prompts, "promptForFailurePolicies").resolves();
+        sandbox.stub(runtimes, "getRuntimeDelegate").resolves({
+          language: "nodejs",
+          runtime: latest("nodejs"),
+          bin: "node",
+          validate: sandbox.stub().resolves(),
+          build: sandbox.stub().resolves(),
+          watch: sandbox.stub().resolves(() => Promise.resolve()),
+          discoverBuild: sandbox.stub().resolves(
+            build.of({
+              north: {
+                platform: "gcfv2",
+                region: ["europe-north1"],
+                entryPoint: "north",
+                project: "project",
+                runtime: latest("nodejs"),
+                scheduleTrigger: { schedule: "every 5 minutes" },
+              },
+            }),
+          ),
+        });
+      });
+
+      afterEach(() => {
+        sandbox.restore();
+      });
+
+      it("rejects a deploy of a scheduled function in a region without Cloud Scheduler", async () => {
+        const options = {
+          config: {
+            src: { functions: { source: "functions" } },
+            path: (p: string) => p,
+            projectDir: "/project",
+          },
+          projectId: "project",
+          nonInteractive: true,
+        } as unknown as DeployOptions;
+
+        await expect(
+          prepare.prepare({ projectId: "project" } as args.Context, options, {} as args.Payload),
+        ).to.be.rejectedWith(FirebaseError, "north(europe-north1)");
+        expect(listLocationsStub).to.have.been.calledOnceWithExactly("project");
+        expect(promptForFailurePoliciesStub).to.not.have.been.called;
+      });
     });
   });
 

@@ -12,6 +12,7 @@ import { gte, coerce } from "semver";
 import { IncomingMessage, ServerResponse } from "http";
 import * as clc from "colorette";
 import { fileExistsSync } from "../../fsutils";
+import { loadStreamJson } from "../../streamJson";
 
 import { select } from "../../prompt";
 import { FirebaseError } from "../../error";
@@ -41,7 +42,7 @@ import {
   isRewriteSupportedByHosting,
   isUsingImageOptimization,
   isUsingMiddleware,
-  getProductionDependencyNames,
+  allDependencyNames,
   getMiddlewareMatcherRegexes,
   getNonStaticRoutes,
   getNonStaticServerComponents,
@@ -58,12 +59,13 @@ import {
   getNextVersionRaw,
   isNextJsVersionVulnerable,
 } from "./utils";
-import { NODE_VERSION, SHARP_VERSION, I18N_ROOT } from "../constants";
+import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES, SHARP_VERSION, I18N_ROOT } from "../constants";
 import type {
   AppPathRoutesManifest,
   AppPathsManifest,
   HostingHeadersWithSource,
   RoutesManifest,
+  NpmLsDepdendency,
   MiddlewareManifest,
   ActionManifest,
   CustomBuildOptions,
@@ -513,11 +515,11 @@ export async function ɵcodegenPublicDirectory(
           {
             srcRoute: null,
             initialRevalidateSeconds: false,
-            initialExpireSeconds: undefined,
             dataRoute: "",
             experimentalPPR: false,
-            renderingMode: undefined,
             prefetchDataRoute: "",
+            initialExpireSeconds: undefined,
+            renderingMode: undefined,
             allowHeader: [],
           },
         ];
@@ -658,7 +660,28 @@ export async function ɵcodegenFunctionsDirectory(
         throw new FirebaseError(`Failed to load esbuild from path: ${esbuildPath}`);
       }
 
-      const productionDeps = await getProductionDependencyNames(sourceDir);
+      const { chain, parser, pick, streamObject } = await loadStreamJson();
+      const productionDeps = await new Promise<string[]>((resolve) => {
+        const dependencies: string[] = [];
+        const npmLs = spawn("npm", ["ls", "--omit=dev", "--all", "--json=true"], {
+          cwd: sourceDir,
+          timeout: NPM_COMMAND_TIMEOUT_MILLIES,
+        });
+        const pipeline = chain([
+          npmLs.stdout,
+          parser({ packValues: false, packKeys: true, streamValues: false }),
+          pick({ filter: "dependencies" }),
+          streamObject(),
+          ({ key, value }: { key: string; value: NpmLsDepdendency }) => [
+            key,
+            ...allDependencyNames(value),
+          ],
+        ]);
+        pipeline.on("data", (it: string) => dependencies.push(it));
+        pipeline.on("end", () => {
+          resolve([...new Set(dependencies)]);
+        });
+      });
 
       // Mark all production deps as externals, so they aren't bundled
       // DevDeps won't be included in the Cloud Function, so they should be bundled

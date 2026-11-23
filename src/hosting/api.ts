@@ -95,20 +95,44 @@ export interface Channel {
   labels: { [key: string]: string };
 }
 
-export interface Domain {
-  site: `projects/${string}/sites/${string}`;
-  domainName: string;
-  updateTime: string;
-  provisioning?: {
-    certStatus: string;
-    dnsStatus: string;
-    expectedIps: string[];
-  };
-  status: string;
-  domainRedirect?: {
-    domainName: string;
-    type: string;
-  };
+export type HostState =
+  | "HOST_STATE_UNSPECIFIED"
+  | "HOST_UNHOSTED"
+  | "HOST_UNREACHABLE"
+  | "HOST_MISMATCH"
+  | "HOST_CONFLICT"
+  | "HOST_ACTIVE";
+
+export type OwnershipState =
+  | "OWNERSHIP_STATE_UNSPECIFIED"
+  | "OWNERSHIP_MISSING"
+  | "OWNERSHIP_UNREACHABLE"
+  | "OWNERSHIP_MISMATCH"
+  | "OWNERSHIP_CONFLICT"
+  | "OWNERSHIP_PENDING"
+  | "OWNERSHIP_ACTIVE";
+
+export type CertType =
+  | "TYPE_UNSPECIFIED"
+  | "TEMPORARY"
+  | "GROUPED"
+  | "PROJECT_GROUPED"
+  | "DEDICATED";
+
+export interface CustomDomain {
+  readonly name: string;
+  readonly createTime?: string;
+  readonly updateTime?: string;
+  readonly deleteTime?: string;
+  readonly expireTime?: string;
+  readonly etag?: string;
+  readonly hostState?: HostState;
+  readonly ownershipState?: OwnershipState;
+  redirectTarget?: string;
+  certPreference?: CertType;
+  readonly reconciling?: boolean;
+  labels?: Record<string, string>;
+  annotations?: Record<string, string>;
 }
 
 export type VersionStatus =
@@ -604,20 +628,6 @@ export async function createSite(
 }
 
 /**
- * Update a Hosting site.
- * @param project project name or number.
- * @param site the site to update.
- * @param fields the fields to update.
- * @return site information.
- */
-export async function updateSite(project: string, site: Site, fields: string[]): Promise<Site> {
-  const res = await apiClient.patch<Site, Site>(`/projects/${project}/sites/${site.name}`, site, {
-    queryParams: { updateMask: fields.join(",") },
-  });
-  return res.body;
-}
-
-/**
  * Delete a Hosting site.
  * @param project project name or number.
  * @param site the site to update.
@@ -724,27 +734,42 @@ export async function cleanAuthState(
   return siteDomainMap;
 }
 
-/**
- * Retrieves all site domains
- * @param project project ID
- * @param site site id
- * @return array of domains
- */
-export async function getSiteDomains(project: string, site: string): Promise<Domain[]> {
-  try {
-    const res = await apiClient.get<{ domains: Domain[] }>(
-      `/projects/${project}/sites/${site}/domains`,
-    );
+interface ListCustomDomainsResponse {
+  customDomains?: CustomDomain[];
+  nextPageToken?: string;
+}
 
-    return res.body.domains ?? [];
-  } catch (e: unknown) {
-    if (e instanceof FirebaseError && e.status === 404) {
-      throw new FirebaseError(`could not find site "${site}" for project "${project}"`, {
-        original: e,
-      });
+/**
+ * Lists all custom domains for a Hosting site, automatically handling pagination.
+ * @param project project ID or number.
+ * @param site site ID.
+ * @return array of custom domains.
+ */
+export async function listCustomDomains(project: string, site: string): Promise<CustomDomain[]> {
+  const customDomains: CustomDomain[] = [];
+  let pageToken: string | undefined;
+  do {
+    const queryParams: Record<string, string> = {};
+    if (pageToken) {
+      queryParams.pageToken = pageToken;
     }
-    throw e;
-  }
+    try {
+      const res = await apiClient.get<ListCustomDomainsResponse>(
+        `/projects/${project}/sites/${site}/customDomains`,
+        { queryParams },
+      );
+      customDomains.push(...(res.body.customDomains ?? []));
+      pageToken = res.body.nextPageToken;
+    } catch (e: unknown) {
+      if (e instanceof FirebaseError && e.status === 404) {
+        throw new FirebaseError(`could not find site "${site}" for project "${project}"`, {
+          original: e,
+        });
+      }
+      throw e;
+    }
+  } while (pageToken);
+  return customDomains;
 }
 
 /**
@@ -754,15 +779,18 @@ export async function getSiteDomains(project: string, site: string): Promise<Dom
  * @return array of domains
  */
 export async function getAllSiteDomains(projectId: string, siteId: string): Promise<string[]> {
-  const [hostingDomains, defaultDomain] = await Promise.all([
-    getSiteDomains(projectId, siteId),
+  const [customDomains, defaultDomain] = await Promise.all([
+    listCustomDomains(projectId, siteId),
     getSite(projectId, siteId),
   ]);
 
   const defaultDomainWithoutHttp = defaultDomain.defaultUrl.replace(/^https?:\/\//, "");
+  const customDomainNames = customDomains
+    .map(({ name }) => name?.split("/").pop())
+    .filter((domain): domain is string => Boolean(domain));
 
   const allSiteDomains = new Set([
-    ...hostingDomains.map(({ domainName }) => domainName),
+    ...customDomainNames,
     defaultDomainWithoutHttp,
     `${siteId}.web.app`,
     `${siteId}.firebaseapp.com`,
