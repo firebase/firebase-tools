@@ -375,7 +375,6 @@ function extractApiErrorMessage(err: unknown): string | undefined {
 
 function toStorageError(baseMessage: string, err: unknown): FirebaseError {
   const error = getError(err);
-  logger.debug(error);
   const detail = extractApiErrorMessage(err) || error.message;
   return new FirebaseError(detail ? `${baseMessage}: ${detail}` : baseMessage, {
     original: error,
@@ -451,20 +450,6 @@ export async function patchBucket(
     return result.body;
   } catch (err: unknown) {
     throw toStorageError("Failed to patch the storage bucket", err);
-  }
-}
-
-/**
- * Deletes an empty storage bucket on GCP.
- * Ref: https://cloud.google.com/storage/docs/json_api/v1/buckets/delete
- * @param bucketName name of the storage bucket
- */
-export async function deleteBucket(bucketName: string): Promise<void> {
-  try {
-    const localAPIClient = new Client({ urlPrefix: storageOrigin() });
-    await localAPIClient.delete(`/storage/v1/b/${bucketName}`);
-  } catch (err: unknown) {
-    throw toStorageError("Failed to delete the storage bucket", err);
   }
 }
 

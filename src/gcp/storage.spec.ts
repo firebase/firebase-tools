@@ -512,50 +512,6 @@ describe("storage", () => {
     });
   });
 
-  describe("deleteBucket", () => {
-    afterEach(() => {
-      sinon.restore();
-    });
-
-    it("should DELETE the bucket resource on success", async () => {
-      const deleteStub = sinon.stub(Client.prototype, "delete").resolves({
-        status: 204,
-        response: new Response(),
-        body: {},
-      });
-
-      await storage.deleteBucket("my-bucket");
-
-      expect(deleteStub).to.be.calledOnceWith("/storage/v1/b/my-bucket");
-    });
-
-    it("should throw FirebaseError with status and GCS error details when delete fails", async () => {
-      const apiError = new FirebaseError("Conflict", {
-        status: 409,
-        context: {
-          body: {
-            error: {
-              code: 409,
-              message: "The bucket you tried to delete is not empty.",
-            },
-          },
-        },
-      });
-      sinon.stub(Client.prototype, "delete").rejects(apiError);
-
-      try {
-        await storage.deleteBucket("my-bucket");
-        expect.fail("Expected deleteBucket to throw");
-      } catch (err: unknown) {
-        expect(err).to.be.instanceOf(FirebaseError);
-        expect((err as FirebaseError).message).to.equal(
-          "Failed to delete the storage bucket: The bucket you tried to delete is not empty.",
-        );
-        expect((err as FirebaseError).status).to.equal(409);
-      }
-    });
-  });
-
   describe("createBucket", () => {
     afterEach(() => {
       sinon.restore();
