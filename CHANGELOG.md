@@ -1,1 +1,3 @@
+- Added defensive JVM flags (`-XX:+IgnoreUnrecognizedVMOptions -XX:UseAVX=2`) when starting Java-based emulators to mitigate CVE-2026-114938 on unpatched OpenJDK 17.0.6+ runtimes.
+- Updated Firebase Hosting custom domain lookup to use the public `/customDomains` API endpoint instead of `/domains`.
 - Added the uploaded release, including its URLs and updated release notes, to the `result` field of `appdistribution:distribute --json` output.
