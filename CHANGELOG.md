@@ -1,3 +1,4 @@
 - Fixed `firebase deploy --non-interactive` failing for Functions params that have a default; non-interactive deploys now use the default. (#11523)
+- Updated `hono` to 4.13.16 and `@hono/node-server` to 2.1.6 to resolve moderate severity security advisories.
 - Added defensive JVM flags (`-XX:+IgnoreUnrecognizedVMOptions -XX:UseAVX=2`) when starting Java-based emulators to mitigate CVE-2026-114938 on unpatched OpenJDK 17.0.6+ runtimes.
 - Updated Firebase Hosting custom domain lookup to use the public `/customDomains` API endpoint instead of `/domains`.
