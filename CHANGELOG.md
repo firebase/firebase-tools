@@ -1,1 +1,3 @@
 - Fixed Crashlytics MCP tools failing with "requires a quota project" when signed in with user credentials, by sending the app's project as `x-goog-user-project`. (#11545)
+- Added defensive JVM flags (`-XX:+IgnoreUnrecognizedVMOptions -XX:UseAVX=2`) when starting Java-based emulators to mitigate CVE-2026-114938 on unpatched OpenJDK 17.0.6+ runtimes.
+- Updated Firebase Hosting custom domain lookup to use the public `/customDomains` API endpoint instead of `/domains`.
