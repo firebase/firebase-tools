@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+import * as yaml from "yaml";
 
 import * as manifest from "./manifest";
 import * as paramHelper from "./paramHelper";
@@ -639,10 +640,8 @@ describe("manifest", () => {
               extensionId: "bigquery-export",
               version: "1.0.0",
             },
-            params: {
-              // extension.yaml defaults are not type checked, so `default: 512` arrives as a number.
-              a: { baseValue: 512 as unknown as string },
-            },
+            // extension.yaml defaults are not type checked, so `default: 512` arrives as a number.
+            params: { a: { baseValue: yaml.parse("512") } },
             extensionSpec: {
               name: "bigquery-export",
               version: "1.0.0",
