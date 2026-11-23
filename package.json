@@ -269,7 +269,7 @@
       "ajv": "^8.17.1",
       "chokidar": "$chokidar"
     },
-    "hono": "^4.13.5",
+    "hono": "^4.13.16",
     "@tootallnate/once": "^3.0.1",
     "protobufjs": "^7.6.5",
     "serialize-javascript": "^7.1.3",
@@ -297,6 +297,7 @@
       "firebase-admin": "$firebase-admin"
     },
     "proxy-addr": "^2.0.8",
+    "@hono/node-server": "^2.1.6",
     "fast-uri": "^3.1.9",
     "ip-address": "^10.7.4"
   },
