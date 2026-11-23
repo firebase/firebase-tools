@@ -625,6 +625,42 @@ describe("manifest", () => {
       const content = askWriteProjectFileStub.firstCall.args[1] as string;
       expect(env.parse(content)).to.deep.equal({ envs: params, errors: [] });
     });
+
+    it("should write non-string param values", async () => {
+      sandbox.stub(prompt, "select").resolves("overwrite");
+      sandbox.stub(prompt, "confirm").resolves(true);
+
+      await manifest.writeToManifest(
+        [
+          {
+            instanceId: "instance-1",
+            ref: {
+              publisherId: "firebase",
+              extensionId: "bigquery-export",
+              version: "1.0.0",
+            },
+            params: {
+              // extension.yaml defaults are not type checked, so `default: 512` arrives as a number.
+              a: { baseValue: 512 as unknown as string },
+            },
+            extensionSpec: {
+              name: "bigquery-export",
+              version: "1.0.0",
+              resources: [],
+              sourceUrl: "",
+              params: [{ param: "a", label: "", type: ParamType.STRING }],
+              systemParams: [],
+            },
+          },
+        ],
+        generateBaseConfig(),
+        { nonInteractive: false, force: false },
+        true /** allowOverwrite */,
+      );
+
+      expect(askWriteProjectFileStub).to.have.been.calledOnce;
+      expect(askWriteProjectFileStub.firstCall.args[1]).to.equal("a=512");
+    });
   });
 
   describe(`${manifest.writeLocalSecrets.name}`, () => {
