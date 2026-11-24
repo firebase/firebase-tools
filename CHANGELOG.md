@@ -1,3 +1,4 @@
 - Updated `hono` to 4.13.16 and `@hono/node-server` to 2.1.6 to resolve moderate severity security advisories.
 - Added defensive JVM flags (`-XX:+IgnoreUnrecognizedVMOptions -XX:UseAVX=2`) when starting Java-based emulators to mitigate CVE-2026-114938 on unpatched OpenJDK 17.0.6+ runtimes.
 - Updated Firebase Hosting custom domain lookup to use the public `/customDomains` API endpoint instead of `/domains`.
+- Fixed an issue where 2nd gen Cloud Storage functions, and 2nd gen Realtime Database functions that name their database instance, could not be deployed to a region different from their bucket or database instance.

@@ -88,7 +88,7 @@ describe("TriggerRegionHelper", () => {
       expect(wantFn.eventTrigger).to.deep.eq(want);
     });
 
-    it("should set trigger region from API then reject on invalid function region", async () => {
+    it("should set trigger region from API when it differs from the function region", async () => {
       storageStub.resolves({ location: "EUROPE-WEST1" });
       const wantFn: backend.Endpoint = {
         id: "wantFn",
@@ -103,9 +103,31 @@ describe("TriggerRegionHelper", () => {
         region: "us-west1",
       };
 
-      await expect(triggerRegionHelper.ensureTriggerRegions(backend.of(wantFn))).to.be.rejectedWith(
-        "A function in region us-west1 cannot listen to a bucket in region europe-west1",
-      );
+      await triggerRegionHelper.ensureTriggerRegions(backend.of(wantFn));
+
+      expect(wantFn.eventTrigger.region).to.eq("europe-west1");
+      expect(wantFn.region).to.eq("us-west1");
+    });
+
+    it("should set a database trigger region from the location of a named instance", async () => {
+      databaseStub.resolves({ location: "europe-west1" });
+      const wantFn: backend.Endpoint = {
+        id: "wantFn",
+        entryPoint: "wantFn",
+        platform: "gcfv2",
+        eventTrigger: {
+          eventType: "google.firebase.database.ref.v1.written",
+          eventFilters: { instance: "my-instance" },
+          eventFilterPathPatterns: { ref: "messages/{id}" },
+          retry: false,
+        },
+        ...SPEC,
+      };
+
+      await triggerRegionHelper.ensureTriggerRegions(backend.of(wantFn));
+
+      expect(wantFn.eventTrigger.region).to.eq("europe-west1");
+      expect(wantFn.region).to.eq("us-west1");
     });
 
     it("should warn if a function region is us-central1 but the trigger is non-US", async () => {

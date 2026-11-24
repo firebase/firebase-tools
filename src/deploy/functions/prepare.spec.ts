@@ -34,6 +34,8 @@ import * as args from "./args";
 import * as projectUtils from "../../projectUtils";
 import * as prepareFunctionsUpload from "./prepareFunctionsUpload";
 import * as prompts from "./prompts";
+import * as planner from "./release/planner";
+import { ensureTriggerRegions } from "./triggerRegionHelper";
 import { DeployOptions } from "..";
 
 describe("partition env helper", () => {
@@ -1197,6 +1199,126 @@ describe("prepare", () => {
 
       prepare.resolveDefaultTimeout(backend.of(want));
       expect(want.timeoutSeconds).to.be.undefined;
+    });
+  });
+
+  describe("trigger region of an existing function", () => {
+    let getBucketStub: sinon.SinonStub;
+    let getDatabaseInstanceDetailsStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      storageService.clearCache();
+      databaseService.clearCache();
+      getBucketStub = sinon.stub(storage, "getBucket").throws("unexpected call to getBucket");
+      getDatabaseInstanceDetailsStub = sinon
+        .stub(database, "getDatabaseInstanceDetails")
+        .throws("unexpected call to getDatabaseInstanceDetails");
+    });
+
+    afterEach(() => {
+      sinon.verifyAndRestore();
+    });
+
+    const DATABASE_EVENT = "google.firebase.database.ref.v1.written";
+    const unchanged: Record<string, { want: backend.EventTrigger; have: backend.EventTrigger }> = {
+      "a database trigger on a named instance": {
+        want: {
+          eventType: DATABASE_EVENT,
+          eventFilters: { instance: "my-instance" },
+          eventFilterPathPatterns: { ref: "messages/{id}" },
+          retry: false,
+        },
+        have: {
+          eventType: DATABASE_EVENT,
+          eventFilters: { instance: "my-instance" },
+          eventFilterPathPatterns: { ref: "messages/{id}" },
+          retry: false,
+        },
+      },
+      "a database trigger on the default instance": {
+        want: {
+          eventType: DATABASE_EVENT,
+          eventFilters: {},
+          eventFilterPathPatterns: { ref: "messages/{id}", instance: "*" },
+          retry: false,
+        },
+        // A deployed endpoint has no eventFilters key when it has no exact-match filters.
+        have: {
+          eventType: DATABASE_EVENT,
+          eventFilterPathPatterns: { ref: "messages/{id}", instance: "*" },
+          retry: false,
+        },
+      },
+      "a storage trigger": {
+        want: {
+          eventType: "google.cloud.storage.object.v1.finalized",
+          eventFilters: { bucket: "my-bucket" },
+          retry: false,
+        },
+        have: {
+          eventType: "google.cloud.storage.object.v1.finalized",
+          eventFilters: { bucket: "my-bucket" },
+          retry: false,
+        },
+      },
+    };
+
+    for (const [name, triggers] of Object.entries(unchanged)) {
+      it(`keeps the deployed trigger region of ${name} on an unchanged redeploy`, async () => {
+        const have: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          region: "us-central1",
+          eventTrigger: { ...triggers.have, region: "us-central1" },
+        };
+        const want: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          region: "us-central1",
+          eventTrigger: { ...triggers.want },
+        };
+
+        prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), false);
+        await ensureTriggerRegions(backend.of(want));
+
+        expect(want.eventTrigger.region).to.eq("us-central1");
+        expect(planner.changedTriggerRegion(want, have)).to.be.false;
+        expect(getBucketStub).not.to.have.been.called;
+        expect(getDatabaseInstanceDetailsStub).not.to.have.been.called;
+      });
+    }
+
+    it("takes the trigger region from the new instance when a database trigger changes instance", async () => {
+      getDatabaseInstanceDetailsStub.resolves({ location: "europe-west1" });
+      const have: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        region: "us-central1",
+        eventTrigger: {
+          eventType: DATABASE_EVENT,
+          eventFilters: { instance: "old-instance" },
+          eventFilterPathPatterns: { ref: "messages/{id}" },
+          retry: false,
+          region: "us-central1",
+        },
+      };
+      const want: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        region: "us-central1",
+        eventTrigger: {
+          eventType: DATABASE_EVENT,
+          eventFilters: { instance: "new-instance" },
+          eventFilterPathPatterns: { ref: "messages/{id}" },
+          retry: false,
+        },
+      };
+
+      prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), false);
+      await ensureTriggerRegions(backend.of(want));
+
+      expect(getDatabaseInstanceDetailsStub).to.have.been.calledOnceWith(
+        ENDPOINT_BASE.project,
+        "new-instance",
+      );
+      expect(want.eventTrigger.region).to.eq("europe-west1");
+      expect(planner.changedTriggerRegion(want, have)).to.be.true;
     });
   });
 
