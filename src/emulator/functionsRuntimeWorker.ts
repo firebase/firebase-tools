@@ -1,4 +1,5 @@
 import * as http from "http";
+import * as net from "net";
 import { randomUUID } from "crypto";
 
 import { FunctionsRuntimeInstance } from "./functionsEmulator";
@@ -241,21 +242,22 @@ export class RuntimeWorker {
   }
 
   isSocketReady(): Promise<void> {
+    // Only check that the runtime accepts connections. An HTTP probe would be
+    // routed to the user's function by runtimes that serve every path (e.g.
+    // the Python functions-framework), running it before the first real request.
+    const { socketPath, host, port } = this.runtime.conn.httpReqOpts();
     return new Promise((resolve, reject) => {
-      const req = http.request(
-        {
-          ...this.runtime.conn.httpReqOpts(),
-          method: "GET",
-          path: "/__/health",
-        },
-        () => {
-          // Set the worker state to IDLE for new work
-          this.readyForWork();
-          resolve();
-        },
-      );
-      req.end();
-      req.on("error", (error) => {
+      const socket = socketPath
+        ? net.connect({ path: socketPath })
+        : net.connect({ host: host ?? undefined, port: Number(port) });
+      socket.once("connect", () => {
+        socket.destroy();
+        // Set the worker state to IDLE for new work
+        this.readyForWork();
+        resolve();
+      });
+      socket.once("error", (error) => {
+        socket.destroy();
         reject(error);
       });
     });

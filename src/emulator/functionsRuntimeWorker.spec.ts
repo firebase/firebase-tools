@@ -3,7 +3,11 @@ import * as sinon from "sinon";
 import * as http from "http";
 import { PassThrough } from "stream";
 import { expect } from "chai";
-import { FunctionsRuntimeInstance, IPCConn } from "./functionsEmulator";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
+import { AddressInfo } from "net";
+import { FunctionsRuntimeInstance, IPCConn, TCPConn } from "./functionsEmulator";
 import { EventEmitter } from "events";
 import { RuntimeWorker, RuntimeWorkerPool, RuntimeWorkerState } from "./functionsRuntimeWorker";
 import { EmulatedTriggerDefinition } from "./functionsEmulatorShared";
@@ -20,7 +24,7 @@ class MockRuntimeInstance implements FunctionsRuntimeInstance {
   events: EventEmitter = new EventEmitter();
   exit: Promise<number>;
   cwd = "/home/users/dir";
-  conn = new IPCConn("/path/to/socket/foo.sock");
+  conn: IPCConn | TCPConn = new IPCConn("/path/to/socket/foo.sock");
 
   constructor() {
     this.exit = new Promise((resolve) => {
@@ -320,5 +324,58 @@ describe("FunctionsRuntimeWorker", () => {
       expect(pool.readyForWork(triggerId1)).to.be.true;
       expect(pool.readyForWork(triggerId2)).to.be.true;
     });
+  });
+});
+
+describe("RuntimeWorker.isSocketReady", () => {
+  // Runtimes like the Python functions-framework route every path, including
+  // a health-check path, to the user's function, so the readiness check must
+  // not send an HTTP request at all.
+  // https://github.com/firebase/firebase-tools/issues/8774
+  let server: http.Server;
+  let requests: number;
+  let tempDirs: string[];
+
+  beforeEach(() => {
+    requests = 0;
+    tempDirs = [];
+    server = http.createServer((req, res) => {
+      requests++;
+      res.end();
+    });
+  });
+
+  afterEach(async () => {
+    await new Promise((resolve) => server.close(resolve));
+    for (const dir of tempDirs) {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("becomes ready over TCP without sending a request to the runtime", async () => {
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const runtime = new MockRuntimeInstance();
+    runtime.conn = new TCPConn("127.0.0.1", (server.address() as AddressInfo).port);
+    const worker = new RuntimeWorker("trigger", runtime, {});
+
+    await worker.waitForSocketReady();
+
+    expect(worker.state).to.eql(RuntimeWorkerState.IDLE);
+    expect(requests).to.eql(0);
+  });
+
+  it("becomes ready over a Unix socket without sending a request to the runtime", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "fire-emu-"));
+    tempDirs.push(tempDir);
+    const socketPath = path.join(tempDir, "runtime.sock");
+    await new Promise<void>((resolve) => server.listen(socketPath, resolve));
+    const runtime = new MockRuntimeInstance();
+    runtime.conn = new IPCConn(socketPath);
+    const worker = new RuntimeWorker("trigger", runtime, {});
+
+    await worker.waitForSocketReady();
+
+    expect(worker.state).to.eql(RuntimeWorkerState.IDLE);
+    expect(requests).to.eql(0);
   });
 });
