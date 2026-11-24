@@ -3,8 +3,8 @@
  * Emulator `../src/emulator/auth/apiSpec.ts` by converting and combining
  * production Google API Discovery documents for all services it emulates.
  *
- * The resulting file can be used with OpenAPI tooling, such as exegesis, a
- * library that does validation and route wiring for the Auth Emulator.
+ * The resulting file is consumed by the Auth Emulator's OpenAPI router
+ * (`../src/emulator/auth/openapiRouter.ts`) for request validation and route wiring.
  *
  * It also writes a `schema.ts` file in the same directory for type-checking.
  */

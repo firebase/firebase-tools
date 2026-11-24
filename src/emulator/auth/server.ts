@@ -1,27 +1,24 @@
 import * as cors from "cors";
 import * as express from "express";
-import * as exegesisExpress from "exegesis-express";
-import { ValidationError } from "exegesis/lib/errors";
 import * as _ from "lodash";
 import { SingleProjectMode } from "./index";
-import { OpenAPIObject, PathsObject, ServerObject, OperationObject } from "openapi3-ts";
+import { OpenAPIObject, PathsObject, ServerObject } from "openapi3-ts";
 import { EmulatorLogger } from "../emulatorLogger";
 import { Emulators } from "../types";
 import { authOperations, AuthOps, AuthOperation, FirebaseJwtPayload } from "./operations";
 import { AgentProjectState, decodeRefreshToken, ProjectState } from "./state";
 import apiSpecUntyped from "./apiSpec";
 import {
-  PromiseController,
-  ExegesisContext,
-  PromiseAuthenticator,
-  ExegesisPluginContext,
-  ValidatorFunction,
-} from "exegesis-express";
+  Authenticator,
+  BodyValidator,
+  createOpenApiMiddleware,
+  OperationHandler,
+  ValidationOutcome,
+} from "./openapiRouter";
 import {
   PermissionDeniedError,
   UnauthenticatedError,
   ApiError,
-  InvalidArgumentError,
   NotFoundError,
   UnknownError,
   NotImplementedError,
@@ -57,9 +54,8 @@ export function specForRouter(): OpenAPIObject {
   return {
     ...apiSpec,
     paths,
-    // Unset servers so that exegesis do not ignore APIs based on hostname.
+    // Unset servers so the router matches APIs purely by path namespace.
     servers: undefined,
-    "x-exegesis-controller": "auth",
   };
 }
 
@@ -146,7 +142,7 @@ export async function createApp(
 
   // Workaround for clients (e.g. Node.js Admin SDK) that send request bodies
   // with HTTP DELETE requests. Such requests are tolerated by production, but
-  // exegesis will reject them without the following hack.
+  // strict OpenAPI content-type checks reject them without this workaround.
   app.delete("*", (req, _, next) => {
     delete req.headers["content-type"];
     next();
@@ -171,13 +167,13 @@ export async function createApp(
     getProjectStateById(getProjectIdByApiKey(apiKey), tenantId),
   );
 
-  const apiKeyAuthenticator: PromiseAuthenticator = (ctx, info) => {
+  const apiKeyAuthenticator: Authenticator = (ctx, info) => {
     if (!info.name) {
       throw new Error("apiKey param/header name is undefined in API spec.");
     }
 
     let key: string | undefined;
-    const req = ctx.req as express.Request;
+    const req = ctx.req;
     switch (info.in) {
       case "header":
         key = req.get(info.name);
@@ -197,14 +193,15 @@ export async function createApp(
     }
   };
 
-  const oauth2Authenticator: PromiseAuthenticator = (ctx) => {
+  const oauth2Authenticator: Authenticator = (ctx) => {
     const authorization = ctx.req.headers["authorization"];
     if (!authorization || !authorization.toLowerCase().startsWith(AUTH_HEADER_PREFIX)) {
       return undefined;
     }
-    const scopes = Object.keys(
-      ctx.api.openApiDoc.components.securitySchemes.Oauth2.flows.authorizationCode.scopes,
-    );
+    const oauthScheme = ctx.api.openApiDoc.components?.securitySchemes?.Oauth2 as
+      | { flows?: { authorizationCode?: { scopes?: Record<string, string> } } }
+      | undefined;
+    const scopes = Object.keys(oauthScheme?.flows?.authorizationCode?.scopes ?? {});
     const token = authorization.substr(AUTH_HEADER_PREFIX.length);
     if (token.toLowerCase() === "owner") {
       // We treat "owner" as a valid account token for the default projectId.
@@ -232,49 +229,42 @@ export async function createApp(
       ],
     );
   };
-  const apis = await exegesisExpress.middleware(specForRouter(), {
-    // Eager ajv compilation of the entire 386 KB Identity Toolkit spec takes ~10-20s.
-    // Compiling validation schemas lazily on first use cuts startup time and speeds up unit tests.
+
+  const operationHandlers = toOperationHandlers(authOperations, getProjectStateById);
+  const apis = createOpenApiMiddleware(specForRouter(), {
     lazyCompileValidationSchemas: options.lazyCompileValidationSchemas ?? true,
-    controllers: { auth: toExegesisController(authOperations, getProjectStateById) },
+    resolveHandler: (operationId) =>
+      operationHandlers[operationId] ??
+      (() => {
+        throw new NotImplementedError(`${operationId} is not implemented in the Auth Emulator.`);
+      }),
     authenticators: {
       apiKeyQuery: apiKeyAuthenticator,
       apiKeyHeader: apiKeyAuthenticator,
       Oauth2: oauth2Authenticator,
     },
-    autoHandleHttpErrors(err) {
-      // JSON parsing error thrown by body-parser.
-      if ((err as { type?: string }).type === "entity.parse.failed") {
-        const message = `Invalid JSON payload received. ${err.message}`;
-        err = new InvalidArgumentError(message, [
+    onUnauthenticated(ctx) {
+      // Normalize unauthenticated responses to match production.
+      const requirements = ctx.api.operationObject.security;
+      if (requirements?.some((req) => req.apiKeyQuery || req.apiKeyHeader)) {
+        throw new PermissionDeniedError("The request is missing a valid API key.");
+      }
+      throw new UnauthenticatedError(
+        "Request is missing required authentication credential. Expected OAuth 2 access token, login cookie or other valid authentication credential. See https://developers.google.com/identity/sign-in/web/devconsole-project.",
+        [
           {
-            message,
+            message: "Login Required.",
             domain: "global",
-            reason: "parseError",
+            reason: "required",
+            location: "Authorization",
+            locationType: "header",
           },
-        ]);
-      }
-      if (err instanceof ValidationError) {
-        // TODO: Shall we expose more than the first error?
-        const firstError = err.errors[0];
-        let details;
-        if (firstError.location) {
-          // Add data path into error message, so it is actionable.
-          details = `${firstError.location.path} ${firstError.message}`;
-        } else {
-          details = firstError.message;
-        }
-        err = new InvalidArgumentError(`Invalid JSON payload received. ${details}`);
-      }
-      if (err.name === "HttpBadRequestError") {
-        err = new BadRequestError(err.message, "unknown");
-      }
-      // Let errors propagate to our universal error handler below.
-      throw err;
+        ],
+      );
     },
-    defaultMaxBodySize: 1024 * 1024 * 1024, // 1GB instead of the default 10k.
-    validateDefaultResponses: true,
-    onResponseValidationError({ errors }) {
+    transformAndValidateBody: validateAndFixRestMappingRequestBody,
+    defaultMaxBodySize: 1024 * 1024 * 1024, // 1GB instead of the default 100k.
+    onResponseValidationError(errors) {
       logError(
         new Error(
           `An internal error occured when generating response. Details:\n${JSON.stringify(errors)}`,
@@ -313,41 +303,6 @@ export async function createApp(
         return true;
       },
     },
-    plugins: [
-      {
-        info: { name: "test" },
-        makeExegesisPlugin() {
-          return {
-            postSecurity(pluginContext: ExegesisPluginContext): Promise<void> {
-              wrapValidateBody(pluginContext);
-              return Promise.resolve();
-            },
-            postController(ctx: ExegesisContext) {
-              if (ctx.res.statusCode === 401) {
-                // Normalize unauthenticated responses to match production.
-                const requirements = (ctx.api.operationObject as OperationObject).security;
-                if (requirements?.some((req) => req.apiKeyQuery || req.apiKeyHeader)) {
-                  throw new PermissionDeniedError("The request is missing a valid API key.");
-                } else {
-                  throw new UnauthenticatedError(
-                    "Request is missing required authentication credential. Expected OAuth 2 access token, login cookie or other valid authentication credential. See https://developers.google.com/identity/sign-in/web/devconsole-project.",
-                    [
-                      {
-                        message: "Login Required.",
-                        domain: "global",
-                        reason: "required",
-                        location: "Authorization",
-                        locationType: "header",
-                      },
-                    ],
-                  );
-                }
-              }
-            },
-          };
-        },
-      },
-    ],
   });
   app.use(apis);
 
@@ -469,7 +424,7 @@ function registerLegacyRoutes(app: express.Express): void {
       if (newMethod === "GET") {
         Object.assign(req.query, req.body);
 
-        // Update the URL to match query since exegeisis does its own parsing.
+        // Update the URL to match query since the OpenAPI router parses req.url.
         const bodyAsQuery = new URLSearchParams(req.body).toString();
         qs = qs ? `${qs}&${bodyAsQuery}` : bodyAsQuery;
         delete req.body;
@@ -481,47 +436,33 @@ function registerLegacyRoutes(app: express.Express): void {
   }
 }
 
-function toExegesisController(
+function toOperationHandlers(
   ops: AuthOps,
   getProjectStateById: (projectId: string, tenantId?: string) => ProjectState,
-): Record<string, PromiseController> {
-  const result: Record<string, PromiseController> = {};
+): Record<string, OperationHandler> {
+  const result: Record<string, OperationHandler> = {};
   processNested(ops, "");
-
-  // Exegesis checks if all operationIds exist in controller on starting, so we
-  // need to return a stub for operations that are not implemented in emulator.
-  return new Proxy(result, {
-    get: (obj, prop) => {
-      if (typeof prop !== "string" || prop in obj) {
-        // HACK(TS bug): https://github.com/microsoft/TypeScript/issues/1863
-        return obj[prop as string];
-      }
-      const stub: PromiseController = () => {
-        throw new NotImplementedError(`${prop} is not implemented in the Auth Emulator.`);
-      };
-      return stub;
-    },
-  });
+  return result;
 
   function processNested(nested: AuthOps, prefix: string): void {
     Object.entries(nested).forEach(([key, value]) => {
       if (typeof value === "function") {
-        result[`${prefix}${key}`] = toExegesisOperation(value);
+        result[`${prefix}${key}`] = toOperation(value);
       } else {
         processNested(value, `${prefix}${key}.`);
         if (typeof value._ === "function") {
-          result[`${prefix}${key}`] = toExegesisOperation(value._);
+          result[`${prefix}${key}`] = toOperation(value._);
         }
       }
     });
   }
 
-  function toExegesisOperation(operation: AuthOperation): PromiseController {
+  function toOperation(operation: AuthOperation): OperationHandler {
     return (ctx) => {
       let targetProjectId: string =
         ctx.params.path.targetProjectId || ctx.requestBody?.targetProjectId;
       if (targetProjectId) {
-        if ((ctx.api.operationObject as OperationObject).security?.some((sec) => sec.Oauth2)) {
+        if (ctx.api.operationObject.security?.some((sec) => sec.Oauth2)) {
           // Some APIs (e.g. accounts:signUp) may allow either Oauth2
           // ("authenticated") or apiKey ("unauthenticated"), but only
           // authenticated requests may specify targetProjectId.
@@ -535,7 +476,7 @@ function toExegesisController(
         // Oauth2 token (see authenticators implementation above). The Auth
         // Emulator DOES NOT check IAM but assumes all permissions are granted.
         // See: https://cloud.google.com/identity-platform/docs/reference/rest/v1/accounts/signUp
-        targetProjectId = ctx.user;
+        targetProjectId = ctx.user || "";
       }
 
       let targetTenantId: string | undefined = undefined;
@@ -575,47 +516,28 @@ function toExegesisController(
   }
 }
 
-function wrapValidateBody(pluginContext: ExegesisPluginContext): void {
-  // Apply fixes to body for Google REST API mapping compatibility.
-  const op = (
-    pluginContext as unknown as {
-      _operation: {
-        validateBody?: ValidatorFunction;
-        _authEmulatorValidateBodyWrapped?: true;
-      };
-    }
-  )._operation;
-  if (op.validateBody && !op._authEmulatorValidateBodyWrapped) {
-    const validateBody = op.validateBody.bind(op);
-    op.validateBody = (body) => {
-      return validateAndFixRestMappingRequestBody(validateBody, body);
-    };
-    op._authEmulatorValidateBodyWrapped = true;
-  }
-}
-
 function validateAndFixRestMappingRequestBody(
-  validate: ValidatorFunction,
+  validate: BodyValidator,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   body: any,
-): ReturnType<ValidatorFunction> {
+): ValidationOutcome {
   body = convertKeysToCamelCase(body);
 
   // Protobuf JSON parser accepts enum values as either string or int index, but
   // the JSON schema only accepts strings, causing validation errors. We catch
   // these errors and fix the paths. This is needed for e.g. Android SDK.
   // Similarly, convert numbers to strings for e.g. Node Admin SDK.
-  let result: ReturnType<ValidatorFunction>;
+  let result: ValidationOutcome;
   let keepFixing = false; // Keep fixing issues as long as we can.
-  const fixedPaths = new Set<string>();
+  const fixedKeys = new Set<string>();
   do {
     result = validate(body);
     if (!result.errors) return result;
     keepFixing = false;
-    for (const error of result.errors) {
-      const path = error.location?.path;
-      const ajvError = error.ajvError;
-      if (!path || fixedPaths.has(path) || !ajvError) {
+    for (const ajvError of result.errors) {
+      const path = ajvError.instancePath;
+      const fixKey = `${path}:${ajvError.keyword}`;
+      if (!path || fixedKeys.has(fixKey)) {
         continue;
       }
       const dataPath = jsonPointerToPath(path);
@@ -627,6 +549,7 @@ function validateAndFixRestMappingRequestBody(
           // know if it is an enum yet (ajvError.schema is somehow undefined).
           // So we'll just leave it to the next iteration and handle it below.
           _.set(body, dataPath, value.toString());
+          fixedKeys.add(fixKey);
           keepFixing = true;
         }
       } else if (ajvError.keyword === "enum") {
@@ -634,6 +557,7 @@ function validateAndFixRestMappingRequestBody(
         const enumValue = params.allowedValues[value];
         if (enumValue) {
           _.set(body, dataPath, enumValue);
+          fixedKeys.add(fixKey);
           keepFixing = true;
         }
       }

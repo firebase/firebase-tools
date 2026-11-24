@@ -1,9 +1,7 @@
-import { ExtendableError } from "exegesis/lib/errors";
-
 // https://cloud.google.com/apis/design/errors#http_mapping
 // https://cloud.google.com/identity-platform/docs/use-rest-api#handling_errors
 
-export class ApiError extends ExtendableError {
+export class ApiError extends Error {
   readonly errors: ErrorItem[];
 
   constructor(
@@ -13,6 +11,8 @@ export class ApiError extends ExtendableError {
     reasonOrErrors: string | ErrorItem[],
   ) {
     super(message);
+    Object.setPrototypeOf(this, new.target.prototype);
+    this.name = new.target.name;
     this.code = code;
     this.status = status;
     if (typeof reasonOrErrors === "string") {

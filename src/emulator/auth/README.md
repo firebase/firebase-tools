@@ -34,11 +34,11 @@ single merged OpenAPI 3.0 specification file ([`./apiSpec.js`](./apiSpec.js)).
 For a brief overview of OpenAPI 3.0 format and terminologies, see
 [the specification](https://swagger.io/specification/).
 
-`apiSpec.js` is imported and compiled with the Auth Emulator, and read by the
-library [`exegesis-express`](https://www.npmjs.com/package/exegesis-express) at
-runtime, to set up the Express routes with builtin request validation (including
-JSON schema validation of request bodies). The setup of the library can be found
-in [`server.ts`](./server.ts). After the automatic routing, exegesis calls the
+`apiSpec.ts` is imported and compiled with the Auth Emulator, and read by the
+in-repo OpenAPI router ([`openapiRouter.ts`](./openapiRouter.ts)) at runtime to
+set up the Express routes with builtin request validation (including JSON schema
+validation of request bodies via AJV). The setup can be found in
+[`server.ts`](./server.ts). After automatic routing, the router calls the
 corresponding operation method defined in [`operations.ts`](./operations.ts).
 In the operations file, each operations is defined by its ID instead of paths.
 The IDs can be found in the OpenAPI spec file. (See below for how to browse.)
@@ -65,7 +65,7 @@ below under the `/* Handlers */` section like so:
 function signUp(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SignUpRequest"],
-  ctx: ExegesisContext,
+  ctx: AuthOperationContext,
 ): Schemas["GoogleCloudIdentitytoolkitV1SignUpResponse"] {
   return {
     /* response JSON body */

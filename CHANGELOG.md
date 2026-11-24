@@ -1,3 +1,4 @@
+- Replaced `exegesis` and `exegesis-express` in the Auth Emulator with an in-repo OpenAPI 3 router and AJV validator, removing the deprecated `json-ptr` transitive dependency (#11570).
 - Updated `hono` to 4.13.16 and `@hono/node-server` to 2.1.6 to resolve moderate severity security advisories.
 - Added defensive JVM flags (`-XX:+IgnoreUnrecognizedVMOptions -XX:UseAVX=2`) when starting Java-based emulators to mitigate CVE-2026-114938 on unpatched OpenJDK 17.0.6+ runtimes.
 - Updated Firebase Hosting custom domain lookup to use the public `/customDomains` API endpoint instead of `/domains`.

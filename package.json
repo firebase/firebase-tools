@@ -130,8 +130,6 @@
     "cross-env": "^7.0.3",
     "cross-spawn": "^7.0.5",
     "csv-parse": "^7.0.2",
-    "exegesis": "^4.2.0",
-    "exegesis-express": "^4.0.0",
     "express": "^4.16.4",
     "form-data": "^4.0.1",
     "fs-extra": "^10.1.0",
