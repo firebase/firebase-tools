@@ -5,7 +5,7 @@ steps:
     entrypoint: "bash"
     args:
       - "-c"
-      - "gcloud auth print-access-token > /workspace/.airlock_token"
+      - "umask 077 && gcloud auth print-access-token > /workspace/.airlock_token && chmod 600 /workspace/.airlock_token"
 
   # Grab the latest version, store in workspace
   - id: "Read New Version Number from npm"
@@ -16,9 +16,9 @@ steps:
       - |
         set -e
         AIRLOCK_TOKEN="$$(cat /workspace/.airlock_token)"
-        printf "registry=https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/\n//us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/:always-auth=true\n//us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/:_authToken=%s\n" "$${AIRLOCK_TOKEN}" > /tmp/.npmrc
+        trap 'rm -f /tmp/.npmrc' EXIT
+        (umask 077 && printf "registry=https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/\n//us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/:always-auth=true\n//us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/:_authToken=%s\n" "$${AIRLOCK_TOKEN}" > /tmp/.npmrc)
         npm --userconfig=/tmp/.npmrc view firebase-tools version > /workspace/version_number.txt
-        rm -f /tmp/.npmrc
         cat /workspace/version_number.txt
 
   # Build and push the Firebase docker image to staging
