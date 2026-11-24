@@ -165,6 +165,16 @@ BAR=bar`,
         want: { FOO: "foo#bar" },
       },
       {
+        description: "should end a double quoted value that ends in an escaped backslash",
+        input: 'FOO="C:\\\\foo\\\\"\nBAR="#bar"',
+        want: { FOO: "C:\\foo\\", BAR: "#bar" },
+      },
+      {
+        description: "should keep a lone backslash in a hand-written double quoted value",
+        input: 'DIR="C:\\#temp\\"',
+        want: { DIR: "C:\\#temp\\" },
+      },
+      {
         description: "should ignore leading/trailing spaces before the separator (unquoted)",
         input: "FOO   =      foo",
         want: { FOO: "foo" },
@@ -552,6 +562,44 @@ FOO=foo
       ).to.equal("bar");
     });
 
+    it("starts a new line when the existing .env.projectId does not end in a newline", () => {
+      createEnvFiles(tmpdir, {
+        [".env.project"]: "FOO=foo",
+      });
+      env.writeUserEnvs(
+        { HASH: "a#b" },
+        {
+          projectId: "project",
+          projectAlias: "alias",
+          projectDir: projectTmpdir,
+          functionsSource: tmpdir,
+        },
+      );
+      expect(fs.readFileSync(path.join(tmpdir, ".env.project"), "utf8")).to.equal(
+        'FOO=foo\nHASH="a#b"\n',
+      );
+    });
+
+    for (const existing of ["", "FOO=foo\n", "FOO=foo\r\n"]) {
+      it(`appends without a blank line to an existing .env.projectId of ${JSON.stringify(existing)}`, () => {
+        createEnvFiles(tmpdir, {
+          [".env.project"]: existing,
+        });
+        env.writeUserEnvs(
+          { BAR: "bar" },
+          {
+            projectId: "project",
+            projectAlias: "alias",
+            projectDir: projectTmpdir,
+            functionsSource: tmpdir,
+          },
+        );
+        expect(fs.readFileSync(path.join(tmpdir, ".env.project"), "utf8")).to.equal(
+          `${existing}BAR=bar\n`,
+        );
+      });
+    }
+
     it("writes multiple keys at once", () => {
       env.writeUserEnvs(
         { FOO: "foo", BAR: "bar" },
@@ -595,6 +643,54 @@ FOO=foo
       expect(envs["ESCAPES"]).to.equal("\n\r\t\v");
       expect(envs["WITH_SLASHES"]).to.equal("\n\\\r\\\t\\\v");
       expect(envs["QUOTES"]).to.equal("'\"'");
+    });
+
+    it("quotes values that parse() would otherwise truncate or trim", () => {
+      env.writeUserEnvs(
+        {
+          TRAILING_BACKSLASH: "C:\\foo\\",
+          COLOR: "#ff0000",
+          HASH: "https://example.com/#/home",
+          LEADING_SPACE: "  foo",
+          TRAILING_SPACE: "foo  ",
+          SINGLE_QUOTED: "'foo'",
+          LEADING_QUOTE: "'foo",
+          TRAILING_QUOTE: "foo'",
+        },
+        {
+          projectId: "project",
+          projectAlias: "alias",
+          projectDir: projectTmpdir,
+          functionsSource: tmpdir,
+        },
+      );
+      const envs = env.loadUserEnvs({
+        projectId: "project",
+        projectAlias: "alias",
+        projectDir: projectTmpdir,
+        functionsSource: tmpdir,
+      });
+      expect(envs["HASH"]).to.equal("https://example.com/#/home");
+      expect(envs["LEADING_SPACE"]).to.equal("  foo");
+      expect(envs["TRAILING_SPACE"]).to.equal("foo  ");
+      expect(envs["TRAILING_BACKSLASH"]).to.equal("C:\\foo\\");
+      expect(envs["COLOR"]).to.equal("#ff0000");
+      expect(envs["SINGLE_QUOTED"]).to.equal("'foo'");
+      expect(envs["LEADING_QUOTE"]).to.equal("'foo");
+      expect(envs["TRAILING_QUOTE"]).to.equal("foo'");
+    });
+
+    it("writes single quotes without escaping them", () => {
+      env.writeUserEnvs(
+        { FOO: "it's" },
+        {
+          projectId: "project",
+          projectAlias: "alias",
+          projectDir: projectTmpdir,
+          functionsSource: tmpdir,
+        },
+      );
+      expect(fs.readFileSync(path.join(tmpdir, ".env.project"), "utf8")).to.equal('FOO="it\'s"\n');
     });
 
     it("shouldn't write anything if any of the keys fails key format validation", () => {
