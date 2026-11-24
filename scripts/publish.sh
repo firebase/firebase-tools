@@ -71,7 +71,9 @@ publish_to_oss_gate() {
 
   local ar_npmrc
   ar_npmrc=$(mktemp)
-  trap "rm -f '${ar_npmrc}'" RETURN EXIT
+  local clean_dir="tmp-clean-publish-$$"
+  local clean_dir_abs="$(pwd)/${clean_dir}"
+  trap "rm -rf '${ar_npmrc}' '${clean_dir_abs}'" EXIT
 
   cat > "${ar_npmrc}" <<EOF
 registry=${OSS_GATE_AR_REGISTRY}
@@ -83,19 +85,25 @@ EOF
     --repo-config="${ar_npmrc}" \
     --credential-config="${ar_npmrc}"
 
-  local publish_args=(
+  # Clean the package without letting clean-publish run npm publish, since
+  # clean-publish@5.0.0 swallows non-zero exit codes from publish and before-script.
+  echo "Preparing clean package for ${package_name}@${NEW_VERSION}..."
+  npx --yes --registry=https://registry.npmjs.org/ clean-publish@5.0.0 \
+    --without-publish \
+    --temp-dir "${clean_dir}" \
     --fields publishConfig
-    --before-script ./scripts/clean-shrinkwrap.sh
-    --
+  ./scripts/clean-shrinkwrap.sh "${clean_dir}"
+
+  local npm_publish_args=(
     --registry="${OSS_GATE_AR_REGISTRY}"
     --userconfig="${ar_npmrc}"
   )
   if [[ -n "$tag" ]]; then
-    publish_args+=(--tag "$tag")
+    npm_publish_args+=(--tag "$tag")
   fi
 
   echo "Publishing ${package_name}@${NEW_VERSION} to OSS Exit Gate Artifact Registry..."
-  npx --yes clean-publish@5.0.0 "${publish_args[@]}"
+  (cd "${clean_dir}" && npm publish "${npm_publish_args[@]}")
 
   local manifest_path="${WDIR}/manifest.json"
   if [[ -d "/workspace" ]]; then
@@ -116,6 +124,9 @@ EOF
       registry_config: { npm: { tags: $tags } }
     }' > "${manifest_path}"
   echo "Wrote OSS Exit Gate manifest to ${manifest_path}"
+
+  rm -rf "${ar_npmrc}" "${clean_dir_abs}"
+  trap - EXIT
 }
 
 echo "Checking for commands..."

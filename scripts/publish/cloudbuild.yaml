@@ -27,19 +27,22 @@ steps:
         "--key=${_KEY_NAME}",
       ]
 
-  # Decrypt the npm credentials.
+  # Decrypt the npm credentials (skipped when publishing via OSS Exit Gate).
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
+    entrypoint: "bash"
     args:
-      [
-        "gcloud",
-        "kms",
-        "decrypt",
-        "--ciphertext-file=npmrc.enc",
-        "--plaintext-file=npmrc",
-        "--location=global",
-        "--keyring=${_KEY_RING}",
-        "--key=${_KEY_NAME}",
-      ]
+      - "-c"
+      - |
+        if [ "${_USE_OSS_GATE}" != "true" ]; then
+          gcloud kms decrypt \
+            --ciphertext-file=npmrc.enc \
+            --plaintext-file=npmrc \
+            --location=global \
+            --keyring="${_KEY_RING}" \
+            --key="${_KEY_NAME}"
+        else
+          echo "Skipping Wombat npm credentials decryption for OSS Exit Gate publish."
+        fi
 
   # Decrypt the hub (GitHub) credentials.
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
