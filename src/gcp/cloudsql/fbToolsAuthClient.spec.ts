@@ -1,6 +1,5 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import { Headers as NodeFetchHeaders } from "node-fetch";
 import * as apiv2 from "../../apiv2";
 import { FirebaseError } from "../../error";
 import { FBToolsAuthClient } from "./fbToolsAuthClient";
@@ -38,18 +37,19 @@ describe("FBToolsAuthClient", () => {
       response: {
         status: 200,
         statusText: "OK",
-        headers: new NodeFetchHeaders({ "x-custom": "val" }),
+        headers: new Headers({ "x-custom": "val" }),
       } as unknown as apiv2.ClientResponse<unknown>["response"],
     });
 
     const client = new FBToolsAuthClient();
     const res = await client.request<{ connectionName: string }>({
       url: "https://sqladmin.googleapis.com/sql/v1beta4/projects/p/instances/i",
-      method: "GET",
+      method: "get",
       headers: { "x-req": "1" },
     });
 
     expect(reqStub.calledOnce).to.be.true;
+    expect(reqStub.firstCall.args[0].method).to.equal("GET");
     expect(res.status).to.equal(200);
     expect(res.data).to.deep.equal({ connectionName: "proj:reg:inst" });
     expect(res.headers).to.be.instanceOf(Headers);

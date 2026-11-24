@@ -17,7 +17,7 @@ export class FBToolsAuthClient extends AuthClient {
       auth: true,
     });
     const res = await client.request<unknown, T>({
-      method: (opts.method ?? "POST") as apiv2.HttpMethod,
+      method: (opts.method?.toUpperCase() ?? "POST") as apiv2.HttpMethod,
       path: url.pathname,
       queryParams: opts.params,
       body: opts.data ?? undefined,
@@ -28,14 +28,10 @@ export class FBToolsAuthClient extends AuthClient {
       headers: new Headers(opts.headers),
       url,
     };
-    const headers = new Headers();
-    res.response.headers.forEach((value, name) => {
-      headers.append(name, value);
-    });
     const response = new Response(undefined, {
       status: res.status,
       statusText: res.response.statusText,
-      headers,
+      headers: res.response.headers,
     });
     return Object.assign(response, {
       config: preparedConfig,
