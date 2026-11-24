@@ -1,5 +1,5 @@
 import { AuthClient } from "google-auth-library";
-import { GaxiosOptions, GaxiosPromise, GaxiosResponse } from "gaxios";
+import { GaxiosOptions, GaxiosOptionsPrepared, GaxiosPromise, GaxiosResponse } from "gaxios";
 
 import * as apiv2 from "../../apiv2";
 import { FirebaseError } from "../../error";
@@ -11,36 +11,47 @@ export class FBToolsAuthClient extends AuthClient {
     if (!opts.url) {
       throw new FirebaseError("opts.url was undefined");
     }
-    const url = new URL(opts.url as string);
+    const url = opts.url instanceof URL ? opts.url : new URL(opts.url);
     const client = new apiv2.Client({
       urlPrefix: url.origin,
       auth: true,
     });
-    const res = await client.request<T, any>({
-      method: opts.method ?? "POST",
+    const res = await client.request<unknown, T>({
+      method: (opts.method ?? "POST") as apiv2.HttpMethod,
       path: url.pathname,
       queryParams: opts.params,
-      body: opts.data,
+      body: opts.data ?? undefined,
       responseType: opts.responseType,
     });
-    return {
-      config: opts,
+    const preparedConfig: GaxiosOptionsPrepared = {
+      ...opts,
+      headers: new Headers(opts.headers),
+      url,
+    };
+    const headers = new Headers();
+    res.response.headers.forEach((value, name) => {
+      headers.append(name, value);
+    });
+    const response = new Response(undefined, {
       status: res.status,
       statusText: res.response.statusText,
+      headers,
+    });
+    return Object.assign(response, {
+      config: preparedConfig,
       data: res.body,
-      headers: res.response.headers,
-      request: {} as any,
-    };
+    });
   }
-  public async getAccessToken(): Promise<{ token?: string; res?: GaxiosResponse<any> }> {
+
+  public async getAccessToken(): Promise<{ token?: string; res?: GaxiosResponse<unknown> }> {
     return { token: await apiv2.getAccessToken() };
   }
 
-  public async getRequestHeaders(): Promise<Record<string, string>> {
+  public async getRequestHeaders(): Promise<Headers> {
     const token = await this.getAccessToken();
-    return {
+    return new Headers({
       ...apiv2.standardHeaders(),
       Authorization: `Bearer ${token.token}`,
-    };
+    });
   }
 }
