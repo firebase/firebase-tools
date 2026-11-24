@@ -170,6 +170,11 @@ BAR=bar`,
         want: { FOO: "C:\\foo\\", BAR: "#bar" },
       },
       {
+        description: "should keep a lone backslash in a hand-written double quoted value",
+        input: 'DIR="C:\\#temp\\"',
+        want: { DIR: "C:\\#temp\\" },
+      },
+      {
         description: "should ignore leading/trailing spaces before the separator (unquoted)",
         input: "FOO   =      foo",
         want: { FOO: "foo" },
