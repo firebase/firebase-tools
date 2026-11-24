@@ -1,7 +1,6 @@
 import { URLSearchParams } from "url";
 import { decode as decodeJwt, sign as signJwt, JwtHeader } from "jsonwebtoken";
-import * as express from "express";
-import { ExegesisContext } from "exegesis-express";
+import { AuthOperationContext } from "./openapiRouter";
 import {
   toUnixTimestamp,
   randomId,
@@ -40,7 +39,7 @@ import { MfaEnrollments, Schemas } from "./types";
 import { FirebaseError } from "../../error";
 
 /**
- * Create a map from IDs to operations handlers suitable for exegesis.
+ * Create a map from IDs to operations handlers for the OpenAPI router.
  * @param state the state of the Auth Emulator
  * @return operations, keyed by their operation id.
  */
@@ -158,7 +157,7 @@ const MFA_INELIGIBLE_PROVIDER = new Set([
 async function signUp(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SignUpRequest"],
-  ctx: ExegesisContext,
+  ctx: AuthOperationContext,
 ): Promise<Schemas["GoogleCloudIdentitytoolkitV1SignUpResponse"]> {
   assert(!state.disableAuth, "PROJECT_DISABLED");
   let provider: string | undefined;
@@ -287,7 +286,7 @@ async function signUp(
 function lookup(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1GetAccountInfoRequest"],
-  ctx: ExegesisContext,
+  ctx: AuthOperationContext,
 ): Schemas["GoogleCloudIdentitytoolkitV1GetAccountInfoResponse"] {
   assert(!state.disableAuth, "PROJECT_DISABLED");
   const seenLocalIds = new Set<string>();
@@ -562,7 +561,7 @@ function batchDelete(
 function batchGet(
   state: ProjectState,
   reqBody: unknown,
-  ctx: ExegesisContext,
+  ctx: AuthOperationContext,
 ): Schemas["GoogleCloudIdentitytoolkitV1DownloadAccountResponse"] {
   assert(!state.disableAuth, "PROJECT_DISABLED");
   const maxResults = Math.min(Math.floor(ctx.params.query.maxResults) || 20, 1000);
@@ -712,7 +711,7 @@ function createSessionCookie(
 function deleteAccount(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1DeleteAccountRequest"],
-  ctx: ExegesisContext,
+  ctx: AuthOperationContext,
 ): Schemas["GoogleCloudIdentitytoolkitV1DeleteAccountResponse"] {
   assert(!state.disableAuth, "PROJECT_DISABLED");
   let user: UserInfo;
@@ -875,7 +874,7 @@ export function resetPassword(
 function sendOobCode(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1GetOobCodeRequest"],
-  ctx: ExegesisContext,
+  ctx: AuthOperationContext,
 ): Schemas["GoogleCloudIdentitytoolkitV1GetOobCodeResponse"] {
   assert(!state.disableAuth, "PROJECT_DISABLED");
   assert(
@@ -962,7 +961,7 @@ function sendOobCode(
     );
   }
 
-  const url = authEmulatorUrl(ctx.req as express.Request);
+  const url = authEmulatorUrl(ctx.req);
   const oobRecord = createOobRecord(state, email, url, {
     requestType: reqBody.requestType,
     mode,
@@ -1025,10 +1024,10 @@ function sendVerificationCode(
 function setAccountInfo(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SetAccountInfoRequest"],
-  ctx: ExegesisContext,
+  ctx: AuthOperationContext,
 ): Schemas["GoogleCloudIdentitytoolkitV1SetAccountInfoResponse"] {
   assert(!state.disableAuth, "PROJECT_DISABLED");
-  const url = authEmulatorUrl(ctx.req as express.Request);
+  const url = authEmulatorUrl(ctx.req);
   return setAccountInfoImpl(state, reqBody, {
     privileged: !!ctx.security?.Oauth2,
     emulatorUrl: url,
@@ -2006,7 +2005,7 @@ function getEmulatorProjectConfig(state: ProjectState): Schemas["EmulatorV1Proje
 function updateEmulatorProjectConfig(
   state: ProjectState,
   reqBody: Schemas["EmulatorV1ProjectsConfig"],
-  ctx: ExegesisContext,
+  ctx: AuthOperationContext,
 ): Schemas["EmulatorV1ProjectsConfig"] {
   // New developers should not use updateEmulatorProjectConfig to update the
   // allowDuplicateEmails setting and should instead use updateConfig to do so.
@@ -2406,7 +2405,7 @@ function getConfig(state: ProjectState): Schemas["GoogleCloudIdentitytoolkitAdmi
 function updateConfig(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitAdminV2Config"],
-  ctx: ExegesisContext,
+  ctx: AuthOperationContext,
 ): Schemas["GoogleCloudIdentitytoolkitAdminV2Config"] {
   assert(
     state instanceof AgentProjectState,
@@ -2431,7 +2430,7 @@ function updateConfig(
 export type AuthOperation = (
   state: ProjectState,
   reqBody: object,
-  ctx: ExegesisContext,
+  ctx: AuthOperationContext,
 ) => Promise<object> | object;
 
 export type AuthOps = {
@@ -3168,7 +3167,7 @@ function createTenant(
 function listTenants(
   state: ProjectState,
   reqBody: unknown,
-  ctx: ExegesisContext,
+  ctx: AuthOperationContext,
 ): Schemas["GoogleCloudIdentitytoolkitAdminV2ListTenantsResponse"] {
   assert(state instanceof AgentProjectState, "((Can only list tenants in agent project.))");
   const pageSize = Math.min(Math.floor(ctx.params.query.pageSize) || 20, 1000);
@@ -3202,7 +3201,7 @@ function getTenant(state: ProjectState): Schemas["GoogleCloudIdentitytoolkitAdmi
 function updateTenant(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"],
-  ctx: ExegesisContext,
+  ctx: AuthOperationContext,
 ): Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"] {
   assert(state instanceof TenantProjectState, "((Can only update tenant on tenant projects.))");
   return state.updateTenant(reqBody, ctx.params.query.updateMask);
