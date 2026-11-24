@@ -130,7 +130,11 @@ function resolveComponentRef<T>(spec: OpenAPIObject, ref: string): T {
     .map((s) => s.replace(/~1/g, "/").replace(/~0/g, "~"));
   let current: unknown = spec;
   for (const segment of segments) {
-    if (typeof current !== "object" || current === null || !(segment in current)) {
+    if (
+      typeof current !== "object" ||
+      current === null ||
+      !Object.prototype.hasOwnProperty.call(current, segment)
+    ) {
       throw new Error(`Unresolvable OpenAPI $ref: ${ref}`);
     }
     current = (current as Record<string, unknown>)[segment];
@@ -142,7 +146,7 @@ function resolveMaybeRef<T>(spec: OpenAPIObject, item: T | ReferenceObject): T {
   return isReferenceObject(item) ? resolveComponentRef<T>(spec, item.$ref) : item;
 }
 
-function rewriteRelativeRefs(schema: unknown, baseId: string): unknown {
+function rewriteRelativeRefs(schema: unknown, baseId: string, parentKey?: string): unknown {
   if (Array.isArray(schema)) {
     return schema.map((entry) => rewriteRelativeRefs(entry, baseId));
   }
@@ -153,11 +157,11 @@ function rewriteRelativeRefs(schema: unknown, baseId: string): unknown {
   for (const [key, value] of Object.entries(schema)) {
     if (key === "$ref" && typeof value === "string" && value.startsWith("#/")) {
       out[key] = `${baseId}${value}`;
-    } else if (key === "example") {
-      // Omit example objects so AJV never interprets an example `id` field as a schema ID.
+    } else if (parentKey !== "properties" && (key === "example" || key === "examples")) {
+      // Omit example/examples objects so AJV never interprets an example `id` field as a schema ID.
       continue;
     } else {
-      out[key] = rewriteRelativeRefs(value, baseId);
+      out[key] = rewriteRelativeRefs(value, baseId, key);
     }
   }
   return out;
@@ -658,9 +662,11 @@ export function createOpenApiMiddleware(
                 await runBodyParser(jsonParser, req, res);
               }
             } catch (err: unknown) {
-              const parseErr = err as Error & { type?: string };
-              if (parseErr.type === "entity.parse.failed") {
-                const message = `Invalid JSON payload received. ${parseErr.message}`;
+              if (
+                err instanceof Error &&
+                (err as Error & { type?: string }).type === "entity.parse.failed"
+              ) {
+                const message = `Invalid JSON payload received. ${err.message}`;
                 throw new InvalidArgumentError(message, [
                   {
                     message,

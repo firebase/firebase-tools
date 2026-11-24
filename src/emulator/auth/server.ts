@@ -541,6 +541,11 @@ function validateAndFixRestMappingRequestBody(
         continue;
       }
       const dataPath = jsonPointerToPath(path);
+      if (
+        dataPath.some((key) => key === "__proto__" || key === "constructor" || key === "prototype")
+      ) {
+        continue;
+      }
       const value = _.get(body, dataPath);
       if (ajvError.keyword === "type" && (ajvError.params as { type: string }).type === "string") {
         if (typeof value === "number") {
