@@ -1,4 +1,4 @@
-import * as archiver from "archiver";
+import { ArchiveWriter, createArchive } from "../../archive";
 import * as clc from "colorette";
 import * as fs from "fs";
 import * as path from "path";
@@ -46,21 +46,12 @@ export async function getFunctionsConfig(projectId: string): Promise<Record<stri
   return {};
 }
 
-async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream) {
-  from.pipe(to);
-  await from.finalize();
-  return new Promise<void>((resolve, reject) => {
-    to.on("finish", () => resolve());
-    to.on("error", reject);
-  });
-}
-
 /**
  * Adds files to the archive, forcing executable permissions for specified paths.
  * @internal
  */
 export async function addFilesToArchive(
-  archive: archiver.Archiver,
+  archive: ArchiveWriter,
   files: fsAsync.ReaddirRecursiveFile[],
   sourceDir: string,
   executablePaths?: string[],
@@ -98,7 +89,7 @@ async function packageSource(
     flags: "w",
     encoding: "binary",
   });
-  const archive = exportType === "tar.gz" ? archiver("tar", { gzip: true }) : archiver("zip");
+  const archive = createArchive(exportType, fileStream);
   const hashes: string[] = [];
   let configHash = "";
 
@@ -144,7 +135,7 @@ async function packageSource(
         functionsConfig.logFunctionsConfigDeprecationWarning();
       }
     }
-    await pipeAsync(archive, fileStream);
+    await archive.finalize();
   } catch (err: any) {
     if (err instanceof FirebaseError) {
       // No need to wrap these again.
@@ -164,7 +155,7 @@ async function packageSource(
       " packaged " +
       clc.bold(sourceDir) +
       " (" +
-      utils.formatFilesize(archive.pointer()) +
+      utils.formatFilesize(fs.statSync(tmpFile).size) +
       ") for uploading",
   );
   const sourceHash = crypto.createHash("sha1").update(hashes.sort().join("")).digest("hex");

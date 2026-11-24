@@ -1,4 +1,4 @@
-import * as archiver from "archiver";
+import { createArchive } from "../../archive";
 import * as fs from "fs";
 import * as path from "path";
 import * as tar from "tar";
@@ -109,7 +109,7 @@ export async function createSourceDeployArchive(
     flags: "w",
     encoding: "binary",
   });
-  const archive = archiver("zip");
+  const archive = createArchive("zip", fileStream);
 
   // We must ignore firebase-debug.log or weird things happen if you're in the public dir when you deploy.
   const ignore = resolveIgnorePatterns(config);
@@ -127,7 +127,7 @@ export async function createSourceDeployArchive(
         mode: file.mode,
       });
     }
-    await pipeAsync(archive, fileStream);
+    await archive.finalize();
   } catch (err: unknown) {
     throw new FirebaseError(
       `Could not read source directory. Remove links and shortcuts and try again. Original: ${String(err)}`,
@@ -235,13 +235,4 @@ export function buildDirectory(projectDir: string, rootDir = ""): BuildDirectory
     }
   }
   return { buildFolder: appFolderPath, appFolder: "" };
-}
-
-async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream): Promise<void> {
-  from.pipe(to);
-  await from.finalize();
-  return new Promise((resolve, reject) => {
-    to.on("finish", resolve);
-    to.on("error", reject);
-  });
 }

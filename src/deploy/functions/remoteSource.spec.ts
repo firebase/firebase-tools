@@ -3,7 +3,7 @@ import * as sinon from "sinon";
 import * as fs from "fs";
 import * as path from "path";
 import * as mockfs from "mock-fs";
-import * as archiver from "archiver";
+import { createArchive } from "../../archive";
 import { Writable } from "stream";
 
 import { getRemoteSource, requireFunctionsYaml } from "./remoteSource";
@@ -52,7 +52,6 @@ describe("remoteSource", () => {
       files: { [path: string]: string },
       topLevelDir?: string,
     ): Promise<Buffer> {
-      const archive = archiver("zip", { zlib: { level: 9 } });
       const chunks: Buffer[] = [];
       const output = new Writable({
         write(chunk, _encoding, callback) {
@@ -60,18 +59,13 @@ describe("remoteSource", () => {
           callback();
         },
       });
-
-      return new Promise((resolve, reject) => {
-        output.on("finish", () => resolve(Buffer.concat(chunks as unknown as Uint8Array[])));
-        archive.on("error", (err) => reject(err));
-        archive.pipe(output);
-
-        for (const [filePath, content] of Object.entries(files)) {
-          const entryPath = topLevelDir ? path.join(topLevelDir, filePath) : filePath;
-          archive.append(content, { name: entryPath });
-        }
-        archive.finalize().catch(reject);
-      });
+      const archive = createArchive("zip", output);
+      for (const [filePath, content] of Object.entries(files)) {
+        const entryPath = topLevelDir ? path.join(topLevelDir, filePath) : filePath;
+        archive.append(content, { name: entryPath });
+      }
+      await archive.finalize();
+      return Buffer.concat(chunks as unknown as Uint8Array[]);
     }
 
     it("should use GitHub Archive API for GitHub URLs", async () => {
