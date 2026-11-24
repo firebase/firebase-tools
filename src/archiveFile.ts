@@ -1,4 +1,4 @@
-import * as archiver from "archiver";
+import { createArchive } from "./archive";
 import * as fs from "fs";
 import * as path from "path";
 import * as tmp from "tmp";
@@ -17,19 +17,9 @@ export async function archiveFile(filePath: string, options?: ArchiveOptions): P
     flags: "w",
     encoding: "binary",
   });
-  const archive = archiver("zip");
+  const archive = createArchive("zip", fileStream);
   const name = options?.archivedFileName ?? path.basename(filePath);
   archive.file(filePath, { name });
-  await pipeAsync(archive, fileStream);
+  await archive.finalize();
   return tmpFile;
-}
-
-async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream): Promise<void> {
-  return new Promise((resolve, reject) => {
-    to.on("finish", resolve);
-    to.on("error", reject);
-    from.on("error", reject);
-    from.pipe(to);
-    from.finalize().catch(reject);
-  });
 }

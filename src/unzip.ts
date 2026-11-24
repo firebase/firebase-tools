@@ -62,7 +62,7 @@ const extractEntriesFromBuffer = async (data: Buffer, outputDir: string): Promis
     entry.headerSize = 30 + entry.fileNameLength + entry.extraLength;
     let dataDescriptorSize = 0;
     if (
-      entry.generalPurposeBitFlag === 8 &&
+      (entry.generalPurposeBitFlag & 0x0008) !== 0 &&
       entry.compressedSize === 0 &&
       entry.uncompressedSize === 0
     ) {

@@ -1,4 +1,4 @@
-import * as archiver from "archiver";
+import { createArchive } from "./archive";
 import { formatFilesize } from "./utils";
 import * as fs from "fs";
 import * as path from "path";
@@ -6,7 +6,7 @@ import * as tmp from "tmp";
 
 import { FirebaseError, getError } from "./error";
 import { logger } from "./logger";
-import { Readable, Writable } from "stream";
+import { Readable } from "stream";
 import * as fsAsync from "./fsAsync";
 
 export interface ArchiveOptions {
@@ -66,12 +66,6 @@ async function zipDirectory(
   tempFile: tmp.FileResult,
   options: ArchiveOptions,
 ): Promise<ArchiveResult> {
-  const archiveFileStream = fs.createWriteStream(tempFile.name, {
-    flags: "w",
-    encoding: "binary",
-  });
-  const archive = archiver("zip");
-  const archiveDone = pipeAsync(archive, archiveFileStream);
   const allFiles: string[] = [];
 
   let files: fsAsync.ReaddirRecursiveFile[];
@@ -88,6 +82,11 @@ async function zipDirectory(
     throw err;
   }
 
+  const archiveFileStream = fs.createWriteStream(tempFile.name, {
+    flags: "w",
+    encoding: "binary",
+  });
+  const archive = createArchive("zip", archiveFileStream);
   for (const file of files) {
     const name = path.relative(sourceDirectory, file.name);
     allFiles.push(name);
@@ -96,8 +95,7 @@ async function zipDirectory(
       mode: file.mode,
     });
   }
-  void archive.finalize();
-  await archiveDone;
+  await archive.finalize();
   const stats = fs.statSync(tempFile.name);
   return {
     file: tempFile.name,
@@ -106,16 +104,4 @@ async function zipDirectory(
     size: stats.size,
     source: sourceDirectory,
   };
-}
-
-/**
- * Pipes one stream to another, resolving the returned promise on finish or
- * rejects on an error.
- */
-async function pipeAsync(from: Readable, to: Writable): Promise<void> {
-  return new Promise((resolve, reject) => {
-    to.on("finish", resolve);
-    to.on("error", reject);
-    from.pipe(to);
-  });
 }
