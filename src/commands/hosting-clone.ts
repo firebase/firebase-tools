@@ -11,14 +11,13 @@ import {
   createRelease,
   addAuthDomains,
   normalizeName,
+  ensureApiEnabled,
 } from "../hosting/api";
 import * as utils from "../utils";
 import { requireAuth } from "../requireAuth";
 import { logger } from "../logger";
 import { getProjectId, needProjectId } from "../projectUtils";
 import { Options } from "../options";
-import { ensure } from "../ensureApiEnabled";
-import { hostingApiOrigin } from "../api";
 
 export const command = new Command("hosting:clone <source> <targetChannel>")
   .description("clone a version from one site to another")
@@ -90,7 +89,7 @@ To clone across different Firebase projects:
     const defaultProjectId =
       !sourceProjectId || !targetProjectId ? getProjectId(options) : undefined;
     if (defaultProjectId) {
-      await ensure(defaultProjectId, hostingApiOrigin(), "hosting", true);
+      await ensureApiEnabled(defaultProjectId);
     }
 
     [sourceProjectId, targetProjectId] = await Promise.all([
@@ -100,10 +99,10 @@ To clone across different Firebase projects:
 
     const ensurePromises: Promise<void>[] = [];
     if (sourceProjectId !== defaultProjectId) {
-      ensurePromises.push(ensure(sourceProjectId, hostingApiOrigin(), "hosting", true));
+      ensurePromises.push(ensureApiEnabled(sourceProjectId));
     }
     if (targetProjectId !== defaultProjectId && targetProjectId !== sourceProjectId) {
-      ensurePromises.push(ensure(targetProjectId, hostingApiOrigin(), "hosting", true));
+      ensurePromises.push(ensureApiEnabled(targetProjectId));
     }
     await Promise.all(ensurePromises);
 

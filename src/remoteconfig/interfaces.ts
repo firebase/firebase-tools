@@ -82,15 +82,6 @@ export interface ListVersionsResult {
   nextPageToken?: string;
 }
 
-/** Interface representing a Remote Config list version options. */
-export interface ListVersionsOptions {
-  pageSize?: number;
-  pageToken?: string;
-  endVersionNumber?: string | number;
-  startTime?: Date | string;
-  endTime?: Date | string;
-}
-
 /** Interface representing a Remote Config user. */
 export interface RemoteConfigUser {
   email: string;

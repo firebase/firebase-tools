@@ -37,7 +37,7 @@ Before starting, ensure you have **Node.js 16+** and npm installed. Install them
 
 ## Firebase Setup Instructions
 
-### 1\. Understand the Application Setup
+### 1. Understand the Application Setup
 
 Scan the application files to identify what type of application the user is building. Ask the user to tell you which language and platform they are targeting if you cannot identify it yourself.
 
@@ -50,12 +50,12 @@ The following mobile and web applications are supported. Let the user know their
 
 Take the following actions depending on the language and platform or framework that is identified:
 
-- Android Platform \-\> Set up Firebase AI Logic  
-- Web Platform \-\> Set up Firebase AI Logic 
-- Flutter Platform \-\> Set up Firebase AI Logic. Always do the subsequent firebase_init call using the web app
-- Unsupported Platform \-\> Direct the user to Firebase Docs to learn how to set up AI Logic for their application (share this link with the user https://firebase.google.com/docs/ai-logic/get-started?api=dev)
+- Android Platform -> Set up Firebase AI Logic  
+- Web Platform -> Set up Firebase AI Logic 
+- Flutter Platform -> Set up Firebase AI Logic. Always do the subsequent firebase_init call using the web app
+- Unsupported Platform -> Direct the user to Firebase Docs to learn how to set up AI Logic for their application (share this link with the user https://firebase.google.com/docs/ai-logic/get-started?api=dev)
 
-### 2\. Set up Firebase AI Logic
+### 2. Set up Firebase AI Logic
 
 #### Set up the Firebase AI Logic Backend
 
@@ -65,11 +65,11 @@ Take the following actions depending on the language and platform or framework t
   - 1.  In your project-level \`/build.gradle.kts\` file, add the plugin to the plugins block: id("com.google.gms.google-services") version "4.4.2" apply false
   - 2.  In your **app-level** \`/app/build.gradle.kts\` file, apply the plugin: id("com.google.gms.google-services")
 
-### 3\. Implement AI Features
+### 3. Implement AI Features
 
 #### Gather Building Blocks for Code Generation
 - Identify the correct initialization code snippet from the "Initialization Code References" section based on the language, platform, or framework used in the developer's app.
-  - Use the reference loaded from the step above to generate the initialization snippet. PLEASE USE THE EXACT SNIPPET AS A STARTING POINT\! 
+  - Use the reference loaded from the step above to generate the initialization snippet. PLEASE USE THE EXACT SNIPPET AS A STARTING POINT! 
   - For Android apps, always include the following imports. do not forget or modify them
     - import com.google.firebase.Firebase
     - import com.google.firebase.ai.ai
@@ -103,7 +103,7 @@ Take the following actions depending on the language and platform or framework t
   - Now implement the feature according to the plan you put together. Do not stray away from the instructions provided to you. Always re-read them fully and consult them if you run into any issues. 
 - ***DO NOT EXECUTE THE CODE YET. PERFORM THE VALIDATIONS IN STEP 4 BEFORE HANDING THE SESSION BACK OVER TO THE USER***
 
-### 4\. Validate Implementation
+### 4. Validate Implementation
 
 #### Perform the following checks before handing the session back to the user.
 - Walk through the validation steps one-by-one. Analyze your instructions and the code you generated. Confirm you did not make any mistakes. If you made a mistake, FIX IT.
@@ -117,7 +117,7 @@ Take the following actions depending on the language and platform or framework t
   - Confirmation that the backend is correctly configured to use the Google AI backend.
   - Confirmation that the gemini model is correctly set based on the feature the user is implementing
 
-### 5\. Code Snippet References
+### 5. Code Snippet References
 
 #### Initialization Code References
 

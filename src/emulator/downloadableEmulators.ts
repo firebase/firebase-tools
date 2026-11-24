@@ -20,11 +20,17 @@ import * as path from "path";
 import * as os from "os";
 import { EmulatorRegistry } from "./registry";
 import { downloadEmulator } from "../emulator/download";
+import { checkJavaMajorVersion, getJavaBinary, hasResolvedJavaBinary } from "./commandUtils";
 import * as experiments from "../experiments";
 import * as process from "process";
 import * as emulatorUpdateDetails from "./downloadableEmulatorInfo.json";
 
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 4000; /* ms */
+
+// Mitigates CVE-2026-114938 (HotSpot AVX-512 VBMI Base64 intrinsic bug) on unpatched
+// OpenJDK 17.0.6+ runtimes. IgnoreUnrecognizedVMOptions must precede UseAVX=2 so non-x86
+// hosts (e.g. ARM64) and non-HotSpot JVMs start cleanly.
+const JAVA_DEFENSIVE_ARGS: readonly string[] = ["-XX:+IgnoreUnrecognizedVMOptions", "-XX:UseAVX=2"];
 
 const CACHE_DIR =
   process.env.FIREBASE_EMULATORS_PATH || path.join(os.homedir(), ".cache", "firebase", "emulators");
@@ -219,7 +225,7 @@ const EmulatorDetails: { [s in DownloadableEmulators]: DownloadableEmulatorDetai
 const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = {
   database: {
     binary: "java",
-    args: ["-Duser.language=en", "-jar", getExecPath(Emulators.DATABASE)],
+    args: [...JAVA_DEFENSIVE_ARGS, "-Duser.language=en", "-jar", getExecPath(Emulators.DATABASE)],
     optionalArgs: [
       "port",
       "host",
@@ -233,6 +239,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
   firestore: {
     binary: "java",
     args: [
+      ...JAVA_DEFENSIVE_ARGS,
       "-Dgoogle.cloud_firestore.debug_log_level=FINE",
       "-Duser.language=en",
       "-jar",
@@ -260,6 +267,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     // separately in ./storage/runtime.ts (not via the start function below).
     binary: "java",
     args: [
+      ...JAVA_DEFENSIVE_ARGS,
       "-Djava.security.manager=disallow",
       // Required for rules error/warning messages, which are in English only.
       // Attempts to fetch the messages in another language leads to crashes.
@@ -308,6 +316,21 @@ function getExecPath(name: DownloadableEmulators): string {
   return details.binaryPath || details.downloadPath;
 }
 
+function getPubsubJarPath(): string {
+  const details = getDownloadDetails(Emulators.PUBSUB);
+  return path.join(
+    details.unzipDir || "",
+    "pubsub-emulator",
+    "lib",
+    `cloud-pubsub-emulator-${details.version}-all.jar`,
+  );
+}
+
+function splitEnvOpts(value: string | undefined): string[] {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed.split(/\s+/) : [];
+}
+
 /**
  * @param name
  */
@@ -330,7 +353,19 @@ export function _getCommand(
     args.port = defaultPort;
   }
 
-  const cmdLineArgs = baseCmd.args.slice();
+  const useDirectPubsubJarOnWindows =
+    emulator === Emulators.PUBSUB && utils.IS_WINDOWS && !process.env.PUBSUB_EMULATOR_BINARY_PATH;
+
+  const cmdLineArgs = useDirectPubsubJarOnWindows
+    ? [
+        ...JAVA_DEFENSIVE_ARGS,
+        "-Duser.language=en",
+        ...splitEnvOpts(process.env.JAVA_OPTS),
+        ...splitEnvOpts(process.env.CLOUD_PUBSUB_EMULATOR_OPTS),
+        "-jar",
+        getPubsubJarPath(),
+      ]
+    : baseCmd.args.slice();
 
   if (
     baseCmd.binary === "java" &&
@@ -369,12 +404,19 @@ export function _getCommand(
     }
   });
 
+  let binary = baseCmd.binary;
+  if (baseCmd.binary === "java" || useDirectPubsubJarOnWindows) {
+    binary = getJavaBinary();
+  } else if (emulator === Emulators.PUBSUB && process.env.PUBSUB_EMULATOR_BINARY_PATH) {
+    binary = getExecPath(Emulators.PUBSUB);
+  }
+
   return {
-    binary: baseCmd.binary,
+    binary,
     args: cmdLineArgs,
     optionalArgs: baseCmd.optionalArgs,
     joinArgs: baseCmd.joinArgs,
-    shell: baseCmd.shell,
+    shell: useDirectPubsubJarOnWindows ? false : baseCmd.shell,
     port: args.port,
   };
 }
@@ -405,7 +447,13 @@ export async function handleEmulatorProcessError(
   port?: number,
 ): Promise<void> {
   const description = Constants.description(emulator);
-  if (err.path === "java" && err.code === "ENOENT") {
+  const isJavaBinaryError =
+    err.path === "java" ||
+    path
+      .basename(String(err.path || ""))
+      .replace(/\.exe$/i, "")
+      .toLowerCase() === "java";
+  if (isJavaBinaryError && err.code === "ENOENT") {
     await _fatal(
       emulator,
       `${description} has exited because java is not installed, you can install it from https://openjdk.java.net/install/`,
@@ -442,14 +490,24 @@ async function _runBinary(
     const logger = EmulatorLogger.forEmulator(emulator.name);
     emulator.stdout = fs.createWriteStream(getLogFileName(emulator.name));
     try {
+      const env: NodeJS.ProcessEnv = { ...process.env, ...extraEnv };
+      if (emulator.name === Emulators.PUBSUB && command.shell) {
+        // On POSIX (or when PUBSUB_EMULATOR_BINARY_PATH is set), Pub/Sub launches via its
+        // Gradle wrapper script, which expands CLOUD_PUBSUB_EMULATOR_OPTS onto the java CLI.
+        const defensiveOpts = JAVA_DEFENSIVE_ARGS.join(" ");
+        const existingOpts = env.CLOUD_PUBSUB_EMULATOR_OPTS?.trim();
+        env.CLOUD_PUBSUB_EMULATOR_OPTS = existingOpts
+          ? `${defensiveOpts} ${existingOpts}`
+          : defensiveOpts;
+      }
       const opts: childProcess.SpawnOptions = {
-        env: { ...process.env, ...extraEnv },
+        env,
         // `detached` must be true as else a SIGINT (Ctrl-c) will stop the child process before we can handle a
         // graceful shutdown and call `downloadableEmulators.stop(...)` ourselves.
         // Note that it seems to be a problem with gRPC processes for which a fix may be found on the Java side
         // related to this issue: https://github.com/grpc/grpc-java/pull/6512
         detached: true,
-        stdio: ["inherit", "pipe", "pipe"],
+        stdio: ["ignore", "pipe", "pipe"],
       };
       if (command.shell && utils.IS_WINDOWS) {
         opts.shell = true;
@@ -518,11 +576,12 @@ async function _runBinary(
       void handleEmulatorProcessError(emulator.name, err, command.port);
     });
 
-    emulator.instance.once("exit", async (code, signal) => {
+    emulator.instance.once("exit", (code, signal) => {
       if (signal) {
         utils.logWarning(`${description} has exited upon receiving signal: ${signal}`);
       } else if (code && code !== 0 && code !== /* SIGINT */ 130) {
-        await _fatal(emulator.name, `${description} has exited with code: ${code}`);
+        // _fatal never rejects because its finally block calls process.exit(1)
+        void _fatal(emulator.name, `${description} has exited with code: ${code}`);
       }
     });
     resolve();
@@ -642,6 +701,20 @@ export async function start(
       utils.logWarning("Setup required, please run: firebase setup:emulators:" + targetName);
       throw new FirebaseError("emulator not found");
     }
+  }
+
+  if (
+    targetName === Emulators.PUBSUB &&
+    utils.IS_WINDOWS &&
+    !process.env.PUBSUB_EMULATOR_BINARY_PATH &&
+    !hasResolvedJavaBinary()
+  ) {
+    // Pub/Sub is compiled for Java 11+, so it does not enforce MIN_SUPPORTED_JAVA_MAJOR_VERSION (21)
+    // via `requiresJava()`, but we still resolve `<java.home>\bin\java.exe` on Windows when starting
+    // Pub/Sub standalone so `_getCommand` bypasses any `PATH` wrapper shim.
+    await checkJavaMajorVersion().catch((err: unknown) => {
+      logger.log("DEBUG", `Failed to resolve Java binary for Pub/Sub emulator: ${String(err)}`);
+    });
   }
 
   const command = _getCommand(targetName, args);

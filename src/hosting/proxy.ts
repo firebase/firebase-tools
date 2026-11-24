@@ -1,7 +1,7 @@
 import { capitalize, includes } from "lodash";
 import { IncomingMessage, ServerResponse } from "http";
 import { PassThrough } from "stream";
-import { Request, RequestHandler, Response } from "express";
+import { NextFunction, Request, RequestHandler, Response } from "express";
 import { URL } from "url";
 
 import { Client, HttpMethod } from "../apiv2";
@@ -55,7 +55,11 @@ export function proxyRequestHandler(
   rewriteIdentifier: string,
   options: { forceCascade?: boolean } = {},
 ): RequestHandler {
-  return async (req: IncomingMessage, res: ServerResponse, next: () => void): Promise<unknown> => {
+  const handle = async (
+    req: IncomingMessage,
+    res: ServerResponse,
+    next: NextFunction,
+  ): Promise<unknown> => {
     logger.info(`[hosting] Rewriting ${req.url} to ${url} for ${rewriteIdentifier}`);
     // Extract the __session cookie from headers to forward it to the
     // functions cookie is not a string[].
@@ -65,7 +69,7 @@ export function proxyRequestHandler(
     });
 
     // req.url is just the full path (e.g. /foo?key=value; no origin).
-    const u = new URL(url + req.url);
+    const u = new URL(`${url}${req.url ?? ""}`);
     const c = new Client({ urlPrefix: u.origin, auth: false });
 
     let body: PassThrough | Buffer | undefined;
@@ -228,6 +232,9 @@ export function proxyRequestHandler(
     }
     res.statusCode = proxyRes.status;
     proxyRes.body.pipe(res);
+  };
+  return (req, res, next) => {
+    void handle(req, res, next).catch(next);
   };
 }
 
