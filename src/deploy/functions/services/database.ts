@@ -4,9 +4,11 @@ import * as build from "../build";
 import {
   getDatabaseInstanceDetails as getDetails,
   DatabaseInstance,
+  DatabaseLocation,
 } from "../../../management/database";
+import { logger } from "../../../logger";
 
-const instanceCache = new Map<string, DatabaseInstance>();
+const instanceCache = new Map<string, Promise<DatabaseInstance>>();
 
 /**
  * Clear the database instance cache. Used for testing.
@@ -18,39 +20,66 @@ export function clearCache(): void {
 
 /**
  * A memoized version of getDatabaseInstanceDetails that avoids repeated calls to the API.
+ * Concurrent calls for the same instance share one request. A failed request is not cached.
  *
  * @param projectId the project ID
  * @param instanceName the database instance ID
  */
-export async function getDatabaseInstanceDetails(
+export function getDatabaseInstanceDetails(
   projectId: string,
   instanceName: string,
 ): Promise<DatabaseInstance> {
   const key = `${projectId}/${instanceName}`;
 
-  if (instanceCache.has(key)) {
-    return instanceCache.get(key)!;
+  let details = instanceCache.get(key);
+  if (!details) {
+    details = getDetails(projectId, instanceName).catch((err: unknown) => {
+      instanceCache.delete(key);
+      throw err;
+    });
+    instanceCache.set(key, details);
   }
-
-  const details = await getDetails(projectId, instanceName);
-  instanceCache.set(key, details);
   return details;
 }
 
 /**
- * Sets a database event trigger's region to the function region.
+ * Sets an unset database event trigger's region. A trigger on a named instance gets the
+ * region of that instance. Any other trigger gets the function region.
  * @param endpoint the database endpoint
  */
-export function ensureDatabaseTriggerRegion(
+export async function ensureDatabaseTriggerRegion(
   endpoint: backend.Endpoint & backend.EventTriggered,
 ): Promise<void> {
-  if (!endpoint.eventTrigger.region) {
-    endpoint.eventTrigger.region = endpoint.region;
+  const { eventTrigger } = endpoint;
+  if (eventTrigger.region) {
+    return;
   }
-  if (endpoint.eventTrigger.region !== endpoint.region) {
-    throw new FirebaseError("A database trigger location must match the function region.");
+  eventTrigger.region = (await lookupInstanceLocation(endpoint)) ?? endpoint.region;
+}
+
+async function lookupInstanceLocation(
+  endpoint: backend.Endpoint & backend.EventTriggered,
+): Promise<string | undefined> {
+  const { eventTrigger } = endpoint;
+  const instanceName =
+    eventTrigger.eventFilters?.instance ?? eventTrigger.eventFilterPathPatterns?.instance;
+  // A path pattern can match instances in more than one location.
+  if (!instanceName || instanceName.includes("*")) {
+    return undefined;
   }
-  return Promise.resolve();
+  try {
+    const details = await getDatabaseInstanceDetails(endpoint.project, instanceName);
+    if (details.location && details.location !== DatabaseLocation.ANY) {
+      return details.location.toLowerCase();
+    }
+  } catch (err: unknown) {
+    logger.debug(
+      `Could not find the location of database instance ${instanceName}. ` +
+        `The trigger for function ${endpoint.id} will use the function region ${endpoint.region}:`,
+      err,
+    );
+  }
+  return undefined;
 }
 
 /**
