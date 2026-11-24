@@ -317,6 +317,52 @@ describe("openapiRouter", () => {
     expect(res.body.error.message).to.equal("Response validation failed");
   });
 
+  it("matches empty path parameter segments (e.g. /tenants//accounts:batchCreate)", async () => {
+    const emptyParamSpec: OpenAPIObject = {
+      ...sampleSpec,
+      paths: {
+        "/v1/projects/{targetProjectId}/tenants/{tenantId}/accounts:batchCreate": {
+          post: {
+            operationId: "accounts.batchCreate",
+            parameters: [
+              { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
+              { name: "tenantId", in: "path", required: true, schema: { type: "string" } },
+            ],
+            security: [{ Oauth2: [] }],
+            responses: {
+              "200": {
+                description: "ok",
+                content: {
+                  "application/json": {
+                    schema: {
+                      type: "object",
+                      properties: {
+                        projectId: { type: "string" },
+                        tenantId: { type: "string" },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+    const app = buildTestApp(emptyParamSpec, {
+      "accounts.batchCreate": (ctx) => ({
+        projectId: ctx.params.path.targetProjectId,
+        tenantId: ctx.params.path.tenantId,
+      }),
+    });
+
+    const res = await supertest(app)
+      .post("/v1/projects/my-proj/tenants//accounts:batchCreate")
+      .set("Authorization", "Bearer owner");
+    expect(res.status).to.equal(200);
+    expect(res.body).to.deep.equal({ projectId: "my-proj", tenantId: "" });
+  });
+
   it("supports eager schema compilation", async () => {
     const app = buildTestApp(
       sampleSpec,

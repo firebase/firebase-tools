@@ -205,7 +205,9 @@ function compileTemplate(template: string): Omit<DynamicRoute, "compiledPath"> {
   while ((match = templateRe.exec(template)) !== null) {
     const literal = template.slice(lastIndex, match.index);
     literalLength += literal.length;
-    regexParts.push(escapeRegExp(literal), "([^/]+)");
+    // Match zero-or-more non-slash characters (matching exegesis PathResolver) so paths
+    // like `/tenants//accounts:batchCreate` resolve with an empty `tenantId` parameter.
+    regexParts.push(escapeRegExp(literal), "([^/]*)");
     paramNames.push(match[1]);
     lastIndex = match.index + match[0].length;
   }
