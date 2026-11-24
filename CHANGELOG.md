@@ -1,3 +1,4 @@
+- Dropped support for Node.js 20 and upgraded Google Cloud dependencies (`@google-cloud/pubsub` to v6, `@google-cloud/cloud-sql-connector` to `^1.13.1`, `google-auth-library` to v11, and `gaxios` to v8) to eliminate deprecated `uuid@9` and `rimraf@5` / `glob@10` transitive dependencies (#11570).
 - Updated `hono` to 4.13.16 and `@hono/node-server` to 2.1.6 to resolve moderate severity security advisories.
 - Added defensive JVM flags (`-XX:+IgnoreUnrecognizedVMOptions -XX:UseAVX=2`) when starting Java-based emulators to mitigate CVE-2026-114938 on unpatched OpenJDK 17.0.6+ runtimes.
 - Updated Firebase Hosting custom domain lookup to use the public `/customDomains` API endpoint instead of `/domains`.

@@ -28,12 +28,16 @@ function getAuthClient(config: GoogleAuthOptions): GoogleAuth {
     return authClient;
   }
 
+  const existingTransporterOptions =
+    config.clientOptions && "transporterOptions" in config.clientOptions
+      ? config.clientOptions.transporterOptions
+      : undefined;
   const authConfig: GoogleAuthOptions = {
     ...config,
     clientOptions: {
       ...config.clientOptions,
       transporterOptions: {
-        ...config.clientOptions?.transporterOptions,
+        ...existingTransporterOptions,
         agent: apiv2.noKeepAliveAgent,
       },
     },

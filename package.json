@@ -76,7 +76,7 @@
   ],
   "preferGlobal": true,
   "engines": {
-    "node": ">=20.0.0 || >=22.0.0 || >=24.0.0"
+    "node": ">=22.0.0 || >=24.0.0"
   },
   "author": "Firebase (https://firebase.google.com/)",
   "license": "MIT",
@@ -110,8 +110,8 @@
   "dependencies": {
     "@electric-sql/pglite": "^0.3.3",
     "@electric-sql/pglite-tools": "^0.2.8",
-    "@google-cloud/cloud-sql-connector": "^1.3.3",
-    "@google-cloud/pubsub": "^5.2.0",
+    "@google-cloud/cloud-sql-connector": "^1.13.1",
+    "@google-cloud/pubsub": "^6.4.1",
     "@inquirer/prompts": "^7.10.1",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "abort-controller": "^3.0.0",
@@ -136,9 +136,9 @@
     "form-data": "^4.0.1",
     "fs-extra": "^10.1.0",
     "fuzzy": "^0.1.3",
-    "gaxios": "^6.7.0",
+    "gaxios": "^8.3.3",
     "glob": "^10.5.0",
-    "google-auth-library": "^9.11.0",
+    "google-auth-library": "^11.3.4",
     "ignore": "^7.0.4",
     "js-yaml": "^4.2.0",
     "jsonwebtoken": "^9.0.2",
@@ -276,7 +276,7 @@
     "diff": "^8.0.4",
     "underscore": "^1.13.8",
     "brace-expansion": "^1.1.18",
-    "@grpc/grpc-js": "^1.14.4",
+    "@grpc/grpc-js": "^1.14.7",
     "rollup": "^3.30.0",
     "picomatch": "^2.3.2",
     "qs": "^6.16.0",
@@ -284,13 +284,7 @@
     "@opentelemetry/core": "^2.8.0",
     "re2": "1.24.0",
     "@babel/traverse": "^7.23.2",
-    "gaxios": {
-      "uuid": "^11.1.1"
-    },
     "googleapis": {
-      "uuid": "^11.1.1"
-    },
-    "@google-cloud/cloud-sql-connector": {
       "uuid": "^11.1.1"
     },
     "firebase-functions": {
