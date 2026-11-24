@@ -34,7 +34,9 @@ export function getDatabaseInstanceDetails(
   let details = instanceCache.get(key);
   if (!details) {
     details = getDetails(projectId, instanceName).catch((err: unknown) => {
-      instanceCache.delete(key);
+      if (instanceCache.get(key) === details) {
+        instanceCache.delete(key);
+      }
       throw err;
     });
     instanceCache.set(key, details);

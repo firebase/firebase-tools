@@ -224,5 +224,26 @@ describe("database service", () => {
       expect(details.location).to.eq("us-central1");
       expect(instanceStub).to.have.been.calledTwice;
     });
+
+    it("should keep a newer cached lookup when an older one fails after the cache is cleared", async () => {
+      let rejectFirst: (err: Error) => void = () => undefined;
+      instanceStub.onFirstCall().returns(
+        new Promise((_, reject) => {
+          rejectFirst = reject;
+        }),
+      );
+      instanceStub.onSecondCall().resolves({ location: "europe-west1" });
+
+      const stale = database.getDatabaseInstanceDetails(projectNumber, "instance1");
+      database.clearCache();
+      await database.getDatabaseInstanceDetails(projectNumber, "instance1");
+      rejectFirst(new Error("unavailable"));
+      await expect(stale).to.be.rejectedWith("unavailable");
+
+      const details = await database.getDatabaseInstanceDetails(projectNumber, "instance1");
+
+      expect(details.location).to.eq("europe-west1");
+      expect(instanceStub).to.have.been.calledTwice;
+    });
   });
 });
