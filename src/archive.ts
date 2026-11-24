@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { Writable } from "stream";
+import { pipeline, Writable } from "stream";
 import * as tarStream from "tar-stream";
 import * as yazl from "yazl";
 import * as zlib from "zlib";
@@ -179,6 +179,18 @@ class TarGzArchiveWriter implements ArchiveWriter {
         } else {
           const stat = await fs.promises.stat(entry.filePath);
           await new Promise<void>((resolve, reject) => {
+            let entrySettled = false;
+            const done = (err?: Error | null): void => {
+              if (entrySettled) {
+                return;
+              }
+              entrySettled = true;
+              if (err) {
+                reject(err);
+              } else {
+                resolve();
+              }
+            };
             const entryStream = pack.entry(
               {
                 name,
@@ -186,20 +198,14 @@ class TarGzArchiveWriter implements ArchiveWriter {
                 size: stat.size,
                 mtime: stat.mtime,
               },
-              (err) => {
-                if (err) {
-                  reject(err);
-                } else {
-                  resolve();
-                }
-              },
+              done,
             );
             const reader = fs.createReadStream(entry.filePath);
-            reader.once("error", (err) => {
-              entryStream.destroy(err);
-              reject(err);
+            pipeline(reader, entryStream, (err) => {
+              if (err) {
+                done(err);
+              }
             });
-            reader.pipe(entryStream);
           });
         }
       }
