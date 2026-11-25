@@ -1,3 +1,4 @@
+import { GOOG_USER_PROJECT_HEADER } from "../apiv2";
 import { logger } from "../logger";
 import { CRASHLYTICS_API_CLIENT, parseProjectNumber, TIMEOUT } from "./utils";
 import { Issue, State, UpdateIssueRequest } from "./types";
@@ -15,6 +16,7 @@ export async function getIssue(appId: string, issueId: string): Promise<Issue> {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
+      [GOOG_USER_PROJECT_HEADER]: requestProjectNumber,
     },
     path: `/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}`,
     timeout: TIMEOUT,
@@ -38,6 +40,7 @@ export async function updateIssue(appId: string, issueId: string, state: State):
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
+      [GOOG_USER_PROJECT_HEADER]: requestProjectNumber,
     },
     path: `/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}`,
     queryParams: { updateMask: "state" },
