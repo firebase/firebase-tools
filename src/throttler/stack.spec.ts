@@ -1,7 +1,7 @@
 import { expect } from "chai";
 
 import Stack from "./stack";
-import { createHandler, createTask, Task } from "./throttler.spec";
+import { createHandler, createTask, Task } from "./testing/helpers";
 
 describe("Stack", () => {
   it("should have default name of stack", () => {
