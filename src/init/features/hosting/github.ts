@@ -15,6 +15,7 @@ import {
   listServiceAccountKeys,
 } from "../../../gcp/iam";
 import { addServiceAccountToRoles, firebaseRoles } from "../../../gcp/resourceManager";
+import { ensureApiEnabled } from "../../../hosting/api";
 import { logger } from "../../../logger";
 import { input, confirm } from "../../../prompt";
 import { logBullet, logLabeledBullet, logSuccess, logWarning, reject } from "../../../utils";
@@ -62,6 +63,8 @@ export async function initGitHub(setup: Setup): Promise<void> {
       `Didn't find a Hosting config in firebase.json. Run ${bold("firebase init hosting")} instead.`,
     );
   }
+
+  await ensureApiEnabled(setup.projectId);
 
   logger.info();
 

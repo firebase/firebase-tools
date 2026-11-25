@@ -74,10 +74,6 @@ export class StorageRulesetInstance {
 
     return this.runtime.verifyWithRuleset(this.rulesetName, opts, runtimeVariableOverrides);
   }
-
-  unload() {
-    throw new Error("NOT_IMPLEMENTED");
-  }
 }
 
 export class StorageRulesIssues {
@@ -151,6 +147,7 @@ export class StorageRulesRuntime {
     const command = _getCommand(Emulators.STORAGE, {});
     this._childprocess = spawn(command.binary, command.args, {
       stdio: ["pipe", "pipe", "pipe"],
+      windowsHide: true,
     });
 
     this._childprocess.on("exit", () => {

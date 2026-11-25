@@ -1,27 +1,27 @@
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
-import { CLOUD_RUN_SIZE_LIMIT_BYTES } from "../../apphosting/constants";
-import { localBuild, validateLocalBuildNodeVersion } from "../../apphosting/localbuilds";
-import { FirebaseError, getErrMsg } from "../../error";
+import { validateLocalBuildNodeVersion } from "../../apphosting/localbuilds";
+import { FirebaseError } from "../../error";
 import { AppHostingSingle, RunSingle } from "../../firebaseConfig";
 import { Backend } from "../../gcp/apphosting";
 import * as artifactregistry from "../../gcp/artifactregistry";
 import * as runv2 from "../../gcp/runv2";
 import * as gcs from "../../gcp/storage";
 import { getProjectNumber } from "../../getProjectNumber";
-import { logger } from "../../logger";
 import { Options } from "../../options";
 import { cloneDeep, logLabeledBullet } from "../../utils";
-import { prepareLocalBuildScratchDirectory } from "../apphosting/prepare";
-import { createLocalBuildTarArchive, createSourceDeployArchive } from "../apphosting/util";
+import { buildLocally } from "../apphosting/localBuild";
+import { buildDirectory, createSourceDeployArchive, uploadArchive } from "../apphosting/util";
 import { Context, Payload, ServiceDeploy } from "./args";
 import { nonSecretValues, secretNames, toLocalBuildEnv } from "./buildEnv";
 import { FIREBASE_APP_ANNOTATION, mainContainer } from "./util";
 
 const DEPLOY_MESSAGE_ANNOTATION = "firebase.google.com/deploy-message";
-/** Rolling out a revision can take longer than the operation poller's default timeout. */
-const ROLLOUT_TIMEOUT_MS = 10 * 60 * 1000;
+/** Remote builds run inside the rollout operation (up to 6m queue + 30m build + 4m startup). */
+const ROLLOUT_TIMEOUT_MS = 45 * 60 * 1000;
+/** Required by Cloud Run's build API while it is in alpha. */
+const LAUNCH_STAGE = "ALPHA";
 
 /**
  * The image of a container that runs a local build's output. Cloud Run runs the output from Cloud
@@ -31,15 +31,15 @@ const NO_IMAGE = "scratch";
 
 /** What a local build produced. */
 export interface LocalBuildOutput {
-  /** The built files to upload, relative to the scratch directory the build ran in. */
-  outputFiles: string[];
+  /** The built app, as a .tar.gz tmp file. */
+  archive: string;
   /** The command that starts the app, e.g. "npm run start". */
   runCommand?: string;
   /** The env vars the app needs at runtime. */
   env: NonNullable<runv2.Container["env"]>;
 }
 
-/** Builds each service, locally or on Cloud Build, then rolls it out. */
+/** Deploys each service, built locally or by Cloud Run. */
 export async function deploy(context: Context, options: Options, payload: Payload): Promise<void> {
   for (const svc of payload.run?.services || []) {
     if (svc.config.localBuild) {
@@ -50,16 +50,34 @@ export async function deploy(context: Context, options: Options, payload: Payloa
   }
 }
 
-/** Uploads the service's source, builds it into an image on Cloud Build, then rolls it out. */
+/** Uploads the service's source and deploys it using Cloud Run's build API. */
 async function deployRemoteBuild(
   context: Context,
   options: Options,
   svc: ServiceDeploy,
 ): Promise<void> {
   const { projectId } = context;
-  const source = await uploadSource(projectId, options, svc.config);
-  const image = await buildImage(projectId, svc, source);
-  const template = revisionTemplate(svc, image, options.message as string | undefined);
+  const { serviceId, region } = svc.config;
+  const { buildFolder, appFolder } = buildDirectory(options.config.projectDir, svc.config.rootDir);
+  // The zip is a tmp file, so it's deleted when the CLI exits. The project's .gitignore files above
+  // the build folder apply too, like they do for App Hosting's source deploys and local builds.
+  const archive = await createSourceDeployArchive(
+    toAppHostingConfig(svc.config),
+    buildFolder,
+    options.config.projectDir,
+  );
+  const source = await upload(projectId, options, svc.config, archive);
+  // Cloud Run pushes the built image to this repository, which must already exist.
+  await artifactregistry.ensureDockerRepository(projectId, region, "cloud-run-source-deploy");
+  const imageRepository = `${region}-docker.pkg.dev/${projectId}/cloud-run-source-deploy/${serviceId}`;
+  const buildConfig = remoteBuildConfig(svc, imageRepository, appFolder);
+  const template = remoteBuildTemplate(
+    svc,
+    source,
+    buildConfig,
+    options.message as string | undefined,
+  );
+  logLabeledBullet("run", `Building and deploying service ${serviceId} in ${region}...`);
   svc.deployed = await rollOut(projectId, svc, template);
 }
 
@@ -73,27 +91,18 @@ async function deployLocalBuild(
   svc: ServiceDeploy,
 ): Promise<void> {
   const { projectId } = context;
-  // The build runs in a scratch copy of the source, which is deleted afterwards.
-  const scratchDir = fs.mkdtempSync(
-    path.join(os.tmpdir(), `run-local-build-${svc.config.serviceId}-`),
-  );
-  try {
-    const build = await buildLocally(context, options, svc, scratchDir);
-    const builtApp = await uploadBuiltApp(projectId, options, svc.config, scratchDir, build);
-    const message = options.message as string | undefined;
-    const template = localBuildTemplate(svc, build, builtApp, message);
-    svc.deployed = await rollOut(projectId, svc, template);
-  } finally {
-    removeTempPath(scratchDir);
-  }
+  const build = await buildServiceLocally(context, options, svc);
+  const builtApp = await upload(projectId, options, svc.config, build.archive);
+  const message = options.message as string | undefined;
+  const template = localBuildTemplate(svc, build, builtApp, message);
+  svc.deployed = await rollOut(projectId, svc, template);
 }
 
 /** Builds the service on this machine, in a scratch copy of its source. */
-async function buildLocally(
+async function buildServiceLocally(
   context: Context,
   options: Options,
   svc: ServiceDeploy,
-  scratchDir: string,
 ): Promise<LocalBuildOutput> {
   const { config } = svc;
   const { serviceId, region } = config;
@@ -112,15 +121,18 @@ async function buildLocally(
         `included in the build output.`,
     );
   }
-  await prepareLocalBuildScratchDirectory(options.config.projectDir, scratchDir, cfg);
-  const { outputFiles, buildConfig } = await localBuild(
-    context.projectId,
-    scratchDir,
-    toLocalBuildEnv(svc.buildEnv || {}),
+  const { archive, buildConfig } = await buildLocally({
+    projectId: context.projectId,
+    projectDir: options.config.projectDir,
+    config: cfg,
+    env: toLocalBuildEnv(svc.buildEnv || {}),
+    // The build runs in a scratch copy of the source, which is deleted afterwards.
+    scratchDir: fs.mkdtempSync(path.join(os.tmpdir(), `run-local-build-${serviceId}-`)),
     // Unlike App Hosting, Cloud Run doesn't ask users to confirm build secrets in local builds.
-    { rootDir: config.rootDir, allowLocalBuildSecrets: true },
-  );
-  // Keep the env vars that the app needs at runtime, not just during the build.
+    allowLocalBuildSecrets: true,
+  });
+  // Set the env vars that Universal Maker says the built app needs at runtime, which localBuild
+  // marks RUNTIME (most apps have none). The build's own env vars and secrets aren't in this list.
   const env = (buildConfig.env || [])
     .filter(
       (e) =>
@@ -129,57 +141,24 @@ async function buildLocally(
         (!e.availability || e.availability.includes("RUNTIME")),
     )
     .map((e) => ({ name: e.variable, value: e.value! }));
-  return { outputFiles, runCommand: buildConfig.runCommand, env };
+  return { archive, runCommand: buildConfig.runCommand, env };
 }
 
-/** Zips the service's source and uploads it to the region's source bucket. */
-async function uploadSource(
+/**
+ * Uploads the service's source zip, or its local build's tarball, to the region's source bucket,
+ * the same way App Hosting uploads to its own bucket.
+ */
+async function upload(
   projectId: string,
   options: Options,
   config: RunSingle,
+  archive: string,
 ): Promise<runv2.StorageSource> {
   const { serviceId, region } = config;
   const bucketName = await sourceBucket(projectId, options, region);
-  const cfg = toAppHostingConfig(config);
-  // The zip is a tmp file, so it's deleted when the CLI exits.
-  const archive = await createSourceDeployArchive(
-    cfg,
-    path.join(options.config.projectDir, cfg.rootDir),
-  );
-  logLabeledBullet("run", `Uploading source for service ${serviceId} in ${region}...`);
-  const { bucket, object } = await gcs.uploadObject(
-    { file: archive, stream: fs.createReadStream(archive) },
-    bucketName,
-    gcs.ContentType.ZIP,
-  );
-  return { bucket, object };
-}
-
-/** Tars a local build's output and uploads it to the region's source bucket. */
-async function uploadBuiltApp(
-  projectId: string,
-  options: Options,
-  config: RunSingle,
-  scratchDir: string,
-  build: LocalBuildOutput,
-): Promise<runv2.StorageSource> {
-  const { serviceId, region } = config;
-  const bucketName = await sourceBucket(projectId, options, region);
-  // The tarball is a tmp file, so it's deleted when the CLI exits.
-  const archive = await createLocalBuildTarArchive(
-    toAppHostingConfig(config),
-    scratchDir,
-    build.outputFiles,
-  );
-  logLabeledBullet("run", `Uploading built app for service ${serviceId} in ${region}...`);
-  const { bucket, object } = await gcs.uploadObject(
-    { file: archive, stream: fs.createReadStream(archive) },
-    bucketName,
-    gcs.ContentType.TAR,
-    // Cloud Run runs the tarball as is, so it has to fit Cloud Run's size limit.
-    CLOUD_RUN_SIZE_LIMIT_BYTES,
-  );
-  return { bucket, object };
+  const what = config.localBuild ? "built app" : "source";
+  logLabeledBullet("run", `Uploading ${what} for service ${serviceId} in ${region}...`);
+  return uploadArchive(archive, bucketName, !!config.localBuild);
 }
 
 /**
@@ -201,62 +180,30 @@ async function sourceBucket(projectId: string, options: Options, region: string)
   });
 }
 
-/** Builds the uploaded source into an image on Cloud Build and returns the image's URI. */
-async function buildImage(
-  projectId: string,
-  svc: ServiceDeploy,
-  source: runv2.StorageSource,
-): Promise<string> {
-  const { serviceId, region } = svc.config;
-  await artifactregistry.ensureDockerRepository(projectId, region, "cloud-run-source-deploy");
-  const imageUri = `${region}-docker.pkg.dev/${projectId}/cloud-run-source-deploy/${serviceId}:${Date.now()}`;
-  logLabeledBullet("run", `Building service ${serviceId} in ${region}...`);
-  const buildpackBuild: runv2.BuildpacksBuild = {
-    environmentVariables: {
-      // Cloud Build only takes plain values, so pass only the non-secret env vars. Prepare already
-      // rejects secrets for builds on Cloud Build.
-      ...nonSecretValues(svc.buildEnv || {}),
-      // Use App Hosting's buildpacks, which need to know where to write the output bundle.
-      X_GOOGLE_TARGET_PLATFORM: "fah",
-      FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
-    },
-  };
-  // Only images built for a base image can have their base image updated automatically.
-  if (svc.baseImage) {
-    buildpackBuild.baseImage = svc.baseImage;
-    buildpackBuild.enableAutomaticUpdates = true;
-  }
-  await runv2.submitBuild(projectId, region, { storageSource: source, imageUri, buildpackBuild });
-  return imageUri;
-}
-
 /**
- * Returns the revision to roll out: the live revision's settings (env vars, service account,
- * scaling, etc.) with the new image, base image, and deploy message.
- * Exported for testing.
+ * Builds the base RevisionTemplate shared by remoteBuildTemplate and localBuildTemplate: preserves
+ * an existing service's settings while clearing `revision` and the main container's `image`,
+ * `sourceCode`, `buildConfig`, and `command`, and updating `baseImageUri`, `FIREBASE_CONFIG`, and
+ * the deploy message. Exported for testing.
  */
-export function revisionTemplate(
-  svc: ServiceDeploy,
-  image: string,
-  message?: string,
-): runv2.RevisionTemplate {
+export function revisionTemplate(svc: ServiceDeploy, message?: string): runv2.RevisionTemplate {
   const { serviceId, region } = svc.config;
   const template: runv2.RevisionTemplate = svc.existing
     ? cloneDeep(svc.existing.template)
-    : { containers: [{ name: serviceId, image }] };
+    : { containers: [{ name: serviceId }] };
   // The live template names the live revision. Drop the name so Cloud Run creates a new revision.
   delete template.revision;
   const container = mainContainer(template);
   if (!container) {
     throw new FirebaseError(`Service ${serviceId} in ${region} has no containers.`);
   }
-  container.image = image;
-  if (container.sourceCode) {
-    // The live revision ran a local build's output, with the build's start command (see
-    // localBuildTemplate). Drop both, so that the new revision runs the new image as built.
-    delete container.sourceCode;
-    delete container.command;
-  }
+  // Clear how the previous revision built or started: Cloud Run rejects `image` alongside
+  // `buildConfig`, and a prior `command` (e.g. from a local build) would override the new image's
+  // entrypoint.
+  delete container.image;
+  delete container.sourceCode;
+  delete container.buildConfig;
+  delete container.command;
   // Prepare already resolved svc.baseImage: the service's current base image, unless this deploy
   // sets or clears it. A new service has none unless init sets one, so automatic base image
   // updates are off by default.
@@ -289,6 +236,45 @@ export function revisionTemplate(
   return template;
 }
 
+/** Returns the RevisionTemplate for a remote build on Cloud Run. */
+function remoteBuildTemplate(
+  svc: ServiceDeploy,
+  source: runv2.StorageSource,
+  buildConfig: runv2.ContainerBuildConfig,
+  message?: string,
+): runv2.RevisionTemplate {
+  const template = revisionTemplate(svc, message);
+  const container = mainContainer(template)!;
+  container.sourceCode = { cloudStorageSource: source };
+  container.buildConfig = buildConfig;
+  return template;
+}
+
+/**
+ * Builds the ContainerBuildConfig for Cloud Run's build API. `appFolder` is the app's path within
+ * the uploaded archive, or empty when they're the same folder. Exported for testing.
+ */
+export function remoteBuildConfig(
+  svc: ServiceDeploy,
+  imageRepository: string,
+  appFolder: string,
+): runv2.ContainerBuildConfig {
+  const env: Record<string, string> = {
+    // In a monorepo, tell the buildpacks which folder in the build folder is the app.
+    ...(appFolder ? { GOOGLE_BUILDABLE: appFolder } : {}),
+    // Build-only env vars; Cloud Run's build API only accepts plain values, not secrets.
+    ...nonSecretValues(svc.buildEnv || {}),
+    // Use App Hosting's buildpacks, which need to know where to write the output bundle.
+    X_GOOGLE_TARGET_PLATFORM: "fah",
+    FIREBASE_OUTPUT_BUNDLE_DIR: "/workspace/.apphosting",
+  };
+  return {
+    imageRepositoryUri: imageRepository,
+    environmentVariables: Object.entries(env).map(([name, value]) => ({ name, value })),
+    buildpacksBuild: svc.baseImage ? { buildBaseImageUri: svc.baseImage } : {},
+  };
+}
+
 /**
  * Returns the revision to roll out for a local build: revisionTemplate's, but running the build's
  * output from Cloud Storage, on the service's base image, with the build's start command.
@@ -300,17 +286,15 @@ export function localBuildTemplate(
   builtApp: runv2.StorageSource,
   message?: string,
 ): runv2.RevisionTemplate {
-  const template = revisionTemplate(svc, NO_IMAGE, message);
+  const template = revisionTemplate(svc, message);
   // revisionTemplate has already checked that there's a container.
   const container = mainContainer(template)!;
+  container.image = NO_IMAGE;
   container.sourceCode = { cloudStorageSource: builtApp };
   // Split on any whitespace, so that stray spaces don't become empty arguments.
   const command = build.runCommand?.trim();
   if (command) {
     container.command = command.split(/\s+/);
-  } else {
-    // The build didn't name a start command, so don't keep one from an earlier revision.
-    delete container.command;
   }
   // Set the runtime env vars that the build reports. Like the start command, they describe this
   // build's output, so the build wins: each one replaces any env var of the same name on the
@@ -367,6 +351,7 @@ function createNewService(
     // Like an App Hosting backend, the service is public.
     invokerIamDisabled: true,
     ingress: "INGRESS_TRAFFIC_ALL",
+    launchStage: LAUNCH_STAGE,
   };
   return runv2.createService(projectId, region, serviceId, service, {
     pollTimeoutMs: ROLLOUT_TIMEOUT_MS,
@@ -388,9 +373,10 @@ function deployRevision(
     annotations,
     template,
     traffic: [{ type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST", percent: 100 }, ...tags],
+    launchStage: LAUNCH_STAGE,
   };
   return runv2.updateService(update, {
-    updateMask: ["template", "traffic", "annotations"],
+    updateMask: ["template", "traffic", "annotations", "launchStage"],
     pollTimeoutMs: ROLLOUT_TIMEOUT_MS,
   });
 }
@@ -404,16 +390,4 @@ function toAppHostingConfig(config: RunSingle): AppHostingSingle {
     ignore: config.ignore as string[],
     localBuild: config.localBuild,
   };
-}
-
-/**
- * Deletes a temporary directory. Failures are only logged: a leftover temp directory shouldn't
- * fail a deploy that succeeded or hide the error from one that didn't.
- */
-function removeTempPath(tempPath: string): void {
-  try {
-    fs.rmSync(tempPath, { recursive: true, force: true });
-  } catch (err: unknown) {
-    logger.debug(`Failed to clean up ${tempPath}: ${getErrMsg(err)}`);
-  }
 }

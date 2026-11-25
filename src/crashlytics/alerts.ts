@@ -54,6 +54,7 @@ export async function generateAlertPolicy(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "x-goog-user-project": projectId,
       },
       path: `/projects/${projectId}/apps/${appId}:generateAlertPolicy`,
       body: { alertType },

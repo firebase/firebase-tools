@@ -10,6 +10,7 @@ import {
   addAuthDomains,
   cleanAuthState,
   normalizeName,
+  ensureApiEnabled,
 } from "../hosting/api";
 import { requirePermissions } from "../requirePermissions";
 import { deploy } from "../deploy";
@@ -23,8 +24,6 @@ import { marked } from "marked";
 import { requireHostingSite } from "../requireHostingSite";
 import { HostingOptions } from "../hosting/options";
 import { Options } from "../options";
-import { ensure } from "../ensureApiEnabled";
-import { hostingApiOrigin } from "../api";
 
 const LOG_TAG = "hosting:channel";
 
@@ -47,7 +46,7 @@ export const command = new Command("hosting:channel:deploy [channelId]")
   .option("--no-authorized-domains", "do not sync channel domains with Firebase Auth")
   .before(requireConfig)
   .before(requirePermissions, ["firebasehosting.sites.update"])
-  .before((options) => ensure(needProjectId(options), hostingApiOrigin(), "hosting", true))
+  .before((options) => ensureApiEnabled(needProjectId(options)))
   .before(requireHostingSite)
   .action(hostingChannelDeployAction);
 

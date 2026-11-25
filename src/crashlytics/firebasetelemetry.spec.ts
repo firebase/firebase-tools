@@ -5,14 +5,6 @@ import { firebaseTelemetryAdminOrigin } from "../api";
 import { FirebaseError } from "../error";
 
 describe("firebasetelemetry", () => {
-  before(() => {
-    nock.disableNetConnect();
-  });
-
-  after(() => {
-    nock.enableNetConnect();
-  });
-
   afterEach(() => {
     nock.cleanAll();
   });
@@ -21,7 +13,6 @@ describe("firebasetelemetry", () => {
     const reqConfig = {
       name: "projects/test-project/locations/global/configs/1-123-web-456",
       appId: "1:123:web:456",
-      logBucket: "projects/test-project/locations/global/buckets/firebase-telemetry",
       samplingRate: 1,
     };
     const resConfig = {
@@ -40,7 +31,6 @@ describe("firebasetelemetry", () => {
       const res = await firebasetelemetry.createOrUpdateTelemetryConfig(
         "test-project",
         "1:123:web:456",
-        "projects/test-project/locations/global/buckets/firebase-telemetry",
         1,
       );
 
@@ -56,7 +46,7 @@ describe("firebasetelemetry", () => {
         .reply(409, { error: { status: "ALREADY_EXISTS" } });
       nock(firebaseTelemetryAdminOrigin())
         .patch(
-          "/v1alpha/projects/test-project/locations/global/configs/1-123-web-456?updateMask=logBucket,samplingRate",
+          "/v1alpha/projects/test-project/locations/global/configs/1-123-web-456?updateMask=samplingRate",
           reqConfig,
         )
         .reply(200, resConfig);
@@ -64,25 +54,35 @@ describe("firebasetelemetry", () => {
       const res = await firebasetelemetry.createOrUpdateTelemetryConfig(
         "test-project",
         "1:123:web:456",
-        "projects/test-project/locations/global/buckets/firebase-telemetry",
         1,
       );
 
       expect(res).to.deep.equal(resConfig);
     });
 
-    it("should reject when creation fails with non-409 error", async () => {
+    it("should reject when creation fails with 503 error", async () => {
+      nock(firebaseTelemetryAdminOrigin())
+        .post(
+          "/v1alpha/projects/test-project/locations/global/configs?configId=1-123-web-456",
+          reqConfig,
+        )
+        .reply(503, { error: { message: "Service Unavailable" } });
+
+      await expect(
+        firebasetelemetry.createOrUpdateTelemetryConfig("test-project", "1:123:web:456", 1),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        "Sorry, Crashlytics is busy right now and can't finish setup. Please try again in a little while.",
+      );
+    });
+
+    it("should reject when creation fails with generic error", async () => {
       nock(firebaseTelemetryAdminOrigin())
         .post("/v1alpha/projects/test-project/locations/global/configs?configId=1-123-web-456")
         .reply(500, { error: "internal" });
 
       await expect(
-        firebasetelemetry.createOrUpdateTelemetryConfig(
-          "test-project",
-          "1:123:web:456",
-          "projects/test-project/locations/global/buckets/firebase-telemetry",
-          1,
-        ),
+        firebasetelemetry.createOrUpdateTelemetryConfig("test-project", "1:123:web:456", 1),
       ).to.be.rejectedWith(
         FirebaseError,
         "Failed to configure telemetry for web app 1:123:web:456 (status 500):",
