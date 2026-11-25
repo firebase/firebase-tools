@@ -412,8 +412,22 @@ describe("storage", () => {
       expect(getStub).to.be.calledOnceWith("/storage/v1/b/my-bucket");
     });
 
-    it("should throw FirebaseError with status when request fails", async () => {
-      const apiError = new FirebaseError("Not Found", { status: 404 });
+    it("should throw FirebaseError with status, GCS error details, and preserved metadata when request fails", async () => {
+      const errorContext = {
+        body: {
+          error: {
+            code: 404,
+            message: "The specified bucket does not exist.",
+          },
+        },
+      };
+      const childErr = new Error("child");
+      const apiError = new FirebaseError("Not Found", {
+        status: 404,
+        context: errorContext,
+        children: [childErr],
+        exit: 2,
+      });
       sinon.stub(Client.prototype, "get").rejects(apiError);
 
       try {
@@ -421,8 +435,27 @@ describe("storage", () => {
         expect.fail("Expected getBucket to throw");
       } catch (err: unknown) {
         expect(err).to.be.instanceOf(FirebaseError);
+        const fbErr = err as FirebaseError;
+        expect(fbErr.message).to.equal(
+          "Failed to obtain the storage bucket: The specified bucket does not exist.",
+        );
+        expect(fbErr.status).to.equal(404);
+        expect(fbErr.original).to.equal(apiError);
+        expect(fbErr.context).to.deep.equal(errorContext);
+        expect(fbErr.children).to.deep.equal([childErr]);
+        expect(fbErr.exit).to.equal(2);
+      }
+    });
+
+    it("should fall back to generic message when getBucket error has no details", async () => {
+      sinon.stub(Client.prototype, "get").rejects(new Error(""));
+
+      try {
+        await storage.getBucket("missing-bucket");
+        expect.fail("Expected getBucket to throw");
+      } catch (err: unknown) {
+        expect(err).to.be.instanceOf(FirebaseError);
         expect((err as FirebaseError).message).to.equal("Failed to obtain the storage bucket");
-        expect((err as FirebaseError).status).to.equal(404);
       }
     });
   });
@@ -452,8 +485,18 @@ describe("storage", () => {
       });
     });
 
-    it("should throw FirebaseError with status when patch request fails", async () => {
-      const apiError = new FirebaseError("Forbidden", { status: 403 });
+    it("should throw FirebaseError with status and GCS error details when patch request fails", async () => {
+      const apiError = new FirebaseError("Forbidden", {
+        status: 403,
+        context: {
+          body: {
+            error: {
+              code: 403,
+              message: "Caller does not have storage.buckets.update access.",
+            },
+          },
+        },
+      });
       sinon.stub(Client.prototype, "patch").rejects(apiError);
 
       try {
@@ -461,7 +504,9 @@ describe("storage", () => {
         expect.fail("Expected patchBucket to throw");
       } catch (err: unknown) {
         expect(err).to.be.instanceOf(FirebaseError);
-        expect((err as FirebaseError).message).to.equal("Failed to patch the storage bucket");
+        expect((err as FirebaseError).message).to.equal(
+          "Failed to patch the storage bucket: Caller does not have storage.buckets.update access.",
+        );
         expect((err as FirebaseError).status).to.equal(403);
       }
     });
@@ -628,6 +673,58 @@ describe("storage", () => {
 
       expect(result).to.deep.equal(updatedPolicy);
       expect(putStub).to.be.calledOnceWith(`/storage/v1/b/${bucketName}/iam`, updatedPolicy);
+    });
+
+    it("getBucketIamPolicy should surface GCS error details on failure", async () => {
+      const apiError = new FirebaseError("Forbidden", {
+        status: 403,
+        context: {
+          body: {
+            error: {
+              code: 403,
+              message: "Caller does not have storage.buckets.getIamPolicy access.",
+            },
+          },
+        },
+      });
+      sinon.stub(Client.prototype, "get").rejects(apiError);
+
+      try {
+        await storage.getBucketIamPolicy(bucketName);
+        expect.fail("Expected getBucketIamPolicy to throw");
+      } catch (err: unknown) {
+        expect(err).to.be.instanceOf(FirebaseError);
+        expect((err as FirebaseError).message).to.equal(
+          "Failed to get the storage bucket IAM policy: Caller does not have storage.buckets.getIamPolicy access.",
+        );
+        expect((err as FirebaseError).status).to.equal(403);
+      }
+    });
+
+    it("setBucketIamPolicy should surface GCS error details on failure", async () => {
+      const apiError = new FirebaseError("Forbidden", {
+        status: 403,
+        context: {
+          body: {
+            error: {
+              code: 403,
+              message: "Caller does not have storage.buckets.setIamPolicy access.",
+            },
+          },
+        },
+      });
+      sinon.stub(Client.prototype, "put").rejects(apiError);
+
+      try {
+        await storage.setBucketIamPolicy(bucketName, { version: 3, etag: "abc", bindings: [] });
+        expect.fail("Expected setBucketIamPolicy to throw");
+      } catch (err: unknown) {
+        expect(err).to.be.instanceOf(FirebaseError);
+        expect((err as FirebaseError).message).to.equal(
+          "Failed to set the storage bucket IAM policy: Caller does not have storage.buckets.setIamPolicy access.",
+        );
+        expect((err as FirebaseError).status).to.equal(403);
+      }
     });
 
     it("addServiceAccountToBucketRoles should add missing binding and preserve existing bindings", async () => {
