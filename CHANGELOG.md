@@ -3,3 +3,4 @@
 - Updated Firebase Hosting custom domain lookup to use the public `/customDomains` API endpoint instead of `/domains`.
 - Updated the Firebase SQL Connect local toolkit to v3.4.29, which includes the following changes:
   - Updated the Golang dependency version to 1.26.11.
+- Added the uploaded release, including its URLs and updated release notes, to the `result` field of `appdistribution:distribute --json` output.
