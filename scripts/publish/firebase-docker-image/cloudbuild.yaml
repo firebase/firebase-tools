@@ -1,21 +1,37 @@
 steps:
+  # Mint short-lived Artifact Registry token for Airlock APT/npm pulls during Docker build.
+  - id: "get-airlock-token"
+    name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - "umask 077 && gcloud auth print-access-token > /workspace/.airlock_token && chmod 600 /workspace/.airlock_token"
+
   # Grab the latest version, store in workspace
   - id: "Read New Version Number from npm"
-    name: "node"
-    entrypoint: "sh"
-    args:
-      [
-        "-c",
-        "npm view firebase-tools version > /workspace/version_number.txt && cat /workspace/version_number.txt",
-      ]
-  # Build and push the Firebase docker image to staging
-  - id: "build-and-push-docker-image"
-    name: "gcr.io/cloud-builders/docker"
+    name: "us-docker.pkg.dev/artifact-foundry-prod/docker-3p-trusted/node:24-trixie-slim"
     entrypoint: "sh"
     args:
       - "-c"
       - |
         set -e
+        AIRLOCK_TOKEN="$$(cat /workspace/.airlock_token)"
+        trap 'rm -f /tmp/.npmrc' EXIT
+        (umask 077 && printf "registry=https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/\n//us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/:always-auth=true\n//us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/:_authToken=%s\n" "$${AIRLOCK_TOKEN}" > /tmp/.npmrc)
+        npm --userconfig=/tmp/.npmrc view firebase-tools version > /workspace/version_number.txt
+        cat /workspace/version_number.txt
+
+  # Build and push the Firebase docker image to staging
+  - id: "build-and-push-docker-image"
+    name: "gcr.io/cloud-builders/docker"
+    entrypoint: "bash"
+    env:
+      - "DOCKER_BUILDKIT=1"
+    args:
+      - "-c"
+      - |
+        set -e
+        trap 'rm -f /workspace/.airlock_token' EXIT
         VERSION_NUM="$$(cat /workspace/version_number.txt)"
         STAGING_REPO="us-docker.pkg.dev/${_TARGET_PROJECT_ID}/staging/firebase"
         if [ "${_REPO_NAME}" = "staging" ]; then
@@ -26,6 +42,7 @@ steps:
         fi
         echo "Building Docker image for version $${VERSION_NUM}..."
         docker build \
+          --secret id=airlock_token,src=/workspace/.airlock_token \
           -t "$${STAGING_REPO}:$${VERSION_NUM}" \
           -t "$${STAGING_REPO}:latest" \
           -t "$${STAGING_REPO}:$${EXTRA_TAG}" \
@@ -35,6 +52,32 @@ steps:
         docker push "$${STAGING_REPO}:$${VERSION_NUM}"
         docker push "$${STAGING_REPO}:latest"
         docker push "$${STAGING_REPO}:$${EXTRA_TAG}"
+
+  # Emit MOSS Control #10 (dependency location) attestation for the built image.
+  - id: "secure-content-scan"
+    name: "us-central1-docker.pkg.dev/louhi-prod-1/louhi-helper/louhi-helper-v2"
+    args:
+      - "secure_content_scan"
+      - "--directory"
+      - "."
+      - "--allowed_prefixes"
+      - "us-docker.pkg.dev/artifact-foundry-prod/"
+      - "docker.pkg.dev/artifact-foundry-prod/"
+      - "npm.pkg.dev/artifact-foundry-prod/"
+      - "python.pkg.dev/artifact-foundry-prod/"
+      - "maven.pkg.dev/artifact-foundry-prod/"
+      - "apt.pkg.dev/projects/artifact-foundry-prod"
+      - "https://us-apt.pkg.dev/projects/artifact-foundry-prod"
+      - "apt.pkg.dev/remote/artifact-foundry-prod"
+      - "docker.pkg.dev/artifacts-downloads/namespaces/artifact-foundry-prod"
+      - "npm.pkg.dev/artifacts-downloads/namespaces/artifact-foundry-prod"
+      - "python.pkg.dev/artifacts-downloads/namespaces/artifact-foundry-prod"
+      - "maven.pkg.dev/artifacts-downloads/namespaces/artifact-foundry-prod"
+      - "apt.pkg.dev/artifacts-downloads/namespaces/artifact-foundry-prod"
+    results:
+      - name: "allowed_uri_prefix"
+        attestationContent: "allowed_uri_prefix"
+        attestationType: "https://bcid.corp.google.com/build-content-restrictions/v0.1"
 
 images:
   - "us-docker.pkg.dev/${_TARGET_PROJECT_ID}/staging/firebase:$BUILD_ID"
