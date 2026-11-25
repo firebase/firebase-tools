@@ -2563,8 +2563,10 @@ describe("Fabricator", () => {
       });
     });
 
-    it("should clean up newly created SA if role assignment fails in grantNewRoles", async () => {
-      addServiceAccountRolesStub.rejects(new Error("Permission denied"));
+    it("should clean up newly created SA if role assignment is denied in grantNewRoles", async () => {
+      addServiceAccountRolesStub.rejects(
+        new FirebaseError("HTTP Error: 403, Permission denied", { status: 403 }),
+      );
 
       const plan: planner.CodebasePlan = {
         plannedBackend: backend.empty(),
@@ -2574,7 +2576,10 @@ describe("Fabricator", () => {
         rolesToAdd: ["roles/viewer"],
       };
 
-      await expect(fab.grantNewRoles(plan, "default")).to.be.rejectedWith(FirebaseError);
+      await expect(fab.grantNewRoles(plan, "default")).to.be.rejectedWith(
+        FirebaseError,
+        "you do not have access to see what has changed",
+      );
       expect(deleteServiceAccountStub).to.have.been.calledWith(
         "test-project",
         "firebase-fn-123@my-proj.iam.gserviceaccount.com",

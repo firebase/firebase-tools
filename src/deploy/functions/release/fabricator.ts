@@ -146,7 +146,7 @@ export class Fabricator {
               if (!warnedQuota) {
                 utils.logLabeledWarning(
                   "functions",
-                  "Reached the IAM quota for service accounts created per minute. Retrying for up to 3 minutes...",
+                  "Reached the IAM quota for service accounts created per minute. Retrying for about 3 minutes...",
                 );
                 warnedQuota = true;
               }
