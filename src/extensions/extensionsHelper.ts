@@ -83,9 +83,6 @@ export const AUTOPOPULATED_PARAM_PLACEHOLDERS = {
   DATABASE_INSTANCE: "project-id-default-rtdb",
   DATABASE_URL: "https://project-id-default-rtdb.firebaseio.com",
 };
-export const resourceTypeToNiceName: Record<string, string> = {
-  "firebaseextensions.v1beta.function": "Cloud Function",
-};
 export type ReleaseStage = "alpha" | "beta" | "rc" | "stable";
 const repoRegex = new RegExp(`^https://github.com/[^/]+/[^/]+$`);
 const stageOptions = ["rc", "alpha", "beta", "stable"];
