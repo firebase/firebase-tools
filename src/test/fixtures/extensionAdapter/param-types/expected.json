@@ -1,0 +1,79 @@
+{
+  "requiredAPIs": [],
+  "endpoints": {
+    "processData": {
+      "entryPoint": "processData",
+      "platform": "gcfv1",
+      "project": "test-project",
+      "runtime": "nodejs20",
+      "region": [
+        "{{ params.LOCATION }}"
+      ],
+      "httpsTrigger": {}
+    }
+  },
+  "params": [
+    {
+      "type": "string",
+      "name": "LOCATION",
+      "label": "Deployment location",
+      "immutable": true,
+      "default": "us-central1",
+      "input": {
+        "select": {
+          "options": [
+            {
+              "label": "Iowa (us-central1)",
+              "value": "us-central1"
+            },
+            {
+              "label": "Oregon (us-west1)",
+              "value": "us-west1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "list",
+      "name": "FEATURES",
+      "label": "Features to enable",
+      "default": ["email", "push"],
+      "input": {
+        "multiSelect": {
+          "options": [
+            {
+              "label": "Email notifications",
+              "value": "email"
+            },
+            {
+              "label": "SMS notifications",
+              "value": "sms"
+            },
+            {
+              "label": "Push notifications",
+              "value": "push"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "secret",
+      "name": "API_KEY"
+    },
+    {
+      "type": "string",
+      "name": "COLLECTION_PATH",
+      "label": "Firestore collection path",
+      "default": "users",
+      "input": {
+        "text": {
+          "validationRegex": "^[^/]+(/[^/]+/[^/]+)*$",
+          "validationErrorMessage": "Must be a valid collection path",
+          "example": "users/data"
+        }
+      }
+    }
+  ]
+}

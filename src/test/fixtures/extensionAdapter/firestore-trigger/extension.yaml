@@ -1,0 +1,13 @@
+name: firestore-trigger
+version: 1.0.0
+specVersion: v1beta
+
+resources:
+  - name: processDocument
+    type: firebaseextensions.v1beta.function
+    description: Triggered when a Firestore document is written
+    properties:
+      runtime: nodejs20
+      eventTrigger:
+        eventType: providers/cloud.firestore/eventTypes/document.write
+        resource: projects/{project}/databases/{database}/documents/users/{userId}
