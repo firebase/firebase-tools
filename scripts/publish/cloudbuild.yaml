@@ -27,19 +27,22 @@ steps:
         "--key=${_KEY_NAME}",
       ]
 
-  # Decrypt the npm credentials.
+  # Decrypt the npm credentials (skipped when publishing via OSS Exit Gate).
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
+    entrypoint: "bash"
     args:
-      [
-        "gcloud",
-        "kms",
-        "decrypt",
-        "--ciphertext-file=npmrc.enc",
-        "--plaintext-file=npmrc",
-        "--location=global",
-        "--keyring=${_KEY_RING}",
-        "--key=${_KEY_NAME}",
-      ]
+      - "-c"
+      - |
+        if [ "${_USE_OSS_GATE}" != "true" ]; then
+          gcloud kms decrypt \
+            --ciphertext-file=npmrc.enc \
+            --plaintext-file=npmrc \
+            --location=global \
+            --keyring="${_KEY_RING}" \
+            --key="${_KEY_NAME}"
+        else
+          echo "Skipping Wombat npm credentials decryption for OSS Exit Gate publish."
+        fi
 
   # Decrypt the hub (GitHub) credentials.
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
@@ -72,6 +75,17 @@ steps:
   - name: "gcr.io/cloud-builders/git"
     args: ["clone", "git@github.com:${_REPOSITORY_ORG}/${_REPOSITORY_NAME}"]
 
+  # Check out target branch if specified (enables testing preview script changes on a branch).
+  - name: "gcr.io/cloud-builders/git"
+    dir: "${_REPOSITORY_NAME}"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        if [ -n "${_BRANCH}" ]; then
+          git checkout "${_BRANCH}"
+        fi
+
   # Set up the Git configuration.
   - name: "gcr.io/cloud-builders/git"
     dir: "${_REPOSITORY_NAME}"
@@ -85,10 +99,17 @@ steps:
     entrypoint: "cp"
     args: ["-v", "twitter.json", "${_REPOSITORY_NAME}/scripts/twitter.json"]
 
-  # Set up the npm credentials.
+  # Set up the npm credentials (skipped when publishing via OSS Exit Gate).
   - name: "gcr.io/$PROJECT_ID/package-builder"
     entrypoint: "bash"
-    args: ["-c", "cp -v npmrc ~/.npmrc"]
+    args:
+      - "-c"
+      - |
+        if [ "${_USE_OSS_GATE}" != "true" ]; then
+          cp -v npmrc ~/.npmrc
+        else
+          echo "Skipping Wombat npm credentials for OSS Exit Gate publish."
+        fi
 
   # Set up the hub credentials for package-builder.
   - name: "gcr.io/$PROJECT_ID/package-builder"
@@ -102,14 +123,39 @@ steps:
     args:
       - -c
       - |
+        ARGS=("${_VERSION}")
         if [ "${_VERSION}" == "preview" ]; then
-          ./scripts/publish.sh "${_VERSION}" "${_BRANCH}"
+          ARGS+=("${_BRANCH}")
+        fi
+        if [ "${_USE_OSS_GATE}" = "true" ]; then
+          ARGS+=("--use-oss-gate")
+        fi
+        if [ "${_VERSION}" == "preview" ]; then
+          ./scripts/publish.sh "$${ARGS[@]}"
         else
-          GITHUB_TOKEN=$(cat ~/.config/hub) ./scripts/publish.sh "${_VERSION}"
+          GITHUB_TOKEN=$(cat ~/.config/hub) ./scripts/publish.sh "$${ARGS[@]}"
         fi
     env:
       - "REPOSITORY_ORG=${_REPOSITORY_ORG}"
       - "REPOSITORY_NAME=${_REPOSITORY_NAME}"
+
+  # Upload manifest.json to GCS for OSS Exit Gate publishes (no-op otherwise).
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        set -euo pipefail
+        if [ "${_USE_OSS_GATE}" = "true" ] && [ "${_VERSION}" != "artifactsOnly" ]; then
+          test -s /workspace/manifest.json
+          MANIFEST_NAME="manifest-$$(date +%Y%m%d%H%M%S)-$BUILD_ID.json"
+          echo "Uploading OSS Exit Gate manifest $${MANIFEST_NAME}:"
+          cat /workspace/manifest.json
+          gcloud storage cp /workspace/manifest.json \
+            "gs://oss-exit-gate-prod-projects-bucket/firebase-tools/npm/manifests/$${MANIFEST_NAME}"
+        else
+          echo "Skipping OSS Exit Gate manifest upload (_USE_OSS_GATE=${_USE_OSS_GATE}, _VERSION=${_VERSION})."
+        fi
 
   # Wait for package to be available on npm.
   - name: "gcr.io/$PROJECT_ID/package-builder"
@@ -121,7 +167,7 @@ steps:
         timeout=1800
         elapsed=0
         interval=15
-        until npm install --dry-run "firebase-tools@$(cat /workspace/version_number.txt)" > /dev/null 2>&1; do
+        until npm install --dry-run --registry=https://registry.npmjs.org/ "firebase-tools@$(cat /workspace/version_number.txt)" > /dev/null 2>&1; do
           if [ $$elapsed -ge $$timeout ]; then
             echo "Timeout waiting for package after $${elapsed}s."
             exit 1
@@ -130,7 +176,7 @@ steps:
           sleep $$interval
           elapsed=$$((elapsed + interval))
         done
-        echo "Sleeping for 60 seconds to ensure propagation..." 
+        echo "Sleeping for 60 seconds to ensure propagation..."
         sleep 60
         echo "Package firebase-tools@$(cat /workspace/version_number.txt) is now available on npm."
 
@@ -142,7 +188,9 @@ steps:
       - |
         if [ "${_VERSION}" != "preview" ]; then
           mkdir -vp ~/.config && cp -v hub ~/.config/hub
-          cp -v npmrc ~/.npmrc
+          if [ "${_USE_OSS_GATE}" != "true" ]; then
+            cp -v npmrc ~/.npmrc
+          fi
         else
           echo "Skipping credentials for firepit-builder for preview."
         fi
@@ -227,6 +275,7 @@ options:
 substitutions:
   _VERSION: ""
   _BRANCH: ""
+  _USE_OSS_GATE: "false"
   _KEY_RING: "cloud-build-ring"
   _KEY_NAME: "publish"
   _REPOSITORY_ORG: "firebase"

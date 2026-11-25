@@ -2,17 +2,40 @@
 set -e
 
 printusage() {
-  echo "publish.sh <version> [branch]"
+  echo "publish.sh <version> [branch] [--use-oss-gate]"
   echo "REPOSITORY_ORG and REPOSITORY_NAME should be set in the environment."
   echo "e.g. REPOSITORY_ORG=user, REPOSITORY_NAME=repo"
   echo ""
   echo "Arguments:"
   echo "  version: 'patch', 'minor', 'major', 'artifactsOnly', or 'preview'"
   echo "  branch: required if version is 'preview'"
+  echo ""
+  echo "Options:"
+  echo "  --use-oss-gate: Publish npm package through OSS Exit Gate"
 }
 
-VERSION=$1
-BRANCH=$2
+USE_OSS_GATE=false
+POSITIONAL_ARGS=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --use-oss-gate)
+      USE_OSS_GATE=true
+      shift
+      ;;
+    -*)
+      echo "Unknown option: $1"
+      printusage
+      exit 1
+      ;;
+    *)
+      POSITIONAL_ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
+
+VERSION=${POSITIONAL_ARGS[0]:-}
+BRANCH=${POSITIONAL_ARGS[1]:-}
 if [[ $VERSION == "" ]]; then
   printusage
   exit 1
@@ -39,6 +62,72 @@ if [[ $REPOSITORY_NAME == "" ]]; then
 fi
 
 WDIR=$(pwd)
+OSS_GATE_AR_REGISTRY="https://us-npm.pkg.dev/oss-exit-gate-prod/firebase-tools--npm/"
+
+publish_to_oss_gate() {
+  local tag="$1"
+  local package_name
+  package_name=$(jq -r ".name" package.json)
+
+  local ar_npmrc
+  ar_npmrc=$(mktemp)
+  local clean_dir="tmp-clean-publish-$$"
+  local clean_dir_abs="$(pwd)/${clean_dir}"
+  trap "rm -rf '${ar_npmrc}' '${clean_dir_abs}'" EXIT
+
+  cat > "${ar_npmrc}" <<EOF
+registry=${OSS_GATE_AR_REGISTRY}
+//us-npm.pkg.dev/oss-exit-gate-prod/firebase-tools--npm/:always-auth=true
+EOF
+
+  echo "Authenticating with OSS Exit Gate Artifact Registry..."
+  npx --yes --registry=https://registry.npmjs.org/ google-artifactregistry-auth \
+    --repo-config="${ar_npmrc}" \
+    --credential-config="${ar_npmrc}"
+
+  # Clean the package without letting clean-publish run npm publish, since
+  # clean-publish@5.0.0 swallows non-zero exit codes from publish and before-script.
+  echo "Preparing clean package for ${package_name}@${NEW_VERSION}..."
+  npx --yes --registry=https://registry.npmjs.org/ clean-publish@5.0.0 \
+    --without-publish \
+    --temp-dir "${clean_dir}" \
+    --fields publishConfig
+  ./scripts/clean-shrinkwrap.sh "${clean_dir}"
+
+  local npm_publish_args=(
+    --registry="${OSS_GATE_AR_REGISTRY}"
+    --userconfig="${ar_npmrc}"
+  )
+  if [[ -n "$tag" ]]; then
+    npm_publish_args+=(--tag "$tag")
+  fi
+
+  echo "Publishing ${package_name}@${NEW_VERSION} to OSS Exit Gate Artifact Registry..."
+  (cd "${clean_dir}" && npm publish "${npm_publish_args[@]}")
+
+  local manifest_path="${WDIR}/manifest.json"
+  if [[ -d "/workspace" ]]; then
+    manifest_path="/workspace/manifest.json"
+  fi
+  local npm_tags='["latest"]'
+  if [[ -n "$tag" ]]; then
+    npm_tags=$(jq -cn --arg t "$tag" '[$t]')
+  fi
+
+  jq -n \
+    --arg name "$package_name" \
+    --arg version "$NEW_VERSION" \
+    --argjson tags "$npm_tags" \
+    '{
+      publish_all: false,
+      publishing_groups: [{ packages: [{ name: $name, version: $version }] }],
+      registry_config: { npm: { tags: $tags } }
+    }' > "${manifest_path}"
+  echo "Wrote OSS Exit Gate manifest to ${manifest_path}"
+
+  rm -rf "${ar_npmrc}" "${clean_dir_abs}"
+  trap - EXIT
+}
 
 echo "Checking for commands..."
 trap "echo 'Missing hub.'; exit 1" ERR
@@ -53,11 +142,13 @@ trap "echo 'Missing jq.'; exit 1" ERR
 which jq &> /dev/null
 trap - ERR
 
-echo "Checking for logged-in npm user..."
-trap "echo 'Please login to npm using \`npm login --registry https://wombat-dressing-room.appspot.com\`'; exit 1" ERR
-npm whoami --registry https://wombat-dressing-room.appspot.com
-trap - ERR
-echo "Checked for logged-in npm user."
+if [[ $USE_OSS_GATE != true ]]; then
+  echo "Checking for logged-in npm user..."
+  trap "echo 'Please login to npm using \`npm login --registry https://wombat-dressing-room.appspot.com\`'; exit 1" ERR
+  npm whoami --registry https://wombat-dressing-room.appspot.com
+  trap - ERR
+  echo "Checked for logged-in npm user."
+fi
 
 echo "Moving to temporary directory.."
 TEMPDIR=$(mktemp -d)
@@ -99,7 +190,11 @@ if [[ $VERSION == "preview" ]]; then
   INITIAL_VERSION=$(jq -r ".version" package.json)
   PREFIX=${INITIAL_VERSION%.*}
   echo "Checking registry for existing preview versions with prefix ${PREFIX}..."
-  MATCHING_VERSIONS=$(npm view firebase-tools versions --registry https://wombat-dressing-room.appspot.com --json | jq -r --arg prefix "$PREFIX" 'if type == "array" then .[] else . end | select(startswith($prefix + "."))' || true)
+  VIEW_REGISTRY="https://wombat-dressing-room.appspot.com"
+  if [[ $USE_OSS_GATE == true ]]; then
+    VIEW_REGISTRY="https://registry.npmjs.org"
+  fi
+  MATCHING_VERSIONS=$(npm view firebase-tools versions --registry "${VIEW_REGISTRY}" --json | jq -r --arg prefix "$PREFIX" 'if type == "array" then .[] else . end | select(startswith($prefix + "."))' || true)
   if [[ -n "$MATCHING_VERSIONS" ]]; then
     MAX_SUFFIX=$(echo "$MATCHING_VERSIONS" | sed 's/^.*\.//' | grep -E '^[0-9]+$' | sort -n | tail -n 1)
     MAX_SUFFIX=${MAX_SUFFIX:-0}
@@ -137,9 +232,13 @@ echo "Made the release notes."
 
 
 if [[ $VERSION != "preview" ]]; then
-  echo "Publishing to npm..."
-  npx clean-publish@5.0.0 --before-script ./scripts/clean-shrinkwrap.sh
-  echo "Published to npm."
+  if [[ $USE_OSS_GATE == true ]]; then
+    publish_to_oss_gate ""
+  else
+    echo "Publishing to npm..."
+    npx clean-publish@5.0.0 --before-script ./scripts/clean-shrinkwrap.sh
+    echo "Published to npm."
+  fi
 
   echo "Updating package-lock.json for Docker image..."
   npm --prefix ./scripts/publish/firebase-docker-image install
@@ -164,7 +263,11 @@ if [[ $VERSION != "preview" ]]; then
   hub release create --draft --file "${RELEASE_NOTES_FILE}" "v${NEW_VERSION}"
   echo "Published draft release notes."
 else
-  echo "Publishing preview version to npm..."
-  npx clean-publish@5.0.0 --before-script ./scripts/clean-shrinkwrap.sh -- --tag preview
-  echo "Published preview version to npm."
+  if [[ $USE_OSS_GATE == true ]]; then
+    publish_to_oss_gate "preview"
+  else
+    echo "Publishing preview version to npm..."
+    npx clean-publish@5.0.0 --before-script ./scripts/clean-shrinkwrap.sh -- --tag preview
+    echo "Published preview version to npm."
+  fi
 fi

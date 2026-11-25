@@ -2,15 +2,38 @@
 set -e
 
 printusage() {
-  echo "run.sh <version> [branch]"
+  echo "run.sh <version> [branch] [--use-oss-gate]"
   echo ""
   echo "Arguments:"
   echo "  version: 'patch', 'minor', 'major', 'artifactsOnly', or 'preview'"
   echo "  branch: required if version is 'preview'"
+  echo ""
+  echo "Options:"
+  echo "  --use-oss-gate: Publish npm package through OSS Exit Gate"
 }
 
-VERSION=$1
-BRANCH=$2
+USE_OSS_GATE=false
+POSITIONAL_ARGS=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --use-oss-gate)
+      USE_OSS_GATE=true
+      shift
+      ;;
+    -*)
+      echo "Unknown option: $1"
+      printusage
+      exit 1
+      ;;
+    *)
+      POSITIONAL_ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
+
+VERSION=${POSITIONAL_ARGS[0]:-}
+BRANCH=${POSITIONAL_ARGS[1]:-}
 if [[ $VERSION == "" ]]; then
   printusage
   exit 1
@@ -24,7 +47,7 @@ elif [[ ! ($VERSION == "patch" || $VERSION == "minor" || $VERSION == "major" || 
   exit 1
 fi
 
-SUBSTITUTIONS="_VERSION=$VERSION"
+SUBSTITUTIONS="_VERSION=$VERSION,_USE_OSS_GATE=$USE_OSS_GATE"
 if [[ $VERSION == "preview" ]]; then
   SUBSTITUTIONS="$SUBSTITUTIONS,_BRANCH=$BRANCH"
 fi
