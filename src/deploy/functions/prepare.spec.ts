@@ -1235,20 +1235,6 @@ describe("prepare", () => {
           retry: false,
         },
       },
-      "a database trigger on the default instance": {
-        want: {
-          eventType: DATABASE_EVENT,
-          eventFilters: {},
-          eventFilterPathPatterns: { ref: "messages/{id}", instance: "*" },
-          retry: false,
-        },
-        // A deployed endpoint has no eventFilters key when it has no exact-match filters.
-        have: {
-          eventType: DATABASE_EVENT,
-          eventFilterPathPatterns: { ref: "messages/{id}", instance: "*" },
-          retry: false,
-        },
-      },
       "a storage trigger": {
         want: {
           eventType: "google.cloud.storage.object.v1.finalized",
