@@ -31,9 +31,14 @@ interface JarOptions {
 const SYMBOL_CACHE_ROOT_DIR = process.env.FIREBASE_CRASHLYTICS_CACHE_PATH || os.tmpdir();
 
 export const command = new Command("crashlytics:symbols:upload <symbolFiles...>")
-  .description("upload symbols for native code, to symbolicate stack traces")
-  .option("--app <appID>", "the app id of your Firebase app")
-  .option("--generator [breakpad|csym]", "the symbol generator being used, default is breakpad")
+  .description(
+    "generate and upload Android NDK native symbols from unstripped .so libraries, to symbolicate native crash stack traces (does not support Apple dSYMs)",
+  )
+  .option(
+    "--app <appID>",
+    "(required) the Firebase Android app ID, e.g. 1:1234567890:android:0123456789abcdef",
+  )
+  .option("--generator [breakpad|csym]", "the symbol format to generate, default is breakpad")
   .option("--dry-run", "generate symbols without uploading them")
   .action(async (symbolFiles: string[], options: CommandOptions) => {
     const app = getGoogleAppID(options);
@@ -80,7 +85,7 @@ export const command = new Command("crashlytics:symbols:upload <symbolFiles...>"
 function getGoogleAppID(options: CommandOptions): string {
   if (!options.app) {
     throw new FirebaseError(
-      "set --app <appId> to a valid Firebase application id, e.g. 1:00000000:android:0000000",
+      "set --app <appID> to a valid Firebase Android app ID, e.g. 1:00000000:android:0000000",
     );
   }
   return options.app;
@@ -92,7 +97,7 @@ function getSymbolGenerator(options: CommandOptions): SymbolGenerator {
     return SymbolGenerator.breakpad;
   }
   if (!Object.values(SymbolGenerator).includes(options.generator)) {
-    throw new FirebaseError('--symbol-generator should be set to either "breakpad" or "csym"');
+    throw new FirebaseError('--generator should be set to either "breakpad" or "csym"');
   }
   return options.generator;
 }
