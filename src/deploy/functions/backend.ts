@@ -746,6 +746,15 @@ export async function checkAvailability(context: Context, want: Backend): Promis
   }
 }
 
+/**
+ * Returns true if both endpoints have a runtime and the runtimes differ. The endpoint hash
+ * covers the source, env vars and secrets but not the runtime, which can be changed in
+ * firebase.json alone, so a matching hash does not mean the runtime is unchanged.
+ */
+export function runtimeChanged(want: Endpoint, have: Endpoint): boolean {
+  return !!want.runtime && !!have.runtime && want.runtime !== have.runtime;
+}
+
 /** A helper utility for flattening all endpoints in a backend since typing is a bit wonky. */
 export function allEndpoints(backend: Backend): Endpoint[] {
   return Object.values(backend.endpoints).reduce((accum, perRegion) => {

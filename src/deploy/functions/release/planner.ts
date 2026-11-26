@@ -94,7 +94,8 @@ export function calculateChangesets(
       have[id].state === "ACTIVE" && // Only skip the function if its in a known good state
       have[id].hash &&
       want[id].hash &&
-      want[id].hash === have[id].hash
+      want[id].hash === have[id].hash &&
+      !backend.runtimeChanged(want[id], have[id])
     );
 
   const toSkipEndpointsMap = Object.keys(want)

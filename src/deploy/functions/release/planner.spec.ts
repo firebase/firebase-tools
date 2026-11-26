@@ -217,6 +217,39 @@ describe("planner", () => {
       expect(result.region.endpointsToUpdate[0].endpoint.id).to.equal("func");
     });
 
+    it("should not skip functions whose runtime changed", () => {
+      const funcWant = func("func", "region");
+      const funcHave = func("func", "region");
+      funcWant.hash = "same-hash";
+      funcHave.hash = "same-hash";
+      funcWant.runtime = "nodejs24";
+      funcHave.runtime = "nodejs22";
+
+      const want = { func: funcWant };
+      const have = { func: funcHave };
+
+      const result = planner.calculateChangesets(want, have, (e) => e.region);
+
+      expect(result.region.endpointsToSkip).to.have.lengthOf(0);
+      expect(result.region.endpointsToUpdate).to.have.lengthOf(1);
+      expect(result.region.endpointsToUpdate[0].endpoint.runtime).to.equal("nodejs24");
+    });
+
+    it("should still skip functions when the deployed runtime is unknown", () => {
+      const funcWant = func("func", "region");
+      const funcHave = func("func", "region");
+      funcWant.hash = "same-hash";
+      funcHave.hash = "same-hash";
+      delete funcHave.runtime;
+
+      const want = { func: funcWant };
+      const have = { func: funcHave };
+
+      const result = planner.calculateChangesets(want, have, (e) => e.region);
+
+      expect(result.region.endpointsToSkip).to.have.lengthOf(1);
+    });
+
     it("should not skip functions with missing hash values", () => {
       const func1Want = func("func1", "region");
       const func1Have = func("func1", "region");

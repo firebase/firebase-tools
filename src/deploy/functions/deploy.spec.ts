@@ -94,6 +94,23 @@ describe("deploy", () => {
       expect(result).to.be.false;
     });
 
+    it("should not skip if a runtime changed", () => {
+      endpoint1InWantBackend.hash = "1";
+      endpoint2InWantBackend.hash = "2";
+      endpoint1InHaveBackend.hash = endpoint1InWantBackend.hash;
+      endpoint2InHaveBackend.hash = endpoint2InWantBackend.hash;
+      endpoint1InHaveBackend.state = "ACTIVE";
+      endpoint2InHaveBackend.state = "ACTIVE";
+      endpoint2InWantBackend.runtime = "nodejs24";
+      endpoint2InHaveBackend.runtime = "nodejs22";
+
+      // Execute
+      const result = deploy.shouldUploadBeSkipped(CONTEXT, wantBackend, haveBackend);
+
+      // Expect
+      expect(result).to.be.false;
+    });
+
     it("should not skip if haveBackend is missing", () => {
       endpoint1InWantBackend.hash = "1";
       endpoint2InWantBackend.hash = "2";

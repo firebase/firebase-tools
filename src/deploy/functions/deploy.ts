@@ -232,7 +232,8 @@ export function shouldUploadBeSkipped(
       haveEndpoint.hash &&
       wantEndpoint.hash &&
       haveEndpoint.hash === wantEndpoint.hash &&
-      haveEndpoint.state === "ACTIVE"
+      haveEndpoint.state === "ACTIVE" &&
+      !backend.runtimeChanged(wantEndpoint, haveEndpoint)
     );
   });
 }
