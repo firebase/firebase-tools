@@ -4,6 +4,7 @@ import { command as firestoreDatabasesUpdate } from "./firestore-databases-updat
 import * as fsi from "../firestore/api";
 import * as types from "../firestore/api-types";
 import { FirebaseError } from "../error";
+import * as requireAuthModule from "../requireAuth";
 
 describe("firestore:databases:update", () => {
   const PROJECT = "test-project";
@@ -14,6 +15,7 @@ describe("firestore:databases:update", () => {
   beforeEach(() => {
     firestoreApiStub = sinon.createStubInstance(fsi.FirestoreApi);
     sinon.stub(fsi, "FirestoreApi").returns(firestoreApiStub);
+    sinon.stub(requireAuthModule, "requireAuth").resolves("a@b.com");
     firestoreApiStub.updateDatabase.resolves({
       name: `projects/${PROJECT}/databases/${DATABASE}`,
     } as types.DatabaseResp);
