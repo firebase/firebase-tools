@@ -14,19 +14,29 @@ import { PrettyPrint } from "../firestore/pretty-print";
 
 export const command = new Command("firestore:databases:delete <database>")
   .description("delete a database in your Cloud Firestore project")
-  .option("--force", "attempt to delete database without prompting for confirmation")
+  .withForce(
+    "delete the database without prompting for confirmation (required with --non-interactive)",
+  )
   .before(requirePermissions, ["datastore.databases.delete"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
   .action(async (database: string, options: FirestoreOptions) => {
     const api = new fsi.FirestoreApi();
     const printer = new PrettyPrint();
 
-    if (!options.force) {
-      const confirmMessage = `You are about to delete projects/${options.project}/databases/${database}. Do you wish to continue?`;
-      const consent = await confirm(confirmMessage);
-      if (!consent) {
-        throw new FirebaseError("Delete database canceled.");
-      }
+    const databasePath = `projects/${options.project}/databases/${database}`;
+    if (!options.force && options.nonInteractive) {
+      throw new FirebaseError(
+        `Deleting ${databasePath} requires confirmation. Pass --force to delete the database in non-interactive mode.`,
+      );
+    }
+    const consent = await confirm({
+      message: `You are about to delete ${databasePath}. Do you wish to continue?`,
+      default: false,
+      nonInteractive: options.nonInteractive,
+      force: options.force,
+    });
+    if (!consent) {
+      throw new FirebaseError("Delete database canceled. Pass --force to skip this prompt.");
     }
 
     const databaseResp: types.DatabaseResp = await api.deleteDatabase(options.project, database);
