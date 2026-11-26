@@ -38,7 +38,16 @@ export function responseToError(response: any, body: any, url?: string): Firebas
     };
   }
 
-  let message = "HTTP Error: " + statusCode + ", " + (body.error.message || body.error);
+  let errorMessage = body.error.message || body.error;
+  if (typeof errorMessage === "string") {
+    errorMessage = errorMessage.replace("Enable it by visiting", "\n\nEnable it by visiting");
+    errorMessage = errorMessage.replace(
+      "If you enabled this API recently",
+      "\n\nIf you enabled this API recently",
+    );
+  }
+
+  let message = "HTTP Error: " + statusCode + ", " + errorMessage;
   if (url) {
     message = "Request to " + url + " had " + message;
   }
