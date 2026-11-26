@@ -6,7 +6,7 @@ import * as auth from "./auth";
 import nock from "./test/helpers/nock";
 const proxySetup = require("proxy");
 
-import { Client, CLI_OAUTH_PROJECT_NUMBER } from "./apiv2";
+import { authTransporterAgent, Client, CLI_OAUTH_PROJECT_NUMBER, noKeepAliveAgent } from "./apiv2";
 import { FirebaseError } from "./error";
 import { streamToString, stringToStream } from "./utils";
 
@@ -639,6 +639,38 @@ describe("apiv2", () => {
         expect(nock.isDone()).to.be.true;
       });
     });
+  });
+
+  describe("authTransporterAgent", () => {
+    const proxyVars = ["HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"];
+    let saved: Record<string, string | undefined>;
+    beforeEach(() => {
+      saved = {};
+      for (const name of proxyVars) {
+        saved[name] = process.env[name];
+        delete process.env[name];
+      }
+    });
+    afterEach(() => {
+      for (const name of proxyVars) {
+        if (saved[name] === undefined) {
+          delete process.env[name];
+        } else {
+          process.env[name] = saved[name];
+        }
+      }
+    });
+
+    it("should return the no-keep-alive agent when no proxy is set", () => {
+      expect(authTransporterAgent()).to.equal(noKeepAliveAgent);
+    });
+
+    for (const name of proxyVars) {
+      it(`should return undefined when ${name} is set`, () => {
+        process.env[name] = "http://127.0.0.1:52672";
+        expect(authTransporterAgent()).to.be.undefined;
+      });
+    }
   });
 
   describe("verbs", () => {
