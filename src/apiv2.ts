@@ -173,6 +173,16 @@ export function noKeepAliveAgent(parsedURL: URL): http.Agent | https.Agent {
   return parsedURL.protocol === "https:" ? httpsAgentNoKeepAlive : httpAgentNoKeepAlive;
 }
 
+/**
+ * The agent for the GoogleAuth transporter, which fetches OAuth tokens. When a
+ * proxy is set in the environment, this returns undefined so gaxios can route
+ * the request through the proxy: a custom agent makes gaxios skip its proxy
+ * handling, and Node.js does not apply NODE_USE_ENV_PROXY to custom agents.
+ */
+export function authTransporterAgent(): typeof noKeepAliveAgent | undefined {
+  return proxyURIFromEnv() ? undefined : noKeepAliveAgent;
+}
+
 function isPrematureCloseError(err: unknown): boolean {
   for (const candidate of [err, (err as { original?: unknown } | undefined)?.original]) {
     if (!candidate) {

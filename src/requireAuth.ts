@@ -28,13 +28,14 @@ function getAuthClient(config: GoogleAuthOptions): GoogleAuth {
     return authClient;
   }
 
+  const agent = apiv2.authTransporterAgent();
   const authConfig: GoogleAuthOptions = {
     ...config,
     clientOptions: {
       ...config.clientOptions,
       transporterOptions: {
         ...config.clientOptions?.transporterOptions,
-        agent: apiv2.noKeepAliveAgent,
+        ...(agent && { agent }),
       },
     },
   };
