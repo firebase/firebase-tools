@@ -752,7 +752,7 @@ export async function checkAvailability(context: Context, want: Backend): Promis
  * firebase.json alone, so a matching hash does not mean the runtime is unchanged.
  */
 export function runtimeChanged(want: Endpoint, have: Endpoint): boolean {
-  return !!want.runtime && !!have.runtime && want.runtime !== have.runtime;
+  return want.runtime !== undefined && have.runtime !== undefined && want.runtime !== have.runtime;
 }
 
 /** A helper utility for flattening all endpoints in a backend since typing is a bit wonky. */
