@@ -99,11 +99,31 @@ class WebSocketTransport extends TransportStream {
       if (!this.wss) {
         return resolve();
       }
+      for (const socket of this.connections) {
+        try {
+          socket.terminate();
+        } catch (e) {
+          // ignore
+        }
+      }
+      this.connections.clear();
+
+      let settled = false;
+      const timeout = setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          resolve();
+        }
+      }, 1000);
+
       this.wss.close((err) => {
-        if (err) return reject(err);
-        resolve();
+        clearTimeout(timeout);
+        if (!settled) {
+          settled = true;
+          if (err) return reject(err);
+          resolve();
+        }
       });
-      this.connections.forEach((socket) => socket.terminate());
     });
   }
 
