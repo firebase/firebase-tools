@@ -3,6 +3,7 @@ import * as sinon from "sinon";
 import * as checkIam from "./checkIam";
 import * as storage from "../../gcp/storage";
 import * as rm from "../../gcp/resourceManager";
+import * as gce from "../../gcp/computeEngine";
 import * as backend from "./backend";
 
 const projectId = "my-project";
@@ -30,6 +31,13 @@ describe("checkIam", () => {
   let setIamStub: sinon.SinonStub;
 
   beforeEach(() => {
+    // Unstubbed, this reaches the Compute API over the network and each test that
+    // needs the default service account races mocha's 2s timeout. The fake derives
+    // the address from its argument so the tests still pin that checkIam passes the
+    // project number through.
+    sinon
+      .stub(gce, "getDefaultServiceAccount")
+      .callsFake((pn: string) => Promise.resolve(`${pn}-compute@developer.gserviceaccount.com`));
     storageStub = sinon
       .stub(storage, "getServiceAccount")
       .throws("unexpected call to storage.getServiceAccount");
