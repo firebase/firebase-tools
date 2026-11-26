@@ -9,8 +9,9 @@ import { printBackendsTable } from "./apphosting-backends-list";
 
 export const command = new Command("apphosting:backends:get <backend>")
   .description(
-    "print info about a Firebase App Hosting backend, looked up by ID across all regions " +
-      "(if the ID exists in multiple regions, warns and prints the first match)",
+    "print info about a Firebase App Hosting backend, looked up by ID across all regions. " +
+      "If the ID exists in multiple regions, warns and prints only the first match; " +
+      "use apphosting:backends:list to see the backend in each region",
   )
   .before(requireAuth)
   .before(apphosting.ensureApiEnabled)
