@@ -7,7 +7,7 @@ import { EmulatorLogger } from "./emulatorLogger";
 import { EventTrigger } from "./functionsEmulatorShared";
 import { CloudEvent } from "./events/types";
 import { EmulatorRegistry } from "./registry";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
 import { cloudEventFromProtoToJson } from "./eventarcEmulatorUtils";
 import * as cors from "cors";
 
@@ -131,7 +131,12 @@ export class EventarcEmulator implements EmulatorInstance {
           "INFO",
           `Received event at channel ${channel}: ${JSON.stringify(event, null, 2)}`,
         );
-        this.triggerEventFunction(channel, event);
+        this.triggerEventFunction(channel, event).catch((err: unknown) => {
+          this.logger.log(
+            "ERROR",
+            `Failed to trigger event functions for ${channel}: ${getErrMsg(err)}`,
+          );
+        });
       }
       res.sendStatus(200);
     };
