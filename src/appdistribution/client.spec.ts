@@ -196,8 +196,9 @@ describe("distribution", () => {
   describe("updateReleaseNotes", () => {
     const releaseName = `${appName}/releases/fake-release-id`;
     it("should return immediately when no release notes are specified", async () => {
-      await expect(appDistributionClient.updateReleaseNotes(releaseName, "")).to.eventually.be
-        .fulfilled;
+      await expect(appDistributionClient.updateReleaseNotes(releaseName, "")).to.eventually.equal(
+        undefined,
+      );
       expect(nock.isDone()).to.be.true;
     });
 
@@ -211,12 +212,27 @@ describe("distribution", () => {
       expect(nock.isDone()).to.be.true;
     });
 
-    it("should resolve when request succeeds", async () => {
+    it("should return the updated release when request succeeds", async () => {
+      const release = {
+        name: releaseName,
+        releaseNotes: { text: "release notes" },
+        displayVersion: "1.0",
+        buildVersion: "42",
+        createTime: "2026-01-01T00:00:00Z",
+        firebaseConsoleUri: "https://console.firebase.google.com/project/test/appdistribution",
+        testingUri: "https://appdistribution.firebase.google.com/testerapps/test/releases/release",
+        binaryDownloadUri:
+          "https://firebaseappdistribution.googleapis.com/app-binary-downloads/test",
+      };
       nock(appDistributionOrigin())
-        .patch(`/v1/${releaseName}?updateMask=release_notes.text`)
-        .reply(200, {});
-      await expect(appDistributionClient.updateReleaseNotes(releaseName, "release notes")).to
-        .eventually.be.fulfilled;
+        .patch(`/v1/${releaseName}?updateMask=release_notes.text`, {
+          name: releaseName,
+          releaseNotes: { text: "release notes" },
+        })
+        .reply(200, release);
+      await expect(
+        appDistributionClient.updateReleaseNotes(releaseName, "release notes"),
+      ).to.eventually.deep.equal(release);
       expect(nock.isDone()).to.be.true;
     });
   });
