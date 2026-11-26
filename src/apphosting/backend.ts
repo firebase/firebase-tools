@@ -653,8 +653,11 @@ export async function chooseBackends(
   }
 
   if (force) {
+    const locations = backends.map((b) => apphosting.parseBackendName(b.name).location);
     throw new FirebaseError(
-      `Force cannot be used because multiple backends were found with ID ${backendId}.`,
+      `Force cannot be used because multiple backends were found with ID ${backendId} ` +
+        `(in ${locations.join(", ")}). Re-run this command without --force or --non-interactive ` +
+        "to choose which backend(s) to delete.",
     );
   }
   const backendsByDisplay = new Map<string, apphosting.Backend>();
@@ -709,16 +712,16 @@ export async function getBackendForAmbiguousLocation(
   if (backends.length === 1) {
     return backends[0];
   }
-  if (force) {
-    throw new FirebaseError(
-      `Multiple backends found with ID ${backendId}. Please specify the region of your target backend.`,
-    );
-  }
-
   const backendsByLocation = new Map<string, apphosting.Backend>();
   backends.forEach((backend) =>
     backendsByLocation.set(apphosting.parseBackendName(backend.name).location, backend),
   );
+  if (force) {
+    throw new FirebaseError(
+      `Multiple backends found with ID ${backendId} (in locations: ${[...backendsByLocation.keys()].join(", ")}). ` +
+        "Please specify the location of your target backend with --location.",
+    );
+  }
   const location = await select<string>({
     message: locationDisambugationPrompt,
     choices: [...backendsByLocation.keys()],

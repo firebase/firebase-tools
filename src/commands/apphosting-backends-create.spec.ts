@@ -9,18 +9,47 @@ import { FirebaseError } from "../error";
 describe("apphosting:backends:create", () => {
   const PROJECT_ID = "test-project";
   let command: Command;
+  let originalBefores: unknown[];
   let isEnabledStub: sinon.SinonStub;
   let doSetupStub: sinon.SinonStub;
 
   beforeEach(() => {
     command = apphostingBackendsCreate;
+    originalBefores = (command as unknown as { befores: unknown[] }).befores;
     (command as unknown as { befores: unknown[] }).befores = []; // Bypass pre-action hooks for unit testing action
     isEnabledStub = sinon.stub(experiments, "isEnabled");
     doSetupStub = sinon.stub(backend, "doSetup").resolves();
   });
 
   afterEach(() => {
+    (command as unknown as { befores: unknown[] }).befores = originalBefores;
     sinon.restore();
+  });
+
+  it("should fail and name the missing flags in non-interactive mode", async () => {
+    isEnabledStub.returns(true);
+    const options = {
+      project: PROJECT_ID,
+      nonInteractive: true,
+      primaryRegion: "us-central1",
+    };
+
+    await expect(command.runner()(options)).to.be.rejectedWith(
+      FirebaseError,
+      /--non-interactive option requires --backend and --primary-region \(missing: --backend\)/,
+    );
+    expect(doSetupStub).to.not.be.called;
+  });
+
+  it("should list both flags when --backend and --primary-region are missing", async () => {
+    isEnabledStub.returns(true);
+    const options = { project: PROJECT_ID, nonInteractive: true };
+
+    await expect(command.runner()(options)).to.be.rejectedWith(
+      FirebaseError,
+      /\(missing: --backend, --primary-region\)/,
+    );
+    expect(doSetupStub).to.not.be.called;
   });
 
   it("should fail if runtime flag is used without experiment enabled", async () => {

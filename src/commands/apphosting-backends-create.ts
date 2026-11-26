@@ -10,10 +10,12 @@ import { APPHOSTING_TOS_ID } from "../gcp/firedata";
 import { requireTosAcceptance } from "../requireTosAcceptance";
 
 export const command = new Command("apphosting:backends:create")
-  .description("create a Firebase App Hosting backend")
+  .description(
+    "create a Firebase App Hosting backend. With --non-interactive, --backend and --primary-region are required, and GitHub repository linking and the initial rollout are skipped",
+  )
   .option(
     "-a, --app <webAppId>",
-    "specify an existing Firebase web app's ID to associate your App Hosting backend with",
+    "specify an existing Firebase web app's ID to associate your App Hosting backend with. If omitted, a new Firebase web app named after the backend is created automatically",
   )
   .option(
     "--backend <backend>",
@@ -44,7 +46,14 @@ command
   .action(async (options: Options) => {
     const projectId = needProjectId(options);
     if (options.nonInteractive && (options.backend == null || options.primaryRegion == null)) {
-      throw new FirebaseError(`--non-interactive option requires --backend and --primary-region`);
+      const missing = [
+        options.backend == null ? "--backend" : undefined,
+        options.primaryRegion == null ? "--primary-region" : undefined,
+      ].filter((flag): flag is string => !!flag);
+      throw new FirebaseError(
+        `--non-interactive option requires --backend and --primary-region (missing: ${missing.join(", ")}). ` +
+          "For example: firebase apphosting:backends:create --non-interactive --backend my-backend --primary-region us-central1",
+      );
     }
 
     const abiuAllowed = experiments.isEnabled("abiu");
