@@ -14,7 +14,10 @@ type MigrateOptions = Options & { service?: string; location?: string };
 
 export const command = new Command("dataconnect:sql:migrate")
   .description("migrate your CloudSQL database's schema to match your local SQL Connect schema")
-  .option("--service <serviceId>", "the serviceId of the SQL Connect service")
+  .option(
+    "--service <serviceId>",
+    "the serviceId of the SQL Connect service. Required if firebase.json configures more than one service.",
+  )
   .option(
     "--location <location>",
     "the location of the SQL Connect service. Only needed if service ID is used in multiple locations.",
@@ -26,7 +29,9 @@ export const command = new Command("dataconnect:sql:migrate")
     "cloudsql.instances.connect",
   ])
   .before(requireAuth)
-  .withForce("execute any required database changes without prompting")
+  .withForce(
+    "execute all required database changes without prompting. In non-interactive mode, only needed if the migration includes destructive changes.",
+  )
   .action(async (options: MigrateOptions) => {
     const projectId = needProjectId(options);
     await ensureApis(projectId);
@@ -53,7 +58,7 @@ export const command = new Command("dataconnect:sql:migrate")
     if (diffs.length) {
       logLabeledSuccess(
         "dataconnect",
-        `Database schema sucessfully migrated! Run 'firebase deploy' to deploy your new schema to your SQL Connect service.`,
+        `Database schema successfully migrated! Run 'firebase deploy' to deploy your new schema to your SQL Connect service.`,
       );
     } else {
       logLabeledSuccess("dataconnect", "Database schema is already up to date!");
