@@ -134,12 +134,10 @@ echo "" >> "${RELEASE_NOTES_FILE}"
 cat CHANGELOG.md >> "${RELEASE_NOTES_FILE}"
 echo "Made the release notes."
 
-
-
 if [[ $VERSION != "preview" ]]; then
-  echo "Publishing to npm..."
-  npx clean-publish@5.0.0 --before-script ./scripts/clean-shrinkwrap.sh
-  echo "Published to npm."
+  echo "Publishing to npm (under staging tag to avoid moving latest tag)..."
+  npx clean-publish@5.0.0 --before-script ./scripts/clean-shrinkwrap.sh -- --tag staging
+  echo "Published to npm under staging tag."
 
   echo "Updating package-lock.json for Docker image..."
   npm --prefix ./scripts/publish/firebase-docker-image install
@@ -153,7 +151,7 @@ if [[ $VERSION != "preview" ]]; then
   echo "Cleaning up release notes..."
   rm CHANGELOG.md
   touch CHANGELOG.md
-  git commit -m "[firebase-release] Removed change log and reset repo after ${NEW_VERSION} release" CHANGELOG.md scripts/publish/firebase-docker-image/package-lock.json
+  git commit -m "[firebase-release] Removed change log and reset repo after ${NEW_VERSION} release" CHANGELOG.md scripts/publish/firebase-docker-image/package-lock.json src/mcp/server.json
   echo "Cleaned up release notes."
 
   echo "Pushing to GitHub..."

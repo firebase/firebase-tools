@@ -147,17 +147,72 @@ steps:
           echo "Skipping credentials for firepit-builder for preview."
         fi
 
-  # Publish the firepit builds.
+  # Publish the firepit builds, create draft release with artifacts, validate, publish, and move latest tag.
   - name: "gcr.io/$PROJECT_ID/firepit-builder"
     entrypoint: "bash"
     args:
       - "-c"
       - |
         if [ "${_VERSION}" != "preview" ]; then
-          GITHUB_TOKEN=$(cat ~/.config/hub) node /usr/src/app/pipeline.js --package=firebase-tools@$(cat /workspace/version_number.txt) --publish
-          echo "Please review the draft release notes at https://github.com/${_REPOSITORY_ORG}/${_REPOSITORY_NAME}/releases. If it looks good, publish it"
+          cp -v ${_REPOSITORY_NAME}/scripts/firepit-builder/pipeline.js /usr/src/app/pipeline.js
+          GITHUB_TOKEN=$(cat ~/.config/hub) GITHUB_REPOSITORY="${_REPOSITORY_ORG}/${_REPOSITORY_NAME}" REPOSITORY_ORG="${_REPOSITORY_ORG}" REPOSITORY_NAME="${_REPOSITORY_NAME}" node /usr/src/app/pipeline.js --package=firebase-tools@$(cat /workspace/version_number.txt) --publish
         else
           echo "Skipping firepit build for preview version."
+        fi
+
+  # Verify npm latest tag is pointing to the new version (never moving it backwards).
+  - name: "gcr.io/$PROJECT_ID/package-builder"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        if [ "${_VERSION}" != "preview" ]; then
+          set -e
+          VERSION_NUM="$(cat /workspace/version_number.txt)"
+          SEMVER_RE='^[0-9]+\.[0-9]+\.[0-9]+$$'
+          echo "Verifying npm latest tag for firebase-tools..."
+          LATEST_TAG=""
+          for attempt in 1 2 3 4 5; do
+            LATEST_TAG=$$(npm view firebase-tools dist-tags.latest --registry https://wombat-dressing-room.appspot.com 2>/dev/null || true)
+            if [[ "$${LATEST_TAG}" =~ $${SEMVER_RE} ]]; then
+              break
+            fi
+            sleep 5
+          done
+          echo "Current npm latest tag: $${LATEST_TAG}"
+          if ! [[ "$${VERSION_NUM}" =~ $${SEMVER_RE} && "$${LATEST_TAG}" =~ $${SEMVER_RE} ]]; then
+            echo "Error: can't compare version '$${VERSION_NUM}' with npm latest '$${LATEST_TAG}'." >&2
+            exit 1
+          fi
+          IFS=. read -r new_major new_minor new_patch <<< "$${VERSION_NUM}"
+          IFS=. read -r cur_major cur_minor cur_patch <<< "$${LATEST_TAG}"
+          if (( new_major < cur_major || (new_major == cur_major && (new_minor < cur_minor || (new_minor == cur_minor && new_patch < cur_patch))) )); then
+            echo "WARNING: Not moving npm latest tag: $${VERSION_NUM} is older than the current latest ($${LATEST_TAG})."
+            exit 0
+          fi
+          if [ "$${LATEST_TAG}" != "$${VERSION_NUM}" ]; then
+            echo "Updating npm latest tag to $${VERSION_NUM}..."
+            npm dist-tag add "firebase-tools@$${VERSION_NUM}" latest --registry https://wombat-dressing-room.appspot.com
+          fi
+          echo "Verified npm latest tag is pointing to $${VERSION_NUM}."
+
+          # The Docker image build below runs `npm update` against the "latest" tag, which only
+          # moved a moment ago, so wait for the public registry to serve the new tag.
+          timeout=900
+          elapsed=0
+          interval=15
+          until [ "$$(npm view firebase-tools dist-tags.latest --registry https://registry.npmjs.org --prefer-online 2>/dev/null)" = "$${VERSION_NUM}" ]; do
+            if [ $$elapsed -ge $$timeout ]; then
+              echo "Timeout after $${elapsed}s waiting for registry.npmjs.org to report latest=$${VERSION_NUM}."
+              exit 1
+            fi
+            echo "Waiting for registry.npmjs.org to report latest=$${VERSION_NUM}... ($${elapsed}s/$${timeout}s)"
+            sleep $$interval
+            elapsed=$$((elapsed + interval))
+          done
+          echo "registry.npmjs.org reports latest=$${VERSION_NUM}."
+        else
+          echo "Skipping npm latest tag check for preview version."
         fi
 
   # Tag the previous version of the docker image
