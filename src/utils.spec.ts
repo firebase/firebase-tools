@@ -609,6 +609,15 @@ describe("utils", () => {
       expect(() => utils.resolveWithin(baseDir, "../outside")).to.throw(FirebaseError);
     });
 
+    it("allows a child whose name starts with two dots", () => {
+      const p = utils.resolveWithin(baseDir, "..cache/file.txt");
+      expect(p).to.equal(path.join(baseDir, "..cache", "file.txt"));
+    });
+
+    it("throws when subpath is exactly the parent directory", () => {
+      expect(() => utils.resolveWithin(baseDir, "..")).to.throw(FirebaseError);
+    });
+
     it("throws with custom message when provided", () => {
       expect(() => utils.resolveWithin(baseDir, "../outside", "Custom error"))
         .to.throw(FirebaseError)

@@ -1044,7 +1044,7 @@ export function commandExistsSync(command: string): boolean {
 export function resolveWithin(base: string, subPath: string, errMsg?: string): string {
   const abs = path.resolve(base, subPath);
   const rel = path.relative(base, abs);
-  if (rel.startsWith("..") || path.isAbsolute(rel)) {
+  if (rel === ".." || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
     throw new FirebaseError(errMsg || `Path "${subPath}" must be within "${base}".`);
   }
   return abs;
