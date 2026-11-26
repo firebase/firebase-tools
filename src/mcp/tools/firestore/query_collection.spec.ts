@@ -1,0 +1,171 @@
+import { expect } from "chai";
+import * as sinon from "sinon";
+import { query_collection } from "./query_collection";
+import * as firestore from "../../../gcp/firestore";
+import { McpContext } from "../../types";
+
+describe("query_collection tool", () => {
+  const projectId = "test-project";
+  const ctx = { projectId } as McpContext;
+
+  let queryCollectionStub: sinon.SinonStub;
+
+  beforeEach(() => {
+    queryCollectionStub = sinon.stub(firestore, "queryCollection").resolves({ documents: [] });
+  });
+
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  describe("reference_value filter", () => {
+    it("expands a relative document path to a full resource name", async () => {
+      await query_collection.fn(
+        {
+          collection_path: "posts",
+          filters: [
+            {
+              field: "author",
+              op: "EQUAL",
+              compare_value: { reference_value: "users/abc123" },
+            },
+          ],
+          use_emulator: false,
+        },
+        ctx,
+      );
+
+      const [, structuredQuery] = queryCollectionStub.firstCall.args;
+      expect(structuredQuery.where.compositeFilter.filters[0].fieldFilter.value).to.deep.equal({
+        referenceValue: `projects/${projectId}/databases/(default)/documents/users/abc123`,
+      });
+    });
+
+    it("respects a non-default database id when expanding the path", async () => {
+      await query_collection.fn(
+        {
+          database: "my-db",
+          collection_path: "posts",
+          filters: [
+            {
+              field: "author",
+              op: "EQUAL",
+              compare_value: { reference_value: "users/abc123" },
+            },
+          ],
+          use_emulator: false,
+        },
+        ctx,
+      );
+
+      const [, structuredQuery] = queryCollectionStub.firstCall.args;
+      expect(structuredQuery.where.compositeFilter.filters[0].fieldFilter.value).to.deep.equal({
+        referenceValue: `projects/${projectId}/databases/my-db/documents/users/abc123`,
+      });
+    });
+
+    it("strips a leading slash from a relative document path", async () => {
+      await query_collection.fn(
+        {
+          collection_path: "posts",
+          filters: [
+            {
+              field: "author",
+              op: "EQUAL",
+              compare_value: { reference_value: "/users/abc123" },
+            },
+          ],
+          use_emulator: false,
+        },
+        ctx,
+      );
+
+      const [, structuredQuery] = queryCollectionStub.firstCall.args;
+      expect(structuredQuery.where.compositeFilter.filters[0].fieldFilter.value).to.deep.equal({
+        referenceValue: `projects/${projectId}/databases/(default)/documents/users/abc123`,
+      });
+    });
+
+    it("passes through a full resource name unchanged", async () => {
+      const fullName = "projects/other-project/databases/(default)/documents/users/abc123";
+      await query_collection.fn(
+        {
+          collection_path: "posts",
+          filters: [
+            {
+              field: "author",
+              op: "EQUAL",
+              compare_value: { reference_value: fullName },
+            },
+          ],
+          use_emulator: false,
+        },
+        ctx,
+      );
+
+      const [, structuredQuery] = queryCollectionStub.firstCall.args;
+      expect(structuredQuery.where.compositeFilter.filters[0].fieldFilter.value).to.deep.equal({
+        referenceValue: fullName,
+      });
+    });
+  });
+
+  describe("compare_value validation", () => {
+    it("returns an error when no value is provided", async () => {
+      const result = await query_collection.fn(
+        {
+          collection_path: "posts",
+          filters: [{ field: "author", op: "EQUAL", compare_value: {} }],
+          use_emulator: false,
+        },
+        ctx,
+      );
+      expect(result.isError).to.equal(true);
+      expect(queryCollectionStub).to.not.have.been.called;
+    });
+
+    it("returns an error when more than one value is provided", async () => {
+      const result = await query_collection.fn(
+        {
+          collection_path: "posts",
+          filters: [
+            {
+              field: "author",
+              op: "EQUAL",
+              compare_value: { string_value: "a", integer_value: 1 },
+            },
+          ],
+          use_emulator: false,
+        },
+        ctx,
+      );
+      expect(result.isError).to.equal(true);
+      expect(queryCollectionStub).to.not.have.been.called;
+    });
+  });
+
+  describe("timestamp_value filter", () => {
+    it("encodes the value as a Firestore timestampValue", async () => {
+      const iso = "2026-05-09T12:34:56Z";
+      await query_collection.fn(
+        {
+          collection_path: "posts",
+          filters: [
+            {
+              field: "publishedAt",
+              op: "GREATER_THAN",
+              compare_value: { timestamp_value: iso },
+            },
+          ],
+          use_emulator: false,
+        },
+        ctx,
+      );
+
+      const [, structuredQuery] = queryCollectionStub.firstCall.args;
+      expect(structuredQuery.where.compositeFilter.filters[0].fieldFilter.value).to.deep.equal({
+        timestampValue: iso,
+      });
+    });
+  });
+});
