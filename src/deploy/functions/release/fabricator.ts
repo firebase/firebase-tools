@@ -8,7 +8,7 @@ import {
   parseErrorCode,
 } from "./executor";
 import * as ensure from "../ensure";
-import { FirebaseError, getErrMsg, getError, getErrStack } from "../../../error";
+import { FirebaseError, getErrMsg, getErrStatus, getError, getErrStack } from "../../../error";
 
 import { SourceTokenScraper } from "./sourceTokenScraper";
 import { Timer } from "./timer";
@@ -123,15 +123,45 @@ export class Fabricator {
         `Creating managed service account ${plan.serviceAccountToCreate}...`,
       );
       const saName = plan.serviceAccountToCreate.split("@")[0];
+      let warnedQuota = false;
       try {
-        await iam.createServiceAccount(
-          this.projectId,
-          saName,
-          `Managed by Firebase CLI for codebase ${codebase}`,
-          `Firebase Functions ${codebase}`,
+        // IAM limits service account creations per minute per project, so the backoff must
+        // outlast a one-minute window. Other 429s, such as the total account cap, do not reset.
+        await utils.retryWithBackoff(
+          () =>
+            iam.createServiceAccount(
+              this.projectId,
+              saName,
+              `Managed by Firebase CLI for codebase ${codebase}`,
+              `Firebase Functions ${codebase}`,
+            ),
+          {
+            retries: 6,
+            delay: 5000,
+            maxDelay: 60000,
+            retryPredicate: (err) => {
+              if (getErrStatus(err) !== 429 || !/per minute/i.test(getErrMsg(err))) {
+                return false;
+              }
+              if (!warnedQuota) {
+                utils.logLabeledWarning(
+                  "functions",
+                  "Reached the IAM quota for service accounts created per minute. Retrying for about 3 minutes...",
+                );
+                warnedQuota = true;
+              }
+              return true;
+            },
+          },
         );
         createdSA = true;
       } catch (e) {
+        if (getErrStatus(e) !== 403) {
+          throw new FirebaseError(
+            `Failed to create managed service account ${plan.serviceAccountToCreate}: ${getErrMsg(e)}`,
+            { original: e as Error },
+          );
+        }
         throw new FirebaseError(
           "Cannot enable declarative security because you do not have permissions necessary to create the service account. Please ask an IAM administrator to perform the next deploy.",
           { original: e as Error },
@@ -162,6 +192,12 @@ export class Fabricator {
               cleanupErr,
             );
           }
+        }
+        if (getErrStatus(e) !== 403) {
+          throw new FirebaseError(
+            `Failed to grant IAM roles to ${plan.managedServiceAccount}: ${getErrMsg(e)}`,
+            { original: e as Error },
+          );
         }
         throw new FirebaseError(
           "The declarative security roles for this codebase have changed, but you do not have access to see what has changed. Please ask an IAM administrator to perform the next deploy.",

@@ -26,6 +26,7 @@ import { deepCopy } from "@angular-devkit/core";
 import * as gce from "../../../gcp/computeEngine";
 import * as iam from "../../../gcp/iam";
 import * as resourcemanager from "../../../gcp/resourceManager";
+import * as utils from "../../../utils";
 
 describe("Fabricator", () => {
   // Stub all GCP APIs to make sure this test is hermetic
@@ -2459,8 +2460,113 @@ describe("Fabricator", () => {
       );
     });
 
-    it("should clean up newly created SA if role assignment fails in grantNewRoles", async () => {
-      addServiceAccountRolesStub.rejects(new Error("Permission denied"));
+    describe("grantNewRoles errors", () => {
+      const plan: planner.CodebasePlan = {
+        plannedBackend: backend.empty(),
+        regionalChangesets: {},
+        serviceAccountToCreate: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        managedServiceAccount: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        rolesToAdd: ["roles/viewer"],
+      };
+      const quotaError = new FirebaseError(
+        "HTTP Error: 429, A quota has been reached for project number 123: Service accounts created per minute per project.",
+        { status: 429 },
+      );
+      const permissionError = new FirebaseError("HTTP Error: 403, Permission denied", {
+        status: 403,
+      });
+      const accountCapError = new FirebaseError(
+        "HTTP Error: 429, Maximum number of service accounts on project reached.",
+        { status: 429 },
+      );
+      const origRetryWithBackoff = utils.retryWithBackoff;
+      let retryStub: sinon.SinonStub;
+      let warningStub: sinon.SinonStub;
+
+      beforeEach(() => {
+        retryStub = sinon
+          .stub(utils, "retryWithBackoff")
+          .callsFake((fn, opts) => origRetryWithBackoff(fn, { ...opts, delay: 1, maxDelay: 5 }));
+        warningStub = sinon.stub(utils, "logLabeledWarning");
+      });
+
+      it("should retry service account creation when the per-minute quota is reached", async () => {
+        createServiceAccountStub.onFirstCall().rejects(quotaError);
+        createServiceAccountStub.onSecondCall().rejects(quotaError);
+        createServiceAccountStub.onThirdCall().resolves();
+
+        await fab.grantNewRoles(plan, "default");
+
+        expect(createServiceAccountStub).to.have.been.calledThrice;
+        expect(addServiceAccountRolesStub).to.have.been.calledOnce;
+        expect(warningStub).to.have.been.calledOnce;
+        expect(warningStub.firstCall.args[1]).to.include("per minute");
+      });
+
+      it("should wait out a one-minute quota window before giving up", async () => {
+        createServiceAccountStub.rejects(quotaError);
+
+        const err = await fab.grantNewRoles(plan, "default").catch((e: FirebaseError) => e);
+
+        expect(err).to.be.instanceOf(FirebaseError);
+        expect(err?.message).to.include("Service accounts created per minute per project");
+        expect(err?.message).not.to.include("you do not have permissions");
+        expect(createServiceAccountStub.callCount).to.equal(7);
+        expect(retryStub.firstCall.args[1]).to.deep.include({
+          retries: 6,
+          delay: 5000,
+          maxDelay: 60000,
+        });
+      });
+
+      it("should not retry a 429 that is not the per-minute quota", async () => {
+        createServiceAccountStub.rejects(accountCapError);
+
+        const err = await fab.grantNewRoles(plan, "default").catch((e: FirebaseError) => e);
+
+        expect(err?.message).to.include("Maximum number of service accounts");
+        expect(createServiceAccountStub).to.have.been.calledOnce;
+        expect(warningStub).not.to.have.been.called;
+      });
+
+      it("should report a permissions error when service account creation is denied", async () => {
+        createServiceAccountStub.rejects(permissionError);
+
+        await expect(fab.grantNewRoles(plan, "default")).to.be.rejectedWith(
+          FirebaseError,
+          "Cannot enable declarative security because you do not have permissions necessary to create the service account",
+        );
+        expect(createServiceAccountStub).to.have.been.calledOnce;
+      });
+
+      it("should report the real error when granting roles fails for a reason other than permissions", async () => {
+        addServiceAccountRolesStub.rejects(
+          new FirebaseError("HTTP Error: 400, Service account firebase-fn-123 does not exist.", {
+            status: 400,
+          }),
+        );
+
+        const err = await fab.grantNewRoles(plan, "default").catch((e: FirebaseError) => e);
+
+        expect(err).to.be.instanceOf(FirebaseError);
+        expect(err?.message).to.include("does not exist");
+        expect(err?.message).not.to.include("you do not have access");
+      });
+
+      it("should report a permissions error when granting roles is denied", async () => {
+        addServiceAccountRolesStub.rejects(permissionError);
+
+        await expect(fab.grantNewRoles(plan, "default")).to.be.rejectedWith(
+          FirebaseError,
+          "you do not have access to see what has changed",
+        );
+      });
+    });
+
+    it("should clean up newly created SA if role assignment is denied in grantNewRoles", async () => {
+      addServiceAccountRolesStub.rejects(
+        new FirebaseError("HTTP Error: 403, Permission denied", { status: 403 }),
+      );
 
       const plan: planner.CodebasePlan = {
         plannedBackend: backend.empty(),
@@ -2470,7 +2576,10 @@ describe("Fabricator", () => {
         rolesToAdd: ["roles/viewer"],
       };
 
-      await expect(fab.grantNewRoles(plan, "default")).to.be.rejectedWith(FirebaseError);
+      await expect(fab.grantNewRoles(plan, "default")).to.be.rejectedWith(
+        FirebaseError,
+        "you do not have access to see what has changed",
+      );
       expect(deleteServiceAccountStub).to.have.been.calledWith(
         "test-project",
         "firebase-fn-123@my-proj.iam.gserviceaccount.com",
