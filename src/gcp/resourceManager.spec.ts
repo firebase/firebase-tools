@@ -289,6 +289,14 @@ describe("resourceManager", () => {
   });
 
   describe("removeServiceAccountRoles", () => {
+    const origRetryWithBackoff = utils.retryWithBackoff;
+
+    beforeEach(() => {
+      sinon
+        .stub(utils, "retryWithBackoff")
+        .callsFake((fn, opts) => origRetryWithBackoff(fn, { ...opts, delay: 1, maxDelay: 5 }));
+    });
+
     it("should remove specified roles from the service account", async () => {
       const initialPolicy: Policy = {
         bindings: [
@@ -314,6 +322,42 @@ describe("resourceManager", () => {
       ]);
 
       expect(result).to.deep.equal(expectedPolicy);
+    });
+
+    it("should retry and succeed when setIamPolicy initially fails with 409 conflict", async () => {
+      const expectedPolicy: Policy = { ...EMPTY_POLICY, etag: "etag2" };
+
+      mockGetIamPolicy(VIEWER_POLICY);
+      mockSetIamPolicy(409, {
+        error: {
+          code: 409,
+          message: "There were concurrent policy changes.",
+          status: "ABORTED",
+        },
+      });
+      mockGetIamPolicy(VIEWER_POLICY);
+      mockSetIamPolicy(200, expectedPolicy);
+
+      const result = await removeServiceAccountRoles(PROJECT_ID, SA_EMAIL, ["roles/viewer"]);
+
+      expect(result).to.deep.equal(expectedPolicy);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should fail immediately on 403 permission error without retrying", async () => {
+      mockGetIamPolicy(VIEWER_POLICY);
+      mockSetIamPolicy(403, {
+        error: {
+          code: 403,
+          message: "The caller does not have permission",
+          status: "PERMISSION_DENIED",
+        },
+      });
+
+      await expect(
+        removeServiceAccountRoles(PROJECT_ID, SA_EMAIL, ["roles/viewer"]),
+      ).to.be.rejectedWith("The caller does not have permission");
+      expect(nock.isDone()).to.be.true;
     });
   });
 

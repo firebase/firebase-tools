@@ -141,30 +141,43 @@ export async function removeServiceAccountRoles(
   serviceAccountEmail: string,
   rolesToRemove: string[],
 ): Promise<Policy> {
-  const projectPolicy = await getIamPolicy(projectId);
-  const bindings = projectPolicy.bindings || [];
   const memberName = `serviceAccount:${serviceAccountEmail}`;
-  let updated = false;
 
-  for (let i = bindings.length - 1; i >= 0; i--) {
-    const binding = bindings[i];
-    if (rolesToRemove.includes(binding.role)) {
-      const memberIndex = binding.members.indexOf(memberName);
-      if (memberIndex !== -1) {
-        binding.members.splice(memberIndex, 1);
-        updated = true;
-        if (binding.members.length === 0) {
-          bindings.splice(i, 1);
+  // Retry HTTP 409 concurrency conflicts by re-fetching the latest policy and fresh etag,
+  // the same way addServiceAccountToRoles does.
+  return await utils.retryWithBackoff(
+    async () => {
+      const projectPolicy = await getIamPolicy(projectId);
+      const bindings = projectPolicy.bindings || [];
+      let updated = false;
+
+      for (let i = bindings.length - 1; i >= 0; i--) {
+        const binding = bindings[i];
+        if (rolesToRemove.includes(binding.role)) {
+          const memberIndex = binding.members.indexOf(memberName);
+          if (memberIndex !== -1) {
+            binding.members.splice(memberIndex, 1);
+            updated = true;
+            if (binding.members.length === 0) {
+              bindings.splice(i, 1);
+            }
+          }
         }
       }
-    }
-  }
 
-  if (updated) {
-    projectPolicy.bindings = bindings;
-    return await setIamPolicy(projectId, projectPolicy, "bindings");
-  }
-  return projectPolicy;
+      if (updated) {
+        projectPolicy.bindings = bindings;
+        return await setIamPolicy(projectId, projectPolicy, "bindings");
+      }
+      return projectPolicy;
+    },
+    {
+      retries: 7,
+      delay: 1000,
+      maxDelay: 5000,
+      retryPredicate: isRetryableIamError,
+    },
+  );
 }
 
 /**
