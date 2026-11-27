@@ -38,6 +38,7 @@ import { getDataConnectP4SA } from "../services/dataconnect";
 import { AUTH_BLOCKING_EVENTS } from "../../../functions/events/v1";
 import * as gce from "../../../gcp/computeEngine";
 import { getHumanFriendlyPlatformName } from "../functionsDeployHelper";
+import { managedServiceAccountDescription } from "../managedServiceAccount";
 
 // TODO: Tune this for better performance.
 const gcfV1PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
@@ -127,7 +128,7 @@ export class Fabricator {
         await iam.createServiceAccount(
           this.projectId,
           saName,
-          `Managed by Firebase CLI for codebase ${codebase}`,
+          managedServiceAccountDescription(codebase),
           `Firebase Functions ${codebase}`,
         );
         createdSA = true;

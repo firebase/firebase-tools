@@ -11,6 +11,10 @@ import { Context } from "./args";
 import { FirebaseError } from "../../error";
 import { Options } from "../../options";
 import { DEFAULT_CODEBASE } from "../../functions/projectConfig";
+import {
+  DECLARATIVE_SECURITY_ETAG_LABEL,
+  findManagedServiceAccount,
+} from "./managedServiceAccount";
 
 /**
  * Deletes Functions based on the provided EndpointFilter, which
@@ -58,11 +62,19 @@ export async function deleteFunctionsByEndpointFilters(
 
     let existingManagedSA: string | undefined;
     if (endpointsToDelete.length > 0 && endpointsToDelete.length === totalEndpointsInGcp.length) {
-      const ep = totalEndpointsInGcp.find(
-        (e): e is backend.Endpoint & { serviceAccount: string } =>
-          typeof e.serviceAccount === "string" && e.serviceAccount.startsWith("firebase-fn-"),
+      // Only delete an account this codebase owns. If it couldn't be read, require the etag
+      // label, the same as a deploy that opts out of declarative security.
+      const found = await findManagedServiceAccount(
+        context.projectId,
+        codebase,
+        allCodebaseBackend,
       );
-      existingManagedSA = ep?.serviceAccount;
+      const hasEtag = totalEndpointsInGcp.some(
+        (e) => !!e.labels?.[DECLARATIVE_SECURITY_ETAG_LABEL],
+      );
+      if (found && (found.owner === "codebase" || hasEtag)) {
+        existingManagedSA = found.email;
+      }
     }
 
     deploymentPlan[codebase] = await planner.createDeploymentPlan({

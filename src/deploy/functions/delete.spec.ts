@@ -10,6 +10,7 @@ import * as functionsConfig from "../../functionsConfig";
 import * as reporter from "./release/reporter";
 import * as getProjectNumber from "../../getProjectNumber";
 import * as prompt from "../../prompt";
+import * as iam from "../../gcp/iam";
 
 describe("function delete helper", () => {
   const fakeEndpoint: backend.Endpoint = {
@@ -147,6 +148,23 @@ describe("function delete helper", () => {
       codebase: "my-codebase",
       serviceAccount: managedSA,
     };
+    const owners: Record<string, string> = {
+      [managedSA]: "my-codebase",
+      "firebase-fn-111@my-project.iam.gserviceaccount.com": "cb1",
+      "firebase-fn-222@my-project.iam.gserviceaccount.com": "cb2",
+    };
+    let getServiceAccountStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      getServiceAccountStub = sinon
+        .stub(iam, "getServiceAccount")
+        .callsFake((_project: string, email: string) =>
+          Promise.resolve({
+            email,
+            description: `Managed by Firebase CLI for codebase ${owners[email] ?? "other"}`,
+          } as iam.ServiceAccount),
+        );
+    });
 
     it("schedules managed service account deletion when all functions in a codebase are deleted", async () => {
       sinon
@@ -247,6 +265,47 @@ describe("function delete helper", () => {
         "The following managed service accounts will also be deleted:",
       );
       expect(promptArg.message).to.include(managedSA);
+    });
+
+    it("does not delete a managed service account that another codebase owns", async () => {
+      const otherSA = "firebase-fn-999@my-project.iam.gserviceaccount.com";
+      sinon
+        .stub(backend, "existingBackend")
+        .resolves(
+          backend.of({ ...managedEndpoint1, serviceAccount: otherSA, codebase: "borrower" }),
+        );
+
+      await deleteFunctionsByEndpointFilters(
+        { projectId: "my-project", filters: [{ codebase: "borrower" }] },
+        { nonInteractive: true, force: true } as Options,
+      );
+
+      const plan = applyPlanStub.firstCall.args[0] as planner.DeploymentPlan;
+      expect(plan["borrower"]?.serviceAccountToDelete).to.be.undefined;
+    });
+
+    it("falls back to the etag label when the account can't be read", async () => {
+      getServiceAccountStub.rejects(new Error("Permission denied"));
+      sinon
+        .stub(backend, "existingBackend")
+        .resolves(
+          backend.of(
+            { ...managedEndpoint1, labels: { "firebase-declarative-security-etag": "etag" } },
+            { ...fakeEndpoint, id: "unlabeled", codebase: "unlabeled", serviceAccount: managedSA },
+          ),
+        );
+
+      await deleteFunctionsByEndpointFilters(
+        {
+          projectId: "my-project",
+          filters: [{ codebase: "my-codebase" }, { codebase: "unlabeled" }],
+        },
+        { nonInteractive: true, force: true } as Options,
+      );
+
+      const plan = applyPlanStub.firstCall.args[0] as planner.DeploymentPlan;
+      expect(plan["my-codebase"]?.serviceAccountToDelete).to.equal(managedSA);
+      expect(plan["unlabeled"]?.serviceAccountToDelete).to.be.undefined;
     });
   });
 });
