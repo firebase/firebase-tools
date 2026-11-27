@@ -2391,6 +2391,7 @@ describe("Fabricator", () => {
     let addServiceAccountRolesStub: sinon.SinonStub;
     let removeServiceAccountRolesStub: sinon.SinonStub;
     let deleteServiceAccountStub: sinon.SinonStub;
+    let getServiceAccountRolesStub: sinon.SinonStub;
 
     beforeEach(() => {
       createServiceAccountStub = sinon.stub(iam, "createServiceAccount").resolves();
@@ -2399,6 +2400,9 @@ describe("Fabricator", () => {
         .stub(resourcemanager, "removeServiceAccountRoles")
         .resolves();
       deleteServiceAccountStub = sinon.stub(iam, "deleteServiceAccount").resolves();
+      getServiceAccountRolesStub = sinon
+        .stub(resourcemanager, "getServiceAccountRoles")
+        .resolves([]);
       sinon.stub(iam, "testIamPermissions").resolves({ passed: true } as any);
     });
 
@@ -2457,6 +2461,53 @@ describe("Fabricator", () => {
         "test-project",
         "firebase-fn-123@my-proj.iam.gserviceaccount.com",
       );
+    });
+
+    it("should revoke the SA's roles before deleting it in removeOldRoles", async () => {
+      getServiceAccountRolesStub.resolves(["roles/datastore.viewer", "roles/storage.objectViewer"]);
+      const plan: planner.CodebasePlan = {
+        plannedBackend: backend.empty(),
+        regionalChangesets: {},
+        serviceAccountToDelete: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+      };
+
+      await fab.removeOldRoles(plan, "default");
+
+      expect(removeServiceAccountRolesStub).to.have.been.calledOnceWith(
+        "test-project",
+        "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        ["roles/datastore.viewer", "roles/storage.objectViewer"],
+      );
+      expect(removeServiceAccountRolesStub).to.have.been.calledBefore(deleteServiceAccountStub);
+    });
+
+    it("should not update the IAM policy if the SA to delete has no roles", async () => {
+      const plan: planner.CodebasePlan = {
+        plannedBackend: backend.empty(),
+        regionalChangesets: {},
+        serviceAccountToDelete: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+      };
+
+      await fab.removeOldRoles(plan, "default");
+
+      expect(removeServiceAccountRolesStub).to.not.have.been.called;
+      expect(deleteServiceAccountStub).to.have.been.calledOnce;
+    });
+
+    it("should not delete the SA if its roles can't be revoked", async () => {
+      getServiceAccountRolesStub.resolves(["roles/datastore.viewer"]);
+      removeServiceAccountRolesStub.rejects(new Error("Permission denied"));
+      const plan: planner.CodebasePlan = {
+        plannedBackend: backend.empty(),
+        regionalChangesets: {},
+        serviceAccountToDelete: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+      };
+
+      await expect(fab.removeOldRoles(plan, "default")).to.be.rejectedWith(
+        FirebaseError,
+        "Failed to revoke IAM roles from managed service account firebase-fn-123@my-proj.iam.gserviceaccount.com",
+      );
+      expect(deleteServiceAccountStub).to.not.have.been.called;
     });
 
     it("should clean up newly created SA if role assignment fails in grantNewRoles", async () => {

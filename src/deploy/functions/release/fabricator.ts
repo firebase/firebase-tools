@@ -184,6 +184,32 @@ export class Fabricator {
 
   async removeOldRoles(plan: planner.CodebasePlan, codebase: string): Promise<void> {
     if (plan.serviceAccountToDelete) {
+      // Remove the account's project roles first. Deleting the account leaves its
+      // bindings behind as "deleted:serviceAccount:" members.
+      try {
+        const roles = await resourcemanager.getServiceAccountRoles(
+          this.projectId,
+          plan.serviceAccountToDelete,
+        );
+        if (roles.length) {
+          utils.logLabeledBullet(
+            "functions",
+            `Revoking IAM roles from managed service account ${plan.serviceAccountToDelete}...`,
+          );
+          await resourcemanager.removeServiceAccountRoles(
+            this.projectId,
+            plan.serviceAccountToDelete,
+            roles,
+          );
+        }
+      } catch (e) {
+        throw new FirebaseError(
+          "Failed to revoke IAM roles from managed service account " +
+            plan.serviceAccountToDelete +
+            ". Please ask an IAM administrator to remove its roles and delete it manually.",
+          { original: e as Error },
+        );
+      }
       utils.logLabeledBullet(
         "functions",
         `Deleting managed service account ${plan.serviceAccountToDelete}...`,
