@@ -188,6 +188,71 @@ describe("FunctionsRuntimeWorker", () => {
       expect(counter.counts.FINISHED).to.eql(1);
       expect(counter.total).to.eql(5);
     });
+
+    it("buffers stdout and stderr independently", () => {
+      const runtime = new MockRuntimeInstance();
+      const stdout = new PassThrough();
+      const stderr = new PassThrough();
+      runtime.process.stdout = stdout as any;
+      runtime.process.stderr = stderr as any;
+
+      const worker = new RuntimeWorker("trigger", runtime, {});
+      const logs: EmulatorLog[] = [];
+      worker.onLogs((log) => {
+        logs.push(log);
+      });
+
+      stdout.write("stdout-1 ");
+      stderr.write("stderr-line\n");
+      stdout.write("stdout-2\n");
+
+      expect(logs.map((l) => l.text)).to.deep.eq(["stderr-line", "stdout-1 stdout-2"]);
+    });
+
+    it("decodes multi-byte UTF-8 split across chunks without replacement characters", () => {
+      const runtime = new MockRuntimeInstance();
+      const stdout = new PassThrough();
+      runtime.process.stdout = stdout as any;
+
+      const worker = new RuntimeWorker("trigger", runtime, {});
+      const logs: EmulatorLog[] = [];
+      worker.onLogs((log) => {
+        logs.push(log);
+      });
+
+      // "日" in UTF-8 is [0xe6, 0x97, 0xa5]
+      // Split the bytes across two buffer chunks
+      const chunk1 = Buffer.from([0xe6]);
+      const chunk2 = Buffer.from([0x97, 0xa5, 0x0a]); // followed by \n
+
+      stdout.write(chunk1);
+      stdout.write(chunk2);
+
+      expect(logs.length).to.eq(1);
+      expect(logs[0].text).to.eq("日");
+      expect(logs[0].text).not.to.include("\uFFFD");
+    });
+
+    it("flushes remaining buffer on stream end and process exit", async () => {
+      const runtime = new MockRuntimeInstance();
+      const stdout = new PassThrough();
+      runtime.process.stdout = stdout as any;
+
+      const worker = new RuntimeWorker("trigger", runtime, {});
+      const logs: EmulatorLog[] = [];
+      worker.onLogs((log) => {
+        logs.push(log);
+      });
+
+      await new Promise<void>((resolve) => {
+        stdout.on("end", () => resolve());
+        stdout.write("unterminated line");
+        stdout.end();
+      });
+
+      expect(logs.length).to.eq(1);
+      expect(logs[0].text).to.eq("unterminated line");
+    });
   });
 
   describe("RuntimeWorkerPool", () => {
