@@ -7,6 +7,7 @@ import { logger } from "../logger";
 import { ExtensionSpec, Param } from "./types";
 import { getFirebaseProjectParams, substituteParams } from "./extensionsHelper";
 import * as askUserForParam from "./askUserForParam";
+import { checkResponse } from "./askUserForParam";
 import * as env from "../functions/env";
 
 const NONINTERACTIVE_ERROR_MESSAGE =
@@ -64,7 +65,8 @@ export function setNewDefaults(params: Param[], newDefaults: { [key: string]: st
     if (newDefaults[param.param]) {
       param.default = newDefaults[param.param];
     } else if (
-      (param.param = `firebaseextensions.v1beta.function/location` && newDefaults["LOCATION"])
+      param.param === `firebaseextensions.v1beta.function/location` &&
+      newDefaults["LOCATION"]
     ) {
       // Special case handling for when we are updating from LOCATION to system param location.
       param.default = newDefaults["LOCATION"];
@@ -76,9 +78,12 @@ export function setNewDefaults(params: Param[], newDefaults: { [key: string]: st
 /**
  * Gets params from the user
  * or prompting the user for each param.
- * @param projectId the id of the project in use
- * @param paramSpecs a list of params, ie. extensionSpec.params
- * @param envFilePath a path to an env file containing param values
+ * @param args options for getting params
+ * @param args.projectId the id of the project in use
+ * @param args.instanceId the id of the extension instance
+ * @param args.paramSpecs a list of params, ie. extensionSpec.params
+ * @param args.nonInteractive whether to fail instead of prompting for input
+ * @param args.reconfiguring whether the extension is being reconfigured
  * @throws FirebaseError if an invalid env file is passed in
  */
 export async function getParams(args: {
@@ -131,9 +136,12 @@ export async function getParamsForUpdate(args: {
  * Displays params that exist in spec but not newSpec,
  * and then prompts user for any params in newSpec that are not in spec.
  *
- * @param spec A current extensionSpec
- * @param newSpec A extensionSpec to compare to
- * @param currentParams A set of current params and their values
+ * @param args options for prompting for new params
+ * @param args.spec A current extensionSpec
+ * @param args.newSpec A extensionSpec to compare to
+ * @param args.currentParams A set of current params and their values
+ * @param args.projectId the id of the project in use
+ * @param args.instanceId the id of the extension instance
  */
 export async function promptForNewParams(args: {
   spec: ExtensionSpec;
@@ -144,57 +152,120 @@ export async function promptForNewParams(args: {
 }): Promise<{ [option: string]: ParamBindingOptions }> {
   const newParamBindingOptions = buildBindingOptionsWithBaseValue(args.currentParams);
 
-  const firebaseProjectParams = await getFirebaseProjectParams(args.projectId);
-  const sameParam = (param1: Param) => (param2: Param) => {
-    return param1.type === param2.type && param1.param === param2.param;
-  };
-  const paramDiff = (left: Param[], right: Param[]): Param[] => {
-    return left.filter((aLeft) => !right.find(sameParam(aLeft)));
-  };
-
-  let combinedOldParams = args.spec.params.concat(
-    args.spec.systemParams.filter((p) => !p.advanced) ?? [],
-  );
-  let combinedNewParams = args.newSpec.params.concat(
-    args.newSpec.systemParams.filter((p) => !p.advanced) ?? [],
-  );
+  const allOldParams = (args.spec.params ?? []).concat(args.spec.systemParams ?? []);
+  const allNewParams = (args.newSpec.params ?? []).concat(args.newSpec.systemParams ?? []);
 
   // Special case for updating from LOCATION to system param location
   if (
-    combinedOldParams.some((p) => p.param === "LOCATION") &&
-    combinedNewParams.some((p) => p.param === "firebaseextensions.v1beta.function/location") &&
+    allOldParams.some((p) => p.param === "LOCATION") &&
+    allNewParams.some((p) => p.param === "firebaseextensions.v1beta.function/location") &&
     !!args.currentParams["LOCATION"]
   ) {
     newParamBindingOptions["firebaseextensions.v1beta.function/location"] = {
       baseValue: args.currentParams["LOCATION"],
     };
     delete newParamBindingOptions["LOCATION"];
-    combinedOldParams = combinedOldParams.filter((p) => p.param !== "LOCATION");
-    combinedNewParams = combinedNewParams.filter(
-      (p) => p.param !== "firebaseextensions.v1beta.function/location",
-    );
   }
 
-  // Some params are in the spec but not in currentParams, remove so we can prompt for them.
-  const oldParams = combinedOldParams.filter((p) =>
-    Object.keys(args.currentParams).includes(p.param),
-  );
-  let paramsDiffDeletions = paramDiff(oldParams, combinedNewParams);
-  paramsDiffDeletions = substituteParams<Param[]>(paramsDiffDeletions, firebaseProjectParams);
-
-  let paramsDiffAdditions = paramDiff(combinedNewParams, oldParams);
-  paramsDiffAdditions = substituteParams<Param[]>(paramsDiffAdditions, firebaseProjectParams);
-
-  if (paramsDiffDeletions.length) {
-    logger.info("The following params will no longer be used:");
-    for (const param of paramsDiffDeletions) {
-      logger.info(clc.red(`- ${param.param}: ${args.currentParams[param.param.toUpperCase()]}`));
-      delete newParamBindingOptions[param.param.toUpperCase()];
+  // Pre-fill default values for any new optional parameters in newSpec that are not currently set
+  for (const newP of allNewParams) {
+    if (!newP.required && newParamBindingOptions[newP.param] === undefined) {
+      newParamBindingOptions[newP.param] = {
+        baseValue: newP.default ?? "",
+      };
     }
   }
-  if (paramsDiffAdditions.length) {
-    logger.info("To update this instance, configure the following new parameters:");
-    for (const param of paramsDiffAdditions) {
+
+  // Check Rule 4 trigger conditions:
+  // 1) Are there old parameters that are not assigned to new parameters?
+  const unassignedOldParams = allOldParams.filter((oldP) => {
+    if (
+      oldP.param === "LOCATION" &&
+      allNewParams.some((p) => p.param === "firebaseextensions.v1beta.function/location")
+    ) {
+      return false;
+    }
+    return !allNewParams.some((newP) => newP.param === oldP.param);
+  });
+
+  if (unassignedOldParams.length) {
+    logger.info("The following params will no longer be used:");
+    for (const param of unassignedOldParams) {
+      if (args.currentParams[param.param] !== undefined) {
+        logger.info(clc.red(`- ${param.param}: ${args.currentParams[param.param]}`));
+      }
+      delete newParamBindingOptions[param.param];
+    }
+  }
+
+  // 2) Is a required system parameter (location) not set?
+  const hasLocationSpec = allNewParams.some(
+    (p) => p.param === "firebaseextensions.v1beta.function/location",
+  );
+  const locationIsSet =
+    !!newParamBindingOptions["firebaseextensions.v1beta.function/location"]?.baseValue ||
+    !!args.currentParams["firebaseextensions.v1beta.function/location"] ||
+    !!args.currentParams["LOCATION"];
+  const locationNotSet = hasLocationSpec && !locationIsSet;
+
+  const triggerAdvancedSystemParams = unassignedOldParams.length > 0 || locationNotSet;
+
+  // Collect parameters to prompt based on specified rules
+  const paramsToPrompt: Param[] = [];
+
+  for (const newP of allNewParams) {
+    const oldP = allOldParams.find((p) => p.param === newP.param);
+    const currentVal = newParamBindingOptions[newP.param]?.baseValue;
+
+    const isSystem =
+      isSystemParam(newP.param) ||
+      (args.newSpec.systemParams ?? []).some((p) => p.param === newP.param);
+
+    // Rule 1: New (non-system) parameters in newSpec that were not in oldSpec
+    if (!oldP && !isSystem) {
+      paramsToPrompt.push(newP);
+      continue;
+    }
+
+    // Rule 2: Changed type
+    if (oldP && oldP.type !== newP.type) {
+      paramsToPrompt.push(newP);
+      continue;
+    }
+
+    // Rule 3: Changed validators and the current new rejects the old value
+    if (currentVal !== undefined && currentVal !== "" && !checkResponse(currentVal, newP)) {
+      paramsToPrompt.push(newP);
+      continue;
+    }
+
+    // Rule 4: Are newly required and not currently set
+    if (newP.required && (currentVal === undefined || currentVal === "")) {
+      paramsToPrompt.push(newP);
+      continue;
+    }
+
+    // Rule 5: System and advanced parameters IF trigger condition met.
+    // If the old extension spec has parameters that were dropped in the new spec (unassignedOldParams),
+    // they may have been custom/legacy parameter names for features (such as $TIMEOUT or $LOCATION)
+    // created before official system parameters existed. Prompting for system and advanced parameters
+    // ensures those settings are transferred to system parameters rather than being silently dropped.
+    if (triggerAdvancedSystemParams && (isSystem || newP.advanced)) {
+      paramsToPrompt.push(newP);
+      continue;
+    }
+  }
+
+  // De-duplicate paramsToPrompt by param name
+  let uniqueParamsToPrompt = paramsToPrompt.filter(
+    (p, index, self) => index === self.findIndex((tp) => tp.param === p.param),
+  );
+
+  if (uniqueParamsToPrompt.length) {
+    const firebaseProjectParams = await getFirebaseProjectParams(args.projectId);
+    uniqueParamsToPrompt = substituteParams<Param[]>(uniqueParamsToPrompt, firebaseProjectParams);
+    logger.info("To update this instance, configure the following parameters:");
+    for (const param of uniqueParamsToPrompt) {
       const chosenValue = await askUserForParam.askForParam({
         projectId: args.projectId,
         instanceId: args.instanceId,
@@ -222,6 +293,35 @@ export function readEnvFile(envPath: string): Record<string, string> {
 }
 
 export function isSystemParam(paramName: string): boolean {
-  const regex = /^firebaseextensions\.[a-zA-Z0-9\.]*\//;
+  const regex = /^firebaseextensions\.[a-zA-Z0-9.]*\//;
   return regex.test(paramName);
+}
+
+export function partitionParams(params: Record<string, string>): {
+  params: Record<string, string>;
+  systemParams: Record<string, string>;
+} {
+  const userParams: Record<string, string> = {};
+  const systemParams: Record<string, string> = {};
+  for (const [key, value] of Object.entries(params)) {
+    if (isSystemParam(key)) {
+      systemParams[key] = value;
+    } else {
+      userParams[key] = value;
+    }
+  }
+  return { params: userParams, systemParams };
+}
+
+// Populate default values for missing params.
+// This is only needed when emulating extensions - when deploying, this is handled in the back end.
+export function populateDefaultParams(
+  params: Record<string, string>,
+  spec: ExtensionSpec,
+): Record<string, string> {
+  const ret = { ...params };
+  for (const p of spec.params) {
+    ret[p.param] = ret[p.param] ?? p.default;
+  }
+  return ret;
 }

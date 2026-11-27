@@ -9,7 +9,7 @@ import { promiseWithSpinner } from "../utils";
 export const command = new Command("apps:android:sha:delete <appId> <shaId>")
   .description("delete a SHA certificate hash for a given app id")
   .before(requireAuth)
-  .action(async (appId: string = "", shaId: string = "", options: any): Promise<void> => {
+  .action(async (appId: string, shaId: string, options: any): Promise<void> => {
     const projectId = needProjectId(options);
 
     await promiseWithSpinner<void>(

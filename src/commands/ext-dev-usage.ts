@@ -10,8 +10,7 @@ import { getPublisherProfile, listExtensions } from "../extensions/publisherApi"
 import { getPublisherProjectFromName, logPrefix } from "../extensions/extensionsHelper";
 import { FirebaseError, getErrMsg, getError } from "../error";
 import { logger } from "../logger";
-import { promptOnce } from "../prompt";
-import { shortenUrl } from "../shortenUrl";
+import { select } from "../prompt";
 
 export const command = new Command("ext:dev:usage <publisherId>")
   .description("get usage statistics for an extension")
@@ -52,9 +51,7 @@ export const command = new Command("ext:dev:usage <publisherId>")
         );
       }
 
-      extensionName = await promptOnce({
-        type: "list",
-        name: "extension",
+      extensionName = await select<string>({
         message: "Which published extension do you want to view the stats for?",
         choices: extensions.map((e) => {
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -170,6 +167,5 @@ async function buildCloudMonitoringLink(args: {
     `https://console.cloud.google.com/monitoring/metrics-explorer?project=${args.projectNumber}` +
     `&pageState=${JSON.stringify(pageState)}`;
   uri = encodeURI(uri);
-  uri = await shortenUrl(uri);
   return uri;
 }

@@ -2,9 +2,13 @@ import * as mockfs from "mock-fs";
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as fs from "fs";
-import * as nock from "nock";
+import * as path from "path";
+import nock from "../test/helpers/nock";
 
 import * as api from "../api";
+import * as appUtils from "../appUtils";
+import * as utils from "../utils";
+import * as prompt from "../prompt";
 import {
   AndroidAppMetadata,
   AppPlatform,
@@ -20,6 +24,8 @@ import {
   WebAppMetadata,
   findIntelligentPathForAndroid,
   findIntelligentPathForIOS,
+  getPlatform,
+  selectAppInteractively,
 } from "./apps";
 import * as pollUtils from "../operation-poller";
 import { FirebaseError } from "../error";
@@ -76,12 +82,10 @@ describe("App management", () => {
     sandbox = sinon.createSandbox();
     pollOperationStub = sandbox.stub(pollUtils, "pollOperation").throws("Unexpected poll call");
     sandbox.stub(fs, "readFileSync").throws("Unxpected readFileSync call");
-    nock.disableNetConnect();
   });
 
   afterEach(() => {
     sandbox.restore();
-    nock.enableNetConnect();
   });
 
   describe("getAppPlatform", () => {
@@ -112,6 +116,67 @@ describe("App management", () => {
         FirebaseError,
         "Unexpected platform. Only iOS, Android, and Web apps are supported",
       );
+    });
+  });
+
+  describe("getPlatform", () => {
+    let getPlatformsFromFolderStub: sinon.SinonStub;
+    let promptForDirectoryStub: sinon.SinonStub;
+    let promptSelectStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      getPlatformsFromFolderStub = sinon.stub(appUtils, "getPlatformsFromFolder");
+      promptForDirectoryStub = sinon.stub(utils, "promptForDirectory");
+      promptSelectStub = sinon.stub(prompt, "select");
+    });
+
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it("should return the detected platform when only one is found", async () => {
+      getPlatformsFromFolderStub.resolves([appUtils.Platform.ANDROID]);
+
+      const platform = await getPlatform("any-dir", {} as any);
+
+      expect(platform).to.equal(AppPlatform.ANDROID);
+      expect(getPlatformsFromFolderStub.calledOnceWith("any-dir")).to.be.true;
+    });
+
+    it("should prompt the user if multiple platforms are detected", async () => {
+      getPlatformsFromFolderStub.resolves([appUtils.Platform.ANDROID, appUtils.Platform.IOS]);
+      promptSelectStub.resolves("IOS");
+
+      const platform = await getPlatform("any-dir", {} as any);
+
+      expect(platform).to.equal(AppPlatform.IOS);
+      expect(promptSelectStub.calledOnce).to.be.true;
+      promptSelectStub.restore();
+    });
+
+    it("should prompt the user if no platforms are detected", async () => {
+      getPlatformsFromFolderStub.withArgs("initial-dir").resolves([]);
+      getPlatformsFromFolderStub.withArgs("android-dir").resolves([appUtils.Platform.ANDROID]);
+      promptForDirectoryStub.resolves("android-dir");
+
+      const platform = await getPlatform("initial-dir", {} as any);
+
+      expect(platform).to.equal(AppPlatform.ANDROID);
+      expect(promptForDirectoryStub.calledOnce).to.be.true;
+    });
+
+    it("should throw an error if a Flutter app is detected", async () => {
+      getPlatformsFromFolderStub.resolves([appUtils.Platform.FLUTTER]);
+
+      let err;
+      try {
+        await getPlatform("any-dir", {} as any);
+      } catch (e: any) {
+        err = e;
+      }
+
+      expect(err).to.be.an.instanceOf(FirebaseError);
+      expect(err.message).to.include("Flutter is not supported");
     });
   });
 
@@ -675,7 +740,7 @@ describe("App management", () => {
         desc: "Root of Android project",
         folderName: "android/",
         folderItems: { app: {} },
-        output: "android/app",
+        output: path.join("android", "app"),
       },
       {
         desc: "Inside app folder",
@@ -684,10 +749,16 @@ describe("App management", () => {
         output: "android/app",
       },
       {
+        desc: "Inside app folder without a src directory",
+        folderName: "android/app",
+        folderItems: { libs: {}, "build.gradle": "" },
+        output: "android/app",
+      },
+      {
         desc: "Folder with many modules",
         folderName: "android/",
         folderItems: { module1: {}, module2: {}, module3: {} },
-        output: "android/app",
+        output: path.join("android", "app"),
       },
     ];
     for (const c of cases) {
@@ -716,7 +787,7 @@ describe("App management", () => {
         desc: "Root of ios project with xcodeproj files",
         folderName: "ios/",
         folderItems: { "abc.xcodeproj": "Contents", abc: {} },
-        output: "ios/abc",
+        output: path.join("ios", "abc"),
       },
       {
         desc: "Folder with Info.plist",
@@ -767,6 +838,63 @@ describe("App management", () => {
     }
     afterEach(() => {
       mockfs.restore();
+    });
+  });
+
+  describe("selectAppInteractively", () => {
+    it("should throw a FirebaseError when apps array is empty", async () => {
+      await expect(selectAppInteractively([], AppPlatform.ANY)).to.be.rejectedWith(
+        FirebaseError,
+        /There are no apps associated with this Firebase project/,
+      );
+    });
+
+    it("should format the select prompt options and return the selected app", async () => {
+      const promptSelectStub = sandbox.stub(prompt, "select");
+      const mockApps = [
+        {
+          appId: "appId1",
+          displayName: "App 1",
+          platform: AppPlatform.IOS,
+          bundleId: "com.example.app1",
+        } as unknown as IosAppMetadata,
+        {
+          appId: "appId2",
+          platform: AppPlatform.ANDROID,
+          packageName: "com.example.app2",
+        } as unknown as AndroidAppMetadata,
+      ];
+      promptSelectStub.resolves(mockApps[1]);
+
+      const selectedApp = await selectAppInteractively(mockApps, AppPlatform.ANY);
+
+      expect(selectedApp).to.deep.equal(mockApps[1]);
+      expect(promptSelectStub.calledOnce).to.be.true;
+      const callArgs = promptSelectStub.getCall(0).args[0];
+      expect(callArgs.message).to.equal("Select the app to get the configuration data:");
+      expect(callArgs.choices).to.deep.equal([
+        { name: "App 1 - appId1 (IOS)", value: mockApps[0] },
+        { name: "com.example.app2 - appId2 (ANDROID)", value: mockApps[1] },
+      ]);
+    });
+
+    it("should support a custom prompt message", async () => {
+      const promptSelectStub = sandbox.stub(prompt, "select");
+      const mockApps = [
+        {
+          appId: "appId1",
+          displayName: "App 1",
+          platform: AppPlatform.IOS,
+        } as unknown as IosAppMetadata,
+      ];
+      promptSelectStub.resolves(mockApps[0]);
+
+      await selectAppInteractively(mockApps, AppPlatform.ANY, {
+        message: "Choose custom app:",
+      });
+
+      expect(promptSelectStub.calledOnce).to.be.true;
+      expect(promptSelectStub.getCall(0).args[0].message).to.equal("Choose custom app:");
     });
   });
 });

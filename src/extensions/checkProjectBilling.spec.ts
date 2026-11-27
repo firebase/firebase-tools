@@ -9,13 +9,15 @@ import * as cloudbilling from "../gcp/cloudbilling";
 const expect = chai.expect;
 
 describe("checkProjectBilling", () => {
-  let promptOnceStub: sinon.SinonStub;
+  let confirmStub: sinon.SinonStub;
+  let selectStub: sinon.SinonStub;
   let checkBillingEnabledStub: sinon.SinonStub;
   let listBillingAccountsStub: sinon.SinonStub;
   let setBillingAccountStub: sinon.SinonStub;
 
   beforeEach(() => {
-    promptOnceStub = sinon.stub(prompt, "promptOnce");
+    confirmStub = sinon.stub(prompt, "confirm");
+    selectStub = sinon.stub(prompt, "select");
 
     checkBillingEnabledStub = sinon.stub(cloudbilling, "checkBillingEnabled");
     checkBillingEnabledStub.resolves();
@@ -28,7 +30,8 @@ describe("checkProjectBilling", () => {
   });
 
   afterEach(() => {
-    promptOnceStub.restore();
+    confirmStub.restore();
+    selectStub.restore();
     checkBillingEnabledStub.restore();
     listBillingAccountsStub.restore();
     setBillingAccountStub.restore();
@@ -44,9 +47,10 @@ describe("checkProjectBilling", () => {
       await checkProjectBilling.enableBilling(projectId);
     }
 
-    expect(listBillingAccountsStub.notCalled);
-    expect(setBillingAccountStub.notCalled);
-    expect(promptOnceStub.notCalled);
+    expect(listBillingAccountsStub.notCalled).to.be.true;
+    expect(setBillingAccountStub.notCalled).to.be.true;
+    expect(confirmStub.notCalled).to.be.true;
+    expect(selectStub.notCalled).to.be.true;
   });
 
   it("should list accounts if no billing account set, but accounts available.", async () => {
@@ -62,16 +66,18 @@ describe("checkProjectBilling", () => {
     checkBillingEnabledStub.resolves(false);
     listBillingAccountsStub.resolves(accounts);
     setBillingAccountStub.resolves(true);
-    promptOnceStub.resolves("test-account");
+    selectStub.resolves("test-account");
 
     const enabled = await cloudbilling.checkBillingEnabled(projectId);
     if (!enabled) {
       await checkProjectBilling.enableBilling(projectId);
     }
 
-    expect(listBillingAccountsStub.calledOnce);
-    expect(setBillingAccountStub.calledOnce);
-    expect(setBillingAccountStub.calledWith(projectId, "test-cloud-billing-account-name"));
+    expect(listBillingAccountsStub.calledOnce).to.be.true;
+    expect(listBillingAccountsStub.calledWith(projectId)).to.be.true;
+    expect(setBillingAccountStub.calledOnce).to.be.true;
+    expect(setBillingAccountStub.calledWith(projectId, "test-cloud-billing-account-name")).to.be
+      .true;
   });
 
   it("should not list accounts if no billing accounts set or available.", async () => {
@@ -80,15 +86,15 @@ describe("checkProjectBilling", () => {
     checkBillingEnabledStub.onCall(0).resolves(false);
     checkBillingEnabledStub.onCall(1).resolves(true);
     listBillingAccountsStub.resolves([]);
-    promptOnceStub.resolves();
 
     const enabled = await cloudbilling.checkBillingEnabled(projectId);
     if (!enabled) {
       await checkProjectBilling.enableBilling(projectId);
     }
 
-    expect(listBillingAccountsStub.calledOnce);
-    expect(setBillingAccountStub.notCalled);
+    expect(listBillingAccountsStub.calledOnce).to.be.true;
+    expect(listBillingAccountsStub.calledWith(projectId)).to.be.true;
+    expect(setBillingAccountStub.notCalled).to.be.true;
     expect(checkBillingEnabledStub.callCount).to.equal(2);
   });
 });

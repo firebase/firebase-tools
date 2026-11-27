@@ -1,8 +1,6 @@
-import AbortController from "abort-controller";
 import { EmulatorLogger } from "./emulatorLogger";
 import { RetryConfig, Task, TaskQueueConfig } from "./tasksEmulator";
 import { Emulators } from "./types";
-import fetch from "node-fetch";
 
 class Node<T> {
   public data: T;
@@ -264,11 +262,10 @@ export class TaskQueue {
   }
 
   async runTask(dispatchIndex: number): Promise<void> {
-    if (this.dispatches[dispatchIndex] === null) {
+    const emulatedTask = this.dispatches[dispatchIndex];
+    if (emulatedTask === null) {
       throw new Error("Trying to dispatch a nonexistent task");
     }
-
-    const emulatedTask = this.dispatches[dispatchIndex] as EmulatedTask;
 
     if (
       emulatedTask.metadata.lastRunTime !== null &&
@@ -293,12 +290,11 @@ export class TaskQueue {
         headers["X-CloudTasks-TaskPreviousResponse"] = `${emulatedTask.metadata.previousResponse}`;
       }
       const controller = new AbortController();
-      const signal = controller.signal;
       const request = fetch(emulatedTask.task.httpRequest.url, {
         method: "POST",
         headers: headers,
         body: JSON.stringify(emulatedTask.task.httpRequest.body),
-        signal: signal,
+        signal: controller.signal,
       });
 
       const dispatchDeadline = emulatedTask.task.dispatchDeadline;
@@ -332,10 +328,11 @@ export class TaskQueue {
   }
 
   handleRetry(dispatchIndex: number): void {
-    if (this.dispatches[dispatchIndex] === null) {
+    const task = this.dispatches[dispatchIndex];
+    if (task === null) {
       throw new Error("Trying to retry a nonexistent task");
     }
-    const { metadata } = this.dispatches[dispatchIndex] as EmulatedTask;
+    const { metadata } = task;
     const { retryConfig } = this.config;
 
     // Determine if the task has failed
@@ -429,19 +426,6 @@ export class TaskQueue {
 
   delete(taskId: string): void {
     this.queue.remove(taskId);
-  }
-
-  getDebugInfo(): string {
-    return `
-    Task Queue (${this.key}): 
-    - Active: ${this.isActive().toString()}
-    - Tokens: ${this.tokens}
-    - In Queue: ${this.queue.size()}
-    - Dispatch: [
-      ${this.dispatches.map((t) => (t === null ? "empty" : t.task.name)).join(",\n")}
-    ]
-    - Open Locations: [${this.openDispatches.join(", ")}]
-    `;
   }
 
   getStatistics(): QueueStatistics {

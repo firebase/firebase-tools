@@ -57,6 +57,53 @@ describe("planner", () => {
       });
     });
 
+    it("flags a GCFv2 function left FAILED with no service by a failed create", () => {
+      const want: backend.Endpoint = { ...func("a", "b"), platform: "gcfv2" };
+      const have: backend.Endpoint = { ...want, state: "FAILED" };
+      expect(planner.calculateUpdate(want, have).failedCreate).to.be.true;
+    });
+
+    it("does not flag a FAILED GCFv2 function that still has a service", () => {
+      const want: backend.Endpoint = { ...func("a", "b"), platform: "gcfv2" };
+      const have: backend.Endpoint = { ...want, state: "FAILED", runServiceId: "a" };
+      expect(planner.calculateUpdate(want, have).failedCreate).to.be.undefined;
+    });
+
+    it("does not flag an ACTIVE GCFv2 function", () => {
+      const want: backend.Endpoint = { ...func("a", "b"), platform: "gcfv2" };
+      expect(planner.calculateUpdate(want, want).failedCreate).to.be.undefined;
+    });
+
+    it("does not flag a FAILED GCFv1 function", () => {
+      const want = func("a", "b");
+      const have: backend.Endpoint = { ...want, state: "FAILED" };
+      expect(planner.calculateUpdate(want, have).failedCreate).to.be.undefined;
+    });
+
+    it("does not flag a failed create that is being deleted and recreated", () => {
+      const have: backend.Endpoint = {
+        ...func("a", "b", {
+          eventTrigger: {
+            eventType: v2events.PUBSUB_PUBLISH_EVENT,
+            eventFilters: { topic: "topic" },
+            retry: false,
+          },
+        }),
+        platform: "gcfv2",
+        state: "FAILED",
+      };
+      const want = JSON.parse(JSON.stringify(have)) as backend.Endpoint;
+      delete want.state;
+      if (backend.isEventTriggered(want)) {
+        want.eventTrigger.eventFilters = { topic: "anotherTopic" };
+      }
+      expect(planner.calculateUpdate(want, have)).to.deep.equal({
+        endpoint: want,
+        unsafe: false,
+        deleteAndRecreate: have,
+      });
+    });
+
     it("knows to delete & recreate for v2 topic changes", () => {
       const original: backend.Endpoint = {
         ...func("a", "b", {
@@ -406,7 +453,7 @@ describe("planner", () => {
   describe("createDeploymentPlan", () => {
     const codebase = "default";
 
-    it("groups deployment by region and memory", () => {
+    it("groups deployment by region and memory", async () => {
       const region1mem1Created: backend.Endpoint = func("id1", "region1");
       const region1mem1Updated: backend.Endpoint = func("id2", "region1");
 
@@ -425,7 +472,13 @@ describe("planner", () => {
         region2mem2Updated,
       );
 
-      expect(planner.createDeploymentPlan({ wantBackend, haveBackend, codebase })).to.deep.equal({
+      const plan = await planner.createDeploymentPlan({
+        wantBackend,
+        haveBackend,
+        codebase,
+        projectId: "my-project",
+      });
+      expect(plan.regionalChangesets).to.deep.equal({
         "default-region1-default": {
           endpointsToCreate: [region1mem1Created],
           endpointsToUpdate: [
@@ -457,7 +510,7 @@ describe("planner", () => {
       });
     });
 
-    it("applies filters", () => {
+    it("applies filters", async () => {
       const group1Created = func("g1-created", "region");
       const group1Updated = func("g1-updated", "region");
       const group1Deleted = func("g1-deleted", "region");
@@ -472,14 +525,14 @@ describe("planner", () => {
       const wantBackend = backend.of(group1Updated, group1Created, group2Updated, group2Created);
       const haveBackend = backend.of(group1Updated, group1Deleted, group2Updated, group2Deleted);
 
-      expect(
-        planner.createDeploymentPlan({
-          wantBackend,
-          haveBackend,
-          codebase,
-          filters: [{ codebase, idChunks: ["g1"] }],
-        }),
-      ).to.deep.equal({
+      const plan = await planner.createDeploymentPlan({
+        wantBackend,
+        haveBackend,
+        codebase,
+        projectId: "my-project",
+        filters: [{ codebase, idChunks: ["g1"] }],
+      });
+      expect(plan.regionalChangesets).to.deep.equal({
         "default-region-default": {
           endpointsToCreate: [group1Created],
           endpointsToUpdate: [
@@ -494,7 +547,7 @@ describe("planner", () => {
       });
     });
 
-    it("nudges users towards concurrency settings when upgrading and not setting", () => {
+    it("nudges users towards concurrency settings when upgrading and not setting", async () => {
       const original: backend.Endpoint = func("id", "region");
       original.platform = "gcfv1";
       const upgraded: backend.Endpoint = { ...original };
@@ -504,46 +557,155 @@ describe("planner", () => {
       const wantBackend = backend.of(upgraded);
 
       allowV2Upgrades();
-      planner.createDeploymentPlan({ wantBackend, haveBackend, codebase });
+      await planner.createDeploymentPlan({
+        wantBackend,
+        haveBackend,
+        codebase,
+        projectId: "my-project",
+      });
       expect(logLabeledBullet).to.have.been.calledOnceWith(
         "functions",
         sinon.match(/change this with the 'concurrency' option/),
       );
     });
 
-    it("does not warn users about concurrency when inappropriate", () => {
+    it("does not warn users about concurrency when inappropriate", async () => {
       allowV2Upgrades();
-      // Concurrency isn't set but this isn't an upgrade operation, so there
-      // should be no warning
       const v2Function: backend.Endpoint = { ...func("id", "region"), platform: "gcfv2" };
 
-      planner.createDeploymentPlan({
+      await planner.createDeploymentPlan({
         wantBackend: backend.of(v2Function),
         haveBackend: backend.of(v2Function),
         codebase,
+        projectId: "my-project",
       });
       expect(logLabeledBullet).to.not.have.been.called;
 
       const v1Function: backend.Endpoint = { ...func("id", "region"), platform: "gcfv1" };
-      planner.createDeploymentPlan({
+      await planner.createDeploymentPlan({
         wantBackend: backend.of(v1Function),
         haveBackend: backend.of(v1Function),
         codebase,
+        projectId: "my-project",
       });
       expect(logLabeledBullet).to.not.have.been.called;
 
-      // Upgraded but specified concurrency
       const concurrencyUpgraded: backend.Endpoint = {
         ...v1Function,
         platform: "gcfv2",
         concurrency: 80,
       };
-      planner.createDeploymentPlan({
+      await planner.createDeploymentPlan({
         wantBackend: backend.of(concurrencyUpgraded),
         haveBackend: backend.of(v1Function),
         codebase,
+        projectId: "my-project",
       });
       expect(logLabeledBullet).to.not.have.been.called;
+    });
+
+    it("does not delete the service account when opting out during a filtered deploy", async () => {
+      const wantBackend = backend.empty();
+      const haveBackend = backend.of(func("id", "region"));
+
+      const plan = await planner.createDeploymentPlan({
+        wantBackend,
+        haveBackend,
+        codebase,
+        projectId: "my-project",
+        filters: [{ codebase, idChunks: ["id"] }],
+        existingManagedSA: "firebase-fn-123@my-project.iam.gserviceaccount.com",
+      });
+
+      expect(plan.serviceAccountToDelete).to.be.undefined;
+    });
+
+    it("deletes the service account when opting out during a codebase-filtered deploy", async () => {
+      const wantBackend = backend.empty();
+      const haveBackend = backend.of(func("id", "region"));
+
+      const plan = await planner.createDeploymentPlan({
+        wantBackend,
+        haveBackend,
+        codebase,
+        projectId: "my-project",
+        filters: [{ codebase }],
+        existingManagedSA: "firebase-fn-123@my-project.iam.gserviceaccount.com",
+      });
+
+      expect(plan.serviceAccountToDelete).to.equal(
+        "firebase-fn-123@my-project.iam.gserviceaccount.com",
+      );
+    });
+
+    it("deletes the service account when opting out with a full codebase deploy alongside a filtered deploy in another codebase", async () => {
+      const wantBackend = backend.empty();
+      const haveBackend = backend.of(func("id", "region"));
+
+      const plan = await planner.createDeploymentPlan({
+        wantBackend,
+        haveBackend,
+        codebase: "codebaseA",
+        projectId: "my-project",
+        filters: [{ codebase: "codebaseA" }, { codebase: "codebaseB", idChunks: ["funcB"] }],
+        existingManagedSA: "firebase-fn-123@my-project.iam.gserviceaccount.com",
+      });
+
+      expect(plan.serviceAccountToDelete).to.equal(
+        "firebase-fn-123@my-project.iam.gserviceaccount.com",
+      );
+    });
+
+    it("deletes the service account when opting out during an unfiltered deploy", async () => {
+      const wantBackend = backend.empty();
+      const haveBackend = backend.of(func("id", "region"));
+
+      const plan = await planner.createDeploymentPlan({
+        wantBackend,
+        haveBackend,
+        codebase,
+        projectId: "my-project",
+        existingManagedSA: "firebase-fn-123@my-project.iam.gserviceaccount.com",
+      });
+
+      expect(plan.serviceAccountToDelete).to.equal(
+        "firebase-fn-123@my-project.iam.gserviceaccount.com",
+      );
+    });
+
+    it("deletes the service account when requiredRoles is defined but all functions in codebase are deleted", async () => {
+      const wantBackend = backend.empty();
+      wantBackend.requiredRoles = ["roles/datastore.user"];
+      const haveBackend = backend.of(func("id", "region"));
+
+      const plan = await planner.createDeploymentPlan({
+        wantBackend,
+        haveBackend,
+        codebase,
+        projectId: "my-project",
+        existingManagedSA: "firebase-fn-123@my-project.iam.gserviceaccount.com",
+        managedSA: "firebase-fn-123@my-project.iam.gserviceaccount.com",
+      });
+
+      expect(plan.serviceAccountToDelete).to.equal(
+        "firebase-fn-123@my-project.iam.gserviceaccount.com",
+      );
+    });
+
+    it("does not create a service account when both wantBackend and haveBackend are empty even if requiredRoles is defined", async () => {
+      const wantBackend = backend.empty();
+      wantBackend.requiredRoles = ["roles/datastore.user"];
+      const haveBackend = backend.empty();
+
+      const plan = await planner.createDeploymentPlan({
+        wantBackend,
+        haveBackend,
+        codebase,
+        projectId: "my-project",
+      });
+
+      expect(plan.serviceAccountToCreate).to.be.undefined;
+      expect(plan.serviceAccountToDelete).to.be.undefined;
     });
   });
 
@@ -640,7 +802,9 @@ describe("planner", () => {
       const want: backend.Endpoint = { ...func("id", "region"), platform: "gcfv1" };
       const have: backend.Endpoint = { ...func("id", "region"), platform: "gcfv2" };
 
-      expect(() => planner.checkForIllegalUpdate(want, have)).to.throw();
+      expect(() => planner.checkForIllegalUpdate(want, have)).to.throw(
+        /cannot be downgraded from GCFv2 to GCFv1/,
+      );
     });
   });
 

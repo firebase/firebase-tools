@@ -7,25 +7,22 @@ import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { pollOperation } from "../operation-poller";
 import { WebConfig } from "../fetchWebSetup";
-import { Platform } from "../dataconnect/types";
 import { needProjectId } from "../projectUtils";
-import { promptOnce, Question, prompt, promptForDirectory } from "../prompt";
+import { input, select, confirm } from "../prompt";
 import { getOrPromptProject } from "./projects";
 import { Options } from "../options";
 import { Config } from "../config";
-import { getPlatformFromFolder } from "../dataconnect/fileUtils";
-import { logBullet, logSuccess, logWarning } from "../utils";
+import { getPlatformsFromFolder, Platform } from "../appUtils";
+import { logBullet, logSuccess, logWarning, promptForDirectory } from "../utils";
 import { AppsInitOptions } from "../commands/apps-init";
 
 const TIMEOUT_MILLIS = 30000;
 export const APP_LIST_PAGE_SIZE = 100;
 const CREATE_APP_API_REQUEST_TIMEOUT_MILLIS = 15000;
-const DISPLAY_NAME_QUESTION: Question = {
-  type: "input",
-  name: "displayName",
-  default: "",
-  message: "What would you like to call your app?",
-};
+
+async function getDisplayName(): Promise<string> {
+  return await input("What would you like to call your app?");
+}
 
 interface CreateFirebaseAppOptions {
   project: string;
@@ -48,19 +45,22 @@ interface CreateWebAppOptions extends CreateFirebaseAppOptions {
 
 export async function getPlatform(appDir: string, config: Config) {
   // Detect what platform based on current user
-  let targetPlatform = await getPlatformFromFolder(appDir);
-  if (targetPlatform === Platform.NONE) {
+  let targetPlatforms = await getPlatformsFromFolder(appDir);
+  let targetPlatform: Platform;
+
+  if (targetPlatforms.length === 0) {
     // If we aren't in an app directory, ask the user where their app is, and try to autodetect from there.
     appDir = await promptForDirectory({
       config,
       relativeTo: appDir, // CWD is passed in as `appDir`, so we want it relative to the current directory instead of where firebase.json is.
       message: "We couldn't determine what kind of app you're using. Where is your app directory?",
     });
-    targetPlatform = await getPlatformFromFolder(appDir);
+    targetPlatforms = await getPlatformsFromFolder(appDir);
   }
-  if (targetPlatform === Platform.NONE || targetPlatform === Platform.MULTIPLE) {
-    if (targetPlatform === Platform.NONE) {
-      logBullet(`Couldn't automatically detect app your in directory ${appDir}.`);
+
+  if (targetPlatforms.length !== 1) {
+    if (targetPlatforms.length === 0) {
+      logBullet(`Couldn't automatically detect your app in directory ${appDir}.`);
     } else {
       logSuccess(`Detected multiple app platforms in directory ${appDir}`);
       // Can only setup one platform at a time, just ask the user
@@ -70,13 +70,16 @@ export async function getPlatform(appDir: string, config: Config) {
       { name: "Web (JavaScript)", value: Platform.WEB },
       { name: "Android (Kotlin)", value: Platform.ANDROID },
     ];
-    targetPlatform = await promptOnce({
+    targetPlatform = await select<Platform>({
       message:
         "Which platform do you want to set up an SDK for? Note: We currently do not support automatically setting up C++ or Unity projects.",
-      type: "list",
       choices: platforms,
     });
-  } else if (targetPlatform === Platform.FLUTTER) {
+  } else {
+    targetPlatform = targetPlatforms[0];
+  }
+
+  if (targetPlatform === Platform.FLUTTER) {
     logWarning(`Detected ${targetPlatform} app in directory ${appDir}`);
     throw new FirebaseError(`Flutter is not supported by apps:configure.
 Please follow the link below to set up firebase for your Flutter app:
@@ -86,28 +89,17 @@ https://firebase.google.com/docs/flutter/setup
     logSuccess(`Detected ${targetPlatform} app in directory ${appDir}`);
   }
 
-  return targetPlatform === Platform.MULTIPLE
-    ? AppPlatform.PLATFORM_UNSPECIFIED
-    : (targetPlatform as unknown as AppPlatform);
+  return targetPlatform as unknown as AppPlatform;
 }
 
 async function initiateIosAppCreation(options: CreateIosAppOptions): Promise<IosAppMetadata> {
   if (!options.nonInteractive) {
-    await prompt(options, [
-      DISPLAY_NAME_QUESTION,
-      {
-        type: "input",
-        default: "",
-        name: "bundleId",
-        message: "Please specify your iOS app bundle ID:",
-      },
-      {
-        type: "input",
-        default: "",
-        name: "appStoreId",
-        message: "Please specify your iOS app App Store ID:",
-      },
-    ]);
+    options.displayName = options.displayName || (await getDisplayName());
+    const promptAppStoreId = !options.bundleId;
+    options.bundleId = options.bundleId || (await input("Please specify your iOS app bundle ID:"));
+    if (promptAppStoreId && !options.appStoreId) {
+      options.appStoreId = await input("Please specify your iOS app App Store ID:");
+    }
   }
   if (!options.bundleId) {
     throw new FirebaseError("Bundle ID for iOS app cannot be empty");
@@ -132,15 +124,9 @@ async function initiateAndroidAppCreation(
   options: CreateAndroidAppOptions,
 ): Promise<AndroidAppMetadata> {
   if (!options.nonInteractive) {
-    await prompt(options, [
-      DISPLAY_NAME_QUESTION,
-      {
-        type: "input",
-        default: "",
-        name: "packageName",
-        message: "Please specify your Android app package name:",
-      },
-    ]);
+    options.displayName = options.displayName || (await getDisplayName());
+    options.packageName =
+      options.packageName || (await input("Please specify your Android app package name:"));
   }
   if (!options.packageName) {
     throw new FirebaseError("Package name for Android app cannot be empty");
@@ -162,7 +148,7 @@ async function initiateAndroidAppCreation(
 
 async function initiateWebAppCreation(options: CreateWebAppOptions): Promise<WebAppMetadata> {
   if (!options.nonInteractive) {
-    await prompt(options, [DISPLAY_NAME_QUESTION]);
+    options.displayName = options.displayName || (await getDisplayName());
   }
   if (!options.displayName) {
     throw new FirebaseError("Display name for Web app cannot be empty");
@@ -201,14 +187,16 @@ export async function getSdkOutputPath(
   config: AppsInitOptions,
 ): Promise<string> {
   switch (platform) {
-    case AppPlatform.ANDROID:
+    case AppPlatform.ANDROID: {
       const androidPath = await findIntelligentPathForAndroid(appDir, config);
       return path.join(androidPath, "google-services.json");
+    }
     case AppPlatform.WEB:
       return path.join(appDir, "firebase-js-config.json");
-    case AppPlatform.IOS:
+    case AppPlatform.IOS: {
       const iosPath = await findIntelligentPathForIOS(appDir, config);
       return path.join(iosPath, "GoogleService-Info.plist");
+    }
   }
   throw new FirebaseError("Platform " + platform.toString() + " is not supported yet.");
 }
@@ -216,31 +204,47 @@ export function checkForApps(apps: AppMetadata[], appPlatform: AppPlatform): voi
   if (!apps.length) {
     throw new FirebaseError(
       `There are no ${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}apps ` +
-        "associated with this Firebase project",
+        "associated with this Firebase project.\n" +
+        "You can create an app for this project with 'firebase apps:create'",
     );
   }
 }
-async function selectAppInteractively(
+/**
+ * Interactively prompts the user to select a Firebase App from a list.
+ */
+export async function selectAppInteractively(
   apps: AppMetadata[],
-  appPlatform: AppPlatform,
+  appPlatform: AppPlatform = AppPlatform.ANY,
+  options?: {
+    message?: string;
+  },
 ): Promise<AppMetadata> {
   checkForApps(apps, appPlatform);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const choices = apps.map((app: any) => {
+  const choices = apps.map((app) => {
+    let displayText = app.displayName || app.appId;
+
+    if (!app.displayName) {
+      if (app.platform === AppPlatform.IOS && "bundleId" in app) {
+        displayText = (app as IosAppMetadata).bundleId;
+      } else if (app.platform === AppPlatform.ANDROID && "packageName" in app) {
+        displayText = (app as AndroidAppMetadata).packageName;
+      }
+    }
+
     return {
-      name:
-        `${app.displayName || app.bundleId || app.packageName}` +
-        ` - ${app.appId} (${app.platform})`,
+      name: `${displayText} - ${app.appId} (${app.platform})`,
       value: app,
     };
   });
 
-  return await promptOnce({
-    type: "list",
-    message:
-      `Select the ${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}` +
-      "app to get the configuration data:",
+  const message =
+    options?.message ??
+    `Select the ${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}` +
+      "app to get the configuration data:";
+
+  return await select<AppMetadata>({
+    message,
     choices,
   });
 }
@@ -620,11 +624,7 @@ export async function writeConfigToFile(
     if (nonInteractive) {
       throw new FirebaseError(`${filename} already exists`);
     }
-    const overwrite = await promptOnce({
-      type: "confirm",
-      default: false,
-      message: `${filename} already exists. Do you want to overwrite?`,
-    });
+    const overwrite = await confirm(`${filename} already exists. Do you want to overwrite?`);
 
     if (!overwrite) {
       return false;
@@ -794,9 +794,8 @@ export async function findIntelligentPathForAndroid(appDir: string, options: App
    * android/build.gradle // if it's this, choose app
    * android/app/build.gradle // if it's this, choose current dir.
    */
-  const paths = appDir.split("/");
   // For when app/build.gradle is found
-  if (paths[0] === "app") {
+  if (path.basename(appDir) === "app") {
     return appDir;
   } else {
     const currentFiles: fs.Dirent[] = await fs.readdir(appDir, { withFileTypes: true });

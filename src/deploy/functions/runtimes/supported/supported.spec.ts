@@ -9,6 +9,19 @@ describe("supported runtimes", () => {
     expect(supported.latest("nodejs")).to.not.equal("nodejs8");
   });
 
+  it("prefers the newest GA runtime over a newer beta runtime", () => {
+    expect(supported.RUNTIMES.nodejs26.status).to.equal("beta");
+    expect(supported.latest("nodejs")).to.equal("nodejs24");
+  });
+
+  it("returns the newest runtime in an explicit list, even if it is not GA", () => {
+    expect(supported.latest("nodejs", ["nodejs24", "nodejs26"])).to.equal("nodejs26");
+  });
+
+  it("falls back to the newest runtime when a language has no GA runtime", () => {
+    expect(supported.latest("dart")).to.equal("dart3");
+  });
+
   it("identifies decommissioned runtimes", () => {
     expect(supported.isDecommissioned("nodejs8")).to.be.true;
   });
@@ -46,7 +59,7 @@ describe("supported runtimes", () => {
       expect(logLabeledWarning).to.have.been.calledWith(
         "functions",
         "Runtime Node.js 20 was deprecated on 2026-04-30 and will be " +
-          "decommissioned on 2026-10-31, after which you will not be able to " +
+          "decommissioned on 2026-10-30, after which you will not be able to " +
           "deploy without upgrading. Consider upgrading now to avoid disruption. See " +
           "https://cloud.google.com/functions/docs/runtime-support for full " +
           "details on the lifecycle policy",
@@ -58,11 +71,31 @@ describe("supported runtimes", () => {
       expect(logLabeledWarning).to.have.been.calledWith(
         "functions",
         "Runtime Node.js 20 will be deprecated on 2026-04-30 and will be " +
-          "decommissioned on 2026-10-31, after which you will not be able to " +
+          "decommissioned on 2026-10-30, after which you will not be able to " +
           "deploy without upgrading. Consider upgrading now to avoid disruption. See " +
           "https://cloud.google.com/functions/docs/runtime-support for full " +
           "details on the lifecycle policy",
       );
+    });
+
+    it("warns for a beta runtime", () => {
+      supported.guardVersionSupport("nodejs26", new Date("2026-11-16"));
+      expect(logLabeledWarning).to.have.been.calledOnceWith(
+        "functions",
+        "Runtime Node.js 26 is in Preview. Preview runtimes may change and are not recommended " +
+          "for production workloads. See https://cloud.google.com/functions/docs/runtime-support " +
+          "for details.",
+      );
+    });
+
+    it("does not warn for an experimental runtime", () => {
+      supported.guardVersionSupport("dart3", new Date("2026-11-16"));
+      expect(logLabeledWarning).not.to.have.been.called;
+    });
+
+    it("does not warn for a GA runtime outside its deprecation window", () => {
+      supported.guardVersionSupport("nodejs24", new Date("2026-11-16"));
+      expect(logLabeledWarning).not.to.have.been.called;
     });
   });
 });

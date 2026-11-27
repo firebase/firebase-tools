@@ -58,7 +58,7 @@ export function parseTimeseriesResponse(series: TimeSeriesResponse): Array<Bucke
  * The reverse side of the logic lives here:
  * https://source.corp.google.com/piper///depot/google3/firebase/mods/jobs/metrics/buckets.go
  *
- * @param v Value got from Cloud Monitoring, which is the upper-bound of the bucket.
+ * @param value Value got from Cloud Monitoring, which is the upper-bound of the bucket.
  */
 export function parseBucket(value: number): Bucket {
   // int64Value has type "number" but can still be interupted as "string" sometimes.

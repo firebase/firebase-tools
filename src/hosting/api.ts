@@ -1,11 +1,17 @@
-import { FirebaseError } from "../error";
+import * as clc from "colorette";
+
+import { FirebaseError, getErrMsg, getErrStatus, isObject } from "../error";
 import { hostingApiOrigin } from "../api";
 import { Client } from "../apiv2";
+import * as ensureApiEnabledModule from "../ensureApiEnabled";
+import { logger } from "../logger";
 import * as operationPoller from "../operation-poller";
 import { DEFAULT_DURATION } from "../hosting/expireUtils";
 import { getAuthDomains, updateAuthDomains } from "../gcp/auth";
 import * as proto from "../gcp/proto";
+import * as utils from "../utils";
 import { getHostnameFromUrl } from "../utils";
+import { Constants } from "../emulator/constants";
 
 const ONE_WEEK_MS = 604800000; // 7 * 24 * 60 * 60 * 1000
 
@@ -89,20 +95,44 @@ export interface Channel {
   labels: { [key: string]: string };
 }
 
-export interface Domain {
-  site: `projects/${string}/sites/${string}`;
-  domainName: string;
-  updateTime: string;
-  provisioning?: {
-    certStatus: string;
-    dnsStatus: string;
-    expectedIps: string[];
-  };
-  status: string;
-  domainRedirect?: {
-    domainName: string;
-    type: string;
-  };
+export type HostState =
+  | "HOST_STATE_UNSPECIFIED"
+  | "HOST_UNHOSTED"
+  | "HOST_UNREACHABLE"
+  | "HOST_MISMATCH"
+  | "HOST_CONFLICT"
+  | "HOST_ACTIVE";
+
+export type OwnershipState =
+  | "OWNERSHIP_STATE_UNSPECIFIED"
+  | "OWNERSHIP_MISSING"
+  | "OWNERSHIP_UNREACHABLE"
+  | "OWNERSHIP_MISMATCH"
+  | "OWNERSHIP_CONFLICT"
+  | "OWNERSHIP_PENDING"
+  | "OWNERSHIP_ACTIVE";
+
+export type CertType =
+  | "TYPE_UNSPECIFIED"
+  | "TEMPORARY"
+  | "GROUPED"
+  | "PROJECT_GROUPED"
+  | "DEDICATED";
+
+export interface CustomDomain {
+  readonly name: string;
+  readonly createTime?: string;
+  readonly updateTime?: string;
+  readonly deleteTime?: string;
+  readonly expireTime?: string;
+  readonly etag?: string;
+  readonly hostState?: HostState;
+  readonly ownershipState?: OwnershipState;
+  redirectTarget?: string;
+  certPreference?: CertType;
+  readonly reconciling?: boolean;
+  labels?: Record<string, string>;
+  annotations?: Record<string, string>;
 }
 
 export type VersionStatus =
@@ -265,13 +295,13 @@ const apiClient = new Client({
 
 /**
  * getChannel retrieves information about a channel.
- * @param project the project ID or number (can be provided `-`),
+ * @param project the project ID or number.
  * @param site the site for the channel.
  * @param channelId the specific channel ID.
  * @return the channel, or null if the channel is not found.
  */
 export async function getChannel(
-  project: string | number = "-",
+  project: string,
   site: string,
   channelId: string,
 ): Promise<Channel | null> {
@@ -290,13 +320,10 @@ export async function getChannel(
 
 /**
  * listChannels retrieves information about a channel.
- * @param project the project ID or number (can be provided `-`),
+ * @param project the project ID or number.
  * @param site the site for the channel.
  */
-export async function listChannels(
-  project: string | number = "-",
-  site: string,
-): Promise<Channel[]> {
+export async function listChannels(project: string, site: string): Promise<Channel[]> {
   const channels: Channel[] = [];
   let nextPageToken = "";
   for (;;) {
@@ -323,13 +350,13 @@ export async function listChannels(
 
 /**
  * Creates a Channel.
- * @param project the project ID or number (can be provided `-`),
+ * @param project the project ID or number.
  * @param site the site for the channel.
  * @param channelId the specific channel ID.
  * @param ttlMillis the duration from now to set the expireTime.
  */
 export async function createChannel(
-  project: string | number = "-",
+  project: string,
   site: string,
   channelId: string,
   ttlMillis: number = DEFAULT_DURATION,
@@ -343,13 +370,13 @@ export async function createChannel(
 
 /**
  * Updates a channel's TTL.
- * @param project the project ID or number (can be provided `-`),
+ * @param project the project ID or number.
  * @param site the site for the channel.
  * @param channelId the specific channel ID.
  * @param ttlMillis the duration from now to set the expireTime.
  */
 export async function updateChannelTtl(
-  project: string | number = "-",
+  project: string,
   site: string,
   channelId: string,
   ttlMillis: number = ONE_WEEK_MS,
@@ -364,12 +391,12 @@ export async function updateChannelTtl(
 
 /**
  * Deletes a channel.
- * @param project the project ID or number (can be provided `-`),
+ * @param project the project ID or number.
  * @param site the site for the channel.
  * @param channelId the specific channel ID.
  */
 export async function deleteChannel(
-  project: string | number = "-",
+  project: string,
   site: string,
   channelId: string,
 ): Promise<void> {
@@ -378,13 +405,17 @@ export async function deleteChannel(
 
 /**
  * Creates a version
+ * @param project the project ID or number.
+ * @param siteId the site for the version.
+ * @param version the version configuration.
  */
 export async function createVersion(
+  project: string,
   siteId: string,
   version: Omit<Version, VERSION_OUTPUT_FIELDS>,
 ): Promise<string> {
   const res = await apiClient.post<typeof version, { name: string }>(
-    `projects/-/sites/${siteId}/versions`,
+    `/projects/${project}/sites/${siteId}/versions`,
     version,
   );
   return res.body.name;
@@ -392,14 +423,19 @@ export async function createVersion(
 
 /**
  * Updates a version.
+ * @param project the project ID or number.
+ * @param site the site for the version.
+ * @param versionId the specific version ID.
+ * @param version the partial version configuration.
  */
 export async function updateVersion(
+  project: string,
   site: string,
   versionId: string,
   version: Partial<Version>,
 ): Promise<Version> {
   const res = await apiClient.patch<Partial<Version>, Version>(
-    `projects/-/sites/${site}/versions/${versionId}`,
+    `/projects/${project}/sites/${site}/versions/${versionId}`,
     version,
     {
       queryParams: {
@@ -423,8 +459,10 @@ interface ListVersionsResponse {
 
 /**
  * Get a list of all versions for a site, automatically handling pagination.
+ * @param project the project ID or number.
+ * @param site the site for the version.
  */
-export async function listVersions(site: string): Promise<Version[]> {
+export async function listVersions(project: string, site: string): Promise<Version[]> {
   let pageToken: string | undefined = undefined;
   const versions: Version[] = [];
   do {
@@ -432,9 +470,12 @@ export async function listVersions(site: string): Promise<Version[]> {
     if (pageToken) {
       queryParams.pageToken = pageToken;
     }
-    const res = await apiClient.get<ListVersionsResponse>(`projects/-/sites/${site}/versions`, {
-      queryParams,
-    });
+    const res = await apiClient.get<ListVersionsResponse>(
+      `/projects/${project}/sites/${site}/versions`,
+      {
+        queryParams,
+      },
+    );
     versions.push(...(res.body.versions ?? []));
     pageToken = res.body.nextPageToken;
   } while (pageToken);
@@ -443,11 +484,13 @@ export async function listVersions(site: string): Promise<Version[]> {
 
 /**
  * Create a version a clone.
+ * @param project the project ID or number.
  * @param site the site for the version.
  * @param versionName the specific version ID.
  * @param finalize whether or not to immediately finalize the version.
  */
 export async function cloneVersion(
+  project: string,
   site: string,
   versionName: string,
   finalize = false,
@@ -455,7 +498,7 @@ export async function cloneVersion(
   const res = await apiClient.post<
     CloneVersionRequest,
     operationPoller.LongRunningOperation<Version>
-  >(`/projects/-/sites/${site}/versions:clone`, {
+  >(`/projects/${project}/sites/${site}/versions:clone`, {
     sourceVersion: versionName,
     finalize,
   });
@@ -473,18 +516,21 @@ type PartialRelease = Partial<Pick<Release, "message" | "type">>;
 
 /**
  * Create a release on a channel.
+ * @param project the project ID or number.
  * @param site the site for the version.
  * @param channel the channel for the release.
  * @param version the specific version ID.
+ * @param partialRelease additional release options.
  */
 export async function createRelease(
+  project: string,
   site: string,
   channel: string,
   version: string,
   partialRelease?: PartialRelease,
 ): Promise<Release> {
   const res = await apiClient.post<PartialRelease, Release>(
-    `/projects/-/sites/${site}/channels/${channel}/releases`,
+    `/projects/${project}/sites/${site}/channels/${channel}/releases`,
     partialRelease,
     { queryParams: { versionName: version } },
   );
@@ -578,20 +624,6 @@ export async function createSite(
     { appId: appId },
     { queryParams },
   );
-  return res.body;
-}
-
-/**
- * Update a Hosting site.
- * @param project project name or number.
- * @param site the site to update.
- * @param fields the fields to update.
- * @return site information.
- */
-export async function updateSite(project: string, site: Site, fields: string[]): Promise<Site> {
-  const res = await apiClient.patch<Site, Site>(`/projects/${project}/sites/${site.name}`, site, {
-    queryParams: { updateMask: fields.join(",") },
-  });
   return res.body;
 }
 
@@ -702,47 +734,63 @@ export async function cleanAuthState(
   return siteDomainMap;
 }
 
-/**
- * Retrieves all site domains
- *
- * @param project project ID
- * @param site site id
- * @return array of domains
- */
-export async function getSiteDomains(project: string, site: string): Promise<Domain[]> {
-  try {
-    const res = await apiClient.get<{ domains: Domain[] }>(
-      `/projects/${project}/sites/${site}/domains`,
-    );
+interface ListCustomDomainsResponse {
+  customDomains?: CustomDomain[];
+  nextPageToken?: string;
+}
 
-    return res.body.domains ?? [];
-  } catch (e: unknown) {
-    if (e instanceof FirebaseError && e.status === 404) {
-      throw new FirebaseError(`could not find site "${site}" for project "${project}"`, {
-        original: e,
-      });
+/**
+ * Lists all custom domains for a Hosting site, automatically handling pagination.
+ * @param project project ID or number.
+ * @param site site ID.
+ * @return array of custom domains.
+ */
+export async function listCustomDomains(project: string, site: string): Promise<CustomDomain[]> {
+  const customDomains: CustomDomain[] = [];
+  let pageToken: string | undefined;
+  do {
+    const queryParams: Record<string, string> = {};
+    if (pageToken) {
+      queryParams.pageToken = pageToken;
     }
-    throw e;
-  }
+    try {
+      const res = await apiClient.get<ListCustomDomainsResponse>(
+        `/projects/${project}/sites/${site}/customDomains`,
+        { queryParams },
+      );
+      customDomains.push(...(res.body.customDomains ?? []));
+      pageToken = res.body.nextPageToken;
+    } catch (e: unknown) {
+      if (e instanceof FirebaseError && e.status === 404) {
+        throw new FirebaseError(`could not find site "${site}" for project "${project}"`, {
+          original: e,
+        });
+      }
+      throw e;
+    }
+  } while (pageToken);
+  return customDomains;
 }
 
 /**
  * Join the default domain and the custom domains of a Hosting site
- *
  * @param projectId the project id
  * @param siteId the site id
  * @return array of domains
  */
 export async function getAllSiteDomains(projectId: string, siteId: string): Promise<string[]> {
-  const [hostingDomains, defaultDomain] = await Promise.all([
-    getSiteDomains(projectId, siteId),
+  const [customDomains, defaultDomain] = await Promise.all([
+    listCustomDomains(projectId, siteId),
     getSite(projectId, siteId),
   ]);
 
   const defaultDomainWithoutHttp = defaultDomain.defaultUrl.replace(/^https?:\/\//, "");
+  const customDomainNames = customDomains
+    .map(({ name }) => name?.split("/").pop())
+    .filter((domain): domain is string => Boolean(domain));
 
   const allSiteDomains = new Set([
-    ...hostingDomains.map(({ domainName }) => domainName),
+    ...customDomainNames,
     defaultDomainWithoutHttp,
     `${siteId}.web.app`,
     `${siteId}.firebaseapp.com`,
@@ -761,6 +809,9 @@ export async function getDeploymentDomain(
   siteId: string,
   hostingChannel?: string | undefined,
 ): Promise<string | null> {
+  if (Constants.isDemoProject(projectId)) {
+    return null;
+  }
   if (hostingChannel) {
     const channel = await getChannel(projectId, siteId, hostingChannel);
 
@@ -781,4 +832,106 @@ export async function getDeploymentDomain(
   });
 
   return site && getHostnameFromUrl(site?.defaultUrl);
+}
+
+const FAILED_API_CHECK_TTL_MS = 5 * 60 * 1000;
+const failedApiChecks = new Map<string, number>();
+const inFlightApiChecks = new Map<string, Promise<void>>();
+
+/**
+ * Resets cached Hosting API enablement state. Intended for unit tests only.
+ */
+export function resetEnsureApiEnabledCacheForTests(): void {
+  failedApiChecks.clear();
+  inFlightApiChecks.clear();
+}
+
+function isServiceUsagePermissionError(err: unknown): boolean {
+  if (getErrStatus(err) === 403) {
+    return true;
+  }
+  if (!isObject(err)) {
+    return false;
+  }
+  const context = isObject(err.context) ? err.context : undefined;
+  const body = context && isObject(context.body) ? context.body : undefined;
+  const errorBody = body && isObject(body.error) ? body.error : undefined;
+  return errorBody?.status === "PERMISSION_DENIED" || errorBody?.code === 403;
+}
+
+function isServiceUsageEnableError(err: unknown, errMsg: string): boolean {
+  if (errMsg.startsWith("Permissions denied enabling") || errMsg.includes(":enable")) {
+    return true;
+  }
+  if (!isObject(err) || !isObject(err.context) || !isObject(err.context.response)) {
+    return false;
+  }
+  const responseUrl = err.context.response.url;
+  return typeof responseUrl === "string" && responseUrl.includes(":enable");
+}
+
+/**
+ * Best-effort check to ensure the Firebase Hosting API is enabled on a project.
+ * Logs a bold warning if verification or enablement fails (e.g., due to missing
+ * Service Usage permissions on a service account) so callers with direct Hosting
+ * permissions can still proceed.
+ */
+export async function ensureApiEnabled(projectId: string): Promise<void> {
+  const apiUri = hostingApiOrigin();
+  const apiName = getHostnameFromUrl(apiUri) || apiUri;
+  const cacheKey = `${projectId}:${apiName}`;
+
+  const failedUntil = failedApiChecks.get(cacheKey);
+  if (failedUntil !== undefined) {
+    if (Date.now() < failedUntil) {
+      return;
+    }
+    failedApiChecks.delete(cacheKey);
+  }
+
+  const inFlight = inFlightApiChecks.get(cacheKey);
+  if (inFlight) {
+    return inFlight;
+  }
+
+  const checkPromise = (async () => {
+    try {
+      await ensureApiEnabledModule.ensure(projectId, apiUri, "hosting", true);
+      failedApiChecks.delete(cacheKey);
+    } catch (err: unknown) {
+      const errMsg = getErrMsg(err);
+      logger.debug(`[hosting] failed to ensure Hosting API is enabled: ${errMsg}`);
+      const enableUrl = ensureApiEnabledModule.enableApiURI(projectId, apiName);
+      if (isServiceUsagePermissionError(err)) {
+        failedApiChecks.set(cacheKey, Date.now() + FAILED_API_CHECK_TTL_MS);
+        if (isServiceUsageEnableError(err, errMsg)) {
+          utils.logLabeledWarning(
+            "hosting",
+            clc.bold(
+              `Unable to enable ${apiName} on project ${projectId}. Enable the API by visiting ${enableUrl}, or grant the caller the roles/serviceusage.serviceUsageAdmin role.`,
+            ),
+          );
+        } else {
+          utils.logLabeledWarning(
+            "hosting",
+            clc.bold(
+              `Unable to check whether ${apiName} is enabled on project ${projectId}. Grant the caller the roles/serviceusage.serviceUsageConsumer role to check API enablement, or ensure the API is enabled at ${enableUrl} if subsequent requests fail.`,
+            ),
+          );
+        }
+      } else {
+        utils.logLabeledWarning(
+          "hosting",
+          clc.bold(
+            `Unable to ensure that ${apiName} is enabled on project ${projectId}. Ensure it is enabled at ${enableUrl} if subsequent requests fail.`,
+          ),
+        );
+      }
+    } finally {
+      inFlightApiChecks.delete(cacheKey);
+    }
+  })();
+
+  inFlightApiChecks.set(cacheKey, checkPromise);
+  return checkPromise;
 }

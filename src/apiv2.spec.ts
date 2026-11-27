@@ -1,14 +1,28 @@
 import { createServer, Server } from "http";
 import { expect } from "chai";
-import * as nock from "nock";
-import AbortController from "abort-controller";
+import * as sinon from "sinon";
+import * as FormData from "form-data";
+import * as auth from "./auth";
+import nock from "./test/helpers/nock";
 const proxySetup = require("proxy");
 
-import { Client } from "./apiv2";
+import { Client, CLI_OAUTH_PROJECT_NUMBER } from "./apiv2";
 import { FirebaseError } from "./error";
 import { streamToString, stringToStream } from "./utils";
 
 describe("apiv2", () => {
+  let authStub: sinon.SinonStub | undefined;
+  before(() => {
+    if (typeof (auth.getAccessToken as any).restore !== "function") {
+      authStub = sinon.stub(auth, "getAccessToken").resolves({ access_token: "owner" } as any);
+    }
+  });
+  after(() => {
+    if (authStub) {
+      authStub.restore();
+    }
+  });
+
   beforeEach(() => {
     // The api module has package variables that we don't want sticking around.
     delete require.cache[require.resolve("./apiv2")];
@@ -109,6 +123,102 @@ describe("apiv2", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should retry without keep-alive after a premature close error", async () => {
+      nock("https://example.com").get("/path/to/foo").once().replyWithError({
+        message:
+          "Invalid response body while trying to fetch https://example.com/path/to/foo: Premature close",
+        code: "ERR_STREAM_PREMATURE_CLOSE",
+      });
+      nock("https://example.com").get("/path/to/foo").once().reply(200, { foo: "bar" });
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = await c.request({
+        method: "GET",
+        path: "/path/to/foo",
+        retries: 1,
+        retryMinTimeout: 10,
+        retryMaxTimeout: 15,
+      });
+      expect(r.body).to.deep.equal({ foo: "bar" });
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should give up if the connection keeps closing prematurely", async () => {
+      nock("https://example.com").get("/path/to/foo").twice().replyWithError({
+        message:
+          "Invalid response body while trying to fetch https://example.com/path/to/foo: Premature close",
+        code: "ERR_STREAM_PREMATURE_CLOSE",
+      });
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = c.request({
+        method: "GET",
+        path: "/path/to/foo",
+        retries: 1,
+        retryMinTimeout: 10,
+        retryMaxTimeout: 15,
+      });
+      await expect(r).to.eventually.be.rejectedWith(FirebaseError, /Failed to make request/);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should resend a multipart body when retrying after a premature close", async () => {
+      let body1: string | undefined;
+      let body2: string | undefined;
+
+      const bodyToStr = (b: unknown): string => {
+        if (b instanceof Uint8Array || Buffer.isBuffer(b)) {
+          return Buffer.from(b).toString("utf8");
+        } else if (typeof b === "string") {
+          return b;
+        } else {
+          return JSON.stringify(b);
+        }
+      };
+
+      const capture1 = (b: unknown): boolean => {
+        if (body1 === undefined) {
+          body1 = bodyToStr(b);
+        }
+        return true;
+      };
+
+      const capture2 = (b: unknown): boolean => {
+        if (body2 === undefined) {
+          body2 = bodyToStr(b);
+        }
+        return true;
+      };
+
+      nock("https://example.com").post("/upload", capture1).once().replyWithError({
+        message:
+          "Invalid response body while trying to fetch https://example.com/upload: Premature close",
+        code: "ERR_STREAM_PREMATURE_CLOSE",
+      });
+      nock("https://example.com").post("/upload", capture2).once().reply(200, { ok: true });
+
+      const form = new FormData();
+      form.append("code", "secret-code-123");
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = await c.request({
+        method: "POST",
+        path: "/upload",
+        body: form,
+        headers: form.getHeaders(),
+        retries: 1,
+        retryMinTimeout: 10,
+        retryMaxTimeout: 15,
+      });
+      expect(r.status).to.equal(200);
+      // Both the original attempt and the retry must carry the full body.
+      expect(body1).to.not.be.undefined;
+      expect(body2).to.not.be.undefined;
+      expect(body1).to.contain("secret-code-123");
+      expect(body2).to.contain("secret-code-123");
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("should not allow resolving on http error when streaming", async () => {
       const c = new Client({ urlPrefix: "https://example.com" });
       const r = c.request<unknown, NodeJS.ReadableStream>({
@@ -171,6 +281,23 @@ describe("apiv2", () => {
         path: "/path/to/foo",
       });
       await expect(r).to.eventually.be.rejectedWith(FirebaseError, /Failed to make request.+/);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should intercept CLI OAuth project quota errors and throw a generic error", async () => {
+      nock("https://example.com")
+        .get("/path/to/foo")
+        .replyWithError("quota exceeded for project " + CLI_OAUTH_PROJECT_NUMBER);
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = c.request({
+        method: "GET",
+        path: "/path/to/foo",
+      });
+      await expect(r).to.eventually.be.rejectedWith(
+        FirebaseError,
+        /An Internal error has occurred/,
+      );
       expect(nock.isDone()).to.be.true;
     });
 
@@ -493,7 +620,11 @@ describe("apiv2", () => {
           new Promise((resolve) => proxyServer.close(resolve)),
           new Promise((resolve) => targetServer.close(resolve)),
         ]);
-        process.env.HTTP_PROXY = oldProxy;
+        if (oldProxy === undefined) {
+          delete process.env.HTTP_PROXY;
+        } else {
+          process.env.HTTP_PROXY = oldProxy;
+        }
       });
 
       it("should be able to make a basic GET request", async () => {

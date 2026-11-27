@@ -3,15 +3,18 @@ import * as fs from "fs";
 
 import * as child_process from "child_process";
 import { Notifications } from "./utils/page_objects/editor";
+import { VSCODE_VERSION } from "./constants";
 
 process.env.VSCODE_TEST_MODE = "true";
-
+// used to preload extension dependencies
+const prebuiltExtensionsDir = path.resolve(__dirname, "../../prebuilt-extensions");
 export const vscodeConfigs = {
   browserName: "vscode",
-  browserVersion: "1.96.4", // also possible: "insiders" or a specific version e.g. "1.80.0"
+  browserVersion: VSCODE_VERSION, // also possible: "insiders" or a specific version e.g. "1.80.0"
   "wdio:vscodeOptions": {
     vscodeArgs: {
       disableExtensions: false,
+      extensionsDir: prebuiltExtensionsDir,
     },
     // points to directory where extension package.json is located
     extensionPath: path.join(__dirname, "..", ".."),
@@ -39,13 +42,8 @@ export const config: WebdriverIO.Config = {
 
   logLevel: "debug",
 
-  beforeTest: async function () {
-    const workbench = await browser.getWorkbench();
-    const notifications = new Notifications(workbench);
-    await notifications.installRecommendedExtension({
-      extensionId: "graphql.vscode-graphql-syntax",
-      message: "It is recommended to install GraphQL: Syntax Highlighter",
-    });
+  beforeTest: async function () {    
+    await browser.pause(1000); // give some time for extension dependency to load
   },
 
   afterTest: async function (test) {

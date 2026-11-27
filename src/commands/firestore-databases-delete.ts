@@ -3,7 +3,7 @@ import * as clc from "colorette";
 import { Command } from "../command";
 import * as fsi from "../firestore/api";
 import * as types from "../firestore/api-types";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
 import { Emulators } from "../emulator/types";
@@ -23,11 +23,7 @@ export const command = new Command("firestore:databases:delete <database>")
 
     if (!options.force) {
       const confirmMessage = `You are about to delete projects/${options.project}/databases/${database}. Do you wish to continue?`;
-      const consent = await promptOnce({
-        type: "confirm",
-        message: confirmMessage,
-        default: false,
-      });
+      const consent = await confirm(confirmMessage);
       if (!consent) {
         throw new FirebaseError("Delete database canceled.");
       }
@@ -35,11 +31,7 @@ export const command = new Command("firestore:databases:delete <database>")
 
     const databaseResp: types.DatabaseResp = await api.deleteDatabase(options.project, database);
 
-    if (options.json) {
-      logger.info(JSON.stringify(databaseResp, undefined, 2));
-    } else {
-      logger.info(clc.bold(`Successfully deleted ${printer.prettyDatabaseString(databaseResp)}`));
-    }
+    logger.info(clc.bold(`Successfully deleted ${printer.prettyDatabaseString(databaseResp)}`));
 
     return databaseResp;
   });

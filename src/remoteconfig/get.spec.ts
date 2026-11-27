@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { remoteConfigApiOrigin } from "../api";
-import * as nock from "nock";
+import nock from "../test/helpers/nock";
 
 import * as remoteconfig from "./get";
 import { RemoteConfigTemplate } from "./interfaces";
@@ -8,7 +8,6 @@ import { FirebaseError } from "../error";
 
 const PROJECT_ID = "the-remoteconfig-test-project";
 
-// Test sample template
 const expectedProjectInfo: RemoteConfigTemplate = {
   conditions: [
     {
@@ -47,7 +46,6 @@ const expectedProjectInfo: RemoteConfigTemplate = {
   etag: "123",
 };
 
-// Test sample template with two parameters
 const projectInfoWithTwoParameters: RemoteConfigTemplate = {
   conditions: [
     {

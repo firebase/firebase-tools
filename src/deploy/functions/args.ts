@@ -6,9 +6,13 @@ import { Runtime } from "./runtimes/supported";
 import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args";
 
 // These types should probably be in a root deploy.ts, but we can only boil the ocean one bit at a time.
-interface CodebasePayload {
+export interface CodebasePayload {
   wantBackend: backend.Backend;
   haveBackend: backend.Backend;
+  haveRoles?: string[];
+  haveRolesEtag?: string;
+  existingManagedSA?: string;
+  managedSA?: string;
 }
 
 // Source holds details on location of packaged and uploaded source code.
@@ -47,10 +51,11 @@ export interface Context {
 
   // Caching fields for backend.existingBackend()
   existingBackend?: backend.Backend;
-  loadedExistingBackend?: boolean;
+  existingBackendPromise?: Promise<backend.Backend>;
   unreachableRegions?: {
     gcfV1: string[];
     gcfV2: string[];
+    run: string[];
   };
 
   // Tracks metrics about codebase deployments to send to GA4
@@ -58,6 +63,9 @@ export interface Context {
 
   // Tracks context for extension deploy
   extensions?: ExtContext;
+
+  // True if functions deploy is using runtime config
+  hasRuntimeConfig?: boolean;
 }
 
 export interface CodebaseDeployEvent {

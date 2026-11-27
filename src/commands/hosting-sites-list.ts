@@ -2,7 +2,7 @@ import { bold } from "colorette";
 import * as Table from "cli-table3";
 
 import { Command } from "../command";
-import { Site, listSites } from "../hosting/api";
+import { Site, listSites, ensureApiEnabled } from "../hosting/api";
 import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
 import { logger } from "../logger";
@@ -12,6 +12,7 @@ const TABLE_HEAD = ["Site ID", "Default URL", "App ID (if set)"];
 export const command = new Command("hosting:sites:list")
   .description("list Firebase Hosting sites")
   .before(requirePermissions, ["firebasehosting.sites.get"])
+  .before((options) => ensureApiEnabled(needProjectId(options)))
   .action(
     async (
       options: any, // eslint-disable-line @typescript-eslint/no-explicit-any

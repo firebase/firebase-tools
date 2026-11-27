@@ -2,6 +2,7 @@ import * as clc from "colorette";
 
 import { Options } from "../../options";
 import {
+  DEFAULT_SCHEMA,
   firebaseowner,
   firebasewriter,
   firebasereader,
@@ -13,15 +14,15 @@ import {
   FIREBASE_SUPER_USER,
 } from "./permissions";
 import { iamUserIsCSQLAdmin } from "./cloudsqladmin";
-import { setupIAMUsers } from "./connect";
 import { logger } from "../../logger";
 import { confirm } from "../../prompt";
 import { FirebaseError } from "../../error";
-import { needProjectNumber } from "../../projectUtils";
+import { needProjectId, needProjectNumber } from "../../projectUtils";
 import { executeSqlCmdsAsIamUser, executeSqlCmdsAsSuperUser, getIAMUser } from "./connect";
 import { concat } from "lodash";
 import { getDataConnectP4SA, toDatabaseUser } from "./connect";
 import * as utils from "../../utils";
+import * as cloudSqlAdminClient from "./cloudsqladmin";
 
 export type TableMetadata = {
   name: string;
@@ -104,7 +105,7 @@ export async function setupSQLPermissions(
   databaseId: string,
   schemaInfo: SchemaMetadata,
   options: Options,
-  silent: boolean = false,
+  silent = false,
 ): Promise<SchemaSetupStatus.BrownField | SchemaSetupStatus.GreenField> {
   const logFn = silent
     ? logger.debug
@@ -121,7 +122,6 @@ export async function setupSQLPermissions(
       `Missing required IAM permission to setup SQL schemas. SQL schema setup requires 'roles/cloudsql.admin' or an equivalent role.`,
     );
   }
-  await setupIAMUsers(instanceId, databaseId, options);
 
   let runGreenfieldSetup = false;
   if (schemaInfo.setupStatus === SchemaSetupStatus.GreenField) {
@@ -204,31 +204,11 @@ export async function greenFieldSchemaSetup(
   schema: string,
   options: Options,
 ) {
-  // Detect the minimal necessary revokes to avoid errors for users who used the old sql permissions setup.
-  const revokes = [];
-  if (
-    await checkSQLRoleIsGranted(
-      options,
-      instanceId,
-      databaseId,
-      "cloudsqlsuperuser",
-      firebaseowner(databaseId),
-    )
-  ) {
-    logger.warn(
-      "Detected cloudsqlsuperuser was previously given to firebase owner, revoking to improve database security.",
-    );
-    revokes.push(`REVOKE "cloudsqlsuperuser" FROM "${firebaseowner(databaseId)}"`);
-  }
-
   const user = (await getIAMUser(options)).user;
   const projectNumber = await needProjectNumber(options);
   const { user: fdcP4SAUser } = toDatabaseUser(getDataConnectP4SA(projectNumber));
 
   const sqlRoleSetupCmds = concat(
-    // For backward compatibality we sometimes need to revoke some roles.
-    revokes,
-
     // We shoud make sure schema exists since this setup runs prior to executing the diffs.
     [`CREATE SCHEMA IF NOT EXISTS "${schema}"`],
 
@@ -243,6 +223,8 @@ export async function greenFieldSchemaSetup(
 
     // Grant firebaseowner role to the current IAM user.
     `GRANT "${firebaseowner(databaseId, schema)}" TO "${user}"`,
+    // Ensure data-plane P4SA login role cannot escalate to firebaseowner / cloudsqlsuperuser.
+    `REVOKE "${firebaseowner(databaseId, schema)}" FROM "${fdcP4SAUser}"`,
     // Grant firebaswriter to the FDC P4SA user
     `GRANT "${firebasewriter(databaseId, schema)}" TO "${fdcP4SAUser}"`,
 
@@ -343,7 +325,7 @@ export async function setupBrownfieldAsGreenfield(
   databaseId: string,
   schemaInfo: SchemaMetadata,
   options: Options,
-  silent: boolean = false,
+  silent = false,
 ) {
   const schema = schemaInfo.name;
 
@@ -395,7 +377,7 @@ export async function brownfieldSqlSetup(
   databaseId: string,
   schemaInfo: SchemaMetadata,
   options: Options,
-  silent: boolean = false,
+  silent = false,
 ) {
   const schema = schemaInfo.name;
 
@@ -447,5 +429,35 @@ export async function brownfieldSqlSetup(
     brownfieldSetupCmds,
     silent,
     /** transaction=*/ true,
+  );
+}
+
+export async function grantRoleTo(
+  options: Options,
+  instanceId: string,
+  databaseId: string,
+  role: string,
+  email: string,
+  schema: string = DEFAULT_SCHEMA,
+): Promise<void> {
+  // Upsert new user account into the database.
+  const projectId = needProjectId(options);
+  const projectNumber = await needProjectNumber(options);
+  const { user, mode } = toDatabaseUser(email);
+  const { user: fdcP4SAUser } = toDatabaseUser(getDataConnectP4SA(String(projectNumber)));
+  if (role === "owner" && user === fdcP4SAUser) {
+    throw new FirebaseError(
+      `Cannot grant the "owner" role to the Data Connect service agent (${email}). The service agent must only hold data-plane roles (writer/reader).`,
+    );
+  }
+  await cloudSqlAdminClient.createUser(projectId, instanceId, mode, user);
+
+  const fdcSqlRole = fdcSqlRoleMap[role as keyof typeof fdcSqlRoleMap](databaseId, schema);
+  await executeSqlCmdsAsSuperUser(
+    options,
+    instanceId,
+    databaseId,
+    /** cmds= */ [`GRANT "${fdcSqlRole}" TO "${user}"`],
+    /** silent= */ false,
   );
 }

@@ -1,22 +1,27 @@
 #!/bin/bash
 set -ex
 
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
 function cleanup() {
-  echo "Cleaning up artifacts..."
-  rm -rf ./clean
+  CLEAN_DIR="$ROOT_DIR/clean"
+  echo "Cleaning up artifacts at $CLEAN_DIR..."
+  rm -rf $CLEAN_DIR
   echo "Artifacts deleted."
 }
 
 trap cleanup EXIT
 
-rm -rf ./clean || true
+rm -rf $ROOT_DIR/clean || true
 echo "Running clean-publish@5.0.0 --without-publish, as we would before publishing to npm..."
 npx --yes clean-publish@5.0.0 --without-publish --before-script ./scripts/clean-shrinkwrap.sh --temp-dir clean
 echo "Ran clean-publish@5.0.0 --without-publish."
 echo "Packaging cleaned firebase-tools..."
-cd ./clean
-PACKED=$(npm pack --pack-destination ./ | tail -n 1)
+cd $ROOT_DIR/clean
+npm pack --pack-destination ./
+PACKED=$(ls -1 *.tgz | head -n 1)
 echo "Packaged firebase-tools to $PACKED."
 echo "Installing clean-packaged firebase-tools..."
-npm install -g $PACKED
+npm install -g "./$PACKED"
 echo "Installed clean-packaged firebase-tools."
+cd "$ROOT_DIR"

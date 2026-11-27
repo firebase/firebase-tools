@@ -21,6 +21,7 @@ assert(!internalError, internalError);
 
 var apiKey = query.get('apiKey');
 var appName = query.get('appName');
+var tenantId = query.get('tid');
 var authType = query.get('authType');
 var providerId = query.get('providerId');
 var redirectUrl = query.get('redirectUrl');
@@ -33,7 +34,7 @@ var firebaseAppId = query.get('appId');
 var apn = query.get('apn');
 var ibi = query.get('ibi');
 var appIdentifier = apn || ibi;
-var isSamlProvider = !!providerId.match(/^saml\./);
+var isSamlProvider = !!providerId.match(/^saml\\./);
 assert(
   appName || clientId || firebaseAppId || appIdentifier,
   'Missing one of appName / clientId / appId / apn / ibi query params.'
@@ -192,7 +193,7 @@ function finishWithUser(urlEncodedIdToken, email) {
     urlResponse: url,
     sessionId: "ValueNotUsedByAuthEmulator",
     postBody: "",
-    tenantId: null,
+    tenantId: tenantId,
     error: null,
   });
 }

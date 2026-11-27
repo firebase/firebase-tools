@@ -24,7 +24,7 @@ function logAppsList(apps: AppMetadata[]): void {
   logger.info(table.toString());
 }
 
-function logAppCount(count: number = 0): void {
+function logAppCount(count = 0): void {
   if (count === 0) {
     return;
   }

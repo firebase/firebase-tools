@@ -18,7 +18,7 @@ import { getBackend } from "./backend";
 const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: apphostingOrigin(),
   apiVersion: apphosting.API_VERSION,
-  masterTimeout: 25 * 60 * 1_000,
+  masterTimeout: 60 * 60 * 1_000,
   maxBackoff: 10_000,
 };
 
@@ -37,9 +37,9 @@ export async function createRollout(
 ): Promise<void> {
   const backend = await getBackend(projectId, backendId);
 
-  if (!backend.codebase.repository) {
+  if (!backend.codebase || !backend.codebase.repository) {
     throw new FirebaseError(
-      `Backend ${backendId} is misconfigured due to missing a connected repository. You can delete and recreate your backend using 'firebase apphosting:backends:delete' and 'firebase apphosting:backends:create'.`,
+      `Backend ${backendId} is missing a connected repository. If you would like to deploy from a branch or commit of a GitHub repository, you can connect one through the Firebase Console. If you would like to deploy from local source, run 'firebase deploy'.`,
     );
   }
 
@@ -206,7 +206,7 @@ export async function orchestrateRollout(
       );
     }
     throw new FirebaseError(
-      `Failed to build your app. Please inspect the build logs at ${build.buildLogsUri}.`,
+      `Failed to build your app. Please inspect the build logs at ${build.buildLogsUri}`,
       { children: [build.error] },
     );
   }

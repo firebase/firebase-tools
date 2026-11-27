@@ -3,14 +3,15 @@ import { bold } from "colorette";
 import * as open from "open";
 
 import { Command } from "../command";
-import { FirebaseError } from "../error";
-import { getChannel, listChannels, normalizeName } from "../hosting/api";
+import { FirebaseError, getErrMsg } from "../error";
+import { logger } from "../logger";
+import { getChannel, listChannels, normalizeName, ensureApiEnabled } from "../hosting/api";
 import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
 import { requireConfig } from "../requireConfig";
 import { logLabeledBullet } from "../utils";
-import { promptOnce } from "../prompt";
 import { requireHostingSite } from "../requireHostingSite";
+import { select } from "../prompt";
 
 export const command = new Command("hosting:channel:open [channelId]")
   .description("opens the URL for a Firebase Hosting channel")
@@ -18,6 +19,7 @@ export const command = new Command("hosting:channel:open [channelId]")
   .option("--site <siteId>", "the site to which the channel belongs")
   .before(requireConfig)
   .before(requirePermissions, ["firebasehosting.sites.get"])
+  .before((options) => ensureApiEnabled(needProjectId(options)))
   .before(requireHostingSite)
   .action(
     async (
@@ -35,8 +37,7 @@ export const command = new Command("hosting:channel:open [channelId]")
         const channels = await listChannels(projectId, siteId);
         sortBy(channels, ["name"]);
 
-        channelId = await promptOnce({
-          type: "list",
+        channelId = await select({
           message: "Which channel would you like to open?",
           choices: channels.map((c) => last(c.name.split("/")) || c.name),
         });
@@ -53,7 +54,9 @@ export const command = new Command("hosting:channel:open [channelId]")
 
       logLabeledBullet("hosting:channel", channel.url);
       if (!options.nonInteractive) {
-        open(channel.url);
+        open(channel.url).catch((err: unknown) => {
+          logger.debug(`Unable to open URL: ${getErrMsg(err)}`);
+        });
       }
 
       return { url: channel.url };

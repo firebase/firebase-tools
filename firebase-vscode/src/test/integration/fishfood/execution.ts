@@ -5,12 +5,17 @@ import {
 } from "../../utils/page_objects/execution";
 import { firebaseSuite, firebaseTest } from "../../utils/test_hooks";
 import { EditorView } from "../../utils/page_objects/editor";
-import { mockProject, mutationsPath, queriesPath } from "../../utils/projects";
+import {
+  mockProject,
+  mutationsPath,
+  queriesPath,
+  queryWithFragmentPath,
+} from "../../utils/projects";
 import { FirebaseCommands } from "../../utils/page_objects/commands";
 import { FirebaseSidebar } from "../../utils/page_objects/sidebar";
 import { mockUser } from "../../utils/user";
 import { Workbench, Notification } from "wdio-vscode-service";
-import {Notifications} from "../../utils/page_objects/notifications"
+import { Notifications } from "../../utils/page_objects/notifications";
 
 firebaseSuite("Execution", async function () {
   firebaseTest(
@@ -30,15 +35,15 @@ firebaseSuite("Execution", async function () {
       const execution = new ExecutionPanel(workbench);
       const editor = new EditorView(workbench);
 
-      // Click run local while emulator is not started
+      // Click run emulator while emulator is not started
       await editor.openFile(mutationsPath);
-      await editor.runLocalButton.waitForDisplayed();
-      await editor.runLocalButton.click();
-
+      await editor.runEmulatorButton.waitForDisplayed();
+      await editor.runEmulatorButton.click();
 
       // get start emulator notification
-      const notificationUtil = new Notifications(workbench);      
-      const startEmulatorsNotif = await notificationUtil.getStartEmulatorNotification();
+      const notificationUtil = new Notifications(workbench);
+      const startEmulatorsNotif =
+        await notificationUtil.getStartEmulatorNotification();
       expect(startEmulatorsNotif).toExist();
 
       console.log(
@@ -46,10 +51,13 @@ firebaseSuite("Execution", async function () {
       );
 
       await commands.waitForEmulators();
+
       const current = await sidebar.currentEmulators();
       expect(current).toContain("dataconnect :9399");
+      await browser.pause(4000); // strange case where emulators are showing before actually callable
 
-      // Test 2 - Execute queries
+      // Test 1 - Execute mutation
+      console.log(`Running test: executing a mutation`);
 
       // Update arguments
       await execution.open();
@@ -57,13 +65,16 @@ firebaseSuite("Execution", async function () {
 
       // Insert a post
       await editor.openFile(mutationsPath);
-      await editor.runLocalButton.waitForDisplayed();
-      await editor.runLocalButton.click();
 
-      async function getExecutionStatus() {
+      await editor.runEmulatorButton.waitForDisplayed();
+      await editor.runEmulatorButton.click();
+
+      async function getExecutionStatus(name: string) {
+        await browser.pause(1000);
         let item = await execution.history.getSelectedItem();
         let status = await item.getStatus();
-        while (status === "pending") {
+        let label = await item.getLabel();
+        while (status === "pending" && label !== name) {
           await browser.pause(1000);
           item = await execution.history.getSelectedItem();
           status = await item.getStatus();
@@ -73,16 +84,18 @@ firebaseSuite("Execution", async function () {
       }
 
       // Waiting for the execution to finish
-      let result = await getExecutionStatus();
-
+      let result = await getExecutionStatus("createPost");
       expect(await result.getLabel()).toBe("createPost");
+
+      // Test 2 - Execute mutation
+      console.log("Running test: executing a query");
 
       await execution.setVariables(`{"id": "42"}`);
 
       // Execute query
       await editor.openFile(queriesPath);
-      await editor.runLocalButton.waitForDisplayed();
-      await editor.runLocalButton.click();
+      await editor.runEmulatorButton.waitForDisplayed();
+      await editor.runEmulatorButton.click();
 
       // Waiting for the new history entry to appear
       await browser.waitUntil(async () => {
@@ -103,6 +116,26 @@ firebaseSuite("Execution", async function () {
       expect(await item2.getDescription()).toHaveText(
         'Arguments: {"id": "42"}',
       );
+
+      // Test 3: Execute operation with fragment
+
+      console.log(`Running test: executing an operation with a fragment`);
+
+      await execution.setVariables(`{}`);
+      await editor.openFile(queryWithFragmentPath);
+      await editor.runEmulatorButton.waitForDisplayed();
+      await editor.runEmulatorButton.click();
+
+      // Waiting for the new history entry to appear
+      await browser.waitUntil(async () => {
+        const selectedItem = await execution.history.getSelectedItem();
+        return (await selectedItem.getLabel()) === "fragmentTest";
+      });
+
+      // Check the history entry
+      const item3 = await getExecutionStatus("fragmentTest");
+      expect(await item3.getLabel()).toBe("fragmentTest");
+      expect(await item3.getStatus()).toBe("success");
     },
   );
 });

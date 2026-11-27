@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "./test/helpers/nock";
 import * as sinon from "sinon";
 
 import { configstore } from "./configstore";
@@ -8,14 +8,6 @@ import { firebaseApiOrigin } from "./api";
 import { FirebaseError } from "./error";
 
 describe("fetchWebSetup module", () => {
-  before(() => {
-    nock.disableNetConnect();
-  });
-
-  after(() => {
-    nock.enableNetConnect();
-  });
-
   afterEach(() => {
     expect(nock.isDone()).to.be.true;
   });

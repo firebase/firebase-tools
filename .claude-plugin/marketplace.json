@@ -1,0 +1,48 @@
+{
+  "name": "firebase",
+  "owner": {
+    "name": "Firebase",
+    "email": "firebase-support@google.com"
+  },
+  "metadata": {
+    "description": "Official Claude plugin for Firebase to help understand and manage your Firebase project, resources, and data",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "firebase",
+      "description": "Claude plugin for Firebase that installs the Firebase MCP server and helps to manage Firebase projects, add backend services, add AI features, deploy & host apps, and more",
+      "version": "1.0.0",
+      "author": {
+        "name": "Firebase",
+        "url": "https://firebase.google.com/"
+      },
+      "homepage": "https://github.com/firebase/firebase-tools",
+      "repository": "https://github.com/firebase/firebase-tools.git",
+      "license": "MIT",
+      "keywords": [
+        "firebase",
+        "mcp",
+        "cloud",
+        "firestore",
+        "database",
+        "hosting",
+        "functions",
+        "cli"
+      ],
+      "category": "development",
+      "tags": ["firebase", "backend", "database", "cloud-services"],
+      "mcpServers": {
+        "firebase": {
+          "description": "Firebase MCP server for understanding and managing your Firebase project, resources, and data",
+          "command": "npx",
+          "args": ["-y", "firebase-tools", "mcp", "--dir", "."],
+          "env": {
+            "IS_FIREBASE_MCP": "true"
+          }
+        }
+      },
+      "source": "./"
+    }
+  ]
+}

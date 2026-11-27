@@ -3,10 +3,9 @@ import { FirebaseError } from "../error";
 import {
   createFirebaseProjectAndLog,
   ProjectParentResourceType,
-  PROJECTS_CREATE_QUESTIONS,
+  promptProjectCreation,
 } from "../management/projects";
 import { FirebaseProjectMetadata } from "../types/project";
-import { prompt } from "../prompt";
 import { requireAuth } from "../requireAuth";
 
 export const command = new Command("projects:create [projectId]")
@@ -34,7 +33,8 @@ export const command = new Command("projects:create [projectId]")
         );
       }
       if (!options.nonInteractive) {
-        await prompt(options, PROJECTS_CREATE_QUESTIONS);
+        // Inserts projectId and displayName
+        options = { ...options, ...(await promptProjectCreation(options)) };
       }
       if (!options.projectId) {
         throw new FirebaseError("Project ID cannot be empty");

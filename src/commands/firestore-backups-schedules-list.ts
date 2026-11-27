@@ -1,5 +1,4 @@
 import { Command } from "../command";
-import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
 import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
@@ -24,11 +23,7 @@ export const command = new Command("firestore:backups:schedules:list")
       databaseId,
     );
 
-    if (options.json) {
-      logger.info(JSON.stringify(backupSchedules, undefined, 2));
-    } else {
-      printer.prettyPrintBackupSchedules(backupSchedules, databaseId);
-    }
+    printer.prettyPrintBackupSchedules(backupSchedules, databaseId);
 
     return backupSchedules;
   });

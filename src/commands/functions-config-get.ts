@@ -31,5 +31,6 @@ export const command = new Command("functions:config:get [path]")
   .action(async (path, options) => {
     const result = await materialize(needProjectId(options), path);
     logger.info(JSON.stringify(result, null, 2));
+    functionsConfig.logFunctionsConfigDeprecationWarning();
     return result;
   });

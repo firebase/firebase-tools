@@ -2,16 +2,19 @@ import { expect } from "chai";
 import * as fs from "fs";
 import * as path from "path";
 
-import { FrameworkOptions, TriggerEndToEndTest } from "../integration-helpers/framework";
+import {
+  FrameworkOptions,
+  TriggerEndToEndTest,
+  waitForCondition,
+} from "../integration-helpers/framework";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 /*
  * Various delays that are needed because this test spawns
  * parallel emulator subprocesses.
  */
-const TEST_SETUP_TIMEOUT = 80000;
-const EMULATORS_WRITE_DELAY_MS = 5000;
-const EMULATORS_SHUTDOWN_DELAY_MS = 5000;
+const TEST_SETUP_TIMEOUT = process.platform === "win32" ? 180000 : 80000;
+const EMULATORS_SHUTDOWN_DELAY_MS = process.platform === "win32" ? 30000 : 5000;
 
 function readConfig(): FrameworkOptions {
   const filename = path.join(__dirname, "firebase.json");
@@ -78,7 +81,7 @@ describe("function triggers with inspect flag", () => {
       this.timeout(TEST_SETUP_TIMEOUT);
       const response = await test.writeToAuth();
       expect(response.status).to.equal(200);
-      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+      await waitForCondition(() => test.authTriggerCount >= 1);
       expect(test.authTriggerCount).to.equal(1);
     });
 
@@ -87,7 +90,9 @@ describe("function triggers with inspect flag", () => {
 
       const response = await test.writeToDefaultStorage();
       expect(response.status).to.equal(200);
-      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+      await waitForCondition(
+        () => test.storageFinalizedTriggerCount >= 1 && test.storageV2FinalizedTriggerCount >= 1,
+      );
 
       expect(test.storageFinalizedTriggerCount).to.equal(1);
       expect(test.storageV2FinalizedTriggerCount).to.equal(1);

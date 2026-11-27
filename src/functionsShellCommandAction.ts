@@ -31,7 +31,7 @@ export const actionFunction = async (options: Options) => {
   }
 
   needProjectId(options);
-  const hubClient = new EmulatorHubClient(options.project!);
+  const hubClient = new EmulatorHubClient(options.project);
 
   let remoteEmulators: Record<string, EmulatorInfo> = {};
   if (hubClient.foundHub()) {
@@ -143,7 +143,7 @@ export const actionFunction = async (options: Options) => {
 
       return new Promise((resolve) => {
         replServer.on("exit", () => {
-          return serveFunctions.stop().then(resolve).catch(resolve);
+          serveFunctions.stop().then(resolve).catch(resolve);
         });
       });
     });

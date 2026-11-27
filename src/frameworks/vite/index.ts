@@ -5,7 +5,7 @@ import { copy, pathExists } from "fs-extra";
 import { join } from "path";
 import { stripVTControlCharacters } from "node:util";
 import { FrameworkType, SupportLevel } from "../interfaces";
-import { promptOnce } from "../../prompt";
+import { select } from "../../prompt";
 import {
   simpleProxy,
   warnIfCustomBuildScript,
@@ -24,9 +24,8 @@ export const DEFAULT_BUILD_SCRIPT = ["vite build", "tsc && vite build"];
 export const initViteTemplate = (template: string) => async (setup: any, config: any) =>
   await init(setup, config, template);
 
-export async function init(setup: any, config: any, baseTemplate: string = "vanilla") {
-  const template = await promptOnce({
-    type: "list",
+export async function init(setup: any, config: any, baseTemplate = "vanilla") {
+  const template = await select({
     default: "JavaScript",
     message: "What language would you like to use?",
     choices: [
@@ -35,13 +34,16 @@ export async function init(setup: any, config: any, baseTemplate: string = "vani
     ],
   });
   execSync(
-    `npm create vite@"${supportedRange}" ${setup.hosting.source} --yes -- --template ${template}`,
+    `npm create vite@"${supportedRange}" ${setup.featureInfo.hosting.source} --yes -- --template ${template}`,
     {
       stdio: "inherit",
       cwd: config.projectDir,
     },
   );
-  execSync(`npm install`, { stdio: "inherit", cwd: join(config.projectDir, setup.hosting.source) });
+  execSync(`npm install`, {
+    stdio: "inherit",
+    cwd: join(config.projectDir, setup.featureInfo.hosting.source),
+  });
 }
 
 export const viteDiscoverWithNpmDependency = (dep: string) => async (dir: string) =>
@@ -91,6 +93,7 @@ export async function build(root: string, target: string) {
 
   // Downcasting as `string` as otherwise it is inferred as `readonly 'NODE_ENV'`,
   // but `env[key]` expects a non-readonly variable.
+  // eslint-disable-next-line @typescript-eslint/no-inferrable-types -- widened to `string` on purpose, see above.
   const envKey: string = "NODE_ENV";
   // Voluntarily making .env[key] not statically analyzable to avoid
   // Webpack from converting it to "development" = target;

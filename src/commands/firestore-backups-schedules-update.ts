@@ -30,13 +30,9 @@ export const command = new Command("firestore:backups:schedules:update <backupSc
       retention,
     );
 
-    if (options.json) {
-      logger.info(JSON.stringify(backupSchedule, undefined, 2));
-    } else {
-      logger.info(
-        clc.bold(`Successfully updated ${printer.prettyBackupScheduleString(backupSchedule)}`),
-      );
-    }
+    logger.info(
+      clc.bold(`Successfully updated ${printer.prettyBackupScheduleString(backupSchedule)}`),
+    );
 
     return backupSchedule;
   });

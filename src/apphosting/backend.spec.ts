@@ -1,7 +1,7 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
 
-import * as prompt from "../prompt";
+import * as promptImport from "../prompt";
 import * as apphosting from "../gcp/apphosting";
 import * as iam from "../gcp/iam";
 import * as resourceManager from "../gcp/resourceManager";
@@ -12,19 +12,21 @@ import {
   promptLocation,
   setDefaultTrafficPolicy,
   ensureAppHostingComputeServiceAccount,
+  defaultComputeServiceAccountExists,
   chooseBackends,
   getBackendForAmbiguousLocation,
   getBackend,
 } from "./backend";
 import * as deploymentTool from "../deploymentTool";
 import { FirebaseError } from "../error";
+import * as experiments from "../experiments";
 
 describe("apphosting setup functions", () => {
   const projectId = "projectId";
   const location = "us-central1";
   const backendId = "backendId";
 
-  let promptOnceStub: sinon.SinonStub;
+  let promptStub: sinon.SinonStubbedInstance<typeof promptImport>;
   let pollOperationStub: sinon.SinonStub;
   let createBackendStub: sinon.SinonStub;
   let listBackendsStub: sinon.SinonStub;
@@ -32,11 +34,16 @@ describe("apphosting setup functions", () => {
   let updateTrafficStub: sinon.SinonStub;
   let listLocationsStub: sinon.SinonStub;
   let createServiceAccountStub: sinon.SinonStub;
+  let getServiceAccountStub: sinon.SinonStub;
   let addServiceAccountToRolesStub: sinon.SinonStub;
   let testResourceIamPermissionsStub: sinon.SinonStub;
 
   beforeEach(() => {
-    promptOnceStub = sinon.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
+    promptStub = sinon.stub(promptImport);
+    promptStub.input.throws("Unexpected input call");
+    promptStub.confirm.throws("Unexpected confirm call");
+    promptStub.select.throws("Unexpected select call");
+    promptStub.checkbox.throws("Unepxected checkbox call");
     pollOperationStub = sinon.stub(poller, "pollOperation").throws("Unexpected pollOperation call");
     createBackendStub = sinon
       .stub(apphosting, "createBackend")
@@ -56,12 +63,16 @@ describe("apphosting setup functions", () => {
     createServiceAccountStub = sinon
       .stub(iam, "createServiceAccount")
       .throws("Unexpected createServiceAccount call");
+    getServiceAccountStub = sinon
+      .stub(iam, "getServiceAccount")
+      .throws("Unexpected getServiceAccount call");
     addServiceAccountToRolesStub = sinon
       .stub(resourceManager, "addServiceAccountToRoles")
       .throws("Unexpected addServiceAccountToRoles call");
     testResourceIamPermissionsStub = sinon
       .stub(iam, "testResourceIamPermissions")
       .throws("Unexpected testResourceIamPermissions call");
+    sinon.stub(experiments, "isEnabled").returns(false).withArgs("abiu").returns(true);
   });
 
   afterEach(() => {
@@ -102,8 +113,8 @@ describe("apphosting setup functions", () => {
         projectId,
         location,
         backendId,
-        cloudBuildConnRepo,
         "custom-service-account",
+        cloudBuildConnRepo,
         webAppId,
       );
 
@@ -116,9 +127,42 @@ describe("apphosting setup functions", () => {
         labels: deploymentTool.labels(),
         serviceAccount: "custom-service-account",
         appId: webAppId,
+        runtime: { value: "" },
       };
-      expect(createBackendStub).to.be.calledWith(projectId, location, backendInput);
+      expect(createBackendStub).to.be.calledWith(projectId, location, backendInput, backendId);
     });
+
+    const runtimes = ["nodejs22", ""];
+    for (const runtime of runtimes) {
+      it(`should create a new backend with runtime ${runtime}`, async () => {
+        createBackendStub.resolves(op);
+        pollOperationStub.resolves(completeBackend);
+
+        await createBackend(
+          projectId,
+          location,
+          backendId,
+          "custom-service-account",
+          cloudBuildConnRepo,
+          webAppId,
+          "/",
+          runtime,
+        );
+
+        const backendInput: Omit<apphosting.Backend, apphosting.BackendOutputOnlyFields> = {
+          servingLocality: "GLOBAL_ACCESS",
+          codebase: {
+            repository: cloudBuildConnRepo.name,
+            rootDirectory: "/",
+          },
+          labels: deploymentTool.labels(),
+          serviceAccount: "custom-service-account",
+          appId: webAppId,
+          runtime: { value: runtime ?? "" },
+        };
+        expect(createBackendStub).to.be.calledWith(projectId, location, backendInput, backendId);
+      });
+    }
 
     it("should set default rollout policy to 100% all at once", async () => {
       const completeTraffic: apphosting.Traffic = {
@@ -144,61 +188,208 @@ describe("apphosting setup functions", () => {
   });
 
   describe("ensureAppHostingComputeServiceAccount", () => {
-    const serviceAccount = "hello@example.com";
+    // A custom, user-supplied runtime service account.
+    const customServiceAccount = "hello@example.com";
+    // An empty service account means "use the default compute service account".
+    const defaultServiceAccount = "";
 
-    it("should succeed if the user has permissions for the service account", async () => {
+    it("should skip creation when the default compute service account already exists", async () => {
       testResourceIamPermissionsStub.resolves();
+      getServiceAccountStub.resolves();
+      addServiceAccountToRolesStub.resolves();
 
-      await expect(ensureAppHostingComputeServiceAccount(projectId, serviceAccount)).to.be
+      await expect(ensureAppHostingComputeServiceAccount(projectId, customServiceAccount)).to.be
         .fulfilled;
 
       expect(testResourceIamPermissionsStub).to.be.calledOnce;
+      expect(getServiceAccountStub).to.be.calledOnce;
       expect(createServiceAccountStub).to.not.be.called;
-      expect(addServiceAccountToRolesStub).to.not.be.called;
+      expect(addServiceAccountToRolesStub).to.be.calledOnce;
     });
 
-    it("should succeed if the user can create the service account when it does not exist", async () => {
-      testResourceIamPermissionsStub.rejects(
-        new FirebaseError("Permission denied", { status: 404 }),
-      );
+    it("should create the default compute service account when it does not exist", async () => {
+      testResourceIamPermissionsStub.resolves();
+      getServiceAccountStub.rejects(new FirebaseError("Not found", { status: 404 }));
       createServiceAccountStub.resolves();
       addServiceAccountToRolesStub.resolves();
 
-      await expect(ensureAppHostingComputeServiceAccount(projectId, serviceAccount)).to.be
+      await expect(ensureAppHostingComputeServiceAccount(projectId, customServiceAccount)).to.be
         .fulfilled;
 
-      expect(testResourceIamPermissionsStub).to.be.calledOnce;
+      expect(getServiceAccountStub).to.be.calledOnce;
       expect(createServiceAccountStub).to.be.calledOnce;
       expect(addServiceAccountToRolesStub).to.be.calledOnce;
     });
 
-    it("should throw an error if the user does not have permissions", async () => {
+    it("should throw if the caller lacks delegation permissions for the service account", async () => {
       testResourceIamPermissionsStub.rejects(
         new FirebaseError("Permission denied", { status: 403 }),
       );
 
       await expect(
-        ensureAppHostingComputeServiceAccount(projectId, serviceAccount),
+        ensureAppHostingComputeServiceAccount(projectId, customServiceAccount),
       ).to.be.rejectedWith(/Failed to create backend due to missing delegation permissions/);
 
       expect(testResourceIamPermissionsStub).to.be.calledOnce;
+      expect(getServiceAccountStub).to.not.be.called;
       expect(createServiceAccountStub).to.not.be.called;
       expect(addServiceAccountToRolesStub).to.not.be.called;
     });
 
-    it("should throw the error if the user cannot create the service account", async () => {
+    it("should proceed when the default compute service account does not exist yet", async () => {
+      testResourceIamPermissionsStub.rejects(new FirebaseError("Not found", { status: 404 }));
+      getServiceAccountStub.rejects(new FirebaseError("Not found", { status: 404 }));
+      createServiceAccountStub.resolves();
+      addServiceAccountToRolesStub.resolves();
+
+      await expect(ensureAppHostingComputeServiceAccount(projectId, defaultServiceAccount)).to.be
+        .fulfilled;
+
+      expect(createServiceAccountStub).to.be.calledOnce;
+      expect(addServiceAccountToRolesStub).to.be.calledOnce;
+    });
+
+    it("should throw an unexpected error from the permissions check", async () => {
       testResourceIamPermissionsStub.rejects(
-        new FirebaseError("Permission denied", { status: 404 }),
+        new FirebaseError("Unexpected error", { status: 500 }),
       );
+
+      await expect(
+        ensureAppHostingComputeServiceAccount(projectId, customServiceAccount),
+      ).to.be.rejectedWith(/Unexpected error occurred while testing/);
+
+      expect(testResourceIamPermissionsStub).to.be.calledOnce;
+      expect(getServiceAccountStub).to.not.be.called;
+      expect(createServiceAccountStub).to.not.be.called;
+      expect(addServiceAccountToRolesStub).to.not.be.called;
+    });
+
+    it("should warn and continue if the user lacks permissions to check the service account", async () => {
+      testResourceIamPermissionsStub.resolves();
+      getServiceAccountStub.rejects(new FirebaseError("Permission denied", { status: 403 }));
+      createServiceAccountStub.rejects(new FirebaseError("Permission denied", { status: 403 }));
+      addServiceAccountToRolesStub.resolves();
+
+      await expect(ensureAppHostingComputeServiceAccount(projectId, customServiceAccount)).to.be
+        .fulfilled;
+
+      expect(createServiceAccountStub).to.be.calledOnce;
+      expect(addServiceAccountToRolesStub).to.be.calledOnce;
+    });
+
+    it("should rethrow an unexpected error when checking the service account", async () => {
+      testResourceIamPermissionsStub.resolves();
+      getServiceAccountStub.rejects(new FirebaseError("boom", { status: 500 }));
+
+      await expect(
+        ensureAppHostingComputeServiceAccount(projectId, customServiceAccount),
+      ).to.be.rejectedWith("boom");
+
+      expect(createServiceAccountStub).to.not.be.called;
+      expect(addServiceAccountToRolesStub).to.not.be.called;
+    });
+
+    it("should warn and continue if the user lacks permissions to create the service account", async () => {
+      testResourceIamPermissionsStub.resolves();
+      getServiceAccountStub.rejects(new FirebaseError("Not found", { status: 404 }));
+      createServiceAccountStub.rejects(new FirebaseError("Permission denied", { status: 403 }));
+      addServiceAccountToRolesStub.resolves();
+
+      await expect(ensureAppHostingComputeServiceAccount(projectId, customServiceAccount)).to.be
+        .fulfilled;
+
+      expect(createServiceAccountStub).to.be.calledOnce;
+      expect(addServiceAccountToRolesStub).to.be.calledOnce;
+    });
+
+    it("should ignore a 409 when creating the service account", async () => {
+      testResourceIamPermissionsStub.resolves();
+      getServiceAccountStub.rejects(new FirebaseError("Not found", { status: 404 }));
+      createServiceAccountStub.rejects(new FirebaseError("Already exists", { status: 409 }));
+      addServiceAccountToRolesStub.resolves();
+
+      await expect(ensureAppHostingComputeServiceAccount(projectId, customServiceAccount)).to.be
+        .fulfilled;
+
+      expect(addServiceAccountToRolesStub).to.be.calledOnce;
+    });
+
+    it("should throw the error if the user cannot create the service account", async () => {
+      testResourceIamPermissionsStub.resolves();
+      getServiceAccountStub.rejects(new FirebaseError("Not found", { status: 404 }));
       createServiceAccountStub.rejects(new FirebaseError("failed to create SA"));
 
       await expect(
-        ensureAppHostingComputeServiceAccount(projectId, serviceAccount),
+        ensureAppHostingComputeServiceAccount(projectId, customServiceAccount),
       ).to.be.rejectedWith("failed to create SA");
 
-      expect(testResourceIamPermissionsStub).to.be.calledOnce;
       expect(createServiceAccountStub).to.be.calledOnce;
       expect(addServiceAccountToRolesStub).to.not.be.called;
+    });
+
+    it("should warn and continue if the user lacks permissions to grant IAM roles", async () => {
+      testResourceIamPermissionsStub.resolves();
+      getServiceAccountStub.resolves();
+      addServiceAccountToRolesStub.rejects(new FirebaseError("Permission denied", { status: 403 }));
+
+      await expect(ensureAppHostingComputeServiceAccount(projectId, customServiceAccount)).to.be
+        .fulfilled;
+
+      expect(createServiceAccountStub).to.not.be.called;
+      expect(addServiceAccountToRolesStub).to.be.calledOnce;
+    });
+
+    it("should warn and continue while the service account is still being provisioned", async () => {
+      testResourceIamPermissionsStub.resolves();
+      getServiceAccountStub.rejects(new FirebaseError("Not found", { status: 404 }));
+      createServiceAccountStub.resolves();
+      addServiceAccountToRolesStub.rejects(new FirebaseError("Bad request", { status: 400 }));
+
+      await expect(ensureAppHostingComputeServiceAccount(projectId, customServiceAccount)).to.be
+        .fulfilled;
+
+      expect(addServiceAccountToRolesStub).to.be.calledOnce;
+    });
+
+    it("should throw an unexpected error when granting roles", async () => {
+      testResourceIamPermissionsStub.resolves();
+      getServiceAccountStub.resolves();
+      addServiceAccountToRolesStub.rejects(new FirebaseError("boom", { status: 500 }));
+
+      await expect(
+        ensureAppHostingComputeServiceAccount(projectId, customServiceAccount),
+      ).to.be.rejectedWith("boom");
+    });
+  });
+
+  describe("defaultComputeServiceAccountExists", () => {
+    it("should return true if the service account exists", async () => {
+      getServiceAccountStub.resolves();
+
+      await expect(defaultComputeServiceAccountExists(projectId)).to.eventually.be.true;
+
+      expect(getServiceAccountStub).to.be.calledWith(
+        projectId,
+        `firebase-app-hosting-compute@${projectId}.iam.gserviceaccount.com`,
+      );
+    });
+
+    it("should return false if the service account does not exist", async () => {
+      getServiceAccountStub.rejects(new FirebaseError("Not found", { status: 404 }));
+
+      await expect(defaultComputeServiceAccountExists(projectId)).to.eventually.be.false;
+    });
+
+    it("should return false if the user cannot look up the service account", async () => {
+      getServiceAccountStub.rejects(new FirebaseError("Permission denied", { status: 403 }));
+
+      await expect(defaultComputeServiceAccountExists(projectId)).to.eventually.be.false;
+    });
+
+    it("should throw an unexpected error", async () => {
+      getServiceAccountStub.rejects(new FirebaseError("some error", { status: 500 }));
+
+      await expect(defaultComputeServiceAccountExists(projectId)).to.be.rejectedWith("some error");
     });
   });
 
@@ -219,41 +410,27 @@ describe("apphosting setup functions", () => {
 
   describe("promptLocation", () => {
     const supportedLocations = [
-      { name: "us-central1", locationId: "us-central1" },
+      { name: "us-east4", locationId: "us-east4" },
       { name: "us-west1", locationId: "us-west1" },
     ];
 
     beforeEach(() => {
       listLocationsStub.returns(supportedLocations);
-      promptOnceStub.returns(supportedLocations[0].locationId);
+      promptStub.select.resolves(supportedLocations[0].locationId);
     });
 
     it("returns a location selection", async () => {
       const location = await promptLocation(projectId, /* prompt= */ "");
-      expect(location).to.be.eq("us-central1");
+      expect(location).to.be.eq("us-east4");
     });
 
     it("uses a default location prompt if none is provided", async () => {
       await promptLocation(projectId);
 
-      expect(promptOnceStub).to.be.calledWith({
-        name: "location",
-        type: "list",
-        default: "us-central1",
+      expect(promptStub.select).to.be.calledWith({
+        default: "us-east4",
         message: "Please select a location:",
-        choices: ["us-central1", "us-west1"],
-      });
-    });
-
-    it("uses a custom location prompt if provided", async () => {
-      await promptLocation(projectId, "Custom location prompt:");
-
-      expect(promptOnceStub).to.be.calledWith({
-        name: "location",
-        type: "list",
-        default: "us-central1",
-        message: "Custom location prompt:",
-        choices: ["us-central1", "us-west1"],
+        choices: ["us-east4", "us-west1"],
       });
     });
 
@@ -264,7 +441,7 @@ describe("apphosting setup functions", () => {
         supportedLocations[0].locationId,
       );
 
-      expect(promptOnceStub).to.not.be.called;
+      expect(promptStub.select).to.not.be.called;
     });
   });
 
@@ -339,7 +516,7 @@ describe("apphosting setup functions", () => {
       listBackendsStub.resolves({
         backends: allBackends,
       });
-      promptOnceStub.resolves(["chicken(asia-east1)", "chicken(europe-west4)"]);
+      promptStub.checkbox.resolves(["chicken(asia-east1)", "chicken(europe-west4)"]);
 
       await expect(chooseBackends(projectId, "chicken", /* prompt= */ "")).to.eventually.deep.equal(
         [backendChickenAsia, backendChickenEurope],
@@ -390,7 +567,7 @@ describe("apphosting setup functions", () => {
 
     it("prompts for location if backend is ambiguous", async () => {
       listBackendsStub.resolves({ backends: [backendFoo, backendFooOtherRegion, backendBar] });
-      promptOnceStub.resolves(location);
+      promptStub.select.resolves(location);
 
       await expect(
         getBackendForAmbiguousLocation(
@@ -400,9 +577,7 @@ describe("apphosting setup functions", () => {
         ),
       ).to.eventually.equal(backendFoo);
 
-      expect(promptOnceStub).to.be.calledWith({
-        name: "location",
-        type: "list",
+      expect(promptStub.select).to.be.calledWith({
         message: "Please select the location of the backend you'd like to delete:",
         choices: [location, "otherRegion"],
       });

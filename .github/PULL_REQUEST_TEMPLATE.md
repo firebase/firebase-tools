@@ -14,7 +14,7 @@ Run `npm test` to make sure your changes compile properly and the tests all pass
 
 ### Scenarios Tested
 
-<!-- Write a list of all the user journeys and edge cases you've tested. Instructions for manual testing can be found at https://github.com/firebase/firebase-tools/blob/master/.github/CONTRIBUTING.md#development-setup -->
+<!-- Write a list of all the user journeys and edge cases you've tested. Instructions for manual testing can be found at https://github.com/firebase/firebase-tools/blob/main/.github/CONTRIBUTING.md#development-setup -->
 
 ### Sample Commands
 

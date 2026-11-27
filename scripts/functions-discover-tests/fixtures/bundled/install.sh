@@ -2,4 +2,4 @@
 set -euxo pipefail # bash strict mode
 IFS=$'\n\t'
 
-npm i
+npm i --prefer-offline --no-audit

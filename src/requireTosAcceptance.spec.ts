@@ -1,9 +1,12 @@
-import * as nock from "nock";
+import nock from "./test/helpers/nock";
+import * as sinon from "sinon";
 import { APPHOSTING_TOS_ID, APP_CHECK_TOS_ID } from "./gcp/firedata";
 import { requireTosAcceptance } from "./requireTosAcceptance";
 import { Options } from "./options";
 import { RC } from "./rc";
 import { expect } from "chai";
+import * as auth from "./auth";
+import * as defaultCredentials from "./defaultCredentials";
 
 const SAMPLE_OPTIONS: Options = {
   cwd: "/",
@@ -13,8 +16,6 @@ const SAMPLE_OPTIONS: Options = {
   only: "",
   except: "",
   nonInteractive: false,
-  json: false,
-  interactive: false,
   debug: false,
   force: false,
   filteredTargets: [],
@@ -47,17 +48,25 @@ const SAMPLE_RESPONSE = {
 };
 
 describe("requireTosAcceptance", () => {
-  before(() => {
-    nock.disableNetConnect();
+  let loggedInStub: sinon.SinonStub;
+  let hasDefaultCredentialsStub: sinon.SinonStub;
+
+  beforeEach(() => {
+    loggedInStub = sinon.stub(auth, "loggedIn");
+    hasDefaultCredentialsStub = sinon
+      .stub(defaultCredentials, "hasDefaultCredentials")
+      .resolves(false);
   });
-  after(() => {
-    nock.enableNetConnect();
+  afterEach(() => {
+    loggedInStub.restore();
+    hasDefaultCredentialsStub.restore();
   });
 
   it("should resolve for accepted terms of service", async () => {
     nock("https://mobilesdk-pa.googleapis.com")
       .get("/v1/accessmanagement/tos:getStatus")
       .reply(200, SAMPLE_RESPONSE);
+    loggedInStub.returns(true);
 
     await requireTosAcceptance(APP_CHECK_TOS_ID)(SAMPLE_OPTIONS);
 
@@ -68,10 +77,28 @@ describe("requireTosAcceptance", () => {
     nock("https://mobilesdk-pa.googleapis.com")
       .get("/v1/accessmanagement/tos:getStatus")
       .reply(200, SAMPLE_RESPONSE);
+    loggedInStub.returns(true);
 
     await expect(requireTosAcceptance(APPHOSTING_TOS_ID)(SAMPLE_OPTIONS)).to.be.rejectedWith(
       "Terms of Service",
     );
+
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should resolve if not a human", async () => {
+    loggedInStub.returns(false);
+
+    await requireTosAcceptance(APPHOSTING_TOS_ID)(SAMPLE_OPTIONS);
+
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should resolve if using ADC", async () => {
+    loggedInStub.returns(true);
+    hasDefaultCredentialsStub.resolves(true);
+
+    await requireTosAcceptance(APPHOSTING_TOS_ID)(SAMPLE_OPTIONS);
 
     expect(nock.isDone()).to.be.true;
   });

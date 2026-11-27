@@ -6,18 +6,16 @@ import * as _ from "lodash";
 import * as clc from "colorette";
 import * as fs from "fs-extra";
 import * as path from "path";
-const cjson = require("cjson");
 
 import { detectProjectRoot } from "./detectProjectRoot";
-import { FirebaseError } from "./error";
+import { FirebaseError, getErrMsg } from "./error";
 import * as fsutils from "./fsutils";
-import { promptOnce } from "./prompt";
+import { confirm } from "./prompt";
 import { resolveProjectPath } from "./projectPath";
 import * as utils from "./utils";
 import { getValidator, getErrorMessage } from "./firebaseConfigValidate";
 import { logger } from "./logger";
 import { loadCJSON } from "./loadCJSON";
-const parseBoltRules = require("./parseBoltRules");
 
 export class Config {
   static DEFAULT_FUNCTIONS_SOURCE = "functions";
@@ -33,6 +31,10 @@ export class Config {
     "storage",
     "remoteconfig",
     "dataconnect",
+    "apphosting",
+    "auth",
+    "ailogic",
+    "run",
   ];
 
   public options: any;
@@ -68,7 +70,7 @@ export class Config {
     }
 
     // If a top-level key contains a string path pointing to a suported file
-    // type (JSON or Bolt), we read the file.
+    // type (JSON ), we read the file.
     //
     // TODO: This is janky and confusing behavior, we should remove it ASAP.
     Config.MATERIALIZE_TARGETS.forEach((target) => {
@@ -77,15 +79,30 @@ export class Config {
       }
     });
 
-    // Inject default functions source if missing.
+    // Inject default functions source if missing, but only when a given entry has
+    // neither a local source nor a remoteSource configured.
     if (this.get("functions")) {
       if (this.projectDir && fsutils.dirExistsSync(this.path(Config.DEFAULT_FUNCTIONS_SOURCE))) {
-        if (Array.isArray(this.get("functions"))) {
-          if (!this.get("functions.[0].source")) {
-            this.set("functions.[0].source", Config.DEFAULT_FUNCTIONS_SOURCE);
+        const funcs = this.get("functions");
+        if (Array.isArray(funcs)) {
+          // Inject default source for exactly one empty entry (the first empty),
+          // preserving legacy convenience while avoiding ambiguity when multiple are empty.
+          let emptyIdx: number | undefined;
+          for (let i = 0; i < funcs.length; i++) {
+            const hasSource = this.get(`functions.[${i}].source`);
+            const hasRemote = this.get(`functions.[${i}].remoteSource`);
+            if (!hasSource && !hasRemote) {
+              emptyIdx = i;
+              break; // inject into the first empty entry only
+            }
+          }
+          if (emptyIdx !== undefined) {
+            this.set(`functions.[${emptyIdx}].source`, Config.DEFAULT_FUNCTIONS_SOURCE);
           }
         } else {
-          if (!this.get("functions.source")) {
+          const hasSource = this.get("functions.source");
+          const hasRemote = this.get("functions.remoteSource");
+          if (!hasSource && !hasRemote) {
             this.set("functions.source", Config.DEFAULT_FUNCTIONS_SOURCE);
           }
         }
@@ -151,10 +168,9 @@ export class Config {
         return loadCJSON(fullPath);
       /* istanbul ignore-next */
       case ".bolt":
-        if (target === "database") {
-          this.notes.databaseRules = "bolt";
-        }
-        return parseBoltRules(fullPath);
+        throw new FirebaseError(
+          "As of firebase-tools@15.0.0, .bolt rules are no longer supported.",
+        );
       default:
         throw new FirebaseError(
           "Parse Error: " + filePath + " is not of a supported config file type",
@@ -196,7 +212,7 @@ export class Config {
     return outPath;
   }
 
-  readProjectFile(p: string, options: any = {}) {
+  readProjectFile(p: string, options: { json?: boolean; fallback?: any } = {}) {
     options = options || {};
     try {
       const content = fs.readFileSync(this.path(p), "utf8");
@@ -215,21 +231,95 @@ export class Config {
     }
   }
 
-  writeProjectFile(p: string, content: any) {
-    if (typeof content !== "string") {
-      content = JSON.stringify(content, null, 2) + "\n";
+  writeProjectFile(p: string, content: any): void {
+    const path = this.path(p);
+    fs.ensureFileSync(path);
+    fs.writeFileSync(path, stringifyContent(content), "utf8");
+    switch (p) {
+      case "firebase.json":
+        utils.logSuccess("Wrote configuration info to " + clc.bold("firebase.json"));
+        break;
+      case ".firebaserc":
+        utils.logSuccess("Wrote project information to " + clc.bold(".firebaserc"));
+        break;
+      default:
+        utils.logSuccess("Wrote " + clc.bold(p));
+        break;
     }
-
-    fs.ensureFileSync(this.path(p));
-    fs.writeFileSync(this.path(p), content, "utf8");
   }
 
   projectFileExists(p: string): boolean {
     return fs.existsSync(this.path(p));
   }
 
+  projectDirExists(p: string): boolean {
+    return this.projectFileExists(p) && fs.statSync(this.path(p)).isDirectory();
+  }
+
   deleteProjectFile(p: string) {
     fs.removeSync(this.path(p));
+  }
+
+  deleteProjectDir(p: string) {
+    if (path.isAbsolute(p)) {
+      throw new FirebaseError(
+        `Sanity: deleteProjectDir() should not be called with an absolute path.`,
+      );
+    }
+    const resolvedPath = this.path(p);
+    if (!fs.existsSync(resolvedPath)) {
+      throw new FirebaseError(`Failed to delete project directory ${p}: directory doesn't exist.`);
+    }
+    try {
+      fs.rmSync(resolvedPath, { recursive: true });
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to delete project directory ${p}: ${err}`, {
+        original: err instanceof Error ? err : undefined,
+      });
+    }
+  }
+
+  lsProjectDir(p: string): fs.Dirent[] {
+    const resolvedPath = this.path(p);
+    if (!fs.existsSync(resolvedPath)) {
+      throw new FirebaseError(
+        `Failed to list files in project directory ${p}: directory doesn't exist.`,
+      );
+    }
+    try {
+      return fs.readdirSync(resolvedPath, { withFileTypes: true });
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to list files in project directory ${p}: ${err}`, {
+        original: err instanceof Error ? err : undefined,
+      });
+    }
+  }
+
+  async confirmWriteProjectFile(
+    path: string,
+    content: any,
+    confirmByDefault?: boolean,
+  ): Promise<boolean> {
+    const writeTo = this.path(path);
+    if (!fsutils.fileExistsSync(writeTo)) {
+      return true;
+    }
+    const existingContent = fsutils.readFile(writeTo);
+    const newContent = stringifyContent(content);
+    if (existingContent === newContent) {
+      utils.logBullet(clc.bold(path) + " is unchanged");
+      return false;
+    }
+    const shouldWrite = await confirm({
+      message: "File " + clc.underline(path) + " already exists. Overwrite?",
+      default: !!confirmByDefault,
+      nonInteractive: this.options.nonInteractive,
+    });
+    if (!shouldWrite) {
+      utils.logBullet("Skipping write of " + clc.bold(path));
+      return false;
+    }
+    return true;
   }
 
   async askWriteProjectFile(
@@ -238,40 +328,33 @@ export class Config {
     force?: boolean,
     confirmByDefault?: boolean,
   ): Promise<void> {
-    const writeTo = this.path(path);
-    let next = true;
-    if (typeof content !== "string") {
-      content = JSON.stringify(content, null, 2) + "\n";
+    if (!force) {
+      const shouldWrite = await this.confirmWriteProjectFile(path, content, confirmByDefault);
+      if (!shouldWrite) {
+        return;
+      }
     }
-    let existingContent: string | undefined;
-    if (fsutils.fileExistsSync(writeTo)) {
-      existingContent = fsutils.readFile(writeTo);
-    }
-    if (existingContent && existingContent !== content && !force) {
-      next = await promptOnce({
-        type: "confirm",
-        message: "File " + clc.underline(path) + " already exists. Overwrite?",
-        default: !!confirmByDefault,
-      });
-    }
-
-    if (existingContent === content) {
-      utils.logBullet(clc.bold(path) + " is unchanged");
-    } else if (next) {
-      this.writeProjectFile(path, content);
-      utils.logSuccess("Wrote " + clc.bold(path));
-    } else {
-      utils.logBullet("Skipping write of " + clc.bold(path));
-    }
+    this.writeProjectFile(path, content);
   }
 
-  public static load(options: any, allowMissing?: boolean): Config | null {
+  public static load(options: { cwd?: string; configPath?: string }, allowMissing?: false): Config;
+  public static load(
+    options: { cwd?: string; configPath?: string },
+    allowMissing: true,
+  ): Config | null;
+  public static load(
+    options: { cwd?: string; configPath?: string },
+    allowMissing?: boolean,
+  ): Config | null {
     const pd = detectProjectRoot(options);
     const filename = options.configPath || Config.FILENAME;
     if (pd) {
       try {
         const filePath = path.resolve(pd, path.basename(filename));
-        const data = cjson.load(filePath);
+        let data: unknown = {};
+        if (fs.statSync(filePath).size > 0) {
+          data = loadCJSON(filePath);
+        }
 
         // Validate config against JSON Schema. For now we just print these to debug
         // logs but in a future CLI version they could be warnings and/or errors.
@@ -288,7 +371,7 @@ export class Config {
 
         return new Config(data, options);
       } catch (e: any) {
-        throw new FirebaseError(`There was an error loading ${filename}:\n\n` + e.message, {
+        throw new FirebaseError(`There was an error loading ${filename}:\n\n${getErrMsg(e)}`, {
           exit: 1,
         });
       }
@@ -303,4 +386,11 @@ export class Config {
       status: 404,
     });
   }
+}
+
+function stringifyContent(content: any): string {
+  if (typeof content === "string") {
+    return content;
+  }
+  return JSON.stringify(content, null, 2) + "\n";
 }

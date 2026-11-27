@@ -1,0 +1,279 @@
+mutation @transaction {
+  movie_insertMany(
+    data: [
+      {
+        id: "550e8400-e29b-41d4-a716-446655440000",
+        title: "Quantum Paradox",
+        imageUrl: "https://firebasestorage.googleapis.com/v0/b/fdc-web-quickstart.appspot.com/o/movie%2Fquantum_paradox.jpeg?alt=media&token=4142e2a1-bf43-43b5-b7cf-6616be3fd4e3",
+        genre: "sci-fi"
+      },
+      {
+        id: "550e8400-e29b-41d4-a716-446655440001",
+        title: "The Lone Outlaw",
+        imageUrl: "https://firebasestorage.googleapis.com/v0/b/fdc-web-quickstart.appspot.com/o/movie%2Flone_outlaw.jpeg?alt=media&token=15525ffc-208f-4b59-b506-ae8348e06e85",
+        genre: "western"
+      },
+      {
+        id: "550e8400-e29b-41d4-a716-446655440002",
+        title: "Celestial Harmony",
+        imageUrl: "https://firebasestorage.googleapis.com/v0/b/fdc-web-quickstart.appspot.com/o/movie%2Fcelestial_harmony.jpeg?alt=media&token=3edf1cf9-c2f5-4c75-9819-36ff6a734c9a",
+        genre: "romance"
+      },
+      {
+        id: "550e8400-e29b-41d4-a716-446655440003",
+        title: "Noir Mystique",
+        imageUrl: "https://firebasestorage.googleapis.com/v0/b/fdc-web-quickstart.appspot.com/o/movie%2Fnoir_mystique.jpeg?alt=media&token=3299adba-cb98-4302-8b23-aeb679a4f913",
+        genre: "mystery"
+      },
+      {
+        id: "550e8400-e29b-41d4-a716-446655440004",
+        title: "The Forgotten Island",
+        imageUrl: "https://firebasestorage.googleapis.com/v0/b/fdc-web-quickstart.appspot.com/o/movie%2Fforgotten_island.jpeg?alt=media&token=bc2b16e1-caed-4649-952c-73b6113f205c",
+        genre: "adventure"
+      },
+      {
+        id: "550e8400-e29b-41d4-a716-446655440005",
+        title: "Digital Nightmare",
+        imageUrl: "https://firebasestorage.googleapis.com/v0/b/fdc-web-quickstart.appspot.com/o/movie%2Fdigital_nightmare.jpeg?alt=media&token=335ec842-1ca4-4b09-abd1-e96d9f5c0c2f",
+        genre: "horror"
+      },
+      {
+        id: "550e8400-e29b-41d4-a716-446655440006",
+        title: "Eclipse of Destiny",
+        imageUrl: "https://firebasestorage.googleapis.com/v0/b/fdc-web-quickstart.appspot.com/o/movie%2Feclipse_destiny.jpeg?alt=media&token=346649b3-cb5c-4d7e-b0d4-6f02e3df5959",
+        genre: "fantasy"
+      },
+      {
+        id: "550e8400-e29b-41d4-a716-446655440007",
+        title: "Heart of Steel",
+        imageUrl: "https://firebasestorage.googleapis.com/v0/b/fdc-web-quickstart.appspot.com/o/movie%2Fheart_steel.jpeg?alt=media&token=17883d71-329b-415a-86f8-dd4d9e941d7f",
+        genre: "sci-fi"
+      },
+      {
+        id: "550e8400-e29b-41d4-a716-446655440008",
+        title: "Rise of the Crimson Empire",
+        imageUrl: "https://firebasestorage.googleapis.com/v0/b/fdc-web-quickstart.appspot.com/o/movie%2Frise_crimson_empire.jpeg?alt=media&token=6faa73ad-7504-4146-8f3a-50b90f607f33",
+        genre: "action"
+      },
+      {
+        id: "550e8400-e29b-41d4-a716-446655440009",
+        title: "Silent Waves",
+        imageUrl: "https://firebasestorage.googleapis.com/v0/b/fdc-web-quickstart.appspot.com/o/movie%2Fsilent_waves.jpeg?alt=media&token=bd626bf1-ec60-4e57-aa07-87ba14e35bb7",
+        genre: "drama"
+      },
+      {
+        id: "550e8400-e29b-41d4-a716-446655440010",
+        title: "Echoes of the Past",
+        imageUrl: "https://firebasestorage.googleapis.com/v0/b/fdc-web-quickstart.appspot.com/o/movie%2Fecho_of_past.jpeg?alt=media&token=d866aa27-8534-4d72-8988-9da4a1b9e452",
+        genre: "historical"
+      },
+      {
+        id: "550e8400-e29b-41d4-a716-446655440011",
+        title: "Beyond the Horizon",
+        imageUrl: "https://firebasestorage.googleapis.com/v0/b/fdc-web-quickstart.appspot.com/o/movie%2Fbeyond_horizon.jpeg?alt=media&token=31493973-0692-4e6e-8b88-afb1aaea17ee",
+        genre: "sci-fi"
+      },
+      {
+        id: "550e8400-e29b-41d4-a716-446655440012",
+        title: "Shadows and Lies",
+        imageUrl: "https://firebasestorage.googleapis.com/v0/b/fdc-web-quickstart.appspot.com/o/movie%2Fshadows_lies.jpeg?alt=media&token=01afb80d-caee-47f8-a00e-aea8b9e459a2",
+        genre: "crime"
+      },
+      {
+        id: "550e8400-e29b-41d4-a716-446655440013",
+        title: "The Last Symphony",
+        imageUrl: "https://firebasestorage.googleapis.com/v0/b/fdc-web-quickstart.appspot.com/o/movie%2Flast_symphony.jpeg?alt=media&token=f9bf80cd-3d8e-4e24-8503-7feb11f4e397",
+        genre: "drama"
+      },
+      {
+        id: "550e8400-e29b-41d4-a716-446655440014",
+        title: "Moonlit Crusade",
+        imageUrl: "https://firebasestorage.googleapis.com/v0/b/fdc-web-quickstart.appspot.com/o/movie%2Fmoonlit_crusade.jpeg?alt=media&token=b13241f5-d7d0-4370-b651-07847ad99dc2",
+        genre: "fantasy"
+      },
+      {
+        id: "550e8400-e29b-41d4-a716-446655440015",
+        title: "Abyss of the Deep",
+        imageUrl: "https://firebasestorage.googleapis.com/v0/b/fdc-web-quickstart.appspot.com/o/movie%2Fabyss_deep.jpeg?alt=media&token=2417321d-2451-4ec0-9ed6-6297042170e6",
+        genre: "horror"
+      },
+      {
+        id: "550e8400-e29b-41d4-a716-446655440017",
+        title: "The Infinite Knot",
+        imageUrl: "https://firebasestorage.googleapis.com/v0/b/fdc-web-quickstart.appspot.com/o/movie%2Finfinite_knot.jpeg?alt=media&token=93d54d93-d933-4663-a6fe-26b707ef823e",
+        genre: "romance"
+      },
+      {
+        id: "550e8400-e29b-41d4-a716-446655440019",
+        title: "Veil of Illusion",
+        imageUrl: "https://firebasestorage.googleapis.com/v0/b/fdc-web-quickstart.appspot.com/o/movie%2Fveil_illusion.jpeg?alt=media&token=7bf09a3c-c531-478a-9d02-5d99fca9393b",
+        genre: "mystery"
+      }
+    ]
+  )
+  movieMetadata_insertMany(
+    data: [
+      {
+        movieId: "550e8400-e29b-41d4-a716-446655440000",
+        rating: 7.9,
+        releaseYear: 2025,
+        description: "A group of scientists accidentally open a portal to a parallel universe, causing a rift in time. As the team races to close the portal, they encounter alternate versions of themselves, leading to shocking revelations."
+      },
+      {
+        movieId: "550e8400-e29b-41d4-a716-446655440001",
+        rating: 8.2,
+        releaseYear: 2023,
+        description: "In the lawless Wild West, a mysterious gunslinger with a hidden past takes on a corrupt sheriff and his band of outlaws to bring justice to a small town."
+      },
+      {
+        movieId: "550e8400-e29b-41d4-a716-446655440002",
+        rating: 7.5,
+        releaseYear: 2024,
+        description: "Two astronauts, stationed on a remote space station, fall in love amidst the isolation of deep space. But when a mysterious signal disrupts their communication, they must find a way to reconnect and survive."
+      },
+      {
+        movieId: "550e8400-e29b-41d4-a716-446655440003",
+        rating: 8.0,
+        releaseYear: 2022,
+        description: "A private detective gets caught up in a web of lies, deception, and betrayal while investigating the disappearance of a famous actress in 1940s Hollywood."
+      },
+      {
+        movieId: "550e8400-e29b-41d4-a716-446655440004",
+        rating: 7.6,
+        releaseYear: 2025,
+        description: "An explorer leads an expedition to a remote island rumored to be home to mythical creatures. As the team ventures deeper into the island, they uncover secrets that change the course of history."
+      },
+      {
+        movieId: "550e8400-e29b-41d4-a716-446655440005",
+        rating: 6.9,
+        releaseYear: 2024,
+        description: "A tech-savvy teenager discovers a cursed app that brings nightmares to life. As the horrors of the digital world cross into reality, she must find a way to break the curse before it's too late."
+      },
+      {
+        movieId: "550e8400-e29b-41d4-a716-446655440006",
+        rating: 8.1,
+        releaseYear: 2026,
+        description: "In a kingdom on the brink of war, a prophecy speaks of an eclipse that will grant power to the rightful ruler. As factions vie for control, a young warrior must decide where his true loyalty lies."
+      },
+      {
+        movieId: "550e8400-e29b-41d4-a716-446655440007",
+        rating: 7.7,
+        releaseYear: 2023,
+        description: "A brilliant scientist creates a robot with a human heart. As the robot struggles to understand emotions, it becomes entangled in a plot that could change the fate of humanity."
+      },
+      {
+        movieId: "550e8400-e29b-41d4-a716-446655440008",
+        rating: 8.4,
+        releaseYear: 2025,
+        description: "A legendary warrior rises to challenge the tyrannical rule of a powerful empire. As rebellion brews, the warrior must unite different factions to lead an uprising."
+      },
+      {
+        movieId: "550e8400-e29b-41d4-a716-446655440009",
+        rating: 8.2,
+        releaseYear: 2024,
+        description: "A talented pianist, who loses his hearing in a tragic accident, must rediscover his passion for music with the help of a young music teacher who believes in him."
+      },
+      {
+        movieId: "550e8400-e29b-41d4-a716-446655440010",
+        rating: 7.8,
+        releaseYear: 2023,
+        description: "A historian stumbles upon an ancient artifact that reveals hidden truths about an empire long forgotten. As she deciphers the clues, a shadowy organization tries to stop her from unearthing the past."
+      },
+      {
+        movieId: "550e8400-e29b-41d4-a716-446655440011",
+        rating: 8.5,
+        releaseYear: 2026,
+        description: "In the future, Earth's best pilots are sent on a mission to explore a mysterious planet beyond the solar system. What they find changes humanity's understanding of the universe forever."
+      },
+      {
+        movieId: "550e8400-e29b-41d4-a716-446655440012",
+        rating: 7.9,
+        releaseYear: 2022,
+        description: "A young detective with a dark past investigates a series of mysterious murders in a city plagued by corruption. As she digs deeper, she realizes nothing is as it seems."
+      },
+      {
+        movieId: "550e8400-e29b-41d4-a716-446655440013",
+        rating: 8.0,
+        releaseYear: 2024,
+        description: "An aging composer struggling with memory loss attempts to complete his final symphony. With the help of a young prodigy, he embarks on an emotional journey through his memories and legacy."
+      },
+      {
+        movieId: "550e8400-e29b-41d4-a716-446655440014",
+        rating: 8.3,
+        releaseYear: 2025,
+        description: "A knight is chosen by an ancient order to embark on a quest under the light of the full moon. Facing mythical beasts and treacherous landscapes, he seeks a relic that could save his kingdom."
+      },
+      {
+        movieId: "550e8400-e29b-41d4-a716-446655440015",
+        rating: 7.2,
+        releaseYear: 2023,
+        description: "When a group of marine biologists descends into the unexplored depths of the ocean, they encounter a terrifying and ancient force. Now, they must survive as the abyss comes alive."
+      },
+      {
+        movieId: "550e8400-e29b-41d4-a716-446655440017",
+        rating: 7.4,
+        releaseYear: 2026,
+        description: "Two souls destined to meet across multiple lifetimes struggle to find each other in a chaotic world. With each incarnation, they get closer, but time itself becomes their greatest obstacle."
+      },
+      {
+        movieId: "550e8400-e29b-41d4-a716-446655440019",
+        rating: 7.8,
+        releaseYear: 2022,
+        description: "A magician-turned-detective uses his skills in illusion to solve crimes. When a series of murders leaves the city in fear, he must reveal the truth hidden behind a veil of deceit."
+      }
+    ]
+  )
+  user_insertMany(
+    data: [
+      { id: "SnLgOC3lN4hcIl69s53cW0Q8R1T2", username: "sherlock_h" },
+      { id: "fep4fXpGWsaRpuphq9CIrBIXQ0S2", username: "hercule_p" },
+      { id: "TBedjwCX0Jf955Uuoxk6k74sY0l1", username: "jane_d" }
+    ]
+  )
+  review_insertMany(
+    data: [
+      {
+        userId: "SnLgOC3lN4hcIl69s53cW0Q8R1T2",
+        movieId: "550e8400-e29b-41d4-a716-446655440000",
+        rating: 5,
+        reviewText: "An incredible movie with a mind-blowing plot!",
+        reviewDate: "2025-10-01"
+      },
+      {
+        userId: "fep4fXpGWsaRpuphq9CIrBIXQ0S2",
+        movieId: "550e8400-e29b-41d4-a716-446655440001",
+        rating: 5,
+        reviewText: "A revolutionary film that changed cinema forever.",
+        reviewDate: "2025-10-01"
+      },
+      {
+        userId: "TBedjwCX0Jf955Uuoxk6k74sY0l1",
+        movieId: "550e8400-e29b-41d4-a716-446655440002",
+        rating: 5,
+        reviewText: "A visually stunning and emotionally impactful movie.",
+        reviewDate: "2025-10-01"
+      },
+      {
+        userId: "SnLgOC3lN4hcIl69s53cW0Q8R1T2",
+        movieId: "550e8400-e29b-41d4-a716-446655440003",
+        rating: 4,
+        reviewText: "A fantastic superhero film with great performances.",
+        reviewDate: "2025-10-01"
+      },
+      {
+        userId: "fep4fXpGWsaRpuphq9CIrBIXQ0S2",
+        movieId: "550e8400-e29b-41d4-a716-446655440004",
+        rating: 5,
+        reviewText: "An amazing film that keeps you on the edge of your seat.",
+        reviewDate: "2025-10-01"
+      },
+      {
+        userId: "TBedjwCX0Jf955Uuoxk6k74sY0l1",
+        movieId: "550e8400-e29b-41d4-a716-446655440005",
+        rating: 5,
+        reviewText: "An absolute classic with unforgettable dialogue.",
+        reviewDate: "2025-10-01"
+      }
+    ]
+  )
+}

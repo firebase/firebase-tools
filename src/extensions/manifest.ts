@@ -1,4 +1,3 @@
-import * as clc from "colorette";
 import * as path from "path";
 import * as fs from "fs-extra";
 
@@ -6,11 +5,11 @@ import * as refs from "./refs";
 import { Config } from "../config";
 import { getExtensionSpec, ManifestInstanceSpec } from "../deploy/extensions/planner";
 import { logger } from "../logger";
-import { confirm, promptOnce } from "../prompt";
+import { confirm, select } from "../prompt";
 import { readEnvFile } from "./paramHelper";
 import { FirebaseError } from "../error";
-import * as utils from "../utils";
-import { isLocalPath } from "./extensionsHelper";
+import { isLocalPath, logPrefix } from "./extensionsHelper";
+import { logLabeledBullet } from "../utils";
 import { ParamType } from "./types";
 
 export const ENV_DIRECTORY = "extensions";
@@ -23,6 +22,7 @@ export const ENV_DIRECTORY = "extensions";
  *
  * @param specs a list of InstanceSpec to write to the manifest
  * @param config existing config in firebase.json
+ * @param options options for writing to the manifest
  * @param options.nonInteractive will try to do the job without asking for user input.
  * @param options.force only when this flag is true this will overwrite existing .env files
  * @param allowOverwrite allows overwriting the entire manifest with the new specs
@@ -31,7 +31,7 @@ export async function writeToManifest(
   specs: ManifestInstanceSpec[],
   config: Config,
   options: { nonInteractive: boolean; force: boolean },
-  allowOverwrite: boolean = false,
+  allowOverwrite = false,
 ): Promise<void> {
   if (
     config.has("extensions") &&
@@ -43,8 +43,7 @@ export async function writeToManifest(
       .map((i) => `${i[0]}: ${i[1]}`)
       .join("\n\t");
     if (allowOverwrite) {
-      const overwrite = await promptOnce({
-        type: "list",
+      const overwrite = await select({
         message: `firebase.json already contains extensions:\n${currentExtensions}\nWould you like to overwrite or merge?`,
         choices: [
           { name: "Overwrite", value: true },
@@ -64,7 +63,7 @@ export async function writeToManifest(
 
 export async function writeEmptyManifest(
   config: Config,
-  options: { nonInteractive: boolean; force: boolean },
+  options?: { nonInteractive: boolean; force: boolean },
 ): Promise<void> {
   if (!fs.existsSync(config.path("extensions"))) {
     fs.mkdirSync(config.path("extensions"));
@@ -76,8 +75,8 @@ export async function writeEmptyManifest(
     if (
       !(await confirm({
         message: `firebase.json already contains extensions:\n${currentExtensions}\nWould you like to overwrite them?`,
-        nonInteractive: options.nonInteractive,
-        force: options.force,
+        nonInteractive: options?.nonInteractive,
+        force: options?.force,
         default: false,
       }))
     ) {
@@ -141,19 +140,24 @@ export function removeFromManifest(instanceId: string, config: Config) {
   extensions[instanceId] = undefined;
   config.set("extensions", extensions);
   config.writeProjectFile("firebase.json", config.src);
-  logger.info(`Removed extension instance ${instanceId} from firebase.json`);
+  logLabeledBullet(logPrefix, `Removed extension instance ${instanceId} from firebase.json`);
 
   config.deleteProjectFile(`extensions/${instanceId}.env`);
-  logger.info(`Removed extension instance environment config extensions/${instanceId}.env`);
+  logLabeledBullet(
+    logPrefix,
+    `Removed extension instance environment config extensions/${instanceId}.env`,
+  );
   if (config.projectFileExists(`extensions/${instanceId}.env.local`)) {
     config.deleteProjectFile(`extensions/${instanceId}.env.local`);
-    logger.info(
+    logLabeledBullet(
+      logPrefix,
       `Removed extension instance local environment config extensions/${instanceId}.env.local`,
     );
   }
   if (config.projectFileExists(`extensions/${instanceId}.secret.local`)) {
     config.deleteProjectFile(`extensions/${instanceId}.secret.local`);
-    logger.info(
+    logLabeledBullet(
+      logPrefix,
       `Removed extension instance local secret config extensions/${instanceId}.secret.local`,
     );
   }
@@ -205,7 +209,7 @@ export function writeExtensionsToFirebaseJson(specs: ManifestInstanceSpec[], con
   for (const s of specs) {
     let target;
     if (s.ref) {
-      target = refs.toExtensionVersionRef(s.ref!);
+      target = refs.toExtensionVersionRef(s.ref);
     } else if (s.localPath) {
       target = s.localPath;
     } else {
@@ -218,7 +222,6 @@ export function writeExtensionsToFirebaseJson(specs: ManifestInstanceSpec[], con
   }
   config.set("extensions", extensions);
   config.writeProjectFile("firebase.json", config.src);
-  utils.logSuccess("Wrote extensions to " + clc.bold("firebase.json") + "...");
 }
 
 async function writeEnvFiles(

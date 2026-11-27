@@ -4,7 +4,7 @@ import * as semver from "semver";
 import * as refs from "../extensions/refs";
 import * as utils from "../utils";
 import { Command } from "../command";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import { ensureExtensionsPublisherApiEnabled, logPrefix } from "../extensions/extensionsHelper";
 import { undeprecateExtensionVersion, listExtensionVersions } from "../extensions/publisherApi";
 import { parseVersionPredicate } from "../extensions/versionHelper";
@@ -48,8 +48,7 @@ export const command = new Command("ext:dev:undeprecate <extensionRef> <versionP
       if (!options.force) {
         const confirmMessage =
           "You are about to undeprecate these extension version(s). Do you wish to continue?";
-        const consent = await promptOnce({
-          type: "confirm",
+        const consent = await confirm({
           message: confirmMessage,
           default: false,
         });

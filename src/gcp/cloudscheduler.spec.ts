@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "../test/helpers/nock";
 
 import { FirebaseError } from "../error";
 import * as api from "../api";
@@ -156,6 +156,51 @@ describe("cloudscheduler", () => {
     });
   });
 
+  describe("listLocations", () => {
+    afterEach(() => {
+      nock.cleanAll();
+    });
+
+    it("returns the location IDs", async () => {
+      nock(api.cloudschedulerOrigin())
+        .get(`/${VERSION}/projects/test-project/locations`)
+        .reply(200, {
+          locations: [{ locationId: "us-central1" }, { locationId: "europe-west9" }],
+        });
+
+      expect(await cloudscheduler.listLocations("test-project")).to.deep.equal([
+        "us-central1",
+        "europe-west9",
+      ]);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("follows nextPageToken until every page is read", async () => {
+      nock(api.cloudschedulerOrigin())
+        .get(`/${VERSION}/projects/test-project/locations`)
+        .reply(200, { locations: [{ locationId: "us-central1" }], nextPageToken: "page2" });
+      nock(api.cloudschedulerOrigin())
+        .get(`/${VERSION}/projects/test-project/locations`)
+        .query({ pageToken: "page2" })
+        .reply(200, { locations: [{ locationId: "europe-west9" }] });
+
+      expect(await cloudscheduler.listLocations("test-project")).to.deep.equal([
+        "us-central1",
+        "europe-west9",
+      ]);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("returns an empty array when locations is omitted", async () => {
+      nock(api.cloudschedulerOrigin())
+        .get(`/${VERSION}/projects/test-project/locations`)
+        .reply(200, {});
+
+      expect(await cloudscheduler.listLocations("test-project")).to.deep.equal([]);
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
   describe("jobFromEndpoint", () => {
     const V1_ENDPOINT: backend.Endpoint = {
       platform: "gcfv1",
@@ -174,9 +219,9 @@ describe("cloudscheduler", () => {
       uri: "https://my-uri.com",
     };
 
-    it("should copy minimal fields for v1 endpoints", () => {
+    it("should copy minimal fields for v1 endpoints", async () => {
       expect(
-        cloudscheduler.jobFromEndpoint(V1_ENDPOINT, "appEngineLocation", "1234567"),
+        await cloudscheduler.jobFromEndpoint(V1_ENDPOINT, "appEngineLocation", "1234567"),
       ).to.deep.equal({
         name: "projects/project/locations/appEngineLocation/jobs/firebase-schedule-id-region",
         schedule: "every 1 minutes",
@@ -190,9 +235,9 @@ describe("cloudscheduler", () => {
       });
     });
 
-    it("should copy minimal fields for v2 endpoints", () => {
+    it("should copy minimal fields for v2 endpoints", async () => {
       expect(
-        cloudscheduler.jobFromEndpoint(V2_ENDPOINT, V2_ENDPOINT.region, "1234567"),
+        await cloudscheduler.jobFromEndpoint(V2_ENDPOINT, V2_ENDPOINT.region, "1234567"),
       ).to.deep.equal({
         name: "projects/project/locations/region/jobs/firebase-schedule-id-region",
         schedule: "every 1 minutes",
@@ -207,9 +252,9 @@ describe("cloudscheduler", () => {
       });
     });
 
-    it("should copy optional fields for v1 endpoints", () => {
+    it("should copy optional fields for v1 endpoints", async () => {
       expect(
-        cloudscheduler.jobFromEndpoint(
+        await cloudscheduler.jobFromEndpoint(
           {
             ...V1_ENDPOINT,
             scheduleTrigger: {
@@ -245,26 +290,21 @@ describe("cloudscheduler", () => {
       });
     });
 
-    it("should copy optional fields for v2 endpoints", () => {
-      expect(
-        cloudscheduler.jobFromEndpoint(
-          {
-            ...V2_ENDPOINT,
-            scheduleTrigger: {
-              schedule: "every 1 minutes",
-              timeZone: "America/Los_Angeles",
-              retryConfig: {
-                maxDoublings: 2,
-                maxBackoffSeconds: 20,
-                minBackoffSeconds: 1,
-                maxRetrySeconds: 60,
-              },
-            },
+    it("should copy optional fields for v2 endpoints", async () => {
+      const ep: backend.Endpoint = {
+        ...V2_ENDPOINT,
+        scheduleTrigger: {
+          schedule: "every 1 minutes",
+          timeZone: "America/Los_Angeles",
+          retryConfig: {
+            maxDoublings: 2,
+            maxBackoffSeconds: 20,
+            minBackoffSeconds: 1,
+            maxRetrySeconds: 60,
           },
-          V2_ENDPOINT.region,
-          "1234567",
-        ),
-      ).to.deep.equal({
+        },
+      };
+      expect(await cloudscheduler.jobFromEndpoint(ep, "region", "1234567")).to.deep.equal({
         name: "projects/project/locations/region/jobs/firebase-schedule-id-region",
         schedule: "every 1 minutes",
         timeZone: "America/Los_Angeles",
@@ -274,6 +314,83 @@ describe("cloudscheduler", () => {
           minBackoffDuration: "1s",
           maxRetryDuration: "60s",
         },
+        httpTarget: {
+          uri: "https://my-uri.com",
+          httpMethod: "POST",
+          oidcToken: {
+            serviceAccountEmail: "1234567-compute@developer.gserviceaccount.com",
+          },
+        },
+      });
+    });
+
+    it("should sync attemptDeadline with timeoutSeconds for v2 endpoints", async () => {
+      expect(
+        await cloudscheduler.jobFromEndpoint(
+          {
+            ...V2_ENDPOINT,
+            timeoutSeconds: 300,
+          },
+          V2_ENDPOINT.region,
+          "1234567",
+        ),
+      ).to.deep.equal({
+        name: "projects/project/locations/region/jobs/firebase-schedule-id-region",
+        schedule: "every 1 minutes",
+        timeZone: "UTC",
+        attemptDeadline: "300s",
+        httpTarget: {
+          uri: "https://my-uri.com",
+          httpMethod: "POST",
+          oidcToken: {
+            serviceAccountEmail: "1234567-compute@developer.gserviceaccount.com",
+          },
+        },
+      });
+    });
+
+    it("should cap attemptDeadline at 1800s for v2 endpoints", async () => {
+      expect(
+        await cloudscheduler.jobFromEndpoint(
+          {
+            ...V2_ENDPOINT,
+            // This is bad configuration.
+            // Users are discouraged from setting timeout >1800s for scheduled functions.
+            timeoutSeconds: 3600,
+          },
+          V2_ENDPOINT.region,
+          "1234567",
+        ),
+      ).to.deep.equal({
+        name: "projects/project/locations/region/jobs/firebase-schedule-id-region",
+        schedule: "every 1 minutes",
+        timeZone: "UTC",
+        attemptDeadline: "1800s",
+        httpTarget: {
+          uri: "https://my-uri.com",
+          httpMethod: "POST",
+          oidcToken: {
+            serviceAccountEmail: "1234567-compute@developer.gserviceaccount.com",
+          },
+        },
+      });
+    });
+
+    it("should floor attemptDeadline at 180s for v2 endpoints", async () => {
+      expect(
+        await cloudscheduler.jobFromEndpoint(
+          {
+            ...V2_ENDPOINT,
+            timeoutSeconds: 60,
+          },
+          V2_ENDPOINT.region,
+          "1234567",
+        ),
+      ).to.deep.equal({
+        name: "projects/project/locations/region/jobs/firebase-schedule-id-region",
+        schedule: "every 1 minutes",
+        timeZone: "UTC",
+        attemptDeadline: "180s",
         httpTarget: {
           uri: "https://my-uri.com",
           httpMethod: "POST",

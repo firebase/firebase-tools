@@ -205,8 +205,8 @@ export class TasksEmulator implements EmulatorInstance {
       if (!this.validateQueueId(queueName)) {
         res.status(400).json({
           error:
-            "Queue ID must start with a letter followed by up to 62 letters, numbers, " +
-            "hyphens, or underscores and must end with a letter or a number",
+            "Queue ID can contain only letters ([A-Za-z]), numbers ([0-9]), or hyphens (-). Queue ID " +
+            "must be between 1 and 100 characters.",
         });
         return;
       }
@@ -268,7 +268,9 @@ export class TasksEmulator implements EmulatorInstance {
       req.body.task.name =
         req.body.task.name ??
         `/projects/${projectId}/locations/${locationId}/queues/${queueName}/tasks/${Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)}`;
-      req.body.task.httpRequest.body = JSON.parse(atob(req.body.task.httpRequest.body));
+      req.body.task.httpRequest.body = JSON.parse(
+        Buffer.from(req.body.task.httpRequest.body, "base64").toString("utf-8"),
+      );
 
       const task = req.body.task as Task;
 

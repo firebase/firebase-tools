@@ -1,5 +1,178 @@
 ## NEXT
 
+## 2.4.6
+
+- Update internal `firebase-tools` dependency to 15.37.0
+
+## 2.4.5
+
+- Update internal `firebase-tools` dependency to 15.36.0
+
+## 2.4.4
+
+- Update internal `firebase-tools` dependency to 15.35.0
+- [Fixed] Fix false warning about missing Firebase CLI by checking configured `firebasePath` and using robust version parsing.
+
+## 2.4.3
+
+- Update internal `firebase-tools` dependency to 15.24.0
+
+## 2.4.2
+
+- Update internal `firebase-tools` dependency to 15.22.4
+
+## 2.4.1
+
+- Update internal `firebase-tools` dependency to 15.21.0
+- [Changed] Rename "Run (local)" code lens to "Run (Emulator)".
+- [Fixed] Fix auth issue from Generate Operation button by skipping unnecessary schema compilation check.
+- [Fixed] 'Configure emulator' link hover does not hint it's clickable.
+
+## 2.4.0
+
+- Update internal `firebase-tools` dependency to 15.20.0
+- [Changed] Replace generateSchema and generateQuery backends with the new fdc AgentService API.
+- [Added] Improved error handling and status updates for query generation
+- [Added] Local schema aware query generation
+
+## 2.3.3
+
+- Update internal `firebase-tools` dependency to 15.19.0
+
+## 2.3.2
+
+- Update internal `firebase-tools` dependency to 15.18.0
+
+## 2.3.1
+
+- Update internal `firebase-tools` dependency to 15.16.0
+
+## 2.3.0
+
+- Rename product from Firebase Data Connect to Firebase SQL Connect.
+
+## 2.2.3
+
+- Update internal `firebase-tools` dependency to 15.13.0
+
+## 2.2.2
+
+- Update internal `firebase-tools` dependency to 15.12.0
+
+## 2.2.1
+
+- Update internal `firebase-tools` dependency to 15.10.0
+
+## 2.2.0
+
+- Update internal `firebase-tools` dependency to 15.9.0
+
+## 2.1.2
+
+- Update internal `firebase-tools` dependency to 15.7.0
+
+## 2.1.1
+
+- Update internal `firebase-tools` dependency to 15.5.1
+- Surface Compiler error / warnings at the right diagnosis level (#9805)
+
+## 2.1.0
+
+- Update internal `firebase-tools` dependency to 15.4.0
+- Render GraphQL error debug details and error code in the execution panel nicely. (#9769, #9785)
+- Language server now recognizes multiple schemas. (#9768)
+
+## 2.0.1
+
+- Update internal `firebase-tools` dependency to 15.3.1
+- Fix the data connect emulator discovery bugs.
+
+## 2.0.0
+
+- Update internal `firebase-tools` dependency to 15.0.0
+- [Fixed] common code lens rendering issue.
+  - Don't show "Generate query" in schema file.
+  - Don't show "Generate query" for comments within an operation.
+  - Show "Add Data" for @table type only.
+  - Show "View Data" for @table and @view type.
+- [Fixed] Integration test for recent variables panel changes
+
+## 1.10.2
+
+- Update internal `firebase-tools` dependency to 14.27.0
+
+## 1.10.1
+
+- Update internal `firebase-tools` dependency to 14.24.2
+
+## 1.10.0
+
+- [Fixed] Populate correct default values of missing required variables.
+- [Added] Display the execution variables and auth params used.
+- [Added] Allow rerun any executions in the history.
+- Update internal `firebase-tools` dependency to 14.20.0
+
+## 1.9.0
+
+- [Added] Refine / Generate Operation Code Lens.
+- [Added] Support run "firebase init" without login and project.
+- Update internal `firebase-tools` dependency to 14.19.1
+
+## 1.8.0
+
+- [Changed] Gemini Code Assist is now optionally installed when using the "Build with AI" feature
+
+## 1.7.0
+
+- Update internal `firebase-tools` dependency to 14.15.2
+- Fixed the projectless developer experience. There are "error linter", "run (local)" buttons.
+
+## 1.6.1
+
+- Update internal `firebase-tools` dependency to 14.13.0
+
+## 1.6.0
+
+- Update internal `firebase-tools` dependency to 14.11.1
+- [Changed] Now integrates with GCA in its agentic mode, powered by the Gemini CLI. This brings the Firebase MCP Server directly into the VS Code environment, enabling developers to use natural language to generate application schemas and queries without manually invoking explicit tools.
+
+## 1.5.1
+
+- Update internal `firebase-tools` dependency to 14.11.0
+- [Fixed] Language server now properly recognizes nested Dataconnect folders
+- [Fixed] Add Data and Read Data now properly support enum and list types
+
+## 1.5.0
+
+- Update internal `firebase-tools` dependency to 14.9.0
+- Update internal `graphql-language-server` dependency
+- Update internal `graphql-language-service-server` dependency
+- [Changed] Graphql Syntax Highlighter is now an extension dependency
+- [Fixed] Language server now recognizes fragments in other files
+
+## 1.4.1
+
+- Update internal `firebase-tools` dependency to 14.6.0
+- [Changed] Updated Gemini Tool name to @FirebaseDataConnect
+
+## 1.4.0
+
+- Update internal `firebase-tools` dependency to 14.4.0
+- [Added] @data-connect tool callable from the Gemini Code Assist extension.
+
+## 1.3.1
+
+- Updated internal `firebase-tools` dependency to 14.2.1
+
+## 1.3.0
+
+- [Fixed] Fixed an issue where adhoc operations would fail to execute
+
+## 1.2.0
+
+- Updated internal `firebase-tools` dependency to 14.2.0
+- [Fixed] Fragments now properly validate for execution
+
 ## 1.1.0
 
 - Updated internal `firebase-tools` dependency to 14.1.0

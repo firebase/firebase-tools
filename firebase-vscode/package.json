@@ -1,15 +1,18 @@
 {
   "name": "firebase-dataconnect-vscode",
-  "displayName": "Firebase Data Connect",
+  "displayName": "Firebase SQL Connect",
   "publisher": "GoogleCloudTools",
   "icon": "./resources/firebase_dataconnect_logo.png",
-  "description": "Firebase Data Connect for VSCode",
-  "version": "1.1.0",
+  "description": "Firebase SQL Connect for VSCode",
+  "version": "2.4.6",
   "engines": {
     "vscode": "^1.69.0"
   },
   "repository": "https://github.com/firebase/firebase-tools",
   "sideEffects": false,
+  "extensionDependencies": [
+    "graphql.vscode-graphql-syntax"
+  ],
   "categories": [
     "Other"
   ],
@@ -33,7 +36,7 @@
       },
       {
         "command": "fdc.deploy",
-        "title": "Firebase Data Connect: Deploy",
+        "title": "Firebase SQL Connect: Deploy",
         "icon": "$(cloud-upload)"
       },
       {
@@ -42,7 +45,7 @@
       },
       {
         "command": "firebase.refresh",
-        "title": "Firebase Data Connect Extension: Refresh"
+        "title": "Firebase SQL Connect Extension: Refresh"
       }
     ],
     "configuration": {
@@ -108,14 +111,14 @@
       "activitybar": [
         {
           "id": "firebase-data-connect",
-          "title": "Firebase Data Connect",
+          "title": "Firebase SQL Connect",
           "icon": "resources/firebase_dataconnect_logo.svg"
         }
       ],
       "panel": [
         {
           "id": "firebase-data-connect-execution-view",
-          "title": "Data Connect Execution",
+          "title": "SQL Connect Execution",
           "icon": "$(gmp-data-connect)"
         }
       ]
@@ -129,7 +132,7 @@
         }
       },
       "gmp-data-connect": {
-        "description": "Data Connect icon",
+        "description": "SQL Connect icon",
         "default": {
           "fontPath": "./resources/GMPIcons.woff2",
           "fontCharacter": "\\gmp_nav20_dataconnect"
@@ -155,13 +158,8 @@
       "firebase-data-connect-execution-view": [
         {
           "type": "webview",
-          "id": "data-connect-execution-configuration",
-          "name": "Configuration",
-          "when": "firebase-vscode.fdc.enabled"
-        },
-        {
-          "id": "data-connect-execution-history",
-          "name": "History",
+          "id": "data-connect-execution-parameters",
+          "name": "Parameters",
           "when": "firebase-vscode.fdc.enabled"
         },
         {
@@ -169,6 +167,12 @@
           "id": "data-connect-execution-results",
           "name": "Results",
           "when": "firebase-vscode.fdc.enabled"
+        },
+        {
+          "id": "data-connect-execution-history",
+          "name": "History",
+          "when": "firebase-vscode.fdc.enabled",
+          "visibility": "collapsed"
         }
       ]
     },
@@ -181,13 +185,13 @@
     "jsonValidation": [
       {
         "fileMatch": "firebase.json",
-        "url": "https://raw.githubusercontent.com/firebase/firebase-tools/master/schema/firebase-config.json"
+        "url": "https://raw.githubusercontent.com/firebase/firebase-tools/main/schema/firebase-config.json"
       }
     ],
     "yamlValidation": [
       {
         "fileMatch": "extension.yaml",
-        "url": "https://raw.githubusercontent.com/firebase/firebase-tools/master/schema/extension-yaml.json"
+        "url": "https://raw.githubusercontent.com/firebase/firebase-tools/main/schema/extension-yaml.json"
       },
       {
         "fileMatch": "dataconnect.yaml",
@@ -200,6 +204,7 @@
     ]
   },
   "scripts": {
+    "sanitize:lockfile": "node ../scripts/sanitize-lockfile.js",
     "vscode:prepublish": "npm run build",
     "copyfiles": "cp -r node_modules/@vscode/codicons/dist resources/dist",
     "pkg": "vsce package",
@@ -213,6 +218,8 @@
     "test-compile": "npm run copyfiles && webpack --config src/test/webpack.test.js",
     "lint": "eslint src --ext ts",
     "test": "npm run test:unit && npm run test:e2e",
+    "install:extensions": "code-server --install-extension graphql.vscode-graphql-syntax --extensions-dir ./prebuilt-extensions/",
+    "pretest:e2e": "curl -fsSL https://code-server.dev/install.sh | sh -s -- --edge && npm run install:extensions",
     "pretest:unit": "npm run test-compile && tsc -p src/test/tsconfig.test.json",
     "test:unit": "node ./dist/test/firebase-vscode/src/test/runTest.js",
     "test:e2e": "npm run test:e2e:empty && npm run test:e2e:fishfood",
@@ -228,8 +235,8 @@
     "@vscode/webview-ui-toolkit": "^1.2.1",
     "classnames": "^2.3.2",
     "exponential-backoff": "3.1.1",
-    "graphql-language-service": "file:graphql-language-service-5.2.0.tgz",
-    "graphql-language-service-server": "file:graphql-language-service-server-2.12.0.tgz",
+    "graphql-language-service": "file:graphql-language-service-5.4.0.tgz",
+    "graphql-language-service-server": "file:graphql-language-service-server-2.14.8.tgz",
     "js-yaml": "^4.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -256,7 +263,7 @@
     "eslint-plugin-react": "^7.32.2",
     "fork-ts-checker-webpack-plugin": "^7.3.0",
     "glob": "^8.0.3",
-    "graphql": "^16.7.1",
+    "graphql": "file:graphql-16.12.0.tgz",
     "mini-css-extract-plugin": "^2.6.0",
     "mocha": "^10.1.0",
     "node-loader": "2.0.0",
@@ -265,11 +272,15 @@
     "sass": "^1.52.0",
     "sass-loader": "^13.0.0",
     "string-replace-loader": "^3.1.0",
+    "puppeteer-core": "^22.15.0",
     "ts-loader": "^9.4.2",
     "typescript": "^4.9.3",
     "wdio-vscode-service": "^6.1.1",
     "webpack": "^5.75.0",
     "webpack-cli": "^5.0.1",
     "webpack-merge": "^5.8.0"
+  },
+  "overrides": {
+    "qs": "~6.14.1"
   }
 }

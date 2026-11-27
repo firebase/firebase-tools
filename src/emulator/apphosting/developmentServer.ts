@@ -32,9 +32,10 @@ export async function detectPackageManager(rootdir: string): Promise<PackageMana
   throw new FirebaseError("Unsupported package manager");
 }
 
-export async function detectStartCommand(rootDir: string) {
+export async function detectPackageManagerStartCommand(rootDir: string) {
   try {
     const packageManager = await detectPackageManager(rootDir);
+    // TODO: This is not ideal for angular apps which don't usually have a dev script.
     return `${packageManager} run dev`;
   } catch (e) {
     throw new FirebaseError(

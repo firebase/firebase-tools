@@ -1,4 +1,4 @@
-import * as uuid from "uuid";
+import { randomUUID } from "crypto";
 
 import { EmulatorRegistry } from "../registry";
 import { Emulators } from "../types";
@@ -22,7 +22,7 @@ export class StorageCloudFunctions {
   private enabled = false;
   private client?: Client;
 
-  constructor(private projectId: string) {
+  constructor(projectId: string) {
     if (EmulatorRegistry.isRunning(Emulators.FUNCTIONS)) {
       this.enabled = true;
       this.multicastPath = `/functions/projects/${projectId}/trigger_multicast`;
@@ -107,7 +107,7 @@ export class StorageCloudFunctions {
     }
     return {
       specversion: "1.0",
-      id: uuid.v4(),
+      id: randomUUID(),
       type: `google.cloud.storage.object.v1.${ceAction}`,
       source: `//storage.googleapis.com/projects/_/buckets/${objectMetadataPayload.bucket}/objects/${objectMetadataPayload.name}`,
       time,

@@ -15,6 +15,11 @@ import { onCallGenkit, hasClaim } from "firebase-functions/https";
 import { defineSecret } from "firebase-functions/params";
 const apiKey = defineSecret("GOOGLE_GENAI_API_KEY");
 
+// The Firebase telemetry plugin exports a combination of metrics, traces, and logs to Google Cloud
+// Observability. See https://firebase.google.com/docs/genkit/observability/telemetry-collection.
+$TELEMETRY_COMMENTimport {enableFirebaseTelemetry} from "@genkit-ai/firebase";
+$TELEMETRY_COMMENTenableFirebaseTelemetry();
+
 const ai = genkit({
   plugins: [
 $GENKIT_CONFIG_PLUGINS

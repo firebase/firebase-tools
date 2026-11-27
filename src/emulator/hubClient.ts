@@ -6,7 +6,7 @@ import { ExportOptions } from "./hubExport";
 export class EmulatorHubClient {
   private locator: Locator | undefined;
 
-  constructor(private projectId: string) {
+  constructor(private projectId: string | undefined) {
     this.locator = EmulatorHub.readLocatorFile(projectId);
   }
 

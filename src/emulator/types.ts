@@ -1,6 +1,8 @@
 import { ChildProcess } from "child_process";
 import { EventEmitter } from "events";
 
+import { getErrStack } from "../error";
+
 export enum Emulators {
   AUTH = "auth",
   HUB = "hub",
@@ -150,14 +152,14 @@ export interface EmulatorInfo {
   pid?: number;
   reservedPorts?: number[];
 
-  // All addresses that an emulator listens on.
+  /** All addresses that an emulator listens on. */
   listen?: ListenSpec[];
 
-  // The primary IP address that the emulator listens on.
+  /** The primary IP address that the emulator listens on. */
   host: string;
   port: number;
 
-  // How long to wait for the emulator to start before erroring out.
+  /** How long to wait for the emulator to start before erroring out. */
   timeout?: number;
 }
 
@@ -185,26 +187,34 @@ export interface EmulatorUpdateDetails {
   version: string;
   expectedSize: number;
   expectedChecksum: string;
+  expectedChecksumSHA256: string; // TODO: Use this for validation within the CLI as well.
+  remoteUrl: string;
+  downloadPathRelativeToCacheDir: string;
+  binaryPathRelativeToCacheDir?: string;
 }
 
 export interface EmulatorDownloadDetails {
   opts: EmulatorDownloadOptions;
 
-  // Semver version string
+  /** Semver version string */
   version: string;
 
-  // The path to download the binary or archive from the remote source
+  /** The path to download the binary or archive from the remote source */
   downloadPath: string;
 
-  // If specified, the artifact at 'downloadPath' is assumed to be a .zip and
-  // will be unzipped into 'unzipDir'
+  /**
+   * If specified, the artifact at 'downloadPath' is assumed to be a .zip and
+   * will be unzipped into 'unzipDir'
+   */
   unzipDir?: string;
 
-  // If specified, a path where the runnable binary can be found after downloading and
-  // unzipping. Otherwise downloadPath will be used.
+  /**
+   * If specified, a path where the runnable binary can be found after downloading and
+   * unzipping. Otherwise downloadPath will be used.
+   */
   binaryPath?: string;
 
-  // If true, never try to download this emualtor. Set when developing with local versions of an emulator.
+  /** If true, never try to download this emualtor. Set when developing with local versions of an emulator. */
   localOnly?: boolean;
 }
 
@@ -276,7 +286,7 @@ export class EmulatorLog {
     let isNotJSON = false;
     try {
       parsedLog = JSON.parse(json);
-    } catch (err: any) {
+    } catch (err: unknown) {
       isNotJSON = true;
     }
 
@@ -349,12 +359,15 @@ export class EmulatorLog {
 
     EmulatorLog.WAITING_FOR_FLUSH = true;
     if (process.send) {
-      // For some reason our node.d.ts file does not include the version of subprocess.send() with a callback
-      // but the node docs assert that it has an optional callback.
       // https://nodejs.org/api/child_process.html#child_process_subprocess_send_message_sendhandle_options_callback
-      (process.send as any)(nextMsg, undefined, {}, (err: any) => {
+      process.send(nextMsg, undefined, {}, (err: Error | null) => {
         if (err) {
-          process.stderr.write(err);
+          // process.send() hands the callback an Error object, which stream.write()
+          // rejects -- writing it directly throws and destroys the original error.
+          process.stderr.write(`${getErrStack(err)}\n`);
+          // Clear the buffer to prevent flooding stderr with duplicate stack traces
+          // for subsequent messages when the IPC channel is permanently broken.
+          EmulatorLog.LOG_BUFFER = [];
         }
 
         EmulatorLog.WAITING_FOR_FLUSH = EmulatorLog.LOG_BUFFER.length > 0;

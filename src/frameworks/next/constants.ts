@@ -8,6 +8,7 @@ import type {
   ROUTES_MANIFEST as ROUTES_MANIFEST_TYPE,
   APP_PATHS_MANIFEST as APP_PATHS_MANIFEST_TYPE,
   SERVER_REFERENCE_MANIFEST as SERVER_REFERENCE_MANIFEST_TYPE,
+  FUNCTIONS_CONFIG_MANIFEST as FUNCTIONS_CONFIG_MANIFEST_TYPE,
 } from "next/constants";
 import type { WEBPACK_LAYERS as NEXTJS_WEBPACK_LAYERS } from "next/dist/lib/constants";
 
@@ -16,6 +17,8 @@ export const APP_PATH_ROUTES_MANIFEST: typeof APP_PATH_ROUTES_MANIFEST_TYPE =
 export const EXPORT_MARKER: typeof EXPORT_MARKER_TYPE = "export-marker.json";
 export const IMAGES_MANIFEST: typeof IMAGES_MANIFEST_TYPE = "images-manifest.json";
 export const MIDDLEWARE_MANIFEST: typeof MIDDLEWARE_MANIFEST_TYPE = "middleware-manifest.json";
+export const FUNCTIONS_CONFIG_MANIFEST: typeof FUNCTIONS_CONFIG_MANIFEST_TYPE =
+  "functions-config-manifest.json";
 export const PAGES_MANIFEST: typeof PAGES_MANIFEST_TYPE = "pages-manifest.json";
 export const PRERENDER_MANIFEST: typeof PRERENDER_MANIFEST_TYPE = "prerender-manifest.json";
 export const ROUTES_MANIFEST: typeof ROUTES_MANIFEST_TYPE = "routes-manifest.json";
@@ -23,7 +26,12 @@ export const APP_PATHS_MANIFEST: typeof APP_PATHS_MANIFEST_TYPE = "app-paths-man
 export const SERVER_REFERENCE_MANIFEST: `${typeof SERVER_REFERENCE_MANIFEST_TYPE}.json` =
   "server-reference-manifest.json";
 
-export const CONFIG_FILES = ["next.config.js", "next.config.mjs"] as const;
+export const CONFIG_FILES = [
+  "next.config.js",
+  "next.config.mjs",
+  "next.config.ts",
+  "next.config.mts",
+] as const;
 
 export const ESBUILD_VERSION = "^0.19.2";
 
@@ -64,26 +72,36 @@ const WEBPACK_LAYERS_NAMES = {
 // This is copied from Next.js source code to keep WEBPACK_LAYERS in sync with the Next.js definition.
 export const WEBPACK_LAYERS: typeof NEXTJS_WEBPACK_LAYERS = {
   ...WEBPACK_LAYERS_NAMES,
+  pagesDirBrowser: "pages-dir-browser",
+  pagesDirEdge: "pages-dir-edge",
+  pagesDirNode: "pages-dir-node",
+  apiNode: "api-node",
+  apiEdge: "api-edge",
+  instrument: "instrument",
   GROUP: {
-    server: [
-      WEBPACK_LAYERS_NAMES.reactServerComponents,
-      WEBPACK_LAYERS_NAMES.actionBrowser,
-      WEBPACK_LAYERS_NAMES.appMetadataRoute,
-      WEBPACK_LAYERS_NAMES.appRouteHandler,
-    ],
-    nonClientServerTarget: [
-      // plus middleware and pages api
+    builtinReact: [WEBPACK_LAYERS_NAMES.reactServerComponents, WEBPACK_LAYERS_NAMES.actionBrowser],
+    serverOnly: [
       WEBPACK_LAYERS_NAMES.middleware,
-      WEBPACK_LAYERS_NAMES.api,
-    ],
-    app: [
       WEBPACK_LAYERS_NAMES.reactServerComponents,
       WEBPACK_LAYERS_NAMES.actionBrowser,
-      WEBPACK_LAYERS_NAMES.appMetadataRoute,
-      WEBPACK_LAYERS_NAMES.appRouteHandler,
-      WEBPACK_LAYERS_NAMES.serverSideRendering,
-      WEBPACK_LAYERS_NAMES.appPagesBrowser,
+      "instrument",
+    ],
+    neutralTarget: ["api-node", "api-edge"],
+    clientOnly: [WEBPACK_LAYERS_NAMES.serverSideRendering, WEBPACK_LAYERS_NAMES.appPagesBrowser],
+    bundled: [
       WEBPACK_LAYERS_NAMES.shared,
+      WEBPACK_LAYERS_NAMES.middleware,
+      WEBPACK_LAYERS_NAMES.reactServerComponents,
+      WEBPACK_LAYERS_NAMES.serverSideRendering,
+      WEBPACK_LAYERS_NAMES.actionBrowser,
+      "instrument",
+      WEBPACK_LAYERS_NAMES.appPagesBrowser,
+    ],
+    appPages: [
+      WEBPACK_LAYERS_NAMES.reactServerComponents,
+      WEBPACK_LAYERS_NAMES.serverSideRendering,
+      WEBPACK_LAYERS_NAMES.actionBrowser,
+      WEBPACK_LAYERS_NAMES.appPagesBrowser,
     ],
   },
 };

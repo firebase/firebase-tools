@@ -20,7 +20,8 @@ describe("WorkQueue", () => {
 
     beforeEach(() => {
       queue = new WorkQueue(FunctionsExecutionMode.AUTO, MAX_PARALLEL);
-      queue.start();
+      // Runs until afterEach calls stop().
+      void queue.start();
     });
 
     afterEach(() => {
@@ -90,7 +91,8 @@ describe("WorkQueue", () => {
     let queue: WorkQueue;
     beforeEach(() => {
       queue = new WorkQueue(FunctionsExecutionMode.SEQUENTIAL);
-      queue.start();
+      // Runs until afterEach calls stop().
+      void queue.start();
     });
 
     afterEach(() => {
@@ -130,7 +132,7 @@ describe("WorkQueue", () => {
       let hasRun1 = false;
       const work1 = () => {
         hasRun1 = true;
-        return Promise.reject();
+        return Promise.reject(new Error("job failed"));
       };
 
       let hasRun2 = false;

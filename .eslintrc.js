@@ -14,6 +14,7 @@ module.exports = {
   rules: {
     "jsdoc/newline-after-description": "off",
     "jsdoc/require-jsdoc": ["warn", { publicOnly: true }],
+    "no-constant-condition": ["error", { checkLoops: false }], // Allow intentional `while (true)` and `do ... while (true)` loops.
     "no-restricted-globals": ["error", "name", "length"],
     "prefer-arrow-callback": "error",
     "prettier/prettier": "error",
@@ -30,9 +31,6 @@ module.exports = {
         ],
       },
     ],
-    "no-prototype-builtins": "warn", // TODO(bkendall): remove, allow to error.
-    "no-useless-escape": "warn", // TODO(bkendall): remove, allow to error.
-    "prefer-promise-reject-errors": "warn", // TODO(bkendall): remove, allow to error.
   },
   overrides: [
     {
@@ -47,33 +45,22 @@ module.exports = {
 
         "@typescript-eslint/no-invalid-this": "error",
         "@typescript-eslint/no-unused-vars": "error", // Unused vars should not exist.
+        "@typescript-eslint/require-await": "off", // sometimes async functions don't do await stuff for valid reasons.
         "no-invalid-this": "off", // Turned off in favor of @typescript-eslint/no-invalid-this.
         "no-unused-vars": "off", // Off in favor of @typescript-eslint/no-unused-vars.
         eqeqeq: ["error", "always", { null: "ignore" }],
         camelcase: ["error", { properties: "never" }], // snake_case allowed in properties iif to satisfy an external contract / style
 
-        "@typescript-eslint/ban-types": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/explicit-function-return-type": ["warn", { allowExpressions: true }], // TODO(bkendall): SET to error.
-        "@typescript-eslint/no-extra-non-null-assertion": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-floating-promises": "warn", // TODO(bkendall): remove, allow to error.
-        "@typescript-eslint/no-inferrable-types": "warn", // TODO(bkendall): remove, allow to error.
-        "@typescript-eslint/no-misused-promises": "warn", // TODO(bkendall): remove, allow to error.
-        "@typescript-eslint/no-unnecessary-type-assertion": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-unsafe-argument": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-unsafe-assignment": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-unsafe-call": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-unsafe-member-access": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-unsafe-return": "warn", // TODO(bkendall): remove, allow to error.
-        "@typescript-eslint/no-use-before-define": ["warn", { functions: false, typedefs: false }], // TODO(bkendall): change to error.
         "@typescript-eslint/no-var-requires": "warn", // TODO(bkendall): remove, allow to error.
-        "@typescript-eslint/prefer-includes": "warn", // TODO(bkendall): remove, allow to error.
-        "@typescript-eslint/prefer-regexp-exec": "warn", // TODO(bkendall): remove, allow to error.
-        "@typescript-eslint/prefer-string-starts-ends-with": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/restrict-plus-operands": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/restrict-template-expressions": "warn", // TODO(bkendall): remove, allow to error.
-        "no-case-declarations": "warn", // TODO(bkendall): remove, allow to error.
-        "no-constant-condition": "warn", // TODO(bkendall): remove, allow to error.
-        "no-fallthrough": "warn", // TODO(bkendall): remove, allow to error.
       },
     },
     {
@@ -89,10 +76,8 @@ module.exports = {
         "@typescript-eslint/no-unsafe-call": "off",
         "@typescript-eslint/no-unsafe-member-access": "off",
         "@typescript-eslint/no-unsafe-return": "off",
-        "@typescript-eslint/no-use-before-define": "off",
         "@typescript-eslint/no-var-requires": "off",
         "@typescript-eslint/prefer-includes": "off",
-        "@typescript-eslint/prefer-regexp-exec": "off",
         "@typescript-eslint/restrict-plus-operands": "off",
         "@typescript-eslint/restrict-template-expressions": "off",
         "@typescript-eslint/unbound-method": "off",
@@ -106,7 +91,42 @@ module.exports = {
       env: {
         mocha: true,
       },
-      rules: {},
+      rules: {
+        "no-restricted-syntax": [
+          "error",
+          {
+            selector:
+              "CallExpression[callee.object.name='nock'][callee.property.name='enableNetConnect'][arguments.length=0]",
+            message:
+              "Unscoped nock.enableNetConnect() is prohibited in unit tests. Net-connect policies are managed globally by mocha-bootstrap.js. If specific host matching is required, provide an explicit host matcher argument.",
+          },
+        ],
+      },
+    },
+    {
+      files: ["src/mcp/tools/**/*.ts", "src/mcp/prompts/**/*.ts", "src/mcp/resources/**/*.ts"],
+      rules: { camelcase: "off" },
+    },
+    {
+      files: ["*.ts"],
+      excludedFiles: ["*.d.ts"],
+      rules: {
+        // ESM-only packages: a static import compiles to require(), which throws ERR_REQUIRE_ESM
+        // on Node.js without require(esm) support, including the standalone binary's runtime.
+        // See https://github.com/firebase/firebase-tools/issues/11168.
+        "no-restricted-imports": [
+          "error",
+          {
+            patterns: [
+              {
+                group: ["stream-chain", "stream-chain/*", "stream-json", "stream-json/*"],
+                message:
+                  "stream-chain and stream-json are ESM-only; use loadStreamJson() from src/streamJson.ts.",
+              },
+            ],
+          },
+        ],
+      },
     },
   ],
   globals: {},
@@ -131,7 +151,6 @@ module.exports = {
   // TODO(jamesdaniels): add this to overrides instead
   ignorePatterns: [
     "src/dynamicImport.js",
-    "src/emulator/dataconnect/pg-gateway",
     "scripts/webframeworks-deploy-tests/nextjs/**",
     "scripts/webframeworks-deploy-tests/angular/**",
     "scripts/frameworks-tests/vite-project/**",

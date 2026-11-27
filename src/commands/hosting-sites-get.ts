@@ -1,6 +1,6 @@
 import * as Table from "cli-table3";
 import { Command } from "../command";
-import { Site, getSite } from "../hosting/api";
+import { Site, getSite, ensureApiEnabled } from "../hosting/api";
 import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
 import { logger } from "../logger";
@@ -9,6 +9,7 @@ import { FirebaseError } from "../error";
 export const command = new Command("hosting:sites:get <siteId>")
   .description("print info about a Firebase Hosting site")
   .before(requirePermissions, ["firebasehosting.sites.get"])
+  .before((options) => ensureApiEnabled(needProjectId(options)))
   .action(async (siteId: string, options): Promise<Site> => {
     const projectId = needProjectId(options);
     if (!siteId) {

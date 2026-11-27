@@ -21,7 +21,7 @@ const I18N_BASE = "";
 const DEFAULT_LANG = "en";
 const LOG_FILE = "firebase-debug.log";
 const NEXT_SOURCE = `${__dirname}/nextjs`;
-const PATH_SEPARATOR = IS_WINDOWS ? `\\\\` : `\/`;
+const PATH_SEPARATOR = IS_WINDOWS ? `\\\\` : `/`;
 
 async function getFilesListFromDir(dir: string): Promise<string[]> {
   const files = await glob(`${dir}/**/*`, { nodir: true });
@@ -68,10 +68,6 @@ describe("webframeworks", function (this) {
               region: "asia-east1",
             },
             rewrites: [
-              {
-                destination: "/base",
-                source: "/base/about",
-              },
               {
                 source: "/base/**",
                 function: {
@@ -136,7 +132,7 @@ describe("webframeworks", function (this) {
                 headers: [
                   {
                     key: "x-nextjs-stale-time",
-                    value: "4294967294",
+                    value: "300",
                   },
                   {
                     key: "x-nextjs-prerender",
@@ -155,7 +151,7 @@ describe("webframeworks", function (this) {
                 headers: [
                   {
                     key: "x-nextjs-stale-time",
-                    value: "4294967294",
+                    value: "300",
                   },
                   {
                     key: "x-nextjs-prerender",
@@ -172,7 +168,7 @@ describe("webframeworks", function (this) {
                 headers: [
                   {
                     key: "x-nextjs-stale-time",
-                    value: "4294967294",
+                    value: "300",
                   },
                   {
                     key: "x-nextjs-prerender",
@@ -190,7 +186,7 @@ describe("webframeworks", function (this) {
                 headers: [
                   {
                     key: "x-nextjs-stale-time",
-                    value: "4294967294",
+                    value: "300",
                   },
                   {
                     key: "x-nextjs-prerender",
@@ -303,16 +299,18 @@ describe("webframeworks", function (this) {
       it("should have working ISR", async () => {
         const response = await fetch(`${NEXTJS_HOST}/app/isr`);
         expect(response.ok).to.be.true;
-        expect(response.headers.get("cache-control")).to.eql(
-          "private, no-cache, no-store, max-age=0, must-revalidate",
-        );
-        expect(await response.text()).to.include("<body>ISR");
+        expect(response.headers.get("cache-control")).to.include("s-maxage=60");
+        const text = await response.text();
+        expect(text).to.include("<body>");
+        expect(text).to.include("ISR");
       });
 
       it("should have working SSR", async () => {
         const bazResponse = await fetch(`${NEXTJS_HOST}/app/ssr`);
         expect(bazResponse.ok).to.be.true;
-        expect(await bazResponse.text()).to.include("<body>SSR");
+        const text = await bazResponse.text();
+        expect(text).to.include("<body>");
+        expect(text).to.include("SSR");
       });
 
       it("should have working dynamic routes", async () => {
@@ -325,7 +323,9 @@ describe("webframeworks", function (this) {
       it("should have working image", async () => {
         const response = await fetch(`${NEXTJS_HOST}/app/image`);
         expect(response.ok).to.be.true;
-        expect(await response.text()).to.include("<body><img");
+        const text = await response.text();
+        expect(text).to.include("<body>");
+        expect(text).to.include("<img");
       });
     });
 
@@ -357,7 +357,7 @@ describe("webframeworks", function (this) {
       it("should have working ISR", async () => {
         const response = await fetch(`${NEXTJS_HOST}/pages/isr`);
         expect(response.ok).to.be.true;
-        expect(response.headers.get("cache-control")).to.eql("private");
+        expect(response.headers.get("cache-control")).to.include("s-maxage=10");
         expect(await response.text()).to.include(`ISR <!-- -->${DEFAULT_LANG}`);
       });
     });
@@ -384,32 +384,36 @@ describe("webframeworks", function (this) {
       const EXPECTED_FILES = ["", "en", "fr"]
         .flatMap((locale) => [
           ...(locale
-            ? [1, 2].map((num) =>
-                join(
-                  NEXT_BASE_PATH,
-                  "_next",
-                  "data",
-                  buildId,
-                  locale,
-                  "pages",
-                  "fallback",
-                  `${num}.json`,
+            ? [
+                ...[1, 2].map((num) =>
+                  join(
+                    NEXT_BASE_PATH,
+                    "_next",
+                    "data",
+                    buildId,
+                    locale,
+                    "pages",
+                    "fallback",
+                    `${num}.json`,
+                  ),
                 ),
-              )
+                join(NEXT_BASE_PATH, "_next", "data", buildId, locale, "pages", "ssg.json"),
+              ]
             : [
-                join(NEXT_BASE_PATH, "_next", "data", buildId, "pages", "ssg.json"),
                 join(NEXT_BASE_PATH, "_next", "static", buildId, "_buildManifest.js"),
                 join(NEXT_BASE_PATH, "_next", "static", buildId, "_ssgManifest.js"),
+                join(NEXT_BASE_PATH, "_next", "static", buildId, "_clientMiddlewareManifest.js"),
                 join(NEXT_BASE_PATH, "app", "api", "static"),
                 join(NEXT_BASE_PATH, "app", "image.html"),
                 join(NEXT_BASE_PATH, "app", "ssg.html"),
                 join(NEXT_BASE_PATH, "404.html"),
+                join(NEXT_BASE_PATH, "_not-found.html"),
               ]),
           join(I18N_BASE, locale, NEXT_BASE_PATH, "pages", "fallback", "1.html"),
           join(I18N_BASE, locale, NEXT_BASE_PATH, "pages", "fallback", "2.html"),
           join(I18N_BASE, locale, NEXT_BASE_PATH, "pages", "ssg.html"),
-          // TODO(jamesdaniels) figure out why 404 isn't being translated
-          // `/${I18N_BASE}/${locale}/${NEXT_BASE_PATH}/404.html`,
+          // Next.js >= 16.4 also emits a translated 404 page per locale.
+          ...(locale ? [join(I18N_BASE, locale, NEXT_BASE_PATH, "404.html")] : []),
           join(I18N_BASE, locale, NEXT_BASE_PATH, "500.html"),
           join(I18N_BASE, locale, NEXT_BASE_PATH, "index.html"),
         ])
@@ -417,16 +421,10 @@ describe("webframeworks", function (this) {
         .map((it) => (it.startsWith("/") ? it.substring(1) : it));
 
       const EXPECTED_PATTERNS = [
-        [NEXT_BASE_PATH, "_next", "static", "chunks", `[^-]+-[^.]+.js`],
-        [NEXT_BASE_PATH, "_next", "static", "chunks", "app", `layout-[^.]+.js`],
-        [NEXT_BASE_PATH, "_next", "static", "chunks", `main-[^.]+.js`],
-        [NEXT_BASE_PATH, "_next", "static", "chunks", `main-app-[^.]+.js`],
-        [NEXT_BASE_PATH, "_next", "static", "chunks", "pages", `_app-[^.]+.js`],
-        [NEXT_BASE_PATH, "_next", "static", "chunks", "pages", `_error-[^.]+.js`],
-        [NEXT_BASE_PATH, "_next", "static", "chunks", "pages", `index-[^.]+.js`],
-        [NEXT_BASE_PATH, "_next", "static", "chunks", `polyfills-[^.]+.js`],
-        [NEXT_BASE_PATH, "_next", "static", "chunks", `webpack-[^.]+.js`],
-        [NEXT_BASE_PATH, "_next", "static", "css", `[^.]+.css`],
+        [NEXT_BASE_PATH, "_next", "static", "chunks", `turbopack-[^.]+\\.js`],
+        [NEXT_BASE_PATH, "_next", "static", "chunks", `[a-zA-Z0-9~_.-]+\\.js`],
+        [NEXT_BASE_PATH, "_next", "static", "chunks", `[a-zA-Z0-9~_.-]+\\.css`],
+        [NEXT_BASE_PATH, "_next", "static", "[^/]+", "_clientMiddlewareManifest\\.js"],
       ].map((it) => new RegExp(it.filter(Boolean).join(PATH_SEPARATOR)));
 
       const files = await getFilesListFromDir(`${NEXT_OUTPUT_PATH}/hosting`);
@@ -449,8 +447,8 @@ describe("webframeworks", function (this) {
       const distDir = ".next";
 
       const UNEXPECTED_PATTERNS = [
-        `${distDir}\/cache\/.*-development`,
-        `${distDir}\/cache\/eslint`,
+        `${distDir}/cache/.*-development`,
+        `${distDir}/cache/eslint`,
       ].map((it) => new RegExp(it));
 
       const files = await getFilesListFromDir(`${NEXT_OUTPUT_PATH}/functions/${distDir}`);
@@ -497,19 +495,17 @@ describe("webframeworks", function (this) {
       const EXPECTED_FILES = ["", "en", "fr", "es"]
         .flatMap((locale) => [
           join(I18N_BASE, locale, ANGULAR_BASE_PATH, "index.html"),
-          join(I18N_BASE, locale, ANGULAR_BASE_PATH, "3rdpartylicenses.txt"),
           join(I18N_BASE, locale, ANGULAR_BASE_PATH, "favicon.ico"),
-          join(I18N_BASE, locale, ANGULAR_BASE_PATH, "index.original.html"),
-          join(I18N_BASE, locale, ANGULAR_BASE_PATH, "3rdpartylicenses.txt"),
+          join(I18N_BASE, locale, ANGULAR_BASE_PATH, "index.csr.html"),
         ])
-        .map(normalize);
+        .map(normalize)
+        .map((it) => (it.startsWith("/") ? it.substring(1) : it));
 
       const EXPECTED_PATTERNS = ["", "en", "fr", "es"]
         .flatMap((locale) => [
-          [I18N_BASE, locale, ANGULAR_BASE_PATH, `main\.[^\.]+\.js`],
-          [I18N_BASE, locale, ANGULAR_BASE_PATH, `polyfills\.[^\.]+\.js`],
-          [I18N_BASE, locale, ANGULAR_BASE_PATH, `runtime\.[^\.]+\.js`],
-          [I18N_BASE, locale, ANGULAR_BASE_PATH, `styles\.[^\.]+\.css`],
+          [I18N_BASE, locale, ANGULAR_BASE_PATH, `main.[^.]+.js`],
+          [I18N_BASE, locale, ANGULAR_BASE_PATH, `polyfills.[^.]+.js`],
+          [I18N_BASE, locale, ANGULAR_BASE_PATH, `styles.[^.]+.css`],
         ])
         .map((it) => new RegExp(it.filter(Boolean).join(PATH_SEPARATOR)));
 

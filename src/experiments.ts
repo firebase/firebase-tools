@@ -1,9 +1,8 @@
 import { bold, italic } from "colorette";
-import * as leven from "leven";
 import { basename } from "path";
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
-import { isRunningInGithubAction } from "./init/features/hosting/github";
+import { isRunningInGithubAction, stringDistance } from "./utils";
 
 export interface Experiment {
   shortDescription: string;
@@ -35,9 +34,8 @@ export const ALL_EXPERIMENTS = experiments({
   functionsv2deployoptimizations: {
     shortDescription: "Optimize deployments of v2 firebase functions",
     fullDescription:
-      "Reuse build images across funtions to increase performance and reliaibility " +
-      "of deploys. This has been made an experiment due to backend bugs that are " +
-      "temporarily causing failures in some regions with this optimization enabled",
+      "Reuse build images across functions to increase performance and reliability " +
+      "of deploys.",
     public: true,
     default: true,
   },
@@ -57,14 +55,46 @@ export const ALL_EXPERIMENTS = experiments({
       "of how that image was created.",
     public: true,
   },
+  legacyRuntimeConfigCommands: {
+    shortDescription: "Expose legacy functions.config() CLI commands",
+    fullDescription:
+      "The Cloud Runtime Config API is deprecated. Enable this experiment to continue using the " +
+      "`functions:config:*` commands while you migrate to the Firebase Functions params APIs.",
+    default: false,
+    public: true,
+  },
+  functionsiac: {
+    shortDescription: "Exports functions IaC code",
+    public: false,
+  },
+  functionsrunapionly: {
+    shortDescription: "Use Cloud Run API to list v2 functions",
+    public: false,
+  },
+  bypassfunctionsdeprecationcheck: {
+    shortDescription: "Bypass Functions check for old runtimes",
+    fullDescription:
+      "Bypasses the local check for whether a functions runtime is " +
+      "decommissioned. This does not, by itself, allow you to deploy a function with a " +
+      "decommissioned runtime, as there are server-side checks as well.",
+    public: false,
+    default: false,
+  },
+  dartfunctions: {
+    shortDescription: "Enable Dart Functions.",
+    public: true,
+    default: false,
+  },
+  kits: {
+    shortDescription: "Enable Functions Kits.",
+    fullDescription: "Adds support for Function Kits.",
+    public: true,
+    default: true,
+  },
 
   // Emulator experiments
   emulatoruisnapshot: {
     shortDescription: "Load pre-release versions of the emulator UI",
-  },
-  emulatorapphosting: {
-    shortDescription: "App Hosting emulator",
-    public: false,
   },
 
   // Hosting experiments
@@ -91,10 +121,8 @@ export const ALL_EXPERIMENTS = experiments({
     public: true,
     default: true,
   },
+
   // Access experiments
-  crossservicerules: {
-    shortDescription: "Allow Firebase Rules to reference resources in other services",
-  },
   internaltesting: {
     shortDescription: "Exposes Firebase CLI commands intended for internal testing purposes.",
     fullDescription:
@@ -103,16 +131,56 @@ export const ALL_EXPERIMENTS = experiments({
       "without a notice.",
   },
 
+  appcheckadmin: {
+    shortDescription: "Manage App Check enforcement and attestation providers from the CLI.",
+    fullDescription:
+      "Enables the `firebase appcheck:services`, `firebase appcheck:providers` and " +
+      "`firebase appcheck:apps` commands for reading and changing App Check enforcement per " +
+      "service and the attestation providers of each app. These commands are in preview and " +
+      "may change until the surface is API council approved. The `firebase appcheck:debugtokens` " +
+      "commands are generally available and are not affected by this experiment.",
+  },
+
+  ailogic: {
+    shortDescription: "Manage Firebase AI Logic from the CLI.",
+    fullDescription:
+      "Enables the `firebase ailogic` command surface for managing Firebase AI Logic, " +
+      "starting with the Gemini API providers. These commands are in preview and may " +
+      "change until the underlying API is finalized.",
+  },
+
   apphosting: {
     shortDescription: "Allow CLI option for Frameworks",
     default: true,
     public: false,
   },
 
+  apphostinglocalbuilds: {
+    shortDescription: "Enable App Hosting local builds",
+    default: false,
+    public: false,
+  },
+
+  abiu: {
+    shortDescription:
+      "Enable Automatic Base Image Updates (ABIU) and runtime selection for App Hosting",
+    default: true,
+    public: true,
+  },
+
+  directcloudrun: {
+    shortDescription: "Build and deploy web apps directly to Cloud Run services",
+    fullDescription:
+      "Enables `firebase init run`, `firebase deploy --only run`, and the " +
+      "`firebase run:services:update` command. " +
+      "These are in preview and may change.",
+    public: false,
+  },
+
   // TODO(joehanley): Delete this once weve scrubbed all references to experiment from docs.
   dataconnect: {
-    shortDescription: "Deprecated. Previosuly, enabled Data Connect related features.",
-    fullDescription: "Deprecated. Previously, enabled Data Connect related features.",
+    shortDescription: "Deprecated. Previosuly, enabled SQL Connect related features.",
+    fullDescription: "Deprecated. Previously, enabled SQL Connect related features.",
     public: false,
   },
 
@@ -129,11 +197,76 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: true,
   },
-
-  fdcconnectorevolution: {
-    shortDescription: "Enable Data Connect connector evolution warnings.",
-    fullDescription: "Enable Data Connect connector evolution warnings.",
+  mcp: {
+    shortDescription: "Adds experimental `firebase mcp` command for running a Firebase MCP server.",
     default: true,
+    public: false,
+  },
+  mcpalpha: {
+    shortDescription: "Opt-in to early MCP features before they're widely released.",
+    default: false,
+    public: true,
+  },
+  mcpapps: {
+    shortDescription: "Enables MCP Apps features",
+    fullDescription: "Enables MCP Apps features, including returning UI resource URIs.",
+    public: true,
+  },
+  fdcift: {
+    shortDescription: "Enable instrumentless trial for SQL Connect",
+    default: true,
+    public: false,
+  },
+  apptesting: {
+    shortDescription: "Adds experimental App Testing feature",
+    public: true,
+  },
+  fdcwebhooks: {
+    shortDescription: "Enable Firebase SQL Connect webhooks feature.",
+    default: true,
+    public: false,
+  },
+  fdcrealtime: {
+    shortDescription: "Enable Firebase SQL Connect realtime feature.",
+    default: true,
+    public: false,
+  },
+  crashlyticsWebBreadcrumbs: {
+    shortDescription: "Enable provisioning Cloud Trace storage during web app onboarding.",
+    default: false,
+    public: false,
+  },
+  secretEnvParams: {
+    shortDescription:
+      "Enable reading the backing resource binding for a Functions secret param from .env",
+    default: true,
+    public: true,
+  },
+  extdeprecationwarnings: {
+    shortDescription: "Show deprecation warnings for Firebase Extensions CLI commands.",
+    default: true,
+    public: true,
+  },
+  extMigrationFeatures: {
+    shortDescription:
+      "Enable features intended to assist with the migration of Extension instances to Kits.",
+    default: true,
+    public: true,
+  },
+  fdcapimigration: {
+    shortDescription: "Enable the FDC API schema migration path.",
+    fullDescription: "API based Schema Migration behind experimental flag.",
+    default: false,
+    public: false,
+  },
+  writeDefaultSecretBindings: {
+    shortDescription: "Write Cloud Secret Manager bindings to the default resource ID to .env.",
+    default: false,
+    public: false,
+  },
+  crashlyticscli: {
+    shortDescription: "Enable read-only Crashlytics commands for issues, events, and reports.",
+    default: false,
     public: false,
   },
 });
@@ -163,7 +296,7 @@ export function experimentNameAutocorrect(malformed: string): string[] {
   // but this logic matches src/index.ts. I neither want to change something
   // with such potential impact nor to create divergent behavior.
   return Object.keys(ALL_EXPERIMENTS).filter(
-    (name) => leven(name, malformed) < malformed.length * 0.4,
+    (name) => stringDistance(name, malformed) < malformed.length * 0.4,
   );
 }
 

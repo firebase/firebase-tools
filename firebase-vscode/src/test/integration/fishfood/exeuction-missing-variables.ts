@@ -12,7 +12,7 @@ import { mockUser } from "../../utils/user";
 import { Notifications } from "../../utils/page_objects/notifications";
 
 firebaseSuite("Execution", async function () {
-  firebaseTest("should ask user to add missing variables", async function () {
+  firebaseTest("should auto add missing variables", async function () {
     const workbench = await browser.getWorkbench();
 
     const sidebar = new FirebaseSidebar(workbench);
@@ -21,7 +21,7 @@ firebaseSuite("Execution", async function () {
     const commands = new FirebaseCommands();
     await commands.waitForUser();
 
-    const notication = new Notifications(workbench);
+    const notification = new Notifications(workbench);
 
     await mockUser({ email: "test@gmail.com" });
     await mockProject("test-project");
@@ -38,20 +38,10 @@ firebaseSuite("Execution", async function () {
 
     // Insert a post
     await editor.openFile(mutationsPath);
-    await editor.runLocalButton.waitForDisplayed();
-    await editor.runLocalButton.click();
-    
-    const editVariablesNotif = await notication.getEditVariablesNotification();
+    await editor.runEmulatorButton.waitForDisplayed();
+    await editor.runEmulatorButton.click();
 
-    if (!editVariablesNotif) {
-      throw(new Error("Edit Variables Notification not found"));
-    }
-    await notication.editVariablesFromNotification(editVariablesNotif);
-
-    expect(await execution.getVariables()).toEqual(`{"id":"42","content":""}`);
-
-    // click re-run button to continue
-    await execution.clickRerun();
+    expect(JSON.parse((await execution.getVariables()))).toEqual({"id":"42","content":""});
 
     async function getExecutionStatus() {
       let item = await execution.history.getSelectedItem();

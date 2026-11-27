@@ -1,4 +1,4 @@
-import * as uuid from "uuid";
+import { randomUUID } from "crypto";
 
 import { encodeFirestoreValue } from "./firestore/encodeFirestoreValue";
 import * as utils from "./utils";
@@ -32,7 +32,7 @@ export default class LocalFunction {
     return resource.replace(this.paramWildcardRegex, (wildcard: string) => {
       const wildcardNoBraces = wildcard.slice(1, -1); // .slice removes '{' and '}' from wildcard
       const sub = params?.[wildcardNoBraces];
-      return sub || wildcardNoBraces + utils.randomInt(1, 9);
+      return sub || `${wildcardNoBraces}${utils.randomInt(1, 9)}`;
     });
   }
 
@@ -219,9 +219,9 @@ export default class LocalFunction {
 
   private requestCallBack<T>(err: unknown, response?: ClientResponse<T>, body?: string | object) {
     if (err) {
-      return console.warn("\nERROR SENDING REQUEST: " + err);
+      return console.warn(`\nERROR SENDING REQUEST: ${String(err)}`);
     }
-    const status = response ? response.status + ", " : "";
+    const status = response ? `${response.status}, ` : "";
 
     // If the body is a string we want to check if we can parse it as JSON
     // and pretty-print it. We can't blindly stringify because stringifying
@@ -321,7 +321,9 @@ export default class LocalFunction {
       } else if (this.isPubsubFunc(this.trigger.eventTrigger)) {
         dataPayload = data;
         if (this.trigger.platform === "gcfv2") {
-          dataPayload = { message: { ...(data as any), messageId: uuid.v4() } };
+          dataPayload = {
+            message: { ...(data as Record<string, unknown>), messageId: randomUUID() },
+          };
         }
         this.controller.call(this.trigger, dataPayload || {}, opts);
       } else {

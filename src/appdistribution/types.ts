@@ -55,6 +55,11 @@ export interface BatchRemoveTestersResponse {
   emails: string[];
 }
 
+export interface ListReleasesResponse {
+  releases: Release[];
+  nextPageToken?: string;
+}
+
 export interface ListGroupsResponse {
   groups: Group[];
   nextPageToken?: string;
@@ -80,10 +85,6 @@ export interface Tester {
   lastActivityTime: Date;
 }
 
-export interface CreateReleaseTestRequest {
-  releaseTest: ReleaseTest;
-}
-
 export interface TestDevice {
   model: string;
   version: string;
@@ -98,17 +99,6 @@ export interface DeviceExecution {
   state?: TestState;
   failedReason?: string;
   inconclusiveReason?: string;
-}
-
-export function mapDeviceToExecution(device: TestDevice): DeviceExecution {
-  return {
-    device: {
-      model: device.model,
-      version: device.version,
-      orientation: device.orientation,
-      locale: device.locale,
-    },
-  };
 }
 
 export interface FieldHints {
@@ -127,4 +117,42 @@ export interface ReleaseTest {
   deviceExecutions: DeviceExecution[];
   loginCredential?: LoginCredential;
   testCase?: string;
+  aiInstructions?: AiInstructions;
+  displayName?: string;
+  resultsBucket?: string;
+}
+
+export interface AiStep {
+  goal: string;
+  hint?: string;
+  successCriteria?: string;
+}
+
+export interface AiInstructions {
+  steps: AiStep[];
+}
+
+export interface TestCase {
+  name?: string;
+  displayName: string;
+  prerequisiteTestCase?: string;
+  aiInstructions: AiInstructions;
+}
+
+export interface ListTestCasesResponse {
+  testCases: TestCase[];
+  nextPageToken?: string;
+}
+
+export interface UpdateTestCaseRequest {
+  testCase: TestCase;
+  allowMissing?: boolean;
+}
+
+export interface BatchUpdateTestCasesRequest {
+  requests: UpdateTestCaseRequest[];
+}
+
+export interface BatchUpdateTestCasesResponse {
+  testCases: TestCase[];
 }

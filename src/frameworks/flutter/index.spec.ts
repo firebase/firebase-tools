@@ -101,7 +101,7 @@ describe("Flutter", () => {
 
       const cwd = ".";
 
-      const stub = sandbox.stub(crossSpawn, "sync").returns(process as any);
+      const stub = sandbox.stub(crossSpawn, "sync").returns(process);
 
       const result = build(cwd);
 
@@ -137,9 +137,9 @@ describe("Flutter", () => {
       const projectDir = "asfijreou5o";
       const source = "asflijrelijf";
 
-      const stub = sandbox.stub(crossSpawn, "sync").returns(process as any);
+      const stub = sandbox.stub(crossSpawn, "sync").returns(process);
 
-      const result = init({ projectId, hosting: { source } }, { projectDir });
+      const result = init({ projectId, featureInfo: { hosting: { source } } }, { projectDir });
 
       expect(await result).to.eql(undefined);
       sinon.assert.calledWith(

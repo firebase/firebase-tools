@@ -11,32 +11,13 @@ that the functionality might change in backward-incompatible ways. A preview
 release is not subject to any SLA or deprecation policy and may receive limited
 or no support.
 
-## Before you begin
+Caution: For Nuxt developers, new participation in the Hosting
+frameworks experiment has been closed permanently. If you're already using the
+frameworks experiment in the Firebase CLI, we recommend "graduating" to
+App Hosting. With App Hosting, you'll have a unified solution to manage
+everything from CDN to server-side rendering, along with improved GitHub
+integration.
 
-Before you get started deploying your app to Firebase,
-review the following requirements and options:
-
-- Firebase CLI version 12.1.0 or later. Make sure to
-  [install the CLI](https://firebase.google.com/docs/cli#install_the_firebase_cli)
-  using your preferred method.
-- Optional: Billing enabled on your Firebase project
-  (required if you plan to use SSR)
-- An existing Nuxt (version 3+) project. You can create one with `npx nuxi@latest init <project-name>`.
-
-
-## Initialize Firebase
-
-To get started, initialize Firebase for your framework project.
-Use the Firebase CLI for a new project, or modify `firebase.json` for an
-existing project.
-
-### Initialize a new project
-
-1. In the Firebase CLI, enable the web frameworks preview:
-   <pre class="devsite-terminal">firebase experiments:enable webframeworks</pre>
-2. Run the initialization command from the CLI and then follow the prompts:
-   <pre class="devsite-terminal">firebase init hosting</pre>
-    If there is an existing Nuxt codebase, the CLI detects it.
 
 ## Deployment
 

@@ -33,7 +33,7 @@ export function getSettings(): Settings {
     firebaseBinaryKind = "firepit-global";
   }
 
-  const extraEnv = config.get<Record<string,string>>("extraEnv", {})
+  const extraEnv = config.get<Record<string,string>>("extraEnv", {});
   process.env = { ...process.env, ...extraEnv };
   
   return {

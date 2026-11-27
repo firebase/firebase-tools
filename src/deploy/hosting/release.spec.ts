@@ -56,11 +56,18 @@ describe("release", () => {
       await release(CONTEXT, {}, {});
 
       expect(updateVersionStub).to.have.been.calledOnceWithExactly(
+        PROJECT,
         SITE,
         last(VERSION.split("/")),
         UPDATE,
       );
-      expect(createReleaseStub).to.have.been.calledOnceWithExactly(SITE, "live", VERSION, {});
+      expect(createReleaseStub).to.have.been.calledOnceWithExactly(
+        PROJECT,
+        SITE,
+        "live",
+        VERSION,
+        {},
+      );
     });
 
     it("should update a version and make a release with a message", async () => {
@@ -70,11 +77,12 @@ describe("release", () => {
       await release(CONTEXT, { message: "hello world" }, {});
 
       expect(updateVersionStub).to.have.been.calledOnceWithExactly(
+        PROJECT,
         SITE,
         last(VERSION.split("/")),
         UPDATE,
       );
-      expect(createReleaseStub).to.have.been.calledOnceWithExactly(SITE, "live", VERSION, {
+      expect(createReleaseStub).to.have.been.calledOnceWithExactly(PROJECT, SITE, "live", VERSION, {
         message: "hello world",
       });
     });
@@ -104,18 +112,21 @@ describe("release", () => {
 
       expect(updateVersionStub).to.have.been.calledTwice;
       expect(updateVersionStub).to.have.been.calledWithExactly(
+        PROJECT,
         SITE,
         last(VERSION.split("/")),
         UPDATE,
       );
       expect(updateVersionStub).to.have.been.calledWithExactly(
+        PROJECT,
         `${SITE}-2`,
         `${last(VERSION.split("/"))}-2`,
         UPDATE,
       );
       expect(createReleaseStub).to.have.been.calledTwice;
-      expect(createReleaseStub).to.have.been.calledWithExactly(SITE, "live", VERSION, {});
+      expect(createReleaseStub).to.have.been.calledWithExactly(PROJECT, SITE, "live", VERSION, {});
       expect(createReleaseStub).to.have.been.calledWithExactly(
+        PROJECT,
         `${SITE}-2`,
         "live",
         `${VERSION}-2`,
@@ -146,11 +157,18 @@ describe("release", () => {
       await release(CONTEXT, {}, {});
 
       expect(updateVersionStub).to.have.been.calledOnceWithExactly(
+        PROJECT,
         SITE,
         last(VERSION.split("/")),
         UPDATE,
       );
-      expect(createReleaseStub).to.have.been.calledOnceWithExactly(SITE, CHANNEL, VERSION, {});
+      expect(createReleaseStub).to.have.been.calledOnceWithExactly(
+        PROJECT,
+        SITE,
+        CHANNEL,
+        VERSION,
+        {},
+      );
     });
   });
 });

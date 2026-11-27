@@ -1,10 +1,15 @@
 import { expect } from "chai";
-import * as admin from "firebase-admin";
+import { initializeApp } from "firebase-admin/app";
+import { Database, getDatabase } from "firebase-admin/database";
 import { Firestore } from "@google-cloud/firestore";
 import * as fs from "fs";
 import * as path from "path";
 
-import { FrameworkOptions, TriggerEndToEndTest } from "../integration-helpers/framework";
+import {
+  FrameworkOptions,
+  TriggerEndToEndTest,
+  waitForCondition,
+} from "../integration-helpers/framework";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 const ADMIN_CREDENTIAL = {
@@ -23,7 +28,7 @@ const ADMIN_CREDENTIAL = {
 const TEST_SETUP_TIMEOUT = 80000;
 const EMULATORS_WRITE_DELAY_MS = 5000;
 const EMULATORS_SHUTDOWN_DELAY_MS = 7000;
-const EMULATOR_TEST_TIMEOUT = EMULATORS_WRITE_DELAY_MS * 2;
+const EMULATOR_TEST_TIMEOUT = EMULATORS_WRITE_DELAY_MS * 4;
 
 /*
  * Realtime Database and Firestore documents we used to verify
@@ -40,8 +45,8 @@ function readConfig(): FrameworkOptions {
 
 describe("function triggers", () => {
   let test: TriggerEndToEndTest;
-  let database: admin.database.Database | undefined;
-  let firestore: admin.firestore.Firestore | undefined;
+  let database: Database | undefined;
+  let firestore: Firestore | undefined;
   const firestoreUnsub: Array<() => void> = [];
 
   before(async function (this) {
@@ -60,13 +65,13 @@ describe("function triggers", () => {
       ssl: false,
     });
 
-    admin.initializeApp({
+    initializeApp({
       projectId: FIREBASE_PROJECT,
       databaseURL: `http://127.0.0.1:${test.rtdbEmulatorPort}?ns=${FIREBASE_PROJECT}`,
       credential: ADMIN_CREDENTIAL,
     });
 
-    database = admin.database();
+    database = getDatabase();
 
     // /*
     //  * Install completion marker handlers and have them update state
@@ -151,13 +156,18 @@ describe("function triggers", () => {
       expect(response.status).to.equal(200);
 
       /*
-       * We delay again here because the functions triggered
-       * by the previous two writes run parallel to this and
-       * we need to give them and previous installed test
-       * fixture state handlers to complete before we check
-       * that state in the next test.
+       * We wait for the functions triggered by the previous two writes
+       * and previously installed test fixture state handlers to complete
+       * before we check that state in the next test.
        */
-      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS * 2));
+      await waitForCondition(
+        () =>
+          test.rtdbTriggerCount >= 1 &&
+          test.rtdbV2TriggerCount >= 1 &&
+          test.firestoreTriggerCount >= 1 &&
+          test.firestoreV2TriggerCount >= 1 &&
+          test.success(),
+      );
     });
 
     it("should have have triggered cloud functions", () => {
@@ -179,7 +189,7 @@ describe("function triggers", () => {
 
       const response = await test.writeToPubsub();
       expect(response.status).to.equal(200);
-      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+      await waitForCondition(() => test.pubsubTriggerCount >= 1 && test.pubsubV2TriggerCount >= 1);
     });
 
     it("should have have triggered cloud functions", () => {
@@ -192,7 +202,7 @@ describe("function triggers", () => {
 
       const response = await test.writeToScheduledPubsub();
       expect(response.status).to.equal(200);
-      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+      await waitForCondition(() => test.pubsubTriggerCount >= 2);
     });
 
     it("should have have triggered cloud functions", () => {
@@ -205,7 +215,7 @@ describe("function triggers", () => {
       this.timeout(EMULATOR_TEST_TIMEOUT);
       const response = await test.writeToAuth();
       expect(response.status).to.equal(200);
-      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+      await waitForCondition(() => test.authTriggerCount >= 1);
     });
 
     it("should have have triggered cloud functions", () => {
@@ -216,7 +226,10 @@ describe("function triggers", () => {
       this.timeout(EMULATOR_TEST_TIMEOUT * 2);
       const response = await test.createUserFromAuth();
       expect(response.status).to.equal(200);
-      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+      await waitForCondition(
+        () =>
+          test.authBlockingCreateV2TriggerCount >= 1 && test.authBlockingSignInV2TriggerCount >= 1,
+      );
     });
 
     it("should have triggered cloud functions", () => {
@@ -229,7 +242,7 @@ describe("function triggers", () => {
       this.timeout(EMULATOR_TEST_TIMEOUT * 2);
       const response = await test.signInUserFromAuth();
       expect(response.status).to.equal(200);
-      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+      await waitForCondition(() => test.authBlockingSignInV2TriggerCount >= 2);
     });
 
     it("should have triggered cloud functions", () => {
@@ -243,7 +256,9 @@ describe("function triggers", () => {
 
       const response = await test.writeToDefaultStorage();
       expect(response.status).to.equal(200);
-      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+      await waitForCondition(
+        () => test.storageFinalizedTriggerCount >= 1 && test.storageV2FinalizedTriggerCount >= 1,
+      );
     });
 
     it("should have triggered cloud functions", () => {
@@ -270,7 +285,11 @@ describe("function triggers", () => {
 
       const response = await test.writeToSpecificStorageBucket();
       expect(response.status).to.equal(200);
-      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+      await waitForCondition(
+        () =>
+          test.storageBucketFinalizedTriggerCount >= 1 &&
+          test.storageBucketV2FinalizedTriggerCount >= 1,
+      );
     });
 
     it("should have triggered cloud functions", () => {
@@ -297,7 +316,13 @@ describe("function triggers", () => {
 
       const response = await test.updateMetadataDefaultStorage();
       expect(response.status).to.equal(200);
-      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+      await waitForCondition(
+        () =>
+          test.storageFinalizedTriggerCount >= 1 &&
+          test.storageV2FinalizedTriggerCount >= 1 &&
+          test.storageMetadataTriggerCount >= 1 &&
+          test.storageV2MetadataTriggerCount >= 1,
+      );
     });
 
     it("should have triggered cloud functions", () => {
@@ -325,7 +350,13 @@ describe("function triggers", () => {
 
       const response = await test.updateMetadataSpecificStorageBucket();
       expect(response.status).to.equal(200);
-      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+      await waitForCondition(
+        () =>
+          test.storageBucketFinalizedTriggerCount >= 1 &&
+          test.storageBucketV2FinalizedTriggerCount >= 1 &&
+          test.storageBucketMetadataTriggerCount >= 1 &&
+          test.storageBucketV2MetadataTriggerCount >= 1,
+      );
     });
 
     it("should have triggered cloud functions", () => {
@@ -353,7 +384,13 @@ describe("function triggers", () => {
 
       const response = await test.updateDeleteFromDefaultStorage();
       expect(response.status).to.equal(200);
-      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+      await waitForCondition(
+        () =>
+          test.storageFinalizedTriggerCount >= 1 &&
+          test.storageV2FinalizedTriggerCount >= 1 &&
+          test.storageDeletedTriggerCount >= 1 &&
+          test.storageV2DeletedTriggerCount >= 1,
+      );
     });
 
     it("should have triggered cloud functions", () => {
@@ -381,7 +418,13 @@ describe("function triggers", () => {
 
       const response = await test.updateDeleteFromSpecificStorageBucket();
       expect(response.status).to.equal(200);
-      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+      await waitForCondition(
+        () =>
+          test.storageBucketFinalizedTriggerCount >= 1 &&
+          test.storageBucketV2FinalizedTriggerCount >= 1 &&
+          test.storageBucketDeletedTriggerCount >= 1 &&
+          test.storageBucketV2DeletedTriggerCount >= 1,
+      );
     });
 
     it("should have triggered cloud functions", () => {
@@ -484,7 +527,7 @@ describe("function triggers", () => {
         test.writeToAuth(),
       ]);
 
-      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS * 3));
+      await waitForCondition(() => test.authTriggerCount >= 1, EMULATORS_WRITE_DELAY_MS * 3);
       // TODO(danielylee): Trying to respond to all triggers at once often results in Functions
       // Emulator hanging indefinitely. Only triggering 1 trigger for now. Re-enable other triggers
       // once the root cause is identified.

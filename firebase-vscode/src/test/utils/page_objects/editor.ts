@@ -14,8 +14,8 @@ export class EditorView {
     return this.editorView.elem.$$(".codelens-decoration");
   }
 
-  get runLocalButton() {
-    return this.editorView.elem.$('//a[contains(text(), "Run (local)")]');
+  get runEmulatorButton() {
+    return this.editorView.elem.$('//a[contains(text(), "Run (Emulator)")]');
   }
 
   async openFile(path: string) {

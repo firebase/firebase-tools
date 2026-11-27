@@ -17,7 +17,7 @@ import { requireAuth } from "../requireAuth";
 import { logger } from "../logger";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
-import { Platform } from "../dataconnect/types";
+import { Platform } from "../appUtils";
 import { assertEnabled } from "../experiments";
 
 export interface AppsInitOptions extends Options {

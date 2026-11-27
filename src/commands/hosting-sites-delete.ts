@@ -1,8 +1,8 @@
 import { bold, underline } from "colorette";
 import { Command } from "../command";
 import { logLabeledSuccess } from "../utils";
-import { getSite, deleteSite } from "../hosting/api";
-import { promptOnce } from "../prompt";
+import { getSite, deleteSite, ensureApiEnabled } from "../hosting/api";
+import { confirm } from "../prompt";
 import { FirebaseError } from "../error";
 import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
@@ -16,6 +16,7 @@ export const command = new Command("hosting:sites:delete <siteId>")
   .withForce()
   .before(requireConfig)
   .before(requirePermissions, ["firebasehosting.sites.delete"])
+  .before((options) => ensureApiEnabled(needProjectId(options)))
   .action(
     async (
       siteId: string,
@@ -32,17 +33,14 @@ export const command = new Command("hosting:sites:delete <siteId>")
       );
       logger.info();
 
-      const confirmed = await promptOnce(
-        {
-          name: "force",
-          type: "confirm",
-          message: `Are you sure you want to delete the Hosting site ${underline(
-            siteId,
-          )} for project ${underline(projectId)}? `,
-          default: false,
-        },
-        options,
-      );
+      const confirmed = await confirm({
+        message: `Are you sure you want to delete the Hosting site ${underline(
+          siteId,
+        )} for project ${underline(projectId)}? `,
+        default: false,
+        force: options.force,
+        nonInteractive: options.nonInteractive,
+      });
       if (!confirmed) {
         return;
       }

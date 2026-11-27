@@ -2,6 +2,7 @@ import * as apphosting from "../gcp/apphosting";
 import { Command } from "../command";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
+import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
 import { createRollout } from "../apphosting/rollout";
 
@@ -13,6 +14,7 @@ export const command = new Command("apphosting:rollouts:create <backendId>")
   )
   .option("-g, --git-commit <gitCommit>", "git commit to deploy (mutually exclusive with -b)")
   .withForce("Skip confirmation before creating rollout")
+  .before(requireAuth)
   .before(apphosting.ensureApiEnabled)
   .action(async (backendId: string, options: Options) => {
     const projectId = needProjectId(options);

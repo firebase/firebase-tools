@@ -1,4 +1,4 @@
-import * as nock from "nock";
+import nock from "../test/helpers/nock";
 import {
   APPHOSTING_TOS_ID,
   APP_CHECK_TOS_ID,
@@ -35,14 +35,6 @@ const SAMPLE_RESPONSE = {
 };
 
 describe("firedata", () => {
-  before(() => {
-    nock.disableNetConnect();
-  });
-  after(() => {
-    nock.cleanAll();
-    nock.enableNetConnect();
-  });
-
   describe("getTosStatus", () => {
     it("should return parsed GetTosStatusResponse", async () => {
       nock("https://mobilesdk-pa.googleapis.com")

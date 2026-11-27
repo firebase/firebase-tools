@@ -4,10 +4,14 @@ import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { cloudschedulerOrigin } from "../api";
 import { Client } from "../apiv2";
+import { assertExhaustive, nullsafeVisitor } from "../functional";
+import {
+  DEFAULT_V2_SCHEDULE_ATTEMPT_DEADLINE_SECONDS,
+  MAX_V2_SCHEDULE_ATTEMPT_DEADLINE_SECONDS,
+} from "../deploy/functions/validate";
 import * as backend from "../deploy/functions/backend";
 import * as proto from "./proto";
 import * as gce from "../gcp/computeEngine";
-import { assertExhaustive, nullsafeVisitor } from "../functional";
 
 const VERSION = "v1";
 const DEFAULT_TIME_ZONE_V1 = "America/Los_Angeles";
@@ -55,6 +59,7 @@ export interface Job {
   schedule: string;
   description?: string;
   timeZone?: string | null;
+  attemptDeadline?: string | null;
 
   // oneof target
   httpTarget?: HttpTarget;
@@ -106,6 +111,29 @@ export function getJob(name: string): Promise<any> {
   return apiClient.get(`/${name}`, {
     resolveOnHTTPError: true,
   });
+}
+
+interface ListLocationsResponse {
+  locations?: Array<{ locationId: string }>;
+  nextPageToken?: string;
+}
+
+/**
+ * Lists the IDs of the regions that Cloud Scheduler supports (e.g. "us-central1").
+ */
+export async function listLocations(projectId: string): Promise<string[]> {
+  const locations: string[] = [];
+  let pageToken: string | undefined;
+  do {
+    const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
+    const res: { body?: ListLocationsResponse } = await apiClient.get<ListLocationsResponse>(
+      `/projects/${projectId}/locations`,
+      { queryParams },
+    );
+    locations.push(...(res.body?.locations?.map((l) => l.locationId) ?? []));
+    pageToken = res.body?.nextPageToken;
+  } while (pageToken);
+  return locations;
 }
 
 /**
@@ -195,6 +223,9 @@ function needUpdate(existingJob: Job, newJob: Job): boolean {
   if (existingJob.timeZone !== newJob.timeZone) {
     return true;
   }
+  if (existingJob.attemptDeadline !== newJob.attemptDeadline) {
+    return true;
+  }
   if (newJob.retryConfig) {
     if (!existingJob.retryConfig) {
       return true;
@@ -224,11 +255,11 @@ export function topicNameForEndpoint(
 }
 
 /** Converts an Endpoint to a CloudScheduler v1 job */
-export function jobFromEndpoint(
+export async function jobFromEndpoint(
   endpoint: backend.Endpoint & backend.ScheduleTriggered,
   location: string,
   projectNumber: string,
-): Job {
+): Promise<Job> {
   const job: Partial<Job> = {};
   job.name = jobNameForEndpoint(endpoint, location);
   if (endpoint.platform === "gcfv1") {
@@ -239,13 +270,14 @@ export function jobFromEndpoint(
         scheduled: "true",
       },
     };
-  } else if (endpoint.platform === "gcfv2") {
+  } else if (endpoint.platform === "gcfv2" || endpoint.platform === "run") {
     job.timeZone = endpoint.scheduleTrigger.timeZone || DEFAULT_TIME_ZONE_V2;
     job.httpTarget = {
       uri: endpoint.uri!,
       httpMethod: "POST",
       oidcToken: {
-        serviceAccountEmail: endpoint.serviceAccount ?? gce.getDefaultServiceAccount(projectNumber),
+        serviceAccountEmail:
+          endpoint.serviceAccount ?? (await gce.getDefaultServiceAccount(projectNumber)),
       },
     };
   } else {
@@ -257,6 +289,23 @@ export function jobFromEndpoint(
     );
   }
   job.schedule = endpoint.scheduleTrigger.schedule;
+  if (endpoint.platform === "gcfv2" || endpoint.platform === "run") {
+    proto.convertIfPresent(job, endpoint, "attemptDeadline", "timeoutSeconds", (timeout) => {
+      if (timeout === null) {
+        return null;
+      }
+      // Cloud Scheduler has an attempt deadline range of [15s, 1800s], and defaults to 180s.
+      // We floor at 180s to be safe, even if the function timeout is shorter.
+      // This is because GCF/Cloud Run will already terminate the function at its configured timeout,
+      // so Cloud Scheduler won't actually wait the full 180s unless GCF itself fails to respond.
+      // Setting it shorter than 180s might cause premature retries due to network latency.
+      const attemptDeadlineSeconds = Math.max(
+        Math.min(timeout, MAX_V2_SCHEDULE_ATTEMPT_DEADLINE_SECONDS),
+        DEFAULT_V2_SCHEDULE_ATTEMPT_DEADLINE_SECONDS,
+      );
+      return proto.durationFromSeconds(attemptDeadlineSeconds);
+    });
+  }
   if (endpoint.scheduleTrigger.retryConfig) {
     job.retryConfig = {};
     proto.copyIfPresent(

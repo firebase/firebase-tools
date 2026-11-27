@@ -1,11 +1,13 @@
 import * as clc from "colorette";
+import * as tty from "tty";
 
 import { logger } from "../logger";
-import { ensureValidKey, ensureSecret } from "../functions/secrets";
+import { FirebaseError } from "../error";
+import { ensureValidKey, ensureSecret, validateJsonSecret } from "../functions/secrets";
 import { Command } from "../command";
 import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import { logBullet, logSuccess, logWarning, readSecretValue } from "../utils";
 import { needProjectId, needProjectNumber } from "../projectUtils";
 import {
@@ -36,15 +38,37 @@ export const command = new Command("functions:secrets:set <KEY>")
     "--data-file <dataFile>",
     'file path from which to read secret data. Set to "-" to read the secret data from stdin',
   )
+  .option("--format <format>", "format of the secret value. 'string' (default) or 'json'")
   .action(async (unvalidatedKey: string, options: Options) => {
     const projectId = needProjectId(options);
     const projectNumber = await needProjectNumber(options);
     const key = await ensureValidKey(unvalidatedKey, options);
     const secret = await ensureSecret(projectId, key, options);
-    const secretValue = await readSecretValue(
-      `Enter a value for ${key}`,
-      options.dataFile as string | undefined,
-    );
+
+    // Determine format using priority order: explicit flag > file extension > default to string
+    let format = options.format as string | undefined;
+    const dataFile = options.dataFile as string | undefined;
+    if (!format && dataFile && dataFile !== "-") {
+      // Auto-detect from file extension
+      if (dataFile.endsWith(".json")) {
+        format = "json";
+      }
+    }
+
+    // Only error if there's no input source (no file and no piped stdin)
+    if (!dataFile && tty.isatty(0) && options.nonInteractive) {
+      throw new FirebaseError(
+        `Cannot prompt for secret value in non-interactive mode.\n` +
+          `Use --data-file to provide the secret value from a file.`,
+      );
+    }
+
+    const promptSuffix = format === "json" ? " (JSON format)" : "";
+    const secretValue = await readSecretValue(`Enter a value for ${key}${promptSuffix}:`, dataFile);
+
+    if (format === "json") {
+      validateJsonSecret(key, secretValue);
+    }
     const secretVersion = await addVersion(projectId, key, secretValue);
     logSuccess(`Created a new secret version ${toSecretVersionResourceName(secretVersion)}`);
 
@@ -81,28 +105,19 @@ export const command = new Command("functions:secrets:set <KEY>")
         endpointsToUpdate.map((e) => `${e.id}(${e.region})`).join("\n\t"),
     );
 
-    if (!options.force) {
-      let confirm = false;
-      // The promptOnce function will throw an error if non interactive mode is set,
-      // so we can safely skip the prompt and end early below in the !confirm check.
-      if (!options.nonInteractive) {
-        confirm = await promptOnce(
-          {
-            name: "redeploy",
-            type: "confirm",
-            default: true,
-            message: `Do you want to re-deploy the functions and destroy the stale version of secret ${secret.name}?`,
-          },
-          options,
-        );
-      }
-      if (!confirm) {
-        logBullet(
-          "Please deploy your functions for the change to take effect by running:\n\t" +
-            clc.bold("firebase deploy --only functions"),
-        );
-        return;
-      }
+    const redeploy = options.nonInteractive
+      ? false
+      : await confirm({
+          message: `Do you want to re-deploy the functions and destroy the stale version of secret ${secret.name}?`,
+          default: true,
+          force: options.force,
+        });
+    if (!redeploy) {
+      logBullet(
+        "Please deploy your functions for the change to take effect by running:\n\t" +
+          clc.bold("firebase deploy --only functions"),
+      );
+      return;
     }
 
     const updateOps = endpointsToUpdate.map(async (e) => {

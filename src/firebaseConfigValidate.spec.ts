@@ -24,6 +24,87 @@ describe("firebaseConfigValidate", () => {
     expect(isValid).to.be.true;
   });
 
+  function expectValidationError(
+    config: unknown,
+    keyword: string,
+    instancePath: string,
+    params: Record<string, unknown>,
+  ): void {
+    const validator = getValidator();
+    expect(validator(config)).to.be.false;
+    expect(
+      (validator.errors ?? []).some(
+        (e) =>
+          e.keyword === keyword &&
+          e.instancePath === instancePath &&
+          Object.entries(params).every(([k, v]) => e.params[k] === v),
+      ),
+    ).to.be.true;
+  }
+
+  it("should accept a valid run config", () => {
+    const config: FirebaseConfig = {
+      run: [
+        {
+          serviceId: "my-service",
+          region: "us-central1",
+          rootDir: ".",
+        },
+      ],
+    };
+
+    const validator = getValidator();
+    expect(validator(config)).to.be.true;
+  });
+
+  it("should accept a single-object run config", () => {
+    const config: FirebaseConfig = {
+      run: {
+        serviceId: "my-service",
+        region: "us-central1",
+        localBuild: true,
+      },
+    };
+
+    const validator = getValidator();
+    expect(validator(config)).to.be.true;
+  });
+
+  it("should reject a run config missing serviceId", () => {
+    expectValidationError(
+      { run: [{ region: "us-central1", rootDir: "." }] },
+      "required",
+      "/run/0",
+      {
+        missingProperty: "serviceId",
+      },
+    );
+  });
+
+  it("should reject a run config missing region", () => {
+    expectValidationError({ run: { serviceId: "my-service" } }, "required", "/run", {
+      missingProperty: "region",
+    });
+  });
+
+  it("should reject a run config with an unknown field", () => {
+    expectValidationError(
+      { run: { serviceId: "my-service", region: "us-central1", bananas: true } },
+      "additionalProperties",
+      "/run",
+      { additionalProperty: "bananas" },
+    );
+  });
+
+  it("should reject a run config with an incorrect type", () => {
+    expectValidationError(
+      { run: { serviceId: "my-service", region: "us-central1", localBuild: "yes" } },
+      "type",
+      "/run/localBuild",
+      { type: "boolean" },
+    );
+  });
+
   it("should report an extra top-level field", () => {
     // This config has an extra 'bananas' top-level property
     const config = {

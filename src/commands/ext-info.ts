@@ -11,7 +11,7 @@ import * as utils from "../utils";
 
 import { marked } from "marked";
 import { markedTerminal } from "marked-terminal";
-import { ExtensionSpec } from "../extensions/types";
+import { ExtensionSpec, ExtensionVersion } from "../extensions/types";
 
 const FUNCTION_TYPE_REGEX = /\..+\.function/;
 
@@ -23,6 +23,7 @@ export const command = new Command("ext:info <extensionName>")
   .before(checkMinRequiredVersion, "extMinVersion")
   .action(async (extensionName: string, options: any) => {
     let spec: ExtensionSpec;
+    let version: ExtensionVersion | undefined;
     if (isLocalExtension(extensionName)) {
       if (!options.markdown) {
         utils.logLabeledBullet(logPrefix, `reading extension from directory: ${extensionName}`);
@@ -41,7 +42,7 @@ export const command = new Command("ext:info <extensionName>")
         const [name, version] = extensionName.split("@");
         extensionName = `firebase/${name}@${version || "latest"}`;
       }
-      const version = await extensionsApi.getExtensionVersion(extensionName);
+      version = await extensionsApi.getExtensionVersion(extensionName);
       spec = version.spec;
     }
 
@@ -60,6 +61,9 @@ export const command = new Command("ext:info <extensionName>")
     const url = spec.author?.url;
     const urlMarkdown = url ? `(**[${url}](${url})**)` : "";
     lines.push(`**Author**: ${authorName} ${urlMarkdown}`);
+    if (version?.sourceDownloadUri) {
+      lines.push(`**Download URL**: ${version.sourceDownloadUri}`);
+    }
 
     if (spec.description) {
       lines.push(`**Description**: ${spec.description}`);

@@ -15,8 +15,11 @@ firebase-debug.log
 firebase-debug.*.log
 npm-debug.log
 ui-debug.log
+test_output.log
+scripts/emulator-tests/functions/index.js
 yarn.lock
-.npmrc
+.eslintcache
+*.tsbuildinfo
 
 .DS_Store
 .idea
@@ -27,3 +30,12 @@ scripts/*.json
 lib/
 dev/
 clean/
+.gemini/
+.env
+
+# Dart/Flutter
+.dart_tool/
+**/pubspec.lock
+
+# Gradle
+.gradle/

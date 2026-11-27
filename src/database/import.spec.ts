@@ -1,17 +1,29 @@
-import * as nock from "nock";
+import nock from "../test/helpers/nock";
 import * as stream from "stream";
+import * as sinon from "sinon";
+import * as auth from "../auth";
 import * as utils from "../utils";
 import { expect } from "chai";
 
 import DatabaseImporter from "./import";
 import { FirebaseError } from "../error";
-import { FetchError } from "node-fetch";
 
 const dbUrl = new URL("https://test-db.firebaseio.com/foo");
 const payloadSize = 1024 * 1024 * 10;
 const concurrencyLimit = 5;
 
 describe("DatabaseImporter", () => {
+  let authStub: sinon.SinonStub | undefined;
+  before(() => {
+    if (typeof (auth.getAccessToken as any).restore !== "function") {
+      authStub = sinon.stub(auth, "getAccessToken").resolves({ access_token: "owner" } as any);
+    }
+  });
+  after(() => {
+    if (authStub) {
+      authStub.restore();
+    }
+  });
   const DATA = { a: 100, b: [true, "bar", { f: { g: 0, h: 1 }, i: "baz" }], c: { d: false } };
   let DATA_STREAM: stream.Readable;
 
@@ -164,7 +176,7 @@ describe("DatabaseImporter", () => {
   });
 
   it("retries non-fatal connection timeout error", async () => {
-    const timeoutErr = new FetchError("connect ETIMEDOUT", "system");
+    const timeoutErr = new Error("connect ETIMEDOUT") as any;
     timeoutErr.code = "ETIMEDOUT";
 
     nock("https://test-db.firebaseio.com").get("/foo.json?shallow=true").reply(200);
@@ -204,5 +216,12 @@ describe("DatabaseImporter", () => {
 
     expect(responses).to.have.length(1);
     expect(nock.isDone()).to.be.true;
+  });
+
+  it("rejects with the write error when a batch write fails", async () => {
+    nock("https://test-db.firebaseio.com").get("/foo.json?shallow=true").reply(200);
+    nock("https://test-db.firebaseio.com").patch("/foo.json").reply(400, { error: "bad" });
+    const importer = new DatabaseImporter(dbUrl, DATA_STREAM, "/", payloadSize, concurrencyLimit);
+    await expect(importer.execute()).to.be.rejectedWith(FirebaseError, /400/);
   });
 });

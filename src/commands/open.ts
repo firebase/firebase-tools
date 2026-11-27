@@ -1,11 +1,11 @@
 import * as clc from "colorette";
 import * as open from "open";
 
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
 import * as api from "../api";
 import { Command } from "../command";
 import { logger } from "../logger";
-import { promptOnce } from "../prompt";
+import { select } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as utils from "../utils";
@@ -26,7 +26,7 @@ const LINKS: Link[] = [
   { name: "Crash Reporting", arg: "crash", consolePath: "/crashlytics" },
   { name: "Database: Data", arg: "database", consolePath: "/database/data" },
   { name: "Database: Rules", arg: "database:rules", consolePath: "/database/rules" },
-  { name: "Data Connect", arg: "dataconnect", consolePath: "/dataconnect" },
+  { name: "SQL Connect", arg: "dataconnect", consolePath: "/dataconnect" },
   { name: "Docs", arg: "docs", url: "https://firebase.google.com/docs" },
   { name: "Dynamic Links", arg: "links", consolePath: "/durablelinks" },
   { name: "Extensions", arg: "extensions", consolePath: "/extensions" },
@@ -78,8 +78,7 @@ export const command = new Command("open [link]")
     }
 
     if (!link) {
-      const name = await promptOnce({
-        type: "list",
+      const name = await select({
         message: "What link would you like to open?",
         choices: CHOICES,
       });
@@ -115,5 +114,7 @@ export const command = new Command("open [link]")
     logger.info(`Opening ${clc.bold(link.name)} link in your default browser:`);
     logger.info(clc.bold(clc.underline(url)));
 
-    open(url);
+    open(url).catch((err: unknown) => {
+      logger.debug(`Unable to open URL: ${getErrMsg(err)}`);
+    });
   });

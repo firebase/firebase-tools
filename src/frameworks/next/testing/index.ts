@@ -6,3 +6,4 @@ export * from "./images";
 export * from "./middleware";
 export * from "./npm";
 export * from "./app";
+export * from "./i18n";

@@ -1,7 +1,7 @@
-import { findIndex } from "lodash";
 import { resourceManagerOrigin } from "../api";
 import { Client } from "../apiv2";
-import { Binding, getServiceAccount, Policy } from "./iam";
+import * as utils from "../utils";
+import { Binding, getServiceAccount, isRetryableIamError, mergeBindings, Policy } from "./iam";
 
 const API_VERSION = "v1";
 
@@ -20,7 +20,6 @@ export const firebaseRoles = {
 /**
  * Fetches the IAM Policy of a project.
  * https://cloud.google.com/resource-manager/reference/rest/v1/projects/getIamPolicy
- *
  * @param projectIdOrNumber the id of the project whose IAM Policy you want to get
  */
 export async function getIamPolicy(projectIdOrNumber: string): Promise<Policy> {
@@ -33,7 +32,6 @@ export async function getIamPolicy(projectIdOrNumber: string): Promise<Policy> {
 /**
  * Sets the IAM Policy of a project.
  * https://cloud.google.com/resource-manager/reference/rest/v1/projects/setIamPolicy
- *
  * @param projectIdOrNumber the id of the project for which you want to set a new IAM Policy
  * @param newPolicy the new IAM policy for the project
  * @param updateMask A FieldMask specifying which fields of the policy to modify
@@ -55,10 +53,10 @@ export async function setIamPolicy(
 
 /**
  * Update the IAM Policy of a project to include a service account in a role.
- *
  * @param projectId the id of the project whose IAM Policy you want to set
  * @param serviceAccountName the name of the service account
  * @param roles the new roles of the service account
+ * @param skipAccountLookup whether to skip fetching the full service account details
  */
 export async function addServiceAccountToRoles(
   projectId: string,
@@ -66,42 +64,39 @@ export async function addServiceAccountToRoles(
   roles: string[],
   skipAccountLookup = false,
 ): Promise<Policy> {
-  const [{ name: fullServiceAccountName }, projectPolicy] = await Promise.all([
-    skipAccountLookup
-      ? Promise.resolve({ name: serviceAccountName })
-      : getServiceAccount(projectId, serviceAccountName),
-    getIamPolicy(projectId),
-  ]);
+  const { name: fullServiceAccountName } = skipAccountLookup
+    ? { name: serviceAccountName }
+    : await getServiceAccount(projectId, serviceAccountName);
 
   // The way the service account name is formatted in the Policy object
   // https://cloud.google.com/iam/docs/reference/rest/v1/Policy
   // serviceAccount:my-project-id@appspot.gserviceaccount.com
   const newMemberName = `serviceAccount:${fullServiceAccountName.split("/").pop()}`;
 
-  roles.forEach((roleName) => {
-    let bindingIndex = findIndex(
-      projectPolicy.bindings,
-      (binding: Binding) => binding.role === roleName,
-    );
+  // Service accounts are typically assigned roles immediately after creation. Due to cross-region
+  // IAM replication delay, Cloud Resource Manager setIamPolicy can transiently fail with HTTP 400
+  // ("Service account ... does not exist"). Retrying absorbs this replication window and also
+  // handles HTTP 409 concurrency conflicts by re-fetching the latest policy and fresh etag.
+  return await utils.retryWithBackoff(
+    async () => {
+      const projectPolicy = await getIamPolicy(projectId);
+      projectPolicy.bindings = projectPolicy.bindings || [];
 
-    // create a new binding if the role doesn't exist in the policy yet
-    if (bindingIndex === -1) {
-      bindingIndex =
-        projectPolicy.bindings.push({
-          role: roleName,
-          members: [],
-        }) - 1;
-    }
+      const requiredBindings: Binding[] = roles.map((role) => ({
+        role,
+        members: [newMemberName],
+      }));
+      mergeBindings(projectPolicy, requiredBindings);
 
-    const binding = projectPolicy.bindings[bindingIndex];
-
-    // No need to update if service account already has role
-    if (!binding.members.includes(newMemberName)) {
-      binding.members.push(newMemberName);
-    }
-  });
-
-  return setIamPolicy(projectId, projectPolicy, "bindings");
+      return await setIamPolicy(projectId, projectPolicy, "bindings");
+    },
+    {
+      retries: 7,
+      delay: 1000,
+      maxDelay: 5000,
+      retryPredicate: isRetryableIamError,
+    },
+  );
 }
 
 export async function serviceAccountHasRoles(
@@ -116,6 +111,8 @@ export async function serviceAccountHasRoles(
       : getServiceAccount(projectId, serviceAccountName),
     getIamPolicy(projectId),
   ]);
+
+  projectPolicy.bindings = projectPolicy.bindings || [];
 
   // The way the service account name is formatted in the Policy object
   // https://cloud.google.com/iam/docs/reference/rest/v1/Policy
@@ -133,6 +130,61 @@ export async function serviceAccountHasRoles(
       return false;
     }
   }
-
   return true;
 }
+
+/**
+ * Removes the specified IAM roles from a service account in the project policy.
+ */
+export async function removeServiceAccountRoles(
+  projectId: string,
+  serviceAccountEmail: string,
+  rolesToRemove: string[],
+): Promise<Policy> {
+  const projectPolicy = await getIamPolicy(projectId);
+  const bindings = projectPolicy.bindings || [];
+  const memberName = `serviceAccount:${serviceAccountEmail}`;
+  let updated = false;
+
+  for (let i = bindings.length - 1; i >= 0; i--) {
+    const binding = bindings[i];
+    if (rolesToRemove.includes(binding.role)) {
+      const memberIndex = binding.members.indexOf(memberName);
+      if (memberIndex !== -1) {
+        binding.members.splice(memberIndex, 1);
+        updated = true;
+        if (binding.members.length === 0) {
+          bindings.splice(i, 1);
+        }
+      }
+    }
+  }
+
+  if (updated) {
+    projectPolicy.bindings = bindings;
+    return await setIamPolicy(projectId, projectPolicy, "bindings");
+  }
+  return projectPolicy;
+}
+
+/**
+ * Returns a list of all IAM roles currently granted to the service account in the project policy.
+ */
+export async function getServiceAccountRoles(
+  projectId: string,
+  serviceAccountEmail: string,
+): Promise<string[]> {
+  const projectPolicy = await getIamPolicy(projectId);
+  const memberName = `serviceAccount:${serviceAccountEmail}`;
+  const roles: string[] = [];
+  const bindings = projectPolicy.bindings || [];
+
+  for (const binding of bindings) {
+    if (binding.members.includes(memberName)) {
+      roles.push(binding.role);
+    }
+  }
+  return roles;
+}
+
+export const addServiceAccountRoles = addServiceAccountToRoles;

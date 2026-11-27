@@ -10,7 +10,9 @@ import {
   ValueNode,
   buildClientSchema,
   getNamedType,
+  isEnumType,
   isInputObjectType,
+  isListType,
   print,
 } from "graphql";
 import { upsertFile } from "./file-utils";
@@ -34,9 +36,7 @@ export function registerAdHoc(
     ast: ObjectTypeDefinitionNode,
     documentPath: string,
   ) {
-    // TODO(rrousselGit) - this is a temporary solution due to the lack of a "schema".
-    // As such, we hardcoded the list of allowed primitives.
-    // We should ideally refactor this to allow any scalar type.
+    // TODO(hlshen): Revamp makeQuery to utilize live schema, and built out an AST instead of construction the query through string builder
     const primitiveTypes = new Set([
       "String",
       "Int",
@@ -67,9 +67,12 @@ export function registerAdHoc(
       var hasField = false;
       let query = "{\n";
       for (const field of ast.fields!) {
-        // We unwrap NonNullType to obtain the actual type
+        // We unwrap NonNullType and ListType to obtain the actual type
         let fieldType = field.type;
-        if (fieldType.kind === Kind.NON_NULL_TYPE) {
+        while (
+          fieldType.kind === Kind.LIST_TYPE ||
+          fieldType.kind === Kind.NON_NULL_TYPE
+        ) {
           fieldType = fieldType.type;
         }
 
@@ -78,6 +81,17 @@ export function registerAdHoc(
         if (targetType.kind === Kind.NAMED_TYPE) {
           // Check if the type is a primitive type, such that no recursion is needed.
           if (primitiveTypes.has(targetType.name.value)) {
+            query += `  ${indent}${field.name.value}\n`;
+            hasField = true;
+            continue;
+          }
+
+          const isEnum = document.definitions.some(
+            (def) =>
+              def.kind === Kind.ENUM_TYPE_DEFINITION &&
+              def.name.value === targetType.name.value,
+          );
+          if (isEnum) {
             query += `  ${indent}${field.name.value}\n`;
             hasField = true;
             continue;
@@ -106,18 +120,16 @@ export function registerAdHoc(
       }
 
       query += `${indent}}`;
+      if (!hasField) {
+        return undefined;
+      }
       return query;
     }
 
     await upsertFile(filePath, () => {
       const queryName = `${ast.name.value.charAt(0).toLowerCase()}${ast.name.value.slice(1)}s`;
 
-      return `
-# This is a file for you to write an un-named query.
-# Only one un-named query is allowed per file.
-query {
-  ${queryName}${buildRecursiveObjectQuery(ast)!}
-}`;
+      return `\n# This is a file for you to write an un-named query.\n# Only one un-named query is allowed per file.\nquery {\n  ${queryName}${buildRecursiveObjectQuery(ast)!}\n}`;
     });
   }
 
@@ -164,82 +176,6 @@ query {
     });
   }
 
-  function makeAdHocMutation(
-    fields: GraphQLInputField[],
-    singularName: string,
-  ): OperationDefinitionNode {
-    const argumentFields: ObjectFieldNode[] = [];
-
-    for (const field of fields) {
-      const type = getNamedType(field.type);
-      const defaultValue = getDefaultScalarValueNode(type.name);
-      if (!defaultValue) {
-        continue;
-      }
-
-      argumentFields.push({
-        kind: Kind.OBJECT_FIELD,
-        name: { kind: Kind.NAME, value: field.name },
-        value: defaultValue,
-      });
-    }
-
-    return {
-      kind: Kind.OPERATION_DEFINITION,
-      operation: OperationTypeNode.MUTATION,
-      selectionSet: {
-        kind: Kind.SELECTION_SET,
-        selections: [
-          {
-            kind: Kind.FIELD,
-            name: {
-              kind: Kind.NAME,
-              value: `${singularName.charAt(0).toLowerCase()}${singularName.slice(1)}_insert`,
-            },
-            arguments: [
-              {
-                kind: Kind.ARGUMENT,
-                name: { kind: Kind.NAME, value: "data" },
-                value: {
-                  kind: Kind.OBJECT,
-                  fields: argumentFields,
-                },
-              },
-            ],
-          },
-        ],
-      },
-    };
-  }
-  function getDefaultScalarValueNode(type: string): ValueNode | undefined {
-    switch (type) {
-      case "Any":
-        return { kind: Kind.OBJECT, fields: [] };
-      case "Boolean":
-        return { kind: Kind.BOOLEAN, value: false };
-      case "Date":
-        return {
-          kind: Kind.STRING,
-          value: new Date().toISOString().substring(0, 10),
-        };
-      case "Float":
-        return { kind: Kind.FLOAT, value: "0" };
-      case "Int":
-        return { kind: Kind.INT, value: "0" };
-      case "Int64":
-        return { kind: Kind.INT, value: "0" };
-      case "String":
-        return { kind: Kind.STRING, value: "" };
-      case "Timestamp":
-        return { kind: Kind.STRING, value: new Date().toISOString() };
-      case "UUID":
-        return { kind: Kind.STRING, value: "11111111222233334444555555555555" };
-      case "Vector":
-        return { kind: Kind.LIST, values: [] };
-      default:
-        return undefined;
-    }
-  }
   return Disposable.from(
     vscode.commands.registerCommand(
       "firebase.dataConnect.schemaAddData",
@@ -258,17 +194,106 @@ query {
   );
 }
 
+export function makeAdHocMutation(
+  fields: GraphQLInputField[],
+  singularName: string,
+): OperationDefinitionNode {
+  const argumentFields: ObjectFieldNode[] = [];
 
-export function getDefaultScalarValue(type: string): string {
+  for (const field of fields) {
+    const type = getNamedType(field.type);
+    let defaultValue: ValueNode | undefined;
+    if (isEnumType(type)) {
+      const enumValues = type.getValues();
+      if (enumValues.length > 0) {
+        defaultValue = { kind: Kind.ENUM, value: enumValues[0].name };
+      }
+    } else {
+      defaultValue = getDefaultScalarValueNode(type.name);
+    }
+    if (!defaultValue) {
+      continue;
+    }
+
+    // convert it back to a list
+    if (isListType(field.type)) {
+      defaultValue = { kind: Kind.LIST, values: [defaultValue] };
+    }
+
+    argumentFields.push({
+      kind: Kind.OBJECT_FIELD,
+      name: { kind: Kind.NAME, value: field.name },
+      value: defaultValue,
+    });
+  }
+
+  return {
+    kind: Kind.OPERATION_DEFINITION,
+    operation: OperationTypeNode.MUTATION,
+    selectionSet: {
+      kind: Kind.SELECTION_SET,
+      selections: [
+        {
+          kind: Kind.FIELD,
+          name: {
+            kind: Kind.NAME,
+            value: `${singularName.charAt(0).toLowerCase()}${singularName.slice(1)}_insert`,
+          },
+          arguments: [
+            {
+              kind: Kind.ARGUMENT,
+              name: { kind: Kind.NAME, value: "data" },
+              value: {
+                kind: Kind.OBJECT,
+                fields: argumentFields,
+              },
+            },
+          ],
+        },
+      ],
+    },
+  };
+}
+function getDefaultScalarValueNode(type: string): ValueNode | undefined {
+  switch (type) {
+    case "Any":
+      return { kind: Kind.OBJECT, fields: [] };
+    case "Boolean":
+      return { kind: Kind.BOOLEAN, value: false };
+    case "Date":
+      return {
+        kind: Kind.STRING,
+        value: new Date().toISOString().substring(0, 10),
+      };
+    case "Float":
+      return { kind: Kind.FLOAT, value: "0" };
+    case "Int":
+      return { kind: Kind.INT, value: "0" };
+    case "Int64":
+      return { kind: Kind.INT, value: "0" };
+    case "String":
+      return { kind: Kind.STRING, value: "" };
+    case "Timestamp":
+      return { kind: Kind.STRING, value: new Date().toISOString() };
+    case "UUID":
+      return { kind: Kind.STRING, value: "11111111222233334444555555555555" };
+    case "Vector":
+      return { kind: Kind.LIST, values: [] };
+    default:
+      return undefined;
+  }
+}
+
+export function getDefaultScalarValue(type: string): any {
   switch (type) {
     case "Boolean":
-      return "false";
+      return false;
     case "Date":
       return new Date().toISOString().substring(0, 10);
     case "Float":
-      return "0";
+      return 0.0;
     case "Int":
-      return "0";
+      return 0;
     case "Int64":
       return "0";
     case "String":
@@ -278,8 +303,8 @@ export function getDefaultScalarValue(type: string): string {
     case "UUID":
       return "11111111222233334444555555555555";
     case "Vector":
-      return "[]";
+      return [1.1, 2.2, 3.3];
     default:
-      return "";
+      return undefined;
   }
 }

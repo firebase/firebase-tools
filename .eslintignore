@@ -5,3 +5,5 @@ node_modules
 standalone
 templates
 .firebase
+julesbot
+.agent

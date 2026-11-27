@@ -1,0 +1,711 @@
+import { expect } from "chai";
+import * as sinon from "sinon";
+import { Readable } from "stream";
+
+import * as storage from "./storage";
+import * as utils from "../utils";
+import { FirebaseError } from "../error";
+import { Client } from "../apiv2";
+
+describe("storage", () => {
+  describe("upsertBucket", () => {
+    let listBucketsStub: sinon.SinonStub;
+    let createBucketStub: sinon.SinonStub<
+      Parameters<typeof storage.createBucket>,
+      ReturnType<typeof storage.createBucket>
+    >;
+    let patchBucketStub: sinon.SinonStub;
+    let logLabeledBulletStub: sinon.SinonStub;
+    let logLabeledWarningStub: sinon.SinonStub;
+    let randomStringStub: sinon.SinonStub;
+
+    const PROJECT_ID = "test-project";
+    const BUCKET_LIFECYCLE = { rule: [{ action: { type: "Delete" }, condition: { age: 30 } }] };
+    const BASE_BUCKET_NAME = "test-bucket";
+    const PURPOSE_LABEL = "test-purpose";
+
+    beforeEach(() => {
+      listBucketsStub = sinon.stub(storage, "listBuckets");
+      createBucketStub = sinon.stub(storage, "createBucket");
+      patchBucketStub = sinon.stub(storage, "patchBucket");
+      logLabeledBulletStub = sinon.stub(utils, "logLabeledBullet");
+      logLabeledWarningStub = sinon.stub(utils, "logLabeledWarning");
+      randomStringStub = sinon.stub(storage, "randomString").returns("abcdef");
+    });
+
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it("should return existing bucket name if a bucket with the purpose label is found", async () => {
+      const bucketName = "existing-bucket";
+      listBucketsStub.resolves([
+        { name: bucketName, labels: { [PURPOSE_LABEL]: "true" } },
+        { name: "another-bucket", labels: {} },
+      ] as unknown as storage.BucketResponse[]);
+
+      const result = await storage.upsertBucket({
+        product: "test",
+        createMessage: "Creating bucket",
+        projectId: PROJECT_ID,
+        req: {
+          baseName: BASE_BUCKET_NAME,
+          location: "us-central1",
+          purposeLabel: PURPOSE_LABEL,
+          lifecycle: BUCKET_LIFECYCLE,
+        },
+      });
+
+      expect(result).to.equal(bucketName);
+      expect(listBucketsStub).to.be.calledOnceWith(PROJECT_ID);
+      expect(createBucketStub).to.not.be.called;
+    });
+
+    it("should patch an existing bucket if it does not have a purpose label", async () => {
+      const bucketName = "existing-unmanaged-bucket";
+      listBucketsStub.resolves([
+        { name: bucketName, labels: {} },
+      ] as unknown as storage.BucketResponse[]);
+
+      const result = await storage.upsertBucket({
+        product: "test",
+        createMessage: "Creating bucket",
+        projectId: PROJECT_ID,
+        req: {
+          baseName: bucketName,
+          location: "us-central1",
+          purposeLabel: PURPOSE_LABEL,
+          lifecycle: BUCKET_LIFECYCLE,
+        },
+      });
+
+      expect(result).to.equal(bucketName);
+      expect(listBucketsStub).to.be.calledOnceWith(PROJECT_ID);
+      expect(patchBucketStub).to.be.calledOnceWith(bucketName, {
+        labels: { [PURPOSE_LABEL]: "true" },
+      });
+      expect(createBucketStub).to.not.be.called;
+    });
+
+    it("should create a new bucket if no bucket with the purpose label is found", async () => {
+      listBucketsStub.resolves([
+        { name: "another-bucket", labels: {} },
+      ] as unknown as storage.BucketResponse[]);
+      createBucketStub.resolves({ name: BASE_BUCKET_NAME } as unknown as storage.BucketResponse);
+
+      const result = await storage.upsertBucket({
+        product: "test",
+        createMessage: "Creating bucket",
+        projectId: PROJECT_ID,
+        req: {
+          baseName: BASE_BUCKET_NAME,
+          location: "us-central1",
+          purposeLabel: PURPOSE_LABEL,
+          lifecycle: BUCKET_LIFECYCLE,
+        },
+      });
+
+      expect(result).to.equal(BASE_BUCKET_NAME);
+      expect(listBucketsStub).to.be.calledOnceWith(PROJECT_ID);
+      expect(createBucketStub).to.be.calledOnceWith(
+        PROJECT_ID,
+        {
+          name: BASE_BUCKET_NAME,
+          location: "us-central1",
+          lifecycle: BUCKET_LIFECYCLE,
+          labels: { [PURPOSE_LABEL]: "true" },
+        },
+        true,
+      );
+      expect(logLabeledBulletStub).to.be.calledOnce;
+    });
+
+    it("should pass autoclass config to createBucket when specified", async () => {
+      listBucketsStub.resolves([
+        { name: "another-bucket", labels: {} },
+      ] as unknown as storage.BucketResponse[]);
+      createBucketStub.resolves({ name: BASE_BUCKET_NAME } as unknown as storage.BucketResponse);
+
+      const result = await storage.upsertBucket({
+        product: "test",
+        createMessage: "Creating bucket",
+        projectId: PROJECT_ID,
+        req: {
+          baseName: BASE_BUCKET_NAME,
+          location: "us-central1",
+          purposeLabel: PURPOSE_LABEL,
+          lifecycle: BUCKET_LIFECYCLE,
+          autoclass: { enabled: true },
+        },
+      });
+
+      expect(result).to.equal(BASE_BUCKET_NAME);
+      expect(createBucketStub).to.be.calledOnceWith(
+        PROJECT_ID,
+        {
+          name: BASE_BUCKET_NAME,
+          location: "us-central1",
+          lifecycle: BUCKET_LIFECYCLE,
+          labels: { [PURPOSE_LABEL]: "true" },
+          autoclass: { enabled: true },
+        },
+        true,
+      );
+    });
+
+    it("should handle listBuckets failure", async () => {
+      const error = new FirebaseError("Failed to list buckets");
+      listBucketsStub.rejects(error);
+
+      await expect(
+        storage.upsertBucket({
+          product: "test",
+          createMessage: "Creating bucket",
+          projectId: PROJECT_ID,
+          req: {
+            baseName: BASE_BUCKET_NAME,
+            location: "us-central1",
+            purposeLabel: PURPOSE_LABEL,
+            lifecycle: BUCKET_LIFECYCLE,
+          },
+        }),
+      ).to.be.rejectedWith(error);
+
+      expect(listBucketsStub).to.be.calledOnceWith(PROJECT_ID);
+      expect(createBucketStub).to.not.be.called;
+    });
+
+    it("should retry with a new name on createBucket conflict", async () => {
+      const conflictError = new FirebaseError("Conflict", {
+        original: new FirebaseError("Conflict", { status: 409 }),
+      });
+      const randomSuffix = "abcdef";
+      const newBucketName = `${BASE_BUCKET_NAME}-${randomSuffix}`;
+
+      listBucketsStub.resolves([]);
+      createBucketStub.onFirstCall().rejects(conflictError);
+      createBucketStub.onSecondCall().resolves({
+        name: newBucketName,
+      } as unknown as storage.BucketResponse);
+
+      const result = await storage.upsertBucket({
+        product: "test",
+        createMessage: "Creating bucket",
+        projectId: PROJECT_ID,
+        req: {
+          baseName: BASE_BUCKET_NAME,
+          location: "us-central1",
+          purposeLabel: PURPOSE_LABEL,
+          lifecycle: BUCKET_LIFECYCLE,
+        },
+      });
+
+      expect(result).to.equal(newBucketName);
+      expect(createBucketStub).to.be.calledTwice;
+      expect(createBucketStub.firstCall.args[1].name).to.equal(BASE_BUCKET_NAME);
+      expect(createBucketStub.secondCall.args[1].name).to.equal(newBucketName);
+      expect(randomStringStub).to.be.calledOnceWith(6);
+    });
+
+    it("should error out after 5 createBucket conflicts", async () => {
+      const conflictError = new FirebaseError("Conflict", {
+        original: new FirebaseError("Conflict", { status: 409 }),
+      });
+      listBucketsStub.resolves([]);
+      createBucketStub.rejects(conflictError);
+
+      await expect(
+        storage.upsertBucket({
+          product: "test",
+          createMessage: "Creating bucket",
+          projectId: PROJECT_ID,
+          req: {
+            baseName: BASE_BUCKET_NAME,
+            location: "us-central1",
+            purposeLabel: PURPOSE_LABEL,
+            lifecycle: BUCKET_LIFECYCLE,
+          },
+        }),
+      ).to.be.rejectedWith("Failed to create a unique Cloud Storage bucket name after 5 attempts.");
+
+      expect(createBucketStub.callCount).to.equal(5);
+    });
+
+    it("should handle permission errors on createBucket", async () => {
+      const permError = new FirebaseError("Permission denied", {
+        original: new FirebaseError("Forbidden", { status: 403 }),
+      });
+      listBucketsStub.resolves([]);
+      createBucketStub.rejects(permError);
+
+      await expect(
+        storage.upsertBucket({
+          product: "test",
+          createMessage: "Creating bucket",
+          projectId: PROJECT_ID,
+          req: {
+            baseName: BASE_BUCKET_NAME,
+            location: "us-central1",
+            purposeLabel: PURPOSE_LABEL,
+            lifecycle: BUCKET_LIFECYCLE,
+          },
+        }),
+      ).to.be.rejectedWith(permError);
+
+      expect(logLabeledWarningStub).to.be.calledOnce;
+      expect(createBucketStub).to.be.calledOnce;
+    });
+
+    it("should forward unexpected errors from createBucket", async () => {
+      const unexpectedError = new FirebaseError("Unexpected error", {
+        original: new FirebaseError("Server Error", { status: 500 }),
+      });
+      listBucketsStub.resolves([]);
+      createBucketStub.rejects(unexpectedError);
+
+      await expect(
+        storage.upsertBucket({
+          product: "test",
+          createMessage: "Creating bucket",
+          projectId: PROJECT_ID,
+          req: {
+            baseName: BASE_BUCKET_NAME,
+            location: "us-central1",
+            purposeLabel: PURPOSE_LABEL,
+            lifecycle: BUCKET_LIFECYCLE,
+          },
+        }),
+      ).to.be.rejectedWith(unexpectedError);
+
+      expect(logLabeledWarningStub).to.not.be.called;
+      expect(createBucketStub).to.be.calledOnce;
+    });
+  });
+
+  describe("uploadObject", () => {
+    let clientRequestStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      clientRequestStub = sinon.stub(Client.prototype, "request").resolves({
+        status: 200,
+        response: new Response(null, {
+          headers: new Headers({
+            "x-goog-generation": "123456789",
+          }),
+        }),
+        body: {},
+      });
+    });
+
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it("should use custom maxSizeBytes when provided", async () => {
+      const source = {
+        file: "/path/to/archive.tar.gz",
+        stream: new Readable({
+          read() {
+            this.push(null);
+          },
+        }),
+      };
+
+      const result = await storage.uploadObject(
+        source,
+        "my-bucket",
+        storage.ContentType.TAR,
+        262144000,
+      );
+
+      expect(result).to.deep.equal({
+        bucket: "my-bucket",
+        object: "archive.tar.gz",
+        generation: "123456789",
+      });
+      expect(clientRequestStub).to.be.calledOnceWith({
+        method: "PUT",
+        path: "/my-bucket/archive.tar.gz",
+        headers: {
+          "Content-Type": "application/octet-stream",
+          "x-goog-content-length-range": "0,262144000",
+        },
+        body: source.stream,
+      });
+    });
+
+    it("should default to 123289600 when maxSizeBytes is not provided", async () => {
+      const source = {
+        file: "/path/to/source.zip",
+        stream: new Readable({
+          read() {
+            this.push(null);
+          },
+        }),
+      };
+
+      const result = await storage.uploadObject(source, "my-bucket", storage.ContentType.ZIP);
+
+      expect(result).to.deep.equal({
+        bucket: "my-bucket",
+        object: "source.zip",
+        generation: "123456789",
+      });
+      expect(clientRequestStub).to.be.calledOnceWith({
+        method: "PUT",
+        path: "/my-bucket/source.zip",
+        headers: {
+          "Content-Type": "application/zip",
+          "x-goog-content-length-range": "0,123289600",
+        },
+        body: source.stream,
+      });
+    });
+
+    it("should throw FirebaseError if TAR upload does not end with .tar.gz", async () => {
+      const source = {
+        file: "/path/to/archive.zip",
+        stream: new Readable({
+          read() {
+            this.push(null);
+          },
+        }),
+      };
+
+      await expect(
+        storage.uploadObject(source, "my-bucket", storage.ContentType.TAR),
+      ).to.be.rejectedWith(FirebaseError, "Expected a file name ending in .tar.gz");
+    });
+
+    it("should throw FirebaseError if ZIP upload does not end with .zip", async () => {
+      const source = {
+        file: "/path/to/archive.tar.gz",
+        stream: new Readable({
+          read() {
+            this.push(null);
+          },
+        }),
+      };
+
+      await expect(
+        storage.uploadObject(source, "my-bucket", storage.ContentType.ZIP),
+      ).to.be.rejectedWith(FirebaseError, "Expected a file name ending in .zip");
+    });
+  });
+
+  describe("getBucket", () => {
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it("should return bucket metadata on success", async () => {
+      const mockBucket = { name: "my-bucket", location: "US-EAST1" } as storage.BucketResponse;
+      const getStub = sinon.stub(Client.prototype, "get").resolves({
+        status: 200,
+        response: new Response(),
+        body: mockBucket,
+      });
+
+      const result = await storage.getBucket("my-bucket");
+
+      expect(result).to.deep.equal(mockBucket);
+      expect(getStub).to.be.calledOnceWith("/storage/v1/b/my-bucket");
+    });
+
+    it("should throw FirebaseError with status when request fails", async () => {
+      const apiError = new FirebaseError("Not Found", { status: 404 });
+      sinon.stub(Client.prototype, "get").rejects(apiError);
+
+      try {
+        await storage.getBucket("missing-bucket");
+        expect.fail("Expected getBucket to throw");
+      } catch (err: unknown) {
+        expect(err).to.be.instanceOf(FirebaseError);
+        expect((err as FirebaseError).message).to.equal("Failed to obtain the storage bucket");
+        expect((err as FirebaseError).status).to.equal(404);
+      }
+    });
+  });
+
+  describe("patchBucket", () => {
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it("should patch bucket metadata with non-recursing updateMask for cors and lifecycle", async () => {
+      const metadata: Partial<storage.BucketResponse> = {
+        cors: [{ origin: ["https://console.firebase.google.com"], method: ["GET"] }],
+        lifecycle: { rule: [{ action: { type: "Delete" }, condition: { age: 90 } }] },
+      };
+      const mockBucket = { name: "my-bucket", ...metadata } as storage.BucketResponse;
+      const patchStub = sinon.stub(Client.prototype, "patch").resolves({
+        status: 200,
+        response: new Response(),
+        body: mockBucket,
+      });
+
+      const result = await storage.patchBucket("my-bucket", metadata);
+
+      expect(result).to.deep.equal(mockBucket);
+      expect(patchStub).to.be.calledOnceWith("/storage/v1/b/my-bucket", metadata, {
+        queryParams: { updateMask: "cors,lifecycle" },
+      });
+    });
+
+    it("should throw FirebaseError with status when patch request fails", async () => {
+      const apiError = new FirebaseError("Forbidden", { status: 403 });
+      sinon.stub(Client.prototype, "patch").rejects(apiError);
+
+      try {
+        await storage.patchBucket("my-bucket", { cors: [] });
+        expect.fail("Expected patchBucket to throw");
+      } catch (err: unknown) {
+        expect(err).to.be.instanceOf(FirebaseError);
+        expect((err as FirebaseError).message).to.equal("Failed to patch the storage bucket");
+        expect((err as FirebaseError).status).to.equal(403);
+      }
+    });
+  });
+
+  describe("createBucket", () => {
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it("should omit predefinedAcl query params when uniformBucketLevelAccess is enabled", async () => {
+      const req: storage.CreateBucketRequest = {
+        name: "ubla-bucket",
+        location: "us-east1",
+        iamConfiguration: {
+          publicAccessPrevention: "enforced",
+          uniformBucketLevelAccess: { enabled: true },
+        },
+      };
+      const postStub = sinon.stub(Client.prototype, "post").resolves({
+        status: 200,
+        response: new Response(),
+        body: { name: "ubla-bucket" } as storage.BucketResponse,
+      });
+
+      await storage.createBucket("test-project", req, true);
+
+      expect(postStub).to.be.calledOnceWith("/storage/v1/b", req, {
+        queryParams: { project: "test-project" },
+      });
+    });
+
+    it("should include projectPrivate predefinedAcl query params when UBLA is not enabled", async () => {
+      const req: storage.CreateBucketRequest = {
+        name: "legacy-bucket",
+        location: "us-east1",
+      };
+      const mockBucket = { name: "legacy-bucket", location: "US-EAST1" } as storage.BucketResponse;
+      const postStub = sinon.stub(Client.prototype, "post").resolves({
+        status: 200,
+        response: new Response(),
+        body: mockBucket,
+      });
+
+      const result = await storage.createBucket("test-project", req, true);
+
+      expect(result).to.deep.equal(mockBucket);
+      expect(postStub).to.be.calledOnceWith("/storage/v1/b", req, {
+        queryParams: {
+          project: "test-project",
+          predefinedAcl: "projectPrivate",
+          predefinedDefaultObjectAcl: "projectPrivate",
+        },
+      });
+    });
+
+    it("should surface GCS 400 error details and status when location is invalid", async () => {
+      const apiError = new FirebaseError(
+        "Request to https://storage.googleapis.com/storage/v1/b?project=test-project had HTTP Error: 400, The specified location constraint is not valid.",
+        {
+          status: 400,
+          exit: 1,
+          context: {
+            body: {
+              error: {
+                code: 400,
+                message: "The specified location constraint is not valid.",
+              },
+            },
+            response: { statusCode: 400 },
+          },
+        },
+      );
+      sinon.stub(Client.prototype, "post").rejects(apiError);
+
+      try {
+        await storage.createBucket(
+          "test-project",
+          { name: "my-bucket", location: "bogus-region-1" },
+          true,
+        );
+        expect.fail("Expected createBucket to throw");
+      } catch (err: unknown) {
+        expect(err).to.be.instanceOf(FirebaseError);
+        const fbErr = err as FirebaseError;
+        expect(fbErr.message).to.equal(
+          "Failed to create the storage bucket: The specified location constraint is not valid.",
+        );
+        expect(fbErr.status).to.equal(400);
+        expect(fbErr.original).to.equal(apiError);
+      }
+    });
+
+    it("should fall back to error message when API error context is absent", async () => {
+      const networkError = new Error("socket hang up");
+      sinon.stub(Client.prototype, "post").rejects(networkError);
+
+      try {
+        await storage.createBucket("test-project", { name: "my-bucket", location: "us-east1" });
+        expect.fail("Expected createBucket to throw");
+      } catch (err: unknown) {
+        expect(err).to.be.instanceOf(FirebaseError);
+        const fbErr = err as FirebaseError;
+        expect(fbErr.message).to.equal("Failed to create the storage bucket: socket hang up");
+        expect(fbErr.status).to.equal(500);
+        expect(fbErr.original).to.equal(networkError);
+      }
+    });
+
+    it("should fall back to generic message when error has no details", async () => {
+      const emptyError = new Error("");
+      sinon.stub(Client.prototype, "post").rejects(emptyError);
+
+      try {
+        await storage.createBucket("test-project", { name: "my-bucket", location: "us-east1" });
+        expect.fail("Expected createBucket to throw");
+      } catch (err: unknown) {
+        expect(err).to.be.instanceOf(FirebaseError);
+        const fbErr = err as FirebaseError;
+        expect(fbErr.message).to.equal("Failed to create the storage bucket");
+        expect(fbErr.status).to.equal(500);
+        expect(fbErr.original).to.equal(emptyError);
+      }
+    });
+  });
+
+  describe("bucket IAM policy helpers", () => {
+    const bucketName = "my-heap-dump-bucket";
+    const saEmail = "service-123@gcp-sa-crashlytics.iam.gserviceaccount.com";
+
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it("getBucketIamPolicy should request policy version 3", async () => {
+      const mockPolicy = { version: 3, etag: "abc", bindings: [] };
+      const getStub = sinon.stub(Client.prototype, "get").resolves({
+        status: 200,
+        response: new Response(),
+        body: mockPolicy,
+      });
+
+      const policy = await storage.getBucketIamPolicy(bucketName);
+
+      expect(policy).to.deep.equal(mockPolicy);
+      expect(getStub).to.be.calledOnceWith(`/storage/v1/b/${bucketName}/iam`, {
+        queryParams: { optionsRequestedPolicyVersion: "3" },
+      });
+    });
+
+    it("setBucketIamPolicy should PUT updated policy to bucket IAM endpoint", async () => {
+      const updatedPolicy = {
+        version: 1,
+        etag: "abc",
+        bindings: [{ role: "roles/storage.objectCreator", members: [`serviceAccount:${saEmail}`] }],
+      };
+      const putStub = sinon.stub(Client.prototype, "put").resolves({
+        status: 200,
+        response: new Response(),
+        body: updatedPolicy,
+      });
+
+      const result = await storage.setBucketIamPolicy(bucketName, updatedPolicy);
+
+      expect(result).to.deep.equal(updatedPolicy);
+      expect(putStub).to.be.calledOnceWith(`/storage/v1/b/${bucketName}/iam`, updatedPolicy);
+    });
+
+    it("addServiceAccountToBucketRoles should add missing binding and preserve existing bindings", async () => {
+      const existingBinding = {
+        role: "roles/storage.legacyBucketOwner",
+        members: ["projectOwner:my-project"],
+      };
+      const getPolicyStub = sinon.stub(storage, "getBucketIamPolicy").resolves({
+        version: 1,
+        etag: "etag-1",
+        bindings: [existingBinding],
+      });
+      const setPolicyStub = sinon.stub(storage, "setBucketIamPolicy").callsFake(async (_b, p) => p);
+
+      const result = await storage.addServiceAccountToBucketRoles(bucketName, saEmail, [
+        "roles/storage.objectCreator",
+      ]);
+
+      expect(getPolicyStub).to.be.calledOnceWith(bucketName);
+      expect(setPolicyStub).to.be.calledOnceWith(bucketName, {
+        version: 1,
+        etag: "etag-1",
+        bindings: [
+          existingBinding,
+          {
+            role: "roles/storage.objectCreator",
+            members: [`serviceAccount:${saEmail}`],
+          },
+        ],
+      });
+      expect(result.bindings).to.have.lengthOf(2);
+    });
+
+    it("addServiceAccountToBucketRoles should skip setBucketIamPolicy if binding already exists", async () => {
+      const existingPolicy = {
+        version: 1,
+        etag: "etag-1",
+        bindings: [
+          {
+            role: "roles/storage.objectCreator",
+            members: [`serviceAccount:${saEmail}`],
+          },
+        ],
+      };
+      sinon.stub(storage, "getBucketIamPolicy").resolves(existingPolicy);
+      const setPolicyStub = sinon.stub(storage, "setBucketIamPolicy");
+
+      const result = await storage.addServiceAccountToBucketRoles(bucketName, saEmail, [
+        "roles/storage.objectCreator",
+      ]);
+
+      expect(result).to.deep.equal(existingPolicy);
+      expect(setPolicyStub).to.not.be.called;
+    });
+
+    it("addServiceAccountToBucketRoles should retry on HTTP 400 service account propagation error", async () => {
+      const origRetryWithBackoff = utils.retryWithBackoff;
+      const retryStub = sinon
+        .stub(utils, "retryWithBackoff")
+        .callsFake((fn, opts) => origRetryWithBackoff(fn, { ...opts, delay: 1, maxDelay: 5 }));
+      const getPolicyStub = sinon
+        .stub(storage, "getBucketIamPolicy")
+        .callsFake(async () => ({ version: 1, etag: "etag-1", bindings: [] }));
+      const setPolicyStub = sinon.stub(storage, "setBucketIamPolicy");
+      setPolicyStub.onFirstCall().rejects(
+        new FirebaseError(`Service account ${saEmail} does not exist.`, {
+          status: 400,
+        }),
+      );
+      setPolicyStub.onSecondCall().callsFake(async (_b, p) => p);
+
+      await storage.addServiceAccountToBucketRoles(bucketName, saEmail, [
+        "roles/storage.objectCreator",
+      ]);
+
+      expect(retryStub).to.be.calledOnce;
+      expect(getPolicyStub).to.be.calledTwice;
+      expect(setPolicyStub).to.be.calledTwice;
+    });
+  });
+});

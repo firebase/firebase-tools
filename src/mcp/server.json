@@ -1,0 +1,23 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-10-17/server.schema.json",
+  "name": "io.github.firebase/firebase-mcp",
+  "description": "Gives AI development tools Firebase-specific capabilities and expertise.",
+  "repository": {
+    "url": "https://github.com/firebase/firebase-tools",
+    "source": "github",
+    "subfolder": "src/mcp"
+  },
+  "version": "0.3.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "firebase-tools",
+      "runtimeHint": "npx",
+      "runtimeArguments": [{"type": "positional", "value": "mcp"}],
+      "version": "14.27.0",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

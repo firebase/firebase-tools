@@ -29,14 +29,36 @@ export class FunctionsServer {
 
     const backends: EmulatableBackend[] = [];
     for (const cfg of config) {
-      const functionsDir = path.join(options.config.projectDir, cfg.source);
-      backends.push({
-        functionsDir,
-        codebase: cfg.codebase,
-        runtime: cfg.runtime,
-        env: {},
-        secretEnv: [],
-      });
+      const localCfg = projectConfig.requireLocal(
+        cfg,
+        "Remote sources are not supported in the Functions emulator.",
+      );
+      const functionsDir = path.join(options.config.projectDir, localCfg.source);
+
+      if (projectConfig.isKitConfig(localCfg)) {
+        for (const [instanceId, configDir] of Object.entries(localCfg.instances)) {
+          backends.push({
+            functionsDir,
+            codebase: instanceId,
+            prefix: projectConfig.addKitPrefix(instanceId),
+            configDir: path.join(options.config.projectDir, configDir),
+            runtime: localCfg.runtime,
+            env: { FIREBASE_KIT_INSTANCE_ID: instanceId },
+            secretEnv: [],
+          });
+        }
+      } else {
+        backends.push({
+          functionsDir,
+          codebase: localCfg.codebase,
+          ...(localCfg.configDir
+            ? { configDir: path.join(options.config.projectDir, localCfg.configDir) }
+            : {}),
+          runtime: localCfg.runtime,
+          env: {},
+          secretEnv: [],
+        });
+      }
     }
     this.backends = backends;
 

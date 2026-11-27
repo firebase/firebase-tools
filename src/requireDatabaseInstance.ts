@@ -20,7 +20,7 @@ export async function requireDatabaseInstance(options: any): Promise<void> {
   }
   let instance;
   try {
-    instance = await getDefaultDatabaseInstance(options);
+    instance = await getDefaultDatabaseInstance(options.project);
   } catch (err: unknown) {
     throw new FirebaseError(`Failed to get details for project: ${options.project}.`, {
       original: getError(err),

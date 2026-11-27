@@ -1,8 +1,9 @@
 import { EmulatorLogger } from "../../emulatorLogger";
 import { Emulators } from "../../types";
-import * as uuid from "uuid";
+import { randomUUID } from "crypto";
 import { IncomingMetadata, OutgoingFirebaseMetadata, StoredFileMetadata } from "../metadata";
-import { Request, Response, Router } from "express";
+import { Request, Response, Router, NextFunction, json } from "express";
+import * as bodyParser from "body-parser";
 import { StorageEmulator } from "../index";
 import { sendFileBytes } from "./shared";
 import { EmulatorRegistry } from "../../registry";
@@ -15,6 +16,7 @@ import {
   UploadPreviouslyFinalizedError,
 } from "../upload";
 import { reqBodyToBuffer } from "../../shared/request";
+import { asyncHandler } from "../../shared/express";
 import { ListObjectsResponse } from "../files";
 
 /**
@@ -24,6 +26,26 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   // eslint-disable-next-line new-cap
   const firebaseStorageAPI = Router();
   const { storageLayer, uploadService } = emulator;
+
+  const firebasePostUploadMiddleware = (req: Request, res: Response, next: NextFunction): void => {
+    if (req.method === "PUT" && req.header("x-http-method-override")?.toLowerCase() === "patch") {
+      json({ limit: "130mb" })(req, res, next);
+      return;
+    }
+
+    const uploadType = req.header("x-goog-upload-protocol");
+    const uploadCommand = req.header("x-goog-upload-command");
+
+    if (uploadCommand === "start") {
+      json({ limit: "130mb" })(req, res, next);
+      return;
+    }
+    if (uploadType === "multipart") {
+      next();
+      return;
+    }
+    bodyParser.raw({ type: "*/*", limit: "130mb" })(req, res, next);
+  };
 
   if (process.env.STORAGE_EMULATOR_DEBUG) {
     firebaseStorageAPI.use((req, res, next) => {
@@ -72,7 +94,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   }
 
   // Automatically create a bucket for any route which uses a bucket
-  firebaseStorageAPI.use(/.*\/b\/(.+?)\/.*/, (req, res, next) => {
+  firebaseStorageAPI.use(/.*\/b\/(.+?)\/.*/i, (req, res, next) => {
     const bucketId = req.params[0];
     storageLayer.createBucket(bucketId);
     if (!emulator.rulesManager.getRuleset(bucketId)) {
@@ -90,92 +112,98 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     next();
   });
 
-  firebaseStorageAPI.get("/b/:bucketId/o/:objectId", async (req, res) => {
-    let metadata: StoredFileMetadata;
-    let data: Buffer;
-    try {
-      // Both object data and metadata get can use the same handler since they share auth logic.
-      ({ metadata, data } = await storageLayer.getObject({
-        bucketId: req.params.bucketId,
-        decodedObjectId: decodeURIComponent(req.params.objectId),
-        authorization: req.header("authorization"),
-        downloadToken: req.query.token?.toString(),
-      }));
-    } catch (err) {
-      if (err instanceof NotFoundError) {
-        return res.sendStatus(404);
-      } else if (err instanceof ForbiddenError) {
-        return res.status(403).json({
-          error: {
-            code: 403,
-            message: `Permission denied. No READ permission.`,
-          },
-        });
+  firebaseStorageAPI.get(
+    "/b/:bucketId/o/:objectId",
+    asyncHandler(async (req, res) => {
+      let metadata: StoredFileMetadata;
+      let data: Buffer;
+      try {
+        // Both object data and metadata get can use the same handler since they share auth logic.
+        ({ metadata, data } = await storageLayer.getObject({
+          bucketId: req.params.bucketId,
+          decodedObjectId: decodeURIComponent(req.params.objectId),
+          authorization: req.header("authorization"),
+          downloadToken: req.query.token?.toString(),
+        }));
+      } catch (err) {
+        if (err instanceof NotFoundError) {
+          return res.sendStatus(404);
+        } else if (err instanceof ForbiddenError) {
+          return res.status(403).json({
+            error: {
+              code: 403,
+              message: `Permission denied. No READ permission.`,
+            },
+          });
+        }
+        throw err;
       }
-      throw err;
-    }
 
-    if (metadata.downloadTokens.length === 0) {
-      metadata.addDownloadToken(/* shouldTrigger = */ true);
-    }
+      if (metadata.downloadTokens.length === 0) {
+        metadata.addDownloadToken(/* shouldTrigger = */ true);
+      }
 
-    // Object data request
-    if (req.query.alt === "media") {
-      return sendFileBytes(metadata, data, req, res);
-    }
+      // Object data request
+      if (req.query.alt === "media") {
+        return sendFileBytes(metadata, data, req, res);
+      }
 
-    // Object metadata request
-    return res.json(new OutgoingFirebaseMetadata(metadata));
-  });
+      // Object metadata request
+      return res.json(new OutgoingFirebaseMetadata(metadata));
+    }),
+  );
 
   // list object handler
-  firebaseStorageAPI.get("/b/:bucketId/o", async (req, res) => {
-    const maxResults = req.query.maxResults?.toString();
-    let listResponse: ListObjectsResponse;
-    // The prefix query param must be empty or end in a "/"
-    let prefix = "";
-    if (req.query.prefix) {
-      prefix = req.query.prefix.toString();
-      if (prefix.charAt(prefix.length - 1) !== "/") {
-        return res.status(400).json({
-          error: {
-            code: 400,
-            message:
-              "The prefix parameter is required to be empty or ends with a single / character.",
-          },
-        });
+  firebaseStorageAPI.get(
+    "/b/:bucketId/o",
+    asyncHandler(async (req, res) => {
+      const maxResults = req.query.maxResults?.toString();
+      let listResponse: ListObjectsResponse;
+      // The prefix query param must be empty or end in a "/"
+      let prefix = "";
+      if (req.query.prefix) {
+        prefix = req.query.prefix.toString();
+        if (!prefix.endsWith("/")) {
+          return res.status(400).json({
+            error: {
+              code: 400,
+              message:
+                "The prefix parameter is required to be empty or ends with a single / character.",
+            },
+          });
+        }
       }
-    }
-    try {
-      listResponse = await storageLayer.listObjects({
-        bucketId: req.params.bucketId,
-        prefix: prefix,
-        delimiter: req.query.delimiter ? req.query.delimiter.toString() : "",
-        pageToken: req.query.pageToken?.toString(),
-        maxResults: maxResults ? +maxResults : undefined,
-        authorization: req.header("authorization"),
+      try {
+        listResponse = await storageLayer.listObjects({
+          bucketId: req.params.bucketId,
+          prefix: prefix,
+          delimiter: req.query.delimiter ? req.query.delimiter.toString() : "",
+          pageToken: req.query.pageToken?.toString(),
+          maxResults: maxResults ? +maxResults : undefined,
+          authorization: req.header("authorization"),
+        });
+      } catch (err) {
+        if (err instanceof ForbiddenError) {
+          return res.status(403).json({
+            error: {
+              code: 403,
+              message: `Permission denied. No LIST permission.`,
+            },
+          });
+        }
+        throw err;
+      }
+      return res.status(200).json({
+        nextPageToken: listResponse.nextPageToken,
+        prefixes: (listResponse.prefixes ?? []).filter(isValidPrefix),
+        items: (listResponse.items ?? [])
+          .filter((item) => isValidNonEncodedPathString(item.name))
+          .map((item) => {
+            return { name: item.name, bucket: item.bucket };
+          }),
       });
-    } catch (err) {
-      if (err instanceof ForbiddenError) {
-        return res.status(403).json({
-          error: {
-            code: 403,
-            message: `Permission denied. No LIST permission.`,
-          },
-        });
-      }
-      throw err;
-    }
-    return res.status(200).json({
-      nextPageToken: listResponse.nextPageToken,
-      prefixes: (listResponse.prefixes ?? []).filter(isValidPrefix),
-      items: (listResponse.items ?? [])
-        .filter((item) => isValidNonEncodedPathString(item.name))
-        .map((item) => {
-          return { name: item.name, bucket: item.bucket };
-        }),
-    });
-  });
+    }),
+  );
 
   const handleUpload = async (req: Request, res: Response) => {
     const bucketId = req.params.bucketId;
@@ -189,7 +217,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       if (!upload.metadata?.metadata?.firebaseStorageDownloadTokens) {
         const customMetadata = {
           ...(upload.metadata?.metadata || {}),
-          firebaseStorageDownloadTokens: uuid.v4(),
+          firebaseStorageDownloadTokens: randomUUID(),
         };
         upload.metadata = { ...(upload.metadata || {}), metadata: customMetadata };
       }
@@ -343,7 +371,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       let dataRaw: Buffer;
       try {
         ({ metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(
-          contentTypeHeader!,
+          contentTypeHeader,
           await reqBodyToBuffer(req),
         ));
       } catch (err) {
@@ -368,6 +396,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       bucketId: req.params.bucketId,
       objectId: objectId,
       dataRaw: await reqBodyToBuffer(req),
+      contentType: req.header("content-type"),
       authorization: req.header("authorization"),
     });
     return await finalizeOneShotUpload(upload);
@@ -467,41 +496,56 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     return res.json(new OutgoingFirebaseMetadata(metadata));
   };
 
-  firebaseStorageAPI.patch("/b/:bucketId/o/:objectId", handleMetadataUpdate);
-  firebaseStorageAPI.put("/b/:bucketId/o/:objectId?", async (req, res) => {
-    switch (req.header("x-http-method-override")?.toLowerCase()) {
-      case "patch":
-        return handleMetadataUpdate(req, res);
-      default:
-        return handleObjectPostRequest(req, res);
-    }
-  });
+  firebaseStorageAPI.patch(
+    "/b/:bucketId/o/:objectId",
+    json({ limit: "130mb" }),
+    asyncHandler(handleMetadataUpdate),
+  );
+  firebaseStorageAPI.put(
+    "/b/:bucketId/o/:objectId?",
+    firebasePostUploadMiddleware,
+    asyncHandler(async (req, res) => {
+      switch (req.header("x-http-method-override")?.toLowerCase()) {
+        case "patch":
+          return handleMetadataUpdate(req, res);
+        default:
+          return handleObjectPostRequest(req, res);
+      }
+    }),
+  );
 
-  firebaseStorageAPI.post("/b/:bucketId/o/:objectId?", handleObjectPostRequest);
+  firebaseStorageAPI.post(
+    "/b/:bucketId/o/:objectId?",
+    firebasePostUploadMiddleware,
+    asyncHandler(handleObjectPostRequest),
+  );
 
-  firebaseStorageAPI.delete("/b/:bucketId/o/:objectId", async (req, res) => {
-    try {
-      await storageLayer.deleteObject({
-        bucketId: req.params.bucketId,
-        decodedObjectId: decodeURIComponent(req.params.objectId),
-        authorization: req.header("authorization"),
-      });
-    } catch (err) {
-      if (err instanceof ForbiddenError) {
-        return res.status(403).json({
-          error: {
-            code: 403,
-            message: `Permission denied. No WRITE permission.`,
-          },
+  firebaseStorageAPI.delete(
+    "/b/:bucketId/o/:objectId",
+    asyncHandler(async (req, res) => {
+      try {
+        await storageLayer.deleteObject({
+          bucketId: req.params.bucketId,
+          decodedObjectId: decodeURIComponent(req.params.objectId),
+          authorization: req.header("authorization"),
         });
+      } catch (err) {
+        if (err instanceof ForbiddenError) {
+          return res.status(403).json({
+            error: {
+              code: 403,
+              message: `Permission denied. No WRITE permission.`,
+            },
+          });
+        }
+        if (err instanceof NotFoundError) {
+          return res.sendStatus(404);
+        }
+        throw err;
       }
-      if (err instanceof NotFoundError) {
-        return res.sendStatus(404);
-      }
-      throw err;
-    }
-    res.sendStatus(204);
-  });
+      res.sendStatus(204);
+    }),
+  );
 
   firebaseStorageAPI.get("/", (req, res) => {
     res.json({ emulator: "storage" });

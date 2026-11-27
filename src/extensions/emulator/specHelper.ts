@@ -57,13 +57,6 @@ export function getFunctionResourcesWithParamSubstitution(
   return substituteParams<Resource[]>(rawResources, params);
 }
 
-/**
- * Get properties associated with the function resource.
- */
-export function getFunctionProperties(resources: Resource[]) {
-  return resources.map((r) => r.properties);
-}
-
 export const DEFAULT_RUNTIME: supported.Runtime = supported.latest("nodejs");
 
 /**

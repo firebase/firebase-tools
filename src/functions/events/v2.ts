@@ -1,3 +1,9 @@
+import {
+  AI_LOGIC_EVENTS,
+  AI_LOGIC_BEFORE_GENERATE_CONTENT,
+  AI_LOGIC_AFTER_GENERATE_CONTENT,
+} from "../../deploy/functions/services/ailogic";
+
 export const PUBSUB_PUBLISH_EVENT = "google.cloud.pubsub.topic.v1.messagePublished";
 
 export const STORAGE_EVENTS = [
@@ -33,6 +39,13 @@ export const FIRESTORE_EVENTS = [
 
 export const FIREALERTS_EVENT = "google.firebase.firebasealerts.alerts.v1.published";
 
+export const DATACONNECT_EVENT = "google.firebase.dataconnect.connector.v1.mutationExecuted";
+
+export const AUTH_EVENTS = [
+  "google.firebase.auth.user.v2.created",
+  "google.firebase.auth.user.v2.deleted",
+] as const;
+
 export type Event =
   | typeof PUBSUB_PUBLISH_EVENT
   | (typeof STORAGE_EVENTS)[number]
@@ -41,7 +54,10 @@ export type Event =
   | typeof REMOTE_CONFIG_EVENT
   | typeof TEST_LAB_EVENT
   | (typeof FIRESTORE_EVENTS)[number]
-  | typeof FIREALERTS_EVENT;
+  | typeof FIREALERTS_EVENT
+  | typeof DATACONNECT_EVENT
+  | (typeof AI_LOGIC_EVENTS)[number]
+  | (typeof AUTH_EVENTS)[number];
 
 // Why can't auth context be removed? This is map was added to correct a bug where a regex
 // allowed any non-auth type to be converted to any auth type, but we should follow up for why
@@ -56,3 +72,13 @@ export const CONVERTABLE_EVENTS: Partial<Record<Event, Event>> = {
   "google.cloud.firestore.document.v1.written":
     "google.cloud.firestore.document.v1.written.withAuthContext",
 };
+
+export const AI_LOGIC_EVENTS_TO_TRIGGER = {
+  [AI_LOGIC_BEFORE_GENERATE_CONTENT]: "before-generate-content",
+  [AI_LOGIC_AFTER_GENERATE_CONTENT]: "after-generate-content",
+} as const;
+
+export const AI_LOGIC_TRIGGERS_TO_EVENTS = {
+  "before-generate-content": AI_LOGIC_BEFORE_GENERATE_CONTENT,
+  "after-generate-content": AI_LOGIC_AFTER_GENERATE_CONTENT,
+} as const;

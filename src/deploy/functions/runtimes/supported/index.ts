@@ -11,20 +11,21 @@ export function isRuntime(maybe: string): maybe is Runtime {
 
 /** Type deduction helper to narrow a runtime to a language. */
 export function runtimeIsLanguage<L extends Language>(
-  runtime: Runtime,
+  runtime: Runtime | undefined,
   language: L,
 ): runtime is Runtime & RuntimeOf<L> {
-  return runtime.startsWith(language);
+  return !!runtime && runtime.startsWith(language);
 }
 
 /**
- * Find the latest supported Runtime for a Language.
+ * Find the latest supported Runtime for a Language. When `runtimes` is given, returns the newest
+ * one in that list regardless of status.
  */
 export function latest<T extends Language>(
   language: T,
-  runtimes: Runtime[] = Object.keys(RUNTIMES) as Runtime[],
+  runtimes?: Runtime[],
 ): RuntimeOf<T> & Runtime {
-  const sorted = runtimes
+  const sorted = (runtimes ?? (Object.keys(RUNTIMES) as Runtime[]))
     .filter((s) => runtimeIsLanguage(s, language))
     // node8 is less than node20
     .sort((left, right) => {
@@ -37,14 +38,17 @@ export function latest<T extends Language>(
       }
       return leftVersion - rightVersion;
     });
-  const latest = utils.last(sorted);
+  // Prefer GA for the default so new projects are not scaffolded onto a Preview runtime. Languages
+  // with no GA runtime yet (e.g. Dart) fall back to the newest one.
+  const ga = runtimes ? [] : sorted.filter((r) => RUNTIMES[r]?.status === "GA");
+  const latest = utils.last(ga.length ? ga : sorted);
   if (!latest) {
     throw new FirebaseError(
       `Internal error trying to find the latest supported runtime for ${language}`,
       { exit: 1 },
     );
   }
-  return latest as RuntimeOf<T> & Runtime;
+  return latest as unknown as RuntimeOf<T> & Runtime;
 }
 
 /**
@@ -62,7 +66,7 @@ export function isDecommissioned(runtime: Runtime, now: Date = new Date()): bool
  * increase testability.
  */
 export function guardVersionSupport(runtime: Runtime, now: Date = new Date()): void {
-  const { deprecationDate, decommissionDate } = RUNTIMES[runtime];
+  const { friendly, status, deprecationDate, decommissionDate } = RUNTIMES[runtime];
 
   const decommission = new Date(decommissionDate);
   if (now >= decommission) {
@@ -71,6 +75,15 @@ export function guardVersionSupport(runtime: Runtime, now: Date = new Date()): v
       `Runtime ${RUNTIMES[runtime].friendly} was decommissioned on ${decommissionDate}. To deploy ` +
         "you must first upgrade your runtime version.",
       { exit: 1 },
+    );
+  }
+
+  if (status === "beta") {
+    utils.logLabeledWarning(
+      "functions",
+      `Runtime ${friendly} is in Preview. Preview runtimes may change and are not recommended ` +
+        "for production workloads. See https://cloud.google.com/functions/docs/runtime-support " +
+        "for details.",
     );
   }
 

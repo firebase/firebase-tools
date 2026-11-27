@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import * as Mocha from "mocha";
 
 let tearDowns: Array<() => void | Promise<void>> = [];
 
@@ -60,8 +61,15 @@ export function firebaseTest(
   });
 }
 
-export function firebaseSuite(description: string, cb: () => void) {
-  suite(description, () => {
+export function firebaseSuite(
+  description: string,
+  cb: () => void,
+  timeoutMs?: number,
+) {
+  suite(description, function (this: Mocha.Suite) {
+    if (timeoutMs !== undefined) {
+      this.timeout(timeoutMs);
+    }
     // Scope setups to the suite.
     const previousSetups = setups;
     const previousTearDowns = tearDowns;

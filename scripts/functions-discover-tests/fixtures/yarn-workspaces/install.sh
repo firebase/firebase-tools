@@ -2,4 +2,4 @@
 set -euxo pipefail # bash strict mode
 IFS=$'\n\t'
 
-yarn install
+yarn install --prefer-offline

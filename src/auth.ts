@@ -4,18 +4,16 @@ import * as http from "http";
 import * as jwt from "jsonwebtoken";
 import * as opn from "open";
 import * as portfinder from "portfinder";
-import * as url from "url";
 
 import * as apiv2 from "./apiv2";
 import { configstore } from "./configstore";
-import { FirebaseError, getErrMsg } from "./error";
+import { FirebaseError, getErrMsg, getErrStack } from "./error";
 import * as utils from "./utils";
 import { logger } from "./logger";
-import { promptOnce } from "./prompt";
+import { input } from "./prompt";
 import * as scopes from "./scopes";
 import { clearCredentials } from "./defaultCredentials";
-import { v4 as uuidv4 } from "uuid";
-import { randomBytes, createHash } from "crypto";
+import { randomBytes, createHash, randomUUID } from "crypto";
 import { trackGA4 } from "./track";
 import {
   authOrigin,
@@ -103,6 +101,23 @@ export function getAllAccounts(): Account[] {
   res.push(...getAdditionalAccounts());
 
   return res;
+}
+
+/**
+ * Throw an error if the provided email is not a signed-in user.
+ */
+export function assertAccount(email: string, options?: { mcp?: boolean }) {
+  const allAccounts = getAllAccounts();
+  const accountExists = allAccounts.some((a) => a.user.email === email);
+  if (!accountExists) {
+    throw new FirebaseError(
+      `Account ${email} does not exist, ${
+        options?.mcp
+          ? `use the 'firebase_get_environment' tool to see available accounts or instruct the user to use the 'firebase login:add' terminal command to add a new account.`
+          : `run "${clc.bold("firebase login:list")} to see valid accounts`
+      }`,
+    );
+  }
 }
 
 /**
@@ -210,7 +225,19 @@ export function setProjectAccount(projectDir: string, email: string) {
 /**
  * Set the global default account.
  */
-export function setGlobalDefaultAccount(account: Account) {
+export function setGlobalDefaultAccount(accountOrEmail: string | Account) {
+  let account: Account;
+  if (typeof accountOrEmail === "string") {
+    const accountFromEmail = getAllAccounts().find((acc) => acc.user.email === accountOrEmail)!;
+    if (!accountFromEmail)
+      throw new FirebaseError(
+        `Account '${accountOrEmail}' is not a signed-in user on this device.`,
+      );
+    account = accountFromEmail;
+  } else {
+    account = accountOrEmail;
+  }
+
   configstore.set("user", account.user);
   configstore.set("tokens", account.tokens);
 
@@ -223,8 +250,8 @@ export function setGlobalDefaultAccount(account: Account) {
 }
 
 function open(url: string): void {
-  opn(url).catch((err) => {
-    logger.debug("Unable to open URL: " + err.stack);
+  opn(url).catch((err: unknown) => {
+    logger.debug(`Unable to open URL: ${getErrStack(err)}`);
   });
 }
 
@@ -396,13 +423,19 @@ function urlsafeBase64(base64string: string) {
   return base64string.replace(/\+/g, "-").replace(/=+$/, "").replace(/\//g, "_");
 }
 
-async function loginRemotely(): Promise<UserCredentials> {
+interface PrototyperRes {
+  uri: string;
+  sessionId: string;
+  authorize: (authorizationCode: string) => Promise<UserCredentials>;
+}
+
+export async function loginPrototyper(): Promise<PrototyperRes> {
   const authProxyClient = new apiv2.Client({
     urlPrefix: authProxyOrigin(),
     auth: false,
   });
 
-  const sessionId = uuidv4();
+  const sessionId = randomUUID();
   const codeVerifier = randomBytes(32).toString("hex");
   // urlsafe base64 is required for code_challenge in OAuth PKCE
   const codeChallenge = urlsafeBase64(createHash("sha256").update(codeVerifier).digest("base64"));
@@ -413,27 +446,74 @@ async function loginRemotely(): Promise<UserCredentials> {
     })
   ).body?.token;
 
-  const loginUrl = `${authProxyOrigin()}/login?code_challenge=${codeChallenge}&session=${sessionId}&attest=${attestToken}`;
+  const loginUrl = `${authProxyOrigin()}/login?code_challenge=${codeChallenge}&session=${sessionId}&attest=${attestToken}&studio_prototyper=true`;
+  return {
+    uri: loginUrl,
+    sessionId: sessionId.substring(0, 5).toUpperCase(),
+    authorize: async (code: string) => {
+      const tokens = await getTokensFromAuthorizationCode(
+        code,
+        `${authProxyOrigin()}/complete`,
+        codeVerifier,
+      );
 
-  logger.info();
-  logger.info("To sign in to the Firebase CLI:");
-  logger.info();
-  logger.info("1. Take note of your session ID:");
-  logger.info();
-  logger.info(`   ${clc.bold(sessionId.substring(0, 5).toUpperCase())}`);
-  logger.info();
-  logger.info("2. Visit the URL below on any device and follow the instructions to get your code:");
-  logger.info();
-  logger.info(`   ${loginUrl}`);
-  logger.info();
-  logger.info("3. Paste or enter the authorization code below once you have it:");
-  logger.info();
+      const creds = {
+        user: jwt.decode(tokens.id_token!, { json: true }) as any as User,
+        tokens: tokens,
+        scopes: SCOPES,
+      };
+      recordCredentials(creds);
+      return creds;
+    },
+  };
+}
 
-  const code = await promptOnce({
-    type: "input",
-    message: "Enter authorization code:",
+// recordCredentials saves credentials to configstore to be used in future command runs.
+export function recordCredentials(creds: UserCredentials) {
+  configstore.set("user", creds.user);
+  configstore.set("tokens", creds.tokens);
+  // store login scopes in case mandatory scopes grow over time
+  configstore.set("loginScopes", creds.scopes);
+  // remove old session token, if it exists
+  configstore.delete("session");
+}
+
+export async function loginRemotelyStart(): Promise<{
+  sessionId: string;
+  sessionIdPrefix: string;
+  loginUrl: string;
+  codeVerifier: string;
+}> {
+  const authProxyClient = new apiv2.Client({
+    urlPrefix: authProxyOrigin(),
+    auth: false,
   });
 
+  const sessionId = randomUUID();
+  const codeVerifier = randomBytes(32).toString("hex");
+  // urlsafe base64 is required for code_challenge in OAuth PKCE
+  const codeChallenge = urlsafeBase64(createHash("sha256").update(codeVerifier).digest("base64"));
+
+  const attestToken = (
+    await authProxyClient.post<{ session_id: string }, { token: string }>("/attest", {
+      session_id: sessionId,
+    })
+  ).body.token;
+
+  const loginUrl = `${authProxyOrigin()}/login?code_challenge=${codeChallenge}&session=${sessionId}&attest=${attestToken}`;
+
+  return {
+    sessionId,
+    sessionIdPrefix: sessionId.substring(0, 5).toUpperCase(),
+    loginUrl,
+    codeVerifier,
+  };
+}
+
+export async function loginRemotelyComplete(
+  code: string,
+  codeVerifier: string,
+): Promise<UserCredentials> {
   try {
     const tokens = await getTokensFromAuthorizationCode(
       code,
@@ -443,14 +523,41 @@ async function loginRemotely(): Promise<UserCredentials> {
 
     void trackGA4("login", { method: "google_remote" });
 
+    const decoded = jwt.decode(tokens.id_token!, { json: true });
+    if (!decoded || typeof decoded === "string") {
+      throw new FirebaseError("Invalid ID token received.");
+    }
+
     return {
-      user: jwt.decode(tokens.id_token!, { json: true }) as any as User,
+      user: decoded as unknown as User,
       tokens: tokens,
       scopes: SCOPES,
     };
   } catch (e) {
     throw new FirebaseError("Unable to authenticate using the provided code. Please try again.");
   }
+}
+
+async function loginRemotely(): Promise<UserCredentials> {
+  const { sessionIdPrefix, loginUrl, codeVerifier } = await loginRemotelyStart();
+
+  logger.info();
+  logger.info("To sign in to the Firebase CLI:");
+  logger.info();
+  logger.info("1. Take note of your session ID:");
+  logger.info();
+  logger.info(`   ${clc.bold(sessionIdPrefix)}`);
+  logger.info();
+  logger.info("2. Visit the URL below on any device and follow the instructions to get your code:");
+  logger.info();
+  logger.info(`   ${loginUrl}`);
+  logger.info();
+  logger.info("3. Paste or enter the authorization code below once you have it:");
+  logger.info();
+
+  const code = await input({ message: "Enter authorization code:" });
+
+  return loginRemotelyComplete(code, codeVerifier);
 }
 
 async function loginWithLocalhostGoogle(port: number, userHint?: string): Promise<UserCredentials> {
@@ -498,12 +605,27 @@ async function loginWithLocalhost<ResultType>(
   getTokens: (queryCode: string, callbackUrl: string) => Promise<ResultType>,
 ): Promise<ResultType> {
   return new Promise<ResultType>((resolve, reject) => {
-    const server = http.createServer(async (req, res) => {
-      const query = url.parse(`${req.url}`, true).query || {};
-      const queryState = query.state;
-      const queryCode = query.code;
+    const server = http.createServer((req, res) => {
+      handleCallback(req, res).catch((err: unknown) => {
+        reject(err);
+        server.close();
+      });
+    });
 
-      if (queryState !== _nonce || typeof queryCode !== "string") {
+    async function handleCallback(
+      req: http.IncomingMessage,
+      res: http.ServerResponse,
+    ): Promise<void> {
+      let searchParams: URLSearchParams;
+      try {
+        searchParams = new URL(req.url || "", callbackUrl).searchParams;
+      } catch {
+        searchParams = new URLSearchParams();
+      }
+      const queryState = searchParams.get("state");
+      const queryCode = searchParams.get("code");
+
+      if (queryState !== _nonce || !queryCode) {
         const html = await readTemplate("loginFailure.html");
         respondHtml(req, res, 400, html);
         reject(new FirebaseError("Unexpected error while logging in"));
@@ -522,7 +644,7 @@ async function loginWithLocalhost<ResultType>(
       }
       server.close();
       return;
-    });
+    }
 
     server.listen(port, () => {
       logger.info();
@@ -713,7 +835,7 @@ async function refreshTokens(
       updateAccount(account);
     }
 
-    return lastAccessToken!;
+    return lastAccessToken;
   } catch (err: any) {
     if (err?.context?.body?.error === "invalid_scope") {
       throw new FirebaseError(

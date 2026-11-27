@@ -25,11 +25,17 @@ export async function listLocations(projectId: string): Promise<string[]> {
 }
 
 /** Service methods */
-export async function getService(serviceName: string): Promise<types.Service> {
-  const res = await dataconnectClient().get<types.Service>(serviceName);
+export async function getService(
+  serviceName: string,
+  fields: string[] = [],
+): Promise<types.Service> {
+  const res = await dataconnectClient().get<types.Service>(serviceName, {
+    queryParams: fields.length ? { fields: fields.join(",") } : undefined,
+  });
   return res.body;
 }
 
+// TODO(b/442666798): Pass field mask once CCFE supports field masks on aggregate list requests.
 export async function listAllServices(projectId: string): Promise<types.Service[]> {
   const res = await dataconnectClient().get<{ services: types.Service[] }>(
     `/projects/${projectId}/locations/-/services`,
@@ -41,24 +47,31 @@ export async function createService(
   projectId: string,
   locationId: string,
   serviceId: string,
-): Promise<types.Service> {
-  const op = await dataconnectClient().post<types.Service, types.Service>(
-    `/projects/${projectId}/locations/${locationId}/services`,
-    {
-      name: `projects/${projectId}/locations/${locationId}/services/${serviceId}`,
-    },
-    {
-      queryParams: {
-        service_id: serviceId,
+): Promise<types.Service | undefined> {
+  try {
+    const op = await dataconnectClient().post<types.Service, types.Service>(
+      `/projects/${projectId}/locations/${locationId}/services`,
+      {
+        name: `projects/${projectId}/locations/${locationId}/services/${serviceId}`,
       },
-    },
-  );
-  const pollRes = await operationPoller.pollOperation<types.Service>({
-    apiOrigin: dataconnectOrigin(),
-    apiVersion: DATACONNECT_API_VERSION,
-    operationResourceName: op.body.name,
-  });
-  return pollRes;
+      {
+        queryParams: {
+          service_id: serviceId,
+        },
+      },
+    );
+    const pollRes = await operationPoller.pollOperation<types.Service>({
+      apiOrigin: dataconnectOrigin(),
+      apiVersion: DATACONNECT_API_VERSION,
+      operationResourceName: op.body.name,
+    });
+    return pollRes;
+  } catch (err: any) {
+    if (err.status !== 409) {
+      throw err;
+    }
+    return undefined; // Service already exists
+  }
 }
 
 export async function deleteService(serviceName: string): Promise<types.Service> {
@@ -76,11 +89,15 @@ export async function deleteService(serviceName: string): Promise<types.Service>
 
 /** Schema methods */
 
-export async function getSchema(serviceName: string): Promise<types.Schema | undefined> {
+export async function getSchema(
+  serviceName: string,
+  schemaId: string = types.MAIN_SCHEMA_ID,
+  fields: string[] = [],
+): Promise<types.Schema | undefined> {
   try {
-    const res = await dataconnectClient().get<types.Schema>(
-      `${serviceName}/schemas/${types.SCHEMA_ID}`,
-    );
+    const res = await dataconnectClient().get<types.Schema>(`${serviceName}/schemas/${schemaId}`, {
+      queryParams: fields.length ? { fields: fields.join(",") } : undefined,
+    });
     return res.body;
   } catch (err: any) {
     if (err.status !== 404) {
@@ -90,9 +107,35 @@ export async function getSchema(serviceName: string): Promise<types.Schema | und
   }
 }
 
+export async function listSchemas(
+  serviceName: string,
+  fields: string[] = [],
+): Promise<types.Schema[]> {
+  const schemas: types.Schema[] = [];
+  const getNextPage = async (pageToken = "") => {
+    const res = await dataconnectClient().get<{
+      schemas?: types.Schema[];
+      nextPageToken?: string;
+    }>(`${serviceName}/schemas`, {
+      queryParams: {
+        pageSize: PAGE_SIZE_MAX,
+        pageToken,
+        ...(fields.length ? { fields: fields.join(",") } : {}),
+      },
+    });
+    schemas.push(...(res.body.schemas || []));
+    if (res.body.nextPageToken) {
+      await getNextPage(res.body.nextPageToken);
+    }
+  };
+  await getNextPage();
+  return schemas;
+}
+
 export async function upsertSchema(
   schema: types.Schema,
-  validateOnly: boolean = false,
+  validateOnly = false,
+  async = false,
 ): Promise<types.Schema | undefined> {
   const op = await dataconnectClient().patch<types.Schema, types.Schema>(`${schema.name}`, schema, {
     queryParams: {
@@ -100,20 +143,19 @@ export async function upsertSchema(
       validateOnly: validateOnly ? "true" : "false",
     },
   });
-  if (validateOnly) {
+  if (validateOnly || async) {
     return;
   }
   return operationPoller.pollOperation<types.Schema>({
     apiOrigin: dataconnectOrigin(),
     apiVersion: DATACONNECT_API_VERSION,
     operationResourceName: op.body.name,
+    masterTimeout: 300000,
   });
 }
 
-export async function deleteSchema(serviceName: string): Promise<void> {
-  const op = await dataconnectClient().delete<types.Schema>(
-    `${serviceName}/schemas/${types.SCHEMA_ID}`,
-  );
+export async function deleteSchema(name: string): Promise<void> {
+  const op = await dataconnectClient().delete<types.Schema>(name);
   await operationPoller.pollOperation<void>({
     apiOrigin: dataconnectOrigin(),
     apiVersion: DATACONNECT_API_VERSION,
@@ -124,8 +166,10 @@ export async function deleteSchema(serviceName: string): Promise<void> {
 
 /** Connector methods */
 
-export async function getConnector(name: string): Promise<types.Connector> {
-  const res = await dataconnectClient().get<types.Connector>(name);
+export async function getConnector(name: string, fields: string[] = []): Promise<types.Connector> {
+  const res = await dataconnectClient().get<types.Connector>(name, {
+    queryParams: fields.length ? { fields: fields.join(",") } : undefined,
+  });
   return res.body;
 }
 
@@ -149,7 +193,7 @@ export async function listConnectors(serviceName: string, fields: string[] = [])
       queryParams: {
         pageSize: PAGE_SIZE_MAX,
         pageToken,
-        fields: fields.join(","),
+        ...(fields.length ? { fields: fields.join(",") } : {}),
       },
     });
     connectors.push(...(res.body.connectors || []));
@@ -170,6 +214,25 @@ export async function upsertConnector(connector: types.Connector) {
     apiOrigin: dataconnectOrigin(),
     apiVersion: DATACONNECT_API_VERSION,
     operationResourceName: op.body.name,
+    masterTimeout: 300000,
   });
   return pollRes;
+}
+
+export async function executeSchemaMigration(
+  serviceName: string,
+  diffs: types.Diff[],
+): Promise<void> {
+  const client = dataconnectClient();
+  const op = await client.post<{ diffs: types.Diff[] }, { name: string }>(
+    `${serviceName}/schemas/main:migrate`,
+    { diffs },
+  );
+
+  await operationPoller.pollOperation<void>({
+    apiOrigin: dataconnectOrigin(),
+    apiVersion: DATACONNECT_API_VERSION,
+    operationResourceName: op.body.name,
+    masterTimeout: 300000, // Migrations might take longer than 60s
+  });
 }

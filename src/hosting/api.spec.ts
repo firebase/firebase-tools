@@ -1,8 +1,12 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import * as clc from "colorette";
+import * as sinon from "sinon";
+import nock from "../test/helpers/nock";
 
 import { identityOrigin, hostingApiOrigin } from "../api";
+import * as ensureApiEnabledModule from "../ensureApiEnabled";
 import { FirebaseError } from "../error";
+import * as utils from "../utils";
 import * as hostingApi from "./api";
 
 const TEST_CHANNELS_RESPONSE = {
@@ -29,21 +33,16 @@ const EXPECTED_DOMAINS_RESPONSE = ["localhost", "randomurl.com", "my-site--ch1-4
 const PROJECT_ID = "test-project";
 const SITE = "my-site";
 
-const SITE_DOMAINS_API = `/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/domains`;
+const SITE_CUSTOM_DOMAINS_API = `/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/customDomains`;
 
-// reuse domains from EXPECTED_DOMAINS_RESPONSE
-const GET_SITE_DOMAINS_BODY = EXPECTED_DOMAINS_RESPONSE.map((domain) => ({
-  site: `projects/${PROJECT_ID}/sites/${SITE}`,
-  domainName: domain,
+const CUSTOM_DOMAIN_NAMES = ["example.com", "app.example.com", "blog.example.org"];
+
+const LIST_CUSTOM_DOMAINS_BODY: hostingApi.CustomDomain[] = CUSTOM_DOMAIN_NAMES.map((domain) => ({
+  name: `projects/${PROJECT_ID}/sites/${SITE}/customDomains/${domain}`,
+  createTime: "2023-01-10T10:00:00Z",
   updateTime: "2023-01-11T15:28:08.980038900Z",
-  provisioning: [
-    {
-      certStatus: "CERT_ACTIVE",
-      dnsStatus: "DNS_MATCH",
-      expectedIps: ["0.0.0.0"],
-    },
-  ],
-  status: "DOMAIN_ACTIVE",
+  hostState: "HOST_ACTIVE",
+  ownershipState: "OWNERSHIP_ACTIVE",
 }));
 
 describe("hosting", () => {
@@ -294,12 +293,12 @@ describe("hosting", () => {
 
     it("should make the API requests to create a version", async () => {
       const VERSION = { status: "CREATED" } as const;
-      const FULL_NAME = `projects/-/sites/${SITE}/versions/my-new-version`;
+      const FULL_NAME = `projects/${PROJECT_ID}/sites/${SITE}/versions/my-new-version`;
       nock(hostingApiOrigin())
-        .post(`/v1beta1/projects/-/sites/${SITE}/versions`, VERSION)
+        .post(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/versions`, VERSION)
         .reply(200, { name: FULL_NAME });
 
-      const res = await hostingApi.createVersion(SITE, VERSION);
+      const res = await hostingApi.createVersion(PROJECT_ID, SITE, VERSION);
 
       expect(res).to.deep.equal(FULL_NAME);
       expect(nock.isDone()).to.be.true;
@@ -308,13 +307,12 @@ describe("hosting", () => {
     it("should throw an error if the server returns an error", async () => {
       const VERSION = { status: "CREATED" } as const;
       nock(hostingApiOrigin())
-        .post(`/v1beta1/projects/-/sites/${SITE}/versions`, VERSION)
+        .post(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/versions`, VERSION)
         .reply(500, { error: "server boo-boo" });
 
-      await expect(hostingApi.createVersion(SITE, VERSION)).to.eventually.be.rejectedWith(
-        FirebaseError,
-        /server boo-boo/,
-      );
+      await expect(
+        hostingApi.createVersion(PROJECT_ID, SITE, VERSION),
+      ).to.eventually.be.rejectedWith(FirebaseError, /server boo-boo/);
 
       expect(nock.isDone()).to.be.true;
     });
@@ -326,11 +324,11 @@ describe("hosting", () => {
     it("should make the API requests to update a version", async () => {
       const VERSION = { status: "FINALIZED" } as const;
       nock(hostingApiOrigin())
-        .patch(`/v1beta1/projects/-/sites/${SITE}/versions/my-version`, VERSION)
+        .patch(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/versions/my-version`, VERSION)
         .query({ updateMask: "status" })
         .reply(200, VERSION);
 
-      const res = await hostingApi.updateVersion(SITE, "my-version", VERSION);
+      const res = await hostingApi.updateVersion(PROJECT_ID, SITE, "my-version", VERSION);
 
       expect(res).to.deep.equal(VERSION);
       expect(nock.isDone()).to.be.true;
@@ -339,12 +337,12 @@ describe("hosting", () => {
     it("should throw an error if the server returns an error", async () => {
       const VERSION = { status: "FINALIZED" } as const;
       nock(hostingApiOrigin())
-        .patch(`/v1beta1/projects/-/sites/${SITE}/versions/my-version`, VERSION)
+        .patch(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/versions/my-version`, VERSION)
         .query({ updateMask: "status" })
         .reply(500, { error: "server boo-boo" });
 
       await expect(
-        hostingApi.updateVersion(SITE, "my-version", VERSION),
+        hostingApi.updateVersion(PROJECT_ID, SITE, "my-version", VERSION),
       ).to.eventually.be.rejectedWith(FirebaseError, /server boo-boo/);
 
       expect(nock.isDone()).to.be.true;
@@ -355,7 +353,7 @@ describe("hosting", () => {
     afterEach(nock.cleanAll);
 
     const VERSION_1: hostingApi.Version = {
-      name: `projects/-/sites/${SITE}/versions/v1`,
+      name: `projects/${PROJECT_ID}/sites/${SITE}/versions/v1`,
       status: "FINALIZED",
       config: {},
       createTime: "now",
@@ -367,48 +365,50 @@ describe("hosting", () => {
     };
     const VERSION_2 = {
       ...VERSION_1,
-      name: `projects/-/sites/${SITE}/versions/v2`,
+      name: `projects/${PROJECT_ID}/sites/${SITE}/versions/v2`,
     };
 
     it("returns no versions if no versions are returned", async () => {
-      nock(hostingApiOrigin()).get(`/v1beta1/projects/-/sites/${SITE}/versions`).reply(200, {});
+      nock(hostingApiOrigin())
+        .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/versions`)
+        .reply(200, {});
       nock(hostingApiOrigin());
 
-      const versions = await hostingApi.listVersions(SITE);
+      const versions = await hostingApi.listVersions(PROJECT_ID, SITE);
       expect(versions).deep.equals([]);
       expect(nock.isDone()).to.be.true;
     });
 
     it("returns a single page of versions", async () => {
       nock(hostingApiOrigin())
-        .get(`/v1beta1/projects/-/sites/${SITE}/versions`)
+        .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/versions`)
         .reply(200, { versions: [VERSION_1] });
       nock(hostingApiOrigin());
 
-      const versions = await hostingApi.listVersions(SITE);
+      const versions = await hostingApi.listVersions(PROJECT_ID, SITE);
       expect(versions).deep.equals([VERSION_1]);
       expect(nock.isDone()).to.be.true;
     });
 
     it("paginates through many versions", async () => {
       nock(hostingApiOrigin())
-        .get(`/v1beta1/projects/-/sites/${SITE}/versions`)
+        .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/versions`)
         .reply(200, { versions: [VERSION_1], nextPageToken: "page2" });
       nock(hostingApiOrigin())
-        .get(`/v1beta1/projects/-/sites/${SITE}/versions?pageToken=page2`)
+        .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/versions?pageToken=page2`)
         .reply(200, { versions: [VERSION_2] });
 
-      const versions = await hostingApi.listVersions(SITE);
+      const versions = await hostingApi.listVersions(PROJECT_ID, SITE);
       expect(versions).deep.equals([VERSION_1, VERSION_2]);
       expect(nock.isDone()).to.be.true;
     });
 
     it("handles errors", async () => {
       nock(hostingApiOrigin())
-        .get(`/v1beta1/projects/-/sites/${SITE}/versions`)
+        .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/versions`)
         .reply(500, { error: "server boo-boo" });
 
-      await expect(hostingApi.listVersions(SITE)).to.eventually.be.rejectedWith(
+      await expect(hostingApi.listVersions(PROJECT_ID, SITE)).to.eventually.be.rejectedWith(
         FirebaseError,
         /server boo-boo/,
       );
@@ -424,7 +424,7 @@ describe("hosting", () => {
       const SOURCE_VERSION = "my-version";
       const VERSION = { name: "my-new-version" };
       nock(hostingApiOrigin())
-        .post(`/v1beta1/projects/-/sites/${SITE}/versions:clone`, {
+        .post(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/versions:clone`, {
           sourceVersion: SOURCE_VERSION,
           finalize: false,
         })
@@ -437,7 +437,7 @@ describe("hosting", () => {
           response: VERSION,
         });
 
-      const res = await hostingApi.cloneVersion(SITE, SOURCE_VERSION);
+      const res = await hostingApi.cloneVersion(PROJECT_ID, SITE, SOURCE_VERSION);
 
       expect(res).to.deep.equal(VERSION);
       expect(nock.isDone()).to.be.true;
@@ -446,16 +446,15 @@ describe("hosting", () => {
     it("should throw an error if the server returns an error", async () => {
       const SOURCE_VERSION = "my-version";
       nock(hostingApiOrigin())
-        .post(`/v1beta1/projects/-/sites/${SITE}/versions:clone`, {
+        .post(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/versions:clone`, {
           sourceVersion: SOURCE_VERSION,
           finalize: false,
         })
         .reply(500, { error: "server boo-boo" });
 
-      await expect(hostingApi.cloneVersion(SITE, SOURCE_VERSION)).to.eventually.be.rejectedWith(
-        FirebaseError,
-        /server boo-boo/,
-      );
+      await expect(
+        hostingApi.cloneVersion(PROJECT_ID, SITE, SOURCE_VERSION),
+      ).to.eventually.be.rejectedWith(FirebaseError, /server boo-boo/);
 
       expect(nock.isDone()).to.be.true;
     });
@@ -470,11 +469,11 @@ describe("hosting", () => {
       const VERSION = "version";
       const VERSION_NAME = `sites/${SITE}/versions/${VERSION}`;
       nock(hostingApiOrigin())
-        .post(`/v1beta1/projects/-/sites/${SITE}/channels/${CHANNEL_ID}/releases`)
+        .post(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels/${CHANNEL_ID}/releases`)
         .query({ versionName: VERSION_NAME })
         .reply(201, RELEASE);
 
-      const res = await hostingApi.createRelease(SITE, CHANNEL_ID, VERSION_NAME);
+      const res = await hostingApi.createRelease(PROJECT_ID, SITE, CHANNEL_ID, VERSION_NAME);
 
       expect(res).to.deep.equal(RELEASE);
       expect(nock.isDone()).to.be.true;
@@ -487,13 +486,13 @@ describe("hosting", () => {
       const VERSION_NAME = `sites/${SITE}/versions/${VERSION}`;
       const MESSAGE = "yo dawg";
       nock(hostingApiOrigin())
-        .post(`/v1beta1/projects/-/sites/${SITE}/channels/${CHANNEL_ID}/releases`, {
+        .post(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels/${CHANNEL_ID}/releases`, {
           message: MESSAGE,
         })
         .query({ versionName: VERSION_NAME })
         .reply(201, RELEASE);
 
-      const res = await hostingApi.createRelease(SITE, CHANNEL_ID, VERSION_NAME, {
+      const res = await hostingApi.createRelease(PROJECT_ID, SITE, CHANNEL_ID, VERSION_NAME, {
         message: MESSAGE,
       });
 
@@ -506,12 +505,12 @@ describe("hosting", () => {
       const VERSION = "VERSION";
       const VERSION_NAME = `sites/${SITE}/versions/${VERSION}`;
       nock(hostingApiOrigin())
-        .post(`/v1beta1/projects/-/sites/${SITE}/channels/${CHANNEL_ID}/releases`)
+        .post(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels/${CHANNEL_ID}/releases`)
         .query({ versionName: VERSION_NAME })
         .reply(500, { error: "server boo-boo" });
 
       await expect(
-        hostingApi.createRelease(SITE, CHANNEL_ID, VERSION_NAME),
+        hostingApi.createRelease(PROJECT_ID, SITE, CHANNEL_ID, VERSION_NAME),
       ).to.eventually.be.rejectedWith(FirebaseError, /server boo-boo/);
 
       expect(nock.isDone()).to.be.true;
@@ -661,42 +660,6 @@ describe("hosting", () => {
     });
   });
 
-  describe("updateSite", () => {
-    const SITE_OBJ: hostingApi.Site = {
-      name: "my-site",
-      defaultUrl: "",
-      appId: "foo",
-      labels: {},
-    };
-
-    afterEach(nock.cleanAll);
-
-    it("should make the API request to update a site", async () => {
-      nock(hostingApiOrigin())
-        .patch(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`)
-        .query({ updateMask: "appId" })
-        .reply(201, SITE_OBJ);
-
-      const res = await hostingApi.updateSite(PROJECT_ID, SITE_OBJ, ["appId"]);
-
-      expect(res).to.deep.equal(SITE_OBJ);
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("should throw an error if the server returns an error", async () => {
-      nock(hostingApiOrigin())
-        .patch(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`)
-        .query({ updateMask: "appId" })
-        .reply(500, { error: "server boo-boo" });
-
-      await expect(
-        hostingApi.updateSite(PROJECT_ID, SITE_OBJ, ["appId"]),
-      ).to.eventually.be.rejectedWith(FirebaseError, /server boo-boo/);
-
-      expect(nock.isDone()).to.be.true;
-    });
-  });
-
   describe("deleteSite", () => {
     afterEach(nock.cleanAll);
 
@@ -783,22 +746,53 @@ describe("hosting", () => {
     });
   });
 
-  describe("getSiteDomains", () => {
+  describe("listCustomDomains", () => {
     afterEach(nock.cleanAll);
 
-    it("should get the site domains", async () => {
-      nock(hostingApiOrigin()).get(SITE_DOMAINS_API).reply(200, { domains: GET_SITE_DOMAINS_BODY });
+    it("should return an empty array if no custom domains are returned", async () => {
+      nock(hostingApiOrigin()).get(SITE_CUSTOM_DOMAINS_API).reply(200, {});
 
-      const res = await hostingApi.getSiteDomains(PROJECT_ID, SITE);
+      const res = await hostingApi.listCustomDomains(PROJECT_ID, SITE);
 
-      expect(res).to.deep.equal(GET_SITE_DOMAINS_BODY);
+      expect(res).to.deep.equal([]);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should list a single page of custom domains", async () => {
+      nock(hostingApiOrigin())
+        .get(SITE_CUSTOM_DOMAINS_API)
+        .reply(200, { customDomains: LIST_CUSTOM_DOMAINS_BODY });
+
+      const res = await hostingApi.listCustomDomains(PROJECT_ID, SITE);
+
+      expect(res).to.deep.equal(LIST_CUSTOM_DOMAINS_BODY);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should paginate through multiple pages of custom domains", async () => {
+      nock(hostingApiOrigin())
+        .get(SITE_CUSTOM_DOMAINS_API)
+        .reply(200, {
+          customDomains: LIST_CUSTOM_DOMAINS_BODY.slice(0, 2),
+          nextPageToken: "page2",
+        });
+      nock(hostingApiOrigin())
+        .get(SITE_CUSTOM_DOMAINS_API)
+        .query({ pageToken: "page2" })
+        .reply(200, {
+          customDomains: LIST_CUSTOM_DOMAINS_BODY.slice(2),
+        });
+
+      const res = await hostingApi.listCustomDomains(PROJECT_ID, SITE);
+
+      expect(res).to.deep.equal(LIST_CUSTOM_DOMAINS_BODY);
       expect(nock.isDone()).to.be.true;
     });
 
     it("should throw an error if the site doesn't exist", async () => {
-      nock(hostingApiOrigin()).get(SITE_DOMAINS_API).reply(404, {});
+      nock(hostingApiOrigin()).get(SITE_CUSTOM_DOMAINS_API).reply(404, {});
 
-      await expect(hostingApi.getSiteDomains(PROJECT_ID, SITE)).to.eventually.be.rejectedWith(
+      await expect(hostingApi.listCustomDomains(PROJECT_ID, SITE)).to.eventually.be.rejectedWith(
         FirebaseError,
         /could not find site/,
       );
@@ -807,9 +801,9 @@ describe("hosting", () => {
     });
 
     it("should throw an error if the server returns an error", async () => {
-      nock(hostingApiOrigin()).get(SITE_DOMAINS_API).reply(500, { error: "server boo-boo" });
+      nock(hostingApiOrigin()).get(SITE_CUSTOM_DOMAINS_API).reply(500, { error: "server boo-boo" });
 
-      await expect(hostingApi.getSiteDomains(PROJECT_ID, SITE)).to.eventually.be.rejectedWith(
+      await expect(hostingApi.listCustomDomains(PROJECT_ID, SITE)).to.eventually.be.rejectedWith(
         FirebaseError,
         /server boo-boo/,
       );
@@ -822,11 +816,20 @@ describe("hosting", () => {
     afterEach(nock.cleanAll);
 
     it("should get the site domains", async () => {
-      nock(hostingApiOrigin()).get(SITE_DOMAINS_API).reply(200, { domains: GET_SITE_DOMAINS_BODY });
+      nock(hostingApiOrigin())
+        .get(SITE_CUSTOM_DOMAINS_API)
+        .reply(200, {
+          customDomains: LIST_CUSTOM_DOMAINS_BODY.slice(0, 2),
+          nextPageToken: "page2",
+        });
+      nock(hostingApiOrigin())
+        .get(SITE_CUSTOM_DOMAINS_API)
+        .query({ pageToken: "page2" })
+        .reply(200, { customDomains: LIST_CUSTOM_DOMAINS_BODY.slice(2) });
 
       const GET_SITE_BODY = {
         name: `projects/${PROJECT_ID}/sites/${SITE}`,
-        defaultUrl: EXPECTED_DOMAINS_RESPONSE[0],
+        defaultUrl: "https://default.example.net",
         type: "DEFAULT_SITE",
       };
       nock(hostingApiOrigin())
@@ -834,7 +837,8 @@ describe("hosting", () => {
         .reply(200, GET_SITE_BODY);
 
       const allDomainsPlusWebAppAndFirebaseApp = [
-        ...EXPECTED_DOMAINS_RESPONSE,
+        ...CUSTOM_DOMAIN_NAMES,
+        "default.example.net",
         `${SITE}.web.app`,
         `${SITE}.firebaseapp.com`,
       ];
@@ -842,10 +846,42 @@ describe("hosting", () => {
       expect(await hostingApi.getAllSiteDomains(PROJECT_ID, SITE)).to.have.members(
         allDomainsPlusWebAppAndFirebaseApp,
       );
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should ignore custom domains with missing or empty names", async () => {
+      nock(hostingApiOrigin())
+        .get(SITE_CUSTOM_DOMAINS_API)
+        .reply(200, {
+          customDomains: [
+            LIST_CUSTOM_DOMAINS_BODY[0],
+            {},
+            { name: null },
+            { name: "" },
+            { name: `projects/${PROJECT_ID}/sites/${SITE}/customDomains/` },
+          ],
+        });
+
+      const GET_SITE_BODY = {
+        name: `projects/${PROJECT_ID}/sites/${SITE}`,
+        defaultUrl: "https://default.example.net",
+        type: "DEFAULT_SITE",
+      };
+      nock(hostingApiOrigin())
+        .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`)
+        .reply(200, GET_SITE_BODY);
+
+      expect(await hostingApi.getAllSiteDomains(PROJECT_ID, SITE)).to.have.members([
+        CUSTOM_DOMAIN_NAMES[0],
+        "default.example.net",
+        `${SITE}.web.app`,
+        `${SITE}.firebaseapp.com`,
+      ]);
+      expect(nock.isDone()).to.be.true;
     });
 
     it("should throw an error if the site doesn't exist", async () => {
-      nock(hostingApiOrigin()).get(SITE_DOMAINS_API).reply(404, {});
+      nock(hostingApiOrigin()).get(SITE_CUSTOM_DOMAINS_API).reply(404, {});
       nock(hostingApiOrigin()).get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`).reply(404, {});
 
       await expect(hostingApi.getAllSiteDomains(PROJECT_ID, SITE)).to.eventually.be.rejectedWith(
@@ -933,4 +969,178 @@ describe("normalizeName", () => {
       expect(hostingApi.normalizeName(t.in)).to.equal(t.out);
     });
   }
+});
+
+describe("ensureApiEnabled", () => {
+  let ensureStub: sinon.SinonStub;
+  let logLabeledWarningStub: sinon.SinonStub;
+  let boldSpy: sinon.SinonSpy;
+
+  beforeEach(() => {
+    ensureStub = sinon.stub(ensureApiEnabledModule, "ensure").resolves();
+    logLabeledWarningStub = sinon.stub(utils, "logLabeledWarning");
+    boldSpy = sinon.spy(clc, "bold");
+  });
+
+  afterEach(() => {
+    hostingApi.resetEnsureApiEnabledCacheForTests();
+    sinon.restore();
+    nock.cleanAll();
+  });
+
+  it("should resolve without warning when ensure succeeds", async () => {
+    await hostingApi.ensureApiEnabled(PROJECT_ID);
+
+    expect(ensureStub).to.have.been.calledOnceWith(PROJECT_ID, hostingApiOrigin(), "hosting", true);
+    expect(logLabeledWarningStub).to.not.have.been.called;
+  });
+
+  it("should suggest serviceUsageConsumer role when checking API enablement returns 403", async () => {
+    ensureStub.rejects(
+      new FirebaseError(
+        `Request to https://serviceusage.googleapis.com/v1/projects/${PROJECT_ID}/services/firebasehosting.googleapis.com had HTTP Error: 403, Caller does not have required permission to use project ${PROJECT_ID}.`,
+        { status: 403 },
+      ),
+    );
+
+    await hostingApi.ensureApiEnabled(PROJECT_ID);
+
+    expect(ensureStub).to.have.been.calledOnceWith(PROJECT_ID, hostingApiOrigin(), "hosting", true);
+    expect(boldSpy).to.have.been.calledOnce;
+    expect(logLabeledWarningStub).to.have.been.calledOnceWith(
+      "hosting",
+      sinon.match(
+        new RegExp(
+          `Unable to check whether firebasehosting\\.googleapis\\.com is enabled on project ${PROJECT_ID}\\..*roles/serviceusage\\.serviceUsageConsumer.*https://console\\.cloud\\.google\\.com/apis/library/firebasehosting\\.googleapis\\.com\\?project=${PROJECT_ID}`,
+        ),
+      ),
+    );
+  });
+
+  it("should suggest enablement link or serviceUsageAdmin role when enabling API returns 403", async () => {
+    ensureStub.rejects(
+      new FirebaseError(
+        `Permissions denied enabling firebasehosting.googleapis.com.\nPlease ask a project owner to visit the following URL to enable this service:\nhttps://console.cloud.google.com/apis/library/firebasehosting.googleapis.com?project=${PROJECT_ID}`,
+        {
+          status: 403,
+          context: {
+            body: { error: { code: 403, status: "PERMISSION_DENIED" } },
+            response: {
+              url: `https://serviceusage.googleapis.com/v1/projects/${PROJECT_ID}/services/firebasehosting.googleapis.com:enable`,
+            },
+          },
+        },
+      ),
+    );
+
+    await hostingApi.ensureApiEnabled(PROJECT_ID);
+
+    expect(ensureStub).to.have.been.calledOnceWith(PROJECT_ID, hostingApiOrigin(), "hosting", true);
+    expect(boldSpy).to.have.been.calledOnce;
+    expect(logLabeledWarningStub).to.have.been.calledOnceWith(
+      "hosting",
+      sinon.match(
+        new RegExp(
+          `Unable to enable firebasehosting\\.googleapis\\.com on project ${PROJECT_ID}\\..*https://console\\.cloud\\.google\\.com/apis/library/firebasehosting\\.googleapis\\.com\\?project=${PROJECT_ID}.*roles/serviceusage\\.serviceUsageAdmin`,
+        ),
+      ),
+    );
+  });
+
+  it("should log a fallback warning for non-permission or non-Error rejections", async () => {
+    // eslint-disable-next-line prefer-promise-reject-errors -- exercise non-Error rejection handling
+    ensureStub.returns(Promise.reject("raw serviceusage failure"));
+
+    await hostingApi.ensureApiEnabled(PROJECT_ID);
+
+    expect(boldSpy).to.have.been.calledOnce;
+    expect(logLabeledWarningStub).to.have.been.calledOnceWith(
+      "hosting",
+      sinon.match(
+        new RegExp(
+          `Unable to ensure that firebasehosting\\.googleapis\\.com is enabled on project ${PROJECT_ID}\\..*https://console\\.cloud\\.google\\.com/apis/library/firebasehosting\\.googleapis\\.com\\?project=${PROJECT_ID}`,
+        ),
+      ),
+    );
+  });
+
+  it("should deduplicate sequential permission failures within the cache TTL", async () => {
+    const clock = sinon.useFakeTimers();
+    try {
+      ensureStub.rejects(new FirebaseError("Permission denied", { status: 403 }));
+
+      await hostingApi.ensureApiEnabled(PROJECT_ID);
+      clock.tick(4 * 60 * 1000);
+      await hostingApi.ensureApiEnabled(PROJECT_ID);
+
+      expect(ensureStub).to.have.been.calledOnceWith(
+        PROJECT_ID,
+        hostingApiOrigin(),
+        "hosting",
+        true,
+      );
+      expect(logLabeledWarningStub).to.have.been.calledOnce;
+
+      clock.tick(60 * 1000);
+      ensureStub.resolves();
+      await hostingApi.ensureApiEnabled(PROJECT_ID);
+
+      expect(ensureStub).to.have.been.calledTwice;
+      expect(logLabeledWarningStub).to.have.been.calledOnce;
+    } finally {
+      clock.restore();
+    }
+  });
+
+  it("should not cache transient non-permission failures across calls", async () => {
+    ensureStub
+      .onFirstCall()
+      .rejects(new FirebaseError("Internal Server Error", { status: 500 }))
+      .onSecondCall()
+      .rejects(new FirebaseError("Internal Server Error", { status: 500 }))
+      .onThirdCall()
+      .resolves();
+
+    await hostingApi.ensureApiEnabled(PROJECT_ID);
+    await hostingApi.ensureApiEnabled(PROJECT_ID);
+    await hostingApi.ensureApiEnabled(PROJECT_ID);
+
+    expect(ensureStub).to.have.been.calledThrice;
+    expect(logLabeledWarningStub).to.have.been.calledTwice;
+  });
+
+  it("should deduplicate concurrent checks for the same project", async () => {
+    let rejectEnsure!: (err: Error) => void;
+    ensureStub.returns(
+      new Promise<void>((_resolve, reject) => {
+        rejectEnsure = reject;
+      }),
+    );
+
+    const firstCall = hostingApi.ensureApiEnabled(PROJECT_ID);
+    const secondCall = hostingApi.ensureApiEnabled(PROJECT_ID);
+
+    rejectEnsure(new FirebaseError("Permission denied", { status: 403 }));
+    await Promise.all([firstCall, secondCall]);
+
+    expect(ensureStub).to.have.been.calledOnceWith(PROJECT_ID, hostingApiOrigin(), "hosting", true);
+    expect(logLabeledWarningStub).to.have.been.calledOnce;
+  });
+
+  it("should track failures separately per project", async () => {
+    const OTHER_PROJECT = "other-project";
+    ensureStub
+      .withArgs(PROJECT_ID, hostingApiOrigin(), "hosting", true)
+      .rejects(new FirebaseError("Permission denied", { status: 403 }));
+    ensureStub.withArgs(OTHER_PROJECT, hostingApiOrigin(), "hosting", true).resolves();
+
+    await hostingApi.ensureApiEnabled(PROJECT_ID);
+    await hostingApi.ensureApiEnabled(OTHER_PROJECT);
+
+    expect(ensureStub).to.have.been.calledTwice;
+    expect(logLabeledWarningStub).to.have.been.calledOnceWith(
+      "hosting",
+      sinon.match(new RegExp(PROJECT_ID)),
+    );
+  });
 });

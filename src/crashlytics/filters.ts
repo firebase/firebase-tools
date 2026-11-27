@@ -1,0 +1,169 @@
+import { z } from "zod";
+import { FirebaseError } from "../error";
+import { AppPlatform } from "../management/apps";
+import { parseAppPlatform } from "./utils";
+
+export const ApplicationIdSchema = z
+  .string()
+  .describe("Firebase App Id. Strictly required for all API calls.");
+
+export const IssueIdSchema = z.string().describe("Crashlytics issue id, as hexidecimal UUID");
+
+export const EventFilterSchema = z
+  .object({
+    intervalStartTime: z
+      .string()
+      .optional()
+      .describe(
+        `A timestamp in ISO 8601 string format. Must be within the last 90 days. Defaults to 7 days ago.`,
+      ),
+    intervalEndTime: z
+      .string()
+      .optional()
+      .describe(
+        `A timestamp in ISO 8601 string format. Must be within the last 90 days. Defaults to now.`,
+      ),
+    versionDisplayNames: z
+      .array(z.string())
+      .optional()
+      .describe(
+        `Counts events originating from the given app versions. Must be obtained from the *displayName* field in an API response. `,
+      ),
+    issueId: z.string().optional().describe(`Count events for the given issue`),
+    issueVariantId: z
+      .string()
+      .optional()
+      .describe(`Count events for the given issue variant. Only supported for mobile apps.`),
+    issueErrorTypes: z
+      .array(z.enum(["FATAL", "NON_FATAL", "ANR"]))
+      .optional()
+      .describe(
+        `Counts FATAL events (crashes), NON_FATAL events (exceptions) or ANR events (application not responding)`,
+      ),
+    issueSignals: z
+      .array(z.enum(["SIGNAL_EARLY", "SIGNAL_FRESH", "SIGNAL_REGRESSED", "SIGNAL_REPETITIVE"]))
+      .optional()
+      .describe(`Counts events matching the given signals. Only supported for mobile apps.`),
+    operatingSystemDisplayNames: z
+      .array(z.string())
+      .optional()
+      .describe(
+        `Counts events originating from the given operating systems. Must be obtained from the *displayName* field in an API response.`,
+      ),
+    deviceDisplayNames: z
+      .array(z.string())
+      .optional()
+      .describe(
+        `Must be obtained from the *displayName* field in an API response. Only supported for mobile apps.`,
+      ),
+    deviceFormFactors: z
+      .array(z.enum(["PHONE", "TABLET", "DESKTOP", "TV", "WATCH"]))
+      .optional()
+      .describe(
+        `Counts events originating from the given device form factors. Only supported for mobile apps.`,
+      ),
+    browserFilterDisplayNames: z
+      .array(z.string())
+      .optional()
+      .describe(
+        `Counts events originating from the given browser filter display names. Only supported for web apps.`,
+      ),
+  })
+  .optional()
+  .describe(`Only events matching the given filters will be counted. All filters are optional. 
+    If setting a time interval, set both intervalStartTime and intervalEndTime.`);
+
+export type EventFilter = z.infer<typeof EventFilterSchema>;
+
+export const FilterExpressionSchema = z
+  .string()
+  .optional()
+  .describe(
+    `An AIP-160 filter expression for custom keys (e.g. 'custom_keys.env = "prod"', 'custom_keys.experiment_id:*', or combined with 'AND' across different keys and 'OR' across values of one key). For reports, only supported on web apps; check the report's usage to see whether it supports filter_expression.`,
+  );
+
+// Most models seem to understand the flattened, camelCase representation better.
+// This maps those strings to the filter params the API expects.
+
+const toolToParamMap: Record<string, string> = {
+  intervalStartTime: "filter.interval.start_time",
+  intervalEndTime: "filter.interval.end_time",
+  versionDisplayNames: "filter.version.display_names",
+  issueId: "filter.issue.id",
+  issueVariantId: "filter.issue.variant_id",
+  issueErrorTypes: "filter.issue.error_types",
+  issueSignals: "filter.issue.signals",
+  operatingSystemDisplayNames: "filter.operating_system.display_names",
+  deviceDisplayNames: "filter.device.display_names",
+  deviceFormFactors: "filter.device.form_factors",
+  browserFilterDisplayNames: "filter.browser.display_names",
+};
+
+/**
+ * Converts the model-friendly, flattened camelCase tool parameters into the
+ * AIP-160 style url parameters for all of the filtering options.
+ * @param filter an EventFilter
+ * @return URLSearchParams for a request to the GetReport endpoint
+ */
+export function filterToUrlSearchParams(filter: EventFilter): URLSearchParams {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filter || {})) {
+    if (value === undefined) {
+      continue;
+    }
+    const paramKey: string = toolToParamMap[key];
+    if (Array.isArray(value)) {
+      for (const v of value) {
+        params.append(paramKey, v);
+      }
+    } else if (value) {
+      params.set(paramKey, value);
+    }
+  }
+  return params;
+}
+
+const displayNamePattern = /^[^()]+\s+\([^()]+\)$/; // Regular expression like "xxxx (yyy)"
+
+/**
+ * Perform some simplistic validation on filters and fill missing values.
+ * @param filter filters to validate
+ * @param appId optional Firebase App ID used for platform-aware version validation
+ * @throws FirebaseError if any of the filters are invalid.
+ */
+export function validateEventFilters(filter: EventFilter = {}, appId?: string): EventFilter {
+  if (!!filter.intervalStartTime && !filter.intervalEndTime) {
+    // interval.end_time is required if interval.start_time is set but the agent likes to forget it
+    filter.intervalEndTime = new Date().toISOString();
+  }
+  const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+  if (filter.intervalStartTime && new Date(filter.intervalStartTime) < ninetyDaysAgo) {
+    throw new FirebaseError("intervalStartTime must be less than 90 days in the past");
+  }
+  if (filter.deviceDisplayNames) {
+    filter.deviceDisplayNames.forEach((dn) => {
+      if (!displayNamePattern.test(dn)) {
+        throw new FirebaseError("deviceDisplayNames must match pattern 'manufacturer (device)'");
+      }
+    });
+  }
+  if (filter.operatingSystemDisplayNames) {
+    filter.operatingSystemDisplayNames.forEach((dn) => {
+      if (!displayNamePattern.test(dn)) {
+        throw new FirebaseError("operatingSystemDisplayNames must match pattern 'os (version)'");
+      }
+    });
+  }
+  // For mobile apps, the API parses each version into a display and build version, so it must
+  // look like "2.4.0 (240)". Web apps have no build number, so plain versions are allowed.
+  if (filter.versionDisplayNames && parseAppPlatform(appId) !== AppPlatform.WEB) {
+    for (const dn of filter.versionDisplayNames) {
+      if (!displayNamePattern.test(dn)) {
+        throw new FirebaseError(
+          `versionDisplayNames must match pattern 'version (build)' (e.g., "2.4.0 (240)"). Use the displayName values returned by the topVersions report.`,
+        );
+      }
+    }
+  }
+  return filter;
+}

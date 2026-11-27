@@ -3,8 +3,8 @@ import * as ora from "ora";
 import * as semver from "semver";
 import * as tmp from "tmp";
 import * as fs from "fs-extra";
-import fetch from "node-fetch";
 import * as path from "path";
+import { Readable } from "stream";
 import { marked } from "marked";
 import { markedTerminal } from "marked-terminal";
 
@@ -13,17 +13,14 @@ marked.use(markedTerminal() as any);
 
 import { extensionsOrigin, extensionsPublisherOrigin, storageOrigin } from "../api";
 import { archiveDirectory } from "../archiveDirectory";
-import { convertOfficialExtensionsToList } from "./utils";
 import { getFirebaseConfig } from "../functionsConfig";
 import { getProjectAdminSdkConfigOrCached } from "../emulator/adminSdkConfig";
-import { getExtensionRegistry } from "./resolveSource";
 import { FirebaseError } from "../error";
 import { diagnose } from "./diagnose";
-import { checkResponse } from "./askUserForParam";
-import { ensure, check } from "../ensureApiEnabled";
+import { ensure } from "../ensureApiEnabled";
 import { deleteObject, uploadObject } from "../gcp/storage";
 import { getProjectId } from "../projectUtils";
-import { createSource, getInstance } from "./extensionsApi";
+import { createSource } from "./extensionsApi";
 import {
   createExtensionVersionFromGitHubSource,
   createExtensionVersionFromLocalSource,
@@ -31,10 +28,17 @@ import {
   getExtensionVersion,
   listExtensionVersions,
 } from "./publisherApi";
-import { Extension, ExtensionSource, ExtensionSpec, ExtensionVersion, Param } from "./types";
+import { Choice, confirm, input, select } from "../prompt";
+import {
+  Extension,
+  ExtensionInstance,
+  ExtensionSource,
+  ExtensionSpec,
+  ExtensionVersion,
+  Param,
+} from "./types";
 import * as refs from "./refs";
 import { EXTENSIONS_SPEC_FILE, readFile, getLocalExtensionSpec } from "./localHelper";
-import { confirm, promptOnce } from "../prompt";
 import { logger } from "../logger";
 import { envOverride, logLabeledError } from "../utils";
 import { getLocalChangelog } from "./change-log";
@@ -67,19 +71,10 @@ export enum SourceOrigin {
 
 export const logPrefix = "extensions";
 const VALID_LICENSES = ["apache-2.0"];
-// Extension archive URLs must be HTTPS.
-export const URL_REGEX = /^https:/;
 export const EXTENSIONS_BUCKET_NAME = envOverride(
   "FIREBASE_EXTENSIONS_UPLOAD_BUCKET",
   "firebase-ext-eap-uploads",
 );
-const AUTOPOPULATED_PARAM_NAMES = [
-  "PROJECT_ID",
-  "STORAGE_BUCKET",
-  "EXT_INSTANCE_ID",
-  "DATABASE_INSTANCE",
-  "DATABASE_URL",
-];
 // Placeholders that can be used whever param substitution is needed, but are not available.
 export const AUTOPOPULATED_PARAM_PLACEHOLDERS = {
   PROJECT_ID: "project-id",
@@ -88,11 +83,8 @@ export const AUTOPOPULATED_PARAM_PLACEHOLDERS = {
   DATABASE_INSTANCE: "project-id-default-rtdb",
   DATABASE_URL: "https://project-id-default-rtdb.firebaseio.com",
 };
-export const resourceTypeToNiceName: Record<string, string> = {
-  "firebaseextensions.v1beta.function": "Cloud Function",
-};
 export type ReleaseStage = "alpha" | "beta" | "rc" | "stable";
-const repoRegex = new RegExp(`^https:\/\/github\.com\/[^\/]+\/[^\/]+$`);
+const repoRegex = new RegExp(`^https://github.com/[^/]+/[^/]+$`);
 const stageOptions = ["rc", "alpha", "beta", "stable"];
 
 /**
@@ -188,7 +180,7 @@ type SecretParam = ReturnType<typeof defineSecret>;
  * Substitutes any secret parameters with the correct format
  * @param projectNumber The project number we are installing into
  * @param params the full list of params to check for substitution.
- * @returns The substituted list of params
+ * @return The substituted list of params
  */
 export async function substituteSecretParams(
   projectNumber: string,
@@ -197,10 +189,9 @@ export async function substituteSecretParams(
   const newParams: Record<string, string> = {};
   for await (const [key, value] of Object.entries(params)) {
     if (typeof value !== "string") {
-      newParams[key] =
-        `projects/${projectNumber}/secrets/${(value as SecretParam).name}/versions/latest`;
+      newParams[key] = `projects/${projectNumber}/secrets/${value.name}/versions/latest`;
     } else {
-      newParams[key] = value as string;
+      newParams[key] = value;
     }
   }
   return newParams;
@@ -209,7 +200,7 @@ export async function substituteSecretParams(
 /**
  * Sets params equal to defaults given in extension.yaml if not already set in .env file.
  * @param paramVars JSON object of params to values parsed from .env file
- * @param paramSpec information on params parsed from extension.yaml
+ * @param paramSpecs information on params parsed from extension.yaml
  * @return JSON object of params
  */
 export function populateDefaultParams(
@@ -232,37 +223,6 @@ export function populateDefaultParams(
   }
 
   return newParams;
-}
-
-/**
- * Validates command-line params supplied by developer.
- * @param envVars JSON object of params to values parsed from .env file
- * @param paramSpec information on params parsed from extension.yaml
- */
-export function validateCommandLineParams(
-  envVars: Record<string, string>,
-  paramSpec: Param[],
-): void {
-  const paramNames = paramSpec.map((p) => p.param);
-  const misnamedParams = Object.keys(envVars).filter((key: string) => {
-    return !paramNames.includes(key) && !AUTOPOPULATED_PARAM_NAMES.includes(key);
-  });
-  if (misnamedParams.length) {
-    logger.warn(
-      "Warning: The following params were specified in your env file but do not exist in the extension spec: " +
-        `${misnamedParams.join(", ")}.`,
-    );
-  }
-  let allParamsValid = true;
-  for (const param of paramSpec) {
-    // Warns if invalid response was found in environment file.
-    if (!checkResponse(envVars[param.param], param)) {
-      allParamsValid = false;
-    }
-  }
-  if (!allParamsValid) {
-    throw new FirebaseError(`Some param values are not valid. Please check your params file.`);
-  }
 }
 
 /**
@@ -399,10 +359,9 @@ export function validateSpec(spec: any) {
 export async function promptForValidInstanceId(instanceId: string): Promise<string> {
   let instanceIdIsValid = false;
   let newInstanceId = "";
-  const instanceIdRegex = /^[a-z][a-z\d\-]*[a-z\d]$/;
+  const instanceIdRegex = /^[a-z][a-z\d-]*[a-z\d]$/;
   while (!instanceIdIsValid) {
-    newInstanceId = await promptOnce({
-      type: "input",
+    newInstanceId = await input({
       default: instanceId,
       message: `Please enter a new name for this instance:`,
     });
@@ -427,10 +386,9 @@ export async function promptForValidRepoURI(): Promise<string> {
   let repoIsValid = false;
   let extensionRoot = "";
   while (!repoIsValid) {
-    extensionRoot = await promptOnce({
-      type: "input",
-      message: "Enter the GitHub repo URI where this extension's source code is located:",
-    });
+    extensionRoot = await input(
+      "Enter the GitHub repo URI where this extension's source code is located:",
+    );
     if (!repoRegex.test(extensionRoot)) {
       logger.info("Repo URI must follow this format: https://github.com/<user>/<repo>");
     } else {
@@ -442,12 +400,10 @@ export async function promptForValidRepoURI(): Promise<string> {
 
 /**
  * Prompts for an extension root.
- *
  * @param defaultRoot the default extension root
  */
 export async function promptForExtensionRoot(defaultRoot: string): Promise<string> {
-  return await promptOnce({
-    type: "input",
+  return await input({
     message:
       "Enter this extension's root directory in the repo (defaults to previous root if set):",
     default: defaultRoot,
@@ -456,7 +412,7 @@ export async function promptForExtensionRoot(defaultRoot: string): Promise<strin
 
 /**
  * Prompts for the extension version's release stage.
- *
+ * @param args options for prompting the release stage
  * @param args.versionByStage map from stage to the next version to upload
  * @param args.autoReview whether the stable version will be automatically sent for review on upload
  * @param args.allowStable whether to allow stable versions
@@ -474,7 +430,7 @@ async function promptForReleaseStage(args: {
 }): Promise<ReleaseStage> {
   let stage: ReleaseStage = "rc";
   if (!args.nonInteractive) {
-    const choices = [
+    const choices: Choice<ReleaseStage>[] = [
       { name: `Release candidate (${args.versionByStage.get("rc")})`, value: "rc" },
       { name: `Alpha (${args.versionByStage.get("alpha")})`, value: "alpha" },
       { name: `Beta (${args.versionByStage.get("beta")})`, value: "beta" },
@@ -484,30 +440,26 @@ async function promptForReleaseStage(args: {
         name: `Stable (${args.versionByStage.get("stable")}${
           args.autoReview ? ", automatically sent for review" : ""
         })`,
-        value: "stable",
+        value: "stable" as ReleaseStage,
       };
       choices.push(stableChoice);
     }
-    stage = await promptOnce({
-      type: "list",
+    stage = await select<ReleaseStage>({
       message: "Choose the release stage:",
       choices: choices,
       default: stage,
     });
     if (stage === "stable" && !args.hasVersions) {
-      logger.info(
-        `${clc.bold(
+      const confirmed = await confirm({
+        message: `${clc.bold(
           clc.yellow("Warning:"),
         )} It's highly recommended to first upload a pre-release version before choosing stable.`,
-      );
-      const confirmed = await confirm({
         nonInteractive: args.nonInteractive,
         force: args.force,
         default: false,
       });
       if (!confirmed) {
-        stage = await promptOnce({
-          type: "list",
+        stage = await select<ReleaseStage>({
           message: "Choose the release stage:",
           choices: choices,
           default: stage,
@@ -516,14 +468,6 @@ async function promptForReleaseStage(args: {
     }
   }
   return stage;
-}
-
-export async function checkExtensionsApiEnabled(options: any): Promise<boolean> {
-  const projectId = getProjectId(options);
-  if (!projectId) {
-    return false;
-  }
-  return await check(projectId, extensionsOrigin(), "extensions", options.markdown);
 }
 
 export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
@@ -550,7 +494,6 @@ export async function ensureExtensionsPublisherApiEnabled(options: any): Promise
  */
 async function archiveAndUploadSource(extPath: string, bucketName: string): Promise<string> {
   const zippedSource = await archiveDirectory(extPath, {
-    type: "zip",
     ignore: ["node_modules", ".git"],
   });
   const res = await uploadObject(zippedSource, bucketName);
@@ -559,9 +502,8 @@ async function archiveAndUploadSource(extPath: string, bucketName: string): Prom
 
 /**
  * Gets a list of the next version to upload by release stage.
- *
  * @param extensionRef the ref of the extension
- * @param version the new version of the extension
+ * @param newVersion the new version of the extension
  */
 export async function getNextVersionByStage(
   extensionRef: string,
@@ -599,9 +541,8 @@ export async function getNextVersionByStage(
 
 /**
  * Validates the extension spec.
- *
  * @param rootDirectory the directory with the extension source
- * @param extensionRef the ref of the extension
+ * @param extensionId the ID of the extension
  */
 async function validateExtensionSpec(
   rootDirectory: string,
@@ -627,7 +568,6 @@ async function validateExtensionSpec(
 
 /**
  * Validates the release notes.
- *
  * @param rootDirectory the directory with the extension source
  * @param newVersion the new extension version
  */
@@ -656,7 +596,6 @@ function validateReleaseNotes(rootDirectory: string, newVersion: string, extensi
 
 /**
  * Validates the extension version.
- *
  * @param extensionRef the ref of the extension
  * @param newVersion the new extension version
  * @param latestVersion the latest extension version
@@ -722,7 +661,7 @@ function displayExtensionHeader(
   if (extension) {
     let source = "Local source";
     if (extension.repoUri) {
-      const uri = new URL(extension.repoUri!);
+      const uri = new URL(extension.repoUri);
       uri.pathname = path.join(uri.pathname, extensionRoot ?? "");
       source = `${uri.toString()} (use --repo and --root to modify)`;
     }
@@ -761,8 +700,10 @@ async function fetchExtensionSource(
   )}. Please check that the repo is public and that the source ref is valid.`;
   try {
     const response = await fetch(archiveUri);
-    if (response.ok) {
-      await response.body.pipe(createUnzipTransform(tempDirectory.name)).promise();
+    if (response.ok && response.body) {
+      await Readable.fromWeb(response.body as any)
+        .pipe(createUnzipTransform(tempDirectory.name))
+        .promise();
     }
   } catch (err) {
     throw new FirebaseError(archiveErrorMessage);
@@ -787,6 +728,7 @@ async function fetchExtensionSource(
 
 /**
  * Uploads an extension version from a GitHub repo.
+ * @param args options for uploading the extension version
  * @param args.publisherId the ID of the Publisher this Extension will be published under
  * @param args.extensionId the ID of the Extension to be published
  * @param args.repoUri the URI of the repo where this Extension's source exists
@@ -857,8 +799,7 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
   const defaultSourceRef = "HEAD";
   if (!sourceRef) {
     if (!args.nonInteractive) {
-      sourceRef = await promptOnce({
-        type: "input",
+      sourceRef = await input({
         message: "Enter the commit hash, branch, or tag name to build from in the repo:",
         default: defaultSourceRef,
       });
@@ -904,6 +845,7 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
     autoReview: stage === "stable" && autoReview,
   });
   const confirmed = await confirm({
+    message: "Continue?",
     nonInteractive: args.nonInteractive,
     force: args.force,
     default: false,
@@ -937,6 +879,7 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
 
 /**
  * Uploads an extension version from local source.
+ * @param args options for uploading the extension version
  * @param args.publisherId the ID of the Publisher this Extension will be published under
  * @param args.extensionId the ID of the Extension to be published
  * @param args.rootDirectory the root directory that contains this Extension's source
@@ -997,6 +940,7 @@ export async function uploadExtensionVersionFromLocalSource(args: {
   const releaseNotes = validateReleaseNotes(args.rootDirectory, extensionSpec.version, extension);
   displayReleaseNotes({ extensionRef, newVersion, releaseNotes, autoReview: false });
   const confirmed = await confirm({
+    message: "Continue?",
     nonInteractive: args.nonInteractive,
     force: args.force,
     default: false,
@@ -1113,6 +1057,7 @@ export function getPublisherProjectFromName(publisherName: string): number {
 
 /**
  * Displays the release notes and confirmation message for the extension to be uploaded.
+ * @param args options for displaying release notes
  * @param args.extensionRef the ref of the extension
  * @param args.newVersion the new version of the extension
  * @param args.autoReview the autoreview
@@ -1142,70 +1087,6 @@ export function displayReleaseNotes(args: {
     releaseNotesMessage +
     `Once an extension version is uploaded, it becomes installable by other users and cannot be changed. If you wish to make changes after uploading, you will need to upload a new version.\n`;
   logger.info(message);
-}
-
-/**
- * Display list of all official extensions and prompt user to select one.
- * @param message The prompt message to display
- * @return Promise that resolves to the extension name (e.g. storage-resize-images)
- */
-export async function promptForOfficialExtension(message: string): Promise<string> {
-  const officialExts = await getExtensionRegistry(true);
-  return await promptOnce({
-    name: "input",
-    type: "list",
-    message,
-    choices: convertOfficialExtensionsToList(officialExts),
-    pageSize: Object.keys(officialExts).length,
-  });
-}
-
-/**
- * Confirm if the user wants to install another instance of an extension when they already have one.
- * @param projectName The name of the project in use.
- * @param extensionName The name of the extension being installed.
- */
-export async function promptForRepeatInstance(
-  projectName: string,
-  extensionName: string,
-): Promise<"updateExisting" | "installNew" | "cancel"> {
-  const message = `An extension with the ID '${clc.bold(
-    extensionName,
-  )}' already exists in the project '${clc.bold(projectName)}'. What would you like to do?`;
-  const choices = [
-    { name: "Update or reconfigure the existing instance", value: "updateExisting" },
-    { name: "Install a new instance with a different ID", value: "installNew" },
-    { name: "Cancel extension installation", value: "cancel" },
-  ];
-  return await promptOnce({
-    type: "list",
-    message,
-    choices,
-  });
-}
-
-/**
- * Checks to see if an extension instance exists.
- * @param projectId ID of the project in use
- * @param instanceId ID of the extension instance
- */
-export async function instanceIdExists(projectId: string, instanceId: string): Promise<boolean> {
-  try {
-    await getInstance(projectId, instanceId);
-  } catch (err: unknown) {
-    if (err instanceof FirebaseError) {
-      if (err.status === 404) {
-        return false;
-      }
-      const msg = `Unexpected error when checking if instance ID exists: ${err.message}`;
-      throw new FirebaseError(msg, {
-        original: err,
-      });
-    } else {
-      throw err;
-    }
-  }
-  return true;
 }
 
 export function isUrlPath(extInstallPath: string): boolean {
@@ -1275,4 +1156,42 @@ export async function diagnoseAndFixProject(options: any): Promise<void> {
   if (!ok) {
     throw new FirebaseError("Unable to proceed until all issues are resolved.");
   }
+}
+
+/**
+ * Ensures that the extension instance has its spec loaded, fetching it on demand if missing.
+ */
+export async function ensureInstanceSpec(instance: ExtensionInstance): Promise<ExtensionInstance> {
+  if (instance.config?.source?.spec) {
+    return instance;
+  }
+
+  const extensionRef = instance.config?.extensionRef ?? instance.extensionRef;
+  if (!extensionRef) {
+    return instance;
+  }
+
+  const ref = refs.parse(extensionRef);
+  const extensionVersion =
+    instance.config?.extensionVersion ?? instance.extensionVersion ?? ref.version ?? "latest";
+  const extVersion = await getExtensionVersion(
+    `${ref.publisherId}/${ref.extensionId}@${extensionVersion}`,
+  );
+
+  return {
+    ...instance,
+    config: {
+      ...instance.config,
+      source: {
+        ...instance.config?.source,
+        name: instance.config?.source?.name ?? extVersion.name,
+        state:
+          instance.config?.source?.state ??
+          (extVersion.state === "PUBLISHED" ? "ACTIVE" : "STATE_UNSPECIFIED"),
+        packageUri: instance.config?.source?.packageUri ?? extVersion.sourceDownloadUri,
+        hash: instance.config?.source?.hash ?? extVersion.hash,
+        spec: extVersion.spec,
+      },
+    },
+  };
 }

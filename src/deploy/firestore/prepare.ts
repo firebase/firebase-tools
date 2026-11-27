@@ -7,6 +7,14 @@ import { Options } from "../../options";
 import * as fsConfig from "../../firestore/fsConfig";
 import { logger } from "../../logger";
 import { DeployOptions } from "..";
+import { ensure } from "../../ensureApiEnabled";
+import { firestoreOrigin } from "../../api";
+import { FirebaseError, getErrStatus } from "../../error";
+import * as types from "../../firestore/api-types";
+import { FirestoreConfig } from "../../firebaseConfig";
+import { FirestoreApi } from "../../firestore/api";
+
+const DEFAULT_FIRESTORE_LOCATION = "nam5";
 
 export interface RulesContext {
   databaseId: string;
@@ -32,7 +40,7 @@ function prepareRules(
   databaseId: string,
   rulesFile: string,
 ): void {
-  rulesDeploy.addFile(rulesFile);
+  rulesDeploy.addFile(rulesFile, databaseId);
   context.firestore.rules.push({
     databaseId,
     rulesFile,
@@ -65,6 +73,95 @@ function prepareIndexes(
     indexesRawSpec,
   } as IndexContext);
 }
+/**
+ * Creates the Firestore database named in firebase.json if it does not exist yet.
+ * On a dry run, a missing database is reported instead of created.
+ * @param context The deploy context.
+ * @param options The CLI options object.
+ * @return true if the database does not exist and was not created because this is a dry run.
+ */
+async function createDatabase(context: any, options: DeployOptions): Promise<boolean> {
+  let firestoreCfg: FirestoreConfig = options.config.data.firestore;
+  if (Array.isArray(firestoreCfg)) {
+    firestoreCfg = firestoreCfg[0];
+  }
+  if (!options.projectId) {
+    throw new FirebaseError("Project ID is required to create a Firestore database.");
+  }
+  if (!firestoreCfg) {
+    throw new FirebaseError("Firestore database configuration not found in firebase.json.");
+  }
+  if (!firestoreCfg.database) {
+    firestoreCfg.database = "(default)";
+  }
+
+  let edition: types.DatabaseEdition = types.DatabaseEdition.STANDARD;
+  if (firestoreCfg.edition) {
+    const upperEdition = firestoreCfg.edition.toUpperCase();
+    if (
+      upperEdition !== types.DatabaseEdition.STANDARD &&
+      upperEdition !== types.DatabaseEdition.ENTERPRISE
+    ) {
+      throw new FirebaseError(
+        `Invalid edition specified for database in firebase.json: ${firestoreCfg.edition}`,
+      );
+    }
+    edition = upperEdition as types.DatabaseEdition;
+  }
+
+  let firestoreDataAccessMode: types.DataAccessMode | undefined;
+  let mongodbCompatibleDataAccessMode: types.DataAccessMode | undefined;
+  if (firestoreCfg.dataAccessMode) {
+    if (edition !== types.DatabaseEdition.ENTERPRISE) {
+      throw new FirebaseError(
+        "dataAccessMode can only be specified for enterprise edition databases.",
+      );
+    }
+    if (firestoreCfg.dataAccessMode === "FIRESTORE_NATIVE") {
+      firestoreDataAccessMode = types.DataAccessMode.ENABLED;
+      mongodbCompatibleDataAccessMode = types.DataAccessMode.DISABLED;
+    } else if (firestoreCfg.dataAccessMode === "MONGODB_COMPATIBLE") {
+      firestoreDataAccessMode = types.DataAccessMode.DISABLED;
+      mongodbCompatibleDataAccessMode = types.DataAccessMode.ENABLED;
+    }
+  }
+
+  const api = new FirestoreApi();
+  try {
+    await api.getDatabase(options.projectId, firestoreCfg.database);
+  } catch (e: any) {
+    if (e.status === 404) {
+      const locationId = firestoreCfg.location || DEFAULT_FIRESTORE_LOCATION;
+      if (options.dryRun) {
+        utils.logLabeledWarning(
+          "firestore",
+          `Database ${clc.bold(firestoreCfg.database)} does not exist. A deploy would create it in ` +
+            `${clc.bold(locationId)}${firestoreCfg.location ? "" : " (the default, because firebase.json sets no location)"}. ` +
+            "Skipping database creation because this is a dry run.",
+        );
+        return true;
+      }
+      // Database is not found. Let's create it.
+      utils.logLabeledBullet(
+        "firestore",
+        `Creating the new Firestore database ${firestoreCfg.database}...`,
+      );
+      const createDatabaseReq: types.CreateDatabaseReq = {
+        project: options.projectId,
+        databaseId: firestoreCfg.database,
+        locationId,
+        type: types.DatabaseType.FIRESTORE_NATIVE,
+        databaseEdition: edition,
+        deleteProtectionState: types.DatabaseDeleteProtectionState.DISABLED,
+        pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement.DISABLED,
+        firestoreDataAccessMode,
+        mongodbCompatibleDataAccessMode,
+      };
+      await api.createDatabase(createDatabaseReq);
+    }
+  }
+  return false;
+}
 
 /**
  * Prepares Firestore deploys.
@@ -72,20 +169,22 @@ function prepareIndexes(
  * @param options The CLI options object.
  */
 export default async function (context: any, options: DeployOptions): Promise<void> {
+  await ensure(context.projectId, firestoreOrigin(), "firestore");
+  await ensure(context.projectId, firestoreOrigin(), "firestore");
   if (options.only) {
     const targets = options.only.split(",");
 
     // Used for edge case when deploying to a named database
     // https://github.com/firebase/firebase-tools/pull/6129
-    const excludeRules = targets.indexOf("firestore:indexes") >= 0;
-    const excludeIndexes = targets.indexOf("firestore:rules") >= 0;
+    const excludeRules = targets.includes("firestore:indexes");
+    const excludeIndexes = targets.includes("firestore:rules");
 
     // Used for edge case when deploying --only firestore:rules,firestore:indexes
     // https://github.com/firebase/firebase-tools/issues/6857
-    const includeRules = targets.indexOf("firestore:rules") >= 0;
-    const includeIndexes = targets.indexOf("firestore:indexes") >= 0;
+    const includeRules = targets.includes("firestore:rules");
+    const includeIndexes = targets.includes("firestore:indexes");
 
-    const onlyFirestore = targets.indexOf("firestore") >= 0;
+    const onlyFirestore = targets.includes("firestore");
 
     context.firestoreIndexes = !excludeIndexes || includeIndexes || onlyFirestore;
     context.firestoreRules = !excludeRules || includeRules || onlyFirestore;
@@ -108,6 +207,9 @@ export default async function (context: any, options: DeployOptions): Promise<vo
   const rulesDeploy: RulesDeploy = new RulesDeploy(options, RulesetServiceType.CLOUD_FIRESTORE);
   context.firestore.rulesDeploy = rulesDeploy;
 
+  // We need to create the DB first if it doesn't exist
+  // Otherwise, prepare rules will fail when it calls the :test endpoint
+  const skippedDatabaseCreation = await createDatabase(context, options);
   for (const firestoreConfig of firestoreConfigs) {
     if (firestoreConfig.indexes) {
       prepareIndexes(context, options, firestoreConfig.database, firestoreConfig.indexes);
@@ -118,7 +220,21 @@ export default async function (context: any, options: DeployOptions): Promise<vo
   }
 
   if (context.firestore.rules.length > 0) {
-    await rulesDeploy.compile();
+    try {
+      await rulesDeploy.compile();
+    } catch (err: unknown) {
+      // On a project with no Firestore database yet, the :test endpoint returns 403 until the
+      // first database is created (see #9220). A dry run does not create it, so it cannot
+      // check the rules either; say so instead of failing the dry run.
+      if (!skippedDatabaseCreation || getErrStatus(err) !== 403) {
+        throw err;
+      }
+      utils.logLabeledWarning(
+        "firestore",
+        "Could not check the rules for compilation errors (HTTP 403), most likely because the " +
+          "project has no Firestore database yet. A deploy creates the database before it checks the rules.",
+      );
+    }
   }
 
   const rulesContext: RulesContext[] = context?.firestore?.rules;
