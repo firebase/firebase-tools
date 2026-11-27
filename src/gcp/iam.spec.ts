@@ -277,6 +277,23 @@ describe("iam", () => {
 
         expect(nock.isDone()).to.be.true;
       });
+
+      it("should throw if the caller can't delete the service account", async () => {
+        nock("https://iam.googleapis.com")
+          .delete(`/v1/projects/${PROJECT_ID}/serviceAccounts/${EMAIL}`)
+          .reply(403, {
+            error: {
+              code: 403,
+              message: "Permission 'iam.serviceAccounts.delete' denied",
+              status: "PERMISSION_DENIED",
+            },
+          });
+
+        await expect(iam.deleteServiceAccount(PROJECT_ID, EMAIL)).to.be.rejectedWith(
+          "Permission 'iam.serviceAccounts.delete' denied",
+        );
+        expect(nock.isDone()).to.be.true;
+      });
     });
 
     describe("listServiceAccountKeys", () => {

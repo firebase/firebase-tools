@@ -2459,6 +2459,21 @@ describe("Fabricator", () => {
       );
     });
 
+    it("should fail removeOldRoles if the SA can't be deleted", async () => {
+      deleteServiceAccountStub.rejects(new FirebaseError("Permission denied", { status: 403 }));
+
+      const plan: planner.CodebasePlan = {
+        plannedBackend: backend.empty(),
+        regionalChangesets: {},
+        serviceAccountToDelete: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+      };
+
+      await expect(fab.removeOldRoles(plan, "default")).to.be.rejectedWith(
+        FirebaseError,
+        "Failed to delete managed service account firebase-fn-123@my-proj.iam.gserviceaccount.com",
+      );
+    });
+
     it("should clean up newly created SA if role assignment fails in grantNewRoles", async () => {
       addServiceAccountRolesStub.rejects(new Error("Permission denied"));
 
