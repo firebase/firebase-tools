@@ -16,6 +16,14 @@ interface FirestoreSelection {
   byName: Map<string, Set<FirestoreResource>>;
 }
 
+function invalidFirestoreTargetMessage(value: string): string {
+  return (
+    `Invalid Firestore deploy target: "${value}". Expected "firestore", ` +
+    `"firestore:<databaseId|target>", "firestore:<databaseId|target>:rules", ` +
+    `"firestore:<databaseId|target>:indexes", "firestore:rules", or "firestore:indexes".`
+  );
+}
+
 function parseFirestoreSelection(only: string | undefined): FirestoreSelection {
   const selection: FirestoreSelection = {
     allDatabases: !only,
@@ -58,12 +66,12 @@ function parseFirestoreSelection(only: string | undefined): FirestoreSelection {
       (parts.length === 3 && !resource) ||
       (resource && resource !== "rules" && resource !== "indexes")
     ) {
-      throw new FirebaseError(`Invalid Firestore deploy target: ${value}`);
+      throw new FirebaseError(invalidFirestoreTargetMessage(value), { exit: 1 });
     }
 
     if (name === "rules" || name === "indexes") {
       if (resource) {
-        throw new FirebaseError(`Invalid Firestore deploy target: ${value}`);
+        throw new FirebaseError(invalidFirestoreTargetMessage(value), { exit: 1 });
       }
       selection.allDatabases = true;
       addResources(undefined, [name as FirestoreResource]);
@@ -72,6 +80,12 @@ function parseFirestoreSelection(only: string | undefined): FirestoreSelection {
     }
   }
   return selection;
+}
+
+function unmatchedFirestoreTargetMessage(unmatched: string[]): string {
+  return `Could not find configurations in firebase.json for the following database targets: ${unmatched.join(
+    ", ",
+  )}`;
 }
 
 function filterFirestoreConfig(
@@ -104,10 +118,15 @@ export function getFirestoreConfig(projectId: string, options: Options): ParsedF
     if (fsConfig) {
       // databaseId is (default) if none provided
       const databaseId = fsConfig.database || `(default)`;
-      const resources = selection.allDatabases
-        ? selection.allResources
-        : selection.byName.get(databaseId) || new Set<FirestoreResource>();
-      if (!selection.allDatabases && !selection.byName.has(databaseId)) {
+      const unmatched = [...selection.byName.keys()].filter((name) => name !== databaseId);
+      if (unmatched.length !== 0) {
+        throw new FirebaseError(unmatchedFirestoreTargetMessage(unmatched), { exit: 1 });
+      }
+      const resources = new Set(selection.allResources);
+      for (const resource of selection.byName.get(databaseId) || []) {
+        resources.add(resource);
+      }
+      if (resources.size === 0) {
         return [];
       }
       return [
@@ -123,6 +142,7 @@ export function getFirestoreConfig(projectId: string, options: Options): ParsedF
   }
 
   const results: ParsedFirestoreConfig[] = [];
+  const consumed = new Set<string>();
   for (const c of fsConfig) {
     const { database, target } = c;
     if (target) {
@@ -130,6 +150,7 @@ export function getFirestoreConfig(projectId: string, options: Options): ParsedF
       if (targetSelected) {
         // Make sure the target exists (this will throw otherwise)
         rc.requireTarget(projectId, "firestore", target);
+        consumed.add(target);
         // Get a list of firestore instances the target maps to
         const databases = rc.target(projectId, "firestore", target);
         for (const database of databases) {
@@ -145,26 +166,23 @@ export function getFirestoreConfig(projectId: string, options: Options): ParsedF
     } else if (database) {
       const databaseSelected = selection.allDatabases || selection.byName.has(database);
       if (databaseSelected) {
+        consumed.add(database);
         const resources = new Set(selection.allResources);
         for (const resource of selection.byName.get(database) || []) {
           resources.add(resource);
         }
-        results.push(filterFirestoreConfig(c as ParsedFirestoreConfig, resources));
+        results.push(
+          filterFirestoreConfig({ database, rules: c.rules, indexes: c.indexes }, resources),
+        );
       }
     } else {
       throw new FirebaseError('Must supply either "target" or "databaseId" in firestore config');
     }
   }
 
-  const unmatched = [...selection.byName.keys()].filter(
-    (name) => !fsConfig.some((config) => config.database === name || config.target === name),
-  );
+  const unmatched = [...selection.byName.keys()].filter((name) => !consumed.has(name));
   if (!selection.allDatabases && unmatched.length !== 0) {
-    throw new FirebaseError(
-      `Could not find configurations in firebase.json for the following database targets: ${[
-        ...unmatched,
-      ].join(", ")}`,
-    );
+    throw new FirebaseError(unmatchedFirestoreTargetMessage(unmatched), { exit: 1 });
   }
 
   return results;
