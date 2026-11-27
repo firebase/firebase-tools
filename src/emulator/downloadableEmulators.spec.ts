@@ -189,6 +189,27 @@ describe("downloadDetails", () => {
     it("should not enforce the Java 21 gate on Pub/Sub via requiresJava", () => {
       expect(downloadableEmulators.requiresJava(Emulators.PUBSUB)).to.be.false;
     });
+
+    it("should pass --eventarc_emulator to the Data Connect emulator when specified", () => {
+      const cmd = downloadableEmulators._getCommand(Emulators.DATACONNECT, {
+        listen: "127.0.0.1:9399",
+        config_dir: "/my/dataconnect",
+        eventarc_emulator: "127.0.0.1:9299",
+      });
+
+      expect(cmd.args).to.include("--listen=127.0.0.1:9399");
+      expect(cmd.args).to.include("--config_dir=/my/dataconnect");
+      expect(cmd.args).to.include("--eventarc_emulator=127.0.0.1:9299");
+    });
+
+    it("should omit --eventarc_emulator from the Data Connect emulator when undefined", () => {
+      const cmd = downloadableEmulators._getCommand(Emulators.DATACONNECT, {
+        listen: "127.0.0.1:9399",
+        eventarc_emulator: undefined,
+      });
+
+      expect(cmd.args.some((arg) => arg.startsWith("--eventarc_emulator"))).to.be.false;
+    });
   });
 
   describe("start", () => {

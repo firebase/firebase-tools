@@ -13,7 +13,10 @@ import { replaceConsoleLinks } from "./extensions/postinstall";
 import { serviceForEndpoint } from "../deploy/functions/services";
 import { inferBlockingDetails } from "../deploy/functions/prepare";
 import * as events from "../functions/events";
+import { isEnabled } from "../experiments";
 import { connectableHostname } from "../utils";
+
+const DATACONNECT_EVENT_PREFIX = "google.firebase.dataconnect.";
 
 /** The current v2 events that are implemented in the emulator */
 const V2_EVENTS = [
@@ -122,6 +125,9 @@ export interface FunctionsRuntimeFeatures {
  * Checks if the v2 event service has been implemented in the emulator
  */
 export function eventServiceImplemented(eventType: string): boolean {
+  if (eventType.startsWith(DATACONNECT_EVENT_PREFIX)) {
+    return isEnabled("fscEventTriggers");
+  }
   return V2_EVENTS.includes(eventType);
 }
 
@@ -201,8 +207,8 @@ export function emulatedFunctionsFromEndpoints(
         }
 
         // We use resource for pubsub & storage
-        const { resource, topic, bucket } = endpoint.eventTrigger.eventFilters as any;
-        const eventResource = resource || topic || bucket;
+        const filters = endpoint.eventTrigger.eventFilters;
+        const eventResource = filters?.resource || filters?.topic || filters?.bucket;
 
         def.eventTrigger = {
           eventType: eventTrigger.eventType,
@@ -333,6 +339,9 @@ export function getFunctionService(def: ParsedTriggerDefinition): string {
  * emulator service.
  */
 export function getServiceFromEventType(eventType: string): string {
+  if (eventType.startsWith(DATACONNECT_EVENT_PREFIX)) {
+    return isEnabled("fscEventTriggers") ? Constants.SERVICE_EVENTARC : "";
+  }
   if (eventType.includes("firestore")) {
     return Constants.SERVICE_FIRESTORE;
   }

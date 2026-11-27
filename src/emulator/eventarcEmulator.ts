@@ -212,7 +212,7 @@ export class EventarcEmulator implements EmulatorInstance {
 
   private matchesAll(event: CloudEvent<any>, eventFilters: Record<string, string>): boolean {
     return Object.entries(eventFilters).every(([key, value]) => {
-      let attr = event[key] ?? event.attributes[key];
+      let attr = event[key] ?? event.attributes?.[key];
       if (typeof attr === "object" && !Array.isArray(attr)) {
         attr = attr.ceTimestamp ?? attr.ceString;
       }

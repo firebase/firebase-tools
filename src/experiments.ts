@@ -269,6 +269,11 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: false,
   },
+  fscEventTriggers: {
+    shortDescription: "enable local Eventarc trigger support for Firebase SQL Connect",
+    default: false,
+    public: false,
+  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;
