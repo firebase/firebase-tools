@@ -128,13 +128,19 @@ export async function createServiceAccountKey(
 }
 
 /**
+ * Deletes a service account. A service account that doesn't exist is ignored.
  * @param projectId the id of the project containing the service account
  * @param accountEmail the email of the service account to delete
  */
 export async function deleteServiceAccount(projectId: string, accountEmail: string): Promise<void> {
-  await apiClient.delete(`/projects/${projectId}/serviceAccounts/${accountEmail}`, {
-    resolveOnHTTPError: true,
-  });
+  try {
+    await apiClient.delete(`/projects/${projectId}/serviceAccounts/${accountEmail}`);
+  } catch (err) {
+    if (getErrStatus(err) === 404) {
+      return;
+    }
+    throw err;
+  }
 }
 
 /**
