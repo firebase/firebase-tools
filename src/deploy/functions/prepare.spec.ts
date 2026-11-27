@@ -1729,8 +1729,12 @@ describe("prepare", () => {
   describe("discoverSecurityDetails", () => {
     let testIamPermissionsStub: sinon.SinonStub;
     let checkApiStub: sinon.SinonStub;
+    let getServiceAccountStub: sinon.SinonStub;
 
     beforeEach(() => {
+      getServiceAccountStub = sinon.stub(iam, "getServiceAccount").resolves({
+        description: "Managed by Firebase CLI for codebase default",
+      } as iam.ServiceAccount);
       testIamPermissionsStub = sinon
         .stub(iam, "testIamPermissions")
         .resolves({ passed: true } as any);
@@ -2086,6 +2090,85 @@ describe("prepare", () => {
           "firebase-fn-123@project.iam.gserviceaccount.com",
         );
         expect(e.serviceAccount).to.be.null;
+      });
+    });
+
+    describe("managed service account ownership", () => {
+      const OWN_SA = "firebase-fn-123@project.iam.gserviceaccount.com";
+      const OTHER_SA = "firebase-fn-999@project.iam.gserviceaccount.com";
+
+      beforeEach(() => {
+        getServiceAccountStub.callsFake((_project: string, email: string) =>
+          Promise.resolve({
+            email,
+            description: `Managed by Firebase CLI for codebase ${email === OTHER_SA ? "other" : "default"}`,
+          }),
+        );
+      });
+
+      it("opts out when the account is owned by the codebase even without the etag label", async () => {
+        const e: backend.Endpoint = { ...ENDPOINT };
+        const want = backend.of(e);
+        const have = backend.of({ ...ENDPOINT, serviceAccount: OWN_SA });
+
+        const result = await prepare.discoverSecurityDetails("default", want, have, "project");
+
+        expect(result).to.deep.equal({ existingManagedSA: OWN_SA });
+        expect(e.serviceAccount).to.be.null;
+      });
+
+      it("does not take over another codebase's account when enrolling", async () => {
+        const e: backend.Endpoint = { ...ENDPOINT };
+        const want = backend.of(e);
+        want.requiredRoles = ["roles/viewer"];
+        const have = backend.of({ ...ENDPOINT, serviceAccount: OTHER_SA });
+
+        const result = await prepare.discoverSecurityDetails("default", want, have, "project");
+
+        expect(result.existingManagedSA).to.be.undefined;
+        expect(result.managedSA).to.equal(OWN_SA);
+        expect(e.serviceAccount).to.equal(OWN_SA);
+      });
+
+      it("rejects explicitly using another codebase's account with declarative security", async () => {
+        const want = backend.of({ ...ENDPOINT, serviceAccount: OTHER_SA });
+        want.requiredRoles = ["roles/viewer"];
+        const have = backend.of({ ...ENDPOINT, serviceAccount: OTHER_SA });
+
+        await expect(
+          prepare.discoverSecurityDetails("default", want, have, "project"),
+        ).to.be.rejectedWith(FirebaseError, "is not this codebase's managed service account");
+      });
+
+      it("does not delete another codebase's account when all functions are removed", async () => {
+        const want = backend.empty();
+        const have = backend.of({
+          ...ENDPOINT,
+          serviceAccount: OTHER_SA,
+          labels: { "firebase-declarative-security-etag": "etag" },
+        });
+
+        const result = await prepare.discoverSecurityDetails("default", want, have, "project");
+
+        expect(result).to.deep.equal({});
+      });
+
+      it("falls back to the etag label when the account can't be read", async () => {
+        getServiceAccountStub.rejects(new FirebaseError("Permission denied", { status: 403 }));
+        const want = backend.of({ ...ENDPOINT });
+        const withoutLabel = backend.of({ ...ENDPOINT, serviceAccount: OWN_SA });
+        const withLabel = backend.of({
+          ...ENDPOINT,
+          serviceAccount: OWN_SA,
+          labels: { "firebase-declarative-security-etag": "etag" },
+        });
+
+        expect(
+          await prepare.discoverSecurityDetails("default", want, withoutLabel, "project"),
+        ).to.deep.equal({});
+        expect(
+          await prepare.discoverSecurityDetails("default", want, withLabel, "project"),
+        ).to.deep.equal({ existingManagedSA: OWN_SA, haveRolesEtag: "etag" });
       });
     });
   });

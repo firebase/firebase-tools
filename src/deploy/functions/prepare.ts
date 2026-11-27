@@ -68,9 +68,14 @@ import * as prompt from "../../prompt";
 import * as iam from "../../gcp/iam";
 import * as scheduler from "../../gcp/cloudscheduler";
 import * as resourcemanager from "../../gcp/resourceManager";
+import {
+  DECLARATIVE_SECURITY_ETAG_LABEL,
+  MANAGED_SERVICE_ACCOUNT_PREFIX,
+  findManagedServiceAccount,
+} from "./managedServiceAccount";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
-export const DECLARATIVE_SECURITY_ETAG_LABEL = "firebase-declarative-security-etag";
+export { DECLARATIVE_SECURITY_ETAG_LABEL };
 
 /**
  * Discovers and coordinates declarative security details for a codebase.
@@ -100,19 +105,20 @@ export async function discoverSecurityDetails(
   // haveBackend contains all active endpoints in GCP from list calls. firstHave.serviceAccount
   // will identify existingManagedSA on subsequent deploys. On 100% deployment failures,
   // fabricator cleans up the unreferenced service account so no orphaned SA remains.
-  const existingManagedSA =
-    backend.findEndpoint(
-      have,
-      (e) => typeof e.serviceAccount === "string" && e.serviceAccount.startsWith("firebase-fn-"),
-    )?.serviceAccount ?? undefined;
+  // The account's description decides whether this codebase owns it, so a codebase never
+  // changes or deletes an account that another codebase manages.
+  const found = await findManagedServiceAccount(projectId, codebase, have);
+  const existingManagedSA = found?.email;
   const haveRolesEtag = backend.findEndpoint(
     have,
     (e) => !!e.labels?.[DECLARATIVE_SECURITY_ETAG_LABEL],
   )?.labels?.[DECLARATIVE_SECURITY_ETAG_LABEL];
+  // If the account couldn't be read, fall back to the etag label before removing it.
+  const ownsManagedSA = found?.owner === "codebase" || (!!found && !!haveRolesEtag);
 
   const isPartiallyFiltered = isCodebasePartiallyFiltered(codebase, filters);
   const isEnrolling = !!requiredRoles && !existingManagedSA;
-  const isUnenrolling = !requiredRoles && !!existingManagedSA && !!haveRolesEtag;
+  const isUnenrolling = !requiredRoles && ownsManagedSA;
 
   if (isPartiallyFiltered && (isEnrolling || isUnenrolling)) {
     throw new FirebaseError(
@@ -122,7 +128,7 @@ export async function discoverSecurityDetails(
   }
 
   if (!backend.someEndpoint(want, () => true)) {
-    if (existingManagedSA) {
+    if (ownsManagedSA) {
       return {
         existingManagedSA,
         ...(haveRolesEtag ? { haveRolesEtag } : {}),
@@ -131,7 +137,7 @@ export async function discoverSecurityDetails(
     return {};
   }
 
-  if (!requiredRoles && (!existingManagedSA || !haveRolesEtag)) {
+  if (!requiredRoles && !ownsManagedSA) {
     return {};
   }
 
@@ -139,7 +145,9 @@ export async function discoverSecurityDetails(
     requiredRoles &&
     backend.someEndpoint(
       want,
-      (e) => typeof e.serviceAccount === "string" && !e.serviceAccount.startsWith("firebase-fn-"),
+      (e) =>
+        typeof e.serviceAccount === "string" &&
+        !e.serviceAccount.startsWith(MANAGED_SERVICE_ACCOUNT_PREFIX),
     )
   ) {
     throw new FirebaseError(
@@ -147,17 +155,32 @@ export async function discoverSecurityDetails(
     );
   }
 
-  if (!requiredRoles && existingManagedSA && haveRolesEtag) {
+  const otherManagedSA = requiredRoles
+    ? backend.findEndpoint(
+        want,
+        (e) =>
+          typeof e.serviceAccount === "string" &&
+          e.serviceAccount.startsWith(MANAGED_SERVICE_ACCOUNT_PREFIX) &&
+          e.serviceAccount !== existingManagedSA,
+      )?.serviceAccount
+    : undefined;
+  if (otherManagedSA) {
+    throw new FirebaseError(
+      `Cannot use ${otherManagedSA} in codebase ${codebase} while using declarative security, because it is not this codebase's managed service account. Remove the serviceAccount option to use the codebase's own managed service account.`,
+    );
+  }
+
+  if (!requiredRoles && existingManagedSA && ownsManagedSA) {
     for (const endpoint of backend.allEndpoints(want)) {
       if (!endpoint.serviceAccount || endpoint.serviceAccount === existingManagedSA) {
         endpoint.serviceAccount = null;
       }
       if (endpoint.labels) {
-        delete endpoint.labels["firebase-declarative-security-etag"];
+        delete endpoint.labels[DECLARATIVE_SECURITY_ETAG_LABEL];
       }
     }
     return {
-      haveRolesEtag,
+      ...(haveRolesEtag ? { haveRolesEtag } : {}),
       existingManagedSA,
     };
   }
