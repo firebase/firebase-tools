@@ -18,6 +18,7 @@ import { FirebaseError } from "../../../error";
 import { getProjectNumber } from "../../../getProjectNumber";
 import { release as extRelease } from "../../extensions";
 import * as artifacts from "../../../functions/artifacts";
+import { hasConfiguredRuntime } from "../../../functions/projectConfig";
 import { determineLifecycleEvent, executeLifecycleHooks } from "./lifecycle";
 
 /** Releases new versions of functions and extensions to prod. */
@@ -55,6 +56,7 @@ export async function release(
       haveRoles,
       existingManagedSA,
       managedSA,
+      compareRuntime: hasConfiguredRuntime(context.config, codebase),
     });
   }
 

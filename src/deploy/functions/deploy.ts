@@ -5,7 +5,7 @@ import * as fs from "fs";
 import { checkHttpIam } from "./checkIam";
 import { logLabeledWarning, logLabeledSuccess, logWarning } from "../../utils";
 import { Options } from "../../options";
-import { configForCodebase } from "../../functions/projectConfig";
+import { configForCodebase, hasConfiguredRuntime } from "../../functions/projectConfig";
 import * as args from "./args";
 import * as gcs from "../../gcp/storage";
 import * as gcf from "../../gcp/cloudfunctions";
@@ -192,7 +192,8 @@ export async function deploy(
     await checkHttpIam(context, options, payload);
     const uploads: Promise<void>[] = [];
     for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
-      if (shouldUploadBeSkipped(context, wantBackend, haveBackend)) {
+      const compareRuntime = hasConfiguredRuntime(context.config, codebase);
+      if (shouldUploadBeSkipped(context, wantBackend, haveBackend, compareRuntime)) {
         continue;
       }
       const projectNumber = options.projectNumber || (await getProjectNumber(context.projectId));
@@ -203,12 +204,14 @@ export async function deploy(
 }
 
 /**
+ * @param compareRuntime true if firebase.json sets the codebase's runtime, see backend.isUnchanged
  * @return True IFF wantBackend + haveBackend are the same
  */
 export function shouldUploadBeSkipped(
   context: args.Context,
   wantBackend: backend.Backend,
   haveBackend: backend.Backend,
+  compareRuntime = false,
 ): boolean {
   // If function targets are specified by --only flag, assume that function will be deployed
   // and go ahead and upload the source.
@@ -228,11 +231,6 @@ export function shouldUploadBeSkipped(
     if (!haveEndpoint) {
       return false;
     }
-    return (
-      haveEndpoint.hash &&
-      wantEndpoint.hash &&
-      haveEndpoint.hash === wantEndpoint.hash &&
-      haveEndpoint.state === "ACTIVE"
-    );
+    return backend.isUnchanged(wantEndpoint, haveEndpoint, compareRuntime);
   });
 }

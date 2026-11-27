@@ -746,6 +746,32 @@ export async function checkAvailability(context: Context, want: Backend): Promis
   }
 }
 
+/**
+ * Returns true if both endpoints have a runtime and the runtimes differ. The endpoint hash
+ * covers the source, env vars and secrets but not the runtime, which can be changed in
+ * firebase.json alone, so a matching hash does not mean the runtime is unchanged.
+ */
+export function runtimeChanged(want: Endpoint, have: Endpoint): boolean {
+  return want.runtime !== undefined && have.runtime !== undefined && want.runtime !== have.runtime;
+}
+
+/**
+ * Returns true if the deployed endpoint is ACTIVE and matches the wanted one, so the deploy
+ * can skip it. Endpoints match when their hashes are equal and, if compareRuntime is set, their
+ * runtimes are equal too. Set compareRuntime only when firebase.json sets the runtime: without
+ * it, some runtimes (such as Python) default to the latest version, and a CLI release that
+ * moves that default must not redeploy unchanged functions.
+ */
+export function isUnchanged(want: Endpoint, have: Endpoint, compareRuntime: boolean): boolean {
+  return (
+    have.state === "ACTIVE" &&
+    have.hash !== undefined &&
+    have.hash !== "" &&
+    have.hash === want.hash &&
+    !(compareRuntime && runtimeChanged(want, have))
+  );
+}
+
 /** A helper utility for flattening all endpoints in a backend since typing is a bit wonky. */
 export function allEndpoints(backend: Backend): Endpoint[] {
   return Object.values(backend.endpoints).reduce((accum, perRegion) => {

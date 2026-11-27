@@ -217,6 +217,75 @@ describe("planner", () => {
       expect(result.region.endpointsToUpdate[0].endpoint.id).to.equal("func");
     });
 
+    it("should not skip functions whose runtime changed in firebase.json", () => {
+      const funcWant = func("func", "region");
+      const funcHave = func("func", "region");
+      funcWant.hash = "same-hash";
+      funcHave.hash = "same-hash";
+      funcWant.runtime = "nodejs24";
+      funcHave.runtime = "nodejs22";
+
+      const want = { func: funcWant };
+      const have = { func: funcHave };
+
+      const result = planner.calculateChangesets(
+        want,
+        have,
+        (e) => e.region,
+        /* deleteAll= */ false,
+        /* compareRuntime= */ true,
+      );
+
+      expect(result.region.endpointsToSkip).to.have.lengthOf(0);
+      expect(result.region.endpointsToUpdate).to.have.lengthOf(1);
+      expect(result.region.endpointsToUpdate[0].endpoint.runtime).to.equal("nodejs24");
+    });
+
+    it("should skip functions whose default runtime changed when firebase.json sets no runtime", () => {
+      // e.g. a CLI release that moves the default Python version
+      const funcWant = func("func", "region");
+      const funcHave = func("func", "region");
+      funcWant.hash = "same-hash";
+      funcHave.hash = "same-hash";
+      funcWant.runtime = "python314";
+      funcHave.runtime = "python313";
+
+      const want = { func: funcWant };
+      const have = { func: funcHave };
+
+      const result = planner.calculateChangesets(
+        want,
+        have,
+        (e) => e.region,
+        /* deleteAll= */ false,
+        /* compareRuntime= */ false,
+      );
+
+      expect(result.region.endpointsToSkip).to.have.lengthOf(1);
+      expect(result.region.endpointsToUpdate).to.have.lengthOf(0);
+    });
+
+    it("should still skip functions when the deployed runtime is unknown", () => {
+      const funcWant = func("func", "region");
+      const funcHave = func("func", "region");
+      funcWant.hash = "same-hash";
+      funcHave.hash = "same-hash";
+      delete funcHave.runtime;
+
+      const want = { func: funcWant };
+      const have = { func: funcHave };
+
+      const result = planner.calculateChangesets(
+        want,
+        have,
+        (e) => e.region,
+        /* deleteAll= */ false,
+        /* compareRuntime= */ true,
+      );
+
+      expect(result.region.endpointsToSkip).to.have.lengthOf(1);
+    });
+
     it("should not skip functions with missing hash values", () => {
       const func1Want = func("func1", "region");
       const func1Have = func("func1", "region");
@@ -508,6 +577,29 @@ describe("planner", () => {
           endpointsToSkip: [],
         },
       });
+    });
+
+    it("compares runtimes only when compareRuntime is set", async () => {
+      const funcWant = func("func", "region");
+      const funcHave = func("func", "region");
+      funcWant.hash = "same-hash";
+      funcHave.hash = "same-hash";
+      funcWant.runtime = "python314";
+      funcHave.runtime = "python313";
+      const args = {
+        wantBackend: backend.of(funcWant),
+        haveBackend: backend.of(funcHave),
+        codebase,
+        projectId: "my-project",
+      };
+
+      const defaulted = await planner.createDeploymentPlan(args);
+      const configured = await planner.createDeploymentPlan({ ...args, compareRuntime: true });
+
+      const key = "default-region-default";
+      expect(defaulted.regionalChangesets[key].endpointsToSkip).to.have.lengthOf(1);
+      expect(configured.regionalChangesets[key].endpointsToSkip).to.have.lengthOf(0);
+      expect(configured.regionalChangesets[key].endpointsToUpdate).to.have.lengthOf(1);
     });
 
     it("applies filters", async () => {

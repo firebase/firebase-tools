@@ -3,10 +3,12 @@ import * as sinon from "sinon";
 
 import * as args from "./args";
 import * as backend from "./backend";
+import * as checkIam from "./checkIam";
 import * as deploy from "./deploy";
 import * as gcs from "../../gcp/storage";
 import * as gcfv2 from "../../gcp/cloudfunctionsv2";
 import * as experiments from "../../experiments";
+import { Options } from "../../options";
 
 describe("deploy", () => {
   const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
@@ -92,6 +94,72 @@ describe("deploy", () => {
 
       // Expect
       expect(result).to.be.false;
+    });
+
+    it("should not skip if a runtime set in firebase.json changed", () => {
+      endpoint1InWantBackend.hash = "1";
+      endpoint2InWantBackend.hash = "2";
+      endpoint1InHaveBackend.hash = endpoint1InWantBackend.hash;
+      endpoint2InHaveBackend.hash = endpoint2InWantBackend.hash;
+      endpoint1InHaveBackend.state = "ACTIVE";
+      endpoint2InHaveBackend.state = "ACTIVE";
+      endpoint2InWantBackend.runtime = "nodejs24";
+      endpoint2InHaveBackend.runtime = "nodejs22";
+
+      // Execute
+      const result = deploy.shouldUploadBeSkipped(
+        CONTEXT,
+        wantBackend,
+        haveBackend,
+        /* compareRuntime= */ true,
+      );
+
+      // Expect
+      expect(result).to.be.false;
+    });
+
+    it("should skip if only a defaulted runtime changed", () => {
+      // firebase.json sets no runtime, e.g. a CLI release moved the default Python version
+      endpoint1InWantBackend.hash = "1";
+      endpoint2InWantBackend.hash = "2";
+      endpoint1InHaveBackend.hash = endpoint1InWantBackend.hash;
+      endpoint2InHaveBackend.hash = endpoint2InWantBackend.hash;
+      endpoint1InHaveBackend.state = "ACTIVE";
+      endpoint2InHaveBackend.state = "ACTIVE";
+      endpoint2InWantBackend.runtime = "python314";
+      endpoint2InHaveBackend.runtime = "python313";
+
+      // Execute
+      const result = deploy.shouldUploadBeSkipped(
+        CONTEXT,
+        wantBackend,
+        haveBackend,
+        /* compareRuntime= */ false,
+      );
+
+      // Expect
+      expect(result).to.be.true;
+    });
+
+    it("should skip if the deployed runtime is unknown", () => {
+      endpoint1InWantBackend.hash = "1";
+      endpoint2InWantBackend.hash = "2";
+      endpoint1InHaveBackend.hash = endpoint1InWantBackend.hash;
+      endpoint2InHaveBackend.hash = endpoint2InWantBackend.hash;
+      endpoint1InHaveBackend.state = "ACTIVE";
+      endpoint2InHaveBackend.state = "ACTIVE";
+      delete endpoint2InHaveBackend.runtime;
+
+      // Execute
+      const result = deploy.shouldUploadBeSkipped(
+        CONTEXT,
+        wantBackend,
+        haveBackend,
+        /* compareRuntime= */ true,
+      );
+
+      // Expect
+      expect(result).to.be.true;
     });
 
     it("should not skip if haveBackend is missing", () => {
@@ -306,6 +374,72 @@ describe("deploy", () => {
         expect(gcsUploadStub).to.be.calledOnce;
         expect(gcsUpsertBucketStub).not.to.be.called;
       });
+    });
+  });
+
+  describe("deploy", () => {
+    let gcsUploadStub: sinon.SinonStub;
+    let experimentEnabled: boolean;
+
+    const OPTIONS = { projectNumber: "123456" } as Options;
+
+    before(() => {
+      experimentEnabled = experiments.isEnabled("functionsrunapionly");
+      experiments.setEnabled("functionsrunapionly", false);
+    });
+    after(() => {
+      experiments.setEnabled("functionsrunapionly", experimentEnabled);
+    });
+
+    beforeEach(() => {
+      sinon.stub(checkIam, "checkHttpIam").resolves();
+      gcsUploadStub = sinon.stub(gcs, "upload").resolves({ generation: "1" });
+      sinon.stub(gcfv2, "generateUploadUrl").resolves({
+        uploadUrl: "https://storage.googleapis.com/upload/url",
+        storageSource: { bucket: "bucket", object: "source-hash.zip" },
+      });
+      sinon.stub(deploy, "createReadStream").returns({} as NodeJS.ReadableStream);
+    });
+
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    // The deployed function matches the source, but runs on an older runtime.
+    function deployUnchangedSource(firebaseJsonRuntime: "python314" | undefined): Promise<void> {
+      const context: args.Context = {
+        projectId: "project",
+        config: [
+          {
+            source: "functions",
+            codebase: "default",
+            ...(firebaseJsonRuntime ? { runtime: firebaseJsonRuntime } : {}),
+          },
+        ],
+        sources: {
+          default: { functionsSourceV2: "source.zip", functionsSourceV2Hash: "source-hash" },
+        },
+      };
+      const want: backend.Endpoint = { ...ENDPOINT, hash: "source-hash", runtime: "python314" };
+      const have: backend.Endpoint = { ...want, state: "ACTIVE", runtime: "python313" };
+      const payload: args.Payload = {
+        functions: {
+          default: { wantBackend: backend.of(want), haveBackend: backend.of(have) },
+        },
+      };
+      return deploy.deploy(context, OPTIONS, payload);
+    }
+
+    it("skips the upload when only a defaulted runtime changed", async () => {
+      await deployUnchangedSource(/* firebaseJsonRuntime= */ undefined);
+
+      expect(gcsUploadStub).not.to.be.called;
+    });
+
+    it("uploads the source when the runtime set in firebase.json changed", async () => {
+      await deployUnchangedSource(/* firebaseJsonRuntime= */ "python314");
+
+      expect(gcsUploadStub).to.be.calledOnce;
     });
   });
 });
