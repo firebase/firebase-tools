@@ -1,5 +1,5 @@
 import { Client, ClientVerbOptions } from "../apiv2";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrStatus } from "../error";
 import { functionsV2Origin } from "../api";
 import { logger } from "../logger";
 import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1";
@@ -37,6 +37,23 @@ export type VpcConnectorEgressSettings = "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
 export type DirectVpcEgress = `VPC_EGRESS_${"UNSPECIFIED" | VpcConnectorEgressSettings}`;
 export type IngressSettings = "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB";
 export type FunctionState = "ACTIVE" | "FAILED" | "DEPLOYING" | "DELETING" | "UNKONWN";
+
+export type UpgradeState =
+  | "UPGRADE_STATE_UNSPECIFIED"
+  | "ELIGIBLE_FOR_2ND_GEN_UPGRADE"
+  | "INELIGIBLE_FOR_UPGRADE_UNTIL_REDEPLOYMENT"
+  | "UPGRADE_OPERATION_IN_PROGRESS"
+  | "SETUP_FUNCTION_UPGRADE_CONFIG_SUCCESSFUL"
+  | "SETUP_FUNCTION_UPGRADE_CONFIG_ERROR"
+  | "REDIRECT_FUNCTION_UPGRADE_TRAFFIC_SUCCESSFUL"
+  | "REDIRECT_FUNCTION_UPGRADE_TRAFFIC_ERROR"
+  | "ROLLBACK_FUNCTION_UPGRADE_TRAFFIC_ERROR"
+  | "COMMIT_FUNCTION_UPGRADE_ERROR"
+  | "COMMIT_FUNCTION_UPGRADE_ERROR_ROLLBACK_SAFE"
+  // Deprecated in proto; backend signals completion via the LRO response instead.
+  | "COMMIT_FUNCTION_UPGRADE_AS_GEN2_SUCCESSFUL"
+  | "COMMIT_FUNCTION_UPGRADE_AS_GEN2_ERROR"
+  | "ABORT_FUNCTION_UPGRADE_ERROR";
 
 // Values allowed for the operator field in EventFilter
 export type EventFilterOperator = "match-path-pattern";
@@ -164,6 +181,14 @@ export interface EventTrigger {
   channel?: string;
 }
 
+export interface UpgradeInfo {
+  buildConfig?: BuildConfig;
+  serviceConfig?: ServiceConfig;
+  eventTrigger?: EventTrigger;
+  // Omitted in proto3 JSON when UPGRADE_STATE_UNSPECIFIED (0).
+  upgradeState?: UpgradeState;
+}
+
 interface CloudFunctionBase {
   name: string;
   description?: string;
@@ -178,6 +203,7 @@ export type OutputCloudFunction = CloudFunctionBase & {
   updateTime: Date;
   serviceConfig?: RequireKeys<ServiceConfig, "service" | "uri">;
   url: string;
+  upgradeInfo?: UpgradeInfo;
 };
 
 export type InputCloudFunction = CloudFunctionBase & {
@@ -421,6 +447,74 @@ export async function deleteFunction(cloudFunction: string): Promise<Operation> 
   } catch (err: any) {
     throw functionsOpLogReject({ name: cloudFunction } as InputCloudFunction, "update", err);
   }
+}
+
+export interface SetupFunctionUpgradeConfigOptions {
+  triggerServiceAccount?: string;
+  buildConfigOverrides?: { runtime?: supported.Runtime };
+}
+
+async function postUpgradeAction<Req extends object = Record<string, never>>(
+  name: string,
+  action: string,
+  errorVerb: string,
+  body: Req = {} as Req,
+): Promise<Operation> {
+  try {
+    const res = await client.post<Req, Operation>(`${name}:${action}`, body);
+    return res.body;
+  } catch (err: unknown) {
+    throw new FirebaseError(`Failed to ${errorVerb} for function ${name}`, {
+      original: err instanceof Error ? err : undefined,
+      status: getErrStatus(err),
+      context: { function: name },
+    });
+  }
+}
+
+/**
+ * Sets up a 2nd Gen upgrade configuration for a 1st Gen Cloud Function.
+ */
+export async function setupFunctionUpgradeConfig(
+  name: string,
+  options: SetupFunctionUpgradeConfigOptions = {},
+): Promise<Operation> {
+  const body: SetupFunctionUpgradeConfigOptions = {};
+  if (options.triggerServiceAccount) {
+    body.triggerServiceAccount = options.triggerServiceAccount;
+  }
+  if (options.buildConfigOverrides?.runtime) {
+    body.buildConfigOverrides = { runtime: options.buildConfigOverrides.runtime };
+  }
+  return postUpgradeAction(name, "setupFunctionUpgradeConfig", "setup upgrade config", body);
+}
+
+/**
+ * Redirects traffic from 1st Gen to 2nd Gen for an upgrading Cloud Function.
+ */
+export function redirectFunctionUpgradeTraffic(name: string): Promise<Operation> {
+  return postUpgradeAction(name, "redirectFunctionUpgradeTraffic", "redirect upgrade traffic");
+}
+
+/**
+ * Rolls back traffic from 2nd Gen to 1st Gen for an upgrading Cloud Function.
+ */
+export function rollbackFunctionUpgradeTraffic(name: string): Promise<Operation> {
+  return postUpgradeAction(name, "rollbackFunctionUpgradeTraffic", "rollback upgrade traffic");
+}
+
+/**
+ * Commits a function upgrade as a managed 2nd Gen Cloud Function (deleting the 1st Gen resource).
+ */
+export function commitFunctionUpgradeAsGen2(name: string): Promise<Operation> {
+  return postUpgradeAction(name, "commitFunctionUpgradeAsGen2", "commit upgrade as Gen 2");
+}
+
+/**
+ * Aborts an active function upgrade, dismantling the 2nd Gen copy and resetting upgrade state.
+ */
+export function abortFunctionUpgrade(name: string): Promise<Operation> {
+  return postUpgradeAction(name, "abortFunctionUpgrade", "abort upgrade");
 }
 
 /**
@@ -809,5 +903,6 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
     endpoint.hash = gcfFunction.labels[HASH_LABEL];
   }
   proto.copyIfPresent(endpoint, gcfFunction, "state");
+  proto.copyIfPresent(endpoint, gcfFunction, "upgradeInfo");
   return endpoint;
 }
