@@ -55,7 +55,7 @@ describe("release/index", () => {
   it("should run lifecycle hooks if deployment is successful (no errors)", async () => {
     const context = {
       projectId: "test-project",
-      config: {},
+      config: [{ source: "functions", codebase: "codebase1" }],
       sources: {},
       firebaseConfig: { locationId: "us-central1" },
     } as any;
@@ -101,7 +101,7 @@ describe("release/index", () => {
   it("should NOT run lifecycle hooks if deployment fails with errors", async () => {
     const context = {
       projectId: "test-project",
-      config: {},
+      config: [{ source: "functions", codebase: "codebase1" }],
       sources: {},
       firebaseConfig: { locationId: "us-central1" },
     } as any;
@@ -152,7 +152,7 @@ describe("release/index", () => {
   it("should NOT run lifecycle hooks and SHOULD log warning if deployment fails and hooks are configured", async () => {
     const context = {
       projectId: "test-project",
-      config: {},
+      config: [{ source: "functions", codebase: "codebase1" }],
       sources: {},
       firebaseConfig: { locationId: "us-central1" },
     } as any;
@@ -216,7 +216,7 @@ describe("release/index", () => {
   it("should NOT run lifecycle hooks when only SOME deployments fail", async () => {
     const context = {
       projectId: "test-project",
-      config: {},
+      config: [{ source: "functions", codebase: "codebase1" }],
       sources: {},
       firebaseConfig: { locationId: "us-central1" },
     } as any;

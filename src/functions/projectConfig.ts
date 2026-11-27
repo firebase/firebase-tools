@@ -348,6 +348,14 @@ export function configForCodebase(
   return codebaseCfg;
 }
 
+/**
+ * Returns true if firebase.json sets the runtime for the given codebase or kit instance,
+ * instead of leaving it to be detected or defaulted.
+ */
+export function hasConfiguredRuntime(config: ValidatedConfig, codebaseOrInstance: string): boolean {
+  return configForCodebase(config, codebaseOrInstance).runtime !== undefined;
+}
+
 /** Returns true if the codebase uses a local source. */
 export function isLocalConfig(c: ValidatedSingle): c is ValidatedLocalSingle {
   return "source" in c && !("kit" in c);

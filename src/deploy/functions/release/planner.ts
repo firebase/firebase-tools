@@ -63,6 +63,7 @@ export interface PlanArgs {
   haveRoles?: string[];
   existingManagedSA?: string;
   managedSA?: string;
+  compareRuntime?: boolean; // true if firebase.json sets the codebase's runtime
 }
 
 /** Calculate the changesets of given endpoints by grouping endpoints with keyFn. */
@@ -71,6 +72,7 @@ export function calculateChangesets(
   have: Record<string, backend.Endpoint>,
   keyFn: (e: backend.Endpoint) => string,
   deleteAll?: boolean,
+  compareRuntime = false,
 ): Record<string, Changeset> {
   const toCreate = utils.groupBy(
     Object.keys(want)
@@ -89,14 +91,8 @@ export function calculateChangesets(
 
   // If the hashes are matching, that means the local function is the same as the server copy.
   const toSkipPredicate = (id: string): boolean =>
-    !!(
-      !want[id].targetedByOnly && // Don't skip the function if its --only targeted.
-      have[id].state === "ACTIVE" && // Only skip the function if its in a known good state
-      have[id].hash &&
-      want[id].hash &&
-      want[id].hash === have[id].hash &&
-      !backend.runtimeChanged(want[id], have[id])
-    );
+    !want[id].targetedByOnly && // Don't skip the function if its --only targeted.
+    backend.isUnchanged(want[id], have[id], compareRuntime);
 
   const toSkipEndpointsMap = Object.keys(want)
     .filter((id) => have[id])
@@ -219,6 +215,7 @@ export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan
       haveBackend.endpoints[region] || {},
       (e) => `${codebase}-${e.region}-${e.availableMemoryMb || "default"}`,
       deleteAll,
+      args.compareRuntime,
     );
     Object.assign(regionalChangesets, changesets);
   }

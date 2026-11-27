@@ -147,6 +147,36 @@ describe("Backend", () => {
         { reason: "b", api: "b.com" },
       ]);
     });
+
+    describe("isUnchanged", () => {
+      const want: backend.Endpoint = {
+        ...ENDPOINT,
+        httpsTrigger: {},
+        hash: "hash",
+        runtime: "python314",
+      };
+      const have: backend.Endpoint = { ...want, state: "ACTIVE", runtime: "python313" };
+
+      it("is true for an ACTIVE endpoint with a matching hash", () => {
+        expect(backend.isUnchanged(want, have, /* compareRuntime= */ false)).to.be.true;
+      });
+
+      it("is false if the hashes differ or are missing", () => {
+        expect(backend.isUnchanged(want, { ...have, hash: "other" }, false)).to.be.false;
+        expect(
+          backend.isUnchanged({ ...want, hash: undefined }, { ...have, hash: undefined }, false),
+        ).to.be.false;
+      });
+
+      it("is false if the deployed endpoint is not ACTIVE", () => {
+        expect(backend.isUnchanged(want, { ...have, state: "FAILED" }, false)).to.be.false;
+      });
+
+      it("compares runtimes only when compareRuntime is set", () => {
+        expect(backend.isUnchanged(want, have, /* compareRuntime= */ true)).to.be.false;
+        expect(backend.isUnchanged(want, { ...have, runtime: "python314" }, true)).to.be.true;
+      });
+    });
   });
 
   describe("existing backend", () => {

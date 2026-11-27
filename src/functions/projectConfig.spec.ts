@@ -757,4 +757,15 @@ describe("projectConfig", () => {
       );
     });
   });
+
+  describe("hasConfiguredRuntime", () => {
+    it("returns true if firebase.json sets the codebase's runtime", () => {
+      const config = projectConfig.validate([
+        { codebase: "with-runtime", source: "a", runtime: "python313" },
+        { codebase: "without-runtime", source: "b" },
+      ]);
+      expect(projectConfig.hasConfiguredRuntime(config, "with-runtime")).to.be.true;
+      expect(projectConfig.hasConfiguredRuntime(config, "without-runtime")).to.be.false;
+    });
+  });
 });

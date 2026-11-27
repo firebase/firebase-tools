@@ -94,7 +94,7 @@ describe("deploy", () => {
       expect(result).to.be.false;
     });
 
-    it("should not skip if a runtime changed", () => {
+    it("should not skip if a runtime set in firebase.json changed", () => {
       endpoint1InWantBackend.hash = "1";
       endpoint2InWantBackend.hash = "2";
       endpoint1InHaveBackend.hash = endpoint1InWantBackend.hash;
@@ -105,10 +105,59 @@ describe("deploy", () => {
       endpoint2InHaveBackend.runtime = "nodejs22";
 
       // Execute
-      const result = deploy.shouldUploadBeSkipped(CONTEXT, wantBackend, haveBackend);
+      const result = deploy.shouldUploadBeSkipped(
+        CONTEXT,
+        wantBackend,
+        haveBackend,
+        /* compareRuntime= */ true,
+      );
 
       // Expect
       expect(result).to.be.false;
+    });
+
+    it("should skip if only a defaulted runtime changed", () => {
+      // firebase.json sets no runtime, e.g. a CLI release moved the default Python version
+      endpoint1InWantBackend.hash = "1";
+      endpoint2InWantBackend.hash = "2";
+      endpoint1InHaveBackend.hash = endpoint1InWantBackend.hash;
+      endpoint2InHaveBackend.hash = endpoint2InWantBackend.hash;
+      endpoint1InHaveBackend.state = "ACTIVE";
+      endpoint2InHaveBackend.state = "ACTIVE";
+      endpoint2InWantBackend.runtime = "python314";
+      endpoint2InHaveBackend.runtime = "python313";
+
+      // Execute
+      const result = deploy.shouldUploadBeSkipped(
+        CONTEXT,
+        wantBackend,
+        haveBackend,
+        /* compareRuntime= */ false,
+      );
+
+      // Expect
+      expect(result).to.be.true;
+    });
+
+    it("should skip if the deployed runtime is unknown", () => {
+      endpoint1InWantBackend.hash = "1";
+      endpoint2InWantBackend.hash = "2";
+      endpoint1InHaveBackend.hash = endpoint1InWantBackend.hash;
+      endpoint2InHaveBackend.hash = endpoint2InWantBackend.hash;
+      endpoint1InHaveBackend.state = "ACTIVE";
+      endpoint2InHaveBackend.state = "ACTIVE";
+      delete endpoint2InHaveBackend.runtime;
+
+      // Execute
+      const result = deploy.shouldUploadBeSkipped(
+        CONTEXT,
+        wantBackend,
+        haveBackend,
+        /* compareRuntime= */ true,
+      );
+
+      // Expect
+      expect(result).to.be.true;
     });
 
     it("should not skip if haveBackend is missing", () => {
