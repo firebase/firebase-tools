@@ -27,6 +27,11 @@ import * as emulatorUpdateDetails from "./downloadableEmulatorInfo.json";
 
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 4000; /* ms */
 
+// Mitigates CVE-2026-114938 (HotSpot AVX-512 VBMI Base64 intrinsic bug) on unpatched
+// OpenJDK 17.0.6+ runtimes. IgnoreUnrecognizedVMOptions must precede UseAVX=2 so non-x86
+// hosts (e.g. ARM64) and non-HotSpot JVMs start cleanly.
+const JAVA_DEFENSIVE_ARGS: readonly string[] = ["-XX:+IgnoreUnrecognizedVMOptions", "-XX:UseAVX=2"];
+
 const CACHE_DIR =
   process.env.FIREBASE_EMULATORS_PATH || path.join(os.homedir(), ".cache", "firebase", "emulators");
 
@@ -220,7 +225,7 @@ const EmulatorDetails: { [s in DownloadableEmulators]: DownloadableEmulatorDetai
 const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = {
   database: {
     binary: "java",
-    args: ["-Duser.language=en", "-jar", getExecPath(Emulators.DATABASE)],
+    args: [...JAVA_DEFENSIVE_ARGS, "-Duser.language=en", "-jar", getExecPath(Emulators.DATABASE)],
     optionalArgs: [
       "port",
       "host",
@@ -234,6 +239,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
   firestore: {
     binary: "java",
     args: [
+      ...JAVA_DEFENSIVE_ARGS,
       "-Dgoogle.cloud_firestore.debug_log_level=FINE",
       "-Duser.language=en",
       "-jar",
@@ -261,6 +267,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     // separately in ./storage/runtime.ts (not via the start function below).
     binary: "java",
     args: [
+      ...JAVA_DEFENSIVE_ARGS,
       "-Djava.security.manager=disallow",
       // Required for rules error/warning messages, which are in English only.
       // Attempts to fetch the messages in another language leads to crashes.
@@ -351,6 +358,7 @@ export function _getCommand(
 
   const cmdLineArgs = useDirectPubsubJarOnWindows
     ? [
+        ...JAVA_DEFENSIVE_ARGS,
         "-Duser.language=en",
         ...splitEnvOpts(process.env.JAVA_OPTS),
         ...splitEnvOpts(process.env.CLOUD_PUBSUB_EMULATOR_OPTS),
@@ -482,8 +490,18 @@ async function _runBinary(
     const logger = EmulatorLogger.forEmulator(emulator.name);
     emulator.stdout = fs.createWriteStream(getLogFileName(emulator.name));
     try {
+      const env: NodeJS.ProcessEnv = { ...process.env, ...extraEnv };
+      if (emulator.name === Emulators.PUBSUB && command.shell) {
+        // On POSIX (or when PUBSUB_EMULATOR_BINARY_PATH is set), Pub/Sub launches via its
+        // Gradle wrapper script, which expands CLOUD_PUBSUB_EMULATOR_OPTS onto the java CLI.
+        const defensiveOpts = JAVA_DEFENSIVE_ARGS.join(" ");
+        const existingOpts = env.CLOUD_PUBSUB_EMULATOR_OPTS?.trim();
+        env.CLOUD_PUBSUB_EMULATOR_OPTS = existingOpts
+          ? `${defensiveOpts} ${existingOpts}`
+          : defensiveOpts;
+      }
       const opts: childProcess.SpawnOptions = {
-        env: { ...process.env, ...extraEnv },
+        env,
         // `detached` must be true as else a SIGINT (Ctrl-c) will stop the child process before we can handle a
         // graceful shutdown and call `downloadableEmulators.stop(...)` ourselves.
         // Note that it seems to be a problem with gRPC processes for which a fix may be found on the Java side
@@ -558,11 +576,12 @@ async function _runBinary(
       void handleEmulatorProcessError(emulator.name, err, command.port);
     });
 
-    emulator.instance.once("exit", async (code, signal) => {
+    emulator.instance.once("exit", (code, signal) => {
       if (signal) {
         utils.logWarning(`${description} has exited upon receiving signal: ${signal}`);
       } else if (code && code !== 0 && code !== /* SIGINT */ 130) {
-        await _fatal(emulator.name, `${description} has exited with code: ${code}`);
+        // _fatal never rejects because its finally block calls process.exit(1)
+        void _fatal(emulator.name, `${description} has exited with code: ${code}`);
       }
     });
     resolve();

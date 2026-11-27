@@ -17,7 +17,8 @@ export enum DeferredProduct {
 /**
  * Checks whether products used for any extension version in a deploy requires provisioning.
  *
- * @param extensionVersionRefs
+ * @param projectId the ID of the Firebase project
+ * @param instanceSpecs list of extension instance specs to check
  */
 export async function bulkCheckProductsProvisioned(
   projectId: string,
@@ -106,7 +107,7 @@ export function getUsedProducts(spec: ExtensionSpec): DeferredProduct[] {
  * Parses out trigger eventType from the propertiesYaml.
  */
 function getTriggerType(propertiesYaml: string | undefined) {
-  return propertiesYaml?.match(/eventType:\ ([\S]+)/)?.[1];
+  return propertiesYaml?.match(/eventType: ([\S]+)/)?.[1];
 }
 
 async function isStorageProvisioned(projectId: string): Promise<boolean> {

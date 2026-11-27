@@ -49,43 +49,49 @@ export class PostgresServer {
   public async createPGServer(host = "127.0.0.1", port: number): Promise<net.Server> {
     const getDb = this.getDb.bind(this);
 
-    const server = net.createServer(async (socket) => {
-      const connection = await fromNodeSocket(socket, {
-        serverVersion: "17.4 (PGlite 0.3.3)",
-        auth: { method: "trust" },
+    const server = net.createServer((socket) => {
+      const handleConnection = async (): Promise<void> => {
+        const connection = await fromNodeSocket(socket, {
+          serverVersion: "17.4 (PGlite 0.3.3)",
+          auth: { method: "trust" },
 
-        async *onMessage(data: Uint8Array, { isAuthenticated }: { isAuthenticated: boolean }) {
-          // Only forward messages to PGlite after authentication
-          if (!isAuthenticated) {
-            return;
-          }
-          const db = await getDb();
-          if (data[0] === FrontendMessageCode.Terminate) {
-            // When the frontend terminates a connection, throw out all prepared statements
-            // because the next client won't know about them (and may create overlapping statements)
-            await db.query("DEALLOCATE ALL");
-          }
-          const response = await db.execProtocolRaw(data);
-          for await (const message of extendedQueryPatch.getMessages(data, response)) {
-            yield message;
-          }
+          async *onMessage(data: Uint8Array, { isAuthenticated }: { isAuthenticated: boolean }) {
+            // Only forward messages to PGlite after authentication
+            if (!isAuthenticated) {
+              return;
+            }
+            const db = await getDb();
+            if (data[0] === FrontendMessageCode.Terminate) {
+              // When the frontend terminates a connection, throw out all prepared statements
+              // because the next client won't know about them (and may create overlapping statements)
+              await db.query("DEALLOCATE ALL");
+            }
+            const response = await db.execProtocolRaw(data);
+            for await (const message of extendedQueryPatch.getMessages(data, response)) {
+              yield message;
+            }
 
-          // Extended query patch removes the extra Ready for Query messages that
-          // pglite wrongly sends.
-        },
-      });
+            // Extended query patch removes the extra Ready for Query messages that
+            // pglite wrongly sends.
+          },
+        });
 
-      const extendedQueryPatch: PGliteLoggerPatch = new PGliteLoggerPatch(connection);
-      socket.on("end", () => {
-        logger.debug("Postgres client disconnected");
-      });
-      // Log and destroy individual client socket errors instead of escalating them
-      // to server-level errors.
-      socket.on("error", (err) => {
-        logger.debug(
-          "Postgres client socket error (if this happened during request cancellation, it is expected and harmless):",
-          err,
-        );
+        const extendedQueryPatch: PGliteLoggerPatch = new PGliteLoggerPatch(connection);
+        socket.on("end", () => {
+          logger.debug("Postgres client disconnected");
+        });
+        // Log and destroy individual client socket errors instead of escalating them
+        // to server-level errors.
+        socket.on("error", (err) => {
+          logger.debug(
+            "Postgres client socket error (if this happened during request cancellation, it is expected and harmless):",
+            err,
+          );
+          socket.destroy();
+        });
+      };
+      handleConnection().catch((err: unknown) => {
+        logger.debug("Postgres client connection setup failed:", err);
         socket.destroy();
       });
     });

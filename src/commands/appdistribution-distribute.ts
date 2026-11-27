@@ -21,6 +21,7 @@ import {
   AabInfo,
   IntegrationState,
   LoginCredential,
+  Release,
   ReleaseTest,
   TestDevice,
 } from "../appdistribution/types";
@@ -90,8 +91,11 @@ export const command = new Command("appdistribution:distribute <release-binary-f
     "--results-bucket <bucket>",
     "The name of a Google Cloud Storage bucket where raw results of any automated tests will be stored. If this flag is not set, Firebase creates a bucket for you. Note that the bucket must be owned by a billing-enabled project, and that using a non-default bucket will result in billing charges for the storage used.",
   )
+  .help(
+    "With --json, the result field contains the uploaded release, including its URLs and updated release notes.",
+  )
   .before(requireAuth)
-  .action(async (file: string, options: any) => {
+  .action(async (file: string, options: any): Promise<Release> => {
     const appName = getAppName(options);
     const resultsBucket = getResultsBucket(options.resultsBucket, appName);
     const distribution = new Distribution(file);
@@ -113,7 +117,7 @@ export const command = new Command("appdistribution:distribute <release-binary-f
       passwordResourceName: options.testPasswordResource,
     });
 
-    await distribute(
+    return distribute(
       appName,
       distribution,
       testCases,
@@ -141,7 +145,7 @@ async function distribute(
   testNonBlocking?: boolean,
   loginCredential?: LoginCredential,
   resultsBucket?: string,
-) {
+): Promise<Release> {
   const requests = new AppDistributionClient();
   let aabInfo: AabInfo | undefined;
   if (distribution.distributionFileType() === DistributionFileType.AAB) {
@@ -188,7 +192,7 @@ async function distribute(
     }
   }
 
-  const release = await upload(requests, appName, distribution);
+  let release = await upload(requests, appName, distribution);
 
   // If this is an app bundle and the certificate was originally blank fetch the updated
   // certificate and print
@@ -208,7 +212,7 @@ async function distribute(
   }
 
   // Add release notes and distribute to testers/groups
-  await requests.updateReleaseNotes(release.name, releaseNotes);
+  release = (await requests.updateReleaseNotes(release.name, releaseNotes)) ?? release;
   await requests.distribute(release.name, testers, groups);
 
   // Run automated tests
@@ -240,4 +244,6 @@ async function distribute(
       await awaitTestResults(releaseTests, requests);
     }
   }
+
+  return release;
 }

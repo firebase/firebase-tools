@@ -1,6 +1,7 @@
-- Improved Auth emulator startup time by compiling validation schemas lazily. (#11176)
-- Updated the Firebase SQL Connect local toolkit to v3.4.26, which includes the following changes:
-  - Internal improvements and bug fixes.
-- Fixed the emulators startup message showing 127.0.0.1 for the Emulator UI and Hub when they listen on 0.0.0.0; it now also prints the address they listen on. (#6222)
-- Fixed a race condition across a second boundary during `accounts:signUp` in the Auth emulator where `validSince` could exceed `auth_time`. (#11413)
-- Added local machine config persistence to `appcheck:debugtokens:create`, `--local` support to `appcheck:debugtokens:list`, and `appcheck:debugtokens:prune` to clean up stale local debug tokens.
+- Fixed regression where Next.js config bundling failed with '"external" must be an array of strings' due to nested dependency arrays. (#11574)
+- Updated `hono` to 4.13.16 and `@hono/node-server` to 2.1.6 to resolve moderate severity security advisories.
+- Added defensive JVM flags (`-XX:+IgnoreUnrecognizedVMOptions -XX:UseAVX=2`) when starting Java-based emulators to mitigate CVE-2026-114938 on unpatched OpenJDK 17.0.6+ runtimes.
+- Updated Firebase Hosting custom domain lookup to use the public `/customDomains` API endpoint instead of `/domains`.
+- Updated the Firebase SQL Connect local toolkit to v3.4.29, which includes the following changes:
+  - Updated the Golang dependency version to 1.26.11.
+- Added the uploaded release, including its URLs and updated release notes, to the `result` field of `appdistribution:distribute --json` output.

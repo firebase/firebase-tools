@@ -114,14 +114,14 @@ Here are a list of prerequisite steps that must be completed before running a te
       devices.
 
   Once the test has started, provide the developer a link to see the results of the test in the Firebase Console.
-  You should already know the value of \`appId\' and \`projectId\` from earlier (if you only know \`projectNumber\',
+  You should already know the value of \`appId\` and \`projectId\` from earlier (if you only know \`projectNumber\`,
   use the \`firebase_get_project\` tool to get \`projectId\`). \`packageName\` is the package name of the app we tested. 
   The \`apptesting_run_test\` tool returns a response with field \`name\` in the form 
-  projects/{projectNumber}/apps/{appId}/releases/{releaseId}/tests/{releaseTestId}. Extract the values for \'releaseId\' 
+  projects/{projectNumber}/apps/{appId}/releases/{releaseId}/tests/{releaseTestId}. Extract the values for \`releaseId\` 
   and \`releaseTestId\` and use provide a link to the results in the Firebase Console in the format:
   \`https://console.firebase.google.com/u/0/project/{projectId}/apptesting/app/android:{packageName}/releases/{releaseId}/tests/{releaseTestId}\`.
 
-  You can check the status of the test using the \`apptesting_check_status\` tool with \`release_test_name\' set to
+  You can check the status of the test using the \`apptesting_check_status\` tool with \`release_test_name\` set to
   the name of the release test returned by the \`run_test\` tool.
 `.trim(),
         },

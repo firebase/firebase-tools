@@ -26,7 +26,9 @@ export function parseVariables(unparsedVariables?: string): Record<string, any> 
   try {
     obj = JSON.parse(unparsedVariables || "{}") as unknown;
   } catch (e) {
-    throw new Error("Provided variables string `" + unparsedVariables + "` is not valid JSON.");
+    throw new Error(
+      `Provided variables string \`${String(unparsedVariables)}\` is not valid JSON.`,
+    );
   }
   if (typeof obj !== "object" || obj == null) throw new Error("not an object");
   return obj;
