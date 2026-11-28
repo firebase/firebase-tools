@@ -219,6 +219,7 @@ alias2: test-project
     const options = mockToolOptions();
 
     const result = await get_environment.fn({}, options);
+    expect(detectAppsStub.calledOnceWith("/test-dir")).to.be.true;
     expect((result.content[0] as { text: string }).text).to.include(`Detected App IDs: 
 
 web-app-id: <UNKNOWN BUNDLE ID>

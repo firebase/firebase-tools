@@ -3,16 +3,17 @@ import { getPlatformsFromFolder, Platform } from "../../../appUtils";
 import { check } from "../../../ensureApiEnabled";
 import { timeoutFallback } from "../../../timeout";
 import { McpContext } from "../../types";
+import { getProjectDir } from "../../util";
 
 /**
  * Returns whether or not App Testing should be enabled
  */
 export async function isAppTestingAvailable(ctx: McpContext): Promise<boolean> {
   const host = ctx.host;
-  const projectDir = ctx.config.projectDir;
+  const projectDir = getProjectDir(ctx);
   const platforms = await getPlatformsFromFolder(projectDir);
 
-  const supportedPlatforms = [Platform.FLUTTER, Platform.ANDROID, Platform.IOS];
+  const supportedPlatforms = [Platform.FLUTTER, Platform.ANDROID, Platform.IOS, Platform.UNITY];
 
   if (!platforms.some((p) => supportedPlatforms.includes(p))) {
     host.logger.debug("Found no supported App Testing platforms.");

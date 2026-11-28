@@ -12,6 +12,7 @@ export enum Platform {
   IOS = "IOS",
   FLUTTER = "FLUTTER",
   ADMIN_NODE = "ADMIN_NODE",
+  UNITY = "UNITY",
 }
 
 /**
@@ -59,31 +60,40 @@ export async function getPlatformsFromFolder(dirPath: string): Promise<Platform[
  * @return A list of apps detected.
  */
 export async function detectApps(dirPath: string): Promise<App[]> {
-  const [packageJsonFiles, pubSpecYamlFiles, srcMainFolders, xCodeProjects] = await Promise.all([
-    detectFiles(dirPath, "package.json"),
-    detectFiles(dirPath, "pubspec.yaml"),
-    detectFiles(dirPath, "src/main/"),
-    detectFiles(dirPath, "*.xcodeproj/"),
-  ]);
+  const [packageJsonFiles, pubSpecYamlFiles, srcMainFolders, xCodeProjects, unityVersionFiles] =
+    await Promise.all([
+      detectFiles(dirPath, "package.json"),
+      detectFiles(dirPath, "pubspec.yaml"),
+      detectFiles(dirPath, "src/main/"),
+      detectFiles(dirPath, "*.xcodeproj/"),
+      detectFiles(dirPath, "ProjectSettings/ProjectVersion.txt"),
+    ]);
 
-  const [adminAndWebApps, flutterApps, androidAppsRaw, iosAppsRaw] = await Promise.all([
-    Promise.all(packageJsonFiles.map((p) => packageJsonToAdminOrWebApp(dirPath, p))).then((r) =>
-      r.flat(),
-    ),
+  const unityDirs = unityVersionFiles.map((f) => path.dirname(path.dirname(f)));
+
+  const [adminAndWebApps, flutterApps, androidAppsRaw, iosAppsRaw, unityApps] = await Promise.all([
+    Promise.all(
+      packageJsonFiles.map((p) => packageJsonToAdminOrWebApp(dirPath, p, unityDirs)),
+    ).then((r) => r.flat()),
     Promise.all(pubSpecYamlFiles.map((f) => processFlutterDir(dirPath, f))).then((r) => r.flat()),
     Promise.all(srcMainFolders.map((f) => processAndroidDir(dirPath, f))).then((r) => r.flat()),
     Promise.all(xCodeProjects.map((f) => processIosDir(dirPath, f))).then((r) => r.flat()),
+    Promise.all(unityVersionFiles.map((f) => processUnityDir(dirPath, f))).then((r) => r.flat()),
   ]);
 
   const androidApps = androidAppsRaw.filter(
-    (a) => !flutterApps.some((f) => isPathInside(f.directory, a.directory)),
+    (a) =>
+      !flutterApps.some((f) => isPathInside(f.directory, a.directory)) &&
+      !unityApps.some((u) => isPathInside(u.directory, a.directory)),
   );
 
   const iosApps = iosAppsRaw.filter(
-    (a) => !flutterApps.some((f) => isPathInside(f.directory, a.directory)),
+    (a) =>
+      !flutterApps.some((f) => isPathInside(f.directory, a.directory)) &&
+      !unityApps.some((u) => isPathInside(u.directory, a.directory)),
   );
 
-  return [...flutterApps, ...androidApps, ...iosApps, ...adminAndWebApps];
+  return [...flutterApps, ...unityApps, ...androidApps, ...iosApps, ...adminAndWebApps];
 }
 
 async function processIosDir(dirPath: string, filePath: string): Promise<App[]> {
@@ -136,7 +146,10 @@ async function processAndroidDir(dirPath: string, filePath: string): Promise<App
 
 async function processFlutterDir(dirPath: string, filePath: string): Promise<App[]> {
   const flutterDir = path.dirname(filePath);
-  const flutterAppIds = await detectAppIdsForPlatform(dirPath, Platform.FLUTTER);
+  const flutterAppIds = await detectAppIdsForPlatform(
+    path.join(dirPath, flutterDir),
+    Platform.FLUTTER,
+  );
 
   if (flutterAppIds.length === 0) {
     return [
@@ -147,24 +160,42 @@ async function processFlutterDir(dirPath: string, filePath: string): Promise<App
     ];
   }
 
-  const flutterApps = await Promise.all(
-    flutterAppIds.map((app) => {
-      const flutterApp: App = {
-        platform: Platform.FLUTTER,
-        directory: flutterDir,
-        appId: app.appId,
-        bundleId: app.bundleId,
-      };
-      return flutterApp;
-    }),
-  );
+  return flutterAppIds.map((app) => ({
+    platform: Platform.FLUTTER,
+    directory: flutterDir,
+    appId: app.appId,
+    bundleId: app.bundleId,
+  }));
+}
 
-  return flutterApps.flat();
+async function processUnityDir(dirPath: string, filePath: string): Promise<App[]> {
+  const unityDir = path.dirname(path.dirname(filePath));
+  const unityAppIds = await detectAppIdsForPlatform(path.join(dirPath, unityDir), Platform.UNITY);
+
+  if (unityAppIds.length === 0) {
+    return [
+      {
+        platform: Platform.UNITY,
+        directory: unityDir,
+      },
+    ];
+  }
+
+  return unityAppIds.map((app) => ({
+    platform: Platform.UNITY,
+    directory: unityDir,
+    appId: app.appId,
+    bundleId: app.bundleId,
+  }));
 }
 
 function isPathInside(parent: string, child: string): boolean {
   const relativePath = path.relative(parent, child);
-  return !relativePath.startsWith(`..`);
+  return (
+    !relativePath.startsWith(`..${path.sep}`) &&
+    relativePath !== ".." &&
+    !path.isAbsolute(relativePath)
+  );
 }
 
 export function getAllDepsFromPackageJson(packageJson: PackageJSON) {
@@ -177,23 +208,37 @@ export function getAllDepsFromPackageJson(packageJson: PackageJSON) {
 async function packageJsonToAdminOrWebApp(
   dirPath: string,
   packageJsonFile: string,
+  unityDirs: string[] = [],
 ): Promise<App[]> {
   try {
+    const appDir = path.dirname(packageJsonFile);
+    const isUnityPackage = unityDirs.some((uDir) =>
+      isPathInside(path.join(uDir, "Packages"), appDir),
+    );
+    if (isUnityPackage) {
+      return [];
+    }
+    const isInsideUnity = unityDirs.some((uDir) => isPathInside(uDir, appDir));
     const fullPath = path.join(dirPath, packageJsonFile);
     const packageJson = JSON.parse((await fs.readFile(fullPath)).toString()) as PackageJSON;
     const allDeps = getAllDepsFromPackageJson(packageJson);
-    const detectedApps = [];
+    const detectedApps: App[] = [];
     if (allDeps.includes("firebase-admin") || allDeps.includes("firebase-functions")) {
       detectedApps.push({
         platform: Platform.ADMIN_NODE,
-        directory: path.dirname(packageJsonFile),
+        directory: appDir,
       });
     }
-    if (allDeps.includes("firebase") || detectedApps.length === 0) {
+    const frameworks = getFrameworksFromPackageJson(packageJson);
+    if (
+      allDeps.includes("firebase") ||
+      (!isInsideUnity && detectedApps.length === 0) ||
+      (isInsideUnity && frameworks.length > 0)
+    ) {
       detectedApps.push({
         platform: Platform.WEB,
-        directory: path.dirname(packageJsonFile),
-        frameworks: getFrameworksFromPackageJson(packageJson),
+        directory: appDir,
+        frameworks,
       });
     }
     return detectedApps;
@@ -209,38 +254,65 @@ const WEB_FRAMEWORKS_SIGNALS: { [key in Framework]: string[] } = {
   angular: ["@angular/core"],
 };
 
+function dedupeAppIdentifiers(identifiers: AppIdentifier[]): AppIdentifier[] {
+  const byAppId = new Map<string, AppIdentifier>();
+  for (const id of identifiers) {
+    const existing = byAppId.get(id.appId);
+    if (!existing || (!existing.bundleId && id.bundleId)) {
+      byAppId.set(id.appId, id);
+    }
+  }
+  return Array.from(byAppId.values());
+}
+
+async function extractFromFiles(
+  dirPath: string,
+  filePattern: string,
+  extractFunc: (fileContent: string) => AppIdentifier[],
+): Promise<AppIdentifier[]> {
+  const files = await detectFiles(dirPath, filePattern);
+  const allAppIds = await Promise.all(
+    files.map(async (file) => {
+      try {
+        const fileContent = (await fs.readFile(path.join(dirPath, file))).toString();
+        return extractFunc(fileContent);
+      } catch {
+        return [];
+      }
+    }),
+  );
+  return allAppIds.flat();
+}
+
 async function detectAppIdsForPlatform(
   dirPath: string,
   platform: Platform,
 ): Promise<AppIdentifier[]> {
-  let appIdFiles;
-  let extractFunc: (fileContent: string) => AppIdentifier[];
   switch (platform) {
     // Leaving web out of the mix for now because we have no strong conventions
     // around where to put Firebase config. It could be anywhere in your codebase.
     case Platform.ANDROID:
-      appIdFiles = await detectFiles(dirPath, "google-services*.json*");
-      extractFunc = extractAppIdentifiersAndroid;
-      break;
+      return extractFromFiles(dirPath, "google-services*.json*", extractAppIdentifiersAndroid);
     case Platform.IOS:
-      appIdFiles = await detectFiles(dirPath, "GoogleService-*.plist*");
-      extractFunc = extractAppIdentifierIos;
-      break;
-    case Platform.FLUTTER:
-      appIdFiles = await detectFiles(dirPath, "firebase_options.dart");
-      extractFunc = extractAppIdentifiersFlutter;
-      break;
+      return extractFromFiles(dirPath, "GoogleService-*.plist*", extractAppIdentifierIos);
+    case Platform.FLUTTER: {
+      const [dartIds, androidIds, iosIds] = await Promise.all([
+        extractFromFiles(dirPath, "firebase_options*.dart", extractAppIdentifiersFlutter),
+        extractFromFiles(dirPath, "google-services*.json*", extractAppIdentifiersAndroid),
+        extractFromFiles(dirPath, "GoogleService-*.plist*", extractAppIdentifierIos),
+      ]);
+      return dedupeAppIdentifiers([...dartIds, ...androidIds, ...iosIds]);
+    }
+    case Platform.UNITY: {
+      const [androidIds, iosIds] = await Promise.all([
+        extractFromFiles(dirPath, "google-services*.json*", extractAppIdentifiersAndroid),
+        extractFromFiles(dirPath, "GoogleService-*.plist*", extractAppIdentifierIos),
+      ]);
+      return dedupeAppIdentifiers([...androidIds, ...iosIds]);
+    }
     default:
       return [];
   }
-
-  const allAppIds = await Promise.all(
-    appIdFiles.map(async (file) => {
-      const fileContent = (await fs.readFile(path.join(dirPath, file))).toString();
-      return extractFunc(fileContent);
-    }),
-  );
-  return allAppIds.flat();
 }
 
 function getFrameworksFromPackageJson(packageJson: PackageJSON): Framework[] {
@@ -340,9 +412,18 @@ export async function detectFiles(dirPath: string, filePattern: string): Promise
       "**/out/**", // Another common build output
       "**/.next/**", // Next.js build directory
       "**/coverage/**", // Test coverage reports
+      "**/Library/**", // Unity cache and package cache directory
+      "**/Temp/**", // Unity temporary build directory
+      "**/Obj/**", // Unity/C# intermediate build directory
+      "**/Logs/**", // Unity logs directory
+      "**/UserSettings/**", // Unity user settings directory
+      "**/*.meta", // Unity asset metadata files
+      "**/.dart_tool/**", // Flutter/Dart build cache
+      "**/Pods/**", // CocoaPods dependencies
+      "**/.symlinks/**", // Flutter iOS symlinks
     ],
     absolute: false,
-    maxDepth: 4,
+    maxDepth: 8,
   };
   return glob(`**/${filePattern}`, options);
 }
